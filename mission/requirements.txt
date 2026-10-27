@@ -1,0 +1,4 @@
+httpx==0.28.1
+python-dotenv==1.2.4
+jsonschema==4.26.0
+websockets==15.0.1
