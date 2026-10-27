@@ -2,3 +2,13 @@
 ref = "app.py::Sam"
 auth = "private"
 regions = ["us-central"]
+secrets = ["HF_TOKEN"]
+min_concurrency = 0
+max_concurrency = 1
+max_multiplexing = 1
+keep_alive = 120
+startup_timeout = 1800
+request_timeout = 600
+skip_retry_conditions = ["timeout", "server_error", "connection_error"]
+deployment_strategy = "recreate"
+app_scale_settings = true
