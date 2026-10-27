@@ -22,7 +22,8 @@
 - `mission/smoke.py`: private simulator evaluation captures using existing helpers.
 - `mission/environment.py`: shared dotenv startup for clients and deployment.
 - `services/glimmer/`: fal GPU-H200 deployment of the official vLLM container.
-- SAM and Wonder use Meta Model API; there is no SAM fal app.
+- `services/sam/`: fal GPU-H100 deployment of the pinned SAM 3.1 checkpoint.
+- Wonder uses Meta Model API. SAM uses fal; never route SAM to Meta API.
 - `measurements/`: committed JSON samples and metadata; never captured images.
 - `simulation/phase2a/`: existing simulator and evaluator helpers.
 - `src/`, `server/`, `shared/`, `public/`: existing browser/server application.
@@ -36,11 +37,11 @@
 # Running
 
 - Install `mission/requirements.txt` in `.venv-cosys`; deployment requirements
-  belong in `.venv-fal` using `services/glimmer/requirements.txt`.
+  belong in Python 3.12 `.venv-fal` using `services/glimmer/requirements.txt`.
 - From the repository root: `.venv-cosys/bin/python -m mission.smoke`, then
   `.venv-cosys/bin/python -m mission.bench_models --case resolution`.
 - Run each remaining benchmark case with `--case`; use `--help` for the list.
-- Set `GLIMMER_URL` in `.env` to the deployed fal URL before Glimmer cases.
+- Set `SAM_URL` and `GLIMMER_URL` in `.env` to the deployed fal URL before Glimmer cases.
 - For deployment, run `.venv-fal/bin/python -m mission.environment
   /srv/snr/.venv-fal/bin/fal --help`; the wrapper loads the same dotenv file.
 - Keep raw samples, p50/p90, at least 20 warm samples, cold starts, and failures

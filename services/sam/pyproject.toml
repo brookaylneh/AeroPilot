@@ -1,0 +1,4 @@
+[tool.fal.apps.snr-sam]
+ref = "app.py::Sam"
+auth = "private"
+regions = ["us-central"]
