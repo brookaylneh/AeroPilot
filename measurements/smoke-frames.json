@@ -1,0 +1,246 @@
+[
+  {
+    "schemaVersion": 1,
+    "vehicleId": "Drone1",
+    "cameraId": "front_center",
+    "imageType": "RGB",
+    "file": "target-Drone1.png",
+    "width": 3840,
+    "height": 2160,
+    "timestampNs": 1793135533685909504,
+    "cameraPoseLocalNed": {
+      "position": {
+        "x": 36.24396896362305,
+        "y": 32.155521392822266,
+        "z": -29.500408172607422
+      },
+      "orientation": {
+        "w": 0.7069633603096008,
+        "x": 0.00012685067486017942,
+        "y": -0.70725017786026,
+        "z": -0.00012558200978673995
+      }
+    },
+    "cameraPositionWorldM": {
+      "x": -777.928062286377,
+      "y": 29.655521392822266,
+      "z": 40.950408172607425
+    },
+    "vehicleStateBefore": {
+      "id": "Drone1",
+      "timestampNs": 1793135533685909504,
+      "positionLocalNedM": {
+        "x": 35.64399337768555,
+        "y": 32.15554428100586,
+        "z": -29.550600051879883
+      },
+      "positionWorldM": {
+        "x": -778.5280378723145,
+        "y": 29.65554428100586,
+        "z": 41.000600051879886
+      },
+      "orientationNed": {
+        "w": 0.9999999403953552,
+        "x": 0.00017753303109202534,
+        "y": -0.00020172812219243497,
+        "z": 8.97229483598494e-07
+      },
+      "velocityLocalNedMps": {
+        "x": 0.0016010429244488478,
+        "y": 0.0014454206684604287,
+        "z": 0.01709143817424774
+      },
+      "landed": false,
+      "apiControl": true,
+      "collision": {
+        "hasCollided": false,
+        "timestampNs": 1793132309667131904,
+        "objectName": "StaticMeshActor_0",
+        "normalLocalNed": {
+          "x": 3.3812128208410286e-08,
+          "y": 5.200389452397758e-09,
+          "z": -1.0
+        },
+        "impactPointLocalNedM": {
+          "x": 0.10133922845125198,
+          "y": 0.3350837528705597,
+          "z": 0.1999996453523636
+        }
+      }
+    },
+    "vehicleStateAfter": {
+      "id": "Drone1",
+      "timestampNs": 1793135533685909504,
+      "positionLocalNedM": {
+        "x": 35.64399337768555,
+        "y": 32.15554428100586,
+        "z": -29.550600051879883
+      },
+      "positionWorldM": {
+        "x": -778.5280378723145,
+        "y": 29.65554428100586,
+        "z": 41.000600051879886
+      },
+      "orientationNed": {
+        "w": 0.9999999403953552,
+        "x": 0.00017753303109202534,
+        "y": -0.00020172812219243497,
+        "z": 8.97229483598494e-07
+      },
+      "velocityLocalNedMps": {
+        "x": 0.0016010429244488478,
+        "y": 0.0014454206684604287,
+        "z": 0.01709143817424774
+      },
+      "landed": false,
+      "apiControl": true,
+      "collision": {
+        "hasCollided": false,
+        "timestampNs": 1793132309667131904,
+        "objectName": "StaticMeshActor_0",
+        "normalLocalNed": {
+          "x": 3.3812128208410286e-08,
+          "y": 5.200389452397758e-09,
+          "z": -1.0
+        },
+        "impactPointLocalNedM": {
+          "x": 0.10133922845125198,
+          "y": 0.3350837528705597,
+          "z": 0.1999996453523636
+        }
+      }
+    },
+    "physicsPausedForCapture": true,
+    "vehiclePoseTiming": "Frozen physics state",
+    "captureLatencySeconds": 0.3452920459967572,
+    "transportBytes": 24883200,
+    "pngBytes": 18305255,
+    "sha256": "1b3ba42e1b4a556aa2c5647ea97489dab8a765c1f2f3d812a21640d762004822",
+    "evaluationOnlyBoxes": [],
+    "control": "target",
+    "meshPattern": "BP_Person_adult_kelvin*",
+    "actualCameraAGLM": 29.82516077491283
+  },
+  {
+    "schemaVersion": 1,
+    "vehicleId": "Drone1",
+    "cameraId": "front_center",
+    "imageType": "RGB",
+    "file": "empty-Drone1.png",
+    "width": 3840,
+    "height": 2160,
+    "timestampNs": 1793135599204307200,
+    "cameraPoseLocalNed": {
+      "position": {
+        "x": 196.24436950683594,
+        "y": 32.15699005126953,
+        "z": -33.454063415527344
+      },
+      "orientation": {
+        "w": 0.7069116830825806,
+        "x": 2.3680639060330577e-05,
+        "y": -0.7073018550872803,
+        "z": -2.3355818484560587e-05
+      }
+    },
+    "cameraPositionWorldM": {
+      "x": -617.9276617431641,
+      "y": 29.65699005126953,
+      "z": 44.90406341552735
+    },
+    "vehicleStateBefore": {
+      "id": "Drone1",
+      "timestampNs": 1793135599204307200,
+      "positionLocalNedM": {
+        "x": 195.64439392089844,
+        "y": 32.1569938659668,
+        "z": -33.50439453125
+      },
+      "positionWorldM": {
+        "x": -618.5276373291016,
+        "y": 29.656993865966797,
+        "z": 44.95439453125
+      },
+      "orientationNed": {
+        "w": 1.0,
+        "x": 3.325979923829436e-05,
+        "y": -0.00027590946410782635,
+        "z": 2.2968310986470897e-07
+      },
+      "velocityLocalNedMps": {
+        "x": 0.002046179259195924,
+        "y": 0.0002828517463058233,
+        "z": 0.017026295885443687
+      },
+      "landed": false,
+      "apiControl": true,
+      "collision": {
+        "hasCollided": false,
+        "timestampNs": 1793132309667131904,
+        "objectName": "StaticMeshActor_0",
+        "normalLocalNed": {
+          "x": 3.3812128208410286e-08,
+          "y": 5.200389452397758e-09,
+          "z": -1.0
+        },
+        "impactPointLocalNedM": {
+          "x": 0.10133922845125198,
+          "y": 0.3350837528705597,
+          "z": 0.1999996453523636
+        }
+      }
+    },
+    "vehicleStateAfter": {
+      "id": "Drone1",
+      "timestampNs": 1793135599204307200,
+      "positionLocalNedM": {
+        "x": 195.64439392089844,
+        "y": 32.1569938659668,
+        "z": -33.50439453125
+      },
+      "positionWorldM": {
+        "x": -618.5276373291016,
+        "y": 29.656993865966797,
+        "z": 44.95439453125
+      },
+      "orientationNed": {
+        "w": 1.0,
+        "x": 3.325979923829436e-05,
+        "y": -0.00027590946410782635,
+        "z": 2.2968310986470897e-07
+      },
+      "velocityLocalNedMps": {
+        "x": 0.002046179259195924,
+        "y": 0.0002828517463058233,
+        "z": 0.017026295885443687
+      },
+      "landed": false,
+      "apiControl": true,
+      "collision": {
+        "hasCollided": false,
+        "timestampNs": 1793132309667131904,
+        "objectName": "StaticMeshActor_0",
+        "normalLocalNed": {
+          "x": 3.3812128208410286e-08,
+          "y": 5.200389452397758e-09,
+          "z": -1.0
+        },
+        "impactPointLocalNedM": {
+          "x": 0.10133922845125198,
+          "y": 0.3350837528705597,
+          "z": 0.1999996453523636
+        }
+      }
+    },
+    "physicsPausedForCapture": true,
+    "vehiclePoseTiming": "Frozen physics state",
+    "captureLatencySeconds": 0.2887081630033208,
+    "transportBytes": 24883200,
+    "pngBytes": 18308415,
+    "sha256": "d99da9a8a4850701afddb2156d5cef64886328d51048d7ec03fd6a2b7db3c47b",
+    "evaluationOnlyBoxes": [],
+    "control": "empty",
+    "meshPattern": "BP_Person_adult_kelvin*",
+    "actualCameraAGLM": 29.827076646837067
+  }
+]
