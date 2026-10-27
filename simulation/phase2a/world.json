@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "worldId": "open-meadow-unreal",
+  "environmentAssetVersion": "open-meadow-unreal-0.3.0",
+  "infrastructureVersion": "four-drone-port-2-south",
+  "coordinateSystem": "UE_LH_Z_UP_CENTIMETERS",
+  "north": "+X",
+  "east": "+Y",
+  "searchBoundsCm": {
+    "min": {
+      "x": -80467.2,
+      "y": -80467.2,
+      "z": -10000.0
+    },
+    "max": {
+      "x": 80467.2,
+      "y": 80467.2,
+      "z": 30000.0
+    }
+  },
+  "widthMetres": 1609.344,
+  "playerStartUeCm": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 4000.0
+  },
+  "moveWorldOrigin": false,
+  "port": {
+    "boundary": "south",
+    "centerUeCm": {
+      "x": -81667.2,
+      "y": 0.0,
+      "z": 1125.0
+    },
+    "dimensionsMetres": [
+      14,
+      14,
+      0.3
+    ],
+    "nearestBoundaryGapMetres": 5,
+    "searchable": false
+  },
+  "heightfieldSha256": "a523142668a99568c9bdd22ef0b153a06b8791c085ed41caa6f0e6b16750a4c1",
+  "vehicles": {
+    "Drone1": {
+      "spawnUeCm": {
+        "x": -81417.2,
+        "y": -250.0,
+        "z": 1145.0
+      },
+      "yawDegrees": 0
+    },
+    "Drone2": {
+      "spawnUeCm": {
+        "x": -81417.2,
+        "y": 250.0,
+        "z": 1145.0
+      },
+      "yawDegrees": 0
+    },
+    "Drone3": {
+      "spawnUeCm": {
+        "x": -81917.2,
+        "y": -250.0,
+        "z": 1145.0
+      },
+      "yawDegrees": 0
+    },
+    "Drone4": {
+      "spawnUeCm": {
+        "x": -81917.2,
+        "y": 250.0,
+        "z": 1145.0
+      },
+      "yawDegrees": 0
+    }
+  }
+}

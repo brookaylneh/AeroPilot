@@ -1,0 +1,172 @@
+[
+  {
+    "id": "adult-kelvin",
+    "name": "Kelvin",
+    "ageCategory": "Adult",
+    "description": "Short dark hair and light facial hair.",
+    "folder": "Adult",
+    "kind": "metahuman",
+    "heightCm": 170,
+    "topId": "crew-neck-shirt",
+    "bottomId": "shorts",
+    "supportsBackpack": true,
+    "fixedAccessories": "",
+    "capsuleRadiusCm": 35,
+    "supportedSituations": [
+      "lost",
+      "waiting",
+      "injured"
+    ]
+  },
+  {
+    "id": "adult-etta",
+    "name": "Etta",
+    "ageCategory": "Adult",
+    "description": "Short dark hair.",
+    "folder": "Etta",
+    "kind": "metahuman",
+    "heightCm": 170,
+    "topId": "crew-neck-shirt",
+    "bottomId": "shorts",
+    "supportsBackpack": true,
+    "fixedAccessories": "",
+    "capsuleRadiusCm": 35,
+    "supportedSituations": [
+      "lost",
+      "waiting",
+      "injured"
+    ]
+  },
+  {
+    "id": "senior-walter",
+    "name": "Walter",
+    "ageCategory": "Senior",
+    "description": "Gray hair and a short beard.",
+    "folder": "Walter",
+    "kind": "metahuman",
+    "heightCm": 170,
+    "topId": "crew-neck-shirt",
+    "bottomId": "shorts",
+    "supportsBackpack": true,
+    "fixedAccessories": "",
+    "capsuleRadiusCm": 35,
+    "supportedSituations": [
+      "lost",
+      "waiting",
+      "injured"
+    ]
+  },
+  {
+    "id": "senior-sookja",
+    "name": "Sook-ja",
+    "ageCategory": "Senior",
+    "description": "An older woman with a close-cropped hairstyle.",
+    "folder": "Sookja",
+    "kind": "metahuman",
+    "heightCm": 170,
+    "topId": "crew-neck-shirt",
+    "bottomId": "shorts",
+    "supportsBackpack": true,
+    "fixedAccessories": "",
+    "capsuleRadiusCm": 35,
+    "supportedSituations": [
+      "lost",
+      "waiting",
+      "injured"
+    ]
+  },
+  {
+    "id": "child-01",
+    "name": "Noah",
+    "ageCategory": "Child",
+    "description": "Short hair beneath a yellow cap.",
+    "folder": "Child_01",
+    "kind": "scan",
+    "heightCm": 128,
+    "topId": "hoodie",
+    "bottomId": "shorts",
+    "supportsBackpack": false,
+    "fixedAccessories": "Yellow cap",
+    "capsuleRadiusCm": 33,
+    "supportedSituations": [
+      "lost",
+      "waiting",
+      "injured"
+    ]
+  },
+  {
+    "id": "child-02",
+    "name": "Leo",
+    "ageCategory": "Child",
+    "description": "Short curly hair.",
+    "folder": "Child_02",
+    "kind": "scan",
+    "heightCm": 132,
+    "topId": "layered-shirt",
+    "bottomId": "trousers",
+    "supportsBackpack": false,
+    "fixedAccessories": "",
+    "capsuleRadiusCm": 36,
+    "supportedSituations": [
+      "lost",
+      "waiting",
+      "injured"
+    ]
+  },
+  {
+    "id": "child-03",
+    "name": "Maya",
+    "ageCategory": "Child",
+    "description": "Long hair in two braids.",
+    "folder": "Child_03",
+    "kind": "scan",
+    "heightCm": 138,
+    "topId": "long-sleeve-top",
+    "bottomId": "jeans",
+    "supportsBackpack": false,
+    "fixedAccessories": "",
+    "capsuleRadiusCm": 27,
+    "supportedSituations": [
+      "lost",
+      "waiting",
+      "injured"
+    ]
+  },
+  {
+    "id": "child-04",
+    "name": "Sofia",
+    "ageCategory": "Child",
+    "description": "Dark hair tied back.",
+    "folder": "Child_04",
+    "kind": "scan",
+    "heightCm": 139,
+    "topId": "tank-top",
+    "bottomId": "jeans",
+    "supportsBackpack": false,
+    "fixedAccessories": "Orange and gray backpack",
+    "capsuleRadiusCm": 44,
+    "supportedSituations": [
+      "lost",
+      "waiting",
+      "injured"
+    ]
+  },
+  {
+    "id": "child-05",
+    "name": "Lily",
+    "ageCategory": "Child",
+    "description": "Dark hair tied back.",
+    "folder": "Child_05",
+    "kind": "scan",
+    "heightCm": 142,
+    "topId": "tank-top",
+    "bottomId": "jeans",
+    "supportsBackpack": false,
+    "fixedAccessories": "Red skateboard",
+    "capsuleRadiusCm": 44,
+    "supportedSituations": [
+      "lost",
+      "waiting"
+    ]
+  }
+]

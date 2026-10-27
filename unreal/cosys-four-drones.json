@@ -1,0 +1,242 @@
+{
+  "SettingsVersion": 2.0,
+  "SimMode": "Multirotor",
+  "ViewMode": "Manual",
+  "MoveWorldOrigin": false,
+  "EnableRpc": true,
+  "LocalHostIp": "127.0.0.1",
+  "ApiServerPort": 41451,
+  "ClockSpeed": 1,
+  "InitialInstanceSegmentation": false,
+  "RecordUIVisible": false,
+  "LogMessagesVisible": false,
+  "SubWindows": [],
+  "Recording": {
+    "Enabled": false
+  },
+  "OriginGeopoint": {
+    "Latitude": 0,
+    "Longitude": 0,
+    "Altitude": 0
+  },
+  "CameraDefaults": {
+    "CaptureSettings": [
+      {
+        "ImageType": -1,
+        "AutoExposureMinBrightness": 13,
+        "AutoExposureMaxBrightness": 13,
+        "AutoExposureBias": 0,
+        "MotionBlurAmount": 0,
+        "BloomIntensity": 0,
+        "LumenGIEnable": false,
+        "LumenReflectionEnable": false
+      }
+    ]
+  },
+  "Vehicles": {
+    "Drone1": {
+      "VehicleType": "SimpleFlight",
+      "AutoCreate": true,
+      "X": -814.172,
+      "Y": -2.5,
+      "Z": 28.55,
+      "Yaw": 0,
+      "EnableCollisions": true,
+      "EnableCollisionPassthrogh": false,
+      "RC": {
+        "RemoteControlID": -1,
+        "AllowAPIAlways": true
+      },
+      "Cameras": {
+        "front_center": {
+          "X": 0.6,
+          "Y": 0,
+          "Z": 0.05,
+          "Pitch": -90,
+          "Yaw": 0,
+          "Roll": 0,
+          "CaptureSettings": [
+            {
+              "ImageType": -1,
+              "FOV_Degrees": 70,
+              "AutoExposureMinBrightness": 13,
+              "AutoExposureMaxBrightness": 13,
+              "AutoExposureBias": 0,
+              "MotionBlurAmount": 0,
+              "BloomIntensity": 0,
+              "LumenGIEnable": false,
+              "LumenReflectionEnable": false
+            },
+            {
+              "ImageType": 0,
+              "Width": 3840,
+              "Height": 2160,
+              "FOV_Degrees": 70,
+              "ForceUpdate": false,
+              "AutoExposureMinBrightness": 13,
+              "AutoExposureMaxBrightness": 13,
+              "AutoExposureBias": 0,
+              "MotionBlurAmount": 0,
+              "BloomIntensity": 0,
+              "LumenGIEnable": false,
+              "LumenReflectionEnable": false
+            }
+          ]
+        }
+      }
+    },
+    "Drone2": {
+      "VehicleType": "SimpleFlight",
+      "AutoCreate": true,
+      "X": -814.172,
+      "Y": 2.5,
+      "Z": 28.55,
+      "Yaw": 0,
+      "EnableCollisions": true,
+      "EnableCollisionPassthrogh": false,
+      "RC": {
+        "RemoteControlID": -1,
+        "AllowAPIAlways": true
+      },
+      "Cameras": {
+        "front_center": {
+          "X": 0.6,
+          "Y": 0,
+          "Z": 0.05,
+          "Pitch": -90,
+          "Yaw": 0,
+          "Roll": 0,
+          "CaptureSettings": [
+            {
+              "ImageType": -1,
+              "FOV_Degrees": 70,
+              "AutoExposureMinBrightness": 13,
+              "AutoExposureMaxBrightness": 13,
+              "AutoExposureBias": 0,
+              "MotionBlurAmount": 0,
+              "BloomIntensity": 0,
+              "LumenGIEnable": false,
+              "LumenReflectionEnable": false
+            },
+            {
+              "ImageType": 0,
+              "Width": 3840,
+              "Height": 2160,
+              "FOV_Degrees": 70,
+              "ForceUpdate": false,
+              "AutoExposureMinBrightness": 13,
+              "AutoExposureMaxBrightness": 13,
+              "AutoExposureBias": 0,
+              "MotionBlurAmount": 0,
+              "BloomIntensity": 0,
+              "LumenGIEnable": false,
+              "LumenReflectionEnable": false
+            }
+          ]
+        }
+      }
+    },
+    "Drone3": {
+      "VehicleType": "SimpleFlight",
+      "AutoCreate": true,
+      "X": -819.172,
+      "Y": -2.5,
+      "Z": 28.55,
+      "Yaw": 0,
+      "EnableCollisions": true,
+      "EnableCollisionPassthrogh": false,
+      "RC": {
+        "RemoteControlID": -1,
+        "AllowAPIAlways": true
+      },
+      "Cameras": {
+        "front_center": {
+          "X": 0.6,
+          "Y": 0,
+          "Z": 0.05,
+          "Pitch": -90,
+          "Yaw": 0,
+          "Roll": 0,
+          "CaptureSettings": [
+            {
+              "ImageType": -1,
+              "FOV_Degrees": 70,
+              "AutoExposureMinBrightness": 13,
+              "AutoExposureMaxBrightness": 13,
+              "AutoExposureBias": 0,
+              "MotionBlurAmount": 0,
+              "BloomIntensity": 0,
+              "LumenGIEnable": false,
+              "LumenReflectionEnable": false
+            },
+            {
+              "ImageType": 0,
+              "Width": 3840,
+              "Height": 2160,
+              "FOV_Degrees": 70,
+              "ForceUpdate": false,
+              "AutoExposureMinBrightness": 13,
+              "AutoExposureMaxBrightness": 13,
+              "AutoExposureBias": 0,
+              "MotionBlurAmount": 0,
+              "BloomIntensity": 0,
+              "LumenGIEnable": false,
+              "LumenReflectionEnable": false
+            }
+          ]
+        }
+      }
+    },
+    "Drone4": {
+      "VehicleType": "SimpleFlight",
+      "AutoCreate": true,
+      "X": -819.172,
+      "Y": 2.5,
+      "Z": 28.55,
+      "Yaw": 0,
+      "EnableCollisions": true,
+      "EnableCollisionPassthrogh": false,
+      "RC": {
+        "RemoteControlID": -1,
+        "AllowAPIAlways": true
+      },
+      "Cameras": {
+        "front_center": {
+          "X": 0.6,
+          "Y": 0,
+          "Z": 0.05,
+          "Pitch": -90,
+          "Yaw": 0,
+          "Roll": 0,
+          "CaptureSettings": [
+            {
+              "ImageType": -1,
+              "FOV_Degrees": 70,
+              "AutoExposureMinBrightness": 13,
+              "AutoExposureMaxBrightness": 13,
+              "AutoExposureBias": 0,
+              "MotionBlurAmount": 0,
+              "BloomIntensity": 0,
+              "LumenGIEnable": false,
+              "LumenReflectionEnable": false
+            },
+            {
+              "ImageType": 0,
+              "Width": 3840,
+              "Height": 2160,
+              "FOV_Degrees": 70,
+              "ForceUpdate": false,
+              "AutoExposureMinBrightness": 13,
+              "AutoExposureMaxBrightness": 13,
+              "AutoExposureBias": 0,
+              "MotionBlurAmount": 0,
+              "BloomIntensity": 0,
+              "LumenGIEnable": false,
+              "LumenReflectionEnable": false
+            }
+          ]
+        }
+      }
+    }
+  }
+}

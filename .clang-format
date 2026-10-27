@@ -1,0 +1,8 @@
+BasedOnStyle: Microsoft
+ColumnLimit: 110
+IndentWidth: 4
+SortIncludes: Never
+ReflowComments: false
+BreakStringLiterals: false
+FixNamespaceComments: false
+AllowShortFunctionsOnASingleLine: Empty

@@ -1,0 +1,8 @@
+data/
+dist*/
+evidence/
+node_modules/
+public/
+vendor/
+unreal/
+package-lock.json

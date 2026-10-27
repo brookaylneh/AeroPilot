@@ -1,0 +1,48 @@
+{
+  "environmentId": "open-meadow-unreal",
+  "widthMetres": 1609.344,
+  "depthMetres": 1609.344,
+  "locationCount": 1,
+  "trees": false,
+  "packs": [
+    {
+      "name": "interactive Open World Foliage",
+      "url": "https://www.fab.com/listings/eba98f8c-d99a-4f60-8495-5db0e62666ff",
+      "intendedUse": "Low grass and sparse field plants",
+      "acquired": true,
+      "listingAllowsAiUsage": false,
+      "license": "Fab Standard License",
+      "sourceEngineVersion": "5.4",
+      "importedIntoLandscape": true,
+      "packagedRuntimeTested": true,
+      "downloaded": true
+    },
+    {
+      "name": "temperate Vegetation: optimized Grass Library",
+      "url": "https://www.fab.com/listings/8b68642e-35f4-438e-82b4-799fc2228303",
+      "intendedUse": "Detailed close-range grass variants",
+      "acquired": true,
+      "listingAllowsAiUsage": false,
+      "license": "Fab Standard License",
+      "sourceEngineVersion": "5.4",
+      "importedIntoLandscape": true,
+      "packagedRuntimeTested": true,
+      "downloaded": true
+    },
+    {
+      "name": "temperate Vegetation: Meadow Flowers",
+      "url": "https://www.fab.com/listings/e648b1bd-11f6-4895-bd43-15e399c80297",
+      "intendedUse": "Localized low flower patches",
+      "acquired": true,
+      "listingAllowsAiUsage": false,
+      "license": "Fab Standard License",
+      "sourceEngineVersion": "5.4",
+      "importedIntoLandscape": true,
+      "packagedRuntimeTested": true,
+      "downloaded": true
+    }
+  ],
+  "acquisitionStatus": "All three requested packs acquired, downloaded, integrated, cooked and visible in the live packaged UE 5.8.2 scene. Release 20261026T195608Z passed the public browser workflow and 720p/30 FPS performance gate (28.9 decoded FPS, zero freezes).",
+  "temporarySource": "Previous release only: Poly Haven grass_medium_01 (CC0). Active vegetation uses the requested Fab packs.",
+  "assetVersion": "open-meadow-unreal-0.3.0"
+}

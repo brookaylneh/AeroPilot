@@ -1,0 +1,7 @@
+# Tested with Python 3.10 on the existing server.
+cosysairsim==3.5.0
+rpc-msgpack==0.6
+numpy==1.23.5
+pillow==11.0.0
+msgpack==1.1.2
+tornado==6.4.1
