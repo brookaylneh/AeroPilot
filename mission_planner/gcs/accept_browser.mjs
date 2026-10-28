@@ -620,6 +620,9 @@ async function performanceRun(browser, url, output, servicePid, seconds) {
   const response = await page.goto(url);
   assert.equal(await response.text(), builtPage, 'The server must serve the measured build');
   await page.waitForFunction(() => window.missionRenderSamples?.length >= 20, null, { timeout: 60000 });
+  await page.keyboard.press('1');
+  await page.getByRole('button', { name: 'Expand map', exact: true }).click();
+  await page.locator('.gcs-main-map').waitFor();
   const started = Date.now();
   const memory = [];
   const pans = [];
