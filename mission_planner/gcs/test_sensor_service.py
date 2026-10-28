@@ -191,6 +191,27 @@ class SensorServiceTests(unittest.IsolatedAsyncioTestCase):
             len([m for m in socket.sent if m["type"] == "sensor_frame"]), len(NAMES) + 1
         )
 
+    async def test_new_drone_frame_during_blocked_send_keeps_connection_alive(self):
+        self.mission.sensor_frames["Drone1"] = sensor_message(capture_record("Drone1", 1), PREVIEW)
+        socket = await self.connect()
+        send = socket.send
+        entered, release = asyncio.Event(), asyncio.Event()
+
+        async def blocked_send(raw):
+            message = json.loads(raw)
+            if message["type"] == "sensor_frame" and message["frame"]["drone_id"] == "Drone1":
+                entered.set()
+                await release.wait()
+            await send(raw)
+
+        socket.send = blocked_send
+        await asyncio.wait_for(entered.wait(), timeout=2)
+        self.mission.sensor_frames["Drone2"] = sensor_message(capture_record("Drone2", 1), PREVIEW)
+        release.set()
+        await socket.states(3)
+        frames = [message for message in socket.sent if message["type"] == "sensor_frame"]
+        self.assertEqual([message["frame"]["drone_id"] for message in frames], ["Drone1", "Drone2"])
+
     async def sensor(self, accepted):
         directory = self.mission.directory / "captures"
         directory.mkdir()
@@ -220,6 +241,7 @@ class SensorServiceTests(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(Path(persisted["imagePath"]).is_file())
             trigger = persisted["captureTrigger"]
             self.assertEqual(trigger["autoGroundTrackM"], 12)
+            self.assertEqual(trigger["physicalGroundTrackM"], 12)
             self.assertAlmostEqual(trigger["acquiredGroundTrackM"], 17)
             self.assertAlmostEqual(trigger["acquiredGroundTrackSpacingM"], 12)
             self.assertAlmostEqual(trigger["cameraSpacingM"], math.sqrt(90))
@@ -235,6 +257,7 @@ class SensorServiceTests(unittest.IsolatedAsyncioTestCase):
             acquired = await sensor._capture(
                 "Drone1",
                 1,
+                12,
                 12,
                 capture_trigger(record),
                 {"position": {"x": -3, "y": -9, "z": 30}, "groundTrackM": 5},
@@ -257,7 +280,7 @@ class SensorServiceTests(unittest.IsolatedAsyncioTestCase):
     async def test_rejected_record_is_persisted_without_ingestion_or_preview(self):
         sensor, record, preview = await self.sensor(False)
         sensor.on_capture = AsyncMock(side_effect=self.mission.capture_received)
-        await sensor._capture("Drone1", 1, 12, capture_trigger(record), None)
+        await sensor._capture("Drone1", 1, 12, 12, capture_trigger(record), None)
         sensor.on_capture.assert_not_awaited()
         self.assertIsNone(preview)
         self.assertEqual(self.mission.search.coverage_summary()["captures"], 0)
