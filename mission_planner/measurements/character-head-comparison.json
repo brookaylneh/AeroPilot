@@ -1,0 +1,393 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-10-28T18:20:08.286051+00:00",
+  "review_url": "http://35.81.229.78/character-nia/index.html",
+  "input_archive_sha256": "e7a63e065add19df9cc9bf973553aa853c933bd7b78bcac69b6ac76fe3dc8d38",
+  "reference_character": "/Game/Characters/Nia/Source/MH_Nia",
+  "character": "/Game/Characters/UploadedFace/Source/MH_UploadedFace.MH_UploadedFace",
+  "recipe": {
+    "path": "world/unreal/characters/uploaded-face.json",
+    "sha256": "a7775060a7ec87f28df1c887156d651856391969f685c185c6acd44486e85679"
+  },
+  "camera_profile": {
+    "path": "world/unreal/characters/review-cameras.json",
+    "sha256": "f5fd866ea9e1b859c8fa4f144d7ce108362cca2da4f612a3bf1cae9c6761aac8"
+  },
+  "template_fit": {
+    "character": "/Game/Characters/UploadedFace/Source/MH_UploadedFace.MH_UploadedFace",
+    "template": "/Game/Characters/UploadedFace/Source/HeadTemplate.HeadTemplate",
+    "result": "<ImportErrorCode.SUCCESS: 13>",
+    "match_vertices_by_uvs": true,
+    "adapt_neck_to_body": true,
+    "skin": {
+      "lightness": 0.55,
+      "redness": 0.5
+    }
+  },
+  "cloud": {
+    "rigged": true,
+    "high_resolution_textures": true
+  },
+  "assembly_pipeline": "Cinematic",
+  "texture_settings": {
+    "Basecolor": {
+      "asset": "/Game/Characters/UploadedFace/Source/Head_Basecolor.Head_Basecolor",
+      "pixels": [4096, 4096],
+      "srgb": true,
+      "flip_green_channel": false,
+      "compression": "<TextureCompressionSettings.TC_DEFAULT: 0>"
+    },
+    "Normal": {
+      "asset": "/Game/Characters/UploadedFace/Source/Head_Normal.Head_Normal",
+      "pixels": [4096, 4096],
+      "srgb": false,
+      "flip_green_channel": false,
+      "compression": "<TextureCompressionSettings.TC_NORMALMAP: 1>"
+    },
+    "SRMF": {
+      "asset": "/Game/Characters/UploadedFace/Source/Head_SRMF.Head_SRMF",
+      "pixels": [4096, 4096],
+      "srgb": false,
+      "flip_green_channel": false,
+      "compression": "<TextureCompressionSettings.TC_MASKS: 2>"
+    }
+  },
+  "skin_color_match": {
+    "neck_uv_region": [0.35, 0.87, 0.65, 0.97],
+    "reference_linear_rgb": [0.21528047182364318, 0.0772318739443253, 0.03792234111645403],
+    "supplied_linear_rgb": [0.4301091391639048, 0.21341092164727055, 0.13419960883830115],
+    "body_linear_rgb_multiplier": [1.9979013215664463, 2.763249300426319, 3.538800740866539],
+    "reference_sha256": "2c25c021f474a129a29069e4d224edc086e172ae771d08a144b8e3028bfd27be",
+    "supplied_sha256": "6c87e44dbe09c7d98c0a80fc5a8f9a0cd78b5be762c3566bd037263ff3c0a54d",
+    "scope": "Albedo color match; rendered seam and shading require visual review"
+  },
+  "stage_exit_codes": {
+    "conform-path-fixed": 0,
+    "cloud": 0,
+    "assemble": 0,
+    "textures": 0,
+    "materials": 0,
+    "render": 0,
+    "inventory": 0
+  },
+  "initial_command_error": {
+    "stage": "conform",
+    "exit_code": 255,
+    "cause": "Relative source paths were resolved against Unreal\u2019s working directory; fixed by resolving from the repository root.",
+    "saved_character_assets": 0
+  },
+  "comparison_parity": {
+    "camera_profile_identical": true,
+    "render_setup_identical": true,
+    "render_setup_sha256": "877e1ee36df4bf143fdfb76518bb06cdad543c5f543f77cc9113cb2e92d72904",
+    "unchanged_nia_asset_files": 287
+  },
+  "render": {
+    "pixels": [4096, 4096],
+    "views": 7,
+    "lod": 0,
+    "vulkan_profile_checks": {
+      "VP_UE_Vulkan_SM6": true,
+      "VP_UE_Vulkan_SM6_RT": true
+    },
+    "console_variables_verified": true,
+    "ray_tracing_enabled_in_log": true,
+    "elapsed_capture_seconds": 83.22563206400082,
+    "outfit_components": 1
+  },
+  "images": [
+    {
+      "name": "face",
+      "path": ".local/evidence/characters/metahuman-direct-nia/render/face.png",
+      "sha256": "62e145d7362a2396af4689826645a942b702ae126c61e07147bd1e5b9f13f076",
+      "caption": "Epic preset \u00b7 Nia \u00b7 Face"
+    },
+    {
+      "name": "uploaded-face-face",
+      "path": ".local/evidence/characters/metahuman-uploaded-face/render/face.png",
+      "sha256": "1e943e8e79fffc645707969cbbed2401448886abbb5e4032317368b7754c1b15",
+      "caption": "Uploaded face + Epic body \u00b7 Face"
+    },
+    {
+      "name": "front",
+      "path": ".local/evidence/characters/metahuman-direct-nia/render/front.png",
+      "sha256": "793b306349a47a64ca1dbf249442fe9aea53f927399645d4980420839d51c52a",
+      "caption": "Epic preset \u00b7 Nia \u00b7 Front"
+    },
+    {
+      "name": "uploaded-face-front",
+      "path": ".local/evidence/characters/metahuman-uploaded-face/render/front.png",
+      "sha256": "4e2461cd3b5afb626ff8c67a652c0e2f161e84bba2a1577c8a4cb4f708796c93",
+      "caption": "Uploaded face + Epic body \u00b7 Front"
+    },
+    {
+      "name": "side",
+      "path": ".local/evidence/characters/metahuman-direct-nia/render/side.png",
+      "sha256": "2ec77186e3d4d407f956bff7c142ddd07c91f64a8ace9f0ad5dfb0eca8bbb935",
+      "caption": "Epic preset \u00b7 Nia \u00b7 Side"
+    },
+    {
+      "name": "uploaded-face-side",
+      "path": ".local/evidence/characters/metahuman-uploaded-face/render/side.png",
+      "sha256": "ec84e3f730b167a2ef37a8165dd0c87a99ebe06f27bb06762e85afd34ecaa481",
+      "caption": "Uploaded face + Epic body \u00b7 Side"
+    },
+    {
+      "name": "back",
+      "path": ".local/evidence/characters/metahuman-direct-nia/render/back.png",
+      "sha256": "dbffc95b743707556811117fd1cbe3642cfeabaad8a53c2d0d3b4bda879394ed",
+      "caption": "Epic preset \u00b7 Nia \u00b7 Back"
+    },
+    {
+      "name": "uploaded-face-back",
+      "path": ".local/evidence/characters/metahuman-uploaded-face/render/back.png",
+      "sha256": "467c949679a144fdee796208027e6d9899bd8d0b89ac3aa3efdf2fa001de2534",
+      "caption": "Uploaded face + Epic body \u00b7 Back"
+    },
+    {
+      "name": "three-quarter",
+      "path": ".local/evidence/characters/metahuman-direct-nia/render/three-quarter.png",
+      "sha256": "c6b056562d2159f2c729a8205b41bab4c6e047d4bd908d825af4650abe1b9bfd",
+      "caption": "Epic preset \u00b7 Nia \u00b7 Three Quarter"
+    },
+    {
+      "name": "uploaded-face-three-quarter",
+      "path": ".local/evidence/characters/metahuman-uploaded-face/render/three-quarter.png",
+      "sha256": "04bd71e6330d12c90e000e2d0b7ad8dd357fbf2eaf4ec8f479b0ae31397b67cc",
+      "caption": "Uploaded face + Epic body \u00b7 Three Quarter"
+    },
+    {
+      "name": "hand-left",
+      "path": ".local/evidence/characters/metahuman-direct-nia/render/hand-left.png",
+      "sha256": "5fa3008f71d7d4c9844ced1520f4f81b34f920ac392b70a0b6dd602bce64b97a",
+      "caption": "Epic preset \u00b7 Nia \u00b7 Hand Left"
+    },
+    {
+      "name": "uploaded-face-hand-left",
+      "path": ".local/evidence/characters/metahuman-uploaded-face/render/hand-left.png",
+      "sha256": "6309a78235e78f86b5b1717bdc0ef8c87e96ce8959cb02ed82145fc016b33d91",
+      "caption": "Uploaded face + Epic body \u00b7 Hand Left"
+    },
+    {
+      "name": "hand-right",
+      "path": ".local/evidence/characters/metahuman-direct-nia/render/hand-right.png",
+      "sha256": "94a4fba5b763908a4be8a129c8d69de3dd73ee83cef8cdd8ea18754918d33776",
+      "caption": "Epic preset \u00b7 Nia \u00b7 Hand Right"
+    },
+    {
+      "name": "uploaded-face-hand-right",
+      "path": ".local/evidence/characters/metahuman-uploaded-face/render/hand-right.png",
+      "sha256": "ded034548377da3ef9ce8b3e7644f82b1fb22a1c8823f035084457e9aae4a775",
+      "caption": "Uploaded face + Epic body \u00b7 Hand Right"
+    }
+  ],
+  "browser": {
+    "url": "http://35.81.229.78/character-nia/index.html",
+    "status": 200,
+    "images": [
+      {
+        "width": 1000,
+        "height": 1000,
+        "full": "http://35.81.229.78/character-nia/face.png",
+        "caption": "Epic preset \u00b7 Nia \u00b7 Face"
+      },
+      {
+        "width": 1000,
+        "height": 1000,
+        "full": "http://35.81.229.78/character-nia/uploaded-face-face.png",
+        "caption": "Uploaded face + Epic body \u00b7 Face"
+      },
+      {
+        "width": 1000,
+        "height": 1000,
+        "full": "http://35.81.229.78/character-nia/front.png",
+        "caption": "Epic preset \u00b7 Nia \u00b7 Front"
+      },
+      {
+        "width": 1000,
+        "height": 1000,
+        "full": "http://35.81.229.78/character-nia/uploaded-face-front.png",
+        "caption": "Uploaded face + Epic body \u00b7 Front"
+      },
+      {
+        "width": 1000,
+        "height": 1000,
+        "full": "http://35.81.229.78/character-nia/side.png",
+        "caption": "Epic preset \u00b7 Nia \u00b7 Side"
+      },
+      {
+        "width": 1000,
+        "height": 1000,
+        "full": "http://35.81.229.78/character-nia/uploaded-face-side.png",
+        "caption": "Uploaded face + Epic body \u00b7 Side"
+      },
+      {
+        "width": 1000,
+        "height": 1000,
+        "full": "http://35.81.229.78/character-nia/back.png",
+        "caption": "Epic preset \u00b7 Nia \u00b7 Back"
+      },
+      {
+        "width": 1000,
+        "height": 1000,
+        "full": "http://35.81.229.78/character-nia/uploaded-face-back.png",
+        "caption": "Uploaded face + Epic body \u00b7 Back"
+      },
+      {
+        "width": 1000,
+        "height": 1000,
+        "full": "http://35.81.229.78/character-nia/three-quarter.png",
+        "caption": "Epic preset \u00b7 Nia \u00b7 Three Quarter"
+      },
+      {
+        "width": 1000,
+        "height": 1000,
+        "full": "http://35.81.229.78/character-nia/uploaded-face-three-quarter.png",
+        "caption": "Uploaded face + Epic body \u00b7 Three Quarter"
+      },
+      {
+        "width": 1000,
+        "height": 1000,
+        "full": "http://35.81.229.78/character-nia/hand-left.png",
+        "caption": "Epic preset \u00b7 Nia \u00b7 Hand Left"
+      },
+      {
+        "width": 1000,
+        "height": 1000,
+        "full": "http://35.81.229.78/character-nia/uploaded-face-hand-left.png",
+        "caption": "Uploaded face + Epic body \u00b7 Hand Left"
+      },
+      {
+        "width": 1000,
+        "height": 1000,
+        "full": "http://35.81.229.78/character-nia/hand-right.png",
+        "caption": "Epic preset \u00b7 Nia \u00b7 Hand Right"
+      },
+      {
+        "width": 1000,
+        "height": 1000,
+        "full": "http://35.81.229.78/character-nia/uploaded-face-hand-right.png",
+        "caption": "Uploaded face + Epic body \u00b7 Hand Right"
+      }
+    ],
+    "portrait_pixels": [4096, 4096],
+    "errors": [],
+    "browser_closed": true
+  },
+  "checks": [
+    {
+      "name": "npm-test",
+      "command": ["npm", "test"],
+      "exit_code": 0,
+      "seconds": 0.970605208996858
+    },
+    {
+      "name": "typecheck",
+      "command": ["npm", "run", "typecheck"],
+      "exit_code": 0,
+      "seconds": 2.8202315009984886
+    },
+    {
+      "name": "format-check",
+      "command": ["npm", "run", "format:check"],
+      "exit_code": 0,
+      "seconds": 1.2157420180010376
+    },
+    {
+      "name": "ruff-check",
+      "command": [".venv-cosys/bin/ruff", "check"],
+      "exit_code": 0,
+      "seconds": 0.01564044899714645
+    },
+    {
+      "name": "ruff-format",
+      "command": [".venv-cosys/bin/ruff", "format", "--check"],
+      "exit_code": 0,
+      "seconds": 0.015599623999150936
+    },
+    {
+      "name": "unittest",
+      "command": [".venv-cosys/bin/python", "-m", "unittest"],
+      "exit_code": 0,
+      "seconds": 0.6178840799984755
+    }
+  ],
+  "asset_files": 291,
+  "asset_bytes": 2395434578,
+  "appearance_review": "Paired face, front, side, back, three-quarter and hand renders published for user review.",
+  "limitations": [
+    "Static appearance review only; facial expressions, animation, lower LODs and in-world performance have not been accepted.",
+    "Body color is matched using one neck UV region; this is not a calibrated whole-body skin reconstruction."
+  ],
+  "task_owned_fal_runners_created": 0,
+  "evidence": [
+    {
+      "path": ".local/evidence/characters/metahuman-uploaded-face/conform.log",
+      "sha256": "f7593bd9bbed33bcbd0f687ea19be96c5b19876e732ec808f34e038be557b483"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-uploaded-face/conform-path-fixed.json",
+      "sha256": "d2c1100501712deebc6b5f7ba887e8c156399196f3e64dd2d3517463919017ea"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-uploaded-face/cloud.json",
+      "sha256": "1a9934a9b08b81c292b4f6263622a6fccef24f488a643fc8ba6d1f64ec22636e"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-uploaded-face/assemble.json",
+      "sha256": "8762238a016ba8db8863c39b86515bedce65da01615a44162d1d453957a78fde"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-uploaded-face/textures.json",
+      "sha256": "64e93032ecb4f8308a97511fc797dbe40b2898e440e3094e0a0889b19ce41c4b"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-uploaded-face/skin-match.json",
+      "sha256": "79564244628b4ac4c4c0015657e567651d6daee1208511690a1b20aaaee8d97a"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-uploaded-face/materials.json",
+      "sha256": "a349297a85803ca93b61d8d7ac1a13842b83fb2d86e698f1bc5c3ae99fd4583e"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-uploaded-face/inventory.json",
+      "sha256": "6630bc57f005cfba8475f07ae35807fc4b2ad28a0780881bebf686d9d92dab6e"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-uploaded-face/render/result.json",
+      "sha256": "4485f5575ab68a33db563fd9b6358adaac9254e86e183582f68746479b519b1f"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-uploaded-face/render.log",
+      "sha256": "ee0f66b3fb8c4da1ff6f9573d340e80cfbae3f9f0fd4eb17e0ffe4b7d84fc4f6"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-uploaded-face/comparison-parity.json",
+      "sha256": "18f2b8bc054befef06a5fdc7e6c65f8f895012e6e7b9479ce402bf310ea9ff3b"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-uploaded-face/asset-files.json",
+      "sha256": "fbb10ca3c20af4dd9a3363b12fb11e4e30c7eef47e7f1e36f796451baf7a0eb1"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-uploaded-face/comparison-selection.json",
+      "sha256": "0574e1837565b09d9ca403223837e1bd60cd3449ab8c016dd7457cbe76f4a793"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-uploaded-face/browser/result.json",
+      "sha256": "410c60141ca6e87e43d0991c85d634d382b58ad439c48ae72b2f414063cc2888"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-uploaded-face/checks-final/result.json",
+      "sha256": "5523ec11e87fe2d0d3292ae1c0a848856f5cdea901ed8eb84a7663de0cfa9acb"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-uploaded-face/exposure-check.json",
+      "sha256": "54b3a053628223380d3b4348836db5f150ece8f8ec69a62a463d5ba85f073ad3"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-uploaded-face/health.json",
+      "sha256": "7d2b572c0926708262e38509fdad46c0d62ddad79bc7cd0bcd73a791124a8ab3"
+    }
+  ]
+}
