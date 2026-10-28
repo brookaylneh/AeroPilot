@@ -18,7 +18,8 @@ Cosys-AirSim 3.5.0 (`5.8-v3.5.0`) provides the simulated aircraft and cameras in
 ```
 
 `coordinates.py` needs a running packaged world with `SNR_WORLD_CONFIG`, `SNR_DRONE_DATA_DIR` and
-`SNR_COSYS_PORT` matching that instance.
+`SNR_COSYS_PORT` matching that instance. It checks aircraft at rest at their pads and the
+configured nadir camera without changing the gimbal or controlling the aircraft.
 
 The fetcher requires the shared `.env`, verifies release archive hashes, and applies
 `airsim-ue58.patch`, `airsim-geodesy.patch` and `airsim-sensor.patch`. The first avoids resetting an unchanged
@@ -81,6 +82,13 @@ Camera settings and image timing are checked against the pinned
 `AirSimSettings.hpp`, `PIPCamera.cpp`, `UnrealImageCapture.cpp` and `RenderRequest.cpp`.
 Archived primary sources and the field-by-field camera review are under
 `.local/evidence/coupling/sensor-sources/`.
+
+`camera_metrics.CameraMonitor(directory, fleet)` samples every aircraft using an
+independent RPC client and worker. Its requested period is 0.05 s; `camera.jsonl`
+retains actual host/simulator timestamps, optical-axis error, IMU attitude, angular
+velocity and specific force, plus bracketing MAVLink speed/mode/mission context.
+Call its async `start()`/`close()` around a flight and `check()` from the supervisor
+to propagate failures. This measures turns and acceleration between image captures.
 
 ## Coupled settings
 

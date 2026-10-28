@@ -135,18 +135,6 @@ def configure_capture(height):
     raise TimeoutError("Capture profile was not applied by Unreal")
 
 
-def set_view(c, name, pitch=-90, yaw=0):
-    # Body-relative NED, using the same stock front_center camera for both views.
-    c.simSetCameraPose(
-        "front_center",
-        airsim.Pose(
-            airsim.Vector3r(CAMERA_FORWARD, 0, CAMERA_DOWN),
-            airsim.euler_to_quaternion(0, math.radians(pitch), math.radians(yaw)),
-        ),
-        vehicle_name=name,
-    )
-
-
 def home(name):
     return {k: v / 100 for k, v in WORLD["vehicles"][name]["spawnUeCm"].items()}
 

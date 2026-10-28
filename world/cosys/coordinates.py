@@ -4,11 +4,9 @@ import fcntl
 import json
 import math
 import os
-import time
 from pathlib import Path
 
-import cosysairsim as airsim
-
+from world.cosys.capture import LIMITS, nadir_error
 from world.cosys.client import (
     DATA,
     NAMES,
@@ -20,7 +18,6 @@ from world.cosys.client import (
     native,
     origin,
     quat,
-    set_view,
     state,
     to_world,
     xyz,
@@ -56,43 +53,28 @@ def run():
     )
     for name in NAMES:
         s = state(c, name)
-        assert s["landed"], "Coordinate audit runs with parked aircraft"
-        item = {"localNedOriginUeCm": origin(name), "views": []}
-        for pitch in [-90, -45]:
-            set_view(c, name, pitch)
-            time.sleep(0.65)
-            info = c.simGetCameraInfo("front_center", vehicle_name=name)
-            physical = next(v for v in native()["vehicles"] if v["id"] == name)
-            actual = to_world(name, xyz(info.pose.position))
-            assert actual["z"] > WORLD["port"]["centerUeCm"]["z"] / 100 + 0.1, (
-                "Camera must remain above concrete when landed"
-            )
-            delta = distance(
-                actual, {k: v / 100 for k, v in physical["cameraPositionUeCm"].items()}
-            )
-            assert delta < 0.03, (name, delta)
-            body = airsim.Quaternionr(
-                s["orientationNed"]["x"],
-                s["orientationNed"]["y"],
-                s["orientationNed"]["z"],
-                s["orientationNed"]["w"],
-            )
-            expected = body * airsim.euler_to_quaternion(0, math.radians(pitch), 0)
-            a = quat(expected)
-            b = quat(info.pose.orientation)
-            angle = math.degrees(2 * math.acos(min(1, abs(sum(a[k] * b[k] for k in "wxyz")))))
-            assert angle < 0.2, (name, angle)
-            assert abs(info.fov - 70) < 0.01
-            item["views"].append(
-                {
-                    "pitchDegrees": pitch,
-                    "nativeCameraPositionErrorM": delta,
-                    "orientationErrorDegrees": angle,
-                    "fovDegrees": info.fov,
-                    "landedCameraClearanceAboveConcreteM": actual["z"]
-                    - WORLD["port"]["centerUeCm"]["z"] / 100,
-                }
-            )
+        spawn = {k: WORLD["vehicles"][name]["spawnUeCm"][k] / 100 for k in "xyz"}
+        assert distance(s["positionWorldM"], spawn) < 0.5
+        assert math.sqrt(sum(v * v for v in s["velocityLocalNedMps"].values())) < 0.05, (
+            "Coordinate audit requires aircraft at rest at their pads"
+        )
+        info = c.simGetCameraInfo("front_center", vehicle_name=name)
+        physical = next(v for v in native()["vehicles"] if v["id"] == name)
+        actual = to_world(name, xyz(info.pose.position))
+        clearance = actual["z"] - WORLD["port"]["centerUeCm"]["z"] / 100
+        assert clearance > 0.1, "Camera must remain above concrete at the pad"
+        delta = distance(actual, {k: v / 100 for k, v in physical["cameraPositionUeCm"].items()})
+        assert delta < 0.03, (name, delta)
+        angle = nadir_error(quat(info.pose.orientation))
+        assert angle <= LIMITS["nadirDegrees"], (name, angle)
+        assert abs(info.fov - 70) < 0.01
+        item = {
+            "localNedOriginUeCm": origin(name),
+            "nativeCameraPositionErrorM": delta,
+            "nadirErrorDegrees": angle,
+            "fovDegrees": info.fov,
+            "cameraClearanceAboveConcreteM": clearance,
+        }
         report["vehicles"][name] = item
     report["passed"] = True
     Path(
