@@ -97,9 +97,13 @@ def setup(recipe):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("recipe", type=Path)
+    parser.add_argument("cameras", type=Path)
     parser.add_argument("output", type=Path)
     args = parser.parse_args()
-    recipe = json.loads(args.recipe.read_text())["render"]
+    character = json.loads(args.recipe.read_text())
+    recipe = json.loads(args.cameras.read_text())
+    name = character["asset_name"]
+    recipe["blueprint"] = character["assembly_folder"] + "/" + name + "/BP_" + name
     args.output.mkdir(exist_ok=False)
     camera, components = setup(recipe)
     unreal.AutomationLibrary.finish_loading_before_screenshot()

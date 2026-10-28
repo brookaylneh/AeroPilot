@@ -20,11 +20,13 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("selection", type=Path)
     parser.add_argument("name")
+    parser.add_argument("--update", action="store_true")
     args = parser.parse_args()
     assert args.name.startswith("character-") and args.name.replace("-", "").isalnum()
     selection = json.loads(args.selection.read_text())
     destination = ROOT / ".local/dist" / args.name
-    destination.mkdir(exist_ok=False)
+    assert destination.is_dir() == args.update, destination
+    destination.mkdir(exist_ok=args.update)
     cards = []
     for item in selection["images"]:
         name = item["name"]
@@ -44,7 +46,10 @@ def main():
     document = document.replace("<!-- IMAGES -->", "\n".join(cards))
     document = document.replace("<!-- TITLE -->", html.escape(selection["title"]))
     document = document.replace("<!-- ASSESSMENT -->", html.escape(selection["assessment"]))
-    (destination / "index.html").write_text(document)
+    temporary = destination / "index.html.next"
+    with temporary.open("x") as stream:
+        stream.write(document)
+    temporary.replace(destination / "index.html")
     print(destination / "index.html")
 
 

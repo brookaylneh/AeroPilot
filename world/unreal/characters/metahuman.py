@@ -164,6 +164,9 @@ def inventory(recipe):
                     "asset": path,
                     "scalars": [str(name) for name in library.get_scalar_parameter_names(material)],
                     "vectors": [str(name) for name in library.get_vector_parameter_names(material)],
+                    "textures": [
+                        str(name) for name in library.get_texture_parameter_names(material)
+                    ],
                 }
             )
         if kind == "Texture2D":
@@ -173,6 +176,7 @@ def inventory(recipe):
                     "asset": path,
                     "width": texture.blueprint_get_size_x(),
                     "height": texture.blueprint_get_size_y(),
+                    "srgb": texture.get_editor_property("srgb"),
                 }
             )
     assert blueprints and textures, "Incomplete MetaHuman assembly"

@@ -27,6 +27,7 @@ try {
       width: image.naturalWidth,
       height: image.naturalHeight,
       full: image.closest('a').href,
+      caption: image.alt,
     })),
   );
   assert.equal(images.length, count);
