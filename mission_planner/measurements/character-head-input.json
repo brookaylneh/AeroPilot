@@ -1,0 +1,99 @@
+{
+  "schema_version": 1,
+  "input": ".local/data/characters/face-sample/face.zip",
+  "archive": {
+    "zip_sha256": "e7a63e065add19df9cc9bf973553aa853c933bd7b78bcac69b6ac76fe3dc8d38",
+    "files": [
+      {
+        "name": "head.fbx",
+        "bytes": 1530912,
+        "sha256": "2671c3ad318e1f10bf7f57157a61088fa4be9ac541321619abf1a8eaf5a943cc"
+      },
+      {
+        "name": "texture/Head_Color.jpg",
+        "bytes": 2378234,
+        "sha256": "6c87e44dbe09c7d98c0a80fc5a8f9a0cd78b5be762c3566bd037263ff3c0a54d",
+        "dimensions": [4096, 4096],
+        "mode": "RGB"
+      },
+      {
+        "name": "texture/Head_Normal.jpg",
+        "bytes": 6640629,
+        "sha256": "d10fbcd0b0216186fbfe4581598a77fa67c7760a30c8803420a3e0bea26cfea0",
+        "dimensions": [4096, 4096],
+        "mode": "RGB"
+      },
+      {
+        "name": "texture/Head_SRMF.png",
+        "bytes": 28875392,
+        "sha256": "ae641cba4a69dfe9db5dc02be4ac0de1e76f697078e25d1070bb3b178e6d23cd",
+        "dimensions": [4096, 4096],
+        "mode": "RGBA"
+      }
+    ]
+  },
+  "mesh": {
+    "fbx_version": 7400,
+    "object_counts": {
+      "Geometry": 1,
+      "Model": 1,
+      "Material": 1,
+      "Texture": 2
+    },
+    "geometries": [
+      {
+        "name": "Head\u0000\u0001Geometry",
+        "vertices": 24049,
+        "polygons": 24002,
+        "polygon_sizes": {
+          "4": 24002
+        },
+        "bounds": [
+          [-15.373591423034668, 15.54237174987793],
+          [135.67977905273438, 171.15760803222656],
+          [-8.910056114196777, 12.723442077636719]
+        ],
+        "layers": ["LayerElementNormal", "LayerElementUV", "LayerElementMaterial"]
+      }
+    ],
+    "deformers": [],
+    "models": [["Head\u0000\u0001Model", "Mesh"]],
+    "materials": [["Head\u0000\u0001Material", ""]],
+    "textures": [
+      {
+        "TextureName": ["Head_DiffuseColor\u0000\u0001Texture"],
+        "FileName": ["texture/Head_Color.jpg"],
+        "RelativeFilename": ["texture/Head_Color.jpg"]
+      },
+      {
+        "TextureName": ["Head_NormalMap\u0000\u0001Texture"],
+        "FileName": ["texture/Head_Normal.jpg"],
+        "RelativeFilename": ["texture/Head_Normal.jpg"]
+      }
+    ],
+    "global_settings": [
+      ["UpAxis", "int", "Integer", "", 1],
+      ["UpAxisSign", "int", "Integer", "", 1],
+      ["OriginalUpAxis", "int", "Integer", "", 1],
+      ["OriginalUpAxisSign", "int", "Integer", "", 1],
+      ["FrontAxis", "int", "Integer", "", 2],
+      ["FrontAxisSign", "int", "Integer", "", 1],
+      ["CoordAxis", "int", "Integer", "", 0],
+      ["CoordAxisSign", "int", "Integer", "", 1],
+      ["UnitScaleFactor", "double", "Number", "", 1.0]
+    ],
+    "creator": ["KeenTools MBBA"]
+  },
+  "source_identification": "FBX Creator is KeenTools MBBA; filenames match the documented KeenFace MetaHuman ZIP export",
+  "intended_import": "MetaHuman Creator Conform from Template",
+  "documentation": "https://keenface.ai/docs/reference?moved=1",
+  "normal_map_convention": "DirectX (-Y), according to the matching export documentation",
+  "srmf_channels": ["specular", "roughness", "metallic", "fuzz"],
+  "geometry_fitted": false,
+  "body_skin_match_verified": false,
+  "animation_verified": false,
+  "evidence": [
+    ".local/evidence/characters/face-assessment/archive.json",
+    ".local/evidence/characters/face-assessment/mesh.json"
+  ]
+}

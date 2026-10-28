@@ -1,0 +1,279 @@
+{
+  "schema_version": 1,
+  "character_id": "adult-01",
+  "name": "Nia",
+  "authoring": "Epic Zuri preset with native MetaHuman Generator implementations; no external reconstruction mesh",
+  "recipe": {
+    "path": "world/unreal/characters/nia.json",
+    "sha256": "cf677539e32433e0f08d38eb80b3b42a635310912af97f31bd8801dedc23388b"
+  },
+  "control_readback": {
+    "character": "/Game/Characters/Nia/Source/MH_Nia.MH_Nia",
+    "preset": "/MetaHumanCharacter/Optional/Presets/Zuri",
+    "body_control_readback": {
+      "height_cm": 178.0,
+      "masculine_feminine": 0.8999999761581421,
+      "fat": 0.33000001311302185,
+      "muscularity": 0.6499999761581421
+    },
+    "skin": {
+      "lightness": 0.88,
+      "redness": 0.5
+    },
+    "eyes": {
+      "temperature": 0.9,
+      "brightness": 0.12
+    },
+    "source": "Epic preset and MetaHuman Generator tools",
+    "body_values_are_control_targets": true
+  },
+  "cloud": {
+    "rigged": true,
+    "high_resolution_textures": true
+  },
+  "assembly_pipeline": "Cinematic",
+  "wardrobe_validation": true,
+  "stage_exit_codes": {
+    "create": 0,
+    "wardrobe": 0,
+    "cloud": 0,
+    "assemble": 0,
+    "materials": 0,
+    "render": 0
+  },
+  "asset_files": 287,
+  "asset_bytes": 2342526235,
+  "assembled_skin_textures": [
+    {
+      "asset": "/Game/Characters/Nia/Cinematic/MH_Nia/Body/Baked/T_Body_BC.T_Body_BC",
+      "width": 4096,
+      "height": 4096
+    },
+    {
+      "asset": "/Game/Characters/Nia/Cinematic/MH_Nia/Body/Baked/T_Body_N.T_Body_N",
+      "width": 8192,
+      "height": 8192
+    },
+    {
+      "asset": "/Game/Characters/Nia/Cinematic/MH_Nia/Body/Baked/T_Body_SRMF.T_Body_SRMF",
+      "width": 8192,
+      "height": 8192
+    },
+    {
+      "asset": "/Game/Characters/Nia/Cinematic/MH_Nia/Face/Baked/T_Head_BC.T_Head_BC",
+      "width": 2048,
+      "height": 2048
+    },
+    {
+      "asset": "/Game/Characters/Nia/Cinematic/MH_Nia/Face/Baked/T_Head_N.T_Head_N",
+      "width": 8192,
+      "height": 8192
+    },
+    {
+      "asset": "/Game/Characters/Nia/Cinematic/MH_Nia/Face/Baked/T_Head_SRMF.T_Head_SRMF",
+      "width": 8192,
+      "height": 8192
+    }
+  ],
+  "render": {
+    "vulkan_profile_checks": {
+      "VP_UE_Vulkan_SM6": true,
+      "VP_UE_Vulkan_SM6_RT": true
+    },
+    "ray_tracing_enabled_in_log": true,
+    "console_variables_verified": true,
+    "image_pixels": [4096, 4096],
+    "images": [
+      {
+        "name": "face",
+        "path": ".local/evidence/characters/metahuman-direct-nia/render/face.png",
+        "sha256": "62e145d7362a2396af4689826645a942b702ae126c61e07147bd1e5b9f13f076",
+        "caption": "Face \u00b7 4096 \u00d7 4096 \u00b7 Unreal Engine"
+      },
+      {
+        "name": "front",
+        "path": ".local/evidence/characters/metahuman-direct-nia/render/front.png",
+        "sha256": "793b306349a47a64ca1dbf249442fe9aea53f927399645d4980420839d51c52a",
+        "caption": "Front \u00b7 4096 \u00d7 4096 \u00b7 Unreal Engine"
+      },
+      {
+        "name": "side",
+        "path": ".local/evidence/characters/metahuman-direct-nia/render/side.png",
+        "sha256": "2ec77186e3d4d407f956bff7c142ddd07c91f64a8ace9f0ad5dfb0eca8bbb935",
+        "caption": "Side \u00b7 4096 \u00d7 4096 \u00b7 Unreal Engine"
+      },
+      {
+        "name": "back",
+        "path": ".local/evidence/characters/metahuman-direct-nia/render/back.png",
+        "sha256": "dbffc95b743707556811117fd1cbe3642cfeabaad8a53c2d0d3b4bda879394ed",
+        "caption": "Back \u00b7 4096 \u00d7 4096 \u00b7 Unreal Engine"
+      },
+      {
+        "name": "three-quarter",
+        "path": ".local/evidence/characters/metahuman-direct-nia/render/three-quarter.png",
+        "sha256": "c6b056562d2159f2c729a8205b41bab4c6e047d4bd908d825af4650abe1b9bfd",
+        "caption": "Three Quarter \u00b7 4096 \u00d7 4096 \u00b7 Unreal Engine"
+      },
+      {
+        "name": "hand-left",
+        "path": ".local/evidence/characters/metahuman-direct-nia/render/hand-left.png",
+        "sha256": "5fa3008f71d7d4c9844ced1520f4f81b34f920ac392b70a0b6dd602bce64b97a",
+        "caption": "Hand Left \u00b7 4096 \u00d7 4096 \u00b7 Unreal Engine"
+      },
+      {
+        "name": "hand-right",
+        "path": ".local/evidence/characters/metahuman-direct-nia/render/hand-right.png",
+        "sha256": "94a4fba5b763908a4be8a129c8d69de3dd73ee83cef8cdd8ea18754918d33776",
+        "caption": "Hand Right \u00b7 4096 \u00d7 4096 \u00b7 Unreal Engine"
+      }
+    ],
+    "lod": 0,
+    "elapsed_capture_seconds": 85.08305090099748,
+    "outfit_components": 1
+  },
+  "review_url": "http://35.81.229.78/character-nia/index.html",
+  "browser": {
+    "url": "http://35.81.229.78/character-nia/index.html",
+    "status": 200,
+    "images": [
+      {
+        "width": 1000,
+        "height": 1000,
+        "full": "http://35.81.229.78/character-nia/face.png"
+      },
+      {
+        "width": 1000,
+        "height": 1000,
+        "full": "http://35.81.229.78/character-nia/front.png"
+      },
+      {
+        "width": 1000,
+        "height": 1000,
+        "full": "http://35.81.229.78/character-nia/side.png"
+      },
+      {
+        "width": 1000,
+        "height": 1000,
+        "full": "http://35.81.229.78/character-nia/back.png"
+      },
+      {
+        "width": 1000,
+        "height": 1000,
+        "full": "http://35.81.229.78/character-nia/three-quarter.png"
+      },
+      {
+        "width": 1000,
+        "height": 1000,
+        "full": "http://35.81.229.78/character-nia/hand-left.png"
+      },
+      {
+        "width": 1000,
+        "height": 1000,
+        "full": "http://35.81.229.78/character-nia/hand-right.png"
+      }
+    ],
+    "portrait_pixels": [4096, 4096],
+    "errors": [],
+    "browser_closed": true
+  },
+  "checks": [
+    {
+      "name": "npm-test",
+      "command": ["npm", "test"],
+      "exit_code": 0,
+      "seconds": 0.7652194719994441
+    },
+    {
+      "name": "typecheck",
+      "command": ["npm", "run", "typecheck"],
+      "exit_code": 0,
+      "seconds": 2.5679299000039464
+    },
+    {
+      "name": "format-check",
+      "command": ["npm", "run", "format:check"],
+      "exit_code": 0,
+      "seconds": 1.2156654190039262
+    },
+    {
+      "name": "ruff-check",
+      "command": [".venv-cosys/bin/ruff", "check"],
+      "exit_code": 0,
+      "seconds": 0.015836508995562326
+    },
+    {
+      "name": "ruff-format",
+      "command": [".venv-cosys/bin/ruff", "format", "--check"],
+      "exit_code": 0,
+      "seconds": 0.01573046499834163
+    },
+    {
+      "name": "unittest",
+      "command": [".venv-cosys/bin/python", "-m", "unittest"],
+      "exit_code": 0,
+      "seconds": 0.564500787993893
+    }
+  ],
+  "cleanup": {
+    "removed_files": 1281,
+    "removed_bytes": 7161356650,
+    "retained_reference_images": 12
+  },
+  "limitations": [
+    "Static appearance review only; animation and in-world streaming performance are untested.",
+    "The sample uses the bundled T-shirt and shorts, not the roster\u2019s final trousers and trainers.",
+    "Age is an authoring target, not a measured or validated property.",
+    "Assembly reported 12 groom matching-material warnings for LODs 2\u20137; only LOD 0 was reviewed."
+  ],
+  "task_owned_fal_runners_created": 0,
+  "evidence": [
+    {
+      "path": ".local/evidence/characters/metahuman-direct-nia/cleanup.json",
+      "sha256": "aeca0e86a616a4f9b7d68d60757ec55e21a96ece9543fffb895b643ae9b0c05f"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-direct-nia/create.json",
+      "sha256": "6d7e2535f7c02d7c0d4fbbbbf537d55bac7529bc342f2cfb66283d21ba3d7ee9"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-direct-nia/wardrobe.json",
+      "sha256": "62e2ed12a960a696f2516c1812a76731de6bbcc7da4a63653925f0832b05cab3"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-direct-nia/cloud.json",
+      "sha256": "1a9934a9b08b81c292b4f6263622a6fccef24f488a643fc8ba6d1f64ec22636e"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-direct-nia/assemble.json",
+      "sha256": "269223734253951edffc0f729438e3e5cf118bb6a127cd2329e0466113572b75"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-direct-nia/materials.json",
+      "sha256": "87906ea70acdb1349541009850381a9b0f4e2ec9b3b82a6855c36d58f94d778c"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-direct-nia/render/result.json",
+      "sha256": "587a0c56cdd165e524fc6bee5ca444968868ddf32a28c6359f1bf2a844a1cfcc"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-direct-nia/render.log",
+      "sha256": "9ae90c84d72f47a88250163fb3540a55a6930e3021d01f735eb5701281675d19"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-direct-nia/asset-files.json",
+      "sha256": "215e80014a0370db48287e448a377cc9359e5d0e4929ffcebf2463a24313225e"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-direct-nia/browser-public/result.json",
+      "sha256": "c90a1131d4494a0668adf6e046d52101904fd2278df194e6e050a912b8e88e29"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-direct-nia/checks-final/result.json",
+      "sha256": "824a840b13520850bd0e95686c6f453234d298729f1f9d8e0d49d183abbc73d3"
+    },
+    {
+      "path": ".local/evidence/characters/metahuman-direct-nia/health-final.json",
+      "sha256": "7d2b572c0926708262e38509fdad46c0d62ddad79bc7cd0bcd73a791124a8ab3"
+    }
+  ]
+}
