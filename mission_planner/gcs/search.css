@@ -189,3 +189,8 @@
   display: block;
   font-weight: 400;
 }
+
+.gcs-main-map:has(.gcs-search-panel) .gcs-map-tools {
+  left: auto;
+  right: 24px;
+}
