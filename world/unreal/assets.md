@@ -12,6 +12,7 @@ The repository contains first-party source and OFL fonts. It excludes all Unreal
 | Three requested Fab vegetation packs | Acquire separately from the links in `world/unreal/open-meadow-vegetation.json`. They were used under the Fab Standard License, with NoAI restrictions recorded locally. Raw assets are excluded. |
 | Poly Haven textures and meshes | CC0 sources and checksums are recorded in the asset lock files. |
 | DM Sans and Manrope | SIL Open Font License. Exported font files retain their adjacent license files. |
+| Generated character candidates | FLUX Ultra images and Hunyuan 3D Pro meshes through fal inference. [Workflow and source review](characters/README.md); request IDs and hashes in `mission_planner/measurements/character-generation.json`. Generated files remain outside the live Unreal catalog pending review. |
 | Original terrain, daypack and integration code | Project-authored; the owner still needs to select a project source license before public release. |
 
 Rendering permission does not establish permission for training or evaluating AI. This file records dependency provenance and the current unresolved decision; it is not a new legal assessment. Do not infer AI-evaluation clearance from the current rendering demo.
