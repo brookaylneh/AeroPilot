@@ -52,7 +52,7 @@ def mesh_triangles(asset):
     assert outcome == unreal.GeometryScriptOutcomePins.SUCCESS
     assert not queries.get_has_triangle_id_gaps(dynamic)
     result = []
-    for index in range(queries.get_num_triangle_ids(dynamic)):
+    for index in range(queries.get_num_triangle_i_ds(dynamic)):
         valid, p1, p2, p3 = queries.get_triangle_positions(dynamic, index)
         uv1, uv2, uv3, valid_uvs = queries.get_triangle_u_vs(dynamic, 0, index)
         _, n1, n2, n3, valid_normals = queries.get_triangle_normals(dynamic, index)
