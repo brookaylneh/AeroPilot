@@ -135,7 +135,8 @@ done
 Before each copy/build/package, compare `df` free space with the measured source
 size and accepted build footprint, retaining at least 40 GiB. Stop that operation
 if it would cross the reserve. The build script limits the editor rebuild to six
-parallel actions. The editor cache belongs to `SNR_UNREAL_HOME`; SDK, vendor and
+parallel actions. The editor cache and `BuildCookRun` staging scratch belong to
+`SNR_UNREAL_HOME`; SDK, vendor and
 virtual-environment symlinks are mounted read-only. If an integration output
 already exists, explicitly archive it under a new name before starting a new run.
 Build and editor-command containers have no network; packaged simulation uses
