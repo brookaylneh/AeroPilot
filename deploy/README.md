@@ -138,7 +138,8 @@ sudo systemctl start snr-caddy
 Acquisition scripts require new destinations; do not rerun them over installed toolchains.
 Units start at boot, fail visibly and do not restart automatically after errors.
 `journalctl -u snr-<service>` records their output. Restart only the affected installed unit after a fix.
-The packaged renderer retains the SM5, native 1080p60 H.264 profile and six-CPU limit for parity.
+The packaged renderer uses SM5 and a six-CPU limit. The live resolution and encoding profile are
+documented in [streaming](../world/unreal/streaming.md).
 
 | Route or endpoint                | Purpose                                                       | Listener / upstream                                             |
 | -------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------- |
