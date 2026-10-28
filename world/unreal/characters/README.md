@@ -173,6 +173,23 @@ status and available asset formats; saves the original portrait bytes and their 
 labels the page as catalog images. It does not acquire 3D models. Inspect each selected version:
 the legacy catalog can display an older portrait than the current preset version.
 
+For direct downloads, sign in to Quixel in the operator's browser. In its Network panel,
+reload the catalog and select the request to `https://quixel.com/v1/users/self`. Copy only the
+`Authorization` request-header value, including `Bearer `. On AWS, as `brook_avionuas`, run:
+
+```sh
+cd /home/brook_avionuas/snr
+.venv-cosys/bin/python -m world.unreal.characters.quixel_auth
+```
+
+Paste into the hidden terminal prompt. The command validates the session with Quixel and writes
+`.secrets/quixel-auth.json` with mode 600. Do not paste the credential into chat or a shell command.
+An existing credential or failed validation stops the command. Requests do not follow redirects.
+The saved token is used only with Quixel's own services for the authorized asset downloads.
+
+The legacy website uses different character IDs from the newer preset versions. The manifest
+records both IDs: catalog links use the displayed legacy ID; downloads use the selected version.
+
 Actual character acquisition requires a separately authenticated Quixel/Bridge session.
 The MetaHuman cloud login used for rigging is not a Quixel browser session. Use Epic's supported
 Bridge download/import workflow and retain source packages and asset hashes before accepting

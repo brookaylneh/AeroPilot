@@ -8,84 +8,96 @@
       "preset_name": "Ada",
       "character_id": "ha4tkISg",
       "match": "Dark skin and short tight curls.",
-      "gap": "The portrait reads older than the age-8 target; child proportions are unverified."
+      "gap": "The portrait reads older than the age-8 target; child proportions are unverified.",
+      "catalog_character_id": "fskikIND"
     },
     {
       "roster_id": "child-02",
       "preset_name": "Emory",
       "character_id": "fmsmkISi",
       "match": "Youthful face, freckles and copper-brown curls.",
-      "gap": "Skin is warmer and darker than the fair-skin target. Age 10 and body proportions are unverified."
+      "gap": "Skin is warmer and darker than the fair-skin target. Age 10 and body proportions are unverified.",
+      "catalog_character_id": "9p1ykIOH"
     },
     {
       "roster_id": "child-03",
       "preset_name": "Malika",
       "character_id": "fufqkISE",
       "match": "Brown skin and dark hair tied up.",
-      "gap": "The portrait reads older than age 12. Body build and child proportions are unverified."
+      "gap": "The portrait reads older than age 12. Body build and child proportions are unverified.",
+      "catalog_character_id": "b7b6kINy"
     },
     {
       "roster_id": "child-04",
       "preset_name": "Myles",
       "character_id": "8bcgkIRG",
       "match": "Youthful face, light-medium skin and short straight dark hair.",
-      "gap": "Age 15 is unverified; the portrait reads young adult. A tall, lanky build is unverified."
+      "gap": "Age 15 is unverified; the portrait reads young adult. A tall, lanky build is unverified.",
+      "catalog_character_id": "8gtikINv"
     },
     {
       "roster_id": "adult-01",
       "preset_name": "Skye",
       "character_id": "b6tnkISq",
       "match": "Deep brown skin, youthful adult appearance and close-cropped hair.",
-      "gap": "Hair is lighter than the black-hair target. Tall athletic build is unverified."
+      "gap": "Hair is lighter than the black-hair target. Tall athletic build is unverified.",
+      "catalog_character_id": "4ha3kIOt"
     },
     {
       "roster_id": "adult-02",
       "preset_name": "Erno",
       "character_id": "jhlakIRO",
       "match": "Broad adult face, dark hair and facial hair.",
-      "gap": "The beard is fuller than the stubble target. Heavyset body and olive-brown skin match need review."
+      "gap": "The beard is fuller than the stubble target. Heavyset body and olive-brown skin match need review.",
+      "catalog_character_id": "dw53kIOx"
     },
     {
       "roster_id": "adult-03",
       "preset_name": "Maria",
       "character_id": "7xsikITC",
       "match": "Mature-looking face, warm skin, fuller cheeks and straight black hair.",
-      "gap": "Grey hair is absent. Age 47 and a short plus-size build are unverified."
+      "gap": "Grey hair is absent. Age 47 and a short plus-size build are unverified.",
+      "catalog_character_id": "khenkINB"
     },
     {
       "roster_id": "adult-04",
       "preset_name": "Stephane",
       "character_id": "en5kkISC",
       "match": "Mature face, visible lines, fair skin and greying hair.",
-      "gap": "Has facial hair rather than a clean-shaven face. Tall slim build is unverified."
+      "gap": "Has facial hair rather than a clean-shaven face. Tall slim build is unverified.",
+      "catalog_character_id": "gj8okINS"
     },
     {
       "roster_id": "senior-01",
       "preset_name": "Rosemary",
       "character_id": "6zrkkISe",
       "match": "Older-looking face with visible lines and short grey hair.",
-      "gap": "Skin is lighter than the warm-olive target. Age 65 and sturdy build are unverified."
+      "gap": "Skin is lighter than the warm-olive target. Age 65 and sturdy build are unverified.",
+      "catalog_character_id": "fiiikIOl"
     },
     {
       "roster_id": "senior-02",
       "preset_name": "Keiji",
       "character_id": "k8ezkISA",
       "match": "Older-looking face, thinning grey hair and visible age lines.",
-      "gap": "Facial appearance differs from the original target and includes facial hair. Age 73 and a heavier build are unverified."
+      "gap": "Facial appearance differs from the original target and includes facial hair. Age 73 and a heavier build are unverified.",
+      "catalog_character_id": "e37akINZ"
     },
     {
       "roster_id": "senior-03",
       "preset_name": "Sook-ja",
       "character_id": "l01pkISw",
       "match": "Elderly-looking face with pronounced wrinkles and thinning grey hair.",
-      "gap": "Skin is lighter than the medium-deep brown target. Hair is not tied back. Age 81 and thin build are unverified."
+      "gap": "Skin is lighter than the medium-deep brown target. Hair is not tied back. Age 81 and thin build are unverified.",
+      "catalog_character_id": "i79ekINQ"
     },
     {
       "roster_id": "senior-04",
       "preset_name": "Lucian",
       "character_id": "hgtykISu",
       "match": "Older-looking face, dark skin, close-cropped greying hair and visible lines.",
-      "gap": "Has facial hair and appears younger than age 88. Tall slender build is unverified."
+      "gap": "Has facial hair and appears younger than age 88. Tall slender build is unverified.",
+      "catalog_character_id": "fajvkIOh"
     }
   ]
 }

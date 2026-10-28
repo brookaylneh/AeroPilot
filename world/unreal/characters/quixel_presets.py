@@ -95,7 +95,7 @@ def main():
             target = html.escape(f"{role['name']} · target age {role['age']}")
             match = html.escape(record["match"])
             gap = html.escape(record["gap"])
-            source = selection["catalog_url"] + "&assetId=" + record["character_id"]
+            source = selection["catalog_url"] + "&assetId=" + record["catalog_character_id"]
             cards.append(
                 f'<article><a class="portrait" href="{stem}.png">'
                 f'<img src="{stem}.jpg" alt="Epic catalog portrait of {name}"></a>'
