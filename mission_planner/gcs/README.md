@@ -2,8 +2,8 @@
 
 Four ArduCopter autopilots select their physics through required `SNR_SITL_MODEL`.
 `airsim-copter` couples to Cosys; `quad` is retained for the named `bench_sitl.py`
-built-in-physics benchmark. Coupled startup is not accepted yet; see the
-[coupling gate](../../world/cosys/README.md). One Python process owns their
+built-in-physics benchmark. See the [coupling gate](../../world/cosys/README.md)
+and its recorded acceptance measurements. One Python process owns their
 MAVLink connections, Wonder, approvals and the event log. The browser receives actual
 telemetry, mission and fence readback; video has no source yet.
 
@@ -18,8 +18,9 @@ after landing before changing cases. The fixed loopback listener is exposed only
 Build the pinned source and submodules with
 `bash mission_planner/gcs/build-sitl.sh .local/build/ardupilot`.
 The script requires a new destination directory, uses the recorded revision and four jobs,
-applies `sitl-loopback.patch` to restrict the RC and AirSim sensor sockets,
-and disables Waf's automatic submodule updates. See upstream
+applies the loopback, AirSim liveness and GPS cadence patches, and disables Waf's
+automatic submodule updates. The patches restrict RC/sensor sockets, bound sensor
+loss and preserve GPS timing on discrete simulator ticks. See upstream
 [build instructions](https://github.com/ArduPilot/ardupilot/blob/fb773567896014da007bca58358704d4a0d8516f/BUILD.md).
 
 `SNR_SITL_BINARY` must point to that compiled binary. `SNR_SITL_INSTANCE_BASE`
@@ -32,9 +33,10 @@ The pinned release, prerequisites and parameter baseline are recorded in
 Instances 0–3 use system IDs 1–4 and UDP ports 14600–14603, without MAVProxy or a router.
 Do not run the standalone fleet check alongside the service.
 
-The service sends SIGTERM to its four child autopilots on shutdown. The coupled
-startup diagnostic exposed a shutdown timeout while the stock simulator waited
-for packets; clean coupled shutdown remains part of the unpassed gate. Each start creates a
+The service sends SIGTERM to its four child autopilots on shutdown. In coupled mode,
+end the Unreal world first while the autopilots still supply motor responses; stop
+the autopilots immediately after world `EndPlay`, before renderer cache flushing
+finishes. The coupling gate records this ordered shutdown. Each start creates a
 new `.local/data/missions/<mission-id>/` containing JSONL events, model request/response
 traces and separate autopilot logs. Existing run directories fail; requests never retry
 and the browser does not reconnect automatically. Reload after restoring a connection.
@@ -70,12 +72,14 @@ values and reasons are in the fleet measurements. Additional changes are:
 | `FENCE_TYPE`   | 5     | Maximum altitude plus inclusion polygon |
 | `FENCE_ENABLE` | 1     | Enforce the downloaded fence            |
 
-Arming and failsafe checks remain enabled. Startup verifies firmware identity, GPS/EKF,
+Coupled launches additionally set and verify `SCHED_LOOP_RATE=100`. Arming and failsafe
+checks remain enabled. Startup verifies firmware identity, GPS/EKF,
 homes, safety parameters, fence readback and position updates of at least 5 Hz. Links
 older than 2 s are shown as lost at their last known position.
 
 Flight commands require a healthy link/GPS/EKF and the appropriate armed/landed state.
 Limits are **10–100 m above home**, **0.5–15 m/s**, and **3.5 m minimum planned separation**.
+Pure guards in `validation.py` are shared by the fleet and batch route validation.
 Checks include complete segments through the polygon, other aircraft positions, launch
 and landing columns, and the nominal RTL climb/return/descent. Reservations do not depend
 on arrival timing. They do not model controller tracking error or provide collision avoidance.

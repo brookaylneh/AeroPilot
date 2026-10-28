@@ -39,7 +39,9 @@ and automatic start of the default streamer using the packaged Pixel Streaming 2
 settings. It requires no signalling or WebRTC ports. A streaming instance requires
 `SNR_STREAMER_PORT`, `SNR_WEBRTC_MIN_PORT` and `SNR_WEBRTC_MAX_PORT`.
 The coupling slot records its paths and ports in `.local/slot.env`, uses the
-existing recovery release and caps its container at four CPUs.
+coupling-owned game release with unchanged cooked content hardlinked from the recovery
+release, and caps its container at four CPUs. A non-streaming instance accepts a
+320×180 viewport and an explicit 1–60 FPS cap; flight physics runs independently.
 
 ## Build and package
 
