@@ -1,0 +1,30 @@
+{
+  "source": "Original deterministic terrain",
+  "sourceCommit": "4468dea8cac2eab6a42c32f84cf54173fa7c1148",
+  "generators": [
+    "world/unreal/scripts/generate-open-meadow.py",
+    "world/unreal/scripts/generate-vegetation-mask.py"
+  ],
+  "dependencies": {
+    "numpy": "1.23.5",
+    "scipy": "1.15.3",
+    "pillow": "11.0.0"
+  },
+  "files": [
+    {
+      "path": ".local/vendor/open-meadow/height.r16",
+      "bytes": 8136578,
+      "sha256": "a523142668a99568c9bdd22ef0b153a06b8791c085ed41caa6f0e6b16750a4c1"
+    },
+    {
+      "path": ".local/vendor/open-meadow/ground-mask.png",
+      "bytes": 1652029,
+      "sha256": "0c88d4c7f2a3fab50c126ad91091dba8b9176b8f3a36b8451996e68f51fb2a40"
+    },
+    {
+      "path": ".local/vendor/open-meadow/vegetation-mask-030.png",
+      "bytes": 3064018,
+      "sha256": "f92c2876c3172d16ce40da10025f61f43ffdb7b70f6d3d33c6b9093075416942"
+    }
+  ]
+}

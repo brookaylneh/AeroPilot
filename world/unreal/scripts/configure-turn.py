@@ -1,25 +1,36 @@
-"""Generate same-server TURN credentials without placing secrets in source/logs."""
+"""Configure same-host TURN and explicitly rotate its shared credential."""
+
 import argparse
+import ipaddress
 import json
 import os
-from pathlib import Path
 import secrets
-import ipaddress
+from pathlib import Path
 
+from mission_planner.environment import load_env
+
+load_env()
 parser = argparse.ArgumentParser()
-parser.add_argument('--public-ip', required=True)
-parser.add_argument('--private-ip', required=True)
+parser.add_argument("--public-ip", required=True)
+parser.add_argument("--private-ip", required=True)
+parser.add_argument("--rotate", action="store_true", help="Create a new shared credential")
 args = parser.parse_args()
 public = str(ipaddress.IPv4Address(args.public_ip))
 private = str(ipaddress.IPv4Address(args.private_ip))
+assert ipaddress.IPv4Address(private).is_private
 os.umask(0o077)
 root = Path(__file__).resolve().parents[3]
-directory = root / '.secrets'
+directory = root / ".secrets"
 directory.mkdir(mode=0o700, exist_ok=True)
-auth = directory / 'turn.json'
-secret = json.loads(auth.read_text())['secret'] if auth.exists() else secrets.token_hex(32)
-auth.write_text(json.dumps({'host': public, 'secret': secret}))
-(directory / 'turnserver.conf').write_text(f'''listening-port=3478
+auth = directory / "turn.json"
+if args.rotate:
+    secret = secrets.token_hex(32)
+else:
+    secret = json.loads(auth.read_text())["secret"]
+assert len(secret) == 64 and all(char in "0123456789abcdef" for char in secret)
+auth.write_text(json.dumps({"host": public, "secret": secret}))
+config = directory / "turnserver.conf"
+config.write_text(f"""listening-port=3478
 listening-ip={private}
 relay-ip={private}
 external-ip={public}/{private}
@@ -43,5 +54,7 @@ allowed-peer-ip={public}
 pidfile=/tmp/turnserver.pid
 log-file=stdout
 simple-log
-''')
-print('TURN configured: expiring browser credentials, relay peers restricted to this server.')
+""")
+auth.chmod(0o600)
+config.chmod(0o600)
+print("TURN configured; credential values are not logged.")

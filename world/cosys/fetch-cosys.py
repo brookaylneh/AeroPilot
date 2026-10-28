@@ -5,10 +5,14 @@ import argparse
 import hashlib
 import json
 import shutil
+import subprocess
 import urllib.request
 import zipfile
 from pathlib import Path
 
+from mission_planner.environment import load_env
+
+load_env()
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "--runtime", action="store_true", help="Also download the packaged Blocks compatibility test"
@@ -24,7 +28,9 @@ for entry in lock["files"]:
     target = vendor / entry["name"]
     if not target.exists():
         print(f"Downloading {entry['name']}", flush=True)
-        urllib.request.urlretrieve(entry["url"], target)
+        with urllib.request.urlopen(entry["url"], timeout=30) as response:
+            with target.open("xb") as output:
+                shutil.copyfileobj(response, output)
     with target.open("rb") as stream:
         digest = hashlib.sha256()
         for chunk in iter(lambda: stream.read(1024 * 1024), b""):
@@ -41,6 +47,19 @@ for entry in lock["files"]:
             if not (destination / name).resolve().is_relative_to(destination.resolve()):
                 raise SystemExit("Archive contains an unsafe path")
         archive.extractall(destination)
+    if entry["name"].startswith("AirSim"):
+        subprocess.run(
+            [
+                "patch",
+                "--batch",
+                "--fuzz=0",
+                "-p1",
+                "-i",
+                str(root / "world/cosys/airsim-ue58.patch"),
+            ],
+            cwd=destination / "AirSim",
+            check=True,
+        )
     if "editor_project" in entry["name"]:
         shutil.copytree(
             destination / "Blocks/Content",

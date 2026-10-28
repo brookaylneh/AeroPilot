@@ -1,6 +1,6 @@
 # Ubuntu 24.04 supplies the runtime libraries required by the packaged UE 5.8.2 build.
 FROM ubuntu:24.04@sha256:186072bba1b2f436cbb91ef2567abca677337cfc786c86e107d25b7072feef0c
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get -o Acquire::Retries=0 -o Acquire::http::Timeout=30 -o APT::Update::Error-Mode=any update && apt-get -o Acquire::Retries=0 -o Acquire::http::Timeout=30 install -y --no-install-recommends \
     ca-certificates libicu74 libssl3t64 libcurl4t64 libatomic1 zlib1g \
     libx11-6 libxrandr2 libxi6 libxinerama1 libxcursor1 libxcomposite1 \
     libxdamage1 libxfixes3 libxrender1 libxext6 libxss1 libasound2t64 \
