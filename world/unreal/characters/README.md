@@ -137,6 +137,59 @@ garments, skin shading, eyes and deformation still need authoring and acceptance
 is not a finished MetaHuman. Children require individual proportion and deformation checks.
 Do not import, conform or replace live characters before the user has reviewed the images and meshes.
 
+### One-character authoring
+
+`prepare_body.py` removes SAM's camera translation without changing shape, scale or topology.
+Its input contract is one SAM person in glTF metres with +Y up. The centered mesh is imported
+through Unreal's glTF importer; do not manually rescale it again. Scale remains an estimate until
+calibrated against a known height.
+
+```sh
+.venv-cosys/bin/python -m world.unreal.characters.prepare_body \
+  .local/evidence/characters/<sam-run>/adult-01/model.glb \
+  .local/evidence/characters/<sam-run>/adult-01/body-centered.glb \
+  .local/evidence/characters/<sam-run>/adult-01/centering.json
+```
+
+Run `metahuman.py RECIPE STAGE NEW_REPORT` with Unreal's Python commandlet. The recipe supplies
+`body_glb`, `body_sha256`, `preset`, `asset_folder`, `asset_name`, `wardrobe` and `assembly_folder`.
+The stages are `conform`, `cloud`, `wardrobe`, `assemble`, `inventory` and `materials`:
+
+- Conform fits only the body to SAM geometry, retaining the Epic preset face and skin settings.
+- Cloud requests the joints-and-blendshapes rig and 8K source textures through Epic authentication.
+  A requested size is not proof of delivered resolution; assembly inventories the actual textures.
+- Wardrobe selects Epic groom and garment assets. Garment fit still requires visual inspection.
+- Assemble runs UE Cine with wardrobe validation, saves every generated asset, and inventories
+  assets and texture sizes. Inventory can independently verify an existing assembly.
+- Materials edits explicit scalar/vector parameters on material instances inside the assembly folder.
+  `material_parameters` maps full asset paths to parameter names and values. Reassembly replaces
+  these authored material instances; apply the recorded parameters after each assembly.
+
+Conform, cloud, wardrobe and material edits can use the `exec` container mode and `-nullrhi`.
+Assembly and rendering require graphics. Build the existing `world/unreal/docker/fab.Dockerfile`
+authoring image and use `unreal-container.sh character-authoring` for its private Xvfb display.
+This mode opens no network listener and permits pinned memory for Vulkan ray tracing.
+Keep evidence under `.local/evidence/characters/`.
+
+`render_metahuman.py RECIPE NEW_OUTPUT` runs through `-ExecutePythonScript` in the editor. Its recipe
+contains the saved Blueprint path, image size, field of view, explicit camera positions and targets
+in centimetres, and expected renderer CVars. The tool checks those CVars and captures fixed views.
+It forces LOD 0 and fully loads used textures, with neutral movable lights, fixed exposure, no bloom
+and no motion blur. It does not measure
+streaming performance or prove real-time suitability. Preserve the engine log and exit status as
+well as the screenshots; an image alone does not establish a clean editor shutdown.
+
+For an offline SM6/Lumen capture, select `-vulkan -sm6` and override the process's Engine settings:
+`r.RayTracing=1`, `r.DynamicGlobalIlluminationMethod=1`, `r.ReflectionMethod=1`,
+`r.Lumen.HardwareRayTracing=1`, and `r.Shadow.Virtual.Enable=1`. The Linux `TargetedRHIs` array must
+also contain `SF_VULKAN_SM6` for editor ray tracing to activate. Check both Vulkan profile results
+and the engine's ray-tracing activation log. Do not change the live renderer configuration for a
+character review.
+
+Publish a selection containing `assessment` and `images` entries (`name`, `path`, `sha256`, `caption`)
+with `python -m world.unreal.characters.review_metahuman SELECTION character-metahuman-v1`.
+Only verified image files and the review page are copied to the installed web build.
+
 Sources:
 
 - [FLUX Ultra schema](https://fal.ai/models/fal-ai/flux-pro/v1.1-ultra/api)
