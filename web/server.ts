@@ -41,7 +41,7 @@ if (process.env.SNR_SERVE_STATIC !== '0') {
   if (!existsSync(path.join(dist, 'index.html')))
     throw new Error(`Missing browser build at ${dist}; run npm run build.`);
   app.use(express.static(dist));
-  app.get('/{*path}', (_req, res) => res.sendFile(path.join(dist, 'index.html')));
+  app.get('/{*path}', (_req, res) => res.sendFile('index.html', { root: dist }));
 }
 const host = process.env.HOST || '127.0.0.1',
   port = Number(process.env.PORT || 3001);
