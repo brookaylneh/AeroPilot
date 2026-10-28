@@ -48,18 +48,19 @@ for entry in lock["files"]:
                 raise SystemExit("Archive contains an unsafe path")
         archive.extractall(destination)
     if entry["name"].startswith("AirSim"):
-        subprocess.run(
-            [
-                "patch",
-                "--batch",
-                "--fuzz=0",
-                "-p1",
-                "-i",
-                str(root / "world/cosys/airsim-ue58.patch"),
-            ],
-            cwd=destination / "AirSim",
-            check=True,
-        )
+        for patch in ("airsim-ue58.patch", "airsim-geodesy.patch"):
+            subprocess.run(
+                [
+                    "patch",
+                    "--batch",
+                    "--fuzz=0",
+                    "-p1",
+                    "-i",
+                    str(root / "world/cosys" / patch),
+                ],
+                cwd=destination / "AirSim",
+                check=True,
+            )
     if "editor_project" in entry["name"]:
         shutil.copytree(
             destination / "Blocks/Content",

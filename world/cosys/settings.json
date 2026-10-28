@@ -1,12 +1,14 @@
 {
   "SettingsVersion": 2.0,
   "SimMode": "Multirotor",
+  "PhysicsEngineName": "FastPhysicsEngine",
+  "ClockType": "SteppableClock",
+  "ClockSpeed": 1,
   "ViewMode": "Manual",
   "MoveWorldOrigin": false,
   "EnableRpc": true,
   "LocalHostIp": "127.0.0.1",
   "ApiServerPort": 41451,
-  "ClockSpeed": 1,
   "InitialInstanceSegmentation": false,
   "RecordUIVisible": false,
   "LogMessagesVisible": false,
@@ -15,9 +17,9 @@
     "Enabled": false
   },
   "OriginGeopoint": {
-    "Latitude": 0,
-    "Longitude": 0,
-    "Altitude": 0
+    "Latitude": 37.876432,
+    "Longitude": -119.393421,
+    "Altitude": 2661.28
   },
   "CameraDefaults": {
     "CaptureSettings": [
@@ -35,17 +37,33 @@
   },
   "Vehicles": {
     "Drone1": {
-      "VehicleType": "SimpleFlight",
+      "VehicleType": "ArduCopter",
       "AutoCreate": true,
+      "UseSerial": false,
+      "LocalHostIp": "127.0.0.1",
+      "UdpIp": "127.0.0.1",
+      "UdpPort": 9003,
+      "ControlPortLocal": 9002,
       "X": -814.172,
       "Y": -2.5,
       "Z": 28.55,
       "Yaw": 0,
       "EnableCollisions": true,
-      "EnableCollisionPassthrogh": false,
+      "EnableCollisionPassthrough": false,
       "RC": {
-        "RemoteControlID": -1,
-        "AllowAPIAlways": true
+        "RemoteControlID": -1
+      },
+      "Sensors": {
+        "Imu": {
+          "SensorType": 2,
+          "Enabled": true
+        },
+        "Gps": {
+          "SensorType": 3,
+          "Enabled": true,
+          "UpdateLatency": 0,
+          "UpdateFrequency": 50
+        }
       },
       "Cameras": {
         "front_center": {
@@ -86,17 +104,33 @@
       }
     },
     "Drone2": {
-      "VehicleType": "SimpleFlight",
+      "VehicleType": "ArduCopter",
       "AutoCreate": true,
+      "UseSerial": false,
+      "LocalHostIp": "127.0.0.1",
+      "UdpIp": "127.0.0.1",
+      "UdpPort": 9013,
+      "ControlPortLocal": 9012,
       "X": -814.172,
       "Y": 2.5,
       "Z": 28.55,
       "Yaw": 0,
       "EnableCollisions": true,
-      "EnableCollisionPassthrogh": false,
+      "EnableCollisionPassthrough": false,
       "RC": {
-        "RemoteControlID": -1,
-        "AllowAPIAlways": true
+        "RemoteControlID": -1
+      },
+      "Sensors": {
+        "Imu": {
+          "SensorType": 2,
+          "Enabled": true
+        },
+        "Gps": {
+          "SensorType": 3,
+          "Enabled": true,
+          "UpdateLatency": 0,
+          "UpdateFrequency": 50
+        }
       },
       "Cameras": {
         "front_center": {
@@ -137,17 +171,33 @@
       }
     },
     "Drone3": {
-      "VehicleType": "SimpleFlight",
+      "VehicleType": "ArduCopter",
       "AutoCreate": true,
+      "UseSerial": false,
+      "LocalHostIp": "127.0.0.1",
+      "UdpIp": "127.0.0.1",
+      "UdpPort": 9023,
+      "ControlPortLocal": 9022,
       "X": -819.172,
       "Y": -2.5,
       "Z": 28.55,
       "Yaw": 0,
       "EnableCollisions": true,
-      "EnableCollisionPassthrogh": false,
+      "EnableCollisionPassthrough": false,
       "RC": {
-        "RemoteControlID": -1,
-        "AllowAPIAlways": true
+        "RemoteControlID": -1
+      },
+      "Sensors": {
+        "Imu": {
+          "SensorType": 2,
+          "Enabled": true
+        },
+        "Gps": {
+          "SensorType": 3,
+          "Enabled": true,
+          "UpdateLatency": 0,
+          "UpdateFrequency": 50
+        }
       },
       "Cameras": {
         "front_center": {
@@ -188,17 +238,33 @@
       }
     },
     "Drone4": {
-      "VehicleType": "SimpleFlight",
+      "VehicleType": "ArduCopter",
       "AutoCreate": true,
+      "UseSerial": false,
+      "LocalHostIp": "127.0.0.1",
+      "UdpIp": "127.0.0.1",
+      "UdpPort": 9033,
+      "ControlPortLocal": 9032,
       "X": -819.172,
       "Y": 2.5,
       "Z": 28.55,
       "Yaw": 0,
       "EnableCollisions": true,
-      "EnableCollisionPassthrogh": false,
+      "EnableCollisionPassthrough": false,
       "RC": {
-        "RemoteControlID": -1,
-        "AllowAPIAlways": true
+        "RemoteControlID": -1
+      },
+      "Sensors": {
+        "Imu": {
+          "SensorType": 2,
+          "Enabled": true
+        },
+        "Gps": {
+          "SensorType": 3,
+          "Enabled": true,
+          "UpdateLatency": 0,
+          "UpdateFrequency": 50
+        }
       },
       "Cameras": {
         "front_center": {
