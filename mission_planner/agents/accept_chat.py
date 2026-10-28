@@ -188,6 +188,14 @@ async def run(args):
                 result = {"passed": True}
             result.update(
                 duration_s=time.monotonic() - started,
+                approval_decisions=len(acceptance.approved),
+                operator_declines=sum(
+                    e["kind"] == "approval"
+                    and "approved" in e["result"]
+                    and not e["result"]["approved"]
+                    for e in acceptance.events
+                    if e["result"] is not None
+                ),
                 usage=[e["result"] for e in acceptance.events if e["kind"] == "model_usage"],
                 errors=[e for e in acceptance.events if e["kind"] == "error"],
                 mission_id=acceptance.state["mission"]["id"] if acceptance.state else None,

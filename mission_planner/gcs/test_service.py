@@ -3,6 +3,8 @@
 import json
 import unittest
 
+import httpx
+
 from mission_planner.gcs.service import Mission, compact_vehicle, fence_summary, operator_error
 
 
@@ -51,6 +53,14 @@ class AgentContext(unittest.TestCase):
         self.assertIn("Briefing text", mission.instructions(True))
         self.assertNotIn("Briefing text", mission.instructions(False))
         self.assertNotIn("Phase 3A", mission.instructions(False))
+
+    def test_http_error_does_not_expose_exception_class(self):
+        request = httpx.Request("POST", "https://api.meta.ai/v1/responses")
+        response = httpx.Response(500, request=request)
+        error = httpx.HTTPStatusError("Internal server error", request=request, response=response)
+        self.assertEqual(
+            operator_error(error), "Wonder is unavailable (HTTP 500). No command was sent."
+        )
 
     def test_errors_are_operator_sentences(self):
         self.assertEqual(operator_error(AssertionError("Operator declined")), "Operator declined")
