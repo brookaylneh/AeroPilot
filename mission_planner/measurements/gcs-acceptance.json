@@ -2,6 +2,191 @@
   "schema_version": 2,
   "generated_by": "mission_planner/gcs/report_acceptance.py",
   "run_directory": ".local/evidence/gcs/fixes-1",
+  "revision_directory": ".local/evidence/gcs/final-fixes-1",
+  "approval_review": {
+    "passed": true,
+    "mission_id": "5e671192-3c52-4768-adf7-d4cb5b2a6426",
+    "leader_length_px": 39.59797974644666,
+    "reviews": [
+      {
+        "width": 1920,
+        "height": 1080,
+        "count": 3,
+        "metrics": {
+          "client": 126,
+          "total": 126,
+          "scrollbar": "rgb(181, 160, 119) rgb(25, 30, 30)",
+          "overflow": "scroll"
+        },
+        "approval_button": {
+          "x": 1710.5,
+          "y": 788.609375,
+          "width": 172.5,
+          "height": 41
+        },
+        "decline_button": {
+          "x": 1538,
+          "y": 788.609375,
+          "width": 164.5,
+          "height": 41
+        },
+        "visible_count": "Waypoints 1\u20133 of 3\nAll visible"
+      },
+      {
+        "width": 1440,
+        "height": 900,
+        "count": 3,
+        "metrics": {
+          "client": 126,
+          "total": 126,
+          "scrollbar": "rgb(181, 160, 119) rgb(25, 30, 30)",
+          "overflow": "scroll"
+        },
+        "approval_button": {
+          "x": 1250.5,
+          "y": 608.609375,
+          "width": 152.5,
+          "height": 41
+        },
+        "decline_button": {
+          "x": 1098,
+          "y": 608.609375,
+          "width": 144.5,
+          "height": 41
+        },
+        "visible_count": "Waypoints 1\u20133 of 3\nAll visible"
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "count": 12,
+        "metrics": {
+          "client": 174,
+          "total": 387,
+          "scrollbar": "rgb(181, 160, 119) rgb(25, 30, 30)",
+          "overflow": "scroll"
+        },
+        "approval_button": {
+          "x": 1710.5,
+          "y": 788.609375,
+          "width": 172.5,
+          "height": 41
+        },
+        "decline_button": {
+          "x": 1538,
+          "y": 788.609375,
+          "width": 164.5,
+          "height": 41
+        },
+        "visible_count": "Waypoints 9\u201312 of 12\nScroll to review"
+      },
+      {
+        "width": 1440,
+        "height": 900,
+        "count": 12,
+        "metrics": {
+          "client": 174,
+          "total": 387,
+          "scrollbar": "rgb(181, 160, 119) rgb(25, 30, 30)",
+          "overflow": "scroll"
+        },
+        "approval_button": {
+          "x": 1250.5,
+          "y": 608.609375,
+          "width": 152.5,
+          "height": 41
+        },
+        "decline_button": {
+          "x": 1098,
+          "y": 608.609375,
+          "width": 144.5,
+          "height": 41
+        },
+        "visible_count": "Waypoints 9\u201312 of 12\nScroll to review"
+      }
+    ],
+    "errors": []
+  },
+  "revised_states": {
+    "passed": true,
+    "mission_id": "5e671192-3c52-4768-adf7-d4cb5b2a6426",
+    "label_boxes": [
+      {
+        "x": 560.6880493164062,
+        "y": 455.0533142089844,
+        "width": 114,
+        "height": 24
+      }
+    ],
+    "declined": {
+      "sequence": 117,
+      "id": "f31e97bc-8551-421a-b9d2-70c6516995b9",
+      "timestamp_ms": 1793157570535.6367,
+      "kind": "tool_result",
+      "text": "take_off",
+      "name": "take_off",
+      "arguments": {
+        "drone_id": "Drone1",
+        "altitude_above_home_m": 30
+      },
+      "result": {
+        "ok": false,
+        "error": "Operator declined"
+      },
+      "call_id": "3c9d72b6-e6db-4643-b0db-b4155bf0566d",
+      "source": "operator"
+    },
+    "refusals": [
+      {
+        "sequence": 119,
+        "id": "3c309502-2159-4aaf-8b3e-a48bd70ffa3c",
+        "timestamp_ms": 1793157571438.8613,
+        "kind": "tool_result",
+        "text": "fly_route",
+        "name": "fly_route",
+        "arguments": {
+          "drone_id": "Drone1",
+          "waypoints": [
+            {
+              "north_m": 900,
+              "east_m": 0,
+              "altitude_above_home_m": 30
+            }
+          ],
+          "speed_mps": 5
+        },
+        "result": {
+          "ok": false,
+          "error": "Waypoint 1 is 900 m north; the fence limit is 804.7 m."
+        },
+        "call_id": "3a2001a5-466f-4c0f-abc1-fd630d26807b",
+        "source": "operator"
+      },
+      {
+        "sequence": 121,
+        "id": "596eb634-057d-4821-9882-739e981fc5e4",
+        "timestamp_ms": 1793157571556.6267,
+        "kind": "tool_result",
+        "text": "get_drone",
+        "name": "get_drone",
+        "arguments": {
+          "drone_id": "Drone9"
+        },
+        "result": {
+          "ok": false,
+          "error": "Unknown drone: Drone9"
+        },
+        "call_id": "42f5dffa-c8b4-417f-846d-2ce1a6767de4",
+        "source": "operator"
+      }
+    ],
+    "stale": {
+      "detected_after_ms": 1819,
+      "heartbeat_age_s": 2.191920046985615,
+      "update_rate_hz": 9.997030164660169
+    },
+    "errors": []
+  },
   "mission_id": "b497412b-f191-4a00-8347-ff08cb0b175d",
   "chat": {
     "passed": true,
@@ -496,62 +681,90 @@
     "errors": []
   },
   "performance": {
-    "started_at": "2026-10-28T01:48:29.698Z",
-    "duration_s": 604.617,
+    "commit": "becab46812a0b63195f931d22469b5a72e5238d2",
+    "built_page_sha256": "642a97f3a329dbae8c50ce188d36fb24478a4f1c97be9d5f47962d1b90127582",
+    "started_at": "2026-10-28T03:20:39.743Z",
+    "duration_s": 611.694,
     "viewport": {
       "width": 1920,
       "height": 1080
     },
     "latency_scope": "MAVLink GLOBAL_POSITION_INT receipt to first requestAnimationFrame after React commit; same-host clocks; excludes autopilot and hardware transport delay",
-    "latency_samples": 22320,
-    "latency_p50_ms": 88.7333984375,
-    "latency_p90_ms": 131.92431640625,
-    "pan_frames": 620,
-    "pan_seconds": 10.499200000017881,
-    "pan_fps": 59.05211825652851,
+    "latency_samples": 23321,
+    "latency_p50_ms": 69.182373046875,
+    "latency_p90_ms": 109.0302734375,
+    "pan_frames": 522,
+    "pan_seconds": 8.86919999998808,
+    "pan_fps": 58.85536463274045,
+    "vehicle_update_rates_hz": {
+      "Drone1": {
+        "min": 9.993805156068781,
+        "p50": 9.99895395415862,
+        "p90": 10.001232134200471,
+        "max": 10.006034644027768
+      },
+      "Drone2": {
+        "min": 9.993691815495602,
+        "p50": 9.9988564830394,
+        "p90": 10.001031863244503,
+        "max": 10.004226204418329
+      },
+      "Drone3": {
+        "min": 9.993793776716656,
+        "p50": 9.998996116862193,
+        "p90": 10.001092557037861,
+        "max": 10.004032567714344
+      },
+      "Drone4": {
+        "min": 9.994007434450417,
+        "p50": 9.998921578624271,
+        "p90": 10.001097153524398,
+        "max": 10.00423012431685
+      }
+    },
     "pans": [
       {
-        "start_ms": 1228.5,
-        "end_ms": 2910.6000000089407
+        "start_ms": 1197.4000000059605,
+        "end_ms": 2750.5999999940395
       },
       {
-        "start_ms": 12923.90000000596,
-        "end_ms": 14594.60000000894
+        "start_ms": 12760.800000011921,
+        "end_ms": 14287.59999999404
       },
       {
-        "start_ms": 24626.40000000596,
-        "end_ms": 26462.70000000298
+        "start_ms": 24311.09999999404,
+        "end_ms": 25764.19999998808
       },
       {
-        "start_ms": 36488.40000000596,
-        "end_ms": 38441.20000000298
+        "start_ms": 35777.5,
+        "end_ms": 37381
       },
       {
-        "start_ms": 48457,
-        "end_ms": 50049.90000000596
+        "start_ms": 47392.69999998808,
+        "end_ms": 48727.80000001192
       },
       {
-        "start_ms": 60074.29999999702,
-        "end_ms": 61838.70000000298
+        "start_ms": 58743.09999999404,
+        "end_ms": 60140.59999999404
       }
     ],
     "errors": [],
     "memory": {
-      "samples": 59,
+      "samples": 61,
       "first": {
-        "elapsed_s": 0.16,
-        "service_rss_kib": 66644,
-        "browser_js_heap_bytes": 6423028
+        "elapsed_s": 0.236,
+        "service_rss_kib": 65908,
+        "browser_js_heap_bytes": 8113776
       },
       "last": {
-        "elapsed_s": 591.147,
-        "service_rss_kib": 68436,
-        "browser_js_heap_bytes": 30329828
+        "elapsed_s": 609.418,
+        "service_rss_kib": 65912,
+        "browser_js_heap_bytes": 21629940
       },
-      "peak_service_rss_kib": 68436,
-      "peak_browser_js_heap_bytes": 33994352
+      "peak_service_rss_kib": 65912,
+      "peak_browser_js_heap_bytes": 33568404
     },
-    "source": ".local/evidence/gcs/fixes-1/performance/results.json"
+    "source": ".local/evidence/gcs/final-fixes-1/performance/results.json"
   },
   "proxy": {
     "passed": true,
@@ -590,8 +803,8 @@
         "typecheck"
       ],
       "exit_code": 0,
-      "seconds": 6.524337562004803,
-      "log": ".local/evidence/gcs/fixes-1/release-checks/1.log"
+      "seconds": 7.417117475997657,
+      "log": ".local/evidence/gcs/final-fixes-1/release-checks/1.log"
     },
     {
       "command": [
@@ -600,8 +813,8 @@
         "format:check"
       ],
       "exit_code": 0,
-      "seconds": 2.8305720099888276,
-      "log": ".local/evidence/gcs/fixes-1/release-checks/2.log"
+      "seconds": 3.0530003949825186,
+      "log": ".local/evidence/gcs/final-fixes-1/release-checks/2.log"
     },
     {
       "command": [
@@ -609,8 +822,8 @@
         "test"
       ],
       "exit_code": 0,
-      "seconds": 1.8590966120245866,
-      "log": ".local/evidence/gcs/fixes-1/release-checks/3.log"
+      "seconds": 1.8668816529971082,
+      "log": ".local/evidence/gcs/final-fixes-1/release-checks/3.log"
     },
     {
       "command": [
@@ -619,8 +832,8 @@
         "build"
       ],
       "exit_code": 0,
-      "seconds": 12.800231227010954,
-      "log": ".local/evidence/gcs/fixes-1/release-checks/4.log"
+      "seconds": 13.419538009999087,
+      "log": ".local/evidence/gcs/final-fixes-1/release-checks/4.log"
     },
     {
       "command": [
@@ -628,8 +841,8 @@
         "check"
       ],
       "exit_code": 0,
-      "seconds": 0.01432415799354203,
-      "log": ".local/evidence/gcs/fixes-1/release-checks/5.log"
+      "seconds": 0.014796319999732077,
+      "log": ".local/evidence/gcs/final-fixes-1/release-checks/5.log"
     },
     {
       "command": [
@@ -638,8 +851,8 @@
         "--check"
       ],
       "exit_code": 0,
-      "seconds": 0.016105724003864452,
-      "log": ".local/evidence/gcs/fixes-1/release-checks/6.log"
+      "seconds": 0.01468804499018006,
+      "log": ".local/evidence/gcs/final-fixes-1/release-checks/6.log"
     },
     {
       "command": [
@@ -648,11 +861,49 @@
         "unittest"
       ],
       "exit_code": 0,
-      "seconds": 1.3668278630066197,
-      "log": ".local/evidence/gcs/fixes-1/release-checks/7.log"
+      "seconds": 1.440407186979428,
+      "log": ".local/evidence/gcs/final-fixes-1/release-checks/7.log"
     }
   ],
   "cleanup": [
+    {
+      "source": ".local/evidence/gcs/final-fixes-1/final-shutdown/results.json",
+      "passed": true,
+      "all_landed_before_sigterm": true,
+      "service_pid": 377327,
+      "child_pids": [
+        377335,
+        377337,
+        377339,
+        377341
+      ],
+      "children_exit_seconds": 0.10082364099999995,
+      "udp_ports_released": [
+        14600,
+        14601,
+        14602,
+        14603
+      ]
+    },
+    {
+      "source": ".local/evidence/gcs/final-fixes-1/review-shutdown/results.json",
+      "passed": true,
+      "all_landed_before_sigterm": true,
+      "service_pid": 372877,
+      "child_pids": [
+        372906,
+        372908,
+        372910,
+        372912
+      ],
+      "children_exit_seconds": 0.10173181299999988,
+      "udp_ports_released": [
+        14600,
+        14601,
+        14602,
+        14603
+      ]
+    },
     {
       "source": ".local/evidence/gcs/fixes-1/capture-shutdown/results.json",
       "passed": true,
@@ -775,38 +1026,58 @@
     ".local/evidence/gcs/fixes-1/screenshots/ui/route-approval-1440.png",
     ".local/evidence/gcs/fixes-1/screenshots/ui/route-approval-1920.png",
     ".local/evidence/gcs/fixes-1/screenshots/ui/routes-1440.png",
-    ".local/evidence/gcs/fixes-1/screenshots/ui/routes-1920.png"
+    ".local/evidence/gcs/fixes-1/screenshots/ui/routes-1920.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/approvals/clustered-pad-1440.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/approvals/clustered-pad-1920.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/approvals/declined-pad-1440.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/approvals/declined-pad-1920.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/approvals/route-12-end-1440.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/approvals/route-12-end-1920.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/approvals/route-12-start-1440.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/approvals/route-12-start-1920.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/approvals/route-3-end-1440.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/approvals/route-3-end-1920.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/approvals/route-3-start-1440.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/approvals/route-3-start-1920.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/states/approval-1440.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/states/approval-1920.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/states/autonomous-1440.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/states/autonomous-1920.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/states/declined-1440.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/states/declined-1920.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/states/launch-labels-1440.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/states/launch-labels-1920.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/states/log-1440.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/states/log-1920.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/states/map-1440.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/states/map-1920.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/states/refusal-1440.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/states/refusal-1920.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/states/stale-1440.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/states/stale-1920.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/states/video-1440.png",
+    ".local/evidence/gcs/final-fixes-1/screenshots/states/video-1920.png"
   ],
   "files_changed": [
-    "mission_planner/agents/README.md",
-    "mission_planner/agents/accept_chat.py",
-    "mission_planner/agents/models.py",
-    "mission_planner/agents/test_tools.py",
     "mission_planner/agents/tools.py",
     "mission_planner/gcs/MissionControl.tsx",
     "mission_planner/gcs/MissionMap.tsx",
     "mission_planner/gcs/README.md",
-    "mission_planner/gcs/accept-gcs-ui.mjs",
+    "mission_planner/gcs/RouteApproval.tsx",
     "mission_planner/gcs/accept_browser.mjs",
-    "mission_planner/gcs/capture-gcs-states.mjs",
-    "mission_planner/gcs/check-gcs-proxy.mjs",
     "mission_planner/gcs/display.test.mjs",
     "mission_planner/gcs/display.ts",
     "mission_planner/gcs/geodesy.py",
     "mission_planner/gcs/mapLabels.ts",
-    "mission_planner/gcs/measure-gcs-browser.mjs",
     "mission_planner/gcs/mission.css",
     "mission_planner/gcs/missionState.ts",
     "mission_planner/gcs/report_acceptance.py",
     "mission_planner/gcs/service.py",
-    "mission_planner/gcs/test_service.py",
-    "mission_planner/measurements/gcs-acceptance.json",
-    "mission_planner/measurements/gcs-tools.json"
+    "mission_planner/measurements/gcs-acceptance.json"
   ],
   "limitations": [
     "Video and future perception/planning tools remain unavailable.",
     "Performance covers Python RSS and browser JS heap, not total browser/GPU memory.",
-    "The ten-minute performance observer started before the final map/video resize guard and approval-details visibility changes; separate browser acceptance validates those changes.",
     "Origin ground elevation is approximate; route separation checks do not model controller tracking error."
   ]
 }
