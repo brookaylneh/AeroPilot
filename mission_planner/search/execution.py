@@ -6,6 +6,7 @@ import math
 import time
 
 from mission_planner.search.planner import AIRBORNE_SECONDS, validate_batch
+from mission_planner.search.timing import PARAMETERS
 
 
 def flight_label(name, arguments):
@@ -43,6 +44,23 @@ async def begin(search, plan_id):
     )
     routes = {n: r["waypoints"] for n, r in value["routes"].items()}
     validate_batch(routes, states, {n: v["fence"] for n, v in mission.fleet.vehicles.items()})
+    for name, vehicle in mission.fleet.vehicles.items():
+        for parameter, expected in PARAMETERS.items():
+            reply = await mission.fleet._expect(
+                name,
+                "PARAM_VALUE",
+                lambda m, parameter=parameter: m.param_id == parameter,
+                lambda: vehicle["connection"].mav.param_request_read_send(
+                    vehicle["sysid"], 1, parameter.encode(), -1
+                ),
+            )
+            assert math.isclose(reply.param_value, expected, abs_tol=1e-5), (
+                name,
+                parameter,
+                reply.param_value,
+                expected,
+            )
+    mission.event("operator", "Search timing parameters read back and verified", result=PARAMETERS)
     search.status = "starting"
     search.changed()
     started = time.monotonic()

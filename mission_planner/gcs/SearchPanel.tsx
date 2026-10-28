@@ -1,6 +1,6 @@
-import { useState } from 'react';
-import { Crosshair, Search, ChevronDown } from 'lucide-react';
-import type { SearchState } from './searchState';
+import { useEffect, useState } from 'react';
+import { Crosshair, Search, ChevronDown, RectangleHorizontal } from 'lucide-react';
+import type { SearchPoint, SearchState } from './searchState';
 import './search.css';
 
 export default function SearchPanel({
@@ -8,19 +8,42 @@ export default function SearchPanel({
   send,
   marking,
   setMarking,
+  drawing,
+  draft,
+  startDrawing,
+  cancelDrawing,
   enabled,
 }: {
   search: SearchState | null;
   send: (m: Record<string, unknown>) => void;
   marking: boolean;
   setMarking: (v: boolean) => void;
+  drawing: boolean;
+  draft: SearchPoint[] | null;
+  startDrawing: () => void;
+  cancelDrawing: () => void;
   enabled: boolean;
 }) {
   const [open, setOpen] = useState(true),
     [domain, setDomain] = useState('');
-  const [bounds, setBounds] = useState(['', '', '', '']);
+  const [areaOpen, setAreaOpen] = useState(true);
+  useEffect(() => {
+    if (search?.plan) setAreaOpen(false);
+  }, [search?.plan?.plan_id]);
+  useEffect(() => {
+    if (search?.domain) setDomain(search.domain);
+  }, [search?.domain]);
   if (!search) return null;
   const editable = enabled && !['starting', 'running'].includes(search.summary.status);
+  const area = draft ?? search.vertices;
+  const areaM2 = area
+    ? Math.abs(
+        area.reduce((sum, p, i) => {
+          const next = area[(i + 1) % area.length];
+          return sum + p.east_m * next.north_m - next.east_m * p.north_m;
+        }, 0) / 2,
+      )
+    : 0;
   const tool = (name: string, args: Record<string, unknown>) => send({ type: 'tool', name, arguments: args });
   return (
     <aside className={`gcs-search-panel ${open ? '' : 'collapsed'}`} aria-label="Search planner">
@@ -91,47 +114,54 @@ export default function SearchPanel({
               {search.point.source === 'operator' ? 'Marked by operator' : 'Explicit briefing coordinates'}
             </small>
           )}
-          <details className="gcs-search-area-form">
-            <summary>{search.vertices ? 'Edit search area' : 'Define search area'}</summary>
+          <details
+            className="gcs-search-area-form"
+            open={areaOpen}
+            onToggle={(e) => setAreaOpen(e.currentTarget.open)}
+          >
+            <summary>Search area{area ? ` · ${(areaM2 / 10000).toFixed(2)} ha` : ''}</summary>
             <form
               onSubmit={(e) => {
                 e.preventDefault();
-                const [south, north, west, east] = bounds.map(Number);
-                if (!(south < north && west < east)) throw new Error('Area bounds must be ordered');
-                tool('define_search_area', {
-                  domain,
-                  vertices: [
-                    { north_m: south, east_m: west },
-                    { north_m: north, east_m: west },
-                    { north_m: north, east_m: east },
-                    { north_m: south, east_m: east },
-                  ],
-                });
+                if (!area || areaM2 <= 0) throw new Error('Draw a search area first');
+                tool('define_search_area', { domain, vertices: area });
               }}
             >
-              {[
-                'South edge (north m)',
-                'North edge (north m)',
-                'West edge (east m)',
-                'East edge (east m)',
-              ].map((label, i) => (
-                <label key={label}>
-                  {label}
-                  <input
-                    aria-label={label}
-                    type="number"
-                    min="-804.672"
-                    max="804.672"
-                    step="any"
-                    required
-                    value={bounds[i]}
-                    onChange={(e) => setBounds(bounds.map((v, j) => (j === i ? e.target.value : v)))}
-                  />
-                </label>
-              ))}
-              <button type="button" onClick={() => setBounds(['-804.672', '804.672', '-804.672', '804.672'])}>
-                Use full search square
+              <button
+                type="button"
+                disabled={!editable || !search.profile}
+                className={drawing ? 'active' : ''}
+                onClick={drawing ? cancelDrawing : startDrawing}
+              >
+                <RectangleHorizontal size={14} />
+                {drawing ? 'Cancel drawing' : 'Draw search rectangle'}
               </button>
+              {drawing && <small>Drag between opposite corners on the map.</small>}
+              {area && (
+                <div className="gcs-search-coordinates" aria-label="Search area coordinates">
+                  <strong>
+                    {(areaM2 / 10000).toFixed(2)} ha · {draft ? 'Drawn area' : 'Saved area'}
+                  </strong>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Corner</th>
+                        <th>North, m</th>
+                        <th>East, m</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {area.map((p, i) => (
+                        <tr key={i}>
+                          <td>{i + 1}</td>
+                          <td>{p.north_m.toFixed(1)}</td>
+                          <td>{p.east_m.toFixed(1)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
               <label>
                 Published statistical domain
                 <select
@@ -148,25 +178,11 @@ export default function SearchPanel({
                   ))}
                 </select>
               </label>
-              <button disabled={!editable || !search.profile}>Set search area</button>
+              <button disabled={!editable || !search.profile || !area || areaM2 <= 0 || drawing}>
+                Set search area
+              </button>
             </form>
           </details>
-          {search.plan && (
-            <button
-              onClick={() => {
-                const points = Object.values(search.plan!.routes).flatMap((r) => r.waypoints);
-                const north = points.map((p) => p.north_m),
-                  east = points.map((p) => p.east_m);
-                tool('show_on_map', {
-                  target: 'point',
-                  north_m: (Math.min(...north) + Math.max(...north)) / 2,
-                  east_m: (Math.min(...east) + Math.max(...east)) / 2,
-                });
-              }}
-            >
-              Center search routes
-            </button>
-          )}
           {search.summary.retained_in_world_mass !== null && (
             <p>
               Prior mass inside world:{' '}

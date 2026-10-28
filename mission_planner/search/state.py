@@ -6,6 +6,7 @@ import hashlib
 import io
 
 import numpy as np
+from matplotlib import colormaps
 from PIL import Image
 
 from mission_planner.environment import ROOT
@@ -34,6 +35,7 @@ class Search:
         self.status = "unplanned"
         self.revision = 0
         self.heatmap = None
+        self.heatmap_scale = None
         self.pod = None
         self.captures = {}
         self.footprints = []
@@ -56,6 +58,7 @@ class Search:
         self.retained = None
         self.prior_fit = None
         self.heatmap = None
+        self.heatmap_scale = None
         self.pod = None
         assert not self.captures, "A new search hypothesis cannot silently discard camera evidence"
 
@@ -91,10 +94,19 @@ class Search:
             self.render_heatmap()
 
     def render_heatmap(self):
-        ratio = self.probability / float(self.probability.max())
-        rgba = np.column_stack(
-            [np.full(len(ratio), 237), 80 + ratio * 110, np.full(len(ratio), 45), ratio * 130]
-        ).astype("uint8")
+        maximum = float(self.probability.max())
+        ratio = self.probability / maximum
+        assert np.isfinite(ratio).all() and ((ratio >= 0) & (ratio <= 1)).all()
+        colourmap = colormaps["viridis"]
+        rgba = colourmap(ratio, bytes=True)
+        rgba[:, 3] = np.where(self.grid["areas"] > 0, 215, 0)
+        self.heatmap_scale = {
+            "maximum": maximum,
+            "colours": [
+                "#" + "".join(f"{channel:02x}" for channel in colour[:3])
+                for colour in colourmap(np.linspace(0, 1, 9), bytes=True)
+            ],
+        }
         image = Image.fromarray(rgba.reshape(*self.grid["shape"], 4)[::-1], mode="RGBA")
         buffer = io.BytesIO()
         image.save(buffer, format="PNG")
@@ -188,6 +200,7 @@ class Search:
                 if self.profile is not None and c == self.profile["category"]["value"]
             ],
             "heatmap": self.heatmap,
+            "heatmap_scale": self.heatmap_scale,
             "grid": grid,
             "plan": self.plan,
             "summary": self.summary(),

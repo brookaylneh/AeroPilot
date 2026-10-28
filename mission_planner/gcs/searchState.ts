@@ -24,6 +24,9 @@ export const searchSchema = z.object({
   domain: z.string().nullable(),
   domains: z.array(z.string()),
   heatmap: z.string().nullable(),
+  heatmap_scale: z
+    .object({ maximum: number.positive().max(1), colours: z.array(z.string()).length(9) })
+    .nullable(),
   grid: z
     .object({
       shape: z.array(number.int()).length(2),

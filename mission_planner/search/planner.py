@@ -11,16 +11,15 @@ from mission_planner.gcs.validation import validate_route, validate_separation
 from mission_planner.search.detection import AGL_M, lateral_probability
 from mission_planner.search.grid import inside
 from mission_planner.search.terrain import terrain_leg
+from mission_planner.search.timing import SPEED_MPS, landing_seconds, launch_seconds, travel_seconds
 from world.cosys.terrain import WORLD
 
-SPEED_MPS = 5.0
 AIRBORNE_SECONDS = 1800.0
 RESERVE_SECONDS = 300.0
-CLIMB_MPS = 1.0
-TURN_SECONDS = 2.0
 SPACINGS_M = (12.0, 16.0, 20.0, 24.0, 32.0, 40.0)
 # The launch-column order keeps rear pads above the forward pads during ingress.
 SECTOR_DRONES = ("Drone1", "Drone3", "Drone2", "Drone4")
+TRANSIT_HEIGHTS_M = (70, 78, 86, 94)
 
 
 def encode(value):
@@ -76,7 +75,7 @@ def track_pod(centers, a, b, model, mask):
 
 
 def transit(home, first, last, sector):
-    h = 70 + 8 * sector
+    h = TRANSIT_HEIGHTS_M[sector]
     row = -795 + 12 * sector
     launch = point(home["north_m"], home["east_m"], h)
     ingress = [
@@ -92,15 +91,6 @@ def transit(home, first, last, sector):
         launch,
     ]
     return ingress, egress
-
-
-def travel_seconds(route):
-    total = 0.0
-    for a, b in zip(route, route[1:]):
-        horizontal = math.hypot(a["north_m"] - b["north_m"], a["east_m"] - b["east_m"])
-        vertical = abs(a["altitude_above_home_m"] - b["altitude_above_home_m"])
-        total += max(horizontal / SPEED_MPS, vertical / CLIMB_MPS) + TURN_SECONDS
-    return total
 
 
 def candidate(grid, probability, vertices, homes, model, spacing, axis, prioritized):
@@ -136,25 +126,35 @@ def candidate(grid, probability, vertices, homes, model, spacing, axis, prioriti
             for a, b in legs
         ]
         pods = [track_pod(centers, a, b, model, area_mask) for a, b in legs]
+        paths = [(terrain_leg(a, b, z)[0], terrain_leg(b, a, z)[0]) for a, b in legs]
         chosen = []
+        prefix = []
         now = 0.0
         current = None
         first = None
         while legs:
             options = []
             for i, (a, b) in enumerate(legs):
-                if current is not None and distance(current, b) < distance(current, a):
+                reverse = current is not None and distance(current, b) < distance(current, a)
+                if reverse:
                     a, b = b, a
+                path = paths[i][int(reverse)]
+                duration = travel_seconds(path)
                 if current is None:
                     ingress, _ = transit(homes[name], a, b, sector)
-                    cost = ingress[0]["altitude_above_home_m"] / CLIMB_MPS + travel_seconds(
-                        [*ingress, a, b]
-                    )
+                    waypoints = [*ingress, *path]
+                    cost = launch_seconds(max(TRANSIT_HEIGHTS_M)) + travel_seconds(waypoints)
                 else:
-                    cost = travel_seconds([current, a, b])
+                    connector = (
+                        terrain_leg(current, a, z)[0] if distance(current, a) > 1e-8 else [current]
+                    )
+                    waypoints = [*prefix, *connector[1:], *path[1:]]
+                    cost = travel_seconds(waypoints) - travel_seconds(prefix)
                 _, egress = transit(homes[name], first if first is not None else a, b, sector)
                 candidate_return_time = (
-                    travel_seconds([b, *egress]) + egress[-1]["altitude_above_home_m"] / CLIMB_MPS
+                    travel_seconds([*waypoints, *egress])
+                    - travel_seconds(waypoints)
+                    + landing_seconds(egress[-1]["altitude_above_home_m"])
                 )
                 gain = float(probability @ np.maximum(pods[i] - cumulative, 0))
                 if now + cost + max(RESERVE_SECONDS, candidate_return_time) <= AIRBORNE_SECONDS:
@@ -167,14 +167,17 @@ def candidate(grid, probability, vertices, homes, model, spacing, axis, prioriti
                             b,
                             cost,
                             candidate_return_time,
+                            duration,
+                            waypoints,
                         )
                     )
             if not options:
                 break
-            _, _, i, a, b, cost, return_time = max(options, key=lambda v: v[:2])
+            _, _, i, a, b, cost, return_time, duration, prefix = max(options, key=lambda v: v[:2])
             if first is None:
                 first = a
-            start_time = now + cost - distance(a, b) / SPEED_MPS
+            start_time = now + cost - duration
+            assert start_time >= now - 1e-8, "Terrain connector produced overlapping search legs"
             now += cost
             cumulative = np.maximum(cumulative, pods[i])
             chosen.append({"start": a, "end": b, "starts_s": start_time, "ends_s": now})
@@ -182,6 +185,7 @@ def candidate(grid, probability, vertices, homes, model, spacing, axis, prioriti
             current = b
             legs.pop(i)
             pods.pop(i)
+            paths.pop(i)
         if not chosen:
             return None
         ingress, egress = transit(homes[name], chosen[0]["start"], chosen[-1]["end"], sector)
@@ -238,6 +242,9 @@ def materialize(result, states, readbacks):
                 route.extend(points[1:])
                 max_error = max(max_error, error)
             points, error = terrain_leg(leg["start"], leg["end"], z)
+            assert math.isclose(
+                leg["ends_s"] - leg["starts_s"], travel_seconds(points), rel_tol=0, abs_tol=1e-8
+            ), "Planned search-leg timing differs from materialized geometry"
             route.extend(points[1:])
             max_error = max(max_error, error)
         route.extend(spec["egress"])
@@ -247,6 +254,14 @@ def materialize(result, states, readbacks):
         spec["waypoints"] = routes[name]
         spec["length_m"] = sum(distance(a, b) for a, b in zip(routes[name], routes[name][1:]))
         spec["speed_mps"] = SPEED_MPS
+        expected_airborne = (
+            launch_seconds(max(TRANSIT_HEIGHTS_M))
+            + travel_seconds(routes[name])
+            + landing_seconds(routes[name][-1]["altitude_above_home_m"])
+        )
+        assert math.isclose(spec["airborne_seconds"], expected_airborne, rel_tol=0, abs_tol=1e-8), (
+            "Planned airborne timing differs from materialized geometry"
+        )
     validate_batch(routes, states, readbacks)
     result["max_sampled_agl_error_m"] = max_error
     return result

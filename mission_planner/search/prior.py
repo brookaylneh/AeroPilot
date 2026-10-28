@@ -1,6 +1,7 @@
 """Published distance CDFs; radial stationary priors with explicit domain conditioning."""
 
 import numpy as np
+from scipy.interpolate import CubicHermiteSpline, PchipInterpolator
 
 SOURCES = {
     "children": {
@@ -47,30 +48,60 @@ def table(category, domain):
     source, n, radii = TABLES[(category, domain)]
     q = (np.array([0, *radii]) * 1000) ** 2
     assert np.all(np.diff(q) > 0)
-    slopes = np.diff(QUANTILES) / np.diff(q)
+    derivatives = PchipInterpolator(q, QUANTILES).derivative()(q)
+    derivatives[-1] = (QUANTILES[-1] - QUANTILES[-2]) / (q[-1] - q[-2])
+    interpolant = CubicHermiteSpline(q, QUANTILES, derivatives, extrapolate=False)
+    assert (derivatives > 0).all()
+    for i, width in enumerate(np.diff(q)):
+        cubic, quadratic, linear, _ = interpolant.c[:, i]
+        if cubic > 0:
+            minimum = -quadratic / (3 * cubic)
+            if 0 < minimum < width:
+                assert (3 * cubic * minimum + 2 * quadratic) * minimum + linear >= 0
+    assert np.allclose(interpolant(q), QUANTILES, rtol=0, atol=1e-15)
+    assert abs(interpolant.derivative().integrate(q[0], q[-1]) + 0.05 - 1) < 1e-15
     return (
         q,
-        slopes,
+        interpolant,
         {
             "source": SOURCES[source],
             "n": n,
             "radius_m": np.sqrt(q[1:]).tolist(),
             "percentiles": QUANTILES[1:].tolist(),
-            "fit_residuals": (np.interp(q[1:], q, QUANTILES) - QUANTILES[1:]).tolist(),
+            "method": "Cubic Hermite CDF in squared radius; PCHIP interior slopes, final secant slope; derivative-matched exponential tail",
+            "fit_residuals": (interpolant(q[1:]) - QUANTILES[1:]).tolist(),
         },
     )
 
 
-def density(distance_squared, category, domain):
-    q, slopes, _ = table(category, domain)
+def cdf(distance_squared, category, domain):
+    q, interpolant, _ = table(category, domain)
     x = np.asarray(distance_squared)
     assert np.isfinite(x).all() and (x >= 0).all()
-    bins = np.searchsorted(q[1:], x, side="right")
-    result = slopes[np.minimum(bins, 3)] / np.pi
-    tail = x > q[-1]
+    rate = interpolant(q[-1], 1) / 0.05
     result = np.where(
-        tail, slopes[-1] / np.pi * np.exp(-slopes[-1] / 0.05 * np.maximum(0, x - q[-1])), result
+        x > q[-1],
+        1 - 0.05 * np.exp(-rate * np.maximum(0, x - q[-1])),
+        interpolant(np.minimum(x, q[-1])),
     )
+    assert np.isfinite(result).all() and ((result >= 0) & (result <= 1)).all()
+    return result
+
+
+def density(distance_squared, category, domain):
+    q, interpolant, _ = table(category, domain)
+    x = np.asarray(distance_squared)
+    assert np.isfinite(x).all() and (x >= 0).all()
+    slope = interpolant(q[-1], 1)
+    result = (
+        np.where(
+            x > q[-1],
+            slope * np.exp(-slope / 0.05 * np.maximum(0, x - q[-1])),
+            interpolant(np.minimum(x, q[-1]), 1),
+        )
+        / np.pi
+    )
+    assert np.isfinite(result).all() and (result >= 0).all()
     return result
 
 

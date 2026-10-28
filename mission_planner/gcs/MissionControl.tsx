@@ -27,6 +27,7 @@ import {
 import MissionMap from './MissionMap';
 import SearchPanel from './SearchPanel';
 import SearchApproval from './SearchApproval';
+import type { SearchPoint } from './searchState';
 import RouteApproval from './RouteApproval';
 import {
   droneColors,
@@ -168,6 +169,9 @@ export default function MissionControl() {
   const caseId = new URLSearchParams(location.search).get('case');
   const { state, search, events, connection, error, setError, send, now, age } = useMission(caseId);
   const [marking, setMarking] = useState(false);
+  const [drawing, setDrawing] = useState(false);
+  const [areaDraft, setAreaDraft] = useState<SearchPoint[] | null>(null);
+  useEffect(() => setAreaDraft(null), [JSON.stringify(search?.vertices)]);
   const approval = state?.approvals[0];
   const pendingRoute = approval?.name === 'fly_route' ? routeArgumentsSchema.parse(approval.arguments) : null;
   const [selected, setSelected] = useState<DroneId>('Drone1');
@@ -337,6 +341,10 @@ export default function MissionControl() {
             <div className={view === 'map' ? 'gcs-main-map' : 'gcs-inset gcs-inset-map'}>
               <MissionMap
                 search={search}
+                drawing={drawing}
+                areaDraft={areaDraft}
+                onDraw={setAreaDraft}
+                finishDrawing={() => setDrawing(false)}
                 onMark={
                   marking
                     ? (point) => {
@@ -359,7 +367,21 @@ export default function MissionControl() {
                   search={search}
                   send={send}
                   marking={marking}
-                  setMarking={setMarking}
+                  setMarking={(value) => {
+                    setDrawing(false);
+                    setMarking(value);
+                  }}
+                  drawing={drawing}
+                  draft={areaDraft}
+                  startDrawing={() => {
+                    setMarking(false);
+                    setAreaDraft(null);
+                    setDrawing(true);
+                  }}
+                  cancelDrawing={() => {
+                    setAreaDraft(null);
+                    setDrawing(false);
+                  }}
                   enabled={connected && !state?.agent_busy && !approval}
                 />
               )}

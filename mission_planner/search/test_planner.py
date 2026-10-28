@@ -10,9 +10,19 @@ from mission_planner.environment import ROOT
 from mission_planner.gcs.geodesy import fence_vertices, homes, to_geodetic
 from mission_planner.search.detection import reduce_calibration
 from mission_planner.search.grid import make_grid, polygon_areas
-from mission_planner.search.planner import AIRBORNE_SECONDS, encode, plan, validate_batch
+from mission_planner.search.planner import (
+    AIRBORNE_SECONDS,
+    candidate,
+    encode,
+    materialize,
+    plan,
+    validate_batch,
+)
 from mission_planner.search.prior import initialize, table
 from mission_planner.search.subject import PROFILE_FIELDS, explicit_point, validate_profile
+from mission_planner.search.terrain import terrain_leg
+from mission_planner.search.timing import travel_seconds
+from world.cosys.terrain import WORLD
 
 
 class Planner(unittest.TestCase):
@@ -86,6 +96,49 @@ class Planner(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "conflicts"):
             validate_batch({n: [p] for n in self.states}, self.states, self.readbacks)
 
+    def test_timing_uses_oriented_legs_and_full_terrain_connectors(self):
+        vertices = [
+            {"north_m": n, "east_m": e}
+            for n, e in ((-700, -400), (-200, -400), (-200, 400), (-700, 400))
+        ]
+        result = candidate(self.grid, self.probability, vertices, homes(), self.model, 40, 0, True)
+        self.assertIsNotNone(result)
+        asymmetric_legs = 0
+        for name, route in result["routes"].items():
+            home_z = WORLD["vehicles"][name]["spawnUeCm"]["z"] / 100
+            for leg in route["legs"]:
+                forward = travel_seconds(terrain_leg(leg["start"], leg["end"], home_z)[0])
+                reverse = travel_seconds(terrain_leg(leg["end"], leg["start"], home_z)[0])
+                asymmetric_legs += abs(forward - reverse) > 1e-6
+                self.assertAlmostEqual(leg["ends_s"] - leg["starts_s"], forward)
+        self.assertGreater(asymmetric_legs, 0)
+        materialize(result, self.states, self.readbacks)
+
+    def test_concave_area_connector_blends_preserve_timeline_order(self):
+        vertices = [
+            {"north_m": n, "east_m": e}
+            for n, e in (
+                (-750, -400),
+                (-100, -400),
+                (-100, 400),
+                (-250, 400),
+                (-250, -390),
+                (-600, -390),
+                (-600, 400),
+                (-750, 400),
+            )
+        ]
+        result = candidate(self.grid, self.probability, vertices, homes(), self.model, 40, 0, True)
+        self.assertIsNotNone(result)
+        terrain_connectors = 0
+        for name, route in result["routes"].items():
+            home_z = WORLD["vehicles"][name]["spawnUeCm"]["z"] / 100
+            for before, after in zip(route["legs"], route["legs"][1:]):
+                terrain_connectors += len(terrain_leg(before["end"], after["start"], home_z)[0]) > 2
+                self.assertGreaterEqual(after["starts_s"], before["ends_s"] - 1e-8)
+        self.assertGreater(terrain_connectors, 0)
+        materialize(result, self.states, self.readbacks)
+
     def test_unsupported_prior_is_explicit(self):
         with self.assertRaisesRegex(AssertionError, "Unsupported prior"):
             table("elderly_non_dementia", "temperate")
@@ -106,11 +159,13 @@ class Planner(unittest.TestCase):
             "io",
             "json",
             "math",
+            "matplotlib",
             "re",
             "time",
             "pathlib",
             "numpy",
             "PIL",
+            "scipy.interpolate",
             "scipy.stats",
             "mission_planner.environment",
             "mission_planner.search",
@@ -121,10 +176,12 @@ class Planner(unittest.TestCase):
             "world.cosys.terrain",
         }
         for path in (ROOT / "mission_planner/search").glob("*.py"):
-            if path.name.startswith("test_"):
+            if path.name.startswith("test_") or path.name == "report_flight.py":
                 continue
             tree = ast.parse(path.read_text())
             for node in ast.walk(tree):
+                if isinstance(node, ast.ImportFrom) and node.module == "mission_planner.search":
+                    self.assertNotIn("report_flight", [alias.name for alias in node.names])
                 modules = (
                     [node.module]
                     if isinstance(node, ast.ImportFrom)
@@ -133,6 +190,7 @@ class Planner(unittest.TestCase):
                     else []
                 )
                 for module in modules:
+                    self.assertNotEqual(module, "mission_planner.search.report_flight")
                     self.assertTrue(
                         any(
                             module == prefix or module.startswith(prefix + ".")

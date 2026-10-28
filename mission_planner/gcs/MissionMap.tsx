@@ -28,6 +28,10 @@ const extent = 804.672;
 export default function MissionMap({
   search = null,
   onMark,
+  drawing,
+  areaDraft,
+  onDraw,
+  finishDrawing,
   vehicles,
   selected,
   select,
@@ -39,6 +43,10 @@ export default function MissionMap({
 }: {
   search?: SearchState | null;
   onMark?: (point: SearchPoint) => void;
+  drawing: boolean;
+  areaDraft: SearchPoint[] | null;
+  onDraw: (vertices: SearchPoint[]) => void;
+  finishDrawing: () => void;
   vehicles: Vehicle[];
   selected: DroneId;
   select: (id: DroneId) => void;
@@ -53,6 +61,7 @@ export default function MissionMap({
   const [view, setView] = useState<MapView>(wholeWorld);
   const [cursor, setCursor] = useState<{ north_m: number; east_m: number } | null>(null);
   const drag = useRef<{ x: number; y: number; view: MapView } | null>(null);
+  const rectangleStart = useRef<SearchPoint | null>(null);
   const trails = useRef<Record<string, { north_m: number; east_m: number }[]>>({});
   const bounds = {
     minX: -920,
@@ -70,6 +79,45 @@ export default function MissionMap({
   function center(north_m: number, east_m: number, zoom: number) {
     const p = worldToMap({ x: north_m, y: east_m }, bounds);
     setView(mapView(p.u, p.v, zoom));
+  }
+  function unproject(clientX: number, clientY: number): SearchPoint {
+    const rect = surface.current!.getBoundingClientRect();
+    const p = screenToMap(
+      { u: (clientX - rect.left) / rect.width, v: (clientY - rect.top) / rect.height },
+      view,
+    );
+    return { north_m: bounds.maxX - p.v * (bounds.maxX - bounds.minX), east_m: bounds.minY + p.u * span };
+  }
+  function rectangle(a: SearchPoint, b: SearchPoint): SearchPoint[] {
+    const north = Math.max(a.north_m, b.north_m),
+      south = Math.min(a.north_m, b.north_m);
+    const east = Math.max(a.east_m, b.east_m),
+      west = Math.min(a.east_m, b.east_m);
+    return [
+      { north_m: south, east_m: west },
+      { north_m: north, east_m: west },
+      { north_m: north, east_m: east },
+      { north_m: south, east_m: east },
+    ];
+  }
+  function fitSearch() {
+    if (!search?.vertices) {
+      setView(wholeWorld);
+      return;
+    }
+    const points = [
+      ...search.vertices,
+      ...(search.plan ? Object.values(search.plan.routes).flatMap((r) => r.waypoints) : []),
+    ];
+    const north = points.map((p) => p.north_m),
+      east = points.map((p) => p.east_m);
+    const height = Math.max(...north) - Math.min(...north),
+      width = Math.max(...east) - Math.min(...east);
+    center(
+      (Math.min(...north) + Math.max(...north)) / 2,
+      (Math.min(...east) + Math.max(...east)) / 2,
+      Math.min(span / (width * 1.25), 1840 / (height * 1.45)),
+    );
   }
   useEffect(() => {
     const observer = new ResizeObserver(([entry]) =>
@@ -106,6 +154,10 @@ export default function MissionMap({
       );
     }
   }, [focusKey]);
+  const searchFocusKey = JSON.stringify([search?.vertices, search?.plan?.plan_id]);
+  useEffect(() => {
+    if (!inset && search?.vertices) fitSearch();
+  }, [searchFocusKey, size.width, size.height, inset]);
   useEffect(() => {
     const el = surface.current!;
     const wheel = (e: WheelEvent) => {
@@ -154,7 +206,7 @@ export default function MissionMap({
     <div className={`gcs-map ${inset ? 'is-inset' : ''}`}>
       <div
         ref={surface}
-        className="gcs-map-surface"
+        className={`gcs-map-surface ${drawing || onMark ? 'is-drawing' : ''}`}
         role="application"
         aria-label="Mission map. Drag to pan, scroll to zoom."
         tabIndex={0}
@@ -180,18 +232,17 @@ export default function MissionMap({
         onPointerDown={(e) => {
           if (onMark || e.button !== 0 || (e.target as Element).closest('[data-drone]')) return;
           e.currentTarget.setPointerCapture(e.pointerId);
+          if (drawing) {
+            rectangleStart.current = unproject(e.clientX, e.clientY);
+            return;
+          }
           drag.current = { x: e.clientX, y: e.clientY, view };
         }}
         onPointerMove={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
-          const p = screenToMap(
-            { u: (e.clientX - rect.left) / rect.width, v: (e.clientY - rect.top) / rect.height },
-            view,
-          );
-          setCursor({
-            north_m: bounds.maxX - p.v * (bounds.maxX - bounds.minX),
-            east_m: bounds.minY + p.u * span,
-          });
+          const point = unproject(e.clientX, e.clientY);
+          setCursor(point);
+          if (rectangleStart.current) onDraw(rectangle(rectangleStart.current, point));
           const d = drag.current;
           if (d)
             setView(
@@ -203,24 +254,23 @@ export default function MissionMap({
             );
         }}
         onPointerUp={(e) => {
+          if (rectangleStart.current) {
+            onDraw(rectangle(rectangleStart.current, unproject(e.clientX, e.clientY)));
+            rectangleStart.current = null;
+            finishDrawing();
+          }
           if (onMark && e.button === 0) {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const p = screenToMap(
-              { u: (e.clientX - rect.left) / rect.width, v: (e.clientY - rect.top) / rect.height },
-              view,
-            );
-            onMark({
-              north_m: bounds.maxX - p.v * (bounds.maxX - bounds.minX),
-              east_m: bounds.minY + p.u * span,
-            });
+            onMark(unproject(e.clientX, e.clientY));
           }
           drag.current = null;
         }}
         onPointerCancel={() => {
           drag.current = null;
+          rectangleStart.current = null;
         }}
         onLostPointerCapture={() => {
           drag.current = null;
+          rectangleStart.current = null;
         }}
       >
         <svg
@@ -236,6 +286,18 @@ export default function MissionMap({
             className="gcs-terrain"
           />
           <SearchLayers search={search} project={projection} />
+          {areaDraft && (
+            <polygon
+              className="gcs-search-draft"
+              aria-label="Drawn search rectangle"
+              points={areaDraft
+                .map((p) => {
+                  const q = projection(p.north_m, p.east_m);
+                  return `${q.x},${q.y}`;
+                })
+                .join(' ')}
+            />
+          )}
           {[-800, -600, -400, -200, 0, 200, 400, 600, 800].map((n) => {
             const h1 = projection(n, -extent),
               h2 = projection(n, extent),
@@ -443,7 +505,7 @@ export default function MissionMap({
             >
               <Minus size={17} />
             </button>
-            <button title="Fit search area" aria-label="Fit search area" onClick={() => setView(wholeWorld)}>
+            <button title="Fit search area and plan" aria-label="Fit search area" onClick={fitSearch}>
               <Scan size={17} />
             </button>
             <button
@@ -457,6 +519,21 @@ export default function MissionMap({
               <LocateFixed size={17} />
             </button>
           </div>
+          {search?.heatmap_scale && search.grid && (
+            <div className="gcs-probability-legend" aria-label="Probability colour scale">
+              <strong>Probability per {search.grid.cell_m} m cell</strong>
+              <div
+                style={{
+                  background: `linear-gradient(to right, ${search.heatmap_scale.colours.join(', ')})`,
+                }}
+              />
+              <span>
+                <b>0%</b>
+                <b>{(search.heatmap_scale.maximum * 100).toPrecision(3)}%</b>
+              </span>
+              <small>Conditional on presence in the world</small>
+            </div>
+          )}
           <div className="gcs-north">
             <b>N</b>
             <svg viewBox="0 0 24 30">

@@ -1,19 +1,24 @@
 .gcs-search-panel {
-  position: absolute;
-  z-index: 4;
-  top: 16px;
-  left: 16px;
+  order: -1;
+  flex: 0 0 280px;
   width: 280px;
-  max-height: calc(100% - 100px);
-  background: #182126f2;
-  border: 1px solid var(--gcs-line);
-  border-radius: 8px;
-  box-shadow: 0 6px 20px #0004;
+  min-height: 0;
+  background: #182126;
+  border-right: 1px solid var(--gcs-line);
   display: flex;
   flex-direction: column;
 }
 .gcs-search-panel.collapsed {
+  flex-basis: 205px;
   width: 205px;
+}
+.gcs-main-map:has(.gcs-search-panel) {
+  display: flex;
+}
+.gcs-main-map:has(.gcs-search-panel) > .gcs-map {
+  flex: 1;
+  min-width: 0;
+  width: auto;
 }
 .gcs-search-heading {
   display: flex;
@@ -89,9 +94,10 @@
   color: var(--gcs-muted);
 }
 .gcs-search-area-form form {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 8px;
+  margin-top: 8px;
 }
 .gcs-search-area-form label {
   display: flex;
@@ -99,7 +105,6 @@
   gap: 3px;
   font-size: 10px;
 }
-.gcs-search-area-form input,
 .gcs-search-area-form select {
   width: 100%;
   min-width: 0;
@@ -109,9 +114,20 @@
   padding: 6px;
   border-radius: 3px;
 }
-.gcs-search-area-form label:has(select),
-.gcs-search-area-form button {
-  grid-column: 1 / -1;
+.gcs-search-coordinates table {
+  width: 100%;
+  font: 10px var(--gcs-mono);
+  border-collapse: collapse;
+  margin-top: 5px;
+}
+.gcs-search-coordinates td,
+.gcs-search-coordinates th {
+  text-align: right;
+  padding: 3px 0;
+}
+.gcs-search-coordinates th {
+  font-weight: 400;
+  color: var(--gcs-muted);
 }
 .gcs-search-pos {
   padding: 10px;
@@ -190,12 +206,57 @@
   font-weight: 400;
 }
 
-.gcs-main-map:has(.gcs-search-panel) .gcs-map-tools {
+.gcs-stage:has(.gcs-search-panel) .gcs-stage-key {
   left: auto;
-  right: 24px;
+  right: 80px;
+  transform: none;
 }
 
 .gcs-search-world polygon,
 .gcs-search-world polyline {
   vector-effect: non-scaling-stroke;
+}
+.gcs-search-world polyline {
+  filter: drop-shadow(0 0 1px #122028);
+}
+.gcs-map-surface.is-drawing {
+  cursor: crosshair;
+}
+.gcs-search-draft {
+  fill: #f6d27620;
+  stroke: #f6d276;
+  stroke-width: 2;
+  stroke-dasharray: 6 3;
+  pointer-events: none;
+}
+.gcs-probability-legend {
+  position: absolute;
+  left: 24px;
+  bottom: 54px;
+  width: 214px;
+  padding: 9px 11px;
+  background: #182126ed;
+  border: 1px solid var(--gcs-line);
+  border-radius: 4px;
+  font-size: 10px;
+  pointer-events: none;
+}
+.gcs-probability-legend > div {
+  height: 9px;
+  margin: 7px 0 4px;
+  border-radius: 2px;
+}
+.gcs-probability-legend > span {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--gcs-mono);
+}
+.gcs-probability-legend b {
+  font-weight: 400;
+}
+.gcs-probability-legend small {
+  display: block;
+  margin-top: 5px;
+  color: var(--gcs-muted);
+  font-size: 9px;
 }

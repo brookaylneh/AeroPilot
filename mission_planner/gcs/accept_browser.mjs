@@ -47,6 +47,37 @@ async function screenshots(page, output, label, approval = false, focus = null) 
     assert.equal(new Set(ids).size, ids.length, 'One row per call_id');
     const content = await page.locator('.gcs-app').innerText();
     assert(!/AssertionError:|HTTPStatusError:|-0\.0 m|WILDLANDS|° DEG/.test(content));
+    if (label.startsWith('search-')) {
+      const panel = await page.locator('.gcs-search-panel').boundingBox();
+      const surface = await page.locator('[data-testid="mission-map"]').boundingBox();
+      const controls = await page.locator('.gcs-map-tools').boundingBox();
+      assert(panel && surface && controls);
+      assert(panel.x + panel.width <= surface.x + 1, 'Planner panel must leave the map unobscured');
+      assert(panel.x + panel.width <= controls.x, 'Planner panel must not cover map controls');
+      if (label === 'search-plan') {
+        await page.waitForFunction(() => {
+          const area = document.querySelector('.gcs-search-area').getBoundingClientRect();
+          const surface = document.querySelector('[data-testid="mission-map"]').getBoundingClientRect();
+          return area.width > surface.width / 10;
+        });
+        const area = await page.locator('.gcs-search-area').boundingBox();
+        assert(area && area.width > surface.width / 10, 'Plan must zoom to the drawn area');
+        const routesFit = await page.locator('.gcs-search-world polyline').evaluateAll((routes) => {
+          const map = document.querySelector('[data-testid="mission-map"]').getBoundingClientRect();
+          return routes.every((route) => {
+            const bounds = route.getBoundingClientRect();
+            return (
+              bounds.left >= map.left &&
+              bounds.top >= map.top &&
+              bounds.right <= map.right &&
+              bounds.bottom <= map.bottom
+            );
+          });
+        });
+        assert(routesFit, 'Automatic map fit must contain every planned route');
+        assert.equal(await page.getByLabel('Probability colour scale').count(), 1);
+      }
+    }
     await page.screenshot({ path: `${output}/${label}-${width}.png` });
   }
 }
@@ -839,15 +870,22 @@ async function searchFlight(browser, url, output) {
       image.y + (image.height * (804.672 + 650)) / (2 * 804.672),
     );
     await until(() => observation.search.point?.source === 'operator', 'Operator last known point');
-    await page.getByText('Define search area', { exact: true }).click();
-    for (const [label, value] of [
-      ['South edge (north m)', '-790'],
-      ['North edge (north m)', '-500'],
-      ['West edge (east m)', '-120'],
-      ['East edge (east m)', '120'],
-    ])
-      await page.getByLabel(label, { exact: true }).fill(value);
+    await page.getByRole('button', { name: 'Draw search rectangle', exact: true }).click();
+    const terrain = await page.locator('.gcs-terrain').boundingBox();
+    assert(terrain);
+    const drawingPoint = (north, east) => ({
+      x: terrain.x + (terrain.width * (804.672 + east)) / 1609.344,
+      y: terrain.y + (terrain.height * (804.672 - north)) / 1609.344,
+    });
+    const start = drawingPoint(-790, -120),
+      end = drawingPoint(-500, 120);
+    await page.mouse.move(start.x, start.y);
+    await page.mouse.down();
+    await page.mouse.move(end.x, end.y, { steps: 12 });
+    await page.mouse.up();
+    assert.equal(await page.getByLabel('Search area coordinates').locator('tbody tr').count(), 4);
     await page.getByLabel('Published statistical domain', { exact: true }).selectOption('temperate');
+    await screenshots(page, output, 'search-area');
     await page.getByRole('button', { name: 'Set search area', exact: true }).click();
     await until(() => observation.search.vertices !== null, 'Search area recorded');
     await chat('The last known point and search area are marked. Plan the search now.');
