@@ -1,0 +1,41 @@
+{
+  "character_id": "senior-01",
+  "preset": "/MetaHumanCharacter/Optional/Presets/Lani",
+  "asset_folder": "/Game/Characters/Roster/Samira/Source",
+  "asset_name": "MH_Samira",
+  "assembly_folder": "/Game/Characters/Roster/Samira/Cinematic",
+  "body": {
+    "height_cm": 164,
+    "masculine_feminine": 0.85,
+    "fat": 0.55,
+    "muscularity": 0.25
+  },
+  "face": {
+    "head_scale": 1.0,
+    "high_frequency_delta": 1.0
+  },
+  "skin": {
+    "lightness": 0.5,
+    "redness": 0.45
+  },
+  "eyes": {
+    "temperature": 0.8,
+    "brightness": 0.3
+  },
+  "wardrobe": {
+    "Hair": "/MetaHumanCharacter/Optional/Grooms/Bindings/Hair/WI_Hair_S_BobLayered",
+    "Eyebrows": "/MetaHumanCharacter/Optional/Grooms/Bindings/Eyebrows/WI_Eyebrows_M_Natural",
+    "Eyelashes": "/MetaHumanCharacter/Optional/Grooms/Bindings/Eyelashes/WI_Eyelashes_S_Thin",
+    "Outfits": "/MetaHumanCharacter/Optional/Clothing/WI_DefaultGarment"
+  },
+  "groom_color": {
+    "hairMelanin": 0.65,
+    "hairRedness": 0.12,
+    "WhiteAmount": 0.75,
+    "Ombre": 0
+  },
+  "garment_colors": {
+    "Shirt": [0.35, 0.13, 0.08, 1],
+    "Short": [0.025, 0.04, 0.07, 1]
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "character_id": "adult-03",
+  "preset": "/MetaHumanCharacter/Optional/Presets/Tuya",
+  "asset_folder": "/Game/Characters/Roster/Mei/Source",
+  "asset_name": "MH_Mei",
+  "assembly_folder": "/Game/Characters/Roster/Mei/Cinematic",
+  "body": {
+    "height_cm": 156,
+    "masculine_feminine": 0.9,
+    "fat": 0.78,
+    "muscularity": 0.2
+  },
+  "face": {
+    "head_scale": 1.0,
+    "high_frequency_delta": 1.0
+  },
+  "skin": {
+    "lightness": 0.42,
+    "redness": 0.55
+  },
+  "eyes": {
+    "temperature": 0.9,
+    "brightness": 0.18
+  },
+  "wardrobe": {
+    "Hair": "/MetaHumanCharacter/Optional/Grooms/Bindings/Hair/WI_Hair_M_BobStraight",
+    "Eyebrows": "/MetaHumanCharacter/Optional/Grooms/Bindings/Eyebrows/WI_Eyebrows_M_Natural",
+    "Eyelashes": "/MetaHumanCharacter/Optional/Grooms/Bindings/Eyelashes/WI_Eyelashes_S_Thin",
+    "Outfits": "/MetaHumanCharacter/Optional/Clothing/WI_DefaultGarment"
+  },
+  "groom_color": {
+    "hairMelanin": 0.95,
+    "hairRedness": 0.1,
+    "WhiteAmount": 0.22,
+    "Ombre": 0
+  },
+  "garment_colors": {
+    "Shirt": [0.22, 0.08, 0.17, 1],
+    "Short": [0.04, 0.045, 0.05, 1]
+  }
+}

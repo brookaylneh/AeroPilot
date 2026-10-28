@@ -1,0 +1,43 @@
+{
+  "character_id": "adult-02",
+  "preset": "/MetaHumanCharacter/Optional/Presets/Orlando",
+  "asset_folder": "/Game/Characters/Roster/Mateo/Source",
+  "asset_name": "MH_Mateo",
+  "assembly_folder": "/Game/Characters/Roster/Mateo/Cinematic",
+  "body": {
+    "height_cm": 172,
+    "masculine_feminine": 0.12,
+    "fat": 0.82,
+    "muscularity": 0.3
+  },
+  "face": {
+    "head_scale": 1.0,
+    "high_frequency_delta": 1.0
+  },
+  "skin": {
+    "lightness": 0.6,
+    "redness": 0.45
+  },
+  "eyes": {
+    "temperature": 0.8,
+    "brightness": 0.25
+  },
+  "wardrobe": {
+    "Hair": "/MetaHumanCharacter/Optional/Grooms/Bindings/Hair/WI_Hair_S_Casual",
+    "Eyebrows": "/MetaHumanCharacter/Optional/Grooms/Bindings/Eyebrows/WI_Eyebrows_M_Natural",
+    "Eyelashes": "/MetaHumanCharacter/Optional/Grooms/Bindings/Eyelashes/WI_Eyelashes_S_Thin",
+    "Outfits": "/MetaHumanCharacter/Optional/Clothing/WI_DefaultGarment",
+    "Beard": "/MetaHumanCharacter/Optional/Grooms/Bindings/Beards/WI_Beard_S_Stubble",
+    "Mustache": "/MetaHumanCharacter/Optional/Grooms/Bindings/Mustaches/WI_Mustache_S_Stubble"
+  },
+  "groom_color": {
+    "hairMelanin": 0.8,
+    "hairRedness": 0.25,
+    "WhiteAmount": 0,
+    "Ombre": 0
+  },
+  "garment_colors": {
+    "Shirt": [0.34, 0.22, 0.06, 1],
+    "Short": [0.025, 0.04, 0.07, 1]
+  }
+}

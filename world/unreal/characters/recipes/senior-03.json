@@ -1,0 +1,41 @@
+{
+  "character_id": "senior-03",
+  "preset": "/MetaHumanCharacter/Optional/Presets/Sook-ja",
+  "asset_folder": "/Game/Characters/Roster/Lila/Source",
+  "asset_name": "MH_Lila",
+  "assembly_folder": "/Game/Characters/Roster/Lila/Cinematic",
+  "body": {
+    "height_cm": 147,
+    "masculine_feminine": 0.8,
+    "fat": 0.25,
+    "muscularity": 0.15
+  },
+  "face": {
+    "head_scale": 1.0,
+    "high_frequency_delta": 1.0
+  },
+  "skin": {
+    "lightness": 0.72,
+    "redness": 0.55
+  },
+  "eyes": {
+    "temperature": 0.9,
+    "brightness": 0.15
+  },
+  "wardrobe": {
+    "Hair": "/MetaHumanCharacter/Optional/Grooms/Bindings/Hair/WI_Hair_S_PulledBack",
+    "Eyebrows": "/MetaHumanCharacter/Optional/Grooms/Bindings/Eyebrows/WI_Eyebrows_M_Natural",
+    "Eyelashes": "/MetaHumanCharacter/Optional/Grooms/Bindings/Eyelashes/WI_Eyelashes_S_Thin",
+    "Outfits": "/MetaHumanCharacter/Optional/Clothing/WI_DefaultGarment"
+  },
+  "groom_color": {
+    "hairMelanin": 0.3,
+    "hairRedness": 0.1,
+    "WhiteAmount": 0.95,
+    "Ombre": 0
+  },
+  "garment_colors": {
+    "Shirt": [0.25, 0.18, 0.32, 1],
+    "Short": [0.09, 0.055, 0.035, 1]
+  }
+}

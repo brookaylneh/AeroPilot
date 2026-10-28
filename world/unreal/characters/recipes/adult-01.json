@@ -1,0 +1,41 @@
+{
+  "character_id": "adult-01",
+  "preset": "/MetaHumanCharacter/Optional/Presets/Zuri",
+  "asset_folder": "/Game/Characters/Roster/Nia/Source",
+  "asset_name": "MH_Nia",
+  "assembly_folder": "/Game/Characters/Roster/Nia/Cinematic",
+  "body": {
+    "height_cm": 178,
+    "masculine_feminine": 0.9,
+    "fat": 0.33,
+    "muscularity": 0.65
+  },
+  "face": {
+    "head_scale": 1.0,
+    "high_frequency_delta": 1.0
+  },
+  "skin": {
+    "lightness": 0.88,
+    "redness": 0.5
+  },
+  "eyes": {
+    "temperature": 0.9,
+    "brightness": 0.12
+  },
+  "wardrobe": {
+    "Hair": "/MetaHumanCharacter/Optional/Grooms/Bindings/Hair/WI_Hair_S_CurlyFade",
+    "Eyebrows": "/MetaHumanCharacter/Optional/Grooms/Bindings/Eyebrows/WI_Eyebrows_M_Natural",
+    "Eyelashes": "/MetaHumanCharacter/Optional/Grooms/Bindings/Eyelashes/WI_Eyelashes_S_Thin",
+    "Outfits": "/MetaHumanCharacter/Optional/Clothing/WI_DefaultGarment"
+  },
+  "groom_color": {
+    "hairMelanin": 0.95,
+    "hairRedness": 0.1,
+    "WhiteAmount": 0,
+    "Ombre": 0
+  },
+  "garment_colors": {
+    "Shirt": [0.08, 0.16, 0.22, 1],
+    "Short": [0.035, 0.04, 0.045, 1]
+  }
+}

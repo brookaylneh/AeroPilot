@@ -15,18 +15,11 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[2]
 
 
-def main():
-    load_env()
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("selection", type=Path)
-    parser.add_argument("name")
-    parser.add_argument("--update", action="store_true")
-    args = parser.parse_args()
-    assert args.name.startswith("character-") and args.name.replace("-", "").isalnum()
-    selection = json.loads(args.selection.read_text())
-    destination = ROOT / ".local/dist" / args.name
-    assert destination.is_dir() == args.update, destination
-    destination.mkdir(exist_ok=args.update)
+def publish(selection, name, update=False):
+    assert name.startswith("character-") and name.replace("-", "").isalnum()
+    destination = ROOT / ".local/dist" / name
+    assert destination.is_dir() == update, destination
+    destination.mkdir(exist_ok=update)
     cards = []
     for item in selection["images"]:
         name = item["name"]
@@ -50,7 +43,18 @@ def main():
     with temporary.open("x") as stream:
         stream.write(document)
     temporary.replace(destination / "index.html")
-    print(destination / "index.html")
+    return destination / "index.html"
+
+
+def main():
+    load_env()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("selection", type=Path)
+    parser.add_argument("name")
+    parser.add_argument("--update", action="store_true")
+    args = parser.parse_args()
+    selection = json.loads(args.selection.read_text())
+    print(publish(selection, args.name, args.update))
 
 
 if __name__ == "__main__":

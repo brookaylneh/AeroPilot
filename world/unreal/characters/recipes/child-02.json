@@ -1,0 +1,48 @@
+{
+  "character_id": "child-02",
+  "preset": "/MetaHumanCharacter/Optional/Presets/Mikel",
+  "asset_folder": "/Game/Characters/Roster/LeoYouth/Source",
+  "asset_name": "MH_LeoYouth",
+  "assembly_folder": "/Game/Characters/Roster/LeoYouth/Cinematic",
+  "body": {
+    "height_cm": 141,
+    "masculine_feminine": 0.3,
+    "fat": 0.32,
+    "muscularity": 0.18
+  },
+  "face": {
+    "head_scale": 1.08,
+    "high_frequency_delta": 1.0
+  },
+  "skin": {
+    "lightness": 0.15,
+    "redness": 0.5
+  },
+  "eyes": {
+    "temperature": 0.25,
+    "brightness": 0.55
+  },
+  "wardrobe": {
+    "Hair": "/MetaHumanCharacter/Optional/Grooms/Bindings/Hair/WI_Hair_S_Messy",
+    "Eyebrows": "/MetaHumanCharacter/Optional/Grooms/Bindings/Eyebrows/WI_Eyebrows_M_Natural",
+    "Eyelashes": "/MetaHumanCharacter/Optional/Grooms/Bindings/Eyelashes/WI_Eyelashes_S_Thin",
+    "Outfits": "/MetaHumanCharacter/Optional/Clothing/WI_DefaultGarment"
+  },
+  "groom_color": {
+    "hairMelanin": 0.5,
+    "hairRedness": 0.9,
+    "WhiteAmount": 0,
+    "Ombre": 0
+  },
+  "garment_colors": {
+    "Shirt": [0.1, 0.2, 0.3, 1],
+    "Short": [0.04, 0.045, 0.05, 1]
+  },
+  "freckles": {
+    "mask": "TYPE1",
+    "density": 0.55,
+    "strength": 0.35,
+    "saturation": 0.6,
+    "tone_shift": 0.65
+  }
+}

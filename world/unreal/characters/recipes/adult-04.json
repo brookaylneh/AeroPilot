@@ -1,0 +1,48 @@
+{
+  "character_id": "adult-04",
+  "preset": "/MetaHumanCharacter/Optional/Presets/Victor",
+  "asset_folder": "/Game/Characters/Roster/Owen/Source",
+  "asset_name": "MH_Owen",
+  "assembly_folder": "/Game/Characters/Roster/Owen/Cinematic",
+  "body": {
+    "height_cm": 184,
+    "masculine_feminine": 0.15,
+    "fat": 0.25,
+    "muscularity": 0.3
+  },
+  "face": {
+    "head_scale": 1.0,
+    "high_frequency_delta": 1.0
+  },
+  "skin": {
+    "lightness": 0.15,
+    "redness": 0.5
+  },
+  "eyes": {
+    "temperature": 0.3,
+    "brightness": 0.55
+  },
+  "wardrobe": {
+    "Hair": "/MetaHumanCharacter/Optional/Grooms/Bindings/Hair/WI_Hair_S_RecedeMessy",
+    "Eyebrows": "/MetaHumanCharacter/Optional/Grooms/Bindings/Eyebrows/WI_Eyebrows_M_Natural",
+    "Eyelashes": "/MetaHumanCharacter/Optional/Grooms/Bindings/Eyelashes/WI_Eyelashes_S_Thin",
+    "Outfits": "/MetaHumanCharacter/Optional/Clothing/WI_DefaultGarment"
+  },
+  "groom_color": {
+    "hairMelanin": 0.7,
+    "hairRedness": 0.15,
+    "WhiteAmount": 0.5,
+    "Ombre": 0
+  },
+  "garment_colors": {
+    "Shirt": [0.06, 0.22, 0.22, 1],
+    "Short": [0.12, 0.07, 0.04, 1]
+  },
+  "freckles": {
+    "mask": "TYPE1",
+    "density": 0.3,
+    "strength": 0.22,
+    "saturation": 0.6,
+    "tone_shift": 0.65
+  }
+}

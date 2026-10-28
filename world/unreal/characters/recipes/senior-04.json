@@ -1,0 +1,41 @@
+{
+  "character_id": "senior-04",
+  "preset": "/MetaHumanCharacter/Optional/Presets/Walter",
+  "asset_folder": "/Game/Characters/Roster/Isaac/Source",
+  "asset_name": "MH_Isaac",
+  "assembly_folder": "/Game/Characters/Roster/Isaac/Cinematic",
+  "body": {
+    "height_cm": 181,
+    "masculine_feminine": 0.12,
+    "fat": 0.25,
+    "muscularity": 0.15
+  },
+  "face": {
+    "head_scale": 1.0,
+    "high_frequency_delta": 1.0
+  },
+  "skin": {
+    "lightness": 0.9,
+    "redness": 0.5
+  },
+  "eyes": {
+    "temperature": 0.9,
+    "brightness": 0.12
+  },
+  "wardrobe": {
+    "Hair": "/MetaHumanCharacter/Optional/Grooms/Bindings/Hair/WI_Hair_S_BrushCut",
+    "Eyebrows": "/MetaHumanCharacter/Optional/Grooms/Bindings/Eyebrows/WI_Eyebrows_M_Natural",
+    "Eyelashes": "/MetaHumanCharacter/Optional/Grooms/Bindings/Eyelashes/WI_Eyelashes_S_Thin",
+    "Outfits": "/MetaHumanCharacter/Optional/Clothing/WI_DefaultGarment"
+  },
+  "groom_color": {
+    "hairMelanin": 0.4,
+    "hairRedness": 0.1,
+    "WhiteAmount": 0.95,
+    "Ombre": 0
+  },
+  "garment_colors": {
+    "Shirt": [0.055, 0.12, 0.36, 1],
+    "Short": [0.04, 0.045, 0.05, 1]
+  }
+}

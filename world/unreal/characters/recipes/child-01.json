@@ -1,0 +1,49 @@
+{
+  "character_id": "child-01",
+  "preset": "/MetaHumanCharacter/Optional/Presets/Asha",
+  "asset_folder": "/Game/Characters/Roster/MayaYouth/Source",
+  "asset_name": "MH_MayaYouth",
+  "assembly_folder": "/Game/Characters/Roster/MayaYouth/Cinematic",
+  "body": {
+    "height_cm": 136,
+    "masculine_feminine": 0.45,
+    "fat": 0.3,
+    "muscularity": 0.15
+  },
+  "face": {
+    "head_scale": 1.08,
+    "high_frequency_delta": 1.0
+  },
+  "skin": {
+    "lightness": 0.85,
+    "redness": 0.5
+  },
+  "eyes": {
+    "temperature": 0.9,
+    "brightness": 0.12
+  },
+  "wardrobe": {
+    "Hair": "/MetaHumanCharacter/Optional/Grooms/Bindings/Hair/WI_Hair_S_Coil",
+    "Eyebrows": "/MetaHumanCharacter/Optional/Grooms/Bindings/Eyebrows/WI_Eyebrows_M_Natural",
+    "Eyelashes": "/MetaHumanCharacter/Optional/Grooms/Bindings/Eyelashes/WI_Eyelashes_S_Thin",
+    "Outfits": "/MetaHumanCharacter/Optional/Clothing/WI_DefaultGarment"
+  },
+  "groom_color": {
+    "hairMelanin": 0.95,
+    "hairRedness": 0.1,
+    "WhiteAmount": 0,
+    "Ombre": 0
+  },
+  "garment_colors": {
+    "Shirt": [0.16, 0.24, 0.15, 1],
+    "Short": [0.025, 0.04, 0.07, 1]
+  },
+  "face_sculpt": {
+    "landmark_count": 93,
+    "boundary_indices": [35, 50],
+    "neck_front_index": 7,
+    "front_margin_cm": 1.0,
+    "vertical_scale": 0.84,
+    "recession_cm": 0.35
+  }
+}

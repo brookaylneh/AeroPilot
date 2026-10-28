@@ -1,0 +1,41 @@
+{
+  "character_id": "senior-02",
+  "preset": "/MetaHumanCharacter/Optional/Presets/Dominic",
+  "asset_folder": "/Game/Characters/Roster/Arthur/Source",
+  "asset_name": "MH_Arthur",
+  "assembly_folder": "/Game/Characters/Roster/Arthur/Cinematic",
+  "body": {
+    "height_cm": 174,
+    "masculine_feminine": 0.12,
+    "fat": 0.85,
+    "muscularity": 0.2
+  },
+  "face": {
+    "head_scale": 1.0,
+    "high_frequency_delta": 1.0
+  },
+  "skin": {
+    "lightness": 0.15,
+    "redness": 0.5
+  },
+  "eyes": {
+    "temperature": 0.25,
+    "brightness": 0.5
+  },
+  "wardrobe": {
+    "Hair": "/MetaHumanCharacter/Optional/Grooms/Bindings/Hair/WI_Hair_S_HairLoss",
+    "Eyebrows": "/MetaHumanCharacter/Optional/Grooms/Bindings/Eyebrows/WI_Eyebrows_M_Natural",
+    "Eyelashes": "/MetaHumanCharacter/Optional/Grooms/Bindings/Eyelashes/WI_Eyelashes_S_Thin",
+    "Outfits": "/MetaHumanCharacter/Optional/Clothing/WI_DefaultGarment"
+  },
+  "groom_color": {
+    "hairMelanin": 0.3,
+    "hairRedness": 0.1,
+    "WhiteAmount": 0.95,
+    "Ombre": 0
+  },
+  "garment_colors": {
+    "Shirt": [0.06, 0.18, 0.09, 1],
+    "Short": [0.04, 0.045, 0.05, 1]
+  }
+}
