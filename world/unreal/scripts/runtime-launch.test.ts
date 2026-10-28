@@ -39,6 +39,8 @@ test('packaged container needs no editor, accepts bounded host resources and sel
     assert(args.includes('--memory=24g'));
     assert(args.includes('--cpus=4'));
     assert(args.includes('--runtime=nvidia'));
+    for (const device of ['nvidia0', 'nvidiactl', 'nvidia-uvm', 'nvidia-uvm-tools', 'nvidia-modeset'])
+      assert(args.includes(`--device=/dev/${device}`));
     assert(args.includes('snr-unreal-runtime:test'));
     assert(!args.some((value) => value.includes('editor-not-installed')));
     const badMemory = spawnSync('bash', ['world/unreal/scripts/unreal-container.sh', 'run-packaged'], {

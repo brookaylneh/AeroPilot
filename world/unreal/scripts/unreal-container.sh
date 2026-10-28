@@ -20,7 +20,11 @@ if [[ "$mode" != run-packaged ]]; then
   [[ -f "$engine_root/Engine/Build/Build.version" ]] || { echo "Missing Unreal SDK: $engine_root" >&2; exit 2; }
   container_flags+=(--mount "type=bind,src=$engine_root,dst=$engine_root" -e "UE_ROOT=$engine_root")
 fi
-gpu_flags=(--runtime=nvidia --gpus all -e "NVIDIA_DRIVER_CAPABILITIES=graphics,utility,compute,video,display")
+# Explicit devices keep runc aware of NVIDIA access when cgroups are updated.
+gpu_flags=(--runtime=nvidia --gpus all
+  --device=/dev/nvidia0 --device=/dev/nvidiactl --device=/dev/nvidia-uvm
+  --device=/dev/nvidia-uvm-tools --device=/dev/nvidia-modeset
+  -e "NVIDIA_DRIVER_CAPABILITIES=graphics,utility,compute,video,display")
 # This host's NVIDIA container runtime mounts the libraries but omits the Vulkan ICD manifest.
 for icd_path in /usr/share/vulkan/icd.d/nvidia_icd.json /etc/vulkan/icd.d/nvidia_icd.json; do
   if [ -f "$icd_path" ]; then

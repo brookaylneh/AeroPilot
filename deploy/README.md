@@ -141,23 +141,23 @@ Units start at boot, fail visibly and do not restart automatically after errors.
 The packaged renderer uses SM5 and a six-CPU limit. The live resolution and encoding profile are
 documented in [streaming](../world/unreal/streaming.md).
 
-| Route or endpoint                | Purpose                                                       | Listener / upstream                                             |
-| -------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------- |
-| `http://35.81.229.78/` | Redirect to `/studio`                                         | Caddy, 80 TCP                                               |
-| `/studio`                        | Scenario Creator                                              | web, `127.0.0.1:3001`                                           |
-| `/mission?case=<uuid>`           | Mission Control                                               | web, `127.0.0.1:3001`                                           |
-| `/api/mission`                   | Mission WebSocket                                             | web origin check, then `127.0.0.1:8765`                         |
-| `/api/unreal/status`             | Renderer readiness and occupancy                              | web, signalling health                                          |
-| `/api/stream`                    | Pixel Streaming player WebSocket                              | web origin check, then `127.0.0.1:8080`                         |
-| `/healthz`                       | All six units plus mission, renderer and TURN protocol health | web; 503 if any check fails                                     |
-| Internal streamer                | Unreal to signalling                                          | `127.0.0.1:8888`                                                |
-| Internal Cosys RPC               | Native simulation control                                     | `127.0.0.1:41451`                                               |
-| Internal MAVLink                 | Four SITL telemetry inputs                                    | `127.0.0.1:14600–14603` UDP                                     |
-| Internal RC input                | Four SITL inputs                                              | `127.0.0.1:5501,5511,5521,5531` UDP                             |
-| TURN                             | Browser relay control                                         | `172.31.61.189:3478` TCP/UDP, public EIP translation            |
-| TURN relay                       | Relayed media                                                 | `172.31.61.189:49300–49350` UDP                                 |
-| Unreal WebRTC                    | Local media endpoint reached by TURN                          | `49160–49200` UDP; no public ingress required with forced relay |
-| Development                      | One server, reached by SSH tunnel                             | `127.0.0.1:5174`                                                |
+| Route or endpoint      | Purpose                                                       | Listener / upstream                                             |
+| ---------------------- | ------------------------------------------------------------- | --------------------------------------------------------------- |
+| `http://35.81.229.78/` | Redirect to `/studio`                                         | Caddy, 80 TCP                                                   |
+| `/studio`              | Scenario Creator                                              | web, `127.0.0.1:3001`                                           |
+| `/mission?case=<uuid>` | Mission Control                                               | web, `127.0.0.1:3001`                                           |
+| `/api/mission`         | Mission WebSocket                                             | web origin check, then `127.0.0.1:8765`                         |
+| `/api/unreal/status`   | Renderer readiness and occupancy                              | web, signalling health                                          |
+| `/api/stream`          | Pixel Streaming player WebSocket                              | web origin check, then `127.0.0.1:8080`                         |
+| `/healthz`             | All six units plus mission, renderer and TURN protocol health | web; 503 if any check fails                                     |
+| Internal streamer      | Unreal to signalling                                          | `127.0.0.1:8888`                                                |
+| Internal Cosys RPC     | Native simulation control                                     | `127.0.0.1:41451`                                               |
+| Internal MAVLink       | Four SITL telemetry inputs                                    | `127.0.0.1:14600–14603` UDP                                     |
+| Internal RC input      | Four SITL inputs                                              | `127.0.0.1:5501,5511,5521,5531` UDP                             |
+| TURN                   | Browser relay control                                         | `172.31.61.189:3478` TCP/UDP, public EIP translation            |
+| TURN relay             | Relayed media                                                 | `172.31.61.189:49300–49350` UDP                                 |
+| Unreal WebRTC          | Local media endpoint reached by TURN                          | `49160–49200` UDP; no public ingress required with forced relay |
+| Development            | One server, reached by SSH tunnel                             | `127.0.0.1:5174`                                                |
 
 Caddy proxies to the web server so production and development share the existing same-origin WebSocket
 checks. The old `/pixel-streaming` path is removed. The root redirects explicitly; unknown paths return 404. TURN and its media endpoints are the network-facing exception to the loopback service rule.
@@ -257,3 +257,11 @@ aws ec2 revoke-security-group-ingress --region us-west-2 --group-id sg-007dd0426
 
 After final acceptance at cutover, delete `deploy/transfer.md`, `deploy/transfer.mjs` and its test,
 remove this transfer-tool documentation, and retain `mission_planner/measurements/aws-transfer.json`.
+
+GPU containers explicitly declare the NVIDIA device nodes in `unreal-container.sh`,
+in addition to requesting the NVIDIA runtime and driver libraries. This preserves
+GPU access when runc updates the cgroup. The legacy NVIDIA hook alone loses access
+when CPU limits change on this host; the disposable-container reproduction and the
+verified device-binding fix are recorded under `.local/evidence/render-quality/cpu12/`.
+Set CPU limits in `runtime.env` before recreating the service container.
+See [NVIDIA's container-update diagnosis](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/troubleshooting.html#containers-losing-access-to-gpus-with-error-failed-to-initialize-nvml-unknown-error).
