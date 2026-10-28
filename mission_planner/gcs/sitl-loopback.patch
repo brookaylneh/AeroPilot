@@ -1,0 +1,11 @@
+--- a/libraries/AP_RCProtocol/AP_RCProtocol_UDP.cpp
++++ b/libraries/AP_RCProtocol/AP_RCProtocol_UDP.cpp
+@@ -46,7 +46,7 @@
+     if (!rc_in.reuseaddress()) {
+         return false;
+     }
+-    if (!rc_in.bind("0.0.0.0", sitl->rcin_port)) {
++    if (!rc_in.bind("127.0.0.1", sitl->rcin_port)) {
+         return false;
+     }
+     if (!rc_in.set_blocking(false)) {

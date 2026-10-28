@@ -7,7 +7,8 @@ release_id="$(date -u +%Y%m%dT%H%M%SZ)"
 release_path="$PWD/.local/unreal/releases/$release_id"
 mkdir -p "$release_path"
 cp -a --reflink=auto .local/unreal/Packaged/Linux/. "$release_path/"
-cp world/cosys/settings.json "$release_path/cosys-settings.json"
+jq --argjson port "${SNR_COSYS_PORT:?}" ' .ApiServerPort = $port | .LocalHostIp = "127.0.0.1"' \
+  world/cosys/settings.json >"$release_path/cosys-settings.json"
 cp world/cosys/world.json "$release_path/world.json"
 ln -s "releases/$release_id" .local/unreal/Live.next
 mv -Tf .local/unreal/Live.next .local/unreal/Live

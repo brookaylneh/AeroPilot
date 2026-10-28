@@ -35,6 +35,7 @@ fetch() {
 
 fetch "$project/.local/vendor/ardupilot" https://github.com/ArduPilot/ardupilot.git "$revision"
 cd "$project/.local/vendor/ardupilot"
+patch --batch --fuzz=0 -p1 <"$project/mission_planner/gcs/sitl-loopback.patch"
 python modules/waf/waf-light configure --board sitl --no-submodule-update
 python modules/waf/waf-light copter -j"$jobs" --no-submodule-update
 test -x build/sitl/bin/arducopter

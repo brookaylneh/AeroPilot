@@ -532,8 +532,9 @@ class Mission:
         else:
             raise AssertionError("Mission is already connected")
 
-    async def connection(self, websocket):
-        first = json.loads(await asyncio.wait_for(websocket.recv(), timeout=10))
+    async def connection(self, websocket, first=None):
+        if first is None:
+            first = json.loads(await asyncio.wait_for(websocket.recv(), timeout=10))
         assert set(first) == MESSAGE_FIELDS["connect"] and first["type"] == "connect"
         assert first["case_id"].lower() == self.case["id"].lower(), (
             "Service is running a different rescue case"
@@ -609,6 +610,6 @@ async def run(case_id, port):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--case", required=True)
-    parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--port", type=int, default=int(os.environ["SNR_MISSION_PORT"]))
     args = parser.parse_args()
     asyncio.run(run(args.case, args.port))

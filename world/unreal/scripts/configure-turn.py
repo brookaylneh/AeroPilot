@@ -30,12 +30,12 @@ else:
 assert len(secret) == 64 and all(char in "0123456789abcdef" for char in secret)
 auth.write_text(json.dumps({"host": public, "secret": secret}))
 config = directory / "turnserver.conf"
-config.write_text(f"""listening-port=3478
+config.write_text(f"""listening-port={int(os.environ["SNR_TURN_PORT"])}
 listening-ip={private}
 relay-ip={private}
 external-ip={public}/{private}
-min-port=49300
-max-port=49350
+min-port={int(os.environ["SNR_TURN_RELAY_MIN"])}
+max-port={int(os.environ["SNR_TURN_RELAY_MAX"])}
 realm=wildlands.local
 fingerprint
 use-auth-secret

@@ -8,7 +8,7 @@ runtime_binary="$package_root/ScenarioStudio/Binaries/Linux/ScenarioStudio"
 # A release must identify its cooked map; never substitute an unrelated world.
 read -r world_map < "$package_root/scenario-map.txt"
 [[ "$world_map" =~ ^/Game/[A-Za-z0-9_/]+$ ]] || { echo 'Invalid release map manifest' >&2; exit 2; }
-streamer_port="${SNR_STREAMER_PORT:-8888}"
+streamer_port="${SNR_STREAMER_PORT:?}"
 [[ "$streamer_port" =~ ^[0-9]+$ ]] && ((streamer_port > 0 && streamer_port < 65536)) || exit 2
 stream_fps="${SNR_STREAM_FPS:-60}"
 [[ "$stream_fps" = 30 || "$stream_fps" = 60 ]] || { echo 'SNR_STREAM_FPS must be 30 or 60' >&2; exit 2; }
@@ -83,6 +83,6 @@ exec "$runtime_binary" ScenarioStudio "$world_map" \
   "-PixelStreamingEncoderCodec=$stream_codec" "-PixelStreamingWebRTCFps=$stream_fps" \
   "-PixelStreamingWebRTCStartBitrate=$start_bitrate" "-PixelStreamingWebRTCMinBitrate=$min_bitrate" "-PixelStreamingWebRTCMaxBitrate=$max_bitrate" \
   -PixelStreamingWebRTCDisableTransmitAudio=true \
-  -PixelStreamingWebRTCMinPort=49160 -PixelStreamingWebRTCMaxPort=49200 \
+  "-PixelStreamingWebRTCMinPort=${SNR_WEBRTC_MIN_PORT:?}" "-PixelStreamingWebRTCMaxPort=${SNR_WEBRTC_MAX_PORT:?}" \
   "${extra_flags[@]}" \
   -ExecCmds="$runtime_commands" -stdout -FullStdOutLogOutput

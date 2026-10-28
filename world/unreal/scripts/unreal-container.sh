@@ -20,7 +20,7 @@ if [[ "$mode" != run-packaged ]]; then
   [[ -f "$engine_root/Engine/Build/Build.version" ]] || { echo "Missing Unreal SDK: $engine_root" >&2; exit 2; }
   container_flags+=(--mount "type=bind,src=$engine_root,dst=$engine_root" -e "UE_ROOT=$engine_root")
 fi
-gpu_flags=(--runtime=nvidia --gpus all -e NVIDIA_DRIVER_CAPABILITIES=graphics,utility,compute,video,display)
+gpu_flags=(--runtime=nvidia --gpus all -e "NVIDIA_DRIVER_CAPABILITIES=graphics,utility,compute,video,display")
 # This host's NVIDIA container runtime mounts the libraries but omits the Vulkan ICD manifest.
 for icd_path in /usr/share/vulkan/icd.d/nvidia_icd.json /etc/vulkan/icd.d/nvidia_icd.json; do
   if [ -f "$icd_path" ]; then
@@ -43,7 +43,8 @@ case "$mode" in
       [[ "$SNR_CONTAINER_NAME" =~ ^snr-[a-z0-9-]+$ ]] || exit 2
       container_flags+=(--name "$SNR_CONTAINER_NAME")
     fi
-    exec docker run "${container_flags[@]}" "${gpu_flags[@]}" --pid=host -e "SNR_STREAMER_PORT=${SNR_STREAMER_PORT:-8888}" \
+    exec docker run "${container_flags[@]}" "${gpu_flags[@]}" --pid=host -e "SNR_STREAMER_PORT=${SNR_STREAMER_PORT:?}" \
+      -e "SNR_WEBRTC_MIN_PORT=${SNR_WEBRTC_MIN_PORT:?}" -e "SNR_WEBRTC_MAX_PORT=${SNR_WEBRTC_MAX_PORT:?}" \
       -e "SNR_MEDIA_CAPTURE=${SNR_MEDIA_CAPTURE:-1}" \
       -e "SNR_PROFILE=${SNR_PROFILE:-0}" \
       -e "SNR_COSYS_SETTINGS=${SNR_COSYS_SETTINGS:-$PWD/world/cosys/settings.json}" \

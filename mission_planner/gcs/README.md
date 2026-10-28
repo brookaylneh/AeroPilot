@@ -6,21 +6,15 @@ telemetry, mission and fence readback; video has no source yet.
 
 ## Start and stop
 
-Run from the repository root in separate terminals, using an existing briefing UUID:
-
-```sh
-SNR_SCENARIO_DATA_DIR=/srv/snr/.local/data/unreal-scenarios .venv-cosys/bin/python -m mission_planner.gcs.service --case <uuid>
-npm run build
-PORT=3104 SNR_SCENARIO_DATA_DIR=/srv/snr/.local/data/unreal-scenarios npm start
-```
-
-Open `http://127.0.0.1:3104/mission?case=<uuid>`, or launch from its saved rescue briefing.
-Only `briefings/` is read from the scenario directory. The mission service binds
-`127.0.0.1:8765`; `/api/mission` uses the web server's same-origin WebSocket check.
-`SNR_MISSION_PORT` must match the service's `--port` if it differs from 8765.
+Use the installed services described in [deployment](../../deploy/README.md). Open a saved briefing
+from `/studio`; its launch button navigates to `/mission?case=<uuid>`. The idle mission service selects
+that first case, starts the fleet and retains it across browser disconnects. Stop/restart `snr-mission`
+after landing before changing cases. The fixed loopback listener is exposed only through the same-origin
+`/api/mission` WebSocket proxy.
 
 Build the pinned source and submodules with `bash mission_planner/gcs/build-sitl.sh`.
 The script requires a new destination directory, uses the recorded revision and four jobs,
+applies `sitl-loopback.patch` to restrict the RC-input sockets,
 and disables Waf's automatic submodule updates. See upstream
 [build instructions](https://github.com/ArduPilot/ardupilot/blob/fb773567896014da007bca58358704d4a0d8516f/BUILD.md).
 
@@ -91,7 +85,7 @@ sizes. HTTP failures retain the failed body and safe response headers without cr
 
 ```sh
 .venv-cosys/bin/python -m mission_planner.agents.accept_chat --case <uuid> --output .local/evidence/gcs/<new-chat-run>
-node --import tsx mission_planner/gcs/accept_browser.mjs flight 'http://127.0.0.1:3104/mission?case=<uuid>' .local/evidence/gcs/<new-ui-run>
+node --import tsx mission_planner/gcs/accept_browser.mjs flight 'https://35-81-229-78.sslip.io/mission?case=<uuid>' .local/evidence/gcs/<new-ui-run>
 ```
 
 The browser harness also provides `capture URL NEW_DIRECTORY LABEL`, `states URL NEW_DIRECTORY`,

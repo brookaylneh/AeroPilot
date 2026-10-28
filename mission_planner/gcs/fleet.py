@@ -73,7 +73,7 @@ class Fleet:
             directory = self.directory / name
             directory.mkdir()
             connection = mavutil.mavlink_connection(
-                f"udpin:127.0.0.1:{14600 + index}",
+                f"udpin:127.0.0.1:{int(os.environ['SNR_MAVLINK_BASE_PORT']) + index}",
                 source_system=255,
                 source_component=190,
                 dialect="ardupilotmega",
@@ -89,10 +89,17 @@ class Fleet:
                 str(index + 1),
                 "--home",
                 f"{home['latitude_deg']},{home['longitude_deg']},{home['altitude_msl_m']},{home['heading_deg']}",
+                "--sim-address",
+                "127.0.0.1",
+                "--rc-in-port",
+                str(
+                    int(os.environ["SNR_SITL_RC_BASE_PORT"])
+                    + index * int(os.environ["SNR_SITL_PORT_STEP"])
+                ),
                 "--serial0",
                 "none",
                 "--serial1",
-                f"udpclient:127.0.0.1:{14600 + index}",
+                f"udpclient:127.0.0.1:{int(os.environ['SNR_MAVLINK_BASE_PORT']) + index}",
                 "--serial2",
                 "none",
                 "--defaults",

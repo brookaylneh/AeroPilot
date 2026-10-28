@@ -4,9 +4,9 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k \"SNR_SERVE_STATIC=0 tsx watch web/server.ts\" \"vite --host 0.0.0.0\"",
-    "build": "tsc --noEmit && vite build",
-    "start": "tsx web/server.ts",
+    "dev": "node --env-file=.local/runtime.env --import tsx web/server.ts --dev",
+    "build": "tsc --noEmit && node --env-file=.local/runtime.env node_modules/vite/bin/vite.js build",
+    "start": "node --env-file=.local/runtime.env --import tsx web/server.ts",
     "test": "tsx --test 'scenario_creator/*.test.ts' 'world/**/*.test.ts' 'mission_planner/**/*.test.mjs'",
     "fonts": "python3 web/fetch-fonts.py",
     "typecheck": "tsc --noEmit",

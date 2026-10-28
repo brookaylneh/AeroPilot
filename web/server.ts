@@ -3,48 +3,45 @@ import compression from 'compression';
 import path from 'node:path';
 import { existsSync } from 'node:fs';
 import { createServer, request } from 'node:http';
+import { required, port as configuredPort } from './runtime';
+import { health, rendererHealth } from './health';
 import { briefingRouter } from '../scenario_creator/briefingRouter';
 const app = express();
 app.disable('x-powered-by');
 app.use(compression());
-app.use(
-  '/api/rescue-cases',
-  briefingRouter(
-    path.resolve(process.env.SNR_SCENARIO_DATA_DIR || '.local/data/unreal-scenarios', 'briefings'),
-  ),
-);
-const pixelPlayerPort = Number(process.env.PIXEL_PLAYER_PORT || 8080);
-const missionPort = Number(process.env.SNR_MISSION_PORT || 8765);
-if (!Number.isInteger(missionPort) || missionPort < 1 || missionPort > 65535)
-  throw new Error('Invalid local mission service port');
-if (!Number.isInteger(pixelPlayerPort) || pixelPlayerPort < 1 || pixelPlayerPort > 65535)
-  throw new Error('Invalid local player port');
-// Report the renderer separately from the website. Never expose scenario data,
-// internal addresses, or signal readiness merely because HTTP is alive.
+app.use('/api/rescue-cases', briefingRouter(path.resolve(required('SNR_SCENARIO_DATA_DIR'), 'briefings')));
+const pixelPlayerPort = configuredPort('PIXEL_PLAYER_PORT');
+const missionPort = configuredPort('SNR_MISSION_PORT');
+const host = required('SNR_HOST');
+if (host !== '127.0.0.1') throw new Error('Internal web service must bind loopback');
+const development = process.argv.includes('--dev');
+const port = configuredPort(development ? 'SNR_DEV_PORT' : 'SNR_WEB_PORT');
+app.get('/', (_req, res) => res.redirect(308, '/studio'));
+app.get('/healthz', async (_req, res) => {
+  const result = await health();
+  res.setHeader('Cache-Control', 'no-store');
+  res.status(result.ok ? 200 : 503).json(result);
+});
 app.get('/api/unreal/status', async (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
-  try {
-    const response = await fetch(`http://127.0.0.1:${pixelPlayerPort}/health`, {
-      signal: AbortSignal.timeout(2000),
-    });
-    if (!response.ok) throw new Error('Signalling unavailable');
-    const health = (await response.json()) as { streamers: { players: number }[] };
-    const streamer = health.streamers[0];
-    res.json({ state: !streamer ? 'starting' : streamer.players > 0 ? 'occupied' : 'ready', maxEditors: 1 });
-  } catch {
-    res.status(503).json({ state: 'unavailable', maxEditors: 1 });
-  }
+  res.json(await rendererHealth());
 });
-// An isolated validation server can serve a candidate UI without replacing live assets.
-const dist = path.resolve(process.env.SNR_STATIC_DIR || '.local/dist');
-if (process.env.SNR_SERVE_STATIC !== '0') {
+if (development) {
+  const { createServer: createViteServer } = await import('vite');
+  const vite = await createViteServer({ server: { middlewareMode: true, hmr: false } });
+  app.use(vite.middlewares);
+} else {
+  const dist = path.resolve('.local/dist');
   if (!existsSync(path.join(dist, 'index.html')))
-    throw new Error(`Missing browser build at ${dist}; run npm run build.`);
-  app.use(express.static(dist));
-  app.get('/{*path}', (_req, res) => res.sendFile('index.html', { root: dist }));
+    throw new Error('Missing browser build; run npm run build.');
+  app.use(express.static(dist, { index: false }));
+  app.get(['/studio', '/mission'], (_req, res) => res.sendFile('index.html', { root: dist }));
 }
-const host = process.env.HOST || '127.0.0.1',
-  port = Number(process.env.PORT || 3001);
+app.use((_req, res) => res.sendStatus(404));
+app.use((error: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  console.error(error.message);
+  res.status(503).json({ state: 'unavailable' });
+});
 const server = createServer(app);
 // A fixed local destination exposes only the player signalling service. Unreal's
 // streamer port and native authoring files remain outside the HTTP surface.
@@ -55,7 +52,7 @@ server.on('upgrade', (req, socket, head) => {
   } catch {
     /* rejected below */
   }
-  if (!['/pixel-streaming', '/api/mission'].includes(req.url!) || !sameOrigin) {
+  if (!['/api/stream', '/api/mission'].includes(req.url!) || !sameOrigin) {
     socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
     return;
   }

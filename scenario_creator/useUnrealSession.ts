@@ -137,7 +137,7 @@ export function useUnrealSession() {
         });
         current = new PixelStreamingTransport(
           container.current,
-          `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/pixel-streaming`,
+          `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/api/stream`,
           (reason) => {
             if (connection === current) schedule('Reconnecting to the scene…', reason);
           },
