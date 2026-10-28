@@ -13,6 +13,8 @@ ORIGIN = {
     "altitude_msl_m": 2621.28,
 }
 BOUND_M = 804.672
+LAUNCH_SOUTH_M = -BOUND_M - 40.0
+LAUNCH_HALF_WIDTH_M = 25.0
 MIN_ALTITUDE_M = 10.0
 MAX_ALTITUDE_M = 100.0
 MIN_SEPARATION_M = 3.5
@@ -66,10 +68,10 @@ def fence_vertices():
         {"north_m": north, "east_m": east}
         for north, east in (
             (-BOUND_M, -BOUND_M),
-            (-BOUND_M, -25.0),
-            (-BOUND_M - 40.0, -25.0),
-            (-BOUND_M - 40.0, 25.0),
-            (-BOUND_M, 25.0),
+            (-BOUND_M, -LAUNCH_HALF_WIDTH_M),
+            (LAUNCH_SOUTH_M, -LAUNCH_HALF_WIDTH_M),
+            (LAUNCH_SOUTH_M, LAUNCH_HALF_WIDTH_M),
+            (-BOUND_M, LAUNCH_HALF_WIDTH_M),
             (-BOUND_M, BOUND_M),
             (BOUND_M, BOUND_M),
             (BOUND_M, -BOUND_M),

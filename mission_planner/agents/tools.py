@@ -2,16 +2,19 @@
 
 from jsonschema import Draft202012Validator
 
-NAMES = tuple(f"Drone{i}" for i in range(1, 5))
-BOUND_M = 804.672
-LAUNCH_SOUTH_M = -844.672
-LAUNCH_HALF_WIDTH_M = 25
-ALTITUDE_MIN_M = 10
-ALTITUDE_MAX_M = 100
+from mission_planner.gcs.geodesy import (
+    BOUND_M,
+    LAUNCH_HALF_WIDTH_M,
+    LAUNCH_SOUTH_M,
+    MAX_ALTITUDE_M,
+    MIN_ALTITUDE_M,
+    NAMES,
+)
+
 DRONE = {"type": "string", "enum": list(NAMES)}
 POSITION = {"type": "number", "minimum": -BOUND_M, "maximum": BOUND_M}
 NORTH = {"type": "number", "minimum": LAUNCH_SOUTH_M, "maximum": BOUND_M}
-ALTITUDE = {"type": "number", "minimum": ALTITUDE_MIN_M, "maximum": ALTITUDE_MAX_M}
+ALTITUDE = {"type": "number", "minimum": MIN_ALTITUDE_M, "maximum": MAX_ALTITUDE_M}
 SPEED = {"type": "number", "minimum": 0.5, "maximum": 15}
 
 
@@ -35,7 +38,7 @@ DEFINITIONS = [
     (
         "get_fleet",
         "read",
-        "Use for live status of all four drones, including stale links and read-back missions. Requires MAVLink telemetry.",
+        "Use for compact live status of all four drones, including link health and mission progress. Requires MAVLink telemetry.",
         {},
     ),
     (
@@ -119,17 +122,48 @@ map_tool["parameters"]["required"] = ["target"]
 CATEGORIES = {name: category for name, category, _, _ in DEFINITIONS}
 SCHEMAS = {tool["name"]: Draft202012Validator(tool["parameters"]) for tool in TOOLS}
 assert len(TOOLS) == 11 and len(SCHEMAS) == len(TOOLS)
-AGENT_INSTRUCTIONS = """You are Wonder, the search-and-rescue commander's mission assistant.
+AGENT_INSTRUCTIONS = f"""You are Wonder, the search-and-rescue commander's mission assistant.
 Use only supplied briefing and measured telemetry; never infer private target truth or claim an action without its tool result.
 Use the registered tools for live information and requested actions. When all arguments are supplied, call the requested tool directly: the service validates safety and manages operator approval.
 Only Drone1, Drone2, Drone3 and Drone4 exist. Reject unknown drone identities without substituting another drone.
-Positions are metres north/east of the search centre. The search square is ±804.672 m on each axis. An authorized launch corridor extends south to north -844.672 m only within east ±25 m; flight altitude is 10–100 m above home and speed is 0.5–15 m/s. Refuse requests explicitly outside these limits without a flight call.
+Positions are metres north/east of the search centre. The search square is ±{BOUND_M:g} m on each axis. An authorized launch corridor extends south to north {LAUNCH_SOUTH_M:g} m only within east ±{LAUNCH_HALF_WIDTH_M:g} m; flight altitude is {MIN_ALTITUDE_M:g}–{MAX_ALTITUDE_M:g} m above home and speed is 0.5–15 m/s. Refuse requests explicitly outside these limits without a flight call.
 Supervised flight actions require an approval card; never imply approval yourself. An operator decline is final for that request.
 Never retry a failed tool, invent a replacement route, or disable safety checks. Report the precise error and await a new operator instruction.
 Explain concepts and answer greetings without a tool when no live information or action is needed. Ask for missing flight arguments; do not guess them.
-Perception, search planning, belief maps, ground-team messaging and video are unavailable in Phase 3A. Say so; do not pretend to invoke them.
+Perception, search planning, belief maps, ground-team messaging and video are unavailable. Say so; do not pretend to invoke them.
 Operator actions in the supplied event context have the same authority as chat instructions. Keep replies short, concrete and operational.
 """
+
+
+def argument_error(error):
+    path = list(error.path)
+    field = str(path[-1]) if path else "arguments"
+    label = f"Waypoint {path[1] + 1}" if path and path[0] == "waypoints" else "Destination"
+    if error.validator in ("minimum", "maximum"):
+        value, limit = error.instance, error.validator_value
+        if field in ("north_m", "east_m"):
+            direction = {
+                "north_m": "north" if value >= 0 else "south",
+                "east_m": "east" if value >= 0 else "west",
+            }[field]
+            return (
+                f"{label} is {abs(value):g} m {direction}; the fence limit is {abs(limit):.1f} m."
+            )
+        if field == "altitude_above_home_m":
+            return f"Requested altitude is {value:g} m above home; use {MIN_ALTITUDE_M:g}–{MAX_ALTITUDE_M:g} m."
+        if field == "speed_mps":
+            return f"Requested speed is {value:g} m/s; use 0.5–15 m/s."
+        if field == "radius_m":
+            return f"Requested radius is {value:g} m; use 1–804 m."
+    if error.validator == "required":
+        missing = [
+            key.replace("_", " ") for key in error.validator_value if key not in error.instance
+        ]
+        return "Required values missing: " + ", ".join(missing) + "."
+    if error.validator == "additionalProperties":
+        extra = sorted(set(error.instance) - set(error.schema["properties"]))
+        return "Unrecognized arguments: " + ", ".join(extra) + "."
+    return f"Invalid {field.replace('_', ' ')}: {error.message}."
 
 
 def validate_arguments(name, arguments):
@@ -138,9 +172,7 @@ def validate_arguments(name, arguments):
     if "drone_id" in arguments and arguments["drone_id"] is not None:
         assert arguments["drone_id"] in NAMES, f"Unknown drone: {arguments['drone_id']}"
     errors = list(SCHEMAS[name].iter_errors(arguments))
-    assert not errors, "; ".join(
-        f"{'/'.join(map(str, error.path))}: {error.message}" for error in errors
-    )
+    assert not errors, " ".join(argument_error(error) for error in errors)
     points = []
     if name == "fly_route":
         points = arguments["waypoints"]
@@ -148,7 +180,7 @@ def validate_arguments(name, arguments):
         points = [arguments]
     for point in points:
         assert point["north_m"] >= -BOUND_M or abs(point["east_m"]) <= LAUNCH_HALF_WIDTH_M, (
-            "Point outside fence: southern launch corridor is only 50 m wide"
+            f"Destination is outside the fence; the southern launch corridor extends only {LAUNCH_HALF_WIDTH_M:g} m east and west."
         )
     if name == "show_on_map":
         target = arguments["target"]

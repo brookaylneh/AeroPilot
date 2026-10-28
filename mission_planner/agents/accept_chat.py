@@ -86,7 +86,7 @@ class Acceptance:
         assert calls == expected, ("Unexpected tool selection", text, calls, expected)
         for item in results:
             if declined and item["name"] in expected:
-                assert not item["result"]["ok"] and "operator declined" in item["result"]["error"]
+                assert not item["result"]["ok"] and "Operator declined" == item["result"]["error"]
             else:
                 assert item["result"]["ok"], item["result"]
         self.approve = True
@@ -170,7 +170,7 @@ class Acceptance:
             "samples": self.samples,
             "tool_results": [e for e in self.events if e["kind"] == "tool_result"],
         }
-        (self.output / "result.json").write_text(json.dumps(result, indent=2) + "\n")
+        return result
 
 
 async def run(args):
@@ -179,7 +179,22 @@ async def run(args):
     async with connect(f"ws://127.0.0.1:{args.port}", max_size=2**22) as socket:
         acceptance = Acceptance(socket, args.output)
         try:
-            await acceptance.run(args.case, args.part)
+            started = time.monotonic()
+            task = asyncio.create_task(acceptance.run(args.case, args.part))
+            await asyncio.wait([task])
+            error = task.exception()
+            result = {"passed": False, "error": str(error)} if error else task.result()
+            if args.part == "inspection" and error is None:
+                result = {"passed": True}
+            result.update(
+                duration_s=time.monotonic() - started,
+                usage=[e["result"] for e in acceptance.events if e["kind"] == "model_usage"],
+                errors=[e for e in acceptance.events if e["kind"] == "error"],
+                mission_id=acceptance.state["mission"]["id"] if acceptance.state else None,
+            )
+            (args.output / "result.json").write_text(json.dumps(result, indent=2) + "\n")
+            if error is not None:
+                raise error
         finally:
             acceptance.log.close()
 

@@ -9,18 +9,19 @@ import time
 import uuid
 from pathlib import Path
 
+import httpx
 from websockets.asyncio.server import serve
 
 from mission_planner.agents.models import Wonder
 from mission_planner.agents.tools import (
     AGENT_INSTRUCTIONS,
     CATEGORIES,
-    NAMES,
     TOOLS,
     validate_arguments,
 )
 from mission_planner.environment import ROOT, load_env
 from mission_planner.gcs.fleet import Fleet
+from mission_planner.gcs.geodesy import BOUND_M, NAMES
 
 MESSAGE_FIELDS = {
     "connect": {"type", "case_id"},
@@ -34,6 +35,47 @@ MESSAGE_FIELDS = {
 
 def encode(value):
     return json.dumps(value, allow_nan=False, separators=(",", ":"))
+
+
+def operator_error(error):
+    if isinstance(error, httpx.HTTPStatusError):
+        return f"Wonder is unavailable (HTTP {error.response.status_code}). No command was sent."
+    if isinstance(error, httpx.TimeoutException):
+        return "Wonder did not respond before the request timed out. No command was sent."
+    return str(error) if str(error) else "The operation failed without an error description."
+
+
+def compact_vehicle(vehicle):
+    return {
+        "drone_id": vehicle["id"],
+        **{
+            key: vehicle[key]
+            for key in (
+                "mode",
+                "armed",
+                "landed_state",
+                "north_m",
+                "east_m",
+                "altitude_above_home_m",
+                "mission_current",
+                "mission_total",
+            )
+        },
+    }
+
+
+def fence_summary(vertices):
+    assert vertices, "The autopilot fence has not been read back."
+    return {
+        "vertex_count": len(vertices),
+        "bounds": {
+            axis: [
+                round(min(p[axis] for p in vertices), 3),
+                round(max(p[axis] for p in vertices), 3),
+            ]
+            for axis in ("north_m", "east_m")
+        },
+    }
 
 
 def read_case(case_id):
@@ -62,10 +104,10 @@ def read_case(case_id):
     for bounds in world["searchBounds"]:
         assert set(bounds) == {"id", "minX", "maxX", "minY", "maxY"}
         assert (bounds["minX"], bounds["maxX"], bounds["minY"], bounds["maxY"]) == (
-            -80467.2,
-            80467.2,
-            -80467.2,
-            80467.2,
+            -BOUND_M * 100,
+            BOUND_M * 100,
+            -BOUND_M * 100,
+            BOUND_M * 100,
         ), "Rescue case search bounds differ from the configured mission fence"
     return value
 
@@ -84,7 +126,6 @@ class Mission:
         self.approvals = {}
         self.tasks = set()
         self.agent_busy = False
-        self.previous_response_id = None
         self.context_index = 0
         self.map_focus = None
         self.fleet_ready = False
@@ -92,7 +133,6 @@ class Mission:
         self.fleet_error = None
         self.fleet = Fleet(self.directory / "sitl", self.fleet_event)
         self.model = Wonder()
-        self.flight_lock = asyncio.Lock()
 
     def event(
         self, kind, text, *, name=None, arguments=None, result=None, call_id=None, source=None
@@ -141,7 +181,7 @@ class Mission:
             self.tasks.remove(finished)
             if not finished.cancelled() and finished.exception() is not None:
                 error = finished.exception()
-                self.event("error", f"{type(error).__name__}: {error}")
+                self.event("error", operator_error(error))
 
         task.add_done_callback(completed)
 
@@ -155,7 +195,7 @@ class Mission:
                 await asyncio.wait([task])
         error = task.exception()
         if error is not None:
-            self.fleet_error = f"{type(error).__name__}: {error}"
+            self.fleet_error = operator_error(error)
             self.event("error", "Fleet startup failed: " + self.fleet_error)
             await self.fleet.close()
             self.fleet_closed = True
@@ -203,7 +243,15 @@ class Mission:
         if name == "get_mission":
             return {
                 **self.summary(),
-                "fences": {v["id"]: v["fence"] for v in self.vehicles()},
+                "briefing": {
+                    key: self.case["report"][key]
+                    for key in (
+                        "description",
+                        "reportedCircumstances",
+                        "lastKnownLocation",
+                    )
+                },
+                "fences": {v["id"]: fence_summary(v["fence"]) for v in self.vehicles()},
             }
         if name == "show_on_map":
             if arguments["target"] == "drone":
@@ -212,21 +260,65 @@ class Mission:
             return {"map_focus": self.map_focus}
         assert self.fleet_ready, "MAVLink fleet is unavailable: " + str(self.fleet_error)
         if name == "get_fleet":
-            return {"vehicles": self.vehicles()}
+            return {
+                "vehicles": [
+                    {
+                        **compact_vehicle(v),
+                        "link_lost": v["link_lost"],
+                        "heartbeat_age_s": v["heartbeat_age_s"],
+                    }
+                    for v in self.vehicles()
+                ]
+            }
         if name == "get_drone":
-            return next(v for v in self.vehicles() if v["id"] == arguments["drone_id"])
+            vehicle = next(v for v in self.vehicles() if v["id"] == arguments["drone_id"])
+            return {
+                **compact_vehicle(vehicle),
+                **{
+                    key: vehicle[key]
+                    for key in (
+                        "link_lost",
+                        "heartbeat_age_s",
+                        "battery_percent",
+                        "battery_voltage_v",
+                        "gps_fix",
+                        "satellites",
+                        "ekf_healthy",
+                    )
+                },
+                "waypoints": [
+                    {
+                        key: p[key]
+                        for key in (
+                            "seq",
+                            "north_m",
+                            "east_m",
+                            "altitude_above_home_m",
+                        )
+                    }
+                    for p in vehicle["mission"]
+                    if p["seq"] > 0
+                ],
+                "status_text": vehicle["status_text"][-5:],
+            }
         assert CATEGORIES[name] == "flight"
         if self.autonomy == "Supervised":
             approval_id = str(uuid.uuid4())
             future = asyncio.get_running_loop().create_future()
             self.approvals[approval_id] = {
-                "card": {"id": approval_id, "name": name, "arguments": arguments, "source": source},
+                "card": {
+                    "id": approval_id,
+                    "name": name,
+                    "arguments": arguments,
+                    "source": source,
+                    "call_id": call_id,
+                },
                 "future": future,
                 "call_id": call_id,
             }
             self.event(
                 "approval",
-                "Awaiting operator approval",
+                f"{arguments['drone_id']} · {name.replace('_', ' ')} awaiting operator approval",
                 result={"approval_id": approval_id},
                 name=name,
                 arguments=arguments,
@@ -235,9 +327,17 @@ class Mission:
             )
             approved = await future
             del self.approvals[approval_id]
-            assert approved, "operator declined"
-        async with self.flight_lock:
-            return await self.fleet.execute(name, arguments)
+            assert approved, "Operator declined"
+        self.event(
+            "tool_running",
+            f"{arguments['drone_id']} · {name.replace('_', ' ')} running",
+            name=name,
+            arguments=arguments,
+            call_id=call_id,
+            source=source,
+        )
+        state = await self.fleet.execute(name, arguments)
+        return {**compact_vehicle(state), "acknowledged_command": name}
 
     async def invoke(self, name, arguments, source, call_id):
         self.event(
@@ -254,7 +354,7 @@ class Mission:
         if error is None:
             result = {"ok": True, "state": task.result()}
         else:
-            result = {"ok": False, "error": f"{type(error).__name__}: {error}"}
+            result = {"ok": False, "error": operator_error(error)}
         self.event(
             "tool_result",
             name,
@@ -266,40 +366,97 @@ class Mission:
         )
         return result
 
-    def instructions(self):
+    def instructions(self, initial):
         context = {
-            "mission": self.summary(),
+            "autonomy": self.autonomy,
             "operator_events": [
-                event
+                {
+                    "kind": event["kind"],
+                    "text": event["text"],
+                    "name": event["name"],
+                    "arguments": event["arguments"],
+                    "result": event["result"],
+                }
                 for event in self.events
-                if event["sequence"] > self.context_index
-                and (event["source"] == "operator" or event["kind"] == "mode")
-            ],
+                if (initial or event["sequence"] > self.context_index)
+                and event["source"] == "operator"
+                and event["kind"] in ("tool_result", "mode")
+            ][-8:],
         }
-        context["mission"]["briefing"] = {
-            key: self.case["report"][key]
-            for key in ("description", "reportedCircumstances", "lastKnownLocation")
-        }
+        if initial:
+            context["briefing"] = {
+                key: self.case["report"][key]
+                for key in (
+                    "description",
+                    "reportedCircumstances",
+                    "lastKnownLocation",
+                )
+            }
+            context["recent_messages"] = [
+                {
+                    "role": event["kind"],
+                    "text": event["text"][:1200],
+                    "truncated": len(event["text"]) > 1200,
+                }
+                for event in self.events
+                if event["kind"] in ("operator", "agent")
+            ][-6:-1]
         self.context_index = self.event_sequence
         return AGENT_INSTRUCTIONS + "\nCurrent mission context: " + encode(context)
 
     async def agent(self, text):
         try:
             outputs = ()
+            previous_response_id = None
             for turn in range(12):
-                response = await asyncio.to_thread(
-                    self.model.respond,
-                    text if turn == 0 else None,
-                    [],
-                    "low",
-                    TOOLS,
-                    self.previous_response_id,
-                    outputs,
-                    self.instructions(),
+                trace = self.directory / f"response-{time.time_ns()}"
+                task = asyncio.create_task(
+                    asyncio.to_thread(
+                        self.model.respond,
+                        text if turn == 0 else None,
+                        [],
+                        "low",
+                        TOOLS,
+                        previous_response_id,
+                        outputs,
+                        self.instructions(turn == 0),
+                        trace,
+                    )
                 )
-                self.previous_response_id = response["id"]
-                path = self.directory / f"response-{time.time_ns()}.json"
-                path.write_text(encode(response) + "\n")
+                await asyncio.wait([task])
+                error = task.exception()
+                if error is not None:
+                    diagnostic = {
+                        "trace": str(trace.relative_to(ROOT)),
+                        "input_tokens": None,
+                        "turn": turn,
+                        "previous_response_id": previous_response_id,
+                    }
+                    if trace.with_suffix(".http.json").is_file():
+                        diagnostic.update(json.loads(trace.with_suffix(".http.json").read_text()))
+                    message = operator_error(error)
+                    if turn > 0 and any(json.loads(item["output"])["ok"] for item in outputs):
+                        message = message.replace(
+                            "No command was sent.",
+                            "Earlier actions are recorded below; no additional command was sent.",
+                        )
+                    self.event("error", message, result=diagnostic, source="agent")
+                    return
+                response = task.result()
+                previous_response_id = response["id"]
+                self.event(
+                    "model_usage",
+                    "Wonder response received",
+                    source="agent",
+                    result={
+                        "response_id": response["id"],
+                        "turn": turn,
+                        "input_tokens": response["usage"]["input_tokens"],
+                        "output_tokens": response["usage"]["output_tokens"],
+                        "request_body_bytes": trace.with_suffix(".request.json").stat().st_size,
+                        "trace": str(trace.relative_to(ROOT)),
+                    },
+                )
                 calls = []
                 for item in response["output"]:
                     if item["type"] == "message":
@@ -351,7 +508,8 @@ class Mission:
             assert not item["future"].done(), "Approval already resolved"
             self.event(
                 "approval",
-                "Operator approved" if message["approved"] else "operator declined",
+                f"{item['card']['arguments']['drone_id']} · {item['card']['name'].replace('_', ' ')} "
+                + ("approved by operator" if message["approved"] else "Operator declined"),
                 result={"id": message["id"], "approved": message["approved"]},
                 name=item["card"]["name"],
                 arguments=item["card"]["arguments"],
@@ -398,7 +556,7 @@ class Mission:
                 await asyncio.wait([task])
                 error = task.exception()
                 if error is not None:
-                    text = f"{type(error).__name__}: {error}"
+                    text = operator_error(error)
                     self.event("error", text)
                     await websocket.send(encode({"type": "error", "message": text}))
 
@@ -423,7 +581,7 @@ class Mission:
             results = await asyncio.gather(*self.tasks, return_exceptions=True)
             for result in results:
                 if isinstance(result, Exception):
-                    self.event("error", f"Shutdown task: {type(result).__name__}: {result}")
+                    self.event("error", "Shutdown task: " + operator_error(result))
         if not self.fleet_closed:
             await self.fleet.close()
             self.fleet_closed = True

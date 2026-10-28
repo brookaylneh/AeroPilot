@@ -15,7 +15,7 @@ class ToolContracts(unittest.TestCase):
             validate_arguments("take_off", {"drone_id": "Drone9", "altitude_above_home_m": 30})
 
     def test_outside_route_is_refused(self):
-        with self.assertRaisesRegex(AssertionError, "greater than the maximum"):
+        with self.assertRaisesRegex(AssertionError, "fence limit is 804.7 m"):
             validate_arguments(
                 "fly_route",
                 {
@@ -26,7 +26,7 @@ class ToolContracts(unittest.TestCase):
             )
 
     def test_corridor_corners_are_not_rectangular_expansion(self):
-        with self.assertRaisesRegex(AssertionError, "outside fence"):
+        with self.assertRaisesRegex(AssertionError, "outside the fence"):
             validate_arguments(
                 "fly_to",
                 {
@@ -48,11 +48,11 @@ class ToolContracts(unittest.TestCase):
             validate_arguments("show_on_map", {"target": "area", "north_m": 10, "east_m": 20})
 
     def test_flight_parameters_are_required_and_bounded(self):
-        with self.assertRaisesRegex(AssertionError, "required"):
+        with self.assertRaisesRegex(AssertionError, "Required values missing"):
             validate_arguments("take_off", {"drone_id": "Drone1"})
-        with self.assertRaisesRegex(AssertionError, "greater than the maximum"):
+        with self.assertRaisesRegex(AssertionError, "use 10–100 m"):
             validate_arguments("take_off", {"drone_id": "Drone1", "altitude_above_home_m": 121})
-        with self.assertRaisesRegex(AssertionError, "Additional properties"):
+        with self.assertRaisesRegex(AssertionError, "Unrecognized arguments"):
             validate_arguments("hold", {"drone_id": "Drone1", "force": True})
 
 

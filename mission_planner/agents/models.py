@@ -6,6 +6,7 @@ import json
 import math
 import os
 from dataclasses import dataclass
+from pathlib import Path
 
 import httpx
 from jsonschema import validate
@@ -157,6 +158,7 @@ class Wonder:
         previous_response_id: str | None = None,
         tool_outputs: tuple[dict, ...] = (),
         instructions: str | None = None,
+        trace_path: Path | None = None,
     ) -> dict:
         assert effort in ("low", "medium")
         inputs = list(tool_outputs)
@@ -181,6 +183,24 @@ class Wonder:
             body["previous_response_id"] = previous_response_id
         if instructions is not None:
             body["instructions"] = instructions
-        response = post(self.http, META_URL, body)
+        request = self.http.build_request("POST", META_URL, json=body)
+        if trace_path is not None:
+            trace_path.with_suffix(".request.json").write_bytes(request.content)
+        reply = self.http.send(request)
+        if trace_path is not None:
+            metadata = {
+                "request_body_bytes": len(request.content),
+                "status_code": reply.status_code,
+                "headers": {
+                    key: value
+                    for key, value in reply.headers.items()
+                    if key in ("date", "content-type", "content-length", "server", "retry-after")
+                    or any(part in key for part in ("request-id", "trace", "ray"))
+                },
+            }
+            trace_path.with_suffix(".http.json").write_text(json.dumps(metadata) + "\n")
+            trace_path.with_suffix(".response.json").write_bytes(reply.content)
+        reply.raise_for_status()
+        response = reply.json()
         assert response["status"] == "completed"
         return response
