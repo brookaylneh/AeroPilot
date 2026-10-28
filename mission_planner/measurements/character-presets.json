@@ -1,0 +1,252 @@
+{
+  "schema_version": 1,
+  "code_commit": "bff7a0f352588c3bf95017a87722c5b717647081",
+  "captured_at_utc": "2026-10-28T20:18:46.216541+00:00",
+  "public_url": "http://35.81.229.78/character-quixel/index.html",
+  "image_kind": "Epic catalog portraits, not local Unreal renders",
+  "catalog_preset_count": 66,
+  "mhc_version": "4.0.0",
+  "model_download_count": 0,
+  "model_import_count": 0,
+  "acquisition_blocker": "The preset download action redirects the unauthenticated browser to Quixel sign-in.",
+  "child_age_coverage_verified": false,
+  "body_build_coverage_verified": false,
+  "public_browser": {
+    "status": 200,
+    "image_count": 12,
+    "original_pixels": [1080, 1080],
+    "errors": [],
+    "browser_closed": true
+  },
+  "portrait_total_bytes": 20847042,
+  "characters": [
+    {
+      "roster_id": "child-01",
+      "preset_name": "Ada",
+      "character_id": "ha4tkISg",
+      "match": "Dark skin and short tight curls.",
+      "gap": "The portrait reads older than the age-8 target; child proportions are unverified.",
+      "portrait_url": "https://quixel-mhc-presets-previews.s3-us-west-2.amazonaws.com/ha4tkISg/previews/ha4tkISg.png",
+      "portrait_path": ".local/evidence/characters/quixel-selection-reviewed/child-01.png",
+      "portrait_sha256": "24d1e6da412579b19793755fd3227a5196766a1924b8934db68736e428db639d",
+      "portrait_bytes": 1677872,
+      "portrait_pixels": [1080, 1080],
+      "model_downloaded": false,
+      "model_imported": false
+    },
+    {
+      "roster_id": "child-02",
+      "preset_name": "Emory",
+      "character_id": "fmsmkISi",
+      "match": "Youthful face, freckles and copper-brown curls.",
+      "gap": "Skin is warmer and darker than the fair-skin target. Age 10 and body proportions are unverified.",
+      "portrait_url": "https://quixel-mhc-presets-previews.s3-us-west-2.amazonaws.com/fmsmkISi/previews/fmsmkISi.png",
+      "portrait_path": ".local/evidence/characters/quixel-selection-reviewed/child-02.png",
+      "portrait_sha256": "d654a63d43fbc231c261ea33b96d5c47f79f54cb39a1386661c9fbe4abaacec3",
+      "portrait_bytes": 1772098,
+      "portrait_pixels": [1080, 1080],
+      "model_downloaded": false,
+      "model_imported": false
+    },
+    {
+      "roster_id": "child-03",
+      "preset_name": "Malika",
+      "character_id": "fufqkISE",
+      "match": "Brown skin and dark hair tied up.",
+      "gap": "The portrait reads older than age 12. Body build and child proportions are unverified.",
+      "portrait_url": "https://quixel-mhc-presets-previews.s3-us-west-2.amazonaws.com/fufqkISE/previews/fufqkISE.png",
+      "portrait_path": ".local/evidence/characters/quixel-selection-reviewed/child-03.png",
+      "portrait_sha256": "fd20c608e9003d46a0fd0d64548ff2f4583bd2d6d9248ee1e44606c1eab23196",
+      "portrait_bytes": 1649815,
+      "portrait_pixels": [1080, 1080],
+      "model_downloaded": false,
+      "model_imported": false
+    },
+    {
+      "roster_id": "child-04",
+      "preset_name": "Myles",
+      "character_id": "8bcgkIRG",
+      "match": "Youthful face, light-medium skin and short straight dark hair.",
+      "gap": "Age 15 is unverified; the portrait reads young adult. A tall, lanky build is unverified.",
+      "portrait_url": "https://quixel-mhc-presets-previews.s3-us-west-2.amazonaws.com/8bcgkIRG/previews/8bcgkIRG.png",
+      "portrait_path": ".local/evidence/characters/quixel-selection-reviewed/child-04.png",
+      "portrait_sha256": "8ae995aaa82bd15d331b67d348f832c941f772ec4776e3172a3c94162d8fa0b2",
+      "portrait_bytes": 1723833,
+      "portrait_pixels": [1080, 1080],
+      "model_downloaded": false,
+      "model_imported": false
+    },
+    {
+      "roster_id": "adult-01",
+      "preset_name": "Skye",
+      "character_id": "b6tnkISq",
+      "match": "Deep brown skin, youthful adult appearance and close-cropped hair.",
+      "gap": "Hair is lighter than the black-hair target. Tall athletic build is unverified.",
+      "portrait_url": "https://quixel-mhc-presets-previews.s3-us-west-2.amazonaws.com/b6tnkISq/previews/b6tnkISq.png",
+      "portrait_path": ".local/evidence/characters/quixel-selection-reviewed/adult-01.png",
+      "portrait_sha256": "1b71aa2e16f494e53237dc3c44cdee7724642a99ba12ef9bc0c36a77d7e180d2",
+      "portrait_bytes": 1666022,
+      "portrait_pixels": [1080, 1080],
+      "model_downloaded": false,
+      "model_imported": false
+    },
+    {
+      "roster_id": "adult-02",
+      "preset_name": "Erno",
+      "character_id": "jhlakIRO",
+      "match": "Broad adult face, dark hair and facial hair.",
+      "gap": "The beard is fuller than the stubble target. Heavyset body and olive-brown skin match need review.",
+      "portrait_url": "https://quixel-mhc-presets-previews.s3-us-west-2.amazonaws.com/jhlakIRO/previews/jhlakIRO.png",
+      "portrait_path": ".local/evidence/characters/quixel-selection-reviewed/adult-02.png",
+      "portrait_sha256": "f5d775c0929e804c171566bce5ef9bbe4f4fba0103025b2494ce0e5d650b7eac",
+      "portrait_bytes": 1749022,
+      "portrait_pixels": [1080, 1080],
+      "model_downloaded": false,
+      "model_imported": false
+    },
+    {
+      "roster_id": "adult-03",
+      "preset_name": "Maria",
+      "character_id": "7xsikITC",
+      "match": "Mature-looking face, warm skin, fuller cheeks and straight black hair.",
+      "gap": "Grey hair is absent. Age 47 and a short plus-size build are unverified.",
+      "portrait_url": "https://quixel-mhc-presets-previews.s3-us-west-2.amazonaws.com/7xsikITC/previews/7xsikITC.png",
+      "portrait_path": ".local/evidence/characters/quixel-selection-reviewed/adult-03.png",
+      "portrait_sha256": "5fa5c27ddeec56a9f8bee3f9e74a06082788fa57eb5be97e9b6c45807c08f001",
+      "portrait_bytes": 1675029,
+      "portrait_pixels": [1080, 1080],
+      "model_downloaded": false,
+      "model_imported": false
+    },
+    {
+      "roster_id": "adult-04",
+      "preset_name": "Stephane",
+      "character_id": "en5kkISC",
+      "match": "Mature face, visible lines, fair skin and greying hair.",
+      "gap": "Has facial hair rather than a clean-shaven face. Tall slim build is unverified.",
+      "portrait_url": "https://quixel-mhc-presets-previews.s3-us-west-2.amazonaws.com/en5kkISC/previews/en5kkISC.png",
+      "portrait_path": ".local/evidence/characters/quixel-selection-reviewed/adult-04.png",
+      "portrait_sha256": "254de985fa1415806a39c764df5c83732a8fb5b5d102ca1ed94a225933a24666",
+      "portrait_bytes": 1805329,
+      "portrait_pixels": [1080, 1080],
+      "model_downloaded": false,
+      "model_imported": false
+    },
+    {
+      "roster_id": "senior-01",
+      "preset_name": "Rosemary",
+      "character_id": "6zrkkISe",
+      "match": "Older-looking face with visible lines and short grey hair.",
+      "gap": "Skin is lighter than the warm-olive target. Age 65 and sturdy build are unverified.",
+      "portrait_url": "https://quixel-mhc-presets-previews.s3-us-west-2.amazonaws.com/6zrkkISe/previews/6zrkkISe.png",
+      "portrait_path": ".local/evidence/characters/quixel-selection-reviewed/senior-01.png",
+      "portrait_sha256": "bb03851c053df535aea1e2c77862fad9c7baeb351ab18d386ea09202c0eb73d7",
+      "portrait_bytes": 1783822,
+      "portrait_pixels": [1080, 1080],
+      "model_downloaded": false,
+      "model_imported": false
+    },
+    {
+      "roster_id": "senior-02",
+      "preset_name": "Keiji",
+      "character_id": "k8ezkISA",
+      "match": "Older-looking face, thinning grey hair and visible age lines.",
+      "gap": "Facial appearance differs from the original target and includes facial hair. Age 73 and a heavier build are unverified.",
+      "portrait_url": "https://quixel-mhc-presets-previews.s3-us-west-2.amazonaws.com/k8ezkISA/previews/k8ezkISA.png",
+      "portrait_path": ".local/evidence/characters/quixel-selection-reviewed/senior-02.png",
+      "portrait_sha256": "5c3fbe5acc0f2ad44e5ef297690a6b3ca7ff7d87aec861fee77961f102f47fa3",
+      "portrait_bytes": 1845415,
+      "portrait_pixels": [1080, 1080],
+      "model_downloaded": false,
+      "model_imported": false
+    },
+    {
+      "roster_id": "senior-03",
+      "preset_name": "Sook-ja",
+      "character_id": "l01pkISw",
+      "match": "Elderly-looking face with pronounced wrinkles and thinning grey hair.",
+      "gap": "Skin is lighter than the medium-deep brown target. Hair is not tied back. Age 81 and thin build are unverified.",
+      "portrait_url": "https://quixel-mhc-presets-previews.s3-us-west-2.amazonaws.com/l01pkISw/previews/l01pkISw.png",
+      "portrait_path": ".local/evidence/characters/quixel-selection-reviewed/senior-03.png",
+      "portrait_sha256": "978e1044c7c0e0776277fcc815988df47d712c2610598ebf90dbc151211e5d66",
+      "portrait_bytes": 1793197,
+      "portrait_pixels": [1080, 1080],
+      "model_downloaded": false,
+      "model_imported": false
+    },
+    {
+      "roster_id": "senior-04",
+      "preset_name": "Lucian",
+      "character_id": "hgtykISu",
+      "match": "Older-looking face, dark skin, close-cropped greying hair and visible lines.",
+      "gap": "Has facial hair and appears younger than age 88. Tall slender build is unverified.",
+      "portrait_url": "https://quixel-mhc-presets-previews.s3-us-west-2.amazonaws.com/hgtykISu/previews/hgtykISu.png",
+      "portrait_path": ".local/evidence/characters/quixel-selection-reviewed/senior-04.png",
+      "portrait_sha256": "4b26e71cc0dd667d88bb7109167bd399c3a8b2d7c2dfec6d09c64420c4270c49",
+      "portrait_bytes": 1705588,
+      "portrait_pixels": [1080, 1080],
+      "model_downloaded": false,
+      "model_imported": false
+    }
+  ],
+  "checks": [
+    {
+      "command": ["npm", "test"],
+      "exit_code": 0,
+      "seconds": 1.2975312690032297,
+      "log": ".local/evidence/characters/quixel-checks/check-0.log"
+    },
+    {
+      "command": ["npm", "run", "typecheck"],
+      "exit_code": 0,
+      "seconds": 3.5900556380001944,
+      "log": ".local/evidence/characters/quixel-checks/check-1.log"
+    },
+    {
+      "command": ["npm", "run", "format:check"],
+      "exit_code": 0,
+      "seconds": 2.0772463149987743,
+      "log": ".local/evidence/characters/quixel-checks/check-2.log"
+    },
+    {
+      "command": [".venv-cosys/bin/ruff", "check"],
+      "exit_code": 0,
+      "seconds": 0.03249544199934462,
+      "log": ".local/evidence/characters/quixel-checks/check-3.log"
+    },
+    {
+      "command": [".venv-cosys/bin/ruff", "format", "--check"],
+      "exit_code": 0,
+      "seconds": 0.032548996998229995,
+      "log": ".local/evidence/characters/quixel-checks/check-4.log"
+    },
+    {
+      "command": [".venv-cosys/bin/python", "-m", "unittest"],
+      "exit_code": 0,
+      "seconds": 0.7756870339944726,
+      "log": ".local/evidence/characters/quixel-checks/check-5.log"
+    }
+  ],
+  "evidence": [
+    {
+      "path": ".local/evidence/characters/quixel-selection-reviewed/result.json",
+      "sha256": "ab4ccfa4f66d3ef8871dfb60ca935cccfd9ff1846347c37d8d44a635b372d0da"
+    },
+    {
+      "path": ".local/evidence/characters/quixel-selection-reviewed/catalog.json",
+      "sha256": "43a944f3e68cb9b019c9051df5fb7c3524a9c5c5b07dfe6e8b63723fca5df1e0"
+    },
+    {
+      "path": ".local/evidence/characters/quixel-selection-reviewed/browser/result.json",
+      "sha256": "c2a1801f5529c7ead18b542a1556469c1996aff47cef8d698302760b6d0302ca"
+    },
+    {
+      "path": ".local/evidence/characters/quixel-catalog/sign-in.json",
+      "sha256": "e34a1a918442caae7ab5a669e3c5bbc48344063c54bb8e5f7c40d01494b2ae06"
+    },
+    {
+      "path": ".local/evidence/characters/quixel-checks/result.json",
+      "sha256": "7b13a996838143cfdc75096b6d5bb75b646c1749c4e068ba64ce9e6880a29547"
+    }
+  ]
+}
