@@ -87,75 +87,158 @@ The editor API verifies the supplied north/east resolutions against the manifest
 
 ## Integration procedure
 
-These steps are for the operator after accepting `world-resize` and coordinating
-the character and coupling changes. They have not been executed in `~/snr`.
-First integrate the tracked commits into a clean installed checkout without
-discarding the character agent's work. Keep the existing installed release active
-while preparing the new assets; do not copy this worktree's Content over the
-character agent's Content.
+These are operator steps after accepting `world-resize`; they have not been run
+in `~/snr`. Coordinate with the character and coupling agents first. The character
+agent must checkpoint its tracked edits and finish saving its Content before the
+installed checkout is made clean and the accepted world commits are integrated.
+A clean Git status does not establish that untracked character assets are saved.
+Keep those Content files in place: apply the terrain scripts to them, and never
+copy this worktree's Content over them. Record the final integrated commit.
+
+Keep the installed release running while preparing assets. Load the installed
+runtime profile, then use a separate editor cache and new evidence/build names:
 
 ```sh
 cd /home/brook_avionuas/snr
 set -euo pipefail
 test -z "$(git status --porcelain)"
 export PATH="$PWD/.local/toolchains/bin:$PATH"
+set -a
+. .local/runtime.env
+set +a
 export UE_ROOT="$PWD/.local/toolchains/UnrealEngine-5.8.2"
 export SNR_CPU_LIMIT=6 SNR_MEMORY_LIMIT=32g
 export SNR_UNREAL_HOME="$PWD/.local/data/world-integration-editor"
 export SNR_EVIDENCE_DIR="$PWD/.local/evidence/world/integration-v04"
+export SNR_INTEGRATION_BUILD="$PWD/.local/unreal/builds/world-v04"
+export SNR_INTEGRATION_RELEASE="$PWD/.local/unreal/releases/world-v04"
 mkdir "$SNR_EVIDENCE_DIR"
+git rev-parse HEAD > "$SNR_EVIDENCE_DIR/installed-commit.txt"
 df -B1 .
+du -sb world/unreal/ScenarioStudio/Content/OpenMeadow
 test ! -e .local/world/open-meadow
 cp -a world/unreal/ScenarioStudio/Content/OpenMeadow "$SNR_EVIDENCE_DIR/Content-OpenMeadow-before"
 .venv-cosys/bin/python -m world.unreal.scripts.generate-open-meadow --evidence-dir "$SNR_EVIDENCE_DIR"
 .venv-cosys/bin/python -m world.unreal.scripts.generate-vegetation-mask --evidence-dir "$SNR_EVIDENCE_DIR"
 .venv-cosys/bin/python -m world.unreal.scripts.generate-minimap --evidence-dir "$SNR_EVIDENCE_DIR"
+git diff --exit-code -- world/cosys/world.json web/public/maps/open-meadow-topographic.png
+df -B1 .
 ss -lntup
 bash world/unreal/scripts/unreal-container.sh build
 for script in build-open-meadow resize-horizon build-drone-port validate-landscape; do
+  df -B1 .
   ss -lntup
   bash world/unreal/scripts/author-unreal.sh "$script"
 done
 ```
 
-Before each copy/build/package step check `df` and the source size, retaining at
-least 40 GiB. The editor cache belongs to `SNR_UNREAL_HOME`; shared SDK, vendor and
-virtual-environment symlinks are mounted read-only. If a prior integration output
-exists, explicitly archive it under a new evidence name before a new operation.
-Build and editor-command containers have no network, so Unreal's internal trace
-listeners cannot occupy host ports. Packaged simulation uses the assigned host slot.
-Compare the terrain hash, retained southern-geometry hash and orientation report
-with `mission_planner/measurements/world-resize.json`.
+Before each copy/build/package, compare `df` free space with the measured source
+size and accepted build footprint, retaining at least 40 GiB. Stop that operation
+if it would cross the reserve. The build script limits the editor rebuild to six
+parallel actions. The editor cache belongs to `SNR_UNREAL_HOME`; SDK, vendor and
+virtual-environment symlinks are mounted read-only. If an integration output
+already exists, explicitly archive it under a new name before starting a new run.
+Build and editor-command containers have no network; packaged simulation uses
+the assigned host slot. Compare `terrain.json`, `horizon-authoring.json` and
+`landscape-orientation.json` with the accepted world measurements, including the
+terrain hash, original-square equality and retained southern-geometry hash.
 
-Stage an independent copy of the tested release, then generate installed-slot
-settings. This does not activate it:
+Package the integrated Content into a fresh build so the release includes the
+character agent's current assets as well as the resized world. Matching roster
+names alone cannot establish matching cooked character content. Stage an
+independent copy and generate installed-slot settings without activating it:
 
 ```sh
 df -B1 .
-du -sb /home/brook_avionuas/snr-world/.local/unreal/Packaged/Linux
-test ! -e .local/unreal/releases/world-v04
-cp -a /home/brook_avionuas/snr-world/.local/unreal/Packaged/Linux .local/unreal/releases/world-v04
+ss -lntup
+bash world/unreal/scripts/unreal-container.sh exec \
+  bash world/unreal/scripts/package-unreal.sh \
+  "$SNR_INTEGRATION_BUILD" "$SNR_EVIDENCE_DIR/package"
+df -B1 .
+du -sb "$SNR_INTEGRATION_BUILD/Linux"
+test ! -e "$SNR_INTEGRATION_RELEASE"
+cp -a "$SNR_INTEGRATION_BUILD/Linux" "$SNR_INTEGRATION_RELEASE"
 .venv-cosys/bin/python -m world.cosys.configure-drones \
-  --rpc-port 41451 --instance-base 0 \
-  --output .local/unreal/releases/world-v04/cosys-settings-installed.json
+  --rpc-port "$SNR_COSYS_PORT" --instance-base "$SNR_SITL_INSTANCE_BASE" \
+  --output "$SNR_INTEGRATION_RELEASE/cosys-settings-installed.json"
+cmp world/cosys/world.json "$SNR_INTEGRATION_RELEASE/world.json"
+sha256sum "$SNR_INTEGRATION_RELEASE/world.json" \
+  "$SNR_INTEGRATION_RELEASE/cosys-settings-installed.json" \
+  > "$SNR_EVIDENCE_DIR/release-manifests.sha256"
+set -a
+. .local/runtime.env
+set +a
+npm ci
+npm run build
 ```
 
-Use the tested release only while its roster matches the newly integrated catalog.
-If character integration changes cooked references, package the integrated Content
-into a new destination using `package-unreal.sh NEW_BUILD NEW_EVIDENCE` and accept
-that release before activation. Run `npm run build` against the installed runtime
-configuration. At the scheduled cutover, land and disarm the installed fleet,
-terminate its world while autopilots still supply motor responses, wait for world
-`EndPlay`/`CleanupWorld`, and then stop the mission service. Point the installed
-runtime configuration's `SNR_PACKAGE_ROOT`, `SNR_WORLD_CONFIG` and
-`SNR_COSYS_SETTINGS` at the staged release and its installed-slot settings, then
-start the installed world and mission service together. Recheck fence readback,
-homes, map fit and camera poses before releasing the slot. The exact coupled
-service shutdown/start commands are in [Cosys cutover](../cosys/README.md#installed-cutover-after-merge).
-After cutover, open a live Pixel Streaming Studio session at both 1920×1080 and
-2560×1440. Capture its world map and verify whole-world fit, pan and zoom at each
-size. World-slot acceptance uses explicitly labelled component screenshots because
-the slot has no Pixel Streaming endpoints; a full Studio session was not run there.
+The package contains `scenario-map.txt`, `world.json`, the executable and cooked
+content. Keep the generated heightfield at the manifest's repository-relative
+`heightfield.path`. Accept the integrated package with the corresponding character
+and coupling checks before activation; the world-slot package does not establish
+acceptance of subsequently changed assets. `stage-live-release.sh` changes the
+`Live` link, so it is not part of this preparation.
+
+At the scheduled cutover, land and disarm the installed fleet and release Studio's
+authoring session. For an already coupled installation, run the final command block
+introduced by **“For subsequent coupled shutdowns”** in
+[Cosys cutover](../cosys/README.md#installed-cutover-after-merge): signal Unreal,
+observe new `UWorld::CleanupWorld for OpenMeadow,` output, then stop `snr-mission`
+while Unreal flushes its caches. It verifies the world exits and releases its
+ports. The earlier coupling-specific staging commands in that section are a
+separate migration and must not be reapplied to this world release. Complete that
+migration first if the installed fleet has not yet been coupled.
+
+With the old world and mission stopped, update only these values in
+`.local/runtime.env` to the staged release paths:
+
+```dotenv
+SNR_PACKAGE_ROOT=/home/brook_avionuas/snr/.local/unreal/releases/world-v04
+SNR_WORLD_CONFIG=/home/brook_avionuas/snr/.local/unreal/releases/world-v04/world.json
+SNR_COSYS_SETTINGS=/home/brook_avionuas/snr/.local/unreal/releases/world-v04/cosys-settings-installed.json
+```
+
+Retain the installed streaming, ports, fleet, scenario-data and drone-data settings.
+Start the coupled services with the edited runtime profile and a fresh port check:
+
+```sh
+set -a
+. .local/runtime.env
+set +a
+ss -lntup
+.venv-cosys/bin/python - <<'PYTHON'
+import os
+from mission_planner.environment import load_env
+from mission_planner.gcs.geodesy import NAMES
+from mission_planner.gcs.sitl import check_ports
+
+load_env()
+instances = range(int(os.environ["SNR_SITL_INSTANCE_BASE"]),
+                  int(os.environ["SNR_SITL_INSTANCE_BASE"]) + len(NAMES))
+ports = [int(os.environ["SNR_MISSION_PORT"]), int(os.environ["SNR_COSYS_PORT"])]
+ports += [9002 + 10 * instance for instance in instances]
+ports += [9003 + 10 * instance for instance in instances]
+ports += [int(os.environ["SNR_MAVLINK_BASE_PORT"]) + index for index in range(len(NAMES))]
+ports += [int(os.environ["SNR_SITL_RC_BASE_PORT"]) + index * int(os.environ["SNR_SITL_PORT_STEP"])
+          for index in range(len(NAMES))]
+check_ports(ports)
+PYTHON
+sudo systemctl start snr-unreal
+timeout 120 bash -c 'until ss -H -ltn "sport = :${SNR_COSYS_PORT}" | rg -q "127.0.0.1:${SNR_COSYS_PORT}"; do sleep 1; done'
+sudo systemctl start snr-mission
+sudo systemctl restart snr-web
+```
+
+Immediately reload the intended saved case so all controllers start. Recheck fence
+readback, homes and camera poses before accepting the installed session.
+
+Open a live Pixel Streaming Studio session at both 1920×1080 and 2560×1440.
+Capture the world map at each size and verify that its first view fits the whole
+rectangle; pan and zoom to both new east/west edges and check focus placement.
+Record the corresponding Mission Control first views and pan performance as well.
+Save this cutover evidence separately from world-slot acceptance. Slot acceptance
+uses explicitly labelled Studio component screenshots because the slot has no
+Pixel Streaming endpoints; it does not establish a full live Studio session.
 
 ## Engine plugin overrides
 
