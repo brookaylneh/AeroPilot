@@ -124,6 +124,10 @@ class Mission:
             text = item["drone_id"] + " mode " + item["mode"]
         elif kind == "autopilot_started":
             text = item["drone_id"] + " autopilot started"
+        elif kind == "firmware_verified":
+            text = item["drone_id"] + " firmware verified"
+        elif kind == "safety_parameters_verified":
+            text = item["drone_id"] + " safety parameters verified"
         else:
             assert kind == "parameter", f"Unknown fleet event: {kind}"
             text = f"{item['drone_id']} {item['name']} verified: {item['value']}"

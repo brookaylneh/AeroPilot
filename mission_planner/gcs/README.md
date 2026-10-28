@@ -1,5 +1,34 @@
 # Ground control: four ArduCopter aircraft
 
+## Start mission control
+
+From the repository root, start the mission owner and web server in separate terminals:
+
+```sh
+SNR_SCENARIO_DATA_DIR=/srv/snr/.local/data/unreal-scenarios .venv-cosys/bin/python -m mission_planner.gcs.service --case 01A17FAF-5D8E-7F58-ADBD-7F7B59BA7956
+npm run build
+PORT=3104 SNR_SCENARIO_DATA_DIR=/srv/snr/.local/data/unreal-scenarios npm start
+```
+
+Open `http://127.0.0.1:3104/mission?case=01A17FAF-5D8E-7F58-ADBD-7F7B59BA7956`.
+Use the UUID of an existing rescue briefing for another case. Only the `briefings/`
+subdirectory is read; private scenario truth is excluded. The existing briefing launch
+button saves with its established authoring commands and opens the saved case URL.
+
+The service binds `127.0.0.1:8765`; `/api/mission` forwards WebSockets only after the
+same-origin check. `SNR_MISSION_PORT` selects the web proxy's explicit local destination.
+Mission events are appended to `.local/data/missions/<mission-id>/events.jsonl`, with
+original Wonder responses alongside. The [agent catalogue](../agents/README.md) describes
+eleven registered tools and the future subsystem catalogue. Supervised is the default;
+operator controls and Wonder use the same handlers and approval decisions.
+
+Video has no source in this stage. The local topographic image is the existing simulated
+Open Meadow terrain, not a survey of the chosen geographic origin. Position, fence,
+mission, mode and health displays come from MAVLink. A link older than two seconds is
+shown as lost. No automatic reconnection or failed-command retry is performed.
+
+## SITL build and lifecycle
+
 The mission service launches four independent `arducopter` processes directly, using the built-in `quad` physics model. It owns one MAVLink 2 UDP connection per process on loopback ports 14600–14603. Instances are 0–3 and `MAV_SYSID` is 1–4. No MAVProxy or router is used. Console serial0 and unused serial2 are explicitly `none`; MAVLink uses serial1. The pinned firmware sends three SiK reset words (`0x30 0x20`) before MAVLink on serial1 (upstream `GCS_Common.cpp`, lines 200–215); the driver asserts and consumes exactly that startup preamble, then rejects every malformed MAVLink frame. Each fresh mission has separate EEPROM, flight logs and process output beneath its mission directory. Existing run directories are refused. SIGINT/SIGTERM closes the service and terminates its four children.
 
 The latest stable release verified against the GitHub releases API is **Copter-4.7.2**, commit **fb773567896014da007bca58358704d4a0d8516f**. The official release announcement is dated 11 October 2026; the GitHub release was published on 14 October. The retained API result is `.local/evidence/gcs/github-copter-releases.json`. [Official release](https://github.com/ArduPilot/ardupilot/releases/tag/Copter-4.7.2).
@@ -10,8 +39,8 @@ Each startup requests `AUTOPILOT_VERSION` over MAVLink and asserts the official 
 git clone --depth 1 --branch Copter-4.7.2 --recurse-submodules --shallow-submodules -j4 https://github.com/ArduPilot/ardupilot.git .local/vendor/ardupilot
 .venv-cosys/bin/python -m pip install -r requirements.txt
 cd .local/vendor/ardupilot
-../../.venv-cosys/bin/python ./waf configure --board sitl
-../../.venv-cosys/bin/python ./waf copter -j4
+../../../.venv-cosys/bin/python ./waf configure --board sitl
+../../../.venv-cosys/bin/python ./waf copter -j4
 ```
 
 The earlier Copter-4.7.1 build completed in 698.610 seconds with four jobs; its binary SHA-256 was `29f2f36b4c1bb8e6c5d64af9854fb3eb3a213e8bdf36e88ba860c52b10c32c64`. Its accepted measurements remain preserved separately from the 4.7.2 run. The first 4.7.2 build was interrupted by tool infrastructure before linking, with its log retained at `.local/evidence/gcs/ardupilot-4.7.2-build.log`; no process remained when the explicit continuation began. The continuation has its own log and timing report, so no unmeasured total build duration is inferred.
