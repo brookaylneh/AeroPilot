@@ -8,6 +8,7 @@ import tempfile
 import time
 import unittest
 import uuid
+from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
@@ -21,12 +22,13 @@ from world.cosys.sensor import MissionSensor
 
 
 def capture_record(name, index):
+    timestamp = 1_793_188_800_000_000_000 + index * 1_000_000_000
     return {
         "schemaVersion": 1,
         "vehicleId": name,
         "captureId": f"{name}-{index}",
-        "capturedAtUtc": "2026-10-28T12:00:00+00:00",
-        "timestampNs": 1_793_188_800_000_000_000 + index,
+        "capturedAtUtc": datetime.fromtimestamp(timestamp / 1e9, timezone.utc).isoformat(),
+        "timestampNs": timestamp,
         "imagePath": f"/mission/captures/{name}-{index}.jpg",
         "width": 3840,
         "height": 2160,
@@ -38,7 +40,23 @@ def capture_record(name, index):
             "orientation": {"w": math.sqrt(0.5), "x": 0, "y": -math.sqrt(0.5), "z": 0},
         },
         "cameraPositionWorldM": {"x": 0, "y": 0, "z": 30},
-        "validation": {"accepted": True, "nadirErrorDegrees": 0, "reasons": []},
+        "validation": {
+            "accepted": True,
+            "nadirErrorDegrees": 0,
+            "reasons": [],
+            "captureUnixNs": timestamp,
+        },
+        "mavlinkSamples": [
+            {
+                "receivedAtUnixNs": timestamp + offset,
+                "positionWorldM": {"x": north, "y": east, "z": 30},
+            }
+            for offset, north, east in (
+                (-200_000_000, -3, -2),
+                (-100_000_000, 0, -2),
+                (100_000_000, 0, 2),
+            )
+        ],
         "sha256": "a" * 64,
         "captureLatencySeconds": 0.1,
         "acquisitionWallSeconds": 0.2,
@@ -47,6 +65,16 @@ def capture_record(name, index):
 
 
 PREVIEW = {"jpeg_base64": "/9j/2Q==", "width": 960, "height": 540}
+
+
+def capture_trigger(record):
+    sample = record["mavlinkSamples"][0]
+    return {
+        "mission_current": 1,
+        "received_at_ms": sample["receivedAtUnixNs"] / 1e6,
+        "north_m": sample["positionWorldM"]["x"],
+        "east_m": sample["positionWorldM"]["y"],
+    }
 
 
 class MemorySocket:
@@ -190,7 +218,11 @@ class SensorServiceTests(unittest.IsolatedAsyncioTestCase):
             path = sensor.capture.directory / f"{persisted['captureId']}.json"
             self.assertEqual(json.loads(path.read_text()), persisted)
             self.assertTrue(Path(persisted["imagePath"]).is_file())
-            self.assertIn("captureTrigger", persisted)
+            trigger = persisted["captureTrigger"]
+            self.assertEqual(trigger["autoGroundTrackM"], 12)
+            self.assertAlmostEqual(trigger["acquiredGroundTrackM"], 17)
+            self.assertAlmostEqual(trigger["acquiredGroundTrackSpacingM"], 12)
+            self.assertAlmostEqual(trigger["cameraSpacingM"], math.sqrt(90))
             await self.mission.capture_received(persisted, image_preview)
 
         sensor.on_capture = AsyncMock(side_effect=consume)
@@ -200,9 +232,15 @@ class SensorServiceTests(unittest.IsolatedAsyncioTestCase):
                 self.mission.search, "consume_capture", wraps=self.mission.search.consume_capture
             ) as ingestion,
         ):
-            await sensor._capture(
-                "Drone1", 1, 12, {"mission_current": 1, "received_at_ms": 1000}, None
+            acquired = await sensor._capture(
+                "Drone1",
+                1,
+                12,
+                capture_trigger(record),
+                {"position": {"x": -3, "y": -9, "z": 30}, "groundTrackM": 5},
             )
+            self.assertEqual(acquired["position"], record["cameraPositionWorldM"])
+            self.assertAlmostEqual(acquired["groundTrackM"], 17)
             sensor.on_capture.assert_awaited_once_with(record, preview)
             ingestion.assert_called_once_with(record, "unprocessed")
             with self.assertRaisesRegex(AssertionError, "Duplicate capture record"):
@@ -219,7 +257,7 @@ class SensorServiceTests(unittest.IsolatedAsyncioTestCase):
     async def test_rejected_record_is_persisted_without_ingestion_or_preview(self):
         sensor, record, preview = await self.sensor(False)
         sensor.on_capture = AsyncMock(side_effect=self.mission.capture_received)
-        await sensor._capture("Drone1", 1, 12, {"mission_current": 1, "received_at_ms": 1000}, None)
+        await sensor._capture("Drone1", 1, 12, capture_trigger(record), None)
         sensor.on_capture.assert_not_awaited()
         self.assertIsNone(preview)
         self.assertEqual(self.mission.search.coverage_summary()["captures"], 0)
