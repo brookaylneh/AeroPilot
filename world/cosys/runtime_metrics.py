@@ -46,6 +46,7 @@ def sample(native_paths, sitl_binary, process_pids):
                 "rss_bytes": int(fields[21]) * os.sysconf("SC_PAGE_SIZE"),
             }
         )
+    assert set(process_pids) <= {p["pid"] for p in processes}, "Selected process is not running"
     native = {}
     for label, path in native_paths.items():
         value = json.loads(path.read_text())
