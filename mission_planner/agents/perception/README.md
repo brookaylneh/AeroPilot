@@ -1,6 +1,6 @@
 # Perception calibration at 30 m
 
-The capture, inference and reduction commands are in `AGENTS.md`. Raw JPEGs,
+The inference and reduction commands are in `AGENTS.md`. Accepted raw JPEGs,
 camera/actor metadata and inference results stay under ignored `.local/data/calibration/`.
 `mission_planner/measurements/calibration.json` is the deterministic reduction, including its input
 provenance. It is not a claim about other terrain, illumination or search altitudes.
@@ -14,22 +14,40 @@ checks `/api/unreal/status` before opening a browser, saves the current authorin
 state, loads the fixed calibration placement, applies a condition, and restores the
 backup when its input closes. It never evicts another player. A new browser visit
 opens the person stage, as documented by the creator; backups preserve the resulting
-authoring snapshot. No UI change is needed. Capture exposed a native telemetry
-publication race: Unreal's generic file move deleted `runtime.json` before renaming
-its replacement. The writer now uses the platform's same-filesystem atomic rename
-and fails fatally on publication errors. Unreal was restarted once to activate the
-verified build after the user released the stream; the latest scenario was saved
-beforehand. Deployment hashes and the post-restart audit are in the raw provenance.
+authoring snapshot. The configured `SNR_NATIVE_URL` must reach the same isolated
+world as `SNR_COSYS_PORT`; calibration never changes those runtime values.
 
-One drone flies, under the existing controller lock. Each condition takes off and
-returns to the port with the existing flight helpers. Capture uses the same seven
-along-track points and seven lateral offsets. JPEG quality is 95, with no chroma
-subsampling. Camera FOV and per-drone NED origin are recorded with each capture.
-Actor poses are read before and after image acquisition inside the physics-pause
-window; disagreement fails the capture. The image helper always unpauses in `finally`.
-SIGTERM raises through the runner's normal return/landing cleanup. An external kill
-cannot establish successful completion: the explicit complete marker is written
-only after landing. Interrupted outputs must be archived before rerunning by name.
+Calibration owns a `Fleet` under the controller lock. Drone1 flies while the other
+autopilots stay parked. `world/cosys/flight.py` converts world metres to each
+aircraft's MAVLink home frame and calls the same `Fleet.execute` path as missions,
+including its fence, separation, health and unforced arming checks. Commands are
+issued once; bounded telemetry waits establish arrival. A capture point requires
+position error below 0.6 m and speed below 0.15 m/s for one second.
+
+Load the assigned slot environment, start its world and authoring channel, and use
+a fresh output directory. The runner creates one subdirectory per selected condition.
+
+```sh
+.venv-cosys/bin/python -m mission_planner.agents.perception.calibrate \
+  --condition adult-kelvin --scenario-id <uuid> \
+  --output .local/evidence/coupling/<new-calibration-run> \
+  --shutdown-file .local/evidence/coupling/<new-calibration-run>/world-ended.json
+```
+
+At `ready-to-stop-world.json`, end the task-owned world while the autopilots still
+send motor replies. Create the specified acknowledgement file after Unreal's
+`EndPlay`; the runner then closes its fleet. The shutdown acknowledgement has a
+60-second deadline. Do not run calibration beside another owner of the slot's fleet.
+
+Capture retains seven along-track points and seven lateral offsets. JPEG quality
+is 95, with no chroma subsampling. `world/cosys/capture.py` supplies the same image
+response pose and timestamp as mission capture. Physics remains unpaused. Actor
+ground positions bracket acquisition; more than 0.01 m movement rejects the frame.
+The record retains `observation` and adds timing and validation evidence. A rejected
+frame fails the condition without a retry. FOV and per-drone NED origin remain in
+every record. The completion marker requires every geometry check, landing and
+scenario restoration; it reports the measured maximum round-trip and altitude
+errors. Original calibration directories and their manifest are never modified.
 
 Kelvin and Noah (the catalog's shortest preset, 128 cm) each have six shirt-colour
 conditions. Baseline rust is asserted against the saved calibration fixture. Other garments
@@ -65,7 +83,7 @@ at least half that projected extent inside all image edges counts as containing 
 person. Only envelopes entirely outside the image count as empty. Partial edge
 frames are excluded from both denominators. This envelope must be reviewed against
 captured examples; it is a limitation of the available geometric actor interface.
-Localization uses box-centre ray/terrain intersections, compared with the paused
+Localization uses box-centre ray/terrain intersections, compared with the observed
 actor ground point. Catalog dimensions are asset parameters, not measured detector
 performance.
 

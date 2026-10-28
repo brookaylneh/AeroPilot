@@ -1,14 +1,15 @@
-"""Private, stopped-frame calibration. One condition per invocation; no resume."""
+"""Private calibration through the coupled mission fleet; failed outputs never resume."""
 
 import argparse
+import asyncio
 import fcntl
 import json
 import math
 import os
 import shutil
 import signal
-import subprocess
 import time
+from pathlib import Path
 
 import numpy as np
 
@@ -39,131 +40,193 @@ CONDITIONS = (
 )
 assert len(CONDITIONS) == len({c[0] for c in CONDITIONS}) == 26
 OFFSETS, ALONG = list(range(0, 25, 4)), list(range(-36, 37, 12))
-DATA = ROOT / ".local/data/calibration"
 
 
-def run(condition, scenario_id):
+async def condition_flight(fleet, condition, scenario_id, directory):
     from mission_planner.agents.perception.geometry import Camera
+    from mission_planner.gcs.fleet import MAV
     from world.cosys import client as sim
+    from world.cosys import flight
+    from world.cosys.capture import FrameCapture
 
     label, person, _, situation, _, height = condition
-    directory = DATA / label
     assert not directory.exists(), "Archive a failed condition explicitly before rerunning by name"
     assert shutil.disk_usage(ROOT).free > 40 * 1024**3, "40 GiB capture reserve required"
-    c, name = sim.connect(), "Drone1"
-    assert c.ping() and not c.simIsPause()
-    assert all(sim.state(c, n)["landed"] for n in sim.NAMES)
+    name = "Drone1"
+    assert all(
+        not s["armed"] and s["landed_state"] == MAV.MAV_LANDED_STATE_ON_GROUND
+        for s in fleet.snapshot()
+    )
     runtime = sim.native()
     assert runtime["worldToMeters"] == 100 and runtime["worldOriginOffsetCm"] == dict(x=0, y=0, z=0)
     presets = json.loads((ROOT / "world/unreal/creator-people.json").read_text())
     preset = next(p for p in presets if p["id"] == person)
     assert situation in preset["supportedSituations"]
-    with open(sim.DATA / "controller.lock", "w") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        with subprocess.Popen(
-            [
-                "node",
-                "mission_planner/agents/perception/calibration-scenario.mjs",
-                scenario_id,
-                json.dumps(condition),
-            ],
-            cwd=ROOT,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            text=True,
-        ) as process:
-            configured = json.loads(process.stdout.readline())
-            actors = c.simListSceneObjects(".*BP_Person_.*")
+    process = await asyncio.create_subprocess_exec(
+        "node",
+        "mission_planner/agents/perception/calibration-scenario.mjs",
+        scenario_id,
+        json.dumps(condition),
+        cwd=ROOT,
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
+    )
+    frames = []
+    try:
+        configured = json.loads(await asyncio.wait_for(process.stdout.readline(), 90))
+
+        def scene_actor():
+            rpc = sim.connect()
+            assert rpc.ping() and not rpc.simIsPause()
+            actors = rpc.simListSceneObjects(".*BP_Person_.*")
             assert len(actors) == 1 and "_C_" in actors[0], actors
+            sim.set_view(rpc, name, -90)
+            return actors[0]
 
-            def observe(rpc):
-                assert rpc.simIsPause()
-                pose = sim.pose(rpc.simGetObjectPose(actors[0]))
-                point = sim.to_world(name, pose["position"], runtime["globalNedOriginUeCm"])
-                assert all(math.isfinite(v) for v in point.values())
-                assert abs(point["z"] - sim.terrain_height(point["x"], point["y"])) < 0.15
-                return dict(actor=actors[0], poseGlobalNed=pose, groundWorldM=point)
+        actor = await asyncio.to_thread(scene_actor)
 
-            target = {k: configured["authoring"]["behavior"]["origin"][k] / 100 for k in "xyz"}
-            assert (
-                math.hypot(target["x"] - sim.home(name)["x"], target["y"] - sim.home(name)["y"])
-                > 80
-            )
-            heights = [
-                sim.terrain_height(target["x"] + dx, target["y"] + dy)
-                for dx in (-2, 0, 2)
-                for dy in (-2, 0, 2)
-            ]
-            assert max(heights) - min(heights) < 0.5, "Placement is not flat meadow"
-            directory.mkdir(parents=True)
-            sim.write_json(
-                directory / "condition.json",
-                dict(
-                    condition=condition,
-                    preset=preset,
-                    scenario=configured,
-                    diskFreeBytes=shutil.disk_usage(ROOT).free,
-                ),
-            )
-            heading = math.radians(sim.WORLD["vehicles"][name]["yawDegrees"])
-            forward, lateral = (
-                np.array([math.cos(heading), math.sin(heading)]),
-                np.array([-math.sin(heading), math.cos(heading)]),
-            )
-            sim.configure_capture(height)
-            sim.set_view(c, name, -90)
+        def observe(rpc):
+            pose = sim.pose(rpc.simGetObjectPose(actor))
+            point = sim.to_world(name, pose["position"], runtime["globalNedOriginUeCm"])
+            assert all(math.isfinite(v) for v in point.values())
+            assert abs(point["z"] - sim.terrain_height(point["x"], point["y"])) < 0.15
+            return dict(actor=actor, poseGlobalNed=pose, groundWorldM=point)
+
+        target = {k: configured["authoring"]["behavior"]["origin"][k] / 100 for k in "xyz"}
+        assert math.hypot(target["x"] - sim.home(name)["x"], target["y"] - sim.home(name)["y"]) > 80
+        heights = [
+            sim.terrain_height(target["x"] + dx, target["y"] + dy)
+            for dx in (-2, 0, 2)
+            for dy in (-2, 0, 2)
+        ]
+        assert max(heights) - min(heights) < 0.5, "Placement is not flat meadow"
+        directory.mkdir(parents=True)
+        sim.write_json(
+            directory / "condition.json",
+            dict(
+                condition=condition,
+                preset=preset,
+                scenario=configured,
+                diskFreeBytes=shutil.disk_usage(ROOT).free,
+            ),
+        )
+        heading = math.radians(sim.WORLD["vehicles"][name]["yawDegrees"])
+        forward, lateral = (
+            np.array([math.cos(heading), math.sin(heading)]),
+            np.array([-math.sin(heading), math.cos(heading)]),
+        )
+        await asyncio.to_thread(sim.configure_capture, height)
+        capture = FrameCapture(directory, fleet)
+        try:
+            await flight.takeoff(fleet, name, 10)
+            await flight.move(fleet, name, {**sim.home(name), "z": 65}, 5)
+            await flight.move(fleet, name, {**target, "z": 65}, 5)
+            for offset in OFFSETS:
+                for along in ALONG:
+                    xy = np.array([target[k] for k in "xy"]) + forward * along + lateral * offset
+                    point = dict(zip("xy", xy - forward * sim.CAMERA_FORWARD))
+                    point["z"] = sim.terrain_height(*xy) + 30 + sim.CAMERA_DOWN
+                    reached = await flight.move(fleet, name, point, 5)
+                    frame, _ = await capture.capture(
+                        name,
+                        f"frame-{offset:02d}-{along:+03d}",
+                        observe=observe,
+                        jpeg_quality=95,
+                    )
+                    assert frame["validation"]["accepted"], frame["validation"]
+                    assert not frame["physicsPausedForCapture"]
+                    assert (frame["width"], frame["height"]) == (height * 16 // 9, height)
+                    camera = Camera(frame)
+                    agl = camera.world["z"] - sim.terrain_height(
+                        camera.world["x"], camera.world["y"]
+                    )
+                    assert abs(agl - 30) < 0.5
+                    delta = np.array(
+                        [camera.world[k] - frame["observation"]["groundWorldM"][k] for k in "xy"]
+                    )
+                    frame.update(
+                        offsetM=offset,
+                        alongM=along,
+                        actualOffsetM=float(delta @ lateral),
+                        actualAlongM=float(delta @ forward),
+                        aglM=agl,
+                        roundTripErrorPx=camera.check(),
+                        waypoint=reached,
+                    )
+                    sim.write_json((directory / frame["file"]).with_suffix(".json"), frame)
+                    frames.append(frame)
+                    print(label, offset, along, flush=True)
+        finally:
             try:
-                sim.takeoff(name)
-                sim.move(name, {**sim.home(name), "z": 65}, 5)
-                sim.move(name, {**target, "z": 65}, 5)
-                for offset in OFFSETS:
-                    for along in ALONG:
-                        xy = (
-                            np.array([target[k] for k in "xy"]) + forward * along + lateral * offset
+                current = flight.state(fleet, name)
+                if current["armed"]:
+                    if current["landed_state"] == MAV.MAV_LANDED_STATE_IN_AIR:
+                        await flight.move(
+                            fleet, name, {**flight.world_position(current), "z": 65}, 5
                         )
-                        point = dict(zip("xy", xy - forward * sim.CAMERA_FORWARD))
-                        point["z"] = sim.terrain_height(*xy) + 30 + sim.CAMERA_DOWN
-                        reached = sim.move(name, point, 5)
-                        time.sleep(1.5)
-                        frame = sim.capture(
-                            name,
-                            directory,
-                            f"frame-{offset:02d}-{along:+03d}",
-                            freeze=True,
-                            observe=observe,
-                            jpeg_quality=95,
-                        )
-                        assert (frame["width"], frame["height"]) == (height * 16 // 9, height)
-                        camera = Camera(frame)
-                        agl = camera.world["z"] - sim.terrain_height(
-                            camera.world["x"], camera.world["y"]
-                        )
-                        assert abs(agl - 30) < 0.5
-                        delta = np.array(
-                            [
-                                camera.world[k] - frame["observation"]["groundWorldM"][k]
-                                for k in "xy"
-                            ]
-                        )
-                        frame.update(
-                            offsetM=offset,
-                            alongM=along,
-                            actualOffsetM=float(delta @ lateral),
-                            actualAlongM=float(delta @ forward),
-                            aglM=agl,
-                            roundTripErrorPx=camera.check(),
-                            waypoint=reached,
-                        )
-                        sim.write_json((directory / frame["file"]).with_suffix(".json"), frame)
-                        print(label, offset, along, flush=True)
+                        await flight.move(fleet, name, {**sim.home(name), "z": 65}, 5)
+                    await flight.land(fleet, name)
             finally:
-                sim.move(name, {**sim.state(c, name)["positionWorldM"], "z": 65}, 5)
-                sim.move(name, {**sim.home(name), "z": 65}, 5)
-                sim.land(name)
-                sim.configure_capture(runtime["vehicles"][0]["height"])
-            process.stdin.close()
-            assert process.wait(timeout=30) == 0
-            sim.write_json(directory / "complete.json", dict(frames=49))
+                await capture.close()
+                await asyncio.to_thread(sim.configure_capture, runtime["vehicles"][0]["height"])
+    finally:
+        process.stdin.close()
+        assert await asyncio.wait_for(process.wait(), 30) == 0, "Scenario restore failed"
+    assert len(frames) == len(OFFSETS) * len(ALONG)
+    result = {
+        "condition": condition,
+        "frames": len(frames),
+        "roundTripErrorMaxPx": max(f["roundTripErrorPx"] for f in frames),
+        "aglErrorMaxM": max(abs(f["aglM"] - 30) for f in frames),
+        "captureLatencyMaxSeconds": max(f["captureLatencySeconds"] for f in frames),
+        "physicsPausedForCapture": False,
+    }
+    sim.write_json(directory / "complete.json", result)
+    return result
+
+
+async def run(conditions, scenario_id, output, shutdown_file):
+    from mission_planner.gcs.fleet import Fleet
+    from world.cosys import client as sim
+
+    assert os.environ["SNR_SITL_MODEL"] == "airsim-copter", "Calibration requires coupled physics"
+    assert not shutdown_file.exists(), "World shutdown acknowledgement already exists"
+    output.mkdir(parents=True, exist_ok=False)
+    report = {"scenarioId": scenario_id, "conditions": conditions, "completed": []}
+    with (
+        open(sim.DATA / "controller.lock", "w") as lock,
+        (output / "events.jsonl").open("w") as log,
+    ):
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+        def event(value):
+            log.write(json.dumps({"at_ms": time.time() * 1000, **value}) + "\n")
+            log.flush()
+
+        fleet = Fleet(output / "sitl", event)
+        try:
+            await fleet.start()
+            for condition in conditions:
+                report["completed"].append(
+                    await condition_flight(fleet, condition, scenario_id, output / condition[0])
+                )
+        except BaseException as error:
+            report["failure"] = {"type": type(error).__name__, "message": str(error)}
+            raise
+        finally:
+            sim.write_json(output / "report.json", report)
+            marker = output / "ready-to-stop-world.json"
+            sim.write_json(marker, {"report": str(output / "report.json")})
+            print(f"Ready to stop task-owned world: {marker}", flush=True)
+            deadline = time.monotonic() + 60
+            while not shutdown_file.exists():
+                assert time.monotonic() < deadline, "World shutdown acknowledgement timed out"
+                await asyncio.sleep(0.1)
+            await fleet.close()
+            report["autopilotExitCodes"] = {
+                name: v["process"].returncode for name, v in fleet.vehicles.items()
+            }
+            sim.write_json(output / "report.json", report)
 
 
 def main():
@@ -173,25 +236,22 @@ def main():
         raise SystemExit(f"Signal {signum} in {frame.f_code.co_name}; capture interrupted")
 
     signal.signal(signal.SIGTERM, terminate)
-    os.environ.update(
-        SNR_DRONE_DATA_DIR=str(ROOT / ".local/data/four-drones"),
-        SNR_COSYS_PORT="41451",
-        SNR_NATIVE_URL="http://127.0.0.1:5173/",
-    )
     parser = argparse.ArgumentParser()
     mode = parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--condition", choices=[c[0] for c in CONDITIONS])
     mode.add_argument("--all", action="store_true")
     mode.add_argument("--list", action="store_true")
     parser.add_argument("--scenario-id")
+    parser.add_argument("--output", type=Path)
+    parser.add_argument("--shutdown-file", type=Path)
     args = parser.parse_args()
     if args.list:
         print(json.dumps(CONDITIONS, indent=2))
         return
     assert args.scenario_id, "A saved, flat-meadow placement is required"
-    for condition in CONDITIONS:
-        if args.all or condition[0] == args.condition:
-            run(condition, args.scenario_id)
+    assert args.output and args.shutdown_file, "Flight requires --output and --shutdown-file"
+    conditions = [c for c in CONDITIONS if args.all or c[0] == args.condition]
+    asyncio.run(run(conditions, args.scenario_id, args.output, args.shutdown_file))
 
 
 if __name__ == "__main__":
