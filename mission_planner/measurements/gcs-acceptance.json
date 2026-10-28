@@ -1,0 +1,347 @@
+{
+  "schema_version": 1,
+  "mission_id": "3b060779-07de-4d36-a0fc-19decb38fd22",
+  "firmware": "Copter-4.7.2",
+  "ui_sequence": {
+    "passed": true,
+    "source": ".local/evidence/gcs/screenshots/ui-flight-1/results.json",
+    "samples": 21,
+    "duration_s": 169.778,
+    "plan_validated": true,
+    "browser_errors": [],
+    "takeoff_altitudes_m": [30, 29.999, 29.985, 29.996]
+  },
+  "chat_sequence": {
+    "passed": false,
+    "successful_takeoffs": ["Drone1", "Drone2", "Drone3"],
+    "errors": [
+      {
+        "sequence": 117,
+        "text": "HTTPStatusError: Server error '500 Internal Server Error' for url 'https://api.meta.ai/v1/responses'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500"
+      },
+      {
+        "sequence": 154,
+        "text": "HTTPStatusError: Server error '500 Internal Server Error' for url 'https://api.meta.ai/v1/responses'\nFor more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/500"
+      }
+    ],
+    "sources": [".local/evidence/gcs/chat-flight-1.log", ".local/evidence/gcs/chat-flight-2.log"],
+    "automatic_retries": 0,
+    "termination": "Aircraft landed through logged Supervised UI commands; complete chat sequence not claimed."
+  },
+  "supplementary_handlers": {
+    "passed": true,
+    "source": ".local/evidence/gcs/supplemental-results.json",
+    "guided_arrival": {
+      "north_m": -779.2787549614122,
+      "east_m": 2.5250155132313123,
+      "altitude_above_home_m": 29.985,
+      "ground_speed_mps": 0.0632455532033676,
+      "mode": "GUIDED"
+    },
+    "declined_error": "AssertionError: operator declined"
+  },
+  "executed_handlers": [
+    "fly_route",
+    "fly_to",
+    "get_drone",
+    "get_fleet",
+    "get_mission",
+    "hold",
+    "land",
+    "resume",
+    "return_home",
+    "show_on_map",
+    "take_off"
+  ],
+  "refusals": [
+    {
+      "sequence": 142,
+      "id": "3a16316f-f756-4f4b-8c7b-74c129e93a1e",
+      "timestamp_ms": 1793148308107.359,
+      "kind": "tool_result",
+      "text": "fly_route",
+      "name": "fly_route",
+      "arguments": {
+        "drone_id": "Drone1",
+        "waypoints": [
+          {
+            "north_m": 900,
+            "east_m": 0,
+            "altitude_above_home_m": 30
+          }
+        ],
+        "speed_mps": 5
+      },
+      "result": {
+        "ok": false,
+        "error": "AssertionError: waypoints/0/north_m: 900 is greater than the maximum of 804.672"
+      },
+      "call_id": "a01aac79-f75d-4dcd-9229-cd0f5dde6e89",
+      "source": "operator"
+    },
+    {
+      "sequence": 144,
+      "id": "45181516-7b05-4960-999d-9b3f6a87ddf8",
+      "timestamp_ms": 1793148308211.6016,
+      "kind": "tool_result",
+      "text": "get_drone",
+      "name": "get_drone",
+      "arguments": {
+        "drone_id": "Drone9"
+      },
+      "result": {
+        "ok": false,
+        "error": "AssertionError: Unknown drone: Drone9"
+      },
+      "call_id": "e295a005-28aa-47f2-89dc-94df91ed2991",
+      "source": "operator"
+    }
+  ],
+  "proxy": {
+    "passed": true,
+    "results": [
+      {
+        "path": "/api/mission",
+        "origin": "https://untrusted.invalid",
+        "status": 403,
+        "actual_status": 403
+      },
+      {
+        "path": "/api/mission",
+        "origin": null,
+        "status": 403,
+        "actual_status": 403
+      },
+      {
+        "path": "/api/mission?destination=elsewhere",
+        "origin": "http://127.0.0.1:3104",
+        "status": 403,
+        "actual_status": 403
+      },
+      {
+        "path": "/api/mission",
+        "origin": "http://127.0.0.1:3104",
+        "status": 101,
+        "actual_status": 101
+      }
+    ]
+  },
+  "performance": {
+    "started_at": "2026-10-28T00:42:57.337Z",
+    "duration_s": 611.631,
+    "viewport": {
+      "width": 1920,
+      "height": 1080
+    },
+    "latency_scope": "MAVLink GLOBAL_POSITION_INT receipt to first requestAnimationFrame after React commit; same-host clocks; excludes autopilot and hardware transport delay",
+    "latency_samples": 22960,
+    "latency_p50_ms": 80.994873046875,
+    "latency_p90_ms": 123.0810546875,
+    "pan_frames": 457,
+    "pan_seconds": 7.663899999976159,
+    "pan_fps": 59.63021438189716,
+    "pans": [
+      {
+        "start_ms": 1126.7000000029802,
+        "end_ms": 2422.8999999910593
+      },
+      {
+        "start_ms": 12441,
+        "end_ms": 13654.79999999702
+      },
+      {
+        "start_ms": 23675.89999999106,
+        "end_ms": 24913
+      },
+      {
+        "start_ms": 34933.09999999404,
+        "end_ms": 36345.89999999106
+      },
+      {
+        "start_ms": 46356.5,
+        "end_ms": 47564.89999999106
+      },
+      {
+        "start_ms": 57588.29999999702,
+        "end_ms": 58883.89999999106
+      }
+    ],
+    "memory": {
+      "samples": 60,
+      "first": {
+        "elapsed_s": 0.139,
+        "service_rss_kib": 66856,
+        "browser_js_heap_bytes": 7049864
+      },
+      "last": {
+        "elapsed_s": 598.25,
+        "service_rss_kib": 69508,
+        "browser_js_heap_bytes": 14927712
+      },
+      "peak_service_rss_kib": 69508,
+      "peak_browser_js_heap_bytes": 34576216
+    },
+    "errors": [],
+    "later_ui_change": "Duplicate lost-link alert removed after this measurement; numerical measurement was not rerun for the isolated display correction.",
+    "source": ".local/evidence/gcs/performance-1/results.json"
+  },
+  "plan": {
+    "path": ".local/evidence/gcs/screenshots/ui-flight-1/Drone1.plan",
+    "sha256": "20268bbdb905365c99b5383a727f5d7be406400ccdcbc1fa4a9677908f29437f",
+    "validator": "mission_planner/gcs/missionPlan.ts",
+    "primary_source": "https://docs.qgroundcontrol.com/master/en/qgc-dev-guide/file_formats/plan.html"
+  },
+  "files": {
+    "mission_planner/agents/__init__.py": 0,
+    "mission_planner/agents/accept_chat.py": 193,
+    "mission_planner/agents/bench_tools.py": 187,
+    "mission_planner/agents/test_tools.py": 60,
+    "mission_planner/agents/tools.py": 166,
+    "mission_planner/gcs/MissionControl.tsx": 882,
+    "mission_planner/gcs/MissionMap.tsx": 377,
+    "mission_planner/gcs/__init__.py": 0,
+    "mission_planner/gcs/accept-gcs-ui.mjs": 143,
+    "mission_planner/gcs/bench_sitl.py": 99,
+    "mission_planner/gcs/capture-gcs-states.mjs": 25,
+    "mission_planner/gcs/check-gcs-proxy.mjs": 40,
+    "mission_planner/gcs/fleet.py": 790,
+    "mission_planner/gcs/geodesy.py": 176,
+    "mission_planner/gcs/measure-gcs-browser.mjs": 111,
+    "mission_planner/gcs/mission.css": 1468,
+    "mission_planner/gcs/missionPlan.ts": 65,
+    "mission_planner/gcs/missionState.ts": 215,
+    "mission_planner/gcs/service.py": 456,
+    "mission_planner/gcs/test_safety.py": 75,
+    "mission_planner/gcs/README.md": 260,
+    "mission_planner/agents/README.md": 42,
+    "mission_planner/measurements/gcs-sitl.json": 528,
+    "mission_planner/measurements/gcs-tools.json": 880,
+    "web/public/fonts/ibm-plex-mono-OFL.txt": 93,
+    "mission_planner/measurements/gcs-acceptance.json": 347
+  },
+  "limitations": [
+    "Meta Responses API HTTP500 interrupted the full Supervised chat sequence.",
+    "No video, perception, search planner, probability map or ground-team communication in this stage.",
+    "Local linearized geodesy uses regional approximate ground elevation, not surveyed terrain.",
+    "Performance memory scope is Python service RSS and browser JS heap, not total browser/GPU memory."
+  ],
+  "stale_link": {
+    "passed": true,
+    "paused_pid": 304911,
+    "detected_after_ms": 1997,
+    "lost_state": {
+      "id": "Drone3",
+      "heartbeat_age_s": 2.377239901004941,
+      "link_lost": true,
+      "armed": false,
+      "mode": "LAND",
+      "landed_state": 1,
+      "update_rate_hz": 0
+    },
+    "restored": true,
+    "autonomy_restored": "Supervised",
+    "source": ".local/evidence/gcs/stale-results-final.json"
+  },
+  "screenshots": [
+    ".local/evidence/gcs/screenshots/autonomous-final-1440.png",
+    ".local/evidence/gcs/screenshots/autonomous-final-1920.png",
+    ".local/evidence/gcs/screenshots/disconnected-final-map-1440.png",
+    ".local/evidence/gcs/screenshots/disconnected-final-map-1920.png",
+    ".local/evidence/gcs/screenshots/disconnected-final-video-1440.png",
+    ".local/evidence/gcs/screenshots/disconnected-final-video-1920.png",
+    ".local/evidence/gcs/screenshots/empty-final-map-1440.png",
+    ".local/evidence/gcs/screenshots/empty-final-map-1920.png",
+    ".local/evidence/gcs/screenshots/empty-final-video-1440.png",
+    ".local/evidence/gcs/screenshots/empty-final-video-1920.png",
+    ".local/evidence/gcs/screenshots/landing-approval-1440.png",
+    ".local/evidence/gcs/screenshots/landing-approval-1920.png",
+    ".local/evidence/gcs/screenshots/log-1440.png",
+    ".local/evidence/gcs/screenshots/log-1920.png",
+    ".local/evidence/gcs/screenshots/refusal-1440.png",
+    ".local/evidence/gcs/screenshots/refusal-1920.png",
+    ".local/evidence/gcs/screenshots/reviewed-map-1440.png",
+    ".local/evidence/gcs/screenshots/reviewed-map-1920.png",
+    ".local/evidence/gcs/screenshots/reviewed-video-1440.png",
+    ".local/evidence/gcs/screenshots/reviewed-video-1920.png",
+    ".local/evidence/gcs/screenshots/stale-final-1440.png",
+    ".local/evidence/gcs/screenshots/stale-final-1920.png",
+    ".local/evidence/gcs/screenshots/startup-map-1440.png",
+    ".local/evidence/gcs/screenshots/startup-map-1920.png",
+    ".local/evidence/gcs/screenshots/startup-video-1440.png",
+    ".local/evidence/gcs/screenshots/startup-video-1920.png",
+    ".local/evidence/gcs/screenshots/ui-flight-1/approval-1440.png",
+    ".local/evidence/gcs/screenshots/ui-flight-1/approval-1920.png",
+    ".local/evidence/gcs/screenshots/ui-flight-1/flight-log-1920.png",
+    ".local/evidence/gcs/screenshots/ui-flight-1/routes-1440.png",
+    ".local/evidence/gcs/screenshots/ui-flight-1/routes-1920.png"
+  ],
+  "checks": {
+    "npm_test": {
+      "passed": true,
+      "tests": 7
+    },
+    "python_unittest": {
+      "passed": true,
+      "tests": 22
+    },
+    "typecheck": true,
+    "format_check": true,
+    "build": true,
+    "ruff_check": true,
+    "ruff_format_check": true,
+    "font_checksums": true
+  },
+  "cleanup": {
+    "passed": true,
+    "service_pid": 304888,
+    "child_pids": [304907, 304909, 304911, 304913],
+    "all_landed_before_sigterm": true,
+    "children_exit_seconds": 0.050624711002456024,
+    "udp_ports_released": [14600, 14601, 14602, 14603]
+  },
+  "pre_existing_files_touched": {
+    "AGENTS.md": {
+      "lines": 65,
+      "reason": "Original short Layout and Running additions; subsequently incorporated by the user workspace restructure."
+    },
+    "mission_planner/agents/models.py": {
+      "lines": 186,
+      "reason": "Tool-output-only Wonder continuation and developer instructions."
+    },
+    "requirements.txt": {
+      "lines": 21,
+      "reason": "Pin pymavlink, websockets and SITL build prerequisites."
+    },
+    "web/server.ts": {
+      "lines": 93,
+      "reason": "Fixed local mission WebSocket destination using existing same-origin check."
+    },
+    "vite.config.ts": {
+      "lines": 32,
+      "reason": "WebSocket forwarding through development API proxy."
+    },
+    "web/main.tsx": {
+      "lines": 16,
+      "reason": "Mission route lazy loading."
+    },
+    "scenario_creator/UnrealApp.tsx": {
+      "lines": 493,
+      "reason": "Save briefing with existing transport and navigate to mission case."
+    },
+    "scenario_creator/RescueBriefing.tsx": {
+      "lines": 111,
+      "reason": "Remove obsolete future-phase launch notice."
+    },
+    "web/public/fonts/sources.json": {
+      "lines": 8,
+      "reason": "Add OFL telemetry font and license source."
+    },
+    "web/public/fonts/checksums.json": {
+      "lines": 8,
+      "reason": "Pin telemetry font and license integrity."
+    }
+  },
+  "binary_files_bytes": {
+    "web/public/fonts/ibm-plex-mono.ttf": 135580
+  }
+}

@@ -43,8 +43,6 @@ cd .local/vendor/ardupilot
 ../../../.venv-cosys/bin/python ./waf copter -j4
 ```
 
-The earlier Copter-4.7.1 build completed in 698.610 seconds with four jobs; its binary SHA-256 was `29f2f36b4c1bb8e6c5d64af9854fb3eb3a213e8bdf36e88ba860c52b10c32c64`. Its accepted measurements remain preserved separately from the 4.7.2 run. The first 4.7.2 build was interrupted by tool infrastructure before linking, with its log retained at `.local/evidence/gcs/ardupilot-4.7.2-build.log`; no process remained when the explicit continuation began. The continuation has its own log and timing report, so no unmeasured total build duration is inferred.
-
 The successful 4.7.2 continuation took **489.164448704 s** with four jobs, recorded in `.local/evidence/gcs/ardupilot-4.7.2-build-continuation-01.json`. Its binary SHA-256 is `ca634fc62f8d4058cf94d00c374831d1c1039cc239491ab7c817669c78e5c835`. This timing covers the explicit continuation only.
 
 The build uses Ubuntu 22.04.5, Python 3.10.12, GCC/G++ 11.4.0 (Ubuntu 11.4.0-1ubuntu1~22.04.3), Git 2.34.1 and GNU Make 4.3. Existing system packages used: `libc6-dev 2.35-0ubuntu3.15`, `zlib1g-dev 1:1.2.11.dfsg-2ubuntu9.2`, `rsync 3.2.7-0ubuntu0.22.04.7`. No system packages were installed. Python runtime pins are pymavlink 2.4.50 and websockets 15.0.1. Build-only packages installed into the existing venv: empy 3.3.4 and pexpect 4.9.0 (ptyprocess 0.7.0); pymavlink dependencies installed were lxml 6.1.3 and fastcrc 0.5.0. The upstream Waf and all submodules are fixed by the release checkout; full revisions and build logs remain in `.local/evidence/gcs/`.
@@ -177,3 +175,86 @@ Do not run this alongside the mission service: it deliberately binds the same fo
 `.local/evidence/gcs/sitl-4.7.2-01/cleanup.json` records that all four child PIDs exited and independent UDP binds succeeded on ports 14600–14603 after shutdown. The full accepted 4.7.1 measurement remains under `previous_accepted_runs` in the compact JSON; its raw report remains at `.local/evidence/gcs/sitl-05/report.json`. Earlier initialization failures and their explicit implementation corrections are also retained.
 
 Reproduce this check with `.venv-cosys/bin/python -m mission_planner.gcs.bench_sitl --output .local/evidence/gcs/<new-name>`. It launches real aircraft, samples ten seconds after initialization, and stops them. Do not run alongside the service. Geometric safety checks run with `.venv-cosys/bin/python -m unittest mission_planner.gcs.test_safety`.
+
+## Measured control and browser validation
+
+The committed [acceptance measurements](../measurements/gcs-acceptance.json) contain the
+file inventory with line counts, exact samples, known failures and evidence paths.
+
+| Check                       | Recorded result                                                                                                                                                                                                       |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| UI flight sequence          | Passed in 169.778 s: four approved takeoffs to 30 m, two distinct AUTO routes, BRAKE, resume, RTL, then all four landed/disarmed. 21 state checkpoints; no browser errors.                                            |
+| Other implemented tools     | All eleven handlers returned successful live results across the agent and operator runs. A separate BRAKE → GUIDED command reached its requested point at 3 m/s; declining a flight returned `operator declined`.     |
+| Service refusals            | North 900 m route and unknown `Drone9` rejected explicitly.                                                                                                                                                           |
+| Full Wonder flight sequence | **Not passed.** Meta Responses HTTP 500 interrupted a status request and the response after the third successful takeoff. No failed request was retried; the three aircraft were landed through approved UI commands. |
+| Wonder tool selection       | 24/25 (96%). Sole final-trial miss: a conceptual autonomy question unnecessarily invoked `get_mission`. All expected/actual arguments and prior trials are preserved.                                                 |
+| Receipt-to-render latency   | 22,960 distinct position render samples; p50 80.995 ms, p90 123.081 ms.                                                                                                                                               |
+| Panning                     | 457 animation frames during six recorded drags totaling 7.6639 s: 59.630 fps.                                                                                                                                         |
+| Memory                      | 611.631 s observer run; samples from 0.139 to 598.250 s. Service RSS 65.289 → 67.879 MiB; browser JS heap 6.723 → 14.236 MiB (peak 32.974 MiB).                                                                       |
+| QGC export                  | Drone1 read-back mission with three waypoints and eight fence vertices passed the documented Plan v1/Mission v2 subset validator, `firmwareType: 3`.                                                                  |
+| WebSocket boundary          | Same-origin upgrade accepted; foreign/missing origins and altered paths rejected with 403.                                                                                                                            |
+
+Latency starts when Python receives MAVLink `GLOBAL_POSITION_INT` and ends at the first
+animation-frame callback after React commits that snapshot. It uses same-host epoch
+clocks and excludes upstream autopilot/transport delay. FPS counts animation callbacks
+only within the drag intervals. Memory is service resident memory and browser JavaScript
+heap, not total browser or GPU memory. The full raw observer data is
+`.local/evidence/gcs/performance-1/`; it includes the live flight activity. Later visual
+review removed a duplicate lost-link alert; that isolated display correction was not
+included in the performance run.
+
+Repeatable acceptance commands, with the service already running:
+
+```sh
+.venv-cosys/bin/python -m mission_planner.agents.accept_chat --case <uuid> --part flight --output .local/evidence/gcs/<new-chat-run>
+node --import tsx mission_planner/gcs/accept-gcs-ui.mjs 'http://127.0.0.1:3104/mission?case=<uuid>' .local/evidence/gcs/<new-ui-run>
+node mission_planner/gcs/measure-gcs-browser.mjs 'http://127.0.0.1:3104/mission?case=<uuid>' .local/evidence/gcs/<new-performance-run> <service-pid> 600
+```
+
+Run the flight sequences separately, starting with four landed aircraft. Existing output
+paths fail. `--part inspection` exercises read/view requests separately from flights.
+The performance observer sends no aircraft commands.
+
+After validation all four aircraft were landed. SIGTERM stopped the service and all four
+SITL children in **0.050625 s**; ports 14600–14603 were independently rebound. The local
+validation web server was also stopped. See `.local/evidence/gcs/service-shutdown.json`.
+
+## Visual review
+
+The supplied QGC, fleet, flight-view and chat references were viewed, without copying
+third-party source or images. The layout uses existing fonts plus OFL IBM Plex Mono via
+`web/public/fonts/sources.json` and its checksum pipeline. The agent panel is 420 px at
+1920×1080 and 380 px at 1440×900; paired captures verify that all fleet cards and the
+composer fit. Sampled text contrast was 6.92–14.69:1; this is a sample of solid surfaces,
+not a complete accessibility audit.
+
+All captures below are under `.local/evidence/gcs/screenshots/`, with both `1920` and
+`1440` suffixes. Video captures are honest no-source views; telemetry remains live.
+
+| State                  | Capture pattern                                                         | Review                                                                                                                                                      |
+| ---------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| No case / disconnected | `empty-final-{map,video}-*.png`, `disconnected-final-{map,video}-*.png` | Explicit recovery directions; dashes for unavailable values; controls fit both sizes.                                                                       |
+| Initializing           | `startup-{map,video}-*.png`                                             | Saved case loaded, vehicle telemetry withheld until verified; no invented aircraft state.                                                                   |
+| Approvals              | `ui-flight-1/approval-*.png`, `landing-approval-*.png`                  | Arguments, drone colour and explicit approve/decline controls stay within the panel.                                                                        |
+| Routes / fleet         | `ui-flight-1/routes-*.png`                                              | Actual read-back waypoints, active item, aircraft and home markers. Zoom reveals closely spaced launch points.                                              |
+| Refusal / log          | `refusal-*.png`, `log-*.png`                                            | Expanded precise error and timestamped autopilot/tool events.                                                                                               |
+| Lost link              | `stale-final-*.png`                                                     | A parked Drone3 was deliberately paused; its card shows LINK LOST/0 Hz, commands disabled, and one alert. The process was explicitly resumed after capture. |
+| Autonomous mode        | `autonomous-final-*.png`                                                | Clearly labelled execution mode; restored to Supervised after capture.                                                                                      |
+| Final map/video        | `reviewed-{map,video}-*.png`                                            | No clipping, visible unit-bearing HUD, current read-back missions and honest no-video state.                                                                |
+
+Review corrected an error banner covering navigation, promotional empty-state copy,
+raw inline emphasis markers, and a duplicated lost-link alert. The final captures retain
+those corrections; earlier diagnostic captures are preserved separately. The square
+terrain image keeps its geographic aspect ratio; solid margins do not invent adjacent
+terrain. There are no gradients, blur, decorative animation or simulated camera frames.
+
+## Implementation provenance
+
+The original phase work added the GCS modules/UI, tools, benchmarks and validators now
+located in these domain folders. Pre-existing edits were limited to the Wonder client
+(tool-output-only turns and instructions), dependency pins, web routing/WebSocket proxy,
+briefing launch navigation, and the font source/checksum entries. Short Layout and Running
+blocks were originally appended to `AGENTS.md`; the user's later workspace restructure
+incorporated them into the current domain layout. The simulator and calibration data
+were not changed by this work. The detailed current source line counts are in the
+acceptance JSON; raw captures and vendored code remain ignored in `.local/`.
