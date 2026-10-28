@@ -131,7 +131,7 @@ npm run build
 bash world/unreal/scripts/stage-live-release.sh
 sudo bash deploy/install-services.sh
 sudo systemctl start snr-turn snr-signalling snr-unreal snr-mission snr-web
-# Start Caddy after the security group permits HTTP and HTTPS.
+# Start Caddy after the security group permits HTTP on TCP 80.
 sudo systemctl start snr-caddy
 ```
 
@@ -142,7 +142,7 @@ The packaged renderer retains the SM5, native 1080p60 H.264 profile and six-CPU 
 
 | Route or endpoint                | Purpose                                                       | Listener / upstream                                             |
 | -------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------- |
-| `https://35-81-229-78.sslip.io/` | Redirect to `/studio`                                         | Caddy, 80/443 TCP                                               |
+| `http://35.81.229.78/` | Redirect to `/studio`                                         | Caddy, 80 TCP                                               |
 | `/studio`                        | Scenario Creator                                              | web, `127.0.0.1:3001`                                           |
 | `/mission?case=<uuid>`           | Mission Control                                               | web, `127.0.0.1:3001`                                           |
 | `/api/mission`                   | Mission WebSocket                                             | web origin check, then `127.0.0.1:8765`                         |
@@ -160,7 +160,8 @@ The packaged renderer retains the SM5, native 1080p60 H.264 profile and six-CPU 
 
 Caddy proxies to the web server so production and development share the existing same-origin WebSocket
 checks. The old `/pixel-streaming` path is removed. The root redirects explicitly; unknown paths return 404. TURN and its media endpoints are the network-facing exception to the loopback service rule.
-Caddy's admin endpoint and HTTP/3 are disabled; only TCP 80/443 are needed for the public origin.
+Caddy serves the public IP over HTTP on TCP 80. Automatic HTTPS and the admin endpoint are disabled.
+WebSockets use `ws://` on the same origin; no DNS name or certificate is required.
 
 The mission service starts idle. The first `/mission?case=<uuid>` connection selects a saved briefing
 and starts the four autopilots. It keeps that mission across browser disconnects and rejects another
@@ -178,7 +179,7 @@ Acceptance uses the installed public origin. Do not allocate temporary listening
 
 ```sh
 node --env-file=.local/runtime.env deploy/accept-browser.mjs \
-  https://35-81-229-78.sslip.io .local/evidence/services/<new-browser-run>
+  http://35.81.229.78 .local/evidence/services/<new-browser-run>
 ```
 
 The harness creates a scenario, measures one minute of navigation and selected ICE candidates,
@@ -201,9 +202,16 @@ success: AWS rejects duplicate rules. Keep SSH restricted to the existing source
 
 ```sh
 aws ec2 authorize-security-group-ingress --region us-west-2 --group-id sg-007dd04266b7ed321 \
-  --ip-permissions '[{"IpProtocol":"tcp","FromPort":80,"ToPort":80,"IpRanges":[{"CidrIp":"0.0.0.0/0","Description":"SNR HTTPS redirect and ACME"}]},{"IpProtocol":"tcp","FromPort":443,"ToPort":443,"IpRanges":[{"CidrIp":"0.0.0.0/0","Description":"SNR public HTTPS origin"}]}]'
+  --ip-permissions '[{"IpProtocol":"tcp","FromPort":80,"ToPort":80,"IpRanges":[{"CidrIp":"0.0.0.0/0","Description":"SNR public HTTP origin"}]}]'
 aws ec2 revoke-security-group-ingress --region us-west-2 --group-id sg-007dd04266b7ed321 \
   --protocol tcp --port 5173 --cidr 0.0.0.0/0
+```
+
+TCP 443 is unused by this HTTP configuration. Remove its existing ingress rule with:
+
+```sh
+aws ec2 revoke-security-group-ingress --region us-west-2 --group-id sg-007dd04266b7ed321 \
+  --protocol tcp --port 443 --cidr 0.0.0.0/0
 ```
 
 Keep TURN 3478 TCP/UDP and 49300–49350 UDP open. After a browser measurement verifies a selected relay
@@ -216,6 +224,7 @@ aws ec2 revoke-security-group-ingress --region us-west-2 --group-id sg-007dd0426
 
 ## Sources
 
+- [Caddy automatic HTTPS controls](https://caddyserver.com/docs/automatic-https)
 - [Caddy reverse proxy and WebSockets](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy)
 - [Caddy systemd service guidance](https://caddyserver.com/docs/running)
 - [AWS security-group ingress CLI](https://docs.aws.amazon.com/cli/latest/reference/ec2/authorize-security-group-ingress.html)

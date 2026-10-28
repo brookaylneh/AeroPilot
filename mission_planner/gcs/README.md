@@ -85,7 +85,7 @@ sizes. HTTP failures retain the failed body and safe response headers without cr
 
 ```sh
 .venv-cosys/bin/python -m mission_planner.agents.accept_chat --case <uuid> --output .local/evidence/gcs/<new-chat-run>
-node --import tsx mission_planner/gcs/accept_browser.mjs flight 'https://35-81-229-78.sslip.io/mission?case=<uuid>' .local/evidence/gcs/<new-ui-run>
+node --import tsx mission_planner/gcs/accept_browser.mjs flight 'http://35.81.229.78/mission?case=<uuid>' .local/evidence/gcs/<new-ui-run>
 ```
 
 The browser harness also provides `capture URL NEW_DIRECTORY LABEL`, `states URL NEW_DIRECTORY`,

@@ -1,5 +1,5 @@
 [Unit]
-Description=SNR public HTTPS origin
+Description=SNR public HTTP origin
 After=network-online.target snr-web.service
 Wants=network-online.target
 
