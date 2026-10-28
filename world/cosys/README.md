@@ -453,9 +453,9 @@ this file. The launch corridor and authored homes remain separate infrastructure
 Generate a new terrain directory with these commands from the repository root:
 
 ```sh
-.venv-cosys/bin/python -m world.unreal.scripts.generate-open-meadow
-.venv-cosys/bin/python -m world.unreal.scripts.generate-vegetation-mask
-.venv-cosys/bin/python -m world.unreal.scripts.generate-minimap
+.venv-cosys/bin/python -m world.unreal.scripts.generate-open-meadow --evidence-dir .local/evidence/world/<new-run>
+.venv-cosys/bin/python -m world.unreal.scripts.generate-vegetation-mask --evidence-dir .local/evidence/world/<new-run>
+.venv-cosys/bin/python -m world.unreal.scripts.generate-minimap --evidence-dir .local/evidence/world/<new-run>
 ```
 
 The generator refuses an existing destination. It verifies every sample in the
@@ -465,7 +465,8 @@ explicit regression constants in the generator; current dimensions come only
 from the world file. Mask generation retains its deterministic noise, trail and
 coverage equations with per-axis texture dimensions, so physical patch scale is
 preserved. The minimap transposes raw axes and reverses north to put north at the
-top. Generation measurements are written only under `.local/evidence/world/`.
+top. Each command requires an explicit evidence directory and refuses an existing report.
+Use the same new directory under `.local/evidence/world/` for these three commands.
 
 `test_terrain.py` checks asymmetric corners/edge samples, original-square bit
 identity and duplicated extent literals in tracked source. Historical measurement

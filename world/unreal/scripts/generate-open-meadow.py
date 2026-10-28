@@ -1,7 +1,9 @@
 """Extend the original deterministic meadow; verify its original square before writing."""
 
+import argparse
 import hashlib
 import json
+from pathlib import Path
 
 import numpy as np
 from PIL import Image
@@ -29,11 +31,11 @@ def height(x, y):
     )
 
 
-def generate():
+def generate(evidence_dir):
     load_env()
     out = (ROOT / FIELD["path"]).parent
     assert not out.exists(), f"Terrain destination already exists: {out}"
-    evidence = ROOT / ".local/evidence/world/terrain.json"
+    evidence = evidence_dir / "terrain.json"
     assert not evidence.exists(), f"Evidence already exists: {evidence}"
     bounds = {end: [BOUNDS[end][axis] for axis in "xyz"] for end in ("min", "max")}
     north_m, east_m = [(BOUNDS["max"][a] - BOUNDS["min"][a]) / 100 for a in "xy"]
@@ -107,9 +109,12 @@ def generate():
     raw.tofile(out / "height.r16")
     Image.fromarray(np.rint(pixels * 255).astype("uint8")).save(out / "ground-mask.png")
     (out / "terrain.json").write_text(json.dumps(report, indent=2) + "\n")
+    evidence_dir.mkdir(parents=True, exist_ok=True)
     evidence.write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2))
 
 
 if __name__ == "__main__":
-    generate()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--evidence-dir", type=Path, required=True)
+    generate(parser.parse_args().evidence_dir)

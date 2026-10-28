@@ -1,7 +1,9 @@
 """Deterministic meadow plant patches at constant physical spacing."""
 
+import argparse
 import hashlib
 import json
+from pathlib import Path
 
 import numpy as np
 from PIL import Image
@@ -11,11 +13,11 @@ from mission_planner.environment import load_env
 from world.cosys.terrain import FIELD, ROOT, WORLD
 
 
-def generate():
+def generate(evidence_dir):
     load_env()
     source = (ROOT / FIELD["path"]).parent
     output = source / "vegetation-mask.png"
-    evidence = ROOT / ".local/evidence/world/vegetation-mask.json"
+    evidence = evidence_dir / "vegetation-mask.json"
     assert not output.exists() and not evidence.exists()
     ground = np.asarray(Image.open(source / "ground-mask.png")).astype(float) / 255
     rows, cols, channels = ground.shape
@@ -39,9 +41,12 @@ def generate():
                      "b": "Taller grass patches", "a": "Base coverage excluding footpath"},
         "heightmapSha256": WORLD["heightfieldSha256"],
     }
+    evidence_dir.mkdir(parents=True, exist_ok=True)
     evidence.write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2))
 
 
 if __name__ == "__main__":
-    generate()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--evidence-dir", type=Path, required=True)
+    generate(parser.parse_args().evidence_dir)

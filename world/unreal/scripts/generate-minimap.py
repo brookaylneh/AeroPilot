@@ -1,7 +1,9 @@
 """North-up map from the exact rectangular heightfield and trail mask."""
 
+import argparse
 import hashlib
 import json
+from pathlib import Path
 
 import numpy as np
 from PIL import Image
@@ -10,8 +12,10 @@ from mission_planner.environment import load_env
 from world.cosys.terrain import BOUNDS, COLUMNS, FIELD, ROOT, ROWS, WORLD
 
 
-def generate():
+def generate(evidence_dir):
     load_env()
+    evidence = evidence_dir / "navigation-minimap.json"
+    assert not evidence.exists()
     source = ROOT / FIELD["path"]
     assert hashlib.sha256(source.read_bytes()).hexdigest() == WORLD["heightfieldSha256"]
     height = np.fromfile(source, dtype="<u2").reshape(ROWS, COLUMNS).astype(float)
@@ -42,11 +46,12 @@ def generate():
         "outputSha256": hashlib.sha256(out.read_bytes()).hexdigest(),
         "bytes": out.stat().st_size, "containsPrivateTarget": False,
     }
-    evidence = ROOT / ".local/evidence/world/navigation-minimap.json"
-    assert not evidence.exists()
+    evidence_dir.mkdir(parents=True, exist_ok=True)
     evidence.write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report, indent=2))
 
 
 if __name__ == "__main__":
-    generate()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--evidence-dir", type=Path, required=True)
+    generate(parser.parse_args().evidence_dir)
