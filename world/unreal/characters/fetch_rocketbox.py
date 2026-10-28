@@ -1,4 +1,4 @@
-"""Fetch or verify the pinned MIT Rocketbox trial assets."""
+"""Fetch or verify the pinned MIT Rocketbox assets."""
 
 import argparse
 import concurrent.futures
@@ -23,10 +23,11 @@ def verify(data, item):
 def main():
     load_env()
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("manifest", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--verify", action="store_true")
     args = parser.parse_args()
-    manifest = json.loads((HERE / "rocketbox-assets.lock.json").read_text())
+    manifest = json.loads(args.manifest.read_text())
     vendor = ROOT / manifest["vendor"]
     args.output.mkdir(parents=True, exist_ok=False)
     if args.verify:

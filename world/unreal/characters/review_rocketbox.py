@@ -1,4 +1,4 @@
-"""Publish the three Rocketbox renders, source previews and native sensor crops."""
+"""Publish Rocketbox renders, source previews and native sensor crops."""
 
 import argparse
 import hashlib
@@ -18,19 +18,21 @@ ROOT = HERE.parents[2]
 def main():
     load_env()
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("manifest", type=Path)
     parser.add_argument("render", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("page")
     args = parser.parse_args()
     assert args.page.startswith("character-") and args.page.replace("-", "").isalnum()
     report = json.loads((args.render / "result.json").read_text())
-    assert len(report["images"]) == 15
-    manifest = json.loads((HERE / "rocketbox-assets.lock.json").read_text())
+    manifest = json.loads(args.manifest.read_text())
+    assert len(report["images"]) == 5 * len(manifest["characters"])
     destination = ROOT / ".local/dist" / args.page
     args.output.mkdir(parents=True, exist_ok=False)
     destination.mkdir(exist_ok=False)
     records = []
     sections = []
+    overview = []
     vendor = ROOT / manifest["vendor"]
 
     def copy(source, name, caption, native=False):
@@ -54,6 +56,10 @@ def main():
 
     for character in manifest["characters"]:
         identifier = character["id"]
+        overview.append(
+            f'<a href="#{identifier}"><img src="{identifier}-face.jpg" '
+            f'alt="{html.escape(character["label"])}">{html.escape(character["label"])}</a>'
+        )
         cards = []
         for view, label in [
             ("face", "Face · Unreal 4096 × 4096"),
@@ -89,10 +95,12 @@ def main():
                 f'<a class="full-frame" href="{name}.png">{label}: full 4K sensor frame</a>'
             )
         sections.append(
-            "<section><h2>"
+            f'<section id="{identifier}"><h2>'
             + html.escape(character["label"])
             + "</h2><p>"
             + html.escape(character["name"])
+            + "</p><p>"
+            + html.escape(character["assessment"])
             + '</p><div class="grid">'
             + "".join(cards)
             + '</div><p class="links">'
@@ -103,6 +111,10 @@ def main():
     document = (
         (HERE / "rocketbox-review.html")
         .read_text()
+        .replace("<!-- TITLE -->", html.escape(manifest["review"]["title"]))
+        .replace("<!-- DESCRIPTION -->", html.escape(manifest["review"]["description"]))
+        .replace("<!-- ASSESSMENT -->", html.escape(manifest["review"]["assessment"]))
+        .replace("<!-- OVERVIEW -->", "\n".join(overview))
         .replace("<!-- CHARACTERS -->", "\n".join(sections))
     )
     with (destination / "index.html").open("x") as stream:
@@ -110,6 +122,8 @@ def main():
     result = {
         "url": "http://35.81.229.78/" + args.page + "/index.html",
         "source_commit": manifest["commit"],
+        "manifest": str(args.manifest.resolve().relative_to(ROOT)),
+        "manifest_sha256": hashlib.sha256(args.manifest.read_bytes()).hexdigest(),
         "images": records,
         "sensor_crop_xyxy": [1600, 760, 2240, 1400],
         "sensor_crop_resampled": False,

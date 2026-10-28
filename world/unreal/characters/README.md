@@ -155,14 +155,19 @@ The audit hashes every new character asset and capture, verifies texture dimensi
 assembly results, and checks that the original samples and comparison files retain their hashes.
 Raw manifests and browser evidence stay under the evidence directory. Existing reports fail.
 
-## Rocketbox trial
+## Rocketbox characters
 
 `rocketbox-assets.lock.json` pins three Microsoft Rocketbox facial meshes, original textures,
-catalog previews and MIT notices to one repository commit and Git blob hashes. Acquisition
+catalog previews and MIT notices to one repository commit and Git blob hashes.
+`rocketbox-candidates.lock.json` separately pins twelve comparison candidates and their individual
+roster gaps. These are original models, not verified matches for `roster.json`; senior diversity,
+heavier builds and exact child ages remain unresolved. Both manifests define their own vendor
+and Unreal asset directories, preserving the approved sample. Acquisition
 records SHA-256 hashes and exact byte sizes for every file:
 
 ```sh
 .venv-cosys/bin/python -m world.unreal.characters.fetch_rocketbox \
+  world/unreal/characters/rocketbox-assets.lock.json \
   .local/evidence/characters/<new-run>/acquisition
 ```
 
@@ -170,15 +175,16 @@ An existing vendor directory fails. Use `--verify` explicitly to verify an exist
 into a new evidence directory without downloading again. Keep the MIT copyright and permission
 notice with redistributed assets. Using Rocketbox does not grant rights to other scene content.
 
-Run `import_rocketbox.py NEW_OUTPUT` through `UnrealEditor-Cmd -run=pythonscript` with
+Run `import_rocketbox.py MANIFEST NEW_OUTPUT` through `UnrealEditor-Cmd -run=pythonscript` with
 `-nullrhi`, `-EnablePlugins=PythonScriptPlugin,EditorScriptingUtilities`,
 `-ExecCmds="Interchange.FeatureFlags.Import.FBX 0"` and `-ScriptErrorsAreFatal`.
 Use the provisioned `unreal-container.sh exec` mode. The importer asserts source hashes,
 imports the highest-detail facial FBX with morph targets, and writes only to the manifest's
 new asset folders. Existing folders fail. It creates materials from the original color,
 normal and specular maps, with head roughness 0.45 and body/hair roughness 0.7. Hair cards use
-masked alpha; no Epic character textures, meshes, grooms or rigs are added. Roughness values
-are authored review settings, not measured source PBR data.
+masked alpha. Glasses use their source opacity, normal and specular maps, surface-forward
+translucency and authored roughness 0.1; no Epic character textures, meshes, grooms or rigs are
+added. Roughness values are authored review settings, not measured source PBR data.
 
 Run `render_rocketbox.py IMPORT_RESULT_JSON NEW_OUTPUT` through the editor's
 `-ExecutePythonScript` and `unreal-container.sh character-authoring`. Use `/Engine/Maps/Entry`,
@@ -193,12 +199,18 @@ Publish the successful render directory to a new gallery:
 
 ```sh
 .venv-cosys/bin/python -m world.unreal.characters.review_rocketbox \
+  world/unreal/characters/rocketbox-assets.lock.json \
   .local/evidence/characters/<run>/<render> \
   .local/evidence/characters/<run>/review character-rocketbox
 node world/unreal/characters/capture-review.mjs \
   http://35.81.229.78/character-rocketbox/index.html \
   .local/evidence/characters/<run>/browser 18 4096,640,1280x720,3840x2160
 ```
+
+For the twelve-candidate comparison use `rocketbox-candidates.lock.json` at acquisition, import
+and publication; publish to `character-rocketbox-candidates` and check 72 visible images.
+Each character has five Unreal captures and one source preview, with full sensor frames linked
+separately. The original `character-rocketbox` page remains the approved sample.
 
 Load `.local/runtime.env` before browser checks. The review page includes original source
 previews, actual Unreal renders, full sensor frames and 640-square crops without resampling.

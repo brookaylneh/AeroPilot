@@ -45,13 +45,23 @@ def material(folder, name, textures, roughness):
     def connect(expression, output, prop):
         assert MATERIALS.connect_material_property(expression, output, prop)
 
-    color = node(unreal.MaterialExpressionTextureSample, texture=textures[name + "_color"])
+    glasses = name.endswith("_glasses")
+    color_name = name + ("_opacity_color" if glasses else "_color")
+    color = node(unreal.MaterialExpressionTextureSample, texture=textures[color_name])
     connect(color, "RGB", unreal.MaterialProperty.MP_BASE_COLOR)
     connect(
         node(unreal.MaterialExpressionConstant, r=roughness),
         "",
         unreal.MaterialProperty.MP_ROUGHNESS,
     )
+    if glasses:
+        asset.set_editor_property("blend_mode", unreal.BlendMode.BLEND_TRANSLUCENT)
+        asset.set_editor_property(
+            "translucency_lighting_mode",
+            unreal.TranslucencyLightingMode.TLM_SURFACE_PER_PIXEL_LIGHTING,
+        )
+        asset.set_editor_property("two_sided", True)
+        connect(color, "A", unreal.MaterialProperty.MP_OPACITY)
     if name.endswith("_opacity"):
         asset.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
         asset.set_editor_property("two_sided", True)
@@ -131,7 +141,7 @@ def character(recipe, vendor):
     for index, slot in enumerate(slots):
         name = str(slot.material_slot_name)
         assert name.startswith(recipe["texture_prefix"] + "_"), name
-        roughness = 0.45 if name.endswith("_head") else 0.7
+        roughness = 0.1 if name.endswith("_glasses") else 0.45 if name.endswith("_head") else 0.7
         slot.material_interface = material(folder, name, textures, roughness)
         slots[index] = slot
         records.append(
@@ -155,7 +165,9 @@ def character(recipe, vendor):
         {"name": name, "size": [texture.blueprint_get_size_x(), texture.blueprint_get_size_y()]}
         for name, texture in textures.items()
     ]
-    assert all(min(item["size"]) >= 1024 for item in texture_info), texture_info
+    for item in texture_info:
+        minimum = 256 if "_glasses_" in item["name"] else 1024
+        assert min(item["size"]) >= minimum, item
     return {
         "id": recipe["id"],
         "name": recipe["name"],
@@ -170,10 +182,11 @@ def character(recipe, vendor):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("manifest", type=Path)
     parser.add_argument("output", type=Path)
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=False)
-    manifest = json.loads((HERE / "rocketbox-assets.lock.json").read_text())
+    manifest = json.loads(args.manifest.read_text())
     vendor = ROOT / manifest["vendor"]
     for item in manifest["files"]:
         data = (vendor / item["path"]).read_bytes()
