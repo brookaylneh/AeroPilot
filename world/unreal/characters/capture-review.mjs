@@ -45,19 +45,28 @@ try {
       await page.locator('model-viewer').screenshot({ path });
       captures.push({ identity, pose, path, dimensions });
     }
-    await page.locator('model-viewer').evaluate((viewer) => {
-      const { x, y, z } = viewer.getCameraTarget();
-      const height = viewer.getDimensions().y;
-      viewer.cameraTarget = x + 'm ' + (y + height * 0.36) + 'm ' + z + 'm';
-      viewer.cameraOrbit = '0deg 90deg ' + height * 0.48 + 'm';
-      viewer.jumpCameraToGoal();
-    });
-    await page.evaluate(
-      () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
-    );
-    const path = output + '/' + identity + '-face.png';
-    await page.locator('model-viewer').screenshot({ path });
-    captures.push({ identity, pose: 'Face', path, dimensions });
+    const closeups = [
+      { pose: 'face', x: 0, y: 0.36, radius: 0.48 },
+      { pose: 'hand-negative-x', x: -0.4, y: 0.05, radius: 0.55 },
+      { pose: 'hand-positive-x', x: 0.4, y: 0.05, radius: 0.55 },
+    ];
+    for (const closeup of closeups) {
+      await page.getByRole('button', { name: 'Front', exact: true }).click();
+      await page.locator('model-viewer').evaluate((viewer, closeup) => {
+        const center = viewer.getCameraTarget();
+        const size = viewer.getDimensions();
+        viewer.cameraTarget =
+          center.x + size.x * closeup.x + 'm ' + (center.y + size.y * closeup.y) + 'm ' + center.z + 'm';
+        viewer.cameraOrbit = '0deg 90deg ' + size.y * closeup.radius + 'm';
+        viewer.jumpCameraToGoal();
+      }, closeup);
+      await page.evaluate(
+        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+      );
+      const path = output + '/' + identity + '-' + closeup.pose + '.png';
+      await page.locator('model-viewer').screenshot({ path });
+      captures.push({ identity, pose: closeup.pose, path, dimensions });
+    }
     await page.getByRole('button', { name: 'Close', exact: true }).click();
     console.log('Captured ' + identity);
   }
