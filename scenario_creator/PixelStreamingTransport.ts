@@ -117,7 +117,6 @@ export class PixelStreamingTransport {
         initialSettings: {
           ss: signallingUrl,
           AutoConnect: false,
-          ForceTURN: true,
           WaitForStreamer: false,
           MaxReconnectAttempts: 0,
           PreferredCodec: codec,

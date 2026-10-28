@@ -1,4 +1,4 @@
-import { readFile, stat } from 'node:fs/promises';
+import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
@@ -29,11 +29,14 @@ export async function rendererHealth() {
   if (!['active', 'activating', 'reloading'].includes(state)) return { state: 'unavailable', maxEditors: 1 };
   const streamer = health.streamers[0];
   if (streamer) {
-    const file = path.join(required('SNR_DRONE_DATA_DIR'), 'runtime.json');
+    const directory = required('SNR_DRONE_DATA_DIR');
+    if (!(await readdir(directory)).includes('runtime.json')) return { state: 'starting', maxEditors: 1 };
+    const file = path.join(directory, 'runtime.json');
     const [text, info] = await Promise.all([readFile(file, 'utf8'), stat(file)]);
     const runtime = JSON.parse(text);
     assert(Date.now() - info.mtimeMs < 3000, 'Renderer telemetry is stale');
-    assert(runtime.scenarioReady === true, 'Scenario session is not ready');
+    assert(typeof runtime.scenarioReady === 'boolean', 'Missing scenario readiness');
+    if (!runtime.scenarioReady) return { state: 'starting', maxEditors: 1 };
   }
   return { state: !streamer ? 'starting' : streamer.players > 0 ? 'occupied' : 'ready', maxEditors: 1 };
 }

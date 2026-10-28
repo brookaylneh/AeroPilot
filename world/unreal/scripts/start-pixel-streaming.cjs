@@ -41,6 +41,7 @@ const signalling = new SignallingServer({
     const credential = crypto.createHmac('sha1', turn.secret).update(username).digest('base64');
     return {
       ...peerOptions,
+      iceTransportPolicy: 'relay',
       iceServers: [
         ...peerOptions.iceServers,
         {

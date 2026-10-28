@@ -162,6 +162,8 @@ Caddy proxies to the web server so production and development share the existing
 checks. The old `/pixel-streaming` path is removed. The root redirects explicitly; unknown paths return 404. TURN and its media endpoints are the network-facing exception to the loopback service rule.
 Caddy serves the public IP over HTTP on TCP 80. Automatic HTTPS and the admin endpoint are disabled.
 WebSockets use `ws://` on the same origin; no DNS name or certificate is required.
+Signalling supplies `iceTransportPolicy: relay` to browsers. Unreal advertises its local candidates;
+Epic's frontend `ForceTURN` flag is unused because it also rejects those remote candidates.
 
 The mission service starts idle. The first `/mission?case=<uuid>` connection selects a saved briefing
 and starts the four autopilots. It keeps that mission across browser disconnects and rejects another
@@ -194,6 +196,13 @@ and the native frame/GPU telemetry remain available. Editor tracing is unchanged
 
 Renderer readiness requires a connected streamer and fresh native `scenarioReady` telemetry. A connected
 signalling socket alone is insufficient. Invalid scenario initialization terminates the renderer visibly.
+Before the first native telemetry file arrives, readiness remains `starting`.
+
+The current `Live` link selects `.local/unreal/releases/cooked-content-recovery`, which combines the
+AWS executable with five explicitly approved temporary cooked-content files. Their hashes and source
+paths are in `mission_planner/measurements/aws-transfer.json`. Restore the complete uncooked character
+assets, build and accept a replacement release, then remove this isolated recovery directory. The
+previous AWS release is retained; it cannot initialize the incomplete character catalog.
 
 ## Security group
 
