@@ -68,16 +68,16 @@ class Sam:
 
 
 class Glimmer:
-    def __init__(self, options: list[str]):
+    def __init__(self):
         self.http = fal_http("GLIMMER_URL")
-        self.options = tuple(options)
         self.prefix = "<|start|>assistant to=user<|message|>"
         tokens = []
-        for value in ["", *[" " + o for o in options]]:
+        for value in ("", "yes", "no"):
             body = dict(model="muse-glimmer", prompt=self.prefix + value, add_special_tokens=False)
             tokens.append(post(self.http, "/tokenize", body)["tokens"])
         assert all(t[:-1] == tokens[0] for t in tokens[1:])
-        assert len({t[-1] for t in tokens[1:]}) == len(options)
+        assert len({t[-1] for t in tokens[1:]}) == 2
+        self.option_token_ids = {o: t[-1] for o, t in zip(("yes", "no"), tokens[1:])}
 
     def _body(self, images, text, system):
         assert 1 <= len(images) <= 4 and text
@@ -95,14 +95,12 @@ class Glimmer:
             top_k=64,
         )
 
-    def decide(self, images: list[bytes], question: str, options: list[str]) -> dict[str, float]:
-        assert options and tuple(options) == self.options
-        labels = ", ".join(options[:-1]) + ", or " + options[-1]
-        system = f"Answer questions with exactly one lowercase word: {labels}."
+    def decide(self, images: list[bytes], question: str) -> dict[str, float]:
+        system = "Answer questions with exactly one lowercase word: yes or no."
         body = self._body(images, question, system)
         body["messages"][1:1] = [
             {"role": "user", "content": "Is two plus two five?"},
-            {"role": "assistant", "content": " no"},
+            {"role": "assistant", "content": "no"},
         ]
         body["messages"].append({"role": "assistant", "content": ""})
         body.update(
@@ -125,13 +123,12 @@ class Glimmer:
         generated = choice["logprobs"]["content"]
         assert len(generated) == 1
         logs = {p["token"]: p["logprob"] for p in generated[0]["top_logprobs"]}
-        mass = {o: math.exp(logs[" " + o]) for o in options}
+        mass = {o: math.exp(logs[o]) for o in ("yes", "no")}
         total = sum(mass.values())
-        assert 0 < total <= 1 + 1e-6 and all(math.isfinite(p) for p in mass.values())
-        self.outside_mass = max(0.0, 1 - total)
+        assert 0 < total <= 1 and all(math.isfinite(p) for p in mass.values())
         probabilities = {o: p / total for o, p in mass.items()}
         assert math.isclose(sum(probabilities.values()), 1, abs_tol=1e-8)
-        return probabilities
+        return {**probabilities, "outside_mass": 1 - total}
 
     def review(self, images: list[bytes], brief: str, schema: dict) -> dict:
         text = brief + " Return only JSON matching this schema: " + json.dumps(schema)

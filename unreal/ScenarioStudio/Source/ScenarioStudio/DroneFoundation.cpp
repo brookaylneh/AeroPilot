@@ -7,6 +7,7 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "HAL/FileManager.h"
+#include "HAL/PlatformFileManager.h"
 #include "Serialization/JsonSerializer.h"
 #include "TimerManager.h"
 #include "RenderTimer.h"
@@ -28,9 +29,13 @@ TSharedRef<FJsonObject> V(const FVector &P)
 void Write(const FString &Path, const TSharedRef<FJsonObject> &J)
 {
     FString S;
-    FJsonSerializer::Serialize(J, TJsonWriterFactory<>::Create(&S));
-    if (FFileHelper::SaveStringToFile(S, *(Path + TEXT(".tmp"))))
-        IFileManager::Get().Move(*Path, *(Path + TEXT(".tmp")), true);
+    const bool Serialized = FJsonSerializer::Serialize(J, TJsonWriterFactory<>::Create(&S));
+    checkf(Serialized, TEXT("Could not serialize native telemetry"));
+    const FString Temporary = Path + TEXT(".tmp");
+    // IFileManager::Move deletes the destination first; Linux MoveFile renames atomically.
+    if (!FFileHelper::SaveStringToFile(S, *Temporary) ||
+        !FPlatformFileManager::Get().GetPlatformFile().MoveFile(*Path, *Temporary))
+        UE_LOG(LogTemp, Fatal, TEXT("Could not publish native telemetry: %s"), *Path);
 }
 }
 ADroneFoundation::ADroneFoundation()

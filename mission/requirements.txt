@@ -1,5 +1,7 @@
 httpx==0.28.1
 python-dotenv==1.2.4
 jsonschema==4.26.0
+scipy==1.15.3
+matplotlib==3.10.9
 # Development
 ruff==0.17.3

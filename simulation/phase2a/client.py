@@ -75,13 +75,13 @@ def origin(name):
     return next(v["localNedOriginUeCm"] for v in native()["vehicles"] if v["id"] == name)
 
 
-def to_world(name, p):
-    o = origin(name)
+def to_world(name, p, origin_cm=None):
+    o = origin(name) if origin_cm is None else origin_cm
     return {k: o[k] / 100 + p[k] * (1 if k != "z" else -1) for k in "xyz"}
 
 
-def to_local(name, p):
-    o = origin(name)
+def to_local(name, p, origin_cm=None):
+    o = origin(name) if origin_cm is None else origin_cm
     return {k: (p[k] - o[k] / 100) * (1 if k != "z" else -1) for k in "xyz"}
 
 
@@ -151,13 +151,14 @@ def set_view(c, name, pitch=-90, yaw=0):
     )
 
 
-def capture(name, directory, tag, freeze=False):
+def capture(name, directory, tag, freeze=False, observe=None, jpeg_quality=None):
     c = connect()
     directory = Path(directory)
     directory.mkdir(parents=True, exist_ok=True)
     if freeze:
         c.simPause(True)
     try:
+        observation = observe(c) if observe is not None else None
         before = state(c, name)
         start = time.perf_counter()
         r = c.simGetImages(
@@ -172,8 +173,13 @@ def capture(name, directory, tag, freeze=False):
         assert data.size == r.width * r.height * 3, (r.width, r.height, data.size)
         # Pinned Cosys 3.5 RenderRequest explicitly writes R,G,B, with no flip.
         image = Image.fromarray(data.reshape(r.height, r.width, 3), "RGB")
-        path = directory / f"{tag}-{name}.png"
-        image.save(path)
+        suffix = "png" if jpeg_quality is None else "jpg"
+        path = directory / f"{tag}-{name}.{suffix}"
+        if jpeg_quality is None:
+            image.save(path)
+        else:
+            assert 1 <= jpeg_quality <= 100
+            image.save(path, quality=jpeg_quality, subsampling=0)
         info = {
             "schemaVersion": 1,
             "vehicleId": name,
@@ -188,6 +194,9 @@ def capture(name, directory, tag, freeze=False):
                 "orientation": quat(r.camera_orientation),
             },
             "cameraPositionWorldM": to_world(name, xyz(r.camera_position)),
+            "localNedOriginUeCm": origin(name),
+            "coordinateSystem": WORLD["coordinateSystem"],
+            "horizontalFovDegrees": c.simGetCameraInfo("front_center", vehicle_name=name).fov,
             "vehicleStateBefore": before,
             "vehicleStateAfter": after,
             "physicsPausedForCapture": freeze,
@@ -196,9 +205,13 @@ def capture(name, directory, tag, freeze=False):
             else "Bracketing samples; camera pose and timestamp are supplied by Cosys at capture",
             "captureLatencySeconds": latency,
             "transportBytes": len(r.image_data_uint8),
-            "pngBytes": path.stat().st_size,
+            "pngBytes" if jpeg_quality is None else "jpegBytes": path.stat().st_size,
             "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
         }
+        if observe is not None:
+            assert freeze, "Observations must share the frozen image state"
+            info["observation"] = observe(c)
+            assert info["observation"] == observation, "Observed actor moved during frozen capture"
         path.with_suffix(".json").write_text(json.dumps(info, indent=2) + "\n")
         return info
     finally:

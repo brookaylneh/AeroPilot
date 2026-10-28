@@ -132,7 +132,7 @@ def main():
                 found = model.detect(payload, prompts, 0.5)
                 return {"detections": {p: [asdict(d) for d in ds] for p, ds in found.items()}}
         elif args.case.startswith("glimmer"):
-            model = attach(Glimmer(OPTIONS if "fast" in args.case else []))
+            model = attach(Glimmer())
             crops = [
                 (ROOT / f"evidence/models/{name}-crop.jpg").read_bytes()
                 for name in ("target", "grass")
@@ -149,8 +149,7 @@ def main():
                     jpeg(image.crop((2040 + offset + j, 1092, 2552 + offset + j, 1604)))
                     for j in range(count)
                 ]
-                probabilities = model.decide(images, QUESTION, OPTIONS)
-                return dict(probabilities=probabilities, outside_mass=model.outside_mass)
+                return model.decide(images, QUESTION)
         else:
 
             def operation():

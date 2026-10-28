@@ -19,7 +19,10 @@
 
 - `mission/models.py`: thin typed SAM, Glimmer, and Wonder clients.
 - `mission/bench_models.py`: measured performance and capability benchmark.
-- `mission/smoke.py`: private simulator evaluation captures using existing helpers.
+- `mission/calibrate.py`: private calibration captures using existing simulator helpers.
+- `mission/geometry.py`: recorded-camera projection and terrain intersection.
+- `mission/infer_calibration.py`, `mission/analyze_calibration.py`: saved-frame inference and offline analysis.
+- `mission/glimmer_calibration.py`: crop-presence labels and separate Glimmer cohort statistics.
 - `mission/environment.py`: shared dotenv startup and credential assertions.
 - `services/glimmer/`: fal GPU-H200 deployment of the official vLLM container.
 - `services/sam/`: fal GPU-H100 deployment of the pinned SAM 3.1 checkpoint.
@@ -37,7 +40,23 @@
 
 - Install `mission/requirements.txt` in `.venv-cosys`; deployment requirements
   belong in Python 3.12 `.venv-fal` using `services/glimmer/requirements.txt`.
-- Capture private evaluation frames: `.venv-cosys/bin/python -m mission.smoke`.
+- List calibration conditions: `.venv-cosys/bin/python -m mission.calibrate --list`.
+- Capture one condition: `.venv-cosys/bin/python -m mission.calibrate --condition adult-kelvin
+  --scenario-id <saved-flat-meadow-uuid>`; `--all` runs the plain condition list.
+  The stream must be released. Existing condition directories fail; explicitly archive
+  a failed condition before rerunning it by name. Do not overwrite accepted captures.
+- Infer saved captures: `.venv-cosys/bin/python -m mission.infer_calibration --condition all
+  --output evidence/calibration/<new-run-name>`. This owns the fal warming/cleanup window.
+  Explicit condition names may replace `all`; existing inference outputs fail, with no resume.
+- Correct old schema-1 crop labels without model requests:
+  `.venv-cosys/bin/python -m mission.glimmer_calibration --condition <names>
+  --output evidence/calibration/<new-label-audit>`. Original predictions are archived unchanged.
+- Regenerate calibration deterministically, without simulator or network:
+  `.venv-cosys/bin/python -m mission.analyze_calibration`.
+  The input manifest at `data/calibration/manifest.json` records the complete plan,
+  provenance and any explicit exclusions; missing, unexcluded inputs fail.
+  See `docs/perception-calibration.md` for label definitions and limitations.
+- Plot the resulting report: `.venv-cosys/bin/python -m mission.plot_calibration`.
 - Run an explicit benchmark case with a new output path, for example:
   `.venv-cosys/bin/python -m mission.bench_models --case sam_frame_half_1
   --output evidence/models/sam-new.json`; `--help` lists supported cases.
