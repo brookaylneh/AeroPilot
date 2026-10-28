@@ -154,6 +154,31 @@ The audit hashes every new character asset and capture, verifies texture dimensi
 assembly results, and checks that the original samples and comparison files retain their hashes.
 Raw manifests and browser evidence stay under the evidence directory. Existing reports fail.
 
+## Quixel preset selection
+
+`quixel-presets.json` maps the twelve roster roles to explicit Epic catalog preset IDs and a
+MetaHuman version. The matches and gaps are visual assessments; the catalog does not specify
+age, ancestry, height or body build. The younger candidates are not verified child models.
+
+Fetch the official portraits and publish a selection page:
+
+```sh
+.venv-cosys/bin/python -m world.unreal.characters.quixel_presets \
+  .local/evidence/characters/<new-selection> character-quixel
+```
+
+Use `--update` explicitly to replace that page, with a new evidence directory. Existing source
+portraits and evidence remain intact. The tool verifies the preset identity, version, ready
+status and available asset formats; saves the original portrait bytes and their hashes; and
+labels the page as catalog images. It does not acquire 3D models. Inspect each selected version:
+the legacy catalog can display an older portrait than the current preset version.
+
+Actual character acquisition requires a separately authenticated Quixel/Bridge session.
+The MetaHuman cloud login used for rigging is not a Quixel browser session. Use Epic's supported
+Bridge download/import workflow and retain source packages and asset hashes before accepting
+an imported character. The portrait gallery cannot establish in-project rendering quality,
+full-body proportions, clothing fit or animation quality.
+
 ## Imported heads
 
 KeenFace's MetaHuman ZIP export contains a template head FBX and color, normal and SRMF maps.
