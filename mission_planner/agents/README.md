@@ -25,9 +25,9 @@ Positions are metres north/east of the search centre; altitude is metres above t
 | `get_probability_map` | read | Read normalized belief | none | retained world mass and top cells; grid streamed to browser | supported prior and initialized search inputs | None | Search · registered |
 | `get_coverage` | read | Read actual camera evidence status | none | source, captures, processed negatives; explicit no-source state | open rescue case | None | Search · registered |
 | `notify_ground_team` | flight | Send a reviewed rescue lead | `team_id`, `detection_id`, `message` | delivery acknowledgement | confirmed lead, connected messaging | explicit operator approval | Communication · catalogue only |
-| `open_feed` | view | Open a real aircraft video source | `drone_id` | source identity and stream state | connected video subsystem | None | Cosys/video · catalogue only |
+| `open_feed` | view | Open actual nadir captures with camera time and pose | `drone_id` | applied feed focus and last capture identity | known ID, initialized fleet | None | Cosys · registered |
 
-Seventeen functions are registered. The service rejects unknown tools; catalogue entries do not simulate unavailable subsystems. Flight acceptance requires the actual MAVLink state; a successful command acknowledgement does not mean a destination has been reached. Telemetry remains the source of arrival and landed state.
+Eighteen functions are registered. The service rejects unknown tools; catalogue entries do not simulate unavailable subsystems. Flight acceptance requires the actual MAVLink state; a successful command acknowledgement does not mean a destination has been reached. Telemetry remains the source of arrival and landed state. Sensor feeds retain each drone's last actual capture and update at capture cadence. Preview images stay in the browser stream and never enter tool results or Wonder context.
 
 The flight band is 10–100 m above home, speed 0.5–15 m/s, and minimum route separation is 3.5 m. The original search square is ±804.672 m. The operator authorized a 50 m wide, 40 m deep southern launch corridor because the four saved spawn positions are outside that square. MAVLink fence read-back, including that corridor, controls the map and final geometric checks. Arming and failsafe checks remain enabled.
 

@@ -19,6 +19,7 @@ const titles: Record<string, string> = {
   get_fleet: 'Fleet status',
   get_drone: 'Aircraft status',
   show_on_map: 'Focus map',
+  open_feed: 'Sensor feed',
   take_off: 'Take off',
   fly_route: 'Fly route',
   fly_to: 'Fly to',

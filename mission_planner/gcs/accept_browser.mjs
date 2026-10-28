@@ -10,6 +10,7 @@ import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from '@playwright/test';
 import { missionPlanSchema } from './missionPlan.ts';
 import { port as configuredPort } from '../../web/runtime.ts';
+import { measureSensorFeed } from './accept_sensor_feed.mjs';
 
 const sizes = [
   [1920, 1080],
@@ -908,6 +909,7 @@ assert(
   [
     'search',
     'flight',
+    'feed',
     'capture',
     'states',
     'approvals',
@@ -919,7 +921,7 @@ assert(
   ].includes(command) &&
     url &&
     output,
-  'Usage: node --import tsx mission_planner/gcs/accept_browser.mjs {flight|capture|states|approvals|review|performance|proxy|land|stop} URL NEW_DIRECTORY [capture: LABEL; performance: SERVICE_PID SECONDS; stop: SERVICE_PID]',
+  'Usage: node --import tsx mission_planner/gcs/accept_browser.mjs {flight|feed|capture|states|approvals|review|performance|proxy|land|stop} URL NEW_DIRECTORY [feed: SECONDS; capture: LABEL; performance: SERVICE_PID SECONDS; stop: SERVICE_PID]',
 );
 await mkdir(output, { recursive: false });
 if (command === 'proxy') await proxy(new URL(url).origin, output);
@@ -931,7 +933,12 @@ else {
   });
   try {
     if (command === 'search') await searchFlight(browser, url, output);
-    else if (command === 'flight') await flight(browser, url, output);
+    else if (command === 'feed') {
+      assert.equal(options.length, 1, 'feed requires seconds');
+      const seconds = Number(options[0]);
+      assert(Number.isFinite(seconds) && seconds >= 10 && seconds <= 1200);
+      await measureSensorFeed(browser, url, output, seconds, sendTool);
+    } else if (command === 'flight') await flight(browser, url, output);
     else if (command === 'states') await states(browser, url, output);
     else if (command === 'approvals') await approvals(browser, url, output);
     else if (command === 'land') await land(browser, url, output);

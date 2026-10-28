@@ -3,15 +3,17 @@ import { z } from 'zod';
 import { briefingSchema } from '../../scenario_creator/briefing';
 import { searchSchema, type SearchState } from './searchState';
 import { missionPlanSchema } from './missionPlan';
+import { droneIds } from './droneIdentity';
+import {
+  feedFocusMessageSchema,
+  receiveSensorFrame,
+  sensorFrameMessageSchema,
+  type FeedFocus,
+  type SensorFrames,
+} from './sensorFeedState';
+import type { DroneId } from './droneIdentity';
 
-export const droneIds = ['Drone1', 'Drone2', 'Drone3', 'Drone4'] as const;
-export type DroneId = (typeof droneIds)[number];
-export const droneColors: Record<DroneId, string> = {
-  Drone1: '#56b4e9',
-  Drone2: '#e6b450',
-  Drone3: '#cc79a7',
-  Drone4: '#68d6b1',
-};
+export { droneIds, droneColors, type DroneId } from './droneIdentity';
 const number = z.number().finite();
 const point = z.object({ north_m: number, east_m: number });
 export const routeArgumentsSchema = z.object({
@@ -125,6 +127,8 @@ const stateSchema = z.object({
 export type MissionState = z.infer<typeof stateSchema>;
 const messageSchema = z.discriminatedUnion('type', [
   stateSchema,
+  sensorFrameMessageSchema,
+  feedFocusMessageSchema,
   z.object({ type: z.literal('search'), search: searchSchema }),
   z.object({ type: z.literal('event'), event: eventSchema }),
   z.object({ type: z.literal('history'), events: z.array(eventSchema) }),
@@ -141,12 +145,15 @@ declare global {
 export function useMission(caseId: string | null) {
   const [state, setState] = useState<MissionState | null>(null);
   const [search, setSearch] = useState<SearchState | null>(null);
+  const [sensorFrames, setSensorFrames] = useState<SensorFrames>({});
+  const [feedFocus, setFeedFocus] = useState<FeedFocus | null>(null);
   const [events, setEvents] = useState<MissionEvent[]>([]);
   const [connection, setConnection] = useState<'connecting' | 'connected' | 'closed'>('connecting');
   const [error, setError] = useState('');
   const [now, setNow] = useState(Date.now());
   const socket = useRef<WebSocket | null>(null);
   const arrived = useRef(0);
+  const frames = useRef<SensorFrames>({});
   useEffect(() => {
     const clock = window.setInterval(() => setNow(Date.now()), 250);
     return () => window.clearInterval(clock);
@@ -160,6 +167,9 @@ export function useMission(caseId: string | null) {
     const ws = new WebSocket(
       `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/api/mission`,
     );
+    frames.current = {};
+    setSensorFrames({});
+    setFeedFocus(null);
     socket.current = ws;
     ws.onopen = () => {
       setConnection('connected');
@@ -177,6 +187,19 @@ export function useMission(caseId: string | null) {
         arrived.current = Date.now();
         setState(data);
       } else if (data.type === 'search') setSearch(data.search);
+      else if (data.type === 'sensor_frame') {
+        try {
+          frames.current = receiveSensorFrame(
+            frames.current,
+            data.frame,
+            performance.timeOrigin + performance.now(),
+          );
+          setSensorFrames(frames.current);
+        } catch (error) {
+          setError(`Mission protocol error: ${String(error)}`);
+          ws.close(1002, 'Invalid sensor frame sequence');
+        }
+      } else if (data.type === 'feed_focus') setFeedFocus(data);
       else if (data.type === 'event') setEvents((items) => [...items, data.event].slice(-1000));
       else if (data.type === 'history') setEvents(data.events.slice(-1000));
       else if (data.type === 'error') setError(data.message);
@@ -223,7 +246,7 @@ export function useMission(caseId: string | null) {
     socket.current.send(JSON.stringify(message));
   }
   const age = state ? Math.max(0, (now - arrived.current) / 1000) : 0;
-  return { state, search, events, connection, error, setError, send, now, age };
+  return { state, search, sensorFrames, feedFocus, events, connection, error, setError, send, now, age };
 }
 
 export function linkLost(vehicle: Vehicle, age: number, connected: boolean) {

@@ -7,8 +7,17 @@ from mission_planner.agents.tools import TOOLS, validate_arguments
 
 class ToolContracts(unittest.TestCase):
     def test_registry_has_only_available_subsystems(self):
-        self.assertEqual(len(TOOLS), 17)
-        self.assertNotIn("open_feed", [t["name"] for t in TOOLS])
+        self.assertEqual(len(TOOLS), 18)
+        self.assertIn("open_feed", [t["name"] for t in TOOLS])
+
+    def test_feed_requires_one_known_drone(self):
+        validate_arguments("open_feed", {"drone_id": "Drone3"})
+        with self.assertRaisesRegex(AssertionError, "Required values missing"):
+            validate_arguments("open_feed", {})
+        with self.assertRaisesRegex(AssertionError, "Unknown drone"):
+            validate_arguments("open_feed", {"drone_id": "Drone9"})
+        with self.assertRaisesRegex(AssertionError, "Unrecognized arguments"):
+            validate_arguments("open_feed", {"drone_id": "Drone1", "start_flight": True})
 
     def test_unknown_drone_is_explicit(self):
         with self.assertRaisesRegex(AssertionError, "Unknown drone: Drone9"):

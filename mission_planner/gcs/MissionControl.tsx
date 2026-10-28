@@ -21,13 +21,13 @@ import {
   Route,
   Send,
   ShieldCheck,
-  VideoOff,
   X,
 } from 'lucide-react';
 import MissionMap from './MissionMap';
 import SearchPanel from './SearchPanel';
 import SearchApproval from './SearchApproval';
 import RouteApproval from './RouteApproval';
+import SensorFeed from './SensorFeed';
 import {
   droneColors,
   droneIds,
@@ -37,7 +37,6 @@ import {
   useMission,
   type DroneId,
   type MissionEvent,
-  type Vehicle,
 } from './missionState';
 import {
   actionStatus,
@@ -56,59 +55,6 @@ function clock(seconds: number) {
 }
 function timestamp(ms: number) {
   return new Date(ms).toLocaleTimeString('en-GB', { hour12: false, timeZone: 'UTC' });
-}
-function NoVideo({ vehicle, inset = false }: { vehicle: Vehicle | undefined; inset?: boolean }) {
-  return (
-    <div className={`gcs-video ${inset ? 'is-inset' : ''}`}>
-      <div className="gcs-video-top">
-        <span>
-          <i className="gcs-status-dot" />
-          {vehicle ? vehicle.id : 'Video'} · CAMERA
-        </span>
-        <span>NO SIGNAL</span>
-      </div>
-      {!inset && (
-        <div className="gcs-compass">
-          <span>HEADING</span>
-          <b>{formatValue(vehicle?.heading_deg, '°', 0)}</b>
-        </div>
-      )}
-      <div className="gcs-video-empty">
-        <div className="gcs-video-icon">
-          <VideoOff size={inset ? 24 : 32} strokeWidth={1.3} />
-        </div>
-        <strong>No video source</strong>
-        <p>{inset ? 'Camera feed not connected' : 'This aircraft has no camera feed connected.'}</p>
-        {!inset && (
-          <span>
-            {vehicle
-              ? 'Telemetry below is received from the autopilot.'
-              : 'Flight telemetry appears when the aircraft connects.'}
-          </span>
-        )}
-      </div>
-      {!inset && (
-        <div className="gcs-video-hud">
-          <div>
-            <span>ALT ABOVE HOME</span>
-            <strong>{formatValue(vehicle?.altitude_above_home_m, 'm')}</strong>
-          </div>
-          <div>
-            <span>GROUND SPEED</span>
-            <strong>{formatValue(vehicle?.ground_speed_mps, 'm/s')}</strong>
-          </div>
-          <div>
-            <span>VERTICAL SPEED</span>
-            <strong>{formatValue(vehicle?.climb_rate_mps, 'm/s')}</strong>
-          </div>
-          <div>
-            <span>GPS / SATELLITES</span>
-            <strong>{vehicle ? `${vehicle.gps_fix} / ${vehicle.satellites}` : '—'}</strong>
-          </div>
-        </div>
-      )}
-    </div>
-  );
 }
 function DroneLabel({ value }: { value: unknown }) {
   const id = droneIds.find((id) => id === value);
@@ -166,12 +112,18 @@ function ToolRow({ event, events }: { event: MissionEvent; events: MissionEvent[
 }
 export default function MissionControl() {
   const caseId = new URLSearchParams(location.search).get('case');
-  const { state, search, events, connection, error, setError, send, now, age } = useMission(caseId);
+  const { state, search, sensorFrames, feedFocus, events, connection, error, setError, send, now, age } =
+    useMission(caseId);
   const [marking, setMarking] = useState(false);
   const approval = state?.approvals[0];
   const pendingRoute = approval?.name === 'fly_route' ? routeArgumentsSchema.parse(approval.arguments) : null;
   const [selected, setSelected] = useState<DroneId>('Drone1');
   const [view, setView] = useState<'map' | 'video'>('map');
+  useEffect(() => {
+    if (!feedFocus) return;
+    setSelected(feedFocus.drone_id);
+    setView('video');
+  }, [feedFocus]);
   const [panel, setPanel] = useState<'agent' | 'log'>('agent');
   const [text, setText] = useState('');
   const [alertsOpen, setAlertsOpen] = useState(false);
@@ -371,7 +323,13 @@ export default function MissionControl() {
               )}
             </div>
             <div className={view === 'video' ? 'gcs-main-video' : 'gcs-inset gcs-inset-video'}>
-              <NoVideo vehicle={vehicle} inset={view === 'map'} />
+              <SensorFeed
+                droneId={selected}
+                frame={sensorFrames[selected]}
+                connected={connected}
+                inset={view === 'map'}
+                onError={setError}
+              />
               {view === 'map' && (
                 <button
                   className="gcs-inset-swap"
