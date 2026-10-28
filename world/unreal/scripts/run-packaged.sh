@@ -93,7 +93,7 @@ install -D -m 644 world/cosys/materials.csv "$HOME/Documents/AirSim/materials.cs
 # Run the packaged binary directly so Docker/systemd termination reaches UE
 # and flushes its device-specific pipeline cache during graceful shutdown.
 exec "$runtime_binary" ScenarioStudio "$world_map" \
-  -RenderOffscreen -unattended -nosound -NoSplash -vulkan -sm5 \
+  -RenderOffscreen -unattended -nosound -NoSplash -notraceserver -vulkan -sm5 \
   "-UserDir=$HOME/ScenarioStudio" \
   -savevulkanpsocacheonexit \
   -dpcvars=r.pso.PrecompileThreadPoolSizeMax=2,r.Streaming.PoolSize=4096,r.ScreenPercentage=100 \
