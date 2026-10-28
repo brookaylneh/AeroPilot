@@ -91,7 +91,29 @@ def setup(recipe):
         )
     outfits = [item for item in components if item["name"].startswith("SkeletalMesh")]
     assert len(outfits) == 1, "Expected exactly one outfit component"
-    return camera, components
+    grooms = []
+    for component in actor.get_components_by_class(unreal.GroomComponent):
+        asset = component.get_editor_property("groom_asset")
+        if asset is not None:
+            binding = component.get_editor_property("binding_asset")
+            assert binding is not None, component.get_name()
+            grooms.append(
+                {
+                    "name": component.get_name(),
+                    "asset": asset.get_path_name(),
+                    "binding": binding.get_path_name(),
+                    "visible": component.is_visible(),
+                    "use_cards": component.get_editor_property("use_cards"),
+                }
+            )
+    assert len(grooms) >= 3 and all(item["visible"] for item in grooms), grooms
+    assert not any(item["use_cards"] for item in grooms), grooms
+    geometry = {
+        "body_bounds_center_cm": [center.x, center.y, center.z],
+        "body_bounds_extent_cm": [extent.x, extent.y, extent.z],
+        "grooms": grooms,
+    }
+    return camera, components, geometry
 
 
 def main():
@@ -105,11 +127,11 @@ def main():
     name = character["asset_name"]
     recipe["blueprint"] = character["assembly_folder"] + "/" + name + "/BP_" + name
     args.output.mkdir(exist_ok=False)
-    camera, components = setup(recipe)
+    camera, components, geometry = setup(recipe)
     unreal.AutomationLibrary.finish_loading_before_screenshot()
     unreal.EditorPythonScripting.set_keep_python_script_alive(True)
     state = {"started": time.monotonic(), "index": 0, "task": None}
-    report = {"recipe": recipe, "images": [], "components": components}
+    report = {"recipe": recipe, "images": [], "components": components, "geometry": geometry}
     for name, expected in recipe["console_variables"].items():
         actual = unreal.SystemLibrary.get_console_variable_int_value(name)
         assert actual == expected, (name, actual, expected)

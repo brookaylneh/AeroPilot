@@ -67,8 +67,10 @@ case "$mode" in
       snr-unreal:5.8.2-ubuntu24.04 "$@"
     ;;
   character-authoring)
+    authoring_name="${SNR_CONTAINER_NAME:-snr-character-authoring}"
+    [[ "$authoring_name" =~ ^snr-[a-z0-9-]+$ ]] || exit 2
     exec docker run "${container_flags[@]}" "${gpu_flags[@]}" --pid=host \
-      --name snr-character-authoring --ulimit memlock=-1 snr-unreal-fab:5.8.2 \
+      --name "$authoring_name" --ulimit memlock=-1 snr-unreal-fab:5.8.2 \
       xvfb-run -a --server-args="-screen 0 2048x2048x24 -nolisten tcp" "$@" -ScriptErrorsAreFatal
     ;;
   metahuman-login)
