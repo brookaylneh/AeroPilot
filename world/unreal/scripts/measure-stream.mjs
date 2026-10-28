@@ -11,13 +11,14 @@ import {
   assertScenarioProtocol,
 } from '../../../mission_planner/agents/perception/browser.mjs';
 
-const [origin, output, durationText] = process.argv.slice(2);
+const [origin, output, durationText, view] = process.argv.slice(2);
 const duration = Number(durationText);
 assert(
   origin && output && Number.isInteger(duration) && duration >= 60 && duration <= 1800,
-  'Usage: measure-stream.mjs ORIGIN NEW_OUTPUT_DIRECTORY SECONDS (60–1800)',
+  'Usage: measure-stream.mjs ORIGIN NEW_OUTPUT_DIRECTORY SECONDS (60–1800) VIEW',
 );
 assert.equal(new URL(origin).origin, origin);
+assert(['person', 'navigation'].includes(view), 'VIEW must be person or navigation');
 const height = Number(process.env.SNR_STREAM_HEIGHT);
 const fps = Number(process.env.SNR_STREAM_FPS);
 assert([1080, 2160].includes(height));
@@ -27,8 +28,15 @@ const execute = promisify(execFile);
 const result = {
   origin,
   recordedAt: new Date().toISOString(),
-  profile: { width: (height * 16) / 9, height, fps, codec: process.env.SNR_STREAM_CODEC },
-  workload: 'Browser navigation; no flight or sensor capture experiment',
+  profile: {
+    width: (height * 16) / 9,
+    height,
+    fps,
+    codec: process.env.SNR_STREAM_CODEC,
+    minBitrateBps: Number(process.env.SNR_STREAM_MIN_BITRATE),
+    maxBitrateBps: Number(process.env.SNR_STREAM_MAX_BITRATE),
+  },
+  workload: `Browser ${view} view; no flight or sensor capture experiment`,
   errors: [],
   samples: [],
 };
@@ -114,11 +122,14 @@ try {
   assert(response.ok());
   await waitForCreator(page);
   await photograph('person');
-  await enterWorld(page);
-  await page.getByRole('button', { name: 'Explore', exact: true }).click();
-  await waitForCreator(page);
+  if (view === 'navigation') {
+    await enterWorld(page);
+    await page.getByRole('button', { name: 'Explore', exact: true }).click();
+    await waitForCreator(page);
+  }
   await page.locator('.free-navigation').focus();
-  await photograph('navigation-start');
+  await page.mouse.move(960, 540);
+  await photograph(`${view}-start`);
   await page.evaluate(() => {
     window.snrFrameTimes = [];
     window.snrMeasurementStart = performance.now();
@@ -133,9 +144,10 @@ try {
   const start = Date.now();
   while (Date.now() - start < duration * 1000) {
     const key = ['d', 'w', 'a', 's'][Math.floor((Date.now() - start) / 5000) % 4];
-    await page.keyboard.down(key);
+    if (view === 'navigation') await page.keyboard.down(key);
+    else await page.mouse.wheel(0, result.samples.length % 2 ? 5 : -5);
     await delay(1000);
-    await page.keyboard.up(key);
+    if (view === 'navigation') await page.keyboard.up(key);
     result.samples.push(await sample());
   }
   const observation = await page.evaluate(() => ({
@@ -161,7 +173,7 @@ try {
     graphicsMHz: distribution(result.samples.map((s) => s.gpu.graphicsMHz)),
     temperatureC: distribution(result.samples.map((s) => s.gpu.temperatureC)),
   };
-  await photograph('navigation-end');
+  await photograph(`${view}-end`);
   await assertScenarioProtocol(page);
   assert.deepEqual(result.errors, []);
   result.status = 'measured';

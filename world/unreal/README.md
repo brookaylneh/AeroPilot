@@ -63,12 +63,13 @@ configuration so the tool can assert the expected stream dimensions and TURN rel
 
 ```sh
 node --env-file=.local/runtime.env world/unreal/scripts/measure-stream.mjs \
-  http://35.81.229.78 .local/evidence/render-quality/<new-run> 300
+  http://35.81.229.78 .local/evidence/render-quality/<new-run> 300 navigation
 ```
 
 The tool records browser WebRTC counters, video-frame callback gaps, native camera telemetry timings,
 and NVIDIA power, clocks, temperature, utilization and memory. It captures native-resolution video
-frames before and after a repeating keyboard navigation routine. Timing percentiles describe the
+frames before and after a repeating keyboard navigation routine. Use `person` for a close character
+view with small alternating zoom movements. Timing percentiles describe the
 received camera telemetry samples, rather than an exhaustive engine frame trace.
 This measures navigation without starting drone flight or sensor captures; it does not establish the
 full four-drone quality gate. Existing output directories fail.
