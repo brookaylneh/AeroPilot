@@ -73,6 +73,10 @@ not independent trials. At 12 m capture spacing, overlapping frames are correlat
 `coverage.py` uses `perception/geometry.py` and the pure heightfield sampler to project
 real capture metadata. Unprocessed frames supply footprints at their measured altitude;
 calibrated negative updates require nominal 30 m AGL with the flight tolerance.
+`footprint.py` clips boundary captures against the actual heightfield perimeter,
+then solves bounded rays to a 1 μm vertical residual. Interior captures retain the
+existing camera transform. Heights are never extended outside the terrain domain;
+a frame with no in-world intersection retains an empty footprint and contributes zero POD.
 `belief.py` tracks previous maximum POD and applies the incremental conditional
 hazard in `P ← P(1−pd)/(1−ΣP·pd)`. Repeated equal looks add no evidence. It asserts
 finite, bounded, normalized probabilities. Captured but unprocessed images do not

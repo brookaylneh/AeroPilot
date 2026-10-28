@@ -1,0 +1,95 @@
+[
+  {
+    "schemaVersion": 1,
+    "vehicleId": "Drone1",
+    "coordinateSystem": "UE_LH_Z_UP_CENTIMETERS",
+    "width": 3840,
+    "height": 2160,
+    "horizontalFovDegrees": 69.99999237060547,
+    "localNedOriginUeCm": {
+      "x": -81417.203125,
+      "y": -250,
+      "z": 1144.9999999986667
+    },
+    "cameraPositionWorldM": {
+      "x": -801.2047031784058,
+      "y": -2.485324401408434,
+      "z": 61.4018890380726
+    },
+    "cameraPoseLocalNed": {
+      "position": {
+        "x": 12.967328071594238,
+        "y": 0.014675598591566086,
+        "z": -49.95188903808594
+      },
+      "orientation": {
+        "w": 0.7063919305801392,
+        "x": -0.031787510961294174,
+        "y": -0.7063919305801392,
+        "z": -0.031787510961294174
+      }
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "vehicleId": "Drone2",
+    "coordinateSystem": "UE_LH_Z_UP_CENTIMETERS",
+    "width": 3840,
+    "height": 2160,
+    "horizontalFovDegrees": 69.99999237060547,
+    "localNedOriginUeCm": {
+      "x": -81417.203125,
+      "y": 250,
+      "z": 1144.9999999935683
+    },
+    "cameraPositionWorldM": {
+      "x": -800.6936081314087,
+      "y": 2.510221805423498,
+      "z": 71.40169830315834
+    },
+    "cameraPoseLocalNed": {
+      "position": {
+        "x": 13.478423118591309,
+        "y": 0.010221805423498154,
+        "z": -59.951698303222656
+      },
+      "orientation": {
+        "w": 0.7062920928001404,
+        "x": -0.03393359109759331,
+        "y": -0.7062920928001404,
+        "z": -0.03393359109759331
+      }
+    }
+  },
+  {
+    "schemaVersion": 1,
+    "vehicleId": "Drone3",
+    "coordinateSystem": "UE_LH_Z_UP_CENTIMETERS",
+    "width": 3840,
+    "height": 2160,
+    "horizontalFovDegrees": 69.99999237060547,
+    "localNedOriginUeCm": {
+      "x": -81917.203125,
+      "y": -250,
+      "z": 1144.9999999924814
+    },
+    "cameraPositionWorldM": {
+      "x": -805.9007662200928,
+      "y": -2.486445910297334,
+      "z": 81.41089172355763
+    },
+    "cameraPoseLocalNed": {
+      "position": {
+        "x": 13.271265029907227,
+        "y": 0.013554089702665806,
+        "z": -69.96089172363281
+      },
+      "orientation": {
+        "w": 0.7047502398490906,
+        "x": -0.057681333273649216,
+        "y": -0.7047502398490906,
+        "z": -0.057681333273649216
+      }
+    }
+  }
+]

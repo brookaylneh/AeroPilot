@@ -4,6 +4,7 @@ import numpy as np
 
 from mission_planner.agents.perception.geometry import Camera
 from mission_planner.search.detection import AGL_M, lateral_probability
+from mission_planner.search.footprint import footprint
 from world.cosys.terrain import terrain_height
 
 
@@ -11,20 +12,14 @@ def capture_geometry(frame):
     camera = Camera(frame)
     down = camera.rotation[:, 0]
     assert down[2] > 0.99, "Coverage requires a nadir camera"
-    corners = [
-        camera.ground(p)
-        for p in (
-            (0, 0),
-            (camera.width - 1, 0),
-            (camera.width - 1, camera.height - 1),
-            (0, camera.height - 1),
-        )
-    ]
+    corners = footprint(camera)
     return camera, [{"north_m": p["x"], "east_m": p["y"]} for p in corners]
 
 
 def capture_pod(frame, grid, model):
     camera, footprint = capture_geometry(frame)
+    if not footprint:
+        return np.zeros(len(grid["centers"])), footprint
     agl = camera.world["z"] - terrain_height(camera.world["x"], camera.world["y"])
     assert abs(agl - AGL_M) <= 2, "Capture outside nominal calibration flight band"
     points = grid["centers"]
