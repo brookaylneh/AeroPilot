@@ -90,7 +90,7 @@ The check creates only temporary Vulkan instances and uses the NVIDIA ICD. It do
 renderer or listener. Both profile results must pass; it does not bypass the engine's profile checks.
 A supported device still needs SM6 shaders and the project's uncooked assets for a complete rebuild.
 
-## Generated characters
+## Characters
 
-[Character sources](characters/README.md) documents the FLUX reference and Hunyuan PBR mesh workflow,
-its review gallery and the separate MetaHuman acceptance step.
+[Character authoring](characters/README.md) creates MetaHumans from Epic presets and explicit
+appearance settings, then renders fixed views for review before live integration.

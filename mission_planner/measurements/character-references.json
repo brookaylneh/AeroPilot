@@ -1,0 +1,413 @@
+{
+  "schema_version": 1,
+  "characters": [
+    {
+      "recorded_at": "2026-10-28T14:58:21.296820+00:00",
+      "stage": "image",
+      "character": {
+        "id": "child-01",
+        "name": "Maya",
+        "group": "children",
+        "age": 8,
+        "description": "a girl aged exactly 8, with dark brown skin, West African family heritage, a small slender age-appropriate build, round youthful cheeks and short tightly curled black hair",
+        "clothing": "a plain sage-green short-sleeve cotton T-shirt, straight navy stretch trousers and simple grey low-top trainers",
+        "seed": 730281
+      },
+      "endpoint": "fal-ai/flux-pro/v1.1-ultra",
+      "recipe_sha256": "6ef8180f78bc3c69020758ea10170e46094407d14acb0604f41d8bf2404ffe63",
+      "request_id": "01a18304-b359-7fb2-aeb6-8656cdd5f2f6",
+      "inference_elapsed_seconds": 15.656674961996032,
+      "provider_gpu": "not exposed by hosted endpoint",
+      "task_owned_deployments": 0,
+      "task_owned_runners": 0,
+      "client_versions": {
+        "httpx": "0.28.1",
+        "pillow": "11.0.0"
+      },
+      "files": [
+        {
+          "path": ".local/evidence/characters/references/child-01.png",
+          "bytes": 2540981,
+          "sha256": "3ee7b8070bcebea694aac19cba411798ac6926caa59213b7dfe9a8d3441447aa"
+        }
+      ],
+      "image_size": [1664, 2496],
+      "safety_clear": true,
+      "review": "Full body and open hands visible. Short curls; child proportions."
+    },
+    {
+      "recorded_at": "2026-10-28T14:58:39.830708+00:00",
+      "stage": "image",
+      "character": {
+        "id": "child-02",
+        "name": "Leo",
+        "group": "children",
+        "age": 10,
+        "description": "a boy aged exactly 10, with fair freckled skin, Irish family heritage, an average age-appropriate build and short copper-red hair",
+        "clothing": "a plain muted-blue short-sleeve cotton T-shirt, straight charcoal stretch trousers and simple brown low-top trainers",
+        "seed": 730282
+      },
+      "endpoint": "fal-ai/flux-pro/v1.1-ultra",
+      "recipe_sha256": "6ef8180f78bc3c69020758ea10170e46094407d14acb0604f41d8bf2404ffe63",
+      "request_id": "01a18304-fbc5-7061-aeb2-0d62e49e5f5d",
+      "inference_elapsed_seconds": 15.655100432995823,
+      "provider_gpu": "not exposed by hosted endpoint",
+      "task_owned_deployments": 0,
+      "task_owned_runners": 0,
+      "client_versions": {
+        "httpx": "0.28.1",
+        "pillow": "11.0.0"
+      },
+      "files": [
+        {
+          "path": ".local/evidence/characters/references/child-02.png",
+          "bytes": 3374892,
+          "sha256": "52b6e4fc715e9b62323e858f8e00f9a2d1817ef5da8ef3376d3b3a55b342a33d"
+        }
+      ],
+      "image_size": [1664, 2496],
+      "safety_clear": true,
+      "review": "Full body visible. Elbows are bent; hands require close inspection in 3D."
+    },
+    {
+      "recorded_at": "2026-10-28T14:58:56.715010+00:00",
+      "stage": "image",
+      "character": {
+        "id": "child-03",
+        "name": "Amina",
+        "group": "children",
+        "age": 12,
+        "description": "a girl aged exactly 12, with medium brown skin, South Asian family heritage, a sturdy age-appropriate build and dark hair neatly tied back away from her face and ears",
+        "clothing": "a plain muted-rust short-sleeve cotton T-shirt, straight dark-blue stretch trousers and simple grey low-top trainers",
+        "seed": 730283
+      },
+      "endpoint": "fal-ai/flux-pro/v1.1-ultra",
+      "recipe_sha256": "6ef8180f78bc3c69020758ea10170e46094407d14acb0604f41d8bf2404ffe63",
+      "request_id": "01a18305-3da6-7031-9a08-ac9b15880233",
+      "inference_elapsed_seconds": 15.678601009996783,
+      "provider_gpu": "not exposed by hosted endpoint",
+      "task_owned_deployments": 0,
+      "task_owned_runners": 0,
+      "client_versions": {
+        "httpx": "0.28.1",
+        "pillow": "11.0.0"
+      },
+      "files": [
+        {
+          "path": ".local/evidence/characters/references/child-03.png",
+          "bytes": 3094221,
+          "sha256": "ef7e446f379c10e988187e2134cba9f2b48f6a141845b0caba334363777854a7"
+        }
+      ],
+      "image_size": [1664, 2496],
+      "safety_clear": true,
+      "review": "Full body and open hands visible. Tied-back hair needs separate groom authoring."
+    },
+    {
+      "recorded_at": "2026-10-28T14:59:13.109780+00:00",
+      "stage": "image",
+      "character": {
+        "id": "child-04",
+        "name": "Jun",
+        "group": "children",
+        "age": 15,
+        "description": "a boy aged exactly 15, with light tan skin, East Asian family heritage, a tall lanky adolescent build and short straight black hair",
+        "clothing": "a plain moss-green short-sleeve cotton T-shirt, straight charcoal stretch trousers and simple dark low-top trainers",
+        "seed": 730284
+      },
+      "endpoint": "fal-ai/flux-pro/v1.1-ultra",
+      "recipe_sha256": "6ef8180f78bc3c69020758ea10170e46094407d14acb0604f41d8bf2404ffe63",
+      "request_id": "01a18305-7db4-78a2-84f7-1b151bcf5139",
+      "inference_elapsed_seconds": 15.669849731995782,
+      "provider_gpu": "not exposed by hosted endpoint",
+      "task_owned_deployments": 0,
+      "task_owned_runners": 0,
+      "client_versions": {
+        "httpx": "0.28.1",
+        "pillow": "11.0.0"
+      },
+      "files": [
+        {
+          "path": ".local/evidence/characters/references/child-04.png",
+          "bytes": 2904380,
+          "sha256": "f41debf4680512d9e0488f7c23c39646006654cb17401e9a4ce07d7267931887"
+        }
+      ],
+      "image_size": [1664, 2496],
+      "safety_clear": true,
+      "review": "Full body and open hands visible. Adolescent reference; age is the prompt target."
+    },
+    {
+      "recorded_at": "2026-10-28T14:57:50.780898+00:00",
+      "stage": "image",
+      "character": {
+        "id": "adult-01",
+        "name": "Nia",
+        "group": "adults",
+        "age": 24,
+        "description": "a woman aged 24, with deep brown skin, East African family heritage, a tall lean athletic build, a broad natural nose and close-cropped tightly curled black hair",
+        "clothing": "a plain slate-blue close-fitting short-sleeve cotton T-shirt, straight dark-grey stretch trousers and simple grey low-top trainers",
+        "seed": 730285
+      },
+      "endpoint": "fal-ai/flux-pro/v1.1-ultra",
+      "recipe_sha256": "6ef8180f78bc3c69020758ea10170e46094407d14acb0604f41d8bf2404ffe63",
+      "request_id": "01a18304-3c1c-7683-a582-d5218969853c",
+      "inference_elapsed_seconds": 15.665802269999404,
+      "provider_gpu": "not exposed by hosted endpoint",
+      "task_owned_deployments": 0,
+      "task_owned_runners": 0,
+      "client_versions": {
+        "httpx": "0.28.1",
+        "pillow": "11.0.0"
+      },
+      "files": [
+        {
+          "path": ".local/evidence/characters/references/adult-01.png",
+          "bytes": 2792081,
+          "sha256": "572ac5a395baf497477d4b831499569423d7d0472661c7b64a9b98a011abdf5b"
+        }
+      ],
+      "image_size": [1664, 2496],
+      "safety_clear": true,
+      "review": "Open hands and full body visible. Hair is longer than the prompt requested."
+    },
+    {
+      "recorded_at": "2026-10-28T15:01:29.521527+00:00",
+      "stage": "image",
+      "character": {
+        "id": "adult-02",
+        "name": "Mateo",
+        "group": "adults",
+        "age": 36,
+        "description": "a visibly stocky heavyset man aged 36, with medium olive-brown skin, Latin American family heritage, a wide waist and rounded belly, thick arms and thighs, a broad natural face, short wavy dark-brown hair and light stubble. His sturdy heavyset build is clearly visible beneath his fitted clothes; he is an ordinary person, not a fitness model",
+        "clothing": "a plain muted-ochre close-fitting short-sleeve cotton T-shirt, straight navy stretch trousers and simple grey low-top trainers",
+        "seed": 730286
+      },
+      "endpoint": "fal-ai/flux-pro/v1.1-ultra",
+      "recipe_sha256": "94f9c7d92614eeb5ffa7267f4be716d8f54009a9c34d8d44348e4b2782356759",
+      "request_id": "01a18307-a691-76d2-ae36-9385aa0b95db",
+      "inference_elapsed_seconds": 10.55597429699992,
+      "provider_gpu": "not exposed by hosted endpoint",
+      "task_owned_deployments": 0,
+      "task_owned_runners": 0,
+      "client_versions": {
+        "httpx": "0.28.1",
+        "pillow": "11.0.0"
+      },
+      "files": [
+        {
+          "path": ".local/evidence/characters/references/adult-02.png",
+          "bytes": 2749019,
+          "sha256": "0af8987eb6dd2b3e68b3cad12d4c8a6a5aa156f044b265064f3f82cc7799d497"
+        }
+      ],
+      "image_size": [1664, 2496],
+      "safety_clear": true,
+      "review": "Revised to retain a visibly heavier build. Curled fingers need 3D inspection."
+    },
+    {
+      "recorded_at": "2026-10-28T15:01:41.242989+00:00",
+      "stage": "image",
+      "character": {
+        "id": "adult-03",
+        "name": "Mei",
+        "group": "adults",
+        "age": 47,
+        "description": "a visibly middle-aged woman aged 47, with light-medium warm skin, East Asian family heritage, a short plus-size build with a full waist and rounded hips, a natural unretouched face with visible crow feet and under-eye creases, subtle neck lines, natural lips without lipstick, and short straight black hair streaked with grey. Her fuller build and middle age must remain visible, with no beauty retouching or skin smoothing",
+        "clothing": "a plain muted-plum close-fitting short-sleeve cotton T-shirt, straight charcoal stretch trousers and simple grey low-top trainers",
+        "seed": 730287
+      },
+      "endpoint": "fal-ai/flux-pro/v1.1-ultra",
+      "recipe_sha256": "94f9c7d92614eeb5ffa7267f4be716d8f54009a9c34d8d44348e4b2782356759",
+      "request_id": "01a18307-d45d-70f3-ab4e-51b6300e6789",
+      "inference_elapsed_seconds": 10.555284376998316,
+      "provider_gpu": "not exposed by hosted endpoint",
+      "task_owned_deployments": 0,
+      "task_owned_runners": 0,
+      "client_versions": {
+        "httpx": "0.28.1",
+        "pillow": "11.0.0"
+      },
+      "files": [
+        {
+          "path": ".local/evidence/characters/references/adult-03.png",
+          "bytes": 2672150,
+          "sha256": "59e6f08b80645a06dc17d3d9de77606a64afb28a590b130509a1809b1724209c"
+        }
+      ],
+      "image_size": [1664, 2496],
+      "safety_clear": true,
+      "review": "Revised age detail and fuller build. A bracelet remains in the generated image."
+    },
+    {
+      "recorded_at": "2026-10-28T15:00:02.368075+00:00",
+      "stage": "image",
+      "character": {
+        "id": "adult-04",
+        "name": "Owen",
+        "group": "adults",
+        "age": 58,
+        "description": "a man aged 58, with pale lightly freckled skin, Northern European family heritage, a tall slim build, a clean-shaven angular face, natural facial lines and short salt-and-pepper hair with a receding hairline",
+        "clothing": "a plain muted-teal close-fitting short-sleeve cotton T-shirt, straight brown stretch trousers and simple grey low-top trainers",
+        "seed": 730288
+      },
+      "endpoint": "fal-ai/flux-pro/v1.1-ultra",
+      "recipe_sha256": "6ef8180f78bc3c69020758ea10170e46094407d14acb0604f41d8bf2404ffe63",
+      "request_id": "01a18306-5231-7aa0-9a8b-214fe574977b",
+      "inference_elapsed_seconds": 10.528292969000177,
+      "provider_gpu": "not exposed by hosted endpoint",
+      "task_owned_deployments": 0,
+      "task_owned_runners": 0,
+      "client_versions": {
+        "httpx": "0.28.1",
+        "pillow": "11.0.0"
+      },
+      "files": [
+        {
+          "path": ".local/evidence/characters/references/adult-04.png",
+          "bytes": 2922725,
+          "sha256": "ed3d124c319c92ee19478d314e3a5a0bce91790ad1fe2785eb7fbd132ce56e2b"
+        }
+      ],
+      "image_size": [1664, 2496],
+      "safety_clear": true,
+      "review": "Full body and open hands visible. Natural middle-age facial detail."
+    },
+    {
+      "recorded_at": "2026-10-28T15:00:23.868511+00:00",
+      "stage": "image",
+      "character": {
+        "id": "senior-01",
+        "name": "Samira",
+        "group": "seniors",
+        "age": 65,
+        "description": "a woman aged 65, with warm olive skin, North African family heritage, an average-height sturdy build, natural age lines and short wavy silver-grey hair",
+        "clothing": "a plain muted-terracotta close-fitting short-sleeve cotton T-shirt, straight navy stretch trousers and simple grey low-top trainers",
+        "seed": 730289
+      },
+      "endpoint": "fal-ai/flux-pro/v1.1-ultra",
+      "recipe_sha256": "6ef8180f78bc3c69020758ea10170e46094407d14acb0604f41d8bf2404ffe63",
+      "request_id": "01a18306-7e0f-75f2-8993-0115c73b8ecc",
+      "inference_elapsed_seconds": 20.80160530399735,
+      "provider_gpu": "not exposed by hosted endpoint",
+      "task_owned_deployments": 0,
+      "task_owned_runners": 0,
+      "client_versions": {
+        "httpx": "0.28.1",
+        "pillow": "11.0.0"
+      },
+      "files": [
+        {
+          "path": ".local/evidence/characters/references/senior-01.png",
+          "bytes": 3046587,
+          "sha256": "89409774a780ea51956886e084742b6db5590ad02574cf1958a50ff0742799ee"
+        }
+      ],
+      "image_size": [1664, 2496],
+      "safety_clear": true,
+      "review": "Full body and age detail visible. Small generated earrings remain."
+    },
+    {
+      "recorded_at": "2026-10-28T15:00:40.969014+00:00",
+      "stage": "image",
+      "character": {
+        "id": "senior-02",
+        "name": "Arthur",
+        "group": "seniors",
+        "age": 73,
+        "description": "a man aged 73, with fair skin and natural age spots, Northern European family heritage, a broad heavier build, a clean-shaven face, realistic wrinkles and short thinning white hair",
+        "clothing": "a plain muted-forest-green close-fitting short-sleeve cotton T-shirt, straight charcoal stretch trousers and simple grey low-top trainers",
+        "seed": 730290
+      },
+      "endpoint": "fal-ai/flux-pro/v1.1-ultra",
+      "recipe_sha256": "6ef8180f78bc3c69020758ea10170e46094407d14acb0604f41d8bf2404ffe63",
+      "request_id": "01a18306-d4ea-7b82-8a8c-3662f840104c",
+      "inference_elapsed_seconds": 15.679210532005527,
+      "provider_gpu": "not exposed by hosted endpoint",
+      "task_owned_deployments": 0,
+      "task_owned_runners": 0,
+      "client_versions": {
+        "httpx": "0.28.1",
+        "pillow": "11.0.0"
+      },
+      "files": [
+        {
+          "path": ".local/evidence/characters/references/senior-02.png",
+          "bytes": 2714342,
+          "sha256": "a115b96e85f33dfd1d3ec6eb8b84e4abcb2bea33d9ac8896d9691e7c5498bd68"
+        }
+      ],
+      "image_size": [1664, 2496],
+      "safety_clear": true,
+      "review": "Full body and age detail visible. Build is slimmer than the prompt requested."
+    },
+    {
+      "recorded_at": "2026-10-28T15:01:59.540307+00:00",
+      "stage": "image",
+      "character": {
+        "id": "senior-03",
+        "name": "Lila",
+        "group": "seniors",
+        "age": 81,
+        "description": "an elderly octogenarian woman aged 81, with medium-deep brown skin, South Asian family heritage, a small thin build, a visibly aged unretouched face with deep forehead wrinkles, crow feet, folded lower eyelids, age spots, thin natural lips, loose skin on her neck and veined aged hands. Her thin silver-white hair is neatly tied back away from her face. She looks distinctly over eighty, with no makeup, lipstick, beauty lighting or skin smoothing",
+        "clothing": "a plain muted-lavender close-fitting short-sleeve cotton T-shirt, straight dark-brown stretch trousers and simple grey low-top trainers",
+        "seed": 730291
+      },
+      "endpoint": "fal-ai/flux-pro/v1.1-ultra",
+      "recipe_sha256": "da1ca3afe13ca300b2da88f3732e07e2efd45007310f97c76fd4e4c1dd44c01d",
+      "request_id": "01a18308-07de-7fc0-be38-99fd799be4cf",
+      "inference_elapsed_seconds": 15.669317433996184,
+      "provider_gpu": "not exposed by hosted endpoint",
+      "task_owned_deployments": 0,
+      "task_owned_runners": 0,
+      "client_versions": {
+        "httpx": "0.28.1",
+        "pillow": "11.0.0"
+      },
+      "files": [
+        {
+          "path": ".local/evidence/characters/references/senior-03.png",
+          "bytes": 3192218,
+          "sha256": "730ce45486055e9b3df3cf3349fc8ead64fbd2bdcd4453fa2d45c821639db62d"
+        }
+      ],
+      "image_size": [1664, 2496],
+      "safety_clear": true,
+      "review": "Revised age detail. The model generated shorts and a bracelet despite the brief."
+    },
+    {
+      "recorded_at": "2026-10-28T15:01:08.870788+00:00",
+      "stage": "image",
+      "character": {
+        "id": "senior-04",
+        "name": "Isaac",
+        "group": "seniors",
+        "age": 88,
+        "description": "a man aged 88, with dark brown skin, African Caribbean family heritage, a tall slender build, a clean-shaven face, deeply realistic facial wrinkles and very short white-grey hair",
+        "clothing": "a plain muted-cobalt close-fitting short-sleeve cotton T-shirt, straight charcoal stretch trousers and simple grey low-top trainers",
+        "seed": 730292
+      },
+      "endpoint": "fal-ai/flux-pro/v1.1-ultra",
+      "recipe_sha256": "6ef8180f78bc3c69020758ea10170e46094407d14acb0604f41d8bf2404ffe63",
+      "request_id": "01a18307-41de-70e0-9471-b782a06ee6af",
+      "inference_elapsed_seconds": 15.68535178899765,
+      "provider_gpu": "not exposed by hosted endpoint",
+      "task_owned_deployments": 0,
+      "task_owned_runners": 0,
+      "client_versions": {
+        "httpx": "0.28.1",
+        "pillow": "11.0.0"
+      },
+      "files": [
+        {
+          "path": ".local/evidence/characters/references/senior-04.png",
+          "bytes": 2944493,
+          "sha256": "1fd6fa6c3c8a2d1b9eb0210c2cb69d91c2d2d2121612e3c345c4b55a1ec9e48b"
+        }
+      ],
+      "image_size": [1664, 2496],
+      "safety_clear": true,
+      "review": "Full body and pronounced age detail visible. Bent elbows need pose fitting."
+    }
+  ]
+}

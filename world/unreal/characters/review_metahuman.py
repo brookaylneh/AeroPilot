@@ -1,14 +1,18 @@
-"""Publish verified Unreal character renders alongside their source image and SAM body."""
+"""Publish verified Unreal character renders to the installed web server."""
 
 import argparse
+import hashlib
 import html
 import json
+import shutil
 from pathlib import Path
 
 from PIL import Image
 
 from mission_planner.environment import load_env
-from world.unreal.characters.review import HERE, ROOT, copy_verified
+
+HERE = Path(__file__).resolve().parent
+ROOT = HERE.parents[2]
 
 
 def main():
@@ -25,7 +29,9 @@ def main():
     for item in selection["images"]:
         name = item["name"]
         assert name.replace("-", "").isalnum(), name
-        copy_verified(ROOT / item["path"], destination / (name + ".png"), item["sha256"])
+        source = ROOT / item["path"]
+        assert hashlib.sha256(source.read_bytes()).hexdigest() == item["sha256"], source
+        shutil.copyfile(source, destination / (name + ".png"))
         with Image.open(destination / (name + ".png")) as source:
             source.thumbnail((1000, 1000))
             source.convert("RGB").save(destination / (name + ".jpg"), quality=95)
@@ -36,6 +42,7 @@ def main():
         )
     document = (HERE / "metahuman-review.html").read_text()
     document = document.replace("<!-- IMAGES -->", "\n".join(cards))
+    document = document.replace("<!-- TITLE -->", html.escape(selection["title"]))
     document = document.replace("<!-- ASSESSMENT -->", html.escape(selection["assessment"]))
     (destination / "index.html").write_text(document)
     print(destination / "index.html")

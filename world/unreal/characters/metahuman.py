@@ -1,7 +1,6 @@
-"""Fit a SAM body to an Epic preset in the Unreal editor, then prepare its rig."""
+"""Author a MetaHuman from an Epic preset and explicit body and appearance parameters."""
 
 import argparse
-import hashlib
 import json
 import math
 from pathlib import Path
@@ -9,54 +8,56 @@ from pathlib import Path
 import unreal
 
 
-def conform(recipe, subsystem):
-    tools = unreal.AssetToolsHelpers.get_asset_tools()
-    source = Path(recipe["body_glb"])
-    assert hashlib.sha256(source.read_bytes()).hexdigest() == recipe["body_sha256"]
+def create(recipe, subsystem):
+    from metahuman_toolset.metahuman import BodyShape, EyeColor, MetaHumanToolset, SkinTone
+
     folder = recipe["asset_folder"]
     assert not unreal.EditorAssetLibrary.does_directory_exist(folder), folder
-    task = unreal.AssetImportTask()
-    task.filename = str(source)
-    task.destination_path = folder
-    task.destination_name = "SAM_Body"
-    task.automated = True
-    task.save = True
-    task.replace_existing = False
-    tools.import_asset_tasks([task])
-    meshes = [asset for asset in task.get_objects() if isinstance(asset, unreal.StaticMesh)]
-    assert len(meshes) == 1, task.imported_object_paths
-    target = meshes[0]
     preset = unreal.load_asset(recipe["preset"])
-    assert preset is not None, recipe["preset"]
+    assert isinstance(preset, unreal.MetaHumanCharacter), recipe["preset"]
+    tools = unreal.AssetToolsHelpers.get_asset_tools()
     character = tools.duplicate_asset(recipe["asset_name"], folder, preset)
     assert character is not None
-    assert subsystem.try_add_object_to_edit(character)
+    session = MetaHumanToolset.begin_edit(character.get_path_name())
     try:
-        vertices, indices = subsystem.get_mesh_data_for_conforming(target)
-        assert len(vertices) == 18439 and len(indices) == 110622
-        params = unreal.ConformTargetParams()
-        params.conform_target_mesh.target_parts_type = unreal.TargetPartsType.BODY_ONLY
-        params.conform_target_mesh.body_vertices = vertices
-        params.conform_target_mesh.body_vertex_indices = indices
-        params.estimate_body_joints_from_mesh = True
-        params.auto_solve = True
-        params.body_conform_solve_settings.pipeline_name = "body_only"
-        key = unreal.MetaHumanCharacterTargetMeshKey()
-        key.body_mesh = target
-        assert subsystem.conform_to_target_meshes(character, key, params), "Body fitting failed"
-        subsystem.commit_posed_state_as_a_pose(character, key)
+        shape = BodyShape()
+        ranges = {str(c.name): c for c in subsystem.get_body_constraints(character, False)}
+        height = recipe["body"]["height_cm"]
+        assert ranges["Height"].min_measurement <= height <= ranges["Height"].max_measurement
+        for name in ("height_cm", "masculine_feminine", "fat", "muscularity"):
+            value = recipe["body"][name]
+            assert math.isfinite(value)
+            if name != "height_cm":
+                assert 0 <= value <= 1, (name, value)
+            setattr(shape, name, value)
+        MetaHumanToolset.set_body_shape(session, shape)
+        actual = MetaHumanToolset.get_body_shape(session)
+        body = {name: getattr(actual, name) for name in recipe["body"]}
+        assert all(math.isclose(body[n], v, abs_tol=1e-5) for n, v in recipe["body"].items())
+        skin = SkinTone()
+        eyes = EyeColor()
+        for properties, values in ((skin, recipe["skin"]), (eyes, recipe["eyes"])):
+            for name, value in values.items():
+                assert math.isfinite(value) and 0 <= value <= 1, (name, value)
+                setattr(properties, name, value)
+        MetaHumanToolset.set_skin_tone(session, skin)
+        MetaHumanToolset.set_eye_color(session, eyes)
+        actual_skin = MetaHumanToolset.get_skin_tone(session)
+        actual_eyes = MetaHumanToolset.get_eye_color(session)
+        for actual, values in ((actual_skin, recipe["skin"]), (actual_eyes, recipe["eyes"])):
+            assert all(math.isclose(getattr(actual, n), v, abs_tol=1e-5) for n, v in values.items())
         assert unreal.EditorAssetLibrary.save_loaded_asset(character, only_if_is_dirty=False)
         return {
             "character": character.get_path_name(),
             "preset": recipe["preset"],
-            "body_mesh": target.get_path_name(),
-            "input_vertices": len(vertices),
-            "input_triangles": len(indices) // 3,
-            "conformed_body_only": True,
-            "skin_settings": str(character.get_editor_property("skin_settings")),
+            "body_control_readback": body,
+            "skin": recipe["skin"],
+            "eyes": recipe["eyes"],
+            "source": "Epic preset and MetaHuman Generator tools",
+            "body_values_are_control_targets": True,
         }
     finally:
-        subsystem.remove_object_to_edit(character)
+        MetaHumanToolset.end_edit(session)
 
 
 def cloud(recipe, subsystem):
@@ -222,7 +223,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("recipe", type=Path)
     parser.add_argument(
-        "stage", choices=("conform", "cloud", "wardrobe", "assemble", "materials", "inventory")
+        "stage", choices=("create", "cloud", "wardrobe", "assemble", "materials", "inventory")
     )
     parser.add_argument("output", type=Path)
     args = parser.parse_args()
@@ -233,7 +234,7 @@ def main():
         report = {"materials": materials, "inventory": inventory}[args.stage](recipe)
     else:
         operation = {
-            "conform": conform,
+            "create": create,
             "cloud": cloud,
             "wardrobe": wardrobe,
             "assemble": assemble,

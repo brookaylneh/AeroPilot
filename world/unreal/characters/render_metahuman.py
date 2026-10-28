@@ -81,7 +81,17 @@ def setup(recipe):
     component = camera.get_component_by_class(unreal.CameraComponent)
     component.set_field_of_view(recipe["field_of_view_degrees"])
     component.set_aspect_ratio(1)
-    return camera
+    components = []
+    for mesh in actor.get_components_by_class(unreal.SkeletalMeshComponent):
+        components.append(
+            {
+                "name": mesh.get_name(),
+                "materials": [material.get_path_name() for material in mesh.get_materials()],
+            }
+        )
+    outfits = [item for item in components if item["name"].startswith("SkeletalMesh")]
+    assert len(outfits) == 1, "Expected exactly one outfit component"
+    return camera, components
 
 
 def main():
@@ -89,13 +99,13 @@ def main():
     parser.add_argument("recipe", type=Path)
     parser.add_argument("output", type=Path)
     args = parser.parse_args()
-    recipe = json.loads(args.recipe.read_text())
+    recipe = json.loads(args.recipe.read_text())["render"]
     args.output.mkdir(exist_ok=False)
-    camera = setup(recipe)
+    camera, components = setup(recipe)
     unreal.AutomationLibrary.finish_loading_before_screenshot()
     unreal.EditorPythonScripting.set_keep_python_script_alive(True)
     state = {"started": time.monotonic(), "index": 0, "task": None}
-    report = {"recipe": recipe, "images": []}
+    report = {"recipe": recipe, "images": [], "components": components}
     for name, expected in recipe["console_variables"].items():
         actual = unreal.SystemLibrary.get_console_variable_int_value(name)
         assert actual == expected, (name, actual, expected)

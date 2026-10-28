@@ -31,7 +31,6 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^4.7.0",
     "concurrently": "^10.0.6",
-    "gltf-validator": "2.0.0-dev.3.10",
     "prettier": "3.6.2",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",

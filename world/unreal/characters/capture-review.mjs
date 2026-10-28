@@ -1,88 +1,59 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { launchBrowser } from '../../../mission_planner/agents/perception/browser.mjs';
 
-const [url, output, expectedModels] = process.argv.slice(2);
-assert(url && output && expectedModels, 'Usage: capture-review.mjs URL NEW_OUTPUT_DIRECTORY MODEL_COUNT');
-assert(Number.isSafeInteger(Number(expectedModels)) && Number(expectedModels) > 0);
-await mkdir(output);
-const browser = await launchBrowser(['--enable-unsafe-swiftshader']);
+const [url, output, countText, sizeText] = process.argv.slice(2);
+const count = Number(countText);
+const size = Number(sizeText);
+assert(url && output && Number.isInteger(count) && count > 0);
+assert(Number.isInteger(size) && size > 0);
+await mkdir(output, { recursive: false });
+const browser = await launchBrowser();
 const errors = [];
-const captures = [];
+let report;
 try {
-  const page = await browser.newPage({ viewport: { width: 1440, height: 1200 }, deviceScaleFactor: 1 });
+  const page = await browser.newPage({ viewport: { width: 1440, height: 1100 } });
   page.on('pageerror', (error) => errors.push(error.message));
+  page.on('requestfailed', (request) => errors.push(request.url()));
   const response = await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
   assert.equal(response.status(), 200);
-  assert((await page.locator('article').count()) > 0);
-  await page.locator('article').last().scrollIntoViewIfNeeded();
+  await page.locator('main img').first().waitFor();
   await page.evaluate(async () => {
-    await Promise.all([...document.images].map((image) => image.decode()));
-    scrollTo(0, 0);
+    await Promise.all([...document.querySelectorAll('main img')].map((image) => image.decode()));
   });
-  await page.screenshot({ path: output + '/gallery.png', fullPage: true });
-  const buttons = page.locator('[data-model]');
-  const count = await buttons.count();
-  assert.equal(count, Number(expectedModels));
-  for (let index = 0; index < count; index += 1) {
-    const button = buttons.nth(index);
-    const file = await button.getAttribute('data-model');
-    const identity = file.replace('.glb', '');
-    await button.click();
-    await page.waitForFunction(
-      () => document.querySelector('#model-status').textContent === 'Model loaded',
-      undefined,
-      { timeout: 120000 },
-    );
-    const dimensions = await page.locator('model-viewer').evaluate((viewer) => {
-      const { x, y, z } = viewer.getDimensions();
-      return { x, y, z };
-    });
-    for (const pose of ['Front', 'Side', 'Back']) {
-      await page.getByRole('button', { name: pose, exact: true }).click();
-      await page.evaluate(
-        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
-      );
-      const path = output + '/' + identity + '-' + pose.toLowerCase() + '.png';
-      await page.locator('model-viewer').screenshot({ path });
-      captures.push({ identity, pose, path, dimensions });
-    }
-    const closeups = [
-      { pose: 'face', x: 0, y: 0.42, radius: 0.32 },
-      { pose: 'hand-negative-x', x: -0.43, y: -0.02, radius: 0.42 },
-      { pose: 'hand-positive-x', x: 0.43, y: -0.02, radius: 0.42 },
-    ];
-    for (const closeup of closeups) {
-      await page.getByRole('button', { name: 'Front', exact: true }).click();
-      await page.locator('model-viewer').evaluate((viewer, closeup) => {
-        const center = viewer.getCameraTarget();
-        const size = viewer.getDimensions();
-        viewer.cameraTarget =
-          center.x + size.x * closeup.x + 'm ' + (center.y + size.y * closeup.y) + 'm ' + center.z + 'm';
-        viewer.cameraOrbit = '0deg 90deg ' + size.y * closeup.radius + 'm';
-        viewer.jumpCameraToGoal();
-      }, closeup);
-      await page.evaluate(
-        () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
-      );
-      const path = output + '/' + identity + '-' + closeup.pose + '.png';
-      await page.locator('model-viewer').screenshot({ path });
-      const camera = await page.locator('model-viewer').evaluate((viewer) => {
-        const { theta, phi, radius } = viewer.getCameraOrbit();
-        const { x, y, z } = viewer.getCameraTarget();
-        return { theta, phi, radius, target: { x, y, z } };
-      });
-      assert(Math.abs(camera.radius - dimensions.y * closeup.radius) < 0.0001);
-      captures.push({ identity, pose: closeup.pose, path, dimensions, camera });
-    }
-    await page.getByRole('button', { name: 'Close', exact: true }).click();
-    console.log('Captured ' + identity);
-  }
-  assert.deepEqual(errors, []);
-  await writeFile(
-    output + '/result.json',
-    JSON.stringify({ url, errors, modelCount: count, captures }, null, 2) + '\n',
+  const images = await page.locator('main img').evaluateAll((items) =>
+    items.map((image) => ({
+      width: image.naturalWidth,
+      height: image.naturalHeight,
+      full: image.closest('a').href,
+    })),
   );
+  assert.equal(images.length, count);
+  assert(images.every((image) => image.width > 0 && image.height > 0));
+  for (const image of images) {
+    assert.equal(new URL(image.full).origin, new URL(url).origin);
+    const full = await page.request.get(image.full, { timeout: 60000 });
+    assert.equal(full.status(), 200);
+    const bytes = await full.body();
+    assert.equal(bytes.subarray(1, 4).toString(), 'PNG');
+    assert.equal(bytes.readUInt32BE(16), size);
+    assert.equal(bytes.readUInt32BE(20), size);
+    await full.dispose();
+  }
+  await page.screenshot({ path: join(output, 'gallery.png'), fullPage: true });
+  await page.goto(images[0].full, { waitUntil: 'networkidle', timeout: 60000 });
+  const dimensions = await page.locator('img').evaluate(async (image) => {
+    await image.decode();
+    return [image.naturalWidth, image.naturalHeight];
+  });
+  assert.deepEqual(dimensions, [size, size]);
+  await page.screenshot({ path: join(output, 'portrait.png') });
+  assert.deepEqual(errors, []);
+  report = { url, status: response.status(), images, portrait_pixels: dimensions, errors };
 } finally {
   await browser.close();
 }
+report.browser_closed = true;
+await writeFile(join(output, 'result.json'), JSON.stringify(report, null, 2) + '\n');
+console.log(JSON.stringify({ url, images: report.images.length, errors, browser_closed: true }));
