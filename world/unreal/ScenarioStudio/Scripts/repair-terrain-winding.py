@@ -21,6 +21,6 @@ material.set_editor_property('two_sided', False)
 unreal.MaterialEditingLibrary.recompile_material(material)
 lib.save_loaded_asset(material)
 pack = unreal.load_asset('/Game/Scenario/Equipment/SM_Daypack')
-(root / 'evidence/geometry-repair.json').write_text(json.dumps({'terrainWindingCorrected': True,
+(root / '.local/evidence/geometry-repair.json').write_text(json.dumps({'terrainWindingCorrected': True,
     'daypackBounds': str(pack.get_bounding_box())}, indent=2)+'\n')
 unreal.log('SNR_TERRAIN_WINDING_REPAIRED')

@@ -1,6 +1,6 @@
 """Import the five acquired scans, their authored skeletons and animations.
 
-Run world/scripts/rig-children.py in Blender first. Licensed meshes and textures remain
+Run world/unreal/scripts/rig-children.py in Blender first. Licensed meshes and textures remain
 private dependencies; this script records the reproducible Unreal import setup.
 """
 
@@ -9,7 +9,7 @@ from pathlib import Path
 import unreal
 
 root = Path(unreal.Paths.project_dir()).resolve().parents[2]
-source = root / "vendor/children-fab/rigged"
+source = root / ".local/vendor/children-fab/rigged"
 lib = unreal.EditorAssetLibrary
 tools = unreal.AssetToolsHelpers.get_asset_tools()
 ml = unreal.MaterialEditingLibrary

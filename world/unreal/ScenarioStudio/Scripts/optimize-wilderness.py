@@ -5,14 +5,14 @@ from pathlib import Path
 import unreal
 unreal.load_module('StaticMeshEditor')
 root = Path(unreal.Paths.project_dir()).resolve().parents[2]
-source = json.loads((root / 'evidence/wilderness-import.json').read_text())
+source = json.loads((root / '.local/evidence/wilderness-import.json').read_text())
 subsystem = unreal.get_editor_subsystem(unreal.StaticMeshEditorSubsystem)
 if subsystem is None:
     subsystem = unreal.new_object(unreal.StaticMeshEditorSubsystem)
 lib = unreal.EditorAssetLibrary
 report = {'meshes': [], 'visuallyAccepted': False}
 selected = os.environ.get('SNR_LOD_FILTER', '')
-report_path = root / ('evidence/wilderness-lods' + selected + '.json')
+report_path = root / ('.local/evidence/wilderness-lods' + selected + '.json')
 for asset, entries in source['models'].items():
     if asset not in ('fir_tree_01', 'pine_sapling_small'):
         continue
@@ -39,7 +39,7 @@ if not selected:
         terrain.set_editor_property('static_materials', [unreal.StaticMaterial(material_interface=ground, material_slot_name='Ground')])
         lib.save_loaded_asset(terrain)
     report['terrainMaterialAfter'] = str(terrain.get_material(0))
-    (root / 'evidence/wilderness-lods.json').write_text(json.dumps(report, indent=2) + '\n')
+    (root / '.local/evidence/wilderness-lods.json').write_text(json.dumps(report, indent=2) + '\n')
     unreal.log('SNR_WILDERNESS_LODS_READY')
 
 unreal.log('SNR_SELECTED_WILDERNESS_LODS_READY')

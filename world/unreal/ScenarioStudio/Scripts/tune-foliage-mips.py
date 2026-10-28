@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 import unreal
 root = Path(unreal.Paths.project_dir()).resolve().parents[2]
-assets = json.loads((root / 'evidence/wilderness-import.json').read_text())
+assets = json.loads((root / '.local/evidence/wilderness-import.json').read_text())
 for entries in assets['textures'].values():
     for name, path in entries.items():
         if '_alpha_' not in name:

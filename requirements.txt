@@ -1,0 +1,21 @@
+# Python 3.10, installed in .venv-cosys.
+cosysairsim==3.5.0
+rpc-msgpack==0.6
+msgpack==1.1.2
+tornado==6.4.1
+numpy==1.23.5
+pillow==11.0.0
+scipy==1.15.3
+matplotlib==3.10.9
+httpx==0.28.1
+python-dotenv==1.2.4
+jsonschema==4.26.0
+pymavlink==2.4.50
+websockets==15.0.1
+
+# ArduPilot SITL build
+empy==3.3.4
+pexpect==4.9.0
+
+# Development
+ruff==0.17.3

@@ -5,41 +5,42 @@ autopilot over MAVLink, search a photorealistic Unreal Engine world for a missin
 Muse Glimmer verifies and Muse Wonder commands through typed tools, while the operator supervises from a
 browser ground control station.
 
-## Structure
-
 ```
-app/                 web shell: routes and server for both browser applications
 world/               the simulated world
-  unreal/            Unreal Engine 5.8 project, asset manifests, Cosys-AirSim settings
-  studio/            browser scenario studio: person, situation, placement, rescue briefing
-  simulator/         Python Cosys-AirSim bridge
-  scripts/           build, package, run and stream the world
-  deploy/            container images
-mission_control/     the system that searches the world
-  models.py          SAM 3.1, Muse Glimmer and Muse Wonder clients
-  perception/        detection calibration at 30 m
-  agent/             Wonder tool catalogue
+  unreal/            Unreal Engine 5.8 project, build and streaming
+  cosys/             Cosys-AirSim settings and Python bridge
+scenario_creator/    browser studio: choose a person, situation and place; write the rescue briefing
+mission_planner/     the system that searches the world
   gcs/               ground control station: ArduPilot fleet, mission service, UI
-  services/          fal model deployments
-measurements/        committed measurement summaries
-docs/                setup, architecture and per-domain documentation
+  agents/            model clients, Wonder tools, perception calibration, fal services
+  measurements/      committed results
+web/                 web server and page shell hosting both browser applications
 ```
+
+Untracked state (data, raw evidence, vendored dependencies, builds, Unreal releases) lives in `.local/`.
 
 ## Start
 
+Node 22 and Python 3.10+.
+
 ```sh
-npm ci && npm run assets && npm run build && npm start
+npm ci && npm run fonts && npm run build
+python3 -m venv .venv-cosys && .venv-cosys/bin/pip install -r requirements.txt
+cp .env.example .env
+npm start
 ```
 
-Open `http://127.0.0.1:3001` for the scenario studio and `/mission?case=<id>` for mission control.
-The studio needs a running packaged Unreal world; see [setup](docs/setup.md).
+`/` opens the scenario creator and `/mission?case=<id>` mission control. The creator needs a running packaged
+world ([world/unreal](world/unreal/README.md)); mission control needs the
+[mission service](mission_planner/gcs/README.md).
 
-## Documentation
+## Checks
 
-- [Setup](docs/setup.md) and [architecture](docs/architecture.md)
-- World: [scenario studio](docs/world/studio.md), [navigation](docs/world/navigation.md),
-  [streaming](docs/world/streaming.md), [assets](docs/world/assets.md)
-- Mission control: [ground control](docs/mission-control/ground-control.md), [agent tools](docs/mission-control/tools.md),
-  [perception calibration](docs/mission-control/perception-calibration.md)
+```sh
+npm test && npm run typecheck && npm run format:check
+.venv-cosys/bin/ruff check && .venv-cosys/bin/ruff format --check
+.venv-cosys/bin/python -m unittest
+```
 
-Licensed Unreal content (MetaHuman, Fab, Cosys plugin binaries) is not included; see [assets](docs/world/assets.md).
+Licensed Unreal content (MetaHuman, Fab, Cosys binaries) is not included; see
+[assets](world/unreal/assets.md).

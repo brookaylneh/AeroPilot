@@ -19,7 +19,7 @@ if not unreal.ScenarioHuman.prepare_standing_animation(animation, skeleton):
     raise RuntimeError('The standing animation could not bind to the runtime skeleton')
 lib.save_loaded_asset(animation)
 
-inspection = json.loads((root / 'evidence/metahuman-runtime-assets.json').read_text())
+inspection = json.loads((root / '.local/evidence/metahuman-runtime-assets.json').read_text())
 clothes = next(c for c in inspection['blueprints'][0]['components'] if c['name'] == 'SkeletalMesh')
 bindings = []
 for material in clothes['materials']:

@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 import unreal
 root = Path(unreal.Paths.project_dir()).resolve().parents[2]
-exports = json.loads((root / 'evidence/fir-export.json').read_text())
+exports = json.loads((root / '.local/evidence/fir-export.json').read_text())
 lib = unreal.EditorAssetLibrary
 tools = unreal.AssetToolsHelpers.get_asset_tools()
 unreal.load_module('StaticMeshEditor')
@@ -55,5 +55,5 @@ for index, variant in enumerate('abc'):
     lib.save_loaded_asset(destination)
     report.append({'mesh': destination.get_path_name(), 'vertices': [destination.get_num_vertices(i) for i in range(destination.get_num_lods())],
                    'bounds': str(destination.get_bounding_box()), 'visuallyAccepted': False})
-(root / 'evidence/authored-fir-lods.json').write_text(json.dumps(report, indent=2) + '\n')
+(root / '.local/evidence/authored-fir-lods.json').write_text(json.dumps(report, indent=2) + '\n')
 unreal.log('SNR_AUTHORED_FIR_LODS_INSTALLED')

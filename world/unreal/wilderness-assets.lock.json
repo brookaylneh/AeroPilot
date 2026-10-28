@@ -4,7 +4,7 @@
   "files": [
     {
       "asset": "fir_tree_01",
-      "path": "vendor/polyhaven/fir_tree_01/fir_tree_01_2k.fbx",
+      "path": ".local/vendor/polyhaven/fir_tree_01/fir_tree_01_2k.fbx",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/fbx/2k/fir_tree_01/fir_tree_01_2k.fbx",
       "size": 249300492,
       "sourceMd5": "3712fee7385479902dd55444797d52e1",
@@ -14,7 +14,7 @@
     },
     {
       "asset": "fir_tree_01",
-      "path": "vendor/polyhaven/fir_tree_01/textures/fir_tree_01_bark_diff_2k.png",
+      "path": ".local/vendor/polyhaven/fir_tree_01/textures/fir_tree_01_bark_diff_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_tree_01/fir_tree_01_bark_diff_2k.png",
       "size": 22203773,
       "sourceMd5": "0a8464460b3df69009f9d5d8b1cb5093",
@@ -24,7 +24,7 @@
     },
     {
       "asset": "fir_tree_01",
-      "path": "vendor/polyhaven/fir_tree_01/textures/fir_tree_01_bark_disp_2k.png",
+      "path": ".local/vendor/polyhaven/fir_tree_01/textures/fir_tree_01_bark_disp_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_tree_01/fir_tree_01_bark_disp_2k.png",
       "size": 5850817,
       "sourceMd5": "2d07fc2e8c1bd5475f63c24c3d82d420",
@@ -34,7 +34,7 @@
     },
     {
       "asset": "fir_tree_01",
-      "path": "vendor/polyhaven/fir_tree_01/textures/fir_tree_01_bark_nor_gl_2k.png",
+      "path": ".local/vendor/polyhaven/fir_tree_01/textures/fir_tree_01_bark_nor_gl_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_tree_01/fir_tree_01_bark_nor_gl_2k.png",
       "size": 22422527,
       "sourceMd5": "4a249448a15a27f2cc2645287dc65bf7",
@@ -44,7 +44,7 @@
     },
     {
       "asset": "fir_tree_01",
-      "path": "vendor/polyhaven/fir_tree_01/textures/fir_tree_01_bark_rough_2k.png",
+      "path": ".local/vendor/polyhaven/fir_tree_01/textures/fir_tree_01_bark_rough_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_tree_01/fir_tree_01_bark_rough_2k.png",
       "size": 6980724,
       "sourceMd5": "0201b06fa2bbfa6676c4de2d69eb185f",
@@ -54,7 +54,7 @@
     },
     {
       "asset": "fir_tree_01",
-      "path": "vendor/polyhaven/fir_tree_01/textures/fir_tree_01_twig_alpha_2k.png",
+      "path": ".local/vendor/polyhaven/fir_tree_01/textures/fir_tree_01_twig_alpha_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_tree_01/fir_tree_01_twig_alpha_2k.png",
       "size": 996187,
       "sourceMd5": "1d93929d869e5539ec245ae3eddb7243",
@@ -64,7 +64,7 @@
     },
     {
       "asset": "fir_tree_01",
-      "path": "vendor/polyhaven/fir_tree_01/textures/fir_tree_01_twig_diff_2k.png",
+      "path": ".local/vendor/polyhaven/fir_tree_01/textures/fir_tree_01_twig_diff_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_tree_01/fir_tree_01_twig_diff_2k.png",
       "size": 11740724,
       "sourceMd5": "bd7f5c680f105a4c78a64fe8722f3aba",
@@ -74,7 +74,7 @@
     },
     {
       "asset": "fir_tree_01",
-      "path": "vendor/polyhaven/fir_tree_01/textures/fir_tree_01_twig_nor_gl_2k.png",
+      "path": ".local/vendor/polyhaven/fir_tree_01/textures/fir_tree_01_twig_nor_gl_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_tree_01/fir_tree_01_twig_nor_gl_2k.png",
       "size": 5650048,
       "sourceMd5": "2db997b7951e2931cd05ded39e0e62c5",
@@ -84,7 +84,7 @@
     },
     {
       "asset": "fir_tree_01",
-      "path": "vendor/polyhaven/fir_tree_01/textures/fir_tree_01_twig_rough_2k.png",
+      "path": ".local/vendor/polyhaven/fir_tree_01/textures/fir_tree_01_twig_rough_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_tree_01/fir_tree_01_twig_rough_2k.png",
       "size": 3825796,
       "sourceMd5": "cf7f3790c492130fc6dc3d045eba5f80",
@@ -94,7 +94,7 @@
     },
     {
       "asset": "fir_tree_01",
-      "path": "vendor/polyhaven/fir_tree_01/fir_tree_01_2k.blend",
+      "path": ".local/vendor/polyhaven/fir_tree_01/fir_tree_01_2k.blend",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/blend/2k/fir_tree_01/fir_tree_01_2k.blend",
       "size": 218986513,
       "sourceMd5": "5fd1ecb935006b6a3cb75c3cecbf95e0",
@@ -104,7 +104,7 @@
     },
     {
       "asset": "fir_tree_01",
-      "path": "vendor/polyhaven/fir_tree_01/textures/fir_tree_01_trunk_a_diff_2k.png",
+      "path": ".local/vendor/polyhaven/fir_tree_01/textures/fir_tree_01_trunk_a_diff_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_tree_01/fir_tree_01_trunk_a_diff_2k.png",
       "size": 18529439,
       "sourceMd5": "e04069ce3a3c73b059e46a101b3263f0",
@@ -114,7 +114,7 @@
     },
     {
       "asset": "fir_tree_01",
-      "path": "vendor/polyhaven/fir_tree_01/textures/fir_tree_01_trunk_a_nor_gl_2k.png",
+      "path": ".local/vendor/polyhaven/fir_tree_01/textures/fir_tree_01_trunk_a_nor_gl_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_tree_01/fir_tree_01_trunk_a_nor_gl_2k.png",
       "size": 16308667,
       "sourceMd5": "2dcf41e05b6fd7ddfe2a77e024fb2844",
@@ -124,7 +124,7 @@
     },
     {
       "asset": "fir_tree_01",
-      "path": "vendor/polyhaven/fir_tree_01/textures/fir_tree_01_trunk_a_rough_2k.png",
+      "path": ".local/vendor/polyhaven/fir_tree_01/textures/fir_tree_01_trunk_a_rough_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_tree_01/fir_tree_01_trunk_a_rough_2k.png",
       "size": 5959672,
       "sourceMd5": "d59b461fbdc8400d261358d4d6941b02",
@@ -134,7 +134,7 @@
     },
     {
       "asset": "fir_tree_01",
-      "path": "vendor/polyhaven/fir_tree_01/textures/fir_tree_01_trunk_b_diff_2k.png",
+      "path": ".local/vendor/polyhaven/fir_tree_01/textures/fir_tree_01_trunk_b_diff_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_tree_01/fir_tree_01_trunk_b_diff_2k.png",
       "size": 17855979,
       "sourceMd5": "6b3dcce9e9c71a058b06f48426c017b5",
@@ -144,7 +144,7 @@
     },
     {
       "asset": "fir_tree_01",
-      "path": "vendor/polyhaven/fir_tree_01/textures/fir_tree_01_trunk_b_nor_gl_2k.png",
+      "path": ".local/vendor/polyhaven/fir_tree_01/textures/fir_tree_01_trunk_b_nor_gl_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_tree_01/fir_tree_01_trunk_b_nor_gl_2k.png",
       "size": 15603340,
       "sourceMd5": "0c89b51bf9b04c9ebb1ff103b6740012",
@@ -154,7 +154,7 @@
     },
     {
       "asset": "fir_tree_01",
-      "path": "vendor/polyhaven/fir_tree_01/textures/fir_tree_01_trunk_b_rough_2k.png",
+      "path": ".local/vendor/polyhaven/fir_tree_01/textures/fir_tree_01_trunk_b_rough_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_tree_01/fir_tree_01_trunk_b_rough_2k.png",
       "size": 5739927,
       "sourceMd5": "05e46fc259929f61fcdb297c06025dd4",
@@ -164,7 +164,7 @@
     },
     {
       "asset": "fir_tree_01",
-      "path": "vendor/polyhaven/fir_tree_01/textures/fir_tree_01_trunk_c_diff_2k.png",
+      "path": ".local/vendor/polyhaven/fir_tree_01/textures/fir_tree_01_trunk_c_diff_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_tree_01/fir_tree_01_trunk_c_diff_2k.png",
       "size": 19043152,
       "sourceMd5": "0be4ada975b943e2c537f199509f685b",
@@ -174,7 +174,7 @@
     },
     {
       "asset": "fir_tree_01",
-      "path": "vendor/polyhaven/fir_tree_01/textures/fir_tree_01_trunk_c_nor_gl_2k.png",
+      "path": ".local/vendor/polyhaven/fir_tree_01/textures/fir_tree_01_trunk_c_nor_gl_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_tree_01/fir_tree_01_trunk_c_nor_gl_2k.png",
       "size": 16876318,
       "sourceMd5": "3e5406f9b6f3d4018ace7c1b0d8958f1",
@@ -184,7 +184,7 @@
     },
     {
       "asset": "fir_tree_01",
-      "path": "vendor/polyhaven/fir_tree_01/textures/fir_tree_01_trunk_c_rough_2k.png",
+      "path": ".local/vendor/polyhaven/fir_tree_01/textures/fir_tree_01_trunk_c_rough_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fir_tree_01/fir_tree_01_trunk_c_rough_2k.png",
       "size": 6224900,
       "sourceMd5": "e8f71b60c5f81a8382cd6c06153307e5",
@@ -194,7 +194,7 @@
     },
     {
       "asset": "pine_sapling_small",
-      "path": "vendor/polyhaven/pine_sapling_small/pine_sapling_small_2k.fbx",
+      "path": ".local/vendor/polyhaven/pine_sapling_small/pine_sapling_small_2k.fbx",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/fbx/2k/pine_sapling_small/pine_sapling_small_2k.fbx",
       "size": 16125980,
       "sourceMd5": "d026d23ccdfe6b11f0c1cd0f1e10ce1a",
@@ -204,7 +204,7 @@
     },
     {
       "asset": "pine_sapling_small",
-      "path": "vendor/polyhaven/pine_sapling_small/textures/pine_sapling_small_twig_alpha_2k.png",
+      "path": ".local/vendor/polyhaven/pine_sapling_small/textures/pine_sapling_small_twig_alpha_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/pine_sapling_small/pine_sapling_small_twig_alpha_2k.png",
       "size": 334535,
       "sourceMd5": "90189603eb9fb879a097d726cfff43e1",
@@ -214,7 +214,7 @@
     },
     {
       "asset": "pine_sapling_small",
-      "path": "vendor/polyhaven/pine_sapling_small/textures/pine_sapling_small_bark_nor_gl_2k.png",
+      "path": ".local/vendor/polyhaven/pine_sapling_small/textures/pine_sapling_small_bark_nor_gl_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/pine_sapling_small/pine_sapling_small_bark_nor_gl_2k.png",
       "size": 21747048,
       "sourceMd5": "d658980d981ea8df2da1d005d5dea805",
@@ -224,7 +224,7 @@
     },
     {
       "asset": "pine_sapling_small",
-      "path": "vendor/polyhaven/pine_sapling_small/textures/pine_sapling_small_bark_rough_2k.png",
+      "path": ".local/vendor/polyhaven/pine_sapling_small/textures/pine_sapling_small_bark_rough_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/pine_sapling_small/pine_sapling_small_bark_rough_2k.png",
       "size": 9821164,
       "sourceMd5": "f6ed4cd584b4bf2fda17d221d529b369",
@@ -234,7 +234,7 @@
     },
     {
       "asset": "pine_sapling_small",
-      "path": "vendor/polyhaven/pine_sapling_small/textures/pine_sapling_small_twig_mask_2k.png",
+      "path": ".local/vendor/polyhaven/pine_sapling_small/textures/pine_sapling_small_twig_mask_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/pine_sapling_small/pine_sapling_small_twig_mask_2k.png",
       "size": 318955,
       "sourceMd5": "20c45eb7b75fe1b49dc2e381d97b0b35",
@@ -244,7 +244,7 @@
     },
     {
       "asset": "pine_sapling_small",
-      "path": "vendor/polyhaven/pine_sapling_small/textures/pine_sapling_small_bark_disp_2k.png",
+      "path": ".local/vendor/polyhaven/pine_sapling_small/textures/pine_sapling_small_bark_disp_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/pine_sapling_small/pine_sapling_small_bark_disp_2k.png",
       "size": 6162156,
       "sourceMd5": "97db9324b179d11c271c1bcc57ae7dfa",
@@ -254,7 +254,7 @@
     },
     {
       "asset": "pine_sapling_small",
-      "path": "vendor/polyhaven/pine_sapling_small/textures/pine_sapling_small_twig_nor_gl_2k.png",
+      "path": ".local/vendor/polyhaven/pine_sapling_small/textures/pine_sapling_small_twig_nor_gl_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/pine_sapling_small/pine_sapling_small_twig_nor_gl_2k.png",
       "size": 7992986,
       "sourceMd5": "6635790f845ca2beae433e43db1400be",
@@ -264,7 +264,7 @@
     },
     {
       "asset": "pine_sapling_small",
-      "path": "vendor/polyhaven/pine_sapling_small/textures/pine_sapling_small_bark_diff_2k.png",
+      "path": ".local/vendor/polyhaven/pine_sapling_small/textures/pine_sapling_small_bark_diff_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/pine_sapling_small/pine_sapling_small_bark_diff_2k.png",
       "size": 21914708,
       "sourceMd5": "431f3c4e40e4349527cf1c2fe2ebe6fc",
@@ -274,7 +274,7 @@
     },
     {
       "asset": "pine_sapling_small",
-      "path": "vendor/polyhaven/pine_sapling_small/textures/pine_sapling_small_twig_rough_2k.png",
+      "path": ".local/vendor/polyhaven/pine_sapling_small/textures/pine_sapling_small_twig_rough_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/pine_sapling_small/pine_sapling_small_twig_rough_2k.png",
       "size": 2287334,
       "sourceMd5": "2c1897f0a6804d6424e1bbd2156c07a4",
@@ -284,7 +284,7 @@
     },
     {
       "asset": "pine_sapling_small",
-      "path": "vendor/polyhaven/pine_sapling_small/textures/pine_sapling_small_twig_diff_2k.png",
+      "path": ".local/vendor/polyhaven/pine_sapling_small/textures/pine_sapling_small_twig_diff_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/pine_sapling_small/pine_sapling_small_twig_diff_2k.png",
       "size": 7495830,
       "sourceMd5": "3450655521818c3e78e15aa191a539f5",
@@ -294,7 +294,7 @@
     },
     {
       "asset": "fern_02",
-      "path": "vendor/polyhaven/fern_02/fern_02_2k.fbx",
+      "path": ".local/vendor/polyhaven/fern_02/fern_02_2k.fbx",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/fbx/2k/fern_02/fern_02_2k.fbx",
       "size": 223596,
       "sourceMd5": "b0faf5c26baf61032ac5abea4f4ce568",
@@ -304,7 +304,7 @@
     },
     {
       "asset": "fern_02",
-      "path": "vendor/polyhaven/fern_02/textures/fern_02_diff_2k.jpg",
+      "path": ".local/vendor/polyhaven/fern_02/textures/fern_02_diff_2k.jpg",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/fern_02/fern_02_diff_2k.jpg",
       "size": 993703,
       "sourceMd5": "ba8bbb9dc9ff55bdc081565cd926d776",
@@ -314,7 +314,7 @@
     },
     {
       "asset": "fern_02",
-      "path": "vendor/polyhaven/fern_02/textures/fern_02_nor_gl_2k.exr",
+      "path": ".local/vendor/polyhaven/fern_02/textures/fern_02_nor_gl_2k.exr",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/exr/2k/fern_02/fern_02_nor_gl_2k.exr",
       "size": 2895843,
       "sourceMd5": "4e1fa9220f53965604b406ba28e223b3",
@@ -324,7 +324,7 @@
     },
     {
       "asset": "fern_02",
-      "path": "vendor/polyhaven/fern_02/textures/fern_02_rough_2k.exr",
+      "path": ".local/vendor/polyhaven/fern_02/textures/fern_02_rough_2k.exr",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/exr/2k/fern_02/fern_02_rough_2k.exr",
       "size": 901394,
       "sourceMd5": "beb315edeb84760a46dcc3d223b609fd",
@@ -334,7 +334,7 @@
     },
     {
       "asset": "fern_02",
-      "path": "vendor/polyhaven/fern_02/textures/fern_02_alpha_2k.png",
+      "path": ".local/vendor/polyhaven/fern_02/textures/fern_02_alpha_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/fern_02/fern_02_alpha_2k.png",
       "size": 230089,
       "sourceMd5": "ff18f7e8e869c58eac8f9c7d7c519f4a",
@@ -344,7 +344,7 @@
     },
     {
       "asset": "grass_medium_01",
-      "path": "vendor/polyhaven/grass_medium_01/grass_medium_01_2k.fbx",
+      "path": ".local/vendor/polyhaven/grass_medium_01/grass_medium_01_2k.fbx",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/fbx/2k/grass_medium_01/grass_medium_01_2k.fbx",
       "size": 1056796,
       "sourceMd5": "b66bd6a94172d7045ddc39cb9e5a9cf3",
@@ -354,7 +354,7 @@
     },
     {
       "asset": "grass_medium_01",
-      "path": "vendor/polyhaven/grass_medium_01/textures/grass_medium_01_alpha_2k.png",
+      "path": ".local/vendor/polyhaven/grass_medium_01/textures/grass_medium_01_alpha_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/png/2k/grass_medium_01/grass_medium_01_alpha_2k.png",
       "size": 1580653,
       "sourceMd5": "0810166131307c1094d37e73a8490542",
@@ -364,7 +364,7 @@
     },
     {
       "asset": "grass_medium_01",
-      "path": "vendor/polyhaven/grass_medium_01/textures/grass_medium_01_diff_2k.jpg",
+      "path": ".local/vendor/polyhaven/grass_medium_01/textures/grass_medium_01_diff_2k.jpg",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/grass_medium_01/grass_medium_01_diff_2k.jpg",
       "size": 1166527,
       "sourceMd5": "000814eb2149add70695cf71bfb52c4b",
@@ -374,7 +374,7 @@
     },
     {
       "asset": "grass_medium_01",
-      "path": "vendor/polyhaven/grass_medium_01/textures/grass_medium_01_nor_gl_2k.exr",
+      "path": ".local/vendor/polyhaven/grass_medium_01/textures/grass_medium_01_nor_gl_2k.exr",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/exr/2k/grass_medium_01/grass_medium_01_nor_gl_2k.exr",
       "size": 7389519,
       "sourceMd5": "4a1e50ca39ce25a4b33f9086f578a632",
@@ -384,7 +384,7 @@
     },
     {
       "asset": "grass_medium_01",
-      "path": "vendor/polyhaven/grass_medium_01/textures/grass_medium_01_rough_2k.exr",
+      "path": ".local/vendor/polyhaven/grass_medium_01/textures/grass_medium_01_rough_2k.exr",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/exr/2k/grass_medium_01/grass_medium_01_rough_2k.exr",
       "size": 2627410,
       "sourceMd5": "8133a6d2d2fd01f899f12c27b7d854b7",
@@ -394,7 +394,7 @@
     },
     {
       "asset": "rock_moss_set_01",
-      "path": "vendor/polyhaven/rock_moss_set_01/rock_moss_set_01_2k.fbx",
+      "path": ".local/vendor/polyhaven/rock_moss_set_01/rock_moss_set_01_2k.fbx",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/fbx/2k/rock_moss_set_01/rock_moss_set_01_2k.fbx",
       "size": 2652988,
       "sourceMd5": "e5f57a49dc1b6a000cce3cf6e094e0ed",
@@ -404,7 +404,7 @@
     },
     {
       "asset": "rock_moss_set_01",
-      "path": "vendor/polyhaven/rock_moss_set_01/textures/rock_moss_set_01_nor_gl_2k.exr",
+      "path": ".local/vendor/polyhaven/rock_moss_set_01/textures/rock_moss_set_01_nor_gl_2k.exr",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/exr/2k/rock_moss_set_01/rock_moss_set_01_nor_gl_2k.exr",
       "size": 6882427,
       "sourceMd5": "88164f1feb37e45c41d37b3983c06ff2",
@@ -414,7 +414,7 @@
     },
     {
       "asset": "rock_moss_set_01",
-      "path": "vendor/polyhaven/rock_moss_set_01/textures/rock_moss_set_01_diff_2k.jpg",
+      "path": ".local/vendor/polyhaven/rock_moss_set_01/textures/rock_moss_set_01_diff_2k.jpg",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/rock_moss_set_01/rock_moss_set_01_diff_2k.jpg",
       "size": 649415,
       "sourceMd5": "d3e1292c9e34bd6b4a236698a1b41290",
@@ -424,7 +424,7 @@
     },
     {
       "asset": "rock_moss_set_01",
-      "path": "vendor/polyhaven/rock_moss_set_01/textures/rock_moss_set_01_rough_2k.jpg",
+      "path": ".local/vendor/polyhaven/rock_moss_set_01/textures/rock_moss_set_01_rough_2k.jpg",
       "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/rock_moss_set_01/rock_moss_set_01_rough_2k.jpg",
       "size": 293827,
       "sourceMd5": "f7b3045b503fbde038598f8586ac25ef",
@@ -434,7 +434,7 @@
     },
     {
       "asset": "forest_ground_04",
-      "path": "vendor/polyhaven/forest_ground_04/forest_ground_04_diff_2k.jpg",
+      "path": ".local/vendor/polyhaven/forest_ground_04/forest_ground_04_diff_2k.jpg",
       "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/forest_ground_04/forest_ground_04_diff_2k.jpg",
       "size": 4529321,
       "sourceMd5": "f6ce9c8af4316c2627a4b3fbab8ad944",
@@ -444,7 +444,7 @@
     },
     {
       "asset": "forest_ground_04",
-      "path": "vendor/polyhaven/forest_ground_04/forest_ground_04_nor_dx_2k.png",
+      "path": ".local/vendor/polyhaven/forest_ground_04/forest_ground_04_nor_dx_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/forest_ground_04/forest_ground_04_nor_dx_2k.png",
       "size": 9986137,
       "sourceMd5": "d269f8896df0410506721605931f6416",
@@ -454,7 +454,7 @@
     },
     {
       "asset": "forest_ground_04",
-      "path": "vendor/polyhaven/forest_ground_04/forest_ground_04_rough_2k.jpg",
+      "path": ".local/vendor/polyhaven/forest_ground_04/forest_ground_04_rough_2k.jpg",
       "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/forest_ground_04/forest_ground_04_rough_2k.jpg",
       "size": 2509805,
       "sourceMd5": "81daa9a1d8b35dd9ffdff3aa7a74fbd9",
@@ -464,7 +464,7 @@
     },
     {
       "asset": "rocky_terrain_02",
-      "path": "vendor/polyhaven/rocky_terrain_02/rocky_terrain_02_diff_2k.jpg",
+      "path": ".local/vendor/polyhaven/rocky_terrain_02/rocky_terrain_02_diff_2k.jpg",
       "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rocky_terrain_02/rocky_terrain_02_diff_2k.jpg",
       "size": 3232826,
       "sourceMd5": "68f9c94575ff3c3512be9b010eb03f0e",
@@ -474,7 +474,7 @@
     },
     {
       "asset": "rocky_terrain_02",
-      "path": "vendor/polyhaven/rocky_terrain_02/rocky_terrain_02_nor_dx_2k.png",
+      "path": ".local/vendor/polyhaven/rocky_terrain_02/rocky_terrain_02_nor_dx_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/rocky_terrain_02/rocky_terrain_02_nor_dx_2k.png",
       "size": 26057478,
       "sourceMd5": "9cca05bcacdd4dc891932fadd4e3fa0b",
@@ -484,7 +484,7 @@
     },
     {
       "asset": "rocky_terrain_02",
-      "path": "vendor/polyhaven/rocky_terrain_02/rocky_terrain_02_rough_2k.jpg",
+      "path": ".local/vendor/polyhaven/rocky_terrain_02/rocky_terrain_02_rough_2k.jpg",
       "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rocky_terrain_02/rocky_terrain_02_rough_2k.jpg",
       "size": 1589303,
       "sourceMd5": "eb3ca6990da229305918c08980ceb66f",
@@ -494,7 +494,7 @@
     },
     {
       "asset": "aerial_grass_rock",
-      "path": "vendor/polyhaven/aerial_grass_rock/aerial_grass_rock_diff_2k.jpg",
+      "path": ".local/vendor/polyhaven/aerial_grass_rock/aerial_grass_rock_diff_2k.jpg",
       "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/aerial_grass_rock/aerial_grass_rock_diff_2k.jpg",
       "size": 2624635,
       "sourceMd5": "024018554c0002620127749d1f585f3d",
@@ -504,7 +504,7 @@
     },
     {
       "asset": "aerial_grass_rock",
-      "path": "vendor/polyhaven/aerial_grass_rock/aerial_grass_rock_nor_dx_2k.png",
+      "path": ".local/vendor/polyhaven/aerial_grass_rock/aerial_grass_rock_nor_dx_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/aerial_grass_rock/aerial_grass_rock_nor_dx_2k.png",
       "size": 25610944,
       "sourceMd5": "17e256cc59a176f8ca3e9705d4ae6d94",
@@ -514,7 +514,7 @@
     },
     {
       "asset": "aerial_grass_rock",
-      "path": "vendor/polyhaven/aerial_grass_rock/aerial_grass_rock_rough_2k.jpg",
+      "path": ".local/vendor/polyhaven/aerial_grass_rock/aerial_grass_rock_rough_2k.jpg",
       "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/aerial_grass_rock/aerial_grass_rock_rough_2k.jpg",
       "size": 1495844,
       "sourceMd5": "8d181000237d420a73f99dfc260dab17",

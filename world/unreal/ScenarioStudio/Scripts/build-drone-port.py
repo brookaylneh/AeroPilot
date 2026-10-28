@@ -25,7 +25,7 @@ for a in actors.get_all_level_actors():
     if a.get_actor_label().startswith('drone.port'):
         actors.destroy_actor(a)
 folder = '/Game/OpenMeadow/DronePort'
-source = json.loads((root/'evidence/phase2a-concrete-source.json').read_text())
+source = json.loads((root/'.local/evidence/phase2a-concrete-source.json').read_text())
 textures = {}
 for key, entry in source['files'].items():
     file = root/entry['file']; path = folder+'/'+file.stem
@@ -59,7 +59,7 @@ slab.static_mesh_component.set_collision_profile_name('ScenarioObstacle')
 
 # Locally grade supporting ground. Nothing is added to the searchable bounds.
 # The original scenery has no collision; this patch provides physical support.
-heightfile = root/'vendor/open-meadow/height.r16'; raw = heightfile.read_bytes()
+heightfile = root/'.local/vendor/open-meadow/height.r16'; raw = heightfile.read_bytes()
 def edge_height(y):
     # Heightfield rows run east (+Y); the southern edge is column zero.
     f = max(0,min(2016,(y-lo.y)/(hi.y-lo.y)*2016)); i = min(2015,int(f)); t=f-i
@@ -113,6 +113,6 @@ report={'schemaVersion':1,'worldId':'open-meadow-unreal','environmentAssetVersio
     'heightfieldSha256':hashlib.sha256(raw).hexdigest(),'vehicles':{}}
 for n,(east,north) in enumerate([(-2.5,2.5),(2.5,2.5),(-2.5,-2.5),(2.5,-2.5)],1):
     report['vehicles']['Drone'+str(n)]={'spawnUeCm':{'x':center_x+north*100,'y':center_y+east*100,'z':top+20},'yawDegrees':0}
-(root/'world/simulator/world.json').write_text(json.dumps(report,indent=2)+'\n')
-(root/'evidence/phase2a-port-authoring.json').write_text(json.dumps(report,indent=2)+'\n')
+(root/'world/cosys/world.json').write_text(json.dumps(report,indent=2)+'\n')
+(root/'.local/evidence/phase2a-port-authoring.json').write_text(json.dumps(report,indent=2)+'\n')
 unreal.log('SNR_PHASE2A_PORT_AUTHORED')

@@ -4,14 +4,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "concurrently -k \"SNR_SERVE_STATIC=0 tsx watch app/server.ts\" \"vite --host 0.0.0.0\"",
+    "dev": "concurrently -k \"SNR_SERVE_STATIC=0 tsx watch web/server.ts\" \"vite --host 0.0.0.0\"",
     "build": "tsc --noEmit && vite build",
-    "start": "tsx app/server.ts",
-    "test": "tsx --test 'world/**/*.test.ts' 'world/**/*.test.mjs'",
-    "assets": "python3 world/scripts/fetch-assets.py",
+    "start": "tsx web/server.ts",
+    "test": "tsx --test 'scenario_creator/*.test.ts' 'world/**/*.test.ts' 'mission_planner/**/*.test.mjs'",
+    "fonts": "python3 web/fetch-fonts.py",
     "typecheck": "tsc --noEmit",
-    "format": "prettier --write app world/studio world/scripts mission_control/gcs mission_control/perception/*.mjs *.ts *.json",
-    "format:check": "prettier --check app world/studio world/scripts mission_control/gcs mission_control/perception/*.mjs *.ts *.json"
+    "format": "prettier --write web scenario_creator world/unreal/scripts mission_planner/gcs 'mission_planner/agents/perception/*.mjs' '*.ts' '*.json'",
+    "format:check": "prettier --check web scenario_creator world/unreal/scripts mission_planner/gcs 'mission_planner/agents/perception/*.mjs' '*.ts' '*.json'"
   },
   "dependencies": {
     "@epicgames-ps/lib-pixelstreamingfrontend-ue5.8": "^0.1.3",

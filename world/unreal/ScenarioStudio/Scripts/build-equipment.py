@@ -176,7 +176,7 @@ if not asset:
     raise RuntimeError(str(outcome))
 asset.set_editor_property('static_materials', [unreal.StaticMaterial(material_interface=material, material_slot_name='Fabric')])
 lib.save_loaded_asset(asset)
-(root / 'evidence/daypack.json').write_text(json.dumps({'mesh': path, 'geometry': 'original project work',
+(root / '.local/evidence/daypack.json').write_text(json.dumps({'mesh': path, 'geometry': 'original project work',
     'fabricLicense': 'CC0-1.0', 'vertices': len(vertices), 'triangles': len(triangles), 'fittingValidated': False,
     'bounds': str(asset.get_bounding_box()), 'visuallyAccepted': False}, indent=2) + '\n')
 unreal.log('SNR_DAYPACK_AUTHORED')

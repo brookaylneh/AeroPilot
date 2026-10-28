@@ -49,7 +49,7 @@ for variety in varieties:
 grass_type.set_editor_property('grass_varieties', varieties)
 lib.save_loaded_asset(grass_type)
 assert levels.save_current_level()
-report_path = ROOT / 'evidence/open-meadow-terrain.json'
+report_path = ROOT / '.local/evidence/open-meadow-terrain.json'
 report = json.loads(report_path.read_text())
 report.update(grassDensityPerVariety=120, grassDistanceFade=True, twoSidedBackground=False, backgroundWindingCorrected=True)
 report_path.write_text(json.dumps(report, indent=2) + '\n')

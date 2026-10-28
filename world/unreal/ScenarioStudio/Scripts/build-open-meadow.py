@@ -9,10 +9,10 @@ from pathlib import Path
 import unreal
 
 ROOT = Path(unreal.Paths.project_dir()).resolve().parents[2]
-report_path = ROOT / 'evidence/open-meadow-terrain.json'
+report_path = ROOT / '.local/evidence/open-meadow-terrain.json'
 report = json.loads(report_path.read_text())
 WIDTH_CM = report['widthMetres'] * 100
-source = json.loads((ROOT / 'evidence/wilderness-import.json').read_text())
+source = json.loads((ROOT / '.local/evidence/wilderness-import.json').read_text())
 lib = unreal.EditorAssetLibrary
 tools = unreal.AssetToolsHelpers.get_asset_tools()
 ml = unreal.MaterialEditingLibrary
@@ -89,7 +89,7 @@ lib.save_loaded_asset(grass_type)
 mask_path = FOLDER + '/ground_mask_020'
 if not lib.does_asset_exist(mask_path):
     task = unreal.AssetImportTask()
-    task.filename = str(ROOT / 'vendor/open-meadow/ground-mask.png')
+    task.filename = str(ROOT / '.local/vendor/open-meadow/ground-mask.png')
     task.destination_path = FOLDER
     task.destination_name = 'ground_mask_020'
     task.automated = True
@@ -173,7 +173,7 @@ if lib.does_asset_exist(WORLD):
 elif not levels.new_level(WORLD):
     raise RuntimeError('Cannot create map')
 
-landscape = unreal.ScenarioLandscapeTools.create_landscape(str(ROOT / 'vendor/open-meadow/height.r16'), 2017, WIDTH_CM, mat)
+landscape = unreal.ScenarioLandscapeTools.create_landscape(str(ROOT / '.local/vendor/open-meadow/height.r16'), 2017, WIDTH_CM, mat)
 if not landscape:
     raise RuntimeError('Landscape import failed')
 

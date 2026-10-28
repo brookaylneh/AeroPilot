@@ -5,7 +5,7 @@ from pathlib import Path
 import unreal
 
 root = Path(unreal.Paths.project_dir()).resolve().parents[2]
-(root / "evidence/phase3").mkdir(parents=True, exist_ok=True)
+(root / ".local/evidence/phase3").mkdir(parents=True, exist_ok=True)
 lib = unreal.EditorAssetLibrary
 tools = unreal.AssetToolsHelpers.get_asset_tools()
 subsystem = unreal.get_editor_subsystem(unreal.MetaHumanCharacterEditorSubsystem)
@@ -55,7 +55,7 @@ for name, preset in [("Walter", "Walter"), ("Etta", "Etta"), ("Sookja", "Sook-ja
         )
         lib.save_directory("/Game/Scenario/MetaHumans", only_if_is_dirty=True, recursive=True)
         report.append(name)
-        (root / "evidence/phase3/assembled-people.json").write_text(json.dumps(report))
+        (root / ".local/evidence/phase3/assembled-people.json").write_text(json.dumps(report))
     finally:
         subsystem.remove_object_to_edit(character)
 unreal.log("SNR_CREATOR_PEOPLE_ASSEMBLED")

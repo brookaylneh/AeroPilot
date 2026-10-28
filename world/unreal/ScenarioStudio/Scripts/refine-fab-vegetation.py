@@ -15,7 +15,7 @@ settings = {
     'FlowerPatchesA': ([150, 120], 4000, 6500, True),
     'FlowerPatchesB': ([90, 120], 4000, 6500, True),
 }
-report_path = root / 'evidence/fab-vegetation-integration.json'
+report_path = root / '.local/evidence/fab-vegetation-integration.json'
 report = json.loads(report_path.read_text())
 for group in report['groups']:
     name = group['name']

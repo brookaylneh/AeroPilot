@@ -1,12 +1,11 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 export default defineConfig({
+  root: 'web',
   plugins: [react()],
   server: {
     port: 5173,
-    watch: {
-      ignored: ['**/vendor/**', '**/unreal/**', '**/evidence/**', '**/data/**'],
-    },
+    watch: { ignored: ['**/.local/**', '**/world/unreal/**'] },
     fs: {
       deny: [
         '.env',
@@ -14,15 +13,10 @@ export default defineConfig({
         '**/*.{crt,pem}',
         '**/.git/**',
         '**/.secrets/**',
-        '**/data/**',
-        '**/evidence/**',
-        '**/vendor/**',
+        '**/.local/**',
         '**/*.py',
-        '**/world/unreal/**',
-        '**/world/scripts/**',
-        '**/world/simulator/**',
-        '**/mission_control/services/**',
-        '**/docs/**',
+        '**/world/**',
+        '**/mission_planner/agents/**',
       ],
     },
     proxy: {
@@ -34,5 +28,5 @@ export default defineConfig({
       },
     },
   },
-  build: { chunkSizeWarningLimit: 1100 },
+  build: { outDir: '../.local/dist', emptyOutDir: true, chunkSizeWarningLimit: 1100 },
 });

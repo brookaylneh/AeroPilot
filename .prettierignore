@@ -1,8 +1,5 @@
-data/
-dist*/
-evidence/
+.local/
 node_modules/
-public/
-vendor/
-world/unreal/
+web/public/
+world/unreal/ScenarioStudio/
 package-lock.json

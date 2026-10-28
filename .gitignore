@@ -1,4 +1,5 @@
-# Dependencies, credentials and local state
+# Local state, dependencies and build output
+.local/
 node_modules/
 .venv*/
 __pycache__/
@@ -8,21 +9,11 @@ __pycache__/
 .env.*
 !.env.example
 .secrets/
-data/
-evidence/
-staging/
-vendor/
-dist/
-deploy/
 
 # Licensed Unreal assets and generated engine output
-world/unreal/**/Content/
-world/unreal/**/Plugins/
-world/unreal/**/Binaries/
-world/unreal/**/Intermediate/
-world/unreal/**/Saved/
-world/unreal/**/DerivedDataCache/
-world/unreal/Packaged/
-world/unreal/releases/
-world/unreal/Live
-world/unreal/*Candidate
+world/unreal/ScenarioStudio/Content/
+world/unreal/ScenarioStudio/Plugins/
+world/unreal/ScenarioStudio/Binaries/
+world/unreal/ScenarioStudio/Intermediate/
+world/unreal/ScenarioStudio/Saved/
+world/unreal/ScenarioStudio/DerivedDataCache/

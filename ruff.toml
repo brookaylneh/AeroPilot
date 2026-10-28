@@ -1,6 +1,6 @@
 target-version = "py310"
 line-length = 100
-include = ["mission_control/**/*.py", "world/simulator/*.py"]
+include = ["mission_planner/**/*.py", "world/cosys/*.py", "web/*.py"]
 
 [lint]
 select = ["E4", "E7", "E9", "F", "I"]

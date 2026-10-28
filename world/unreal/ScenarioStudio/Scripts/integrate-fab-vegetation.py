@@ -17,7 +17,7 @@ ml = unreal.MaterialEditingLibrary
 tools = unreal.AssetToolsHelpers.get_asset_tools()
 levels = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
 actors = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
-inventory = json.loads((ROOT / 'evidence/fab-vegetation-inventory.json').read_text())
+inventory = json.loads((ROOT / '.local/evidence/fab-vegetation-inventory.json').read_text())
 known = {m['path'].split('/')[-1].split('.')[0]: m for p in inventory['packs'] for m in p['meshes']}
 report = {'at': datetime.datetime.now(datetime.timezone.utc).isoformat(), 'assetVersion': VERSION,
           'groups': [], 'materials': [], 'terrainUnchanged': False, 'packagedTested': False,
@@ -140,7 +140,7 @@ for name, channel, near, far, selections in groups:
 mask_path = FOLDER + '/T_VegetationMask'
 if not lib.does_asset_exist(mask_path):
     task = unreal.AssetImportTask()
-    task.filename = str(ROOT / 'vendor/open-meadow/vegetation-mask-030.png')
+    task.filename = str(ROOT / '.local/vendor/open-meadow/vegetation-mask-030.png')
     task.destination_path = FOLDER
     task.destination_name = 'T_VegetationMask'
     task.automated = True
@@ -183,9 +183,9 @@ catalog.set_editor_property('asset_version', VERSION)
 lib.save_loaded_asset(catalog)
 assert levels.save_current_level()
 
-terrain_path = ROOT / 'evidence/open-meadow-terrain.json'
+terrain_path = ROOT / '.local/evidence/open-meadow-terrain.json'
 terrain = json.loads(terrain_path.read_text())
-assert hashlib.sha256((ROOT / 'vendor/open-meadow/height.r16').read_bytes()).hexdigest() == terrain['heightmapSha256']
+assert hashlib.sha256((ROOT / '.local/vendor/open-meadow/height.r16').read_bytes()).hexdigest() == terrain['heightmapSha256']
 report['terrainUnchanged'] = True
 report['heightmapSha256'] = terrain['heightmapSha256']
 report['integrated'] = True
@@ -194,5 +194,5 @@ terrain.update(assetVersion=VERSION, requestedVegetationImported=True,
     grassSource='Project Nature Open World Foliage, Grass Library and Meadow Flowers (Fab Standard License)',
     packagedTested=False, publicBrowserTested=False, visuallyReviewed=False, visuallyAccepted=False)
 terrain_path.write_text(json.dumps(terrain, indent=2) + '\n')
-(ROOT / 'evidence/fab-vegetation-integration.json').write_text(json.dumps(report, indent=2) + '\n')
+(ROOT / '.local/evidence/fab-vegetation-integration.json').write_text(json.dumps(report, indent=2) + '\n')
 unreal.log('SNR_FAB_VEGETATION_INTEGRATED')

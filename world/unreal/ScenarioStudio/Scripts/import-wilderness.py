@@ -4,7 +4,7 @@ from pathlib import Path
 import unreal
 
 ROOT = Path(unreal.Paths.project_dir()).resolve().parents[2]
-SOURCE = ROOT / 'vendor/polyhaven'
+SOURCE = ROOT / '.local/vendor/polyhaven'
 BASE = '/Game/Wilderness/Assets'
 MODELS = ['fir_tree_01', 'pine_sapling_small', 'fern_02', 'grass_medium_01', 'rock_moss_set_01']
 TERRAIN = ['forest_ground_04', 'rocky_terrain_02', 'aerial_grass_rock']
@@ -15,7 +15,7 @@ report = {'models': {}, 'textures': {}, 'materials': {}}
 
 
 def checkpoint():
-    (ROOT / 'evidence/wilderness-import.json').write_text(json.dumps(report, indent=2) + '\n')
+    (ROOT / '.local/evidence/wilderness-import.json').write_text(json.dumps(report, indent=2) + '\n')
 
 
 def import_file(source, destination, options=None):

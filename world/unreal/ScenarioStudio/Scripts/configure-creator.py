@@ -9,7 +9,7 @@ from pathlib import Path
 import unreal
 
 root = Path(unreal.Paths.project_dir()).resolve().parents[2]
-(root / "evidence/phase3").mkdir(parents=True, exist_ok=True)
+(root / ".local/evidence/phase3").mkdir(parents=True, exist_ok=True)
 people = json.loads((root / "world/unreal/creator-people.json").read_text())
 scans = json.loads((root / "world/unreal/children-runtime.json").read_text())
 config = json.loads((root / "world/unreal/character-runtime.json").read_text())
@@ -200,5 +200,5 @@ catalog.set_editor_property(
     ],
 )
 lib.save_loaded_asset(catalog)
-(root / "evidence/phase3/creator-inventory.json").write_text(json.dumps(report, indent=2))
+(root / ".local/evidence/phase3/creator-inventory.json").write_text(json.dumps(report, indent=2))
 unreal.log("SNR_CREATOR_CONFIGURED")

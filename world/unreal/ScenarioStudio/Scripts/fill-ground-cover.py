@@ -5,7 +5,7 @@ import random
 from pathlib import Path
 import unreal
 root = Path(unreal.Paths.project_dir()).resolve().parents[2]
-source = json.loads((root / 'evidence/wilderness-import.json').read_text())
+source = json.loads((root / '.local/evidence/wilderness-import.json').read_text())
 lib = unreal.EditorAssetLibrary
 tools = unreal.AssetToolsHelpers.get_asset_tools()
 levels = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
@@ -53,5 +53,5 @@ for asset, count in [('grass_medium_01', 75000), ('fern_02', 2400)]:
     report[asset] = sum(map(len, groups))
 if not levels.save_current_level():
     raise RuntimeError('Ground cover could not be saved')
-(root / 'evidence/ground-cover.json').write_text(json.dumps({'counts': report, 'seed': 74022, 'visuallyAccepted': False}, indent=2) + '\n')
+(root / '.local/evidence/ground-cover.json').write_text(json.dumps({'counts': report, 'seed': 74022, 'visuallyAccepted': False}, indent=2) + '\n')
 unreal.log('SNR_GROUND_COVER_SAVED')

@@ -3,14 +3,14 @@
   "license": "https://polyhaven.com/license",
   "files": [
     {
-      "path": "vendor/polyhaven/fabric_pattern_07/fabric_pattern_07_nor_dx_2k.png",
+      "path": ".local/vendor/polyhaven/fabric_pattern_07/fabric_pattern_07_nor_dx_2k.png",
       "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/2k/fabric_pattern_07/fabric_pattern_07_nor_dx_2k.png",
       "sha256": "46bbfd10cdf21d20c16aeebd2d38f72bde2c86c4a6d8428979da0eab6bef64c5",
       "sourceMd5": "def7b5271ee08fba1cb1617f45f68cba",
       "license": "CC0-1.0"
     },
     {
-      "path": "vendor/polyhaven/fabric_pattern_07/fabric_pattern_07_rough_2k.jpg",
+      "path": ".local/vendor/polyhaven/fabric_pattern_07/fabric_pattern_07_rough_2k.jpg",
       "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/fabric_pattern_07/fabric_pattern_07_rough_2k.jpg",
       "sha256": "be3e311614ee6f31d4cb4a774ed678b7a64189d3e1a55ad71033142185da270a",
       "sourceMd5": "96906a97616405b0e664b9d18638d4f9",

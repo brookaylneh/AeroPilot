@@ -6,7 +6,7 @@ import unreal
 root = Path(unreal.Paths.project_dir()).resolve().parents[2]
 report = {'character': '/Game/Scenario/Characters/MH_Adult', 'pipeline': 'UE Optimized',
           'quality': 'High', 'assembled': False, 'rendered': False}
-path = root / 'evidence/metahuman-assembly.json'
+path = root / '.local/evidence/metahuman-assembly.json'
 
 
 def record():

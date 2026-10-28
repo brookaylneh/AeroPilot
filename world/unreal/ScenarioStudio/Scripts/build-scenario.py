@@ -6,7 +6,7 @@ import unreal
 
 root = Path(unreal.Paths.project_dir()).resolve().parents[2]
 configuration = json.loads((root / 'world/unreal/character-runtime.json').read_text())
-world = json.loads((root / 'evidence/wilderness-world.json').read_text())
+world = json.loads((root / '.local/evidence/wilderness-world.json').read_text())
 lib = unreal.EditorAssetLibrary
 tools = unreal.AssetToolsHelpers.get_asset_tools()
 actors = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
@@ -78,7 +78,7 @@ session.set_editor_property('manager', manager)
 session.set_editor_property('marker_material', unreal.load_asset('/Game/Scenario/Equipment/M_PlacementMarker'))
 if not levels.save_current_level():
     raise RuntimeError('Could not save scenario integration')
-(root / 'evidence/native-catalog.json').write_text(json.dumps({
+(root / '.local/evidence/native-catalog.json').write_text(json.dumps({
     'authored': True, 'runtimeTested': False, 'people': [p['id'] for p in configuration['people']],
     'world': world['world'], 'catalog': path}, indent=2) + '\n')
 unreal.log('SNR_NATIVE_CATALOG_SAVED')

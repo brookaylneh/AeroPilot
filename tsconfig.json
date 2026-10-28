@@ -13,5 +13,5 @@
     "noEmit": true,
     "types": ["node", "vite/client"]
   },
-  "include": ["app", "world/studio", "world/scripts", "mission_control/gcs", "vite.config.ts"]
+  "include": ["web", "scenario_creator", "world/unreal/scripts", "mission_planner/gcs", "vite.config.ts"]
 }

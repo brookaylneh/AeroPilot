@@ -10,7 +10,7 @@ ASSETS = '/Game/Wilderness/Assets'
 MAT = '/Game/Wilderness/Materials'
 WORLD = '/Game/Wilderness/AlderValley'
 SEED = 74021
-assets = json.loads((ROOT / 'evidence/wilderness-import.json').read_text())
+assets = json.loads((ROOT / '.local/evidence/wilderness-import.json').read_text())
 tools = unreal.AssetToolsHelpers.get_asset_tools()
 lib = unreal.EditorAssetLibrary
 matlib = unreal.MaterialEditingLibrary
@@ -23,7 +23,7 @@ report = {'world': WORLD, 'assetVersion': 'alder-valley-unreal-0.2.0', 'seed': S
 
 
 def checkpoint():
-    (ROOT / 'evidence/wilderness-world.json').write_text(json.dumps(report, indent=2) + '\n')
+    (ROOT / '.local/evidence/wilderness-world.json').write_text(json.dumps(report, indent=2) + '\n')
 
 
 def material(name):
@@ -177,7 +177,7 @@ else:
 lib.save_loaded_asset(terrain)
 
 if lib.does_asset_exist(WORLD):
-    previous_path = ROOT / 'evidence/wilderness-world.json'
+    previous_path = ROOT / '.local/evidence/wilderness-world.json'
     previous = json.loads(previous_path.read_text()) if previous_path.exists() else {}
     if previous.get('authored'):
         raise RuntimeError('Completed world already exists. Inspect it before regenerating.')

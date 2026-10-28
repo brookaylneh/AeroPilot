@@ -11,7 +11,7 @@ import unreal
 
 ROOT = Path(unreal.Paths.project_dir()).resolve().parents[2]
 CONTROL = ROOT / '.secrets/fab-editor-command.json'
-STATUS = ROOT / 'evidence/fab-editor-status.json'
+STATUS = ROOT / '.local/evidence/fab-editor-status.json'
 api_class = unreal.load_class(None, '/Script/Fab.FabBrowserApi')
 assert api_class, 'Fab native API failed to load'
 api = unreal.new_object(api_class)

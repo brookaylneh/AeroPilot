@@ -8,7 +8,7 @@ from pathlib import Path
 import unreal
 
 root = Path(unreal.Paths.project_dir()).resolve().parents[2]
-report_path = root / 'evidence/metahuman-preparation.json'
+report_path = root / '.local/evidence/metahuman-preparation.json'
 asset_path = '/Game/Scenario/Characters/MH_Adult'
 report = {'preset': '/MetaHumanCharacter/Optional/Presets/Kelvin',
           'projectCharacter': asset_path, 'assembled': False, 'stage': 'loading'}

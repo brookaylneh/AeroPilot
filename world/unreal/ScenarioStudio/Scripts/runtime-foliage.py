@@ -10,9 +10,9 @@ from pathlib import Path
 import unreal
 
 root = Path(unreal.Paths.project_dir()).resolve().parents[2]
-source = json.loads((root / 'evidence/wilderness-import.json').read_text())
+source = json.loads((root / '.local/evidence/wilderness-import.json').read_text())
 ready = set()
-for report_path in (root / 'evidence').glob('wilderness-lods*.json'):
+for report_path in (root / '.local/evidence').glob('wilderness-lods*.json'):
     for item in json.loads(report_path.read_text()).get('meshes', []):
         if item['lods'] > 1:
             ready.add(item['path'])
@@ -96,5 +96,5 @@ for group_index, (index, entry, mesh) in enumerate(available):
         'vertices': [mesh.get_num_vertices(i) for i in range(mesh.get_num_lods())]})
 if not levels.save_current_level():
     raise RuntimeError('Could not save runtime foliage')
-(root / 'evidence/runtime-foliage.json').write_text(json.dumps(report, indent=2) + '\n')
+(root / '.local/evidence/runtime-foliage.json').write_text(json.dumps(report, indent=2) + '\n')
 unreal.log('SNR_RUNTIME_FOLIAGE_READY')
