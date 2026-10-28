@@ -78,7 +78,7 @@ ArduPilot firmware type 3, and the read-back inclusion fence.
 
 ## Acceptance and diagnostics
 
-[Tool contracts and Wonder context](../agents/README.md) describe the eleven registered
+[Tool contracts and Wonder context](../agents/README.md) describe the seventeen registered
 tools. Each operator request starts a bounded conversation; continuations contain compact
 results and omit the briefing. Events log actual input/output token counts and request
 sizes. HTTP failures retain the failed body and safe response headers without credentials.
@@ -112,3 +112,7 @@ Protocol references: [SITL/multiple vehicles](https://ardupilot.org/dev/docs/usi
 [mission/fence protocol](https://ardupilot.org/dev/docs/mavlink-mission-upload-download.html),
 [GUIDED commands](https://ardupilot.org/dev/docs/copter-commands-in-guided-mode.html),
 [RTL behavior](https://ardupilot.org/copter/docs/rtl-mode.html).
+
+Search coverage uses the [search modules](../search/README.md) and a single fleet approval.
+`accept_browser.mjs search URL NEW_DIRECTORY` exercises the quoted profile, operator point,
+planning, approval and actual takeoff/coverage/return sequence in the assigned slot.

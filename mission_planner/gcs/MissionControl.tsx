@@ -25,6 +25,8 @@ import {
   X,
 } from 'lucide-react';
 import MissionMap from './MissionMap';
+import SearchPanel from './SearchPanel';
+import SearchApproval from './SearchApproval';
 import RouteApproval from './RouteApproval';
 import {
   droneColors,
@@ -164,7 +166,8 @@ function ToolRow({ event, events }: { event: MissionEvent; events: MissionEvent[
 }
 export default function MissionControl() {
   const caseId = new URLSearchParams(location.search).get('case');
-  const { state, events, connection, error, setError, send, now, age } = useMission(caseId);
+  const { state, search, events, connection, error, setError, send, now, age } = useMission(caseId);
+  const [marking, setMarking] = useState(false);
   const approval = state?.approvals[0];
   const pendingRoute = approval?.name === 'fly_route' ? routeArgumentsSchema.parse(approval.arguments) : null;
   const [selected, setSelected] = useState<DroneId>('Drone1');
@@ -333,6 +336,15 @@ export default function MissionControl() {
           <section className="gcs-stage" aria-label="Flight operations">
             <div className={view === 'map' ? 'gcs-main-map' : 'gcs-inset gcs-inset-map'}>
               <MissionMap
+                search={search}
+                onMark={
+                  marking
+                    ? (point) => {
+                        send({ type: 'search_point', ...point });
+                        setMarking(false);
+                      }
+                    : undefined
+                }
                 vehicles={vehicles}
                 selected={selected}
                 select={setSelected}
@@ -342,6 +354,15 @@ export default function MissionControl() {
                 connected={connected}
                 inset={view !== 'map'}
               />
+              {view === 'map' && (
+                <SearchPanel
+                  search={search}
+                  send={send}
+                  marking={marking}
+                  setMarking={setMarking}
+                  enabled={connected && !state?.agent_busy && !approval}
+                />
+              )}
               {view !== 'map' && (
                 <button className="gcs-inset-swap" aria-label="Expand map" onClick={() => setView('map')}>
                   <ArrowLeftRight size={13} />
@@ -690,10 +711,16 @@ export default function MissionControl() {
                   <header>
                     <ShieldCheck size={18} />
                     <strong>Awaiting approval</strong>
-                    <DroneLabel value={approval.arguments.drone_id} />
+                    {approval.name === 'start_search' ? (
+                      <span>All aircraft</span>
+                    ) : (
+                      <DroneLabel value={approval.arguments.drone_id} />
+                    )}
                   </header>
                   <p>{approvalSentence(approval.name, approval.arguments)}</p>
-                  {pendingRoute ? (
+                  {approval.name === 'start_search' ? (
+                    <SearchApproval search={search} />
+                  ) : pendingRoute ? (
                     <RouteApproval key={approval.id} route={pendingRoute} />
                   ) : (
                     <details className="gcs-approval-arguments" open>

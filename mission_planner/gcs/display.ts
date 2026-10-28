@@ -26,6 +26,12 @@ const titles: Record<string, string> = {
   resume: 'Resume',
   return_home: 'Return home',
   land: 'Land',
+  record_subject_profile: 'Subject profile',
+  define_search_area: 'Search area',
+  plan_search: 'Plan search',
+  start_search: 'Fleet search',
+  get_probability_map: 'Probability map',
+  get_coverage: 'Camera coverage',
 };
 function waypointCount(count: number) {
   return `${count} ${count === 1 ? 'waypoint' : 'waypoints'}`;
@@ -40,6 +46,7 @@ export function actionTitle(name: string, args: Record<string, unknown>) {
 }
 
 export function approvalSentence(name: string, args: Record<string, unknown>) {
+  if (name === 'start_search') return 'Fly the approved search with all four aircraft';
   if (name === 'take_off' && typeof args.altitude_above_home_m === 'number')
     return `Take off ${args.drone_id} to ${formatValue(args.altitude_above_home_m, 'm', 0)} above home`;
   if (name === 'fly_route' && Array.isArray(args.waypoints))

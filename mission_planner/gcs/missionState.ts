@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 import { briefingSchema } from '../../scenario_creator/briefing';
+import { searchSchema, type SearchState } from './searchState';
 import { missionPlanSchema } from './missionPlan';
 
 export const droneIds = ['Drone1', 'Drone2', 'Drone3', 'Drone4'] as const;
@@ -124,6 +125,7 @@ const stateSchema = z.object({
 export type MissionState = z.infer<typeof stateSchema>;
 const messageSchema = z.discriminatedUnion('type', [
   stateSchema,
+  z.object({ type: z.literal('search'), search: searchSchema }),
   z.object({ type: z.literal('event'), event: eventSchema }),
   z.object({ type: z.literal('history'), events: z.array(eventSchema) }),
   z.object({ type: z.literal('error'), message: z.string() }),
@@ -138,6 +140,7 @@ declare global {
 
 export function useMission(caseId: string | null) {
   const [state, setState] = useState<MissionState | null>(null);
+  const [search, setSearch] = useState<SearchState | null>(null);
   const [events, setEvents] = useState<MissionEvent[]>([]);
   const [connection, setConnection] = useState<'connecting' | 'connected' | 'closed'>('connecting');
   const [error, setError] = useState('');
@@ -173,7 +176,8 @@ export function useMission(caseId: string | null) {
       if (data.type === 'state') {
         arrived.current = Date.now();
         setState(data);
-      } else if (data.type === 'event') setEvents((items) => [...items, data.event].slice(-1000));
+      } else if (data.type === 'search') setSearch(data.search);
+      else if (data.type === 'event') setEvents((items) => [...items, data.event].slice(-1000));
       else if (data.type === 'history') setEvents(data.events.slice(-1000));
       else if (data.type === 'error') setError(data.message);
       else if (data.type === 'plan') {
@@ -219,7 +223,7 @@ export function useMission(caseId: string | null) {
     socket.current.send(JSON.stringify(message));
   }
   const age = state ? Math.max(0, (now - arrived.current) / 1000) : 0;
-  return { state, events, connection, error, setError, send, now, age };
+  return { state, search, events, connection, error, setError, send, now, age };
 }
 
 export function linkLost(vehicle: Vehicle, age: number, connected: boolean) {

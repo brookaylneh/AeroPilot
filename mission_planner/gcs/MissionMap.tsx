@@ -21,8 +21,13 @@ import {
 import { formatValue } from './display';
 import { groupPadLabels, placeLabels } from './mapLabels';
 
+import SearchLayers from './SearchLayers';
+import type { SearchState, SearchPoint } from './searchState';
+
 const extent = 804.672;
 export default function MissionMap({
+  search = null,
+  onMark,
   vehicles,
   selected,
   select,
@@ -32,6 +37,8 @@ export default function MissionMap({
   connected,
   inset = false,
 }: {
+  search?: SearchState | null;
+  onMark?: (point: SearchPoint) => void;
   vehicles: Vehicle[];
   selected: DroneId;
   select: (id: DroneId) => void;
@@ -171,7 +178,7 @@ export default function MissionMap({
           }
         }}
         onPointerDown={(e) => {
-          if (e.button !== 0 || (e.target as Element).closest('[data-drone]')) return;
+          if (onMark || e.button !== 0 || (e.target as Element).closest('[data-drone]')) return;
           e.currentTarget.setPointerCapture(e.pointerId);
           drag.current = { x: e.clientX, y: e.clientY, view };
         }}
@@ -195,7 +202,18 @@ export default function MissionMap({
               ),
             );
         }}
-        onPointerUp={() => {
+        onPointerUp={(e) => {
+          if (onMark && e.button === 0) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const p = screenToMap(
+              { u: (e.clientX - rect.left) / rect.width, v: (e.clientY - rect.top) / rect.height },
+              view,
+            );
+            onMark({
+              north_m: bounds.maxX - p.v * (bounds.maxX - bounds.minX),
+              east_m: bounds.minY + p.u * span,
+            });
+          }
           drag.current = null;
         }}
         onPointerCancel={() => {
@@ -217,6 +235,7 @@ export default function MissionMap({
             height={bottomRight.y - topLeft.y}
             className="gcs-terrain"
           />
+          <SearchLayers search={search} project={projection} />
           {[-800, -600, -400, -200, 0, 200, 400, 600, 800].map((n) => {
             const h1 = projection(n, -extent),
               h2 = projection(n, extent),
