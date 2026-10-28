@@ -73,6 +73,27 @@ async def close_scenario(process, log, original_error):
         raise RuntimeError(detail)
 
 
+def scene_actor():
+    from world.cosys import client as sim
+
+    rpc = sim.connect()
+    try:
+        assert rpc.ping() and not rpc.simIsPause()
+        actors = rpc.simListSceneObjects(".*BP_Person_.*")
+        assert len(actors) == 1 and "_C_" in actors[0], actors
+        return actors[0]
+    finally:
+        original_error = sys.exc_info()[1]
+        try:
+            rpc.client.close()
+        except Exception as error:
+            if original_error is not None:
+                raise RuntimeError(
+                    f"{type(original_error).__name__}: {original_error}; RPC close failed: {error}"
+                ) from original_error
+            raise RuntimeError(f"Actor-query RPC close failed: {error}") from error
+
+
 async def condition_flight(fleet, condition, scenario_id, directory):
     from mission_planner.agents.perception.geometry import Camera
     from mission_planner.gcs.fleet import MAV
@@ -108,13 +129,6 @@ async def condition_flight(fleet, condition, scenario_id, directory):
     frames = []
     try:
         configured = await scenario_response(process, scenario_log)
-
-        def scene_actor():
-            rpc = sim.connect()
-            assert rpc.ping() and not rpc.simIsPause()
-            actors = rpc.simListSceneObjects(".*BP_Person_.*")
-            assert len(actors) == 1 and "_C_" in actors[0], actors
-            return actors[0]
 
         actor = await asyncio.to_thread(scene_actor)
 
