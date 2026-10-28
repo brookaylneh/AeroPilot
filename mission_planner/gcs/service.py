@@ -22,9 +22,11 @@ from mission_planner.agents.tools import (
 from mission_planner.environment import ROOT, load_env
 from mission_planner.gcs.fleet import Fleet
 from mission_planner.gcs.geodesy import BOUND_M, NAMES
+from mission_planner.gcs.sensor_feed import sensor_message
 from mission_planner.search.execution import flight_label, start_search
 from mission_planner.search.state import Search
 from mission_planner.search.tools import NAMES as SEARCH_TOOLS
+from world.cosys.sensor import MissionSensor
 
 MESSAGE_FIELDS = {
     "connect": {"type", "case_id"},
@@ -118,6 +120,9 @@ def read_case(case_id):
 
 class Mission:
     def __init__(self, case):
+        assert os.environ["SNR_SITL_MODEL"] == "airsim-copter", (
+            "Mission service requires the Unreal-coupled fleet"
+        )
         self.case = case
         self.id = str(uuid.uuid4())
         self.directory = ROOT / ".local/data/missions" / self.id
@@ -138,6 +143,10 @@ class Mission:
         self.fleet = Fleet(self.directory / "sitl", self.fleet_event)
         self.model = Wonder()
         self.search = Search(self)
+        self.sensor = MissionSensor(self.directory / "captures", self.fleet, self.capture_received)
+        self.sensor_error = None
+        self.sensor_frames = {}
+        self.feed_focus = None
 
     def event(
         self, kind, text, *, name=None, arguments=None, result=None, call_id=None, source=None
@@ -177,6 +186,13 @@ class Mission:
             text = "SITL listener ports verified"
         elif kind == "home_comparison":
             text = f"{item['drone_id']} home position error {item['home_error_m']:.3f} m"
+        elif kind == "capture_rejected":
+            self.event(
+                "error",
+                item["droneId"] + " capture rejected: " + "; ".join(item["validation"]["reasons"]),
+                result=item,
+            )
+            return
         else:
             assert kind == "parameter", f"Unknown fleet event: {kind}"
             text = f"{item['drone_id']} {item['name']} verified: {item['value']}"
@@ -211,6 +227,22 @@ class Mission:
             return
         self.fleet_ready = True
         self.event("mode", "Four autopilots connected; fences and missions read back.")
+        self.launch(self.run_sensor())
+
+    async def run_sensor(self):
+        try:
+            await self.sensor.start()
+            while True:
+                self.sensor.check()
+                await asyncio.sleep(0.1)
+        except Exception as error:
+            self.sensor_error = operator_error(error)
+            raise RuntimeError("Sensor acquisition stopped: " + self.sensor_error) from error
+
+    async def capture_received(self, record, preview):
+        message = sensor_message(record, preview)
+        self.search.consume_capture(record, "unprocessed")
+        self.sensor_frames[record["vehicleId"]] = message
 
     def vehicles(self):
         return self.fleet.snapshot() if self.fleet_ready else []
@@ -218,6 +250,8 @@ class Mission:
     def summary(self):
         vehicles = self.vehicles()
         alerts = []
+        if self.sensor_error is not None:
+            alerts.append("Sensor acquisition stopped: " + self.sensor_error)
         if self.fleet_error is not None:
             alerts.append("Fleet startup failed: " + self.fleet_error)
         elif not self.fleet_ready:
@@ -271,6 +305,9 @@ class Mission:
                 assert self.fleet_ready, "MAVLink fleet is unavailable"
             self.map_focus = {**arguments, "id": str(uuid.uuid4())}
             return {"map_focus": self.map_focus}
+        if name == "open_feed":
+            self.feed_focus = {"type": "feed_focus", "id": str(uuid.uuid4()), **arguments}
+            return {"drone_id": arguments["drone_id"], "opened": True}
         assert self.fleet_ready, "MAVLink fleet is unavailable: " + str(self.fleet_error)
         if name == "get_fleet":
             return {
@@ -563,6 +600,8 @@ class Mission:
         async def publish():
             nonlocal cursor
             search_revision = -1
+            sensor_cursors = {}
+            focus_id = None
             while True:
                 for event in [e for e in self.events if e["sequence"] > cursor]:
                     await websocket.send(encode({"type": "event", "event": event}))
@@ -571,6 +610,14 @@ class Mission:
                 if search_revision != self.search.revision:
                     await websocket.send(encode({"type": "search", "search": self.search.view()}))
                     search_revision = self.search.revision
+                for drone, message in self.sensor_frames.items():
+                    capture_id = message["frame"]["capture_id"]
+                    if drone not in sensor_cursors or sensor_cursors[drone] != capture_id:
+                        await websocket.send(encode(message))
+                        sensor_cursors[drone] = capture_id
+                if self.feed_focus is not None and self.feed_focus["id"] != focus_id:
+                    await websocket.send(encode(self.feed_focus))
+                    focus_id = self.feed_focus["id"]
                 await asyncio.sleep(0.1)
 
         async def consume():
@@ -605,11 +652,14 @@ class Mission:
             for result in results:
                 if isinstance(result, Exception):
                     self.event("error", "Shutdown task: " + operator_error(result))
-        if not self.fleet_closed:
-            await self.fleet.close()
-            self.fleet_closed = True
-        self.model.http.close()
-        self.log.close()
+        try:
+            await self.sensor.close()
+        finally:
+            if not self.fleet_closed:
+                await self.fleet.close()
+                self.fleet_closed = True
+            self.model.http.close()
+            self.log.close()
 
 
 async def run(case_id, port):
