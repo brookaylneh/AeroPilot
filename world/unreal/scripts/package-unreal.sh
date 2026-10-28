@@ -33,6 +33,7 @@ done
   -archivedirectory="$package_path" | tee "$evidence_path/package.log"
 python3 - "$package_path" "$evidence_path" <<'PY'
 import sys
+import shutil
 from pathlib import Path
 package, evidence = map(Path, sys.argv[1:])
 log = (evidence / 'package.log').read_text(errors='replace')
@@ -45,6 +46,13 @@ platforms = [line.split('=', 1)[1] for line in config.splitlines() if line.start
 assert len(platforms) == 1 and platforms[0] in ('SF_VULKAN_SM5', 'SF_VULKAN_SM6'), platforms
 (package / 'Linux/shader-platform.txt').write_text(platforms[0] + '\n')
 (evidence / 'DefaultEngine.ini').write_text(config)
+keys = Path('world/unreal/ScenarioStudio/Saved/Cooked/Linux/ScenarioStudio/Metadata/PipelineCaches')
+key_output = evidence / 'ShaderStableKeys'
+key_output.mkdir()
+for library in ('Global', 'ScenarioStudio'):
+    source = keys / f'ShaderStableInfo-{library}-{platforms[0]}.shk'
+    assert source.is_file(), source
+    shutil.copy2(source, key_output / source.name)
 
 PY
 
