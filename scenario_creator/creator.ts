@@ -32,7 +32,9 @@ export const colors: Record<string, string> = {
 export function describePerson(packet: Packet): string {
   const a = packet.authoring.appearance;
   const person = packet.catalog.people.find((p) => p.id === a.personId)!;
-  const clothing = `${title(a.topColor)} ${a.topId.replaceAll('-', ' ')} and ${a.bottomColor} ${a.bottomId.replaceAll('-', ' ')}.`;
+  const garment = (color: string, item: string) =>
+    `${color === 'original' ? '' : title(color) + ' '}${item.replaceAll('-', ' ')}`;
+  const clothing = `${garment(a.topColor, a.topId)} and ${garment(a.bottomColor, a.bottomId)}.`;
   const equipment =
     a.backpackId === 'none'
       ? person.supportsBackpack
