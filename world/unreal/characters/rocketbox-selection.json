@@ -1,7 +1,7 @@
 {
   "review": {
     "title": "Rocketbox \u00b7 outdoor selection review",
-    "description": "Adult candidate 2 has been replaced with a hooded jacket, cargo trousers and trainers. The rejected Child candidate 3 is removed from this active selection. Eleven models are shown; its replacement is pending.",
+    "description": "Adult candidate 2 has been replaced with a blue hooded jacket, jeans, trainers and a cap. The rejected Child candidate 3 is removed from this active selection. Eleven models are shown; its replacement is pending.",
     "assessment": "Outdoor clothing is the selection priority. Child slot 3 needs a newly authored child variant or another source model: the library has only three remaining stock children. Formal outfits on Adult 3 and Older 1, 2 and 3 still need replacement or body/outfit authoring. Senior age and diversity gaps also remain."
   },
   "sources": [
@@ -23,7 +23,7 @@
     },
     {
       "manifest": "world/unreal/characters/rocketbox-outdoor.lock.json",
-      "render": ".local/evidence/characters/rocketbox-outdoor/render",
+      "render": ".local/evidence/characters/rocketbox-outdoor-jacket/render",
       "ids": ["adult-02"]
     }
   ],

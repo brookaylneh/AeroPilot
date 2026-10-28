@@ -2,7 +2,7 @@
   "repository": "https://github.com/microsoft/Microsoft-Rocketbox",
   "commit": "0943055db6ec570bcef9f2c8b41c9e5467c808f9",
   "license": "MIT",
-  "vendor": ".local/vendor/rocketbox-outdoor",
+  "vendor": ".local/vendor/rocketbox-outdoor-jacket",
   "review": {
     "title": "Rocketbox \u00b7 outdoor replacement",
     "description": "Actual Unreal renders of the replacement for Adult candidate 2.",
@@ -11,62 +11,57 @@
   "characters": [
     {
       "id": "adult-02",
-      "name": "Male_Adult_04",
+      "name": "Male_Adult_17",
       "category": "Adults",
-      "texture_prefix": "m006",
+      "texture_prefix": "m022",
       "label": "Adult candidate 2 \u00b7 outdoor replacement",
-      "assessment": "Hooded jacket, cargo trousers and trainers. Original Rocketbox model selected for casual outdoor clothing; the requested heavyset build and exact age remain unmet.",
-      "fbx": "Assets/Avatars/Adults/Male_Adult_04/Export/Male_Adult_04_facial.fbx",
-      "textures": "Assets/Avatars/Adults/Male_Adult_04/Textures",
-      "preview": "Assets/Avatars/Adults/Male_Adult_04/Male_Adult_04.png",
-      "asset_folder": "/Game/Characters/RocketboxOutdoor/Male_Adult_04"
+      "assessment": "Blue hooded jacket, jeans, trainers and a cap. Original Rocketbox model selected for casual outdoor clothing; the requested heavyset build and exact age remain unmet.",
+      "fbx": "Assets/Avatars/Adults/Male_Adult_17/Export/Male_Adult_17_facial.fbx",
+      "textures": "Assets/Avatars/Adults/Male_Adult_17/Textures",
+      "preview": "Assets/Avatars/Adults/Male_Adult_17/Male_Adult_17.png",
+      "asset_folder": "/Game/Characters/RocketboxOutdoor/Male_Adult_17"
     }
   ],
   "files": [
     {
-      "path": "Assets/Avatars/Adults/Male_Adult_04/Export/Male_Adult_04_facial.fbx",
-      "bytes": 2173840,
-      "git_blob_sha1": "b7ae8752928b9491ea63ead62e0bd4d9b2bc519a"
+      "path": "Assets/Avatars/Adults/Male_Adult_17/Export/Male_Adult_17_facial.fbx",
+      "bytes": 1821648,
+      "git_blob_sha1": "876979cb15d65d7478efc9750f4ff2348712ec02"
     },
     {
-      "path": "Assets/Avatars/Adults/Male_Adult_04/Male_Adult_04.png",
-      "bytes": 511910,
-      "git_blob_sha1": "b17a6934c0ec88bbbe76e103ae087840b60ca249"
+      "path": "Assets/Avatars/Adults/Male_Adult_17/Male_Adult_17.png",
+      "bytes": 483358,
+      "git_blob_sha1": "16202b90a02310b1ddabf3ee31218933e984ccc2"
     },
     {
-      "path": "Assets/Avatars/Adults/Male_Adult_04/Textures/m006_body_color.tga",
+      "path": "Assets/Avatars/Adults/Male_Adult_17/Textures/m022_body_color.tga",
       "bytes": 12582956,
-      "git_blob_sha1": "eb98a1056b856d117f54145abef183c93721b8a7"
+      "git_blob_sha1": "b3ddf7e662510eff72bc06603b53bef6f67c01e2"
     },
     {
-      "path": "Assets/Avatars/Adults/Male_Adult_04/Textures/m006_body_normal.tga",
+      "path": "Assets/Avatars/Adults/Male_Adult_17/Textures/m022_body_normal.tga",
       "bytes": 12582956,
-      "git_blob_sha1": "4b9f8db2edbbf6ebb61d3b88b49085ecd1cd0aa7"
+      "git_blob_sha1": "d80124dd5b4c6d78adae7f1b13e7e3a7235269fd"
     },
     {
-      "path": "Assets/Avatars/Adults/Male_Adult_04/Textures/m006_body_specular.tga",
+      "path": "Assets/Avatars/Adults/Male_Adult_17/Textures/m022_body_specular.tga",
       "bytes": 12582956,
-      "git_blob_sha1": "172d970935d72dabce9071961f7890b37f50a044"
+      "git_blob_sha1": "9d10b0f25ee599c36bf2711e50b997939f233b59"
     },
     {
-      "path": "Assets/Avatars/Adults/Male_Adult_04/Textures/m006_head_color.tga",
+      "path": "Assets/Avatars/Adults/Male_Adult_17/Textures/m022_head_color.tga",
       "bytes": 12582956,
-      "git_blob_sha1": "b8d9af1e5337c9a5ed8969395e73f8fdd6abdda6"
+      "git_blob_sha1": "625d89815c5f74ea80a7718849393f7182906e71"
     },
     {
-      "path": "Assets/Avatars/Adults/Male_Adult_04/Textures/m006_head_normal.tga",
+      "path": "Assets/Avatars/Adults/Male_Adult_17/Textures/m022_head_normal.tga",
       "bytes": 12582956,
-      "git_blob_sha1": "ea4f35b0aa2f2326d4a82eff022627f50ce1ff4a"
+      "git_blob_sha1": "aff7efc9d167a78dba3c66c67ae2aa095b7f49bd"
     },
     {
-      "path": "Assets/Avatars/Adults/Male_Adult_04/Textures/m006_head_specular.tga",
+      "path": "Assets/Avatars/Adults/Male_Adult_17/Textures/m022_head_specular.tga",
       "bytes": 12582956,
-      "git_blob_sha1": "2e08c0dcc2f80cc0ad0f6684f846b0e68eb7059c"
-    },
-    {
-      "path": "Assets/Avatars/Adults/Male_Adult_04/Textures/m006_opacity_color.tga",
-      "bytes": 16777260,
-      "git_blob_sha1": "dca7411aadf0ba5b62ab314981591fad88dbf1b0"
+      "git_blob_sha1": "b1acef56a4c3d76f7d441c8d0210f0faf3f1d928"
     },
     {
       "path": "LICENSE.md",

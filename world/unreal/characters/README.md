@@ -229,8 +229,8 @@ already verified outfit selector. Prefer existing casual/outdoor clothing when s
 models. Keep age and body-shape gaps explicit instead of replacing them with clothing claims.
 See the creators’ [model structure and limitations](https://www.frontiersin.org/journals/virtual-reality/articles/10.3389/frvir.2020.561558/full#h5).
 
-`rocketbox-outdoor.lock.json` pins the replacement adult in a hooded jacket, cargo trousers and
-trainers. `rocketbox-selection.json` explicitly selects completed captures from asset manifests;
+`rocketbox-outdoor.lock.json` pins the replacement adult in a blue hooded jacket, jeans, trainers
+and a cap. `rocketbox-selection.json` explicitly selects completed captures from asset manifests;
 it excludes rejected Child 3 and the previous Adult 2. The missing child slot remains unresolved.
 The library contains only four stock child models; excluding one leaves three distinct bases.
 A new appearance variant or another source is needed to restore four children.
