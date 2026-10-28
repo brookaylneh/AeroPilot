@@ -63,7 +63,7 @@ export async function measureSensorFeed(browser, url, output, seconds, sendTool)
     }).observe({ type: 'longtask', buffered: true });
   });
   const client = await page.context().newCDPSession(page);
-  await client.send('Performance.enable');
+  await client.send('Performance.enable', { timeDomain: 'threadTicks' });
   const metrics = async () =>
     Object.fromEntries(
       (await client.send('Performance.getMetrics')).metrics.map(({ name, value }) => [name, value]),
@@ -144,7 +144,7 @@ export async function measureSensorFeed(browser, url, output, seconds, sendTool)
         'Main mission WebSocket application payloads, before WebSocket/TCP framing; control test sockets excluded',
       renderer_main_thread_cpu_percent: (100 * (end.TaskDuration - start.TaskDuration)) / duration,
       browser_cpu_scope:
-        'Chromium renderer TaskDuration / monotonic wall time; includes mission UI, excludes GPU and other browser processes',
+        'Chromium renderer TaskDuration using threadTicks / monotonic wall time; includes mission UI, excludes GPU and other browser processes',
       js_heap_bytes: distribution(costs.map((sample) => sample.js_heap_bytes)),
       preview_render_latency_ms: distribution(
         freshRenders.map((sample) => sample.rendered_at_ms - sample.received_at_ms),
