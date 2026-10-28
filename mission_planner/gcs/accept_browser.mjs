@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { createSocket } from 'node:dgram';
 import { request } from 'node:http';
+import { request as requestHttps } from 'node:https';
 import { createHash, randomBytes } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -769,7 +770,8 @@ async function proxy(base, output) {
         'Sec-WebSocket-Version': '13',
       };
       if (item.origin !== null) headers.Origin = item.origin;
-      const req = request(new URL(item.path, base), { headers });
+      const url = new URL(item.path, base);
+      const req = (url.protocol === 'https:' ? requestHttps : request)(url, { headers });
       req.setTimeout(5000, () => req.destroy(new Error('Proxy handshake timed out')));
       req.on('error', reject);
       req.on('response', (response) => {
@@ -803,7 +805,11 @@ assert(
 await mkdir(output, { recursive: false });
 if (command === 'proxy') await proxy(new URL(url).origin, output);
 else {
-  const browser = await chromium.launch({ args: ['--no-sandbox'], ignoreDefaultArgs: ['--hide-scrollbars'] });
+  const browser = await chromium.launch({
+    executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH,
+    args: ['--no-sandbox'],
+    ignoreDefaultArgs: ['--hide-scrollbars'],
+  });
   try {
     if (command === 'flight') await flight(browser, url, output);
     else if (command === 'states') await states(browser, url, output);

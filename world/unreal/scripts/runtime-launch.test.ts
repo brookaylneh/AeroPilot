@@ -25,6 +25,9 @@ test('packaged container needs no editor, accepts bounded host resources and sel
       SNR_MEMORY_LIMIT: '24g',
       SNR_UNREAL_IMAGE: 'snr-unreal-runtime:test',
       SNR_STREAM_CODEC: 'H264',
+      SNR_STREAMER_PORT: '8888',
+      SNR_WEBRTC_MIN_PORT: '49160',
+      SNR_WEBRTC_MAX_PORT: '49200',
     };
     const run = spawnSync('bash', ['world/unreal/scripts/unreal-container.sh', 'run-packaged'], {
       cwd: project,
@@ -79,7 +82,11 @@ test('runtime selects its manifest and H264 explicitly; missing maps and unsuppo
       SNR_SCENARIO_DATA_DIR: path.join(directory, 'scenarios'),
       SNR_DRONE_DATA_DIR: '',
       SNR_STREAM_CODEC: 'H264',
+      SNR_STREAMER_PORT: '8888',
+      SNR_WEBRTC_MIN_PORT: '49160',
+      SNR_WEBRTC_MAX_PORT: '49200',
       SNR_STREAM_FPS: '60',
+      SNR_STREAM_MIN_BITRATE: '1000000',
       SNR_STREAM_HEIGHT: '1080',
       SNR_STREAM_MAX_BITRATE: '40000000',
     };
