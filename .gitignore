@@ -1,7 +1,6 @@
-# Dependencies, local state and credentials
+# Dependencies, credentials and local state
 node_modules/
 .venv*/
-venv/
 __pycache__/
 *.py[cod]
 .ruff_cache/
@@ -10,47 +9,20 @@ __pycache__/
 !.env.example
 .secrets/
 data/
-vendor/
-
-# Generated builds, reports and deployment state
-dist*/
-build/
-staging/
 evidence/
-test-results/
-playwright-report/
-public/status.*
-public/phase2a*/
-public/navigation-audit.html
-public/progress/
-public/screenshots/
-deploy/systemd/
+staging/
+vendor/
+dist/
+deploy/
 
-# Licensed Unreal assets and all generated engine/plugin output
-unreal/**/Content/
-unreal/**/Plugins/
-unreal/**/Binaries/
-unreal/**/Intermediate/
-unreal/**/Saved/
-unreal/**/DerivedDataCache/
-Saved/
-Intermediate/
-DerivedDataCache/
-unreal/Packaged/
-unreal/releases/
-unreal/Live
-unreal/DroneCandidate
-unreal/patches/
-scripts/prepare-pixel-streaming-fix.py
-
-# Historical deployment notes stay private; use docs/public-source.md to export.
-docs/live-streaming.md
-docs/unreal-integration.md
-docs/four-drone-foundation.md
-docs/open-meadow.md
-docs/navigation-performance-audit.md
-docs/validation.md
-docs/assets-and-licenses.md
-docs/phase2a-validation.md
-docs/60fps-investigation.md
-docs/island-location.md
+# Licensed Unreal assets and generated engine output
+world/unreal/**/Content/
+world/unreal/**/Plugins/
+world/unreal/**/Binaries/
+world/unreal/**/Intermediate/
+world/unreal/**/Saved/
+world/unreal/**/DerivedDataCache/
+world/unreal/Packaged/
+world/unreal/releases/
+world/unreal/Live
+world/unreal/*Candidate

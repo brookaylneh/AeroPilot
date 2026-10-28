@@ -13,5 +13,5 @@
     "noEmit": true,
     "types": ["node", "vite/client"]
   },
-  "include": ["src", "server", "shared", "tests", "vite.config.ts", "playwright.config.ts"]
+  "include": ["app", "world/studio", "world/scripts", "mission_control/gcs", "vite.config.ts"]
 }

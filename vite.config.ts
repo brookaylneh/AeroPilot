@@ -5,15 +5,7 @@ export default defineConfig({
   server: {
     port: 5173,
     watch: {
-      ignored: [
-        '**/vendor/**',
-        '**/unreal/**',
-        '**/evidence/**',
-        '**/data/**',
-        '**/public/status.json',
-        '**/public/status.html',
-        '**/public/progress/**',
-      ],
+      ignored: ['**/vendor/**', '**/unreal/**', '**/evidence/**', '**/data/**'],
     },
     fs: {
       deny: [
@@ -25,9 +17,11 @@ export default defineConfig({
         '**/data/**',
         '**/evidence/**',
         '**/vendor/**',
-        '**/unreal/**',
-        '**/server/**',
-        '**/scripts/**',
+        '**/*.py',
+        '**/world/unreal/**',
+        '**/world/scripts/**',
+        '**/world/simulator/**',
+        '**/mission_control/services/**',
         '**/docs/**',
       ],
     },
