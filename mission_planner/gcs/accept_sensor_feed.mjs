@@ -180,6 +180,13 @@ export async function measureSensorFeed(browser, url, output, seconds, sendTool)
       }
       await page.keyboard.press('v');
       await page.locator('.gcs-main-map').waitFor();
+      await page.waitForFunction(() => {
+        const svg = document.querySelector('.gcs-main-map [data-testid="mission-map"] > svg');
+        if (!svg) return false;
+        const bounds = svg.getBoundingClientRect();
+        const view = svg.viewBox.baseVal;
+        return Math.abs(view.width - bounds.width) < 1 && Math.abs(view.height - bounds.height) < 1;
+      });
       await page.screenshot({ path: `${output}/feed-inset-${width}.png` });
     }
     assert.equal(errors.length, 0, errors.join('\n'));
