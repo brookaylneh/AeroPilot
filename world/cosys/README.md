@@ -36,3 +36,13 @@ at 6500 K with zero tint. Native telemetry records each camera's resolution, exp
 The browser measurement tool owns its stdin protocol and cleanup. It requires four parked,
 uncontrolled SimpleFlight vehicles and the exclusive controller lock. It records each 4K capture
 with timing, pose and SHA-256, then lands the aircraft. It does not run SAM, Glimmer or fal runners.
+
+### RGB readback
+
+The pinned AirSim patch copies BGRA8 sensor targets into GPU staging textures and polls
+completion at the render-frame boundary. It reads completed pixels without a synchronous
+GPU wait on the render thread; a 15-second timeout is fatal. Float captures retain their
+existing path. Capture timestamps are recorded when the copy is queued, before completion.
+`SNR.Sensors.AsyncRgbReadback` compares RGB bytes against Unreal's synchronous readback at
+13×7, 257×9 and 3840×2160 to check channel order and padded rows on the actual RHI.
+The fetcher applies this change from `airsim-ue58.patch` to the pinned source archive.
