@@ -69,7 +69,7 @@ class SitlLaunch(unittest.TestCase):
                     key, value = line.split()
                     parameters[key] = float(value)
         self.assertEqual(parameters["FRAME_TYPE"], 1)
-        self.assertEqual(parameters["SCHED_LOOP_RATE"], 100)
+        self.assertEqual(parameters["SCHED_LOOP_RATE"], 184)
         for key, expected in SAFETY_PARAMETERS.items():
             self.assertEqual(parameters[key], expected, key)
 
