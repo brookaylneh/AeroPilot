@@ -1,12 +1,27 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "stage": 1,
-  "status": "blocked",
-  "gate_passed": false,
+  "status": "passed",
+  "gate_passed": true,
   "stage2_started": false,
-  "created_utc_s": 1793213970.6744738,
-  "base_commit": "93e1b07e648893ce572a522d1b259dcf93bedee7",
+  "created_utc_s": 1793217659.5215547,
   "branch": "cosys-coupling",
+  "tested_source": {
+    "commit": "f05cf14ca00865c07617d66392251b6f2f8d10a9",
+    "status": "",
+    "files": {
+      "mission_planner/gcs/coupling_gate.py": "28f762ec58dc683e010aa68181d226120c17f92d935df23ddc913190369d600c",
+      "mission_planner/gcs/fleet.py": "2e0fffb76a654d3b08b90fd9161e93bc66337b65e9f7e3e0bf5bb881db122402",
+      "mission_planner/gcs/sitl.py": "156f9cde15435f96112814e46607084d86cd82a33f30bfabbe3e72f103d914fb",
+      "mission_planner/gcs/validation.py": "c7e3e48f6e9f407c77130eac6a082b0b2c38dc258f7e7ba1cba53dc0e770b4f1",
+      "mission_planner/gcs/sitl-gps-cadence.patch": "a1013a4753a0c7e137f9260508e546f419bc671a1b568797d40806daa9afe6ef",
+      "mission_planner/gcs/sitl-airsim-liveness.patch": "46019f39b6258165b13c8acbb7718884f9c50068c1dbbcbb44a83c6ad34ac9a1",
+      ".local/build/ardupilot/build/sitl/bin/arducopter": "00291d26dd0588c678d62d0bece78384310f3bd402594b4ca78526a1f4559aca",
+      ".local/cosys-settings.json": "922202d64fdfc26ac02614124340e03f9459961d71e8001d4cf25a3568d5f501",
+      ".local/evidence/coupling/harness/run_trial.py": "a6ea6b074d6742d828efc5603401039e587eb00f54dffff5d5d9506981e275b0"
+    }
+  },
+  "base_commit": "93e1b07e648893ce572a522d1b259dcf93bedee7",
   "protocol": {
     "evidence": ".local/evidence/coupling/protocol/comparison.json",
     "servo_packet": {
@@ -208,630 +223,1939 @@
       }
     }
   },
-  "startup": {
-    "evidence": ".local/evidence/coupling/startup-01",
-    "autopilots_started": 4,
-    "firmware_verified": 4,
-    "ready_marker_written": false,
-    "home_comparison_events": 4,
-    "cosys_initialized_gps": [
-      {
-        "drone": "Drone1",
-        "utc_s": 1793213638.5685275,
-        "gps_timestamp_ns": 1793213510597608192,
-        "gps_geo": {
-          "latitude_deg": 37.869118168897536,
-          "longitude_deg": -119.3934494487636,
-          "altitude_msl_m": 2672.722900390625
-        },
-        "gps_local_ne_m": [
-          -811.7923906516986,
-          -2.502911826509985
-        ],
-        "intended_home": {
-          "north_m": -814.172,
-          "east_m": -2.5,
-          "latitude_deg": 37.869096729843584,
-          "longitude_deg": -119.393449415667,
-          "altitude_msl_m": 2632.73,
-          "heading_deg": 0
-        },
-        "home_error_horizontal_m": 2.379611129839728,
-        "truth_position_local_ned_m": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.007195262238383293
-        },
-        "altitude_error_m": 39.99290039062498
-      },
-      {
-        "drone": "Drone2",
-        "utc_s": 1793213638.5688245,
-        "gps_timestamp_ns": 1793213510597608192,
-        "gps_geo": {
-          "latitude_deg": 37.869118168897536,
-          "longitude_deg": -119.39339255123645,
-          "altitude_msl_m": 2672.722900390625
-        },
-        "gps_local_ne_m": [
-          -811.7923906516986,
-          2.5029118227591876
-        ],
-        "intended_home": {
-          "north_m": -814.172,
-          "east_m": 2.5,
-          "latitude_deg": 37.869096729843584,
-          "longitude_deg": -119.393392584333,
-          "altitude_msl_m": 2632.73,
-          "heading_deg": 0
-        },
-        "home_error_horizontal_m": 2.3796111298351383,
-        "truth_position_local_ned_m": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0071952990256249905
-        },
-        "altitude_error_m": 39.99290039062498
-      },
-      {
-        "drone": "Drone3",
-        "utc_s": 1793213638.5690873,
-        "gps_timestamp_ns": 1793213510597608192,
-        "gps_geo": {
-          "latitude_deg": 37.86907325239962,
-          "longitude_deg": -119.39344944874625,
-          "altitude_msl_m": 2672.722900390625
-        },
-        "gps_local_ne_m": [
-          -816.7778586929618,
-          -2.5029102999354365
-        ],
-        "intended_home": {
-          "north_m": -819.172,
-          "east_m": -2.5,
-          "latitude_deg": 37.869051682420206,
-          "longitude_deg": -119.393449415667,
-          "altitude_msl_m": 2632.73,
-          "heading_deg": 0
-        },
-        "home_error_horizontal_m": 2.3941430759068023,
-        "truth_position_local_ned_m": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.007195298559963703
-        },
-        "altitude_error_m": 39.99290039062498
-      },
-      {
-        "drone": "Drone4",
-        "utc_s": 1793213638.5693786,
-        "gps_timestamp_ns": 1793213510597608192,
-        "gps_geo": {
-          "latitude_deg": 37.86907325239962,
-          "longitude_deg": -119.39339255125378,
-          "altitude_msl_m": 2672.722900390625
-        },
-        "gps_local_ne_m": [
-          -816.7778586929618,
-          2.5029102974349056
-        ],
-        "intended_home": {
-          "north_m": -819.172,
-          "east_m": 2.5,
-          "latitude_deg": 37.869051682420206,
-          "longitude_deg": -119.393392584333,
-          "altitude_msl_m": 2632.73,
-          "heading_deg": 0
-        },
-        "home_error_horizontal_m": 2.3941430759037625,
-        "truth_position_local_ned_m": {
-          "x": 0.0,
-          "y": 0.0,
-          "z": 0.0071953097358345985
-        },
-        "altitude_error_m": 39.99290039062498
-      }
-    ],
-    "invalid_early_gps_excluded": ".local/evidence/coupling/startup-01/cosys-gps.json: sampled before sensor initialization; zero coordinates and invalid timestamp excluded",
-    "prearm_errors": [
-      {
-        "at_ms": 1793213645672.5325,
-        "kind": "statustext",
-        "drone_id": "Drone2",
-        "text": "PreArm: Gyro 0 rate 335Hz < loop rate*1.8 540Hz",
-        "severity": 2
-      },
-      {
-        "at_ms": 1793213645672.6265,
-        "kind": "statustext",
-        "drone_id": "Drone2",
-        "text": "PreArm: Main loop slow (222Hz < 300Hz)",
-        "severity": 2
-      },
-      {
-        "at_ms": 1793213645672.7239,
-        "kind": "statustext",
-        "drone_id": "Drone3",
-        "text": "PreArm: Gyro 0 rate 335Hz < loop rate*1.8 540Hz",
-        "severity": 2
-      },
-      {
-        "at_ms": 1793213645672.765,
-        "kind": "statustext",
-        "drone_id": "Drone3",
-        "text": "PreArm: Main loop slow (222Hz < 300Hz)",
-        "severity": 2
-      },
-      {
-        "at_ms": 1793213645672.8875,
-        "kind": "statustext",
-        "drone_id": "Drone1",
-        "text": "PreArm: Gyro 0 rate 335Hz < loop rate*1.8 540Hz",
-        "severity": 2
-      },
-      {
-        "at_ms": 1793213645672.9238,
-        "kind": "statustext",
-        "drone_id": "Drone1",
-        "text": "PreArm: Main loop slow (222Hz < 300Hz)",
-        "severity": 2
-      },
-      {
-        "at_ms": 1793213645678.209,
-        "kind": "statustext",
-        "drone_id": "Drone4",
-        "text": "PreArm: Gyro 0 rate 335Hz < loop rate*1.8 540Hz",
-        "severity": 2
-      },
-      {
-        "at_ms": 1793213645678.2866,
-        "kind": "statustext",
-        "drone_id": "Drone4",
-        "text": "PreArm: Main loop slow (222Hz < 300Hz)",
-        "severity": 2
-      }
-    ],
-    "sensor_rate_report": {
-      "Drone1": [
-        333.33
-      ],
-      "Drone2": [
-        333.33
-      ],
-      "Drone3": [
-        333.33
-      ],
-      "Drone4": [
-        333.33
-      ]
+  "source_patches": {
+    "world/cosys/airsim-ue58.patch": {
+      "sha256": "224139c1836379189ecee994f520856d385e8fad939f5c9ddc27110889adc5ea",
+      "reason": "Preserve unchanged CustomDepth state and Landscape PSO cache compatibility with UE5.8."
     },
-    "sensor_rate_units": "simulator timestamp Hz; wall-clock sensor throughput not measured",
-    "failure_log": ".local/evidence/coupling/startup-01.log",
-    "shutdown": "CLI ended with asyncio timeout during child shutdown. Children had exited before explicit identity check; no forced child signals were sent. Task-owned Unreal container explicitly killed after motor receive stalled.",
-    "home_comparisons": [
-      {
-        "at_ms": 1793213660756.964,
-        "kind": "home_comparison",
-        "drone_id": "Drone2",
-        "intended": {
-          "north_m": -814.172,
-          "east_m": 2.5,
-          "latitude_deg": 37.869096729843584,
-          "longitude_deg": -119.393392584333,
-          "altitude_msl_m": 2632.73,
-          "heading_deg": 0
+    "world/cosys/airsim-geodesy.patch": {
+      "sha256": "98569ba47d40840b85b8a31a8ff6c9b3b4403d4e2316c3bb609c10ba8817c63f",
+      "reason": "Use WGS84 home conversion and global NED environment initialization."
+    },
+    "mission_planner/gcs/sitl-loopback.patch": {
+      "sha256": "26e0c2e314ee7286a4bfdd99a52d2fb299828376c35ea89b00e5d480de197e88",
+      "reason": "Bind RC and AirSim sensor input sockets to loopback."
+    },
+    "mission_planner/gcs/sitl-airsim-liveness.patch": {
+      "sha256": "46019f39b6258165b13c8acbb7718884f9c50068c1dbbcbb44a83c6ad34ac9a1",
+      "reason": "Bound missing sensor input with nonzero exit; distinguish requested SIGTERM."
+    },
+    "mission_planner/gcs/sitl-gps-cadence.patch": {
+      "sha256": "a1013a4753a0c7e137f9260508e546f419bc671a1b568797d40806daa9afe6ef",
+      "reason": "Preserve GPS phase on discrete physics ticks; fail on invalid frequency or missed periods without catch-up samples."
+    }
+  },
+  "builds": {
+    "game": {
+      "release": "/home/brook_avionuas/snr-coupling/.local/unreal/releases/coupling-geodesy",
+      "base_release": "/home/brook_avionuas/snr/.local/unreal/releases/cooked-content-recovery",
+      "build_log": ".local/evidence/coupling/resume-build-01/build.log",
+      "build_command": "Running command : dotnet Engine/Binaries/DotNET/UnrealBuildTool/UnrealBuildTool.dll ScenarioStudio Linux Development -Project=/home/brook_avionuas/snr-coupling/world/unreal/ScenarioStudio/ScenarioStudio.uproject -MaxParallelActions=6 -NoUBA -NoUBTMakefiles",
+      "maximum_parallel_actions": 6,
+      "build_result": "Succeeded",
+      "build_elapsed_seconds": 224.61,
+      "re_cooked": false,
+      "plugin_sources": {
+        "Source/SimMode/SimModeBase.cpp": {
+          "own_sha256": "62a5f88dfd7dc6cea4f5409a2f9fe2654b3ee6ecb1c8b2ef7373ed7a14f5f4f6",
+          "shared_sha256": "e08342d90b4cff2824de610dc975fdefc6a43150adae411b8309df91be82132a",
+          "separate_inode": true
         },
-        "actual": {
-          "latitude_deg": 37.8691181,
-          "longitude_deg": -119.3933926,
-          "altitude_msl_m": 2672.72,
-          "north_m": -811.8000378742954,
-          "east_m": 2.4986216231671157
-        },
-        "home_error_m": 2.3719625262005803
+        "Source/PawnSimApi.cpp": {
+          "own_sha256": "db1d4c6f54baf4b662f1b3777f4879fcd0b4516097679383aedfae24633c7c22",
+          "shared_sha256": "73f6bcac1d56394c444a05b8ecf5e7af20b3b8f6a39eb58a02f95518949297b3",
+          "separate_inode": true
+        }
       },
-      {
-        "at_ms": 1793213660757.0432,
-        "kind": "home_comparison",
-        "drone_id": "Drone3",
-        "intended": {
-          "north_m": -819.172,
-          "east_m": -2.5,
-          "latitude_deg": 37.869051682420206,
-          "longitude_deg": -119.393449415667,
-          "altitude_msl_m": 2632.73,
-          "heading_deg": 0
-        },
-        "actual": {
-          "latitude_deg": 37.8690731,
-          "longitude_deg": -119.3934494,
-          "altitude_msl_m": 2672.72,
-          "north_m": -816.7947741578654,
-          "east_m": -2.4986216219168496
-        },
-        "home_error_m": 2.377226241744539
-      },
-      {
-        "at_ms": 1793213660757.0857,
-        "kind": "home_comparison",
-        "drone_id": "Drone1",
-        "intended": {
-          "north_m": -814.172,
-          "east_m": -2.5,
-          "latitude_deg": 37.869096729843584,
-          "longitude_deg": -119.393449415667,
-          "altitude_msl_m": 2632.73,
-          "heading_deg": 0
-        },
-        "actual": {
-          "latitude_deg": 37.8691181,
-          "longitude_deg": -119.3934494,
-          "altitude_msl_m": 2672.72,
-          "north_m": -811.8000378742954,
-          "east_m": -2.4986216219168496
-        },
-        "home_error_m": 2.371962526201307
-      },
-      {
-        "at_ms": 1793213660757.1052,
-        "kind": "home_comparison",
-        "drone_id": "Drone4",
-        "intended": {
-          "north_m": -819.172,
-          "east_m": 2.5,
-          "latitude_deg": 37.869051682420206,
-          "longitude_deg": -119.393392584333,
-          "altitude_msl_m": 2632.73,
-          "heading_deg": 0
-        },
-        "actual": {
-          "latitude_deg": 37.8690731,
-          "longitude_deg": -119.3933926,
-          "altitude_msl_m": 2672.72,
-          "north_m": -816.7947741578654,
-          "east_m": 2.4986216231671157
-        },
-        "home_error_m": 2.377226241743814
+      "geodesy_patch_sha256": "98569ba47d40840b85b8a31a8ff6c9b3b4403d4e2316c3bb609c10ba8817c63f",
+      "receipt_version": {
+        "MajorVersion": 5,
+        "MinorVersion": 8,
+        "PatchVersion": 2,
+        "Changelist": 56702186,
+        "CompatibleChangelist": 55116800,
+        "IsLicenseeVersion": 0,
+        "IsPromotedBuild": 0,
+        "BranchName": "++UE5+Release-5.8",
+        "BuildId": "55116800"
       }
-    ]
+    },
+    "game_release_evidence": ".local/evidence/coupling/game-build-01/release.json",
+    "game_binary_sha256": "52e00ad3c9dd1c6751ea3c32fabc6798f5fb1c158bf6880f2db292f6dc7cb5cf",
+    "release_files": 62,
+    "hardlinked_unchanged_content_files": 8,
+    "SITL": {
+      "command": [
+        "/home/brook_avionuas/snr-coupling/.venv-cosys/bin/python",
+        "modules/waf/waf-light",
+        "copter",
+        "-j4",
+        "--no-submodule-update"
+      ],
+      "working_directory": "/home/brook_avionuas/snr-coupling/.local/build/ardupilot",
+      "jobs": 4,
+      "wall_seconds": 3.118778629002918,
+      "exit_code": 0,
+      "binary": "/home/brook_avionuas/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
+      "binary_before_sha256": "a96cebded305da9e9ede1bfbe96efcc430cecae0c804ba57618c0397bf39a0be",
+      "binary_after_sha256": "00291d26dd0588c678d62d0bece78384310f3bd402594b4ca78526a1f4559aca",
+      "patch": "mission_planner/gcs/sitl-gps-cadence.patch",
+      "patch_sha256": "a1013a4753a0c7e137f9260508e546f419bc671a1b568797d40806daa9afe6ef",
+      "gps_source_sha256": "9b2bd2c6b69621bbe3d34d9f19b121645f4d533fb851d93bf304b4d4389f2781",
+      "source_matches_metrics_fixture": true,
+      "patch_reverse_dry_run_exit_code": 0,
+      "pinned_revision": "fb773567896014da007bca58358704d4a0d8516f"
+    },
+    "shutdown_tests": ".local/evidence/coupling/sitl-shutdown-01/tests.json",
+    "release_ownership_verification": ".local/evidence/coupling/release-verification-01.json"
+  },
+  "controller_rate": {
+    "revision": "fb773567896014da007bca58358704d4a0d8516f",
+    "source_sha256": {
+      "libraries/AP_InertialSensor/AP_InertialSensor.cpp": "21fe2fbc2e30c8b27f3fc50ddc03bb6201f503583e7b428cc70463414a8f87a3",
+      "libraries/AP_Arming/AP_Arming.cpp": "45c543394639f72bc53e87ccb725bfe3f481b6a2f428f58c359eb09ccbd23a93",
+      "libraries/AP_Scheduler/AP_Scheduler.cpp": "333110f89d6f5d22849303282a943b4ae71b4659928273f6a01746509bac314f"
+    },
+    "gyro_prearm": {
+      "source": "libraries/AP_InertialSensor/AP_InertialSensor.cpp:1482",
+      "predicate": "each used non-serial gyro backend rate >= 1.8 * configured loop rate"
+    },
+    "main_loop_prearm": {
+      "source": "libraries/AP_Arming/AP_Arming.cpp:1145",
+      "predicate": "filtered loop rate >= 0.90 * configured loop rate"
+    },
+    "candidate": {
+      "SCHED_LOOP_RATE": 100,
+      "minimum_gyro_rate_hz": 180,
+      "minimum_filtered_loop_rate_hz": 90,
+      "ARMING_SKIPCHK": 0
+    },
+    "physics_step_changed": false,
+    "candidate_status": "flight validated"
+  },
+  "gps_cadence": {
+    "source_model": ".local/evidence/coupling/gps-cadence-01/model.json",
+    "initial_failure": ".local/evidence/coupling/rate-100-01/gps-timing-analysis.json",
+    "delay_parameters_changed": false,
+    "GPS_backend_changed": false
   },
   "flight_gate": {
-    "GUIDED_takeoff": {
-      "status": "not_run",
-      "reason": "startup/geodesy/prearm gate not passed"
+    "evidence": ".local/evidence/coupling/gate-600-01/flight/report.json",
+    "vehicles_concurrent": 4,
+    "sequence": [
+      "GUIDED takeoff",
+      "12-waypoint AUTO",
+      "BRAKE",
+      "resume AUTO",
+      "sustained airborne time",
+      "RTL and disarm",
+      "GUIDED takeoff",
+      "LAND and disarm"
+    ],
+    "waypoints_per_drone": {
+      "Drone1": 12,
+      "Drone2": 12,
+      "Drone3": 12,
+      "Drone4": 12
     },
-    "twelve_waypoint_AUTO": {
-      "status": "not_run",
-      "reason": "startup/geodesy/prearm gate not passed"
+    "mission_sequences_seen": {
+      "Drone1": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      "Drone2": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      "Drone3": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+      "Drone4": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
     },
-    "BRAKE_resume": {
-      "status": "not_run",
-      "reason": "startup/geodesy/prearm gate not passed"
+    "speed_mps": 5.0,
+    "sustained_wall_s": 611.7451256669956,
+    "sustained_simulator_s": {
+      "Drone1": 600.075801344,
+      "Drone2": 600.075801344,
+      "Drone3": 600.075801344,
+      "Drone4": 600.075801344
     },
-    "RTL": {
-      "status": "not_run",
-      "reason": "startup/geodesy/prearm gate not passed"
+    "startup": {
+      "evidence": ".local/evidence/coupling/gate-600-01/flight/ready.json",
+      "checks": "Firmware identity, GPS/EKF, homes, parameters, fence upload/download and >=5Hz position unchanged; gate also waits for GPS/PREARM SYS_STATUS flags."
     },
-    "LAND": {
-      "status": "not_run",
-      "reason": "startup/geodesy/prearm gate not passed"
+    "acceptance_limits": {
+      "hover_max_exclusive_m": 1,
+      "cruise_max_exclusive_m": 2,
+      "minimum_position_update_hz": 5,
+      "minimum_sustained_wall_s": 600,
+      "minimum_sustained_simulator_s": 600
     },
-    "hover_position_error": {
-      "status": "not_run",
-      "reason": "startup/geodesy/prearm gate not passed"
-    },
-    "cruise_position_error": {
-      "status": "not_run",
-      "reason": "startup/geodesy/prearm gate not passed"
-    },
-    "ten_minute_sustained_flight": {
-      "status": "not_run",
-      "reason": "startup/geodesy/prearm gate not passed"
-    }
-  },
-  "startup_gate": {
-    "gps_ekf_health": "passed all four: execution reached home comparison after unchanged GPS/EKF wait",
-    "parameter_and_fence_readback": "not reached",
-    "position_update_5hz": "not reached"
-  },
-  "runtime": {
-    "baseline": {
-      "first_utc": "2026-10-28T18:50:27.964569+00:00",
-      "last_utc": "2026-10-28T18:50:57.731073+00:00",
-      "sample_span_s": 29.76650718699966,
-      "native": {
-        "live": {
-          "frameMs": {
-            "count": 57,
-            "mean": 16.66688631501114,
-            "p50": 16.666872426867485,
-            "p95": 16.667038947343826,
-            "max": 16.667066141963005
-          },
-          "gameMs": {
-            "count": 57,
-            "mean": 1.112649114508378,
-            "p50": 1.0889999866485596,
-            "p95": 1.2992000102996826,
-            "max": 1.340999960899353
-          },
-          "renderMs": {
-            "count": 57,
-            "mean": 2.7895789564701547,
-            "p50": 2.687000036239624,
-            "p95": 3.322599935531615,
-            "max": 4.826000213623047
-          },
-          "gpuMs": {
-            "count": 57,
-            "mean": 8.318526418585526,
-            "p50": 8.317000389099121,
-            "p95": 8.366600227355956,
-            "max": 8.373000144958496
-          }
+    "position_error_m": {
+      "Drone1": {
+        "hover": {
+          "count": 5584,
+          "p50": 0.33509270066040775,
+          "p95": 0.34445768235261776,
+          "max": 0.5101086082054936
+        },
+        "cruise": {
+          "count": 818,
+          "p50": 0.28427064837878013,
+          "p95": 0.6063647992978745,
+          "max": 0.7844427222579357
+        },
+        "transition": {
+          "count": 819,
+          "p50": 0.33679548191760966,
+          "p95": 0.40164247937924336,
+          "max": 0.49471093605641825
         }
       },
-      "processes": {
-        "73254": {
-          "name": "ScenarioStudio",
-          "mean_cpu_percent_one_core_100": 224.74924444349864,
-          "rss_max_bytes": 9320284160
+      "Drone2": {
+        "hover": {
+          "count": 5552,
+          "p50": 0.33576565638797384,
+          "p95": 0.34490445421544613,
+          "max": 0.5152682839724806
+        },
+        "cruise": {
+          "count": 817,
+          "p50": 0.266581937111639,
+          "p95": 0.6770753724301996,
+          "max": 0.7508824977793238
+        },
+        "transition": {
+          "count": 874,
+          "p50": 0.33431038689209636,
+          "p95": 0.39975150458445563,
+          "max": 0.49961627071488085
         }
       },
-      "gpu": {
-        "load_percent": {
-          "count": 57,
-          "mean": 49.1578947368421,
-          "p50": 49.0,
-          "p95": 50.0,
-          "max": 50.0
+      "Drone3": {
+        "hover": {
+          "count": 5527,
+          "p50": 0.33264579035231595,
+          "p95": 0.3442136579187623,
+          "max": 0.525233635059923
         },
-        "memory_activity_percent": {
-          "count": 57,
-          "mean": 12.807017543859649,
-          "p50": 13.0,
-          "p95": 13.0,
-          "max": 13.0
+        "cruise": {
+          "count": 813,
+          "p50": 0.2906327728509641,
+          "p95": 0.617999734373891,
+          "max": 0.7817176866634494
         },
-        "memory_mib": {
-          "count": 57,
-          "mean": 7829.0,
-          "p50": 7829.0,
-          "p95": 7829.0,
-          "max": 7829.0
+        "transition": {
+          "count": 925,
+          "p50": 0.34142033979673514,
+          "p95": 0.41153531204428034,
+          "max": 0.5094909373752693
+        }
+      },
+      "Drone4": {
+        "hover": {
+          "count": 5489,
+          "p50": 0.34164190220813534,
+          "p95": 0.34757228994051964,
+          "max": 0.48812857670971543
         },
-        "power_watts": {
-          "count": 57,
-          "mean": 281.0785964912281,
-          "p50": 281.56,
-          "p95": 284.69,
-          "max": 286.2
+        "cruise": {
+          "count": 812,
+          "p50": 0.3054533686230039,
+          "p95": 0.6027140630794667,
+          "max": 0.7806811682587301
+        },
+        "transition": {
+          "count": 980,
+          "p50": 0.3413632208015398,
+          "p95": 0.4096369734638312,
+          "max": 0.4732802665262441
         }
       }
     },
-    "coupled_startup": {
-      "first_utc": "2026-10-28T18:53:57.333961+00:00",
-      "last_utc": "2026-10-28T18:54:17.315326+00:00",
-      "sample_span_s": 19.981361400001333,
-      "native": {
-        "live": {
-          "frameMs": {
-            "count": 38,
-            "mean": 16.866043700199377,
-            "p50": 16.66690781712532,
-            "p95": 17.435147892683744,
-            "max": 19.776079803705215
+    "position_error_by_sortie_m": {
+      "Drone1": {
+        "1": {
+          "hover": {
+            "count": 5494,
+            "p50": 0.3339849639273173,
+            "p95": 0.3442885890718882,
+            "max": 0.5101086082054936
           },
-          "gameMs": {
-            "count": 38,
-            "mean": 1.8168684244155884,
-            "p50": 1.3799999952316284,
-            "p95": 3.8600501060485835,
-            "max": 5.189000129699707
+          "cruise": {
+            "count": 818,
+            "p50": 0.28427064837878013,
+            "p95": 0.6063647992978745,
+            "max": 0.7844427222579357
           },
-          "renderMs": {
-            "count": 38,
-            "mean": 5.309131628588626,
-            "p50": 5.323499917984009,
-            "p95": 7.810499763488769,
-            "max": 9.586000442504883
-          },
-          "gpuMs": {
-            "count": 38,
-            "mean": 16.65213173314145,
-            "p50": 16.84850025177002,
-            "p95": 17.76065034866333,
-            "max": 17.849000930786133
+          "transition": {
+            "count": 551,
+            "p50": 0.33144383277359357,
+            "p95": 0.4014404438313372,
+            "max": 0.49471093605641825
           }
         },
-        "coupling": {
-          "frameMs": {
-            "count": 38,
-            "mean": 23.198026869642106,
-            "p50": 23.327337577939034,
-            "p95": 29.61311684921384,
-            "max": 30.603734776377678
+        "2": {
+          "hover": {
+            "count": 90,
+            "p50": 0.35397832566176135,
+            "p95": 0.47534160036712936,
+            "max": 0.4826830572020807
           },
-          "gameMs": {
-            "count": 38,
-            "mean": 1.7907368336853229,
-            "p50": 1.412500023841858,
-            "p95": 3.5891500830650327,
-            "max": 4.0329999923706055
+          "cruise": {
+            "count": 0,
+            "p50": null,
+            "p95": null,
+            "max": null
           },
-          "renderMs": {
-            "count": 38,
-            "mean": 6.4969474014483,
-            "p50": 5.608000040054321,
-            "p95": 11.354699993133545,
-            "max": 12.260000228881836
-          },
-          "gpuMs": {
-            "count": 38,
-            "mean": 21.53599995060971,
-            "p50": 21.900500297546387,
-            "p95": 23.69739933013916,
-            "max": 24.795000076293945
+          "transition": {
+            "count": 268,
+            "p50": 0.3471677968745824,
+            "p95": 0.4001925322973076,
+            "max": 0.4609588308072427
           }
         }
       },
+      "Drone2": {
+        "1": {
+          "hover": {
+            "count": 5468,
+            "p50": 0.33435164297568076,
+            "p95": 0.3447587952772783,
+            "max": 0.5152682839724806
+          },
+          "cruise": {
+            "count": 817,
+            "p50": 0.266581937111639,
+            "p95": 0.6770753724301996,
+            "max": 0.7508824977793238
+          },
+          "transition": {
+            "count": 608,
+            "p50": 0.329325313274913,
+            "p95": 0.4003395374433771,
+            "max": 0.49961627071488085
+          }
+        },
+        "2": {
+          "hover": {
+            "count": 84,
+            "p50": 0.372290407083319,
+            "p95": 0.46735270715399047,
+            "max": 0.47460799602586196
+          },
+          "cruise": {
+            "count": 0,
+            "p50": null,
+            "p95": null,
+            "max": null
+          },
+          "transition": {
+            "count": 266,
+            "p50": 0.35289647946044506,
+            "p95": 0.3941165565781674,
+            "max": 0.4531557777065246
+          }
+        }
+      },
+      "Drone3": {
+        "1": {
+          "hover": {
+            "count": 5447,
+            "p50": 0.3322270315412783,
+            "p95": 0.3440632937316316,
+            "max": 0.525233635059923
+          },
+          "cruise": {
+            "count": 813,
+            "p50": 0.2906327728509641,
+            "p95": 0.617999734373891,
+            "max": 0.7817176866634494
+          },
+          "transition": {
+            "count": 663,
+            "p50": 0.3356624912382511,
+            "p95": 0.4134282662188427,
+            "max": 0.5094909373752693
+          }
+        },
+        "2": {
+          "hover": {
+            "count": 80,
+            "p50": 0.3772402817393461,
+            "p95": 0.4729760389049356,
+            "max": 0.4803588960031412
+          },
+          "cruise": {
+            "count": 0,
+            "p50": null,
+            "p95": null,
+            "max": null
+          },
+          "transition": {
+            "count": 262,
+            "p50": 0.3666624110754989,
+            "p95": 0.4109263105806336,
+            "max": 0.45850808302168433
+          }
+        }
+      },
+      "Drone4": {
+        "1": {
+          "hover": {
+            "count": 5413,
+            "p50": 0.3405087682660889,
+            "p95": 0.3473905412086788,
+            "max": 0.48812857670971543
+          },
+          "cruise": {
+            "count": 812,
+            "p50": 0.3054533686230039,
+            "p95": 0.6027140630794667,
+            "max": 0.7806811682587301
+          },
+          "transition": {
+            "count": 723,
+            "p50": 0.3317872316985942,
+            "p95": 0.39733261123832114,
+            "max": 0.4732802665262441
+          }
+        },
+        "2": {
+          "hover": {
+            "count": 76,
+            "p50": 0.35754626444369264,
+            "p95": 0.4326005225299011,
+            "max": 0.43930136062089414
+          },
+          "cruise": {
+            "count": 0,
+            "p50": null,
+            "p95": null,
+            "max": null
+          },
+          "transition": {
+            "count": 257,
+            "p50": 0.3872997140021683,
+            "p95": 0.4177915531241758,
+            "max": 0.4439304994771472
+          }
+        }
+      }
+    },
+    "position_method": "Euclidean3D error: latest received MAVLink position versus RPC Cosys truth in mission NEU metres. Receipt age, RPC brackets and raw poses retained. All armed IN_AIR/TAKEOFF/LANDING samples included. Hover speed<0.5m/s and absolute climb<0.3m/s; cruise horizontal speed>=1m/s; remaining samples transition.",
+    "controller_tracking": {
+      "evidence": ".local/evidence/coupling/gate-600-01/analysis/controller-tracking.json",
+      "coordinate_frame": "metres north/east/up from mission origin",
+      "airborne_definition": "armed and landed_state in2(IN_AIR),3(TAKEOFF),4(LANDING)",
+      "hover_target": "Each captured native localNedOriginUeCm /100, plus first take_off commandedheight in up; initial_hover phase only.",
+      "cruise_target": "Requested routeN/E in missionframe, before MAVLink integer-coordinate rounding. Active mission_current1 uses ready MAVLink home-to-waypoint1; n>1 uses waypoint(n-1)-to-n. Perpendicular cross-track is to infinite leg line; finite-segment distance also counts overshoot. Vertical target is ready MAVLink homeMSL minus geodesy.ORIGIN.altitudeMSL plus requested relativeheight. Only AUTO cruise samples from firstsortie auto/resumed_auto phases.",
+      "controller_tracking_distinct_from_pose_agreement": true,
+      "results": {
+        "Drone1": {
+          "hover_target_neu_m": [-814.17203125, -2.5, 61.45],
+          "initial_hover_3d_target_distance_m": {
+            "count": 100,
+            "p50": 0.062101714571373166,
+            "p95": 0.0690626711370584,
+            "max": 0.06923638350439047
+          },
+          "initial_hover_horizontal_target_distance_m": {
+            "count": 100,
+            "p50": 0.05964562009682044,
+            "p95": 0.0627688261361313,
+            "max": 0.06280293729347555
+          },
+          "initial_hover_vertical_absolute_target_error_m": {
+            "count": 100,
+            "p50": 0.017292022705078125,
+            "p95": 0.029445648193359375,
+            "max": 0.029903411865234375
+          },
+          "cruise_horizontal_cross_track_m": {
+            "count": 712,
+            "p50": 0.03490887750204319,
+            "p95": 0.05547443609420542,
+            "max": 0.08044602554027325
+          },
+          "cruise_horizontal_finite_segment_distance_m": {
+            "count": 712,
+            "p50": 0.035049984231591225,
+            "p95": 0.05923448020565906,
+            "max": 0.834668957753299
+          },
+          "cruise_vertical_absolute_target_error_m": {
+            "count": 712,
+            "p50": 0.05714111328124716,
+            "p95": 0.09082298278808301,
+            "max": 0.21386413574218466
+          },
+          "cruise_ground_speed_mps": {
+            "count": 712,
+            "p50": 4.96182346900355,
+            "p95": 5.010759173588551,
+            "max": 5.084089975511857
+          }
+        },
+        "Drone2": {
+          "hover_target_neu_m": [-814.17203125, 2.5, 71.45],
+          "initial_hover_3d_target_distance_m": {
+            "count": 100,
+            "p50": 0.06629764219176443,
+            "p95": 0.06852780849626258,
+            "max": 0.06872164413238149
+          },
+          "initial_hover_horizontal_target_distance_m": {
+            "count": 100,
+            "p50": 0.0615574539370968,
+            "p95": 0.06341679243744557,
+            "max": 0.06344753413400543
+          },
+          "initial_hover_vertical_absolute_target_error_m": {
+            "count": 100,
+            "p50": 0.021593093872070312,
+            "p95": 0.028383636474609376,
+            "max": 0.02873992919921875
+          },
+          "cruise_horizontal_cross_track_m": {
+            "count": 711,
+            "p50": 0.03235984514029644,
+            "p95": 0.05368841732414387,
+            "max": 0.07949666971834324
+          },
+          "cruise_horizontal_finite_segment_distance_m": {
+            "count": 711,
+            "p50": 0.03238361994298122,
+            "p95": 0.060909781605005264,
+            "max": 1.0468545008138312
+          },
+          "cruise_vertical_absolute_target_error_m": {
+            "count": 711,
+            "p50": 0.06127243041991903,
+            "p95": 0.09916381835937216,
+            "max": 0.22381286621093466
+          },
+          "cruise_ground_speed_mps": {
+            "count": 711,
+            "p50": 4.965560913431439,
+            "p95": 5.007837847166092,
+            "max": 5.086221320249415
+          }
+        },
+        "Drone3": {
+          "hover_target_neu_m": [-819.17203125, -2.5, 81.45],
+          "initial_hover_3d_target_distance_m": {
+            "count": 100,
+            "p50": 0.06338788391847337,
+            "p95": 0.0700005228504843,
+            "max": 0.07015655226920302
+          },
+          "initial_hover_horizontal_target_distance_m": {
+            "count": 100,
+            "p50": 0.05703411984633065,
+            "p95": 0.06557284340408594,
+            "max": 0.06593153192108028
+          },
+          "initial_hover_vertical_absolute_target_error_m": {
+            "count": 100,
+            "p50": 0.0274505615234375,
+            "p95": 0.034250640869140626,
+            "max": 0.0345306396484375
+          },
+          "cruise_horizontal_cross_track_m": {
+            "count": 708,
+            "p50": 0.03529330175105816,
+            "p95": 0.05548180564973837,
+            "max": 0.08063451032821423
+          },
+          "cruise_horizontal_finite_segment_distance_m": {
+            "count": 708,
+            "p50": 0.03537969309572464,
+            "p95": 0.0586771356592772,
+            "max": 0.6443978722679259
+          },
+          "cruise_vertical_absolute_target_error_m": {
+            "count": 708,
+            "p50": 0.05955963134765341,
+            "p95": 0.101925277709958,
+            "max": 0.2238815307617159
+          },
+          "cruise_ground_speed_mps": {
+            "count": 708,
+            "p50": 4.96158141583304,
+            "p95": 5.013013761364718,
+            "max": 5.088857745679117
+          }
+        },
+        "Drone4": {
+          "hover_target_neu_m": [-819.17203125, 2.5, 91.45],
+          "initial_hover_3d_target_distance_m": {
+            "count": 100,
+            "p50": 0.06456858979030743,
+            "p95": 0.12434497992338105,
+            "max": 0.13475302165069242
+          },
+          "initial_hover_horizontal_target_distance_m": {
+            "count": 100,
+            "p50": 0.05644556658388911,
+            "p95": 0.06510310988322397,
+            "max": 0.06553542430695497
+          },
+          "initial_hover_vertical_absolute_target_error_m": {
+            "count": 100,
+            "p50": 0.026538848876953125,
+            "p95": 0.11340446472167968,
+            "max": 0.1249542236328125
+          },
+          "cruise_horizontal_cross_track_m": {
+            "count": 706,
+            "p50": 0.03520079515874386,
+            "p95": 0.05187054244307854,
+            "max": 0.07823090548189304
+          },
+          "cruise_horizontal_finite_segment_distance_m": {
+            "count": 706,
+            "p50": 0.035288577103334884,
+            "p95": 0.06184746457948376,
+            "max": 0.6414582650194868
+          },
+          "cruise_vertical_absolute_target_error_m": {
+            "count": 706,
+            "p50": 0.05808715820312216,
+            "p95": 0.10031204223632528,
+            "max": 0.2263381958007784
+          },
+          "cruise_ground_speed_mps": {
+            "count": 706,
+            "p50": 4.962058163687757,
+            "p95": 5.006734133819972,
+            "max": 5.107584813445729
+          }
+        }
+      }
+    },
+    "fault_audit": {
+      "evidence": ".local/evidence/coupling/gate-600-01/fault-audit.json",
+      "source_contract": ".local/evidence/coupling/validation/fault-audit-source.json",
+      "vehicles": {
+        "Drone1": {
+          "dataflash_sha256": "805f6050058d15ab7291859db83672a5dea81c0a004a6909e6792a182ec12b42",
+          "record_counts": {
+            "ARM": 4,
+            "ERR": 0,
+            "XKF4": 36902,
+            "armed_XKF4": 36168
+          },
+          "xkf4_field_values": {
+            "FS": {
+              "0": 36902
+            },
+            "TS": {
+              "48": 36902
+            },
+            "GPS": {
+              "0": 36902
+            },
+            "SS": {
+              "107327": 33220,
+              "109375": 460,
+              "111423": 3170,
+              "113471": 52
+            },
+            "C": {
+              "0": 18451,
+              "1": 18451
+            }
+          },
+          "arming_records": [
+            {
+              "mavpackettype": "ARM",
+              "TimeUS": 50824084,
+              "ArmState": 1,
+              "ArmChecks": 2097150,
+              "Forced": 0,
+              "Method": 1
+            },
+            {
+              "mavpackettype": "ARM",
+              "TimeUS": 734325665,
+              "ArmState": 0,
+              "ArmChecks": 0,
+              "Forced": 0,
+              "Method": 13
+            },
+            {
+              "mavpackettype": "ARM",
+              "TimeUS": 744663885,
+              "ArmState": 1,
+              "ArmChecks": 2097150,
+              "Forced": 0,
+              "Method": 1
+            },
+            {
+              "mavpackettype": "ARM",
+              "TimeUS": 784534736,
+              "ArmState": 0,
+              "ArmChecks": 0,
+              "Forced": 0,
+              "Method": 13
+            }
+          ],
+          "pose_counts": {
+            "all_samples": 7458,
+            "all_raw_health_samples": 7458,
+            "flight_samples": 7221,
+            "raw_health_samples": 7221
+          },
+          "raw_health_samples_by_landed_state": {
+            "1": 237,
+            "3": 201,
+            "2": 6398,
+            "4": 622
+          },
+          "initial_disarmed_GPS_unhealthy_samples": 38,
+          "fault_counts": {
+            "errors": 0,
+            "filter_fault_or_gps_glitch_samples": 0,
+            "bad_armed_solution_samples": 0,
+            "pose_faults": 0,
+            "flight_warning_and_error_statustext": 0,
+            "sensor_failure_lines": 0
+          },
+          "requested_shutdown_lines": 1,
+          "autopilot_exit_code": 0
+        },
+        "Drone2": {
+          "dataflash_sha256": "de9d3068350eec1e2c40564187bb7cdab6526aac9bf576e79f7725d5e89dae23",
+          "record_counts": {
+            "ARM": 4,
+            "ERR": 0,
+            "XKF4": 36903,
+            "armed_XKF4": 36284
+          },
+          "xkf4_field_values": {
+            "FS": {
+              "0": 36903
+            },
+            "TS": {
+              "48": 36903
+            },
+            "GPS": {
+              "0": 36903
+            },
+            "SS": {
+              "107327": 33321,
+              "109375": 446,
+              "113471": 66,
+              "111423": 3070
+            },
+            "C": {
+              "0": 18452,
+              "1": 18451
+            }
+          },
+          "arming_records": [
+            {
+              "mavpackettype": "ARM",
+              "TimeUS": 51205092,
+              "ArmState": 1,
+              "ArmChecks": 2097150,
+              "Forced": 0,
+              "Method": 1
+            },
+            {
+              "mavpackettype": "ARM",
+              "TimeUS": 737715737,
+              "ArmState": 0,
+              "ArmChecks": 0,
+              "Forced": 0,
+              "Method": 13
+            },
+            {
+              "mavpackettype": "ARM",
+              "TimeUS": 745203897,
+              "ArmState": 1,
+              "ArmChecks": 2097150,
+              "Forced": 0,
+              "Method": 1
+            },
+            {
+              "mavpackettype": "ARM",
+              "TimeUS": 784345732,
+              "ArmState": 0,
+              "ArmChecks": 0,
+              "Forced": 0,
+              "Method": 13
+            }
+          ],
+          "pose_counts": {
+            "all_samples": 7458,
+            "all_raw_health_samples": 7458,
+            "flight_samples": 7243,
+            "raw_health_samples": 7243
+          },
+          "raw_health_samples_by_landed_state": {
+            "1": 215,
+            "3": 225,
+            "2": 6364,
+            "4": 654
+          },
+          "initial_disarmed_GPS_unhealthy_samples": 38,
+          "fault_counts": {
+            "errors": 0,
+            "filter_fault_or_gps_glitch_samples": 0,
+            "bad_armed_solution_samples": 0,
+            "pose_faults": 0,
+            "flight_warning_and_error_statustext": 0,
+            "sensor_failure_lines": 0
+          },
+          "requested_shutdown_lines": 1,
+          "autopilot_exit_code": 0
+        },
+        "Drone3": {
+          "dataflash_sha256": "65c714a5a73c489a5b5d0fd1beba392187f8d3f79e2511d03187f3776fcf087b",
+          "record_counts": {
+            "ARM": 4,
+            "ERR": 0,
+            "XKF4": 36904,
+            "armed_XKF4": 36390
+          },
+          "xkf4_field_values": {
+            "FS": {
+              "0": 36904
+            },
+            "TS": {
+              "48": 36904
+            },
+            "GPS": {
+              "0": 36904
+            },
+            "SS": {
+              "107327": 33402,
+              "109375": 412,
+              "113471": 100,
+              "111423": 2990
+            },
+            "C": {
+              "0": 18452,
+              "1": 18452
+            }
+          },
+          "arming_records": [
+            {
+              "mavpackettype": "ARM",
+              "TimeUS": 51694102,
+              "ArmState": 1,
+              "ArmChecks": 2097150,
+              "Forced": 0,
+              "Method": 1
+            },
+            {
+              "mavpackettype": "ARM",
+              "TimeUS": 741105810,
+              "ArmState": 0,
+              "ArmChecks": 0,
+              "Forced": 0,
+              "Method": 13
+            },
+            {
+              "mavpackettype": "ARM",
+              "TimeUS": 745734908,
+              "ArmState": 1,
+              "ArmChecks": 2097150,
+              "Forced": 0,
+              "Method": 1
+            },
+            {
+              "mavpackettype": "ARM",
+              "TimeUS": 784135728,
+              "ArmState": 0,
+              "ArmChecks": 0,
+              "Forced": 0,
+              "Method": 13
+            }
+          ],
+          "pose_counts": {
+            "all_samples": 7458,
+            "all_raw_health_samples": 7458,
+            "flight_samples": 7265,
+            "raw_health_samples": 7265
+          },
+          "raw_health_samples_by_landed_state": {
+            "1": 193,
+            "3": 252,
+            "2": 6327,
+            "4": 686
+          },
+          "initial_disarmed_GPS_unhealthy_samples": 38,
+          "fault_counts": {
+            "errors": 0,
+            "filter_fault_or_gps_glitch_samples": 0,
+            "bad_armed_solution_samples": 0,
+            "pose_faults": 0,
+            "flight_warning_and_error_statustext": 0,
+            "sensor_failure_lines": 0
+          },
+          "requested_shutdown_lines": 1,
+          "autopilot_exit_code": 0
+        },
+        "Drone4": {
+          "dataflash_sha256": "42f32f23b16d05b8eb823410f556a575a41c17ebbf809dab51a18553abd7331e",
+          "record_counts": {
+            "ARM": 4,
+            "ERR": 0,
+            "XKF4": 36904,
+            "armed_XKF4": 36482
+          },
+          "xkf4_field_values": {
+            "FS": {
+              "0": 36904
+            },
+            "TS": {
+              "48": 36904
+            },
+            "GPS": {
+              "0": 36904
+            },
+            "SS": {
+              "107327": 33504,
+              "109375": 214,
+              "113471": 298,
+              "111423": 2888
+            },
+            "C": {
+              "0": 18452,
+              "1": 18452
+            }
+          },
+          "arming_records": [
+            {
+              "mavpackettype": "ARM",
+              "TimeUS": 52234114,
+              "ArmState": 1,
+              "ArmChecks": 2097150,
+              "Forced": 0,
+              "Method": 1
+            },
+            {
+              "mavpackettype": "ARM",
+              "TimeUS": 744345879,
+              "ArmState": 0,
+              "ArmChecks": 0,
+              "Forced": 0,
+              "Method": 13
+            },
+            {
+              "mavpackettype": "ARM",
+              "TimeUS": 746214919,
+              "ArmState": 1,
+              "ArmChecks": 2097150,
+              "Forced": 0,
+              "Method": 1
+            },
+            {
+              "mavpackettype": "ARM",
+              "TimeUS": 783754719,
+              "ArmState": 0,
+              "ArmChecks": 0,
+              "Forced": 0,
+              "Method": 13
+            }
+          ],
+          "pose_counts": {
+            "all_samples": 7458,
+            "all_raw_health_samples": 7458,
+            "flight_samples": 7281,
+            "raw_health_samples": 7281
+          },
+          "raw_health_samples_by_landed_state": {
+            "1": 177,
+            "3": 275,
+            "2": 6293,
+            "4": 713
+          },
+          "initial_disarmed_GPS_unhealthy_samples": 38,
+          "fault_counts": {
+            "errors": 0,
+            "filter_fault_or_gps_glitch_samples": 0,
+            "bad_armed_solution_samples": 0,
+            "pose_faults": 0,
+            "flight_warning_and_error_statustext": 0,
+            "sensor_failure_lines": 0
+          },
+          "requested_shutdown_lines": 1,
+          "autopilot_exit_code": 0
+        }
+      }
+    },
+    "acceptance_audit": ".local/evidence/coupling/gate-600-01/acceptance-audit.json",
+    "startup_sensor_health_note": "GPS health initially false while disarmed; bounded prearm wait passed before first takeoff. Every flight pose has healthy GPS and no GPS-glitch flag.",
+    "rates_and_gps": {
+      "Drone1": {
+        "filtered_loop_rate_hz": {
+          "count": 74,
+          "min": 100,
+          "p50": 100.0,
+          "p95": 100.0,
+          "max": 100,
+          "mean": 100.0
+        },
+        "imu": {
+          "0": {
+            "gyro_rate_hz": {
+              "count": 18451,
+              "min": 333,
+              "p50": 333.0,
+              "p95": 333.0,
+              "max": 334,
+              "mean": 333.0465015446317
+            },
+            "accelerometer_rate_hz": {
+              "count": 18451,
+              "min": 333,
+              "p50": 333.0,
+              "p95": 333.0,
+              "max": 334,
+              "mean": 333.0465015446317
+            },
+            "unhealthy_records": 0
+          },
+          "1": {
+            "gyro_rate_hz": {
+              "count": 18451,
+              "min": 333,
+              "p50": 333.0,
+              "p95": 333.0,
+              "max": 334,
+              "mean": 333.007099886185
+            },
+            "accelerometer_rate_hz": {
+              "count": 18451,
+              "min": 333,
+              "p50": 333.0,
+              "p95": 333.0,
+              "max": 334,
+              "mean": 333.0152837244594
+            },
+            "unhealthy_records": 0
+          }
+        },
+        "simulator_sensor_timestamp_rate_reported_hz": {
+          "count": 260,
+          "min": 333.33,
+          "p50": 333.33,
+          "p95": 333.33,
+          "max": 333.33,
+          "mean": 333.33
+        },
+        "gps_corrected_timestamp_age_after_first_arm_ms": {
+          "count": 3670,
+          "min": 17.054999999993015,
+          "p50": 18.54649999999674,
+          "p95": 19.898000000025057,
+          "max": 20.054000000003725,
+          "mean": 18.54883705722066
+        },
+        "gps_age_above_70ms_after_first_arm_count": 0,
+        "mavlink_update_rate_hz": {
+          "count": 7458,
+          "min": 9.412369179082527,
+          "p50": 9.838254815406934,
+          "p95": 9.966063937059015,
+          "max": 9.992120179381873,
+          "mean": 9.823739957523715
+        },
+        "mavlink_receipt_age_s": {
+          "count": 7458,
+          "min": 0.0005704209979739971,
+          "p50": 0.052732065498275915,
+          "p95": 0.10012012800107184,
+          "max": 0.17905110500578303,
+          "mean": 0.0525128333151971
+        },
+        "cosys_rpc_duration_s": {
+          "count": 7458,
+          "min": 0.0001807689986890182,
+          "p50": 0.0003198100021108985,
+          "p95": 0.001282474799882038,
+          "max": 0.010049009004433174,
+          "mean": 0.00047513441363297796
+        },
+        "sampled_clock": {
+          "wall_s": 751.6253531840048,
+          "simulated_s": 738.444753152,
+          "simulated_per_wall_second": 0.982463869830668
+        }
+      },
+      "Drone2": {
+        "filtered_loop_rate_hz": {
+          "count": 74,
+          "min": 100,
+          "p50": 100.0,
+          "p95": 100.0,
+          "max": 100,
+          "mean": 100.0
+        },
+        "imu": {
+          "0": {
+            "gyro_rate_hz": {
+              "count": 18451,
+              "min": 333,
+              "p50": 333.0,
+              "p95": 333.0,
+              "max": 334,
+              "mean": 333.0465015446317
+            },
+            "accelerometer_rate_hz": {
+              "count": 18451,
+              "min": 333,
+              "p50": 333.0,
+              "p95": 333.0,
+              "max": 334,
+              "mean": 333.0465015446317
+            },
+            "unhealthy_records": 0
+          },
+          "1": {
+            "gyro_rate_hz": {
+              "count": 18451,
+              "min": 333,
+              "p50": 333.0,
+              "p95": 333.0,
+              "max": 334,
+              "mean": 333.007099886185
+            },
+            "accelerometer_rate_hz": {
+              "count": 18451,
+              "min": 333,
+              "p50": 333.0,
+              "p95": 333.0,
+              "max": 334,
+              "mean": 333.0152837244594
+            },
+            "unhealthy_records": 0
+          }
+        },
+        "simulator_sensor_timestamp_rate_reported_hz": {
+          "count": 260,
+          "min": 333.33,
+          "p50": 333.33,
+          "p95": 333.33,
+          "max": 333.33,
+          "mean": 333.33
+        },
+        "gps_corrected_timestamp_age_after_first_arm_ms": {
+          "count": 3669,
+          "min": 17.054999999993015,
+          "p50": 18.54700000002049,
+          "p95": 19.898000000027242,
+          "max": 20.054000000003725,
+          "mean": 18.54896266012532
+        },
+        "gps_age_above_70ms_after_first_arm_count": 0,
+        "mavlink_update_rate_hz": {
+          "count": 7458,
+          "min": 9.414997903996893,
+          "p50": 9.838754228274237,
+          "p95": 9.965632500714337,
+          "max": 9.988148367310414,
+          "mean": 9.822168395241553
+        },
+        "mavlink_receipt_age_s": {
+          "count": 7458,
+          "min": 0.0005618770010187291,
+          "p50": 0.05302524300350342,
+          "p95": 0.09777655834877805,
+          "max": 0.15844895299960626,
+          "mean": 0.053079018199512516
+        },
+        "cosys_rpc_duration_s": {
+          "count": 7458,
+          "min": 7.817299774615094e-5,
+          "p50": 0.0001489764981670305,
+          "p95": 0.00046577779830840816,
+          "max": 0.00913852799567394,
+          "mean": 0.00021686279550658496
+        },
+        "sampled_clock": {
+          "wall_s": 751.6253531840048,
+          "simulated_s": 738.447753216,
+          "simulated_per_wall_second": 0.9824678612660119
+        }
+      },
+      "Drone3": {
+        "filtered_loop_rate_hz": {
+          "count": 74,
+          "min": 100,
+          "p50": 100.0,
+          "p95": 100.0,
+          "max": 100,
+          "mean": 100.0
+        },
+        "imu": {
+          "0": {
+            "gyro_rate_hz": {
+              "count": 18451,
+              "min": 333,
+              "p50": 333.0,
+              "p95": 333.0,
+              "max": 334,
+              "mean": 333.0465015446317
+            },
+            "accelerometer_rate_hz": {
+              "count": 18451,
+              "min": 333,
+              "p50": 333.0,
+              "p95": 333.0,
+              "max": 334,
+              "mean": 333.0465015446317
+            },
+            "unhealthy_records": 0
+          },
+          "1": {
+            "gyro_rate_hz": {
+              "count": 18451,
+              "min": 333,
+              "p50": 333.0,
+              "p95": 333.0,
+              "max": 334,
+              "mean": 333.007099886185
+            },
+            "accelerometer_rate_hz": {
+              "count": 18451,
+              "min": 333,
+              "p50": 333.0,
+              "p95": 333.0,
+              "max": 334,
+              "mean": 333.0152837244594
+            },
+            "unhealthy_records": 0
+          }
+        },
+        "simulator_sensor_timestamp_rate_reported_hz": {
+          "count": 260,
+          "min": 333.33,
+          "p50": 333.33,
+          "p95": 333.33,
+          "max": 333.33,
+          "mean": 333.33
+        },
+        "gps_corrected_timestamp_age_after_first_arm_ms": {
+          "count": 3666,
+          "min": 17.054999999993015,
+          "p50": 18.54749999998603,
+          "p95": 19.89800000003379,
+          "max": 20.054000000003725,
+          "mean": 18.54933306055641
+        },
+        "gps_age_above_70ms_after_first_arm_count": 0,
+        "mavlink_update_rate_hz": {
+          "count": 7458,
+          "min": 9.411796928670713,
+          "p50": 9.838280565585073,
+          "p95": 9.965968740181161,
+          "max": 9.992127809557443,
+          "mean": 9.823752559193464
+        },
+        "mavlink_receipt_age_s": {
+          "count": 7458,
+          "min": 0.0006909880030434579,
+          "p50": 0.05274161549823475,
+          "p95": 0.10030187414813553,
+          "max": 0.13065573500352912,
+          "mean": 0.052619556210158805
+        },
+        "cosys_rpc_duration_s": {
+          "count": 7458,
+          "min": 7.199699757620692e-5,
+          "p50": 0.00013684949954040349,
+          "p95": 0.0003905915025825379,
+          "max": 0.006036144004610833,
+          "mean": 0.0001895541201440247
+        },
+        "sampled_clock": {
+          "wall_s": 751.6253531840048,
+          "simulated_s": 738.447753216,
+          "simulated_per_wall_second": 0.9824678612660119
+        }
+      },
+      "Drone4": {
+        "filtered_loop_rate_hz": {
+          "count": 74,
+          "min": 99,
+          "p50": 100.0,
+          "p95": 100.0,
+          "max": 100,
+          "mean": 99.98648648648648
+        },
+        "imu": {
+          "0": {
+            "gyro_rate_hz": {
+              "count": 18452,
+              "min": 333,
+              "p50": 333.0,
+              "p95": 333.0,
+              "max": 334,
+              "mean": 333.046499024496
+            },
+            "accelerometer_rate_hz": {
+              "count": 18452,
+              "min": 333,
+              "p50": 333.0,
+              "p95": 333.0,
+              "max": 334,
+              "mean": 333.046499024496
+            },
+            "unhealthy_records": 0
+          },
+          "1": {
+            "gyro_rate_hz": {
+              "count": 18452,
+              "min": 333,
+              "p50": 333.0,
+              "p95": 333.0,
+              "max": 334,
+              "mean": 333.0070995014091
+            },
+            "accelerometer_rate_hz": {
+              "count": 18452,
+              "min": 333,
+              "p50": 333.0,
+              "p95": 333.0,
+              "max": 334,
+              "mean": 333.015282896163
+            },
+            "unhealthy_records": 0
+          }
+        },
+        "simulator_sensor_timestamp_rate_reported_hz": {
+          "count": 260,
+          "min": 333.33,
+          "p50": 333.33,
+          "p95": 333.33,
+          "max": 333.33,
+          "mean": 333.33
+        },
+        "gps_corrected_timestamp_age_after_first_arm_ms": {
+          "count": 3663,
+          "min": 17.054999999993015,
+          "p50": 18.54799999995157,
+          "p95": 19.898000000040337,
+          "max": 20.054000000003725,
+          "mean": 18.54975757575747
+        },
+        "gps_age_above_70ms_after_first_arm_count": 0,
+        "mavlink_update_rate_hz": {
+          "count": 7458,
+          "min": 9.413128131966879,
+          "p50": 9.837892625677835,
+          "p95": 9.966230916217453,
+          "max": 9.99255188072888,
+          "mean": 9.82199822860499
+        },
+        "mavlink_receipt_age_s": {
+          "count": 7458,
+          "min": 0.0007763270041323267,
+          "p50": 0.05029412349904305,
+          "p95": 0.09981733114946106,
+          "max": 0.16680110200104536,
+          "mean": 0.05124682565350117
+        },
+        "cosys_rpc_duration_s": {
+          "count": 7458,
+          "min": 7.12790060788393e-5,
+          "p50": 0.00013059850243735127,
+          "p95": 0.00037841060220671324,
+          "max": 0.008532496998668648,
+          "mean": 0.00018394924479971716
+        },
+        "sampled_clock": {
+          "wall_s": 751.6253531840048,
+          "simulated_s": 738.444753152,
+          "simulated_per_wall_second": 0.982463869830668
+        }
+      }
+    },
+    "shutdown": {
+      "world_physics_stopped": true,
+      "confirmation": "UWorld::CleanupWorld follows World->EndPlay in UGameEngine::PreExit; AirSim physics is destroyed in EndPlay",
+      "shutdown_to_endplay_s": 0.15854544600006193,
+      "utc_s": 1793217294.0114765,
+      "world_exit_code": 143,
+      "shutdown_elapsed_s": 1.743213816997013,
+      "supervisor": {
+        "arguments": [
+          "/home/brook_avionuas/snr-coupling/.venv-cosys/bin/python",
+          "-m",
+          "mission_planner.gcs.coupling_gate",
+          "--output",
+          ".local/evidence/coupling/gate-600-01/flight",
+          "--shutdown-file",
+          ".local/evidence/coupling/gate-600-01/world-stopped.json",
+          "--seconds",
+          "600",
+          "--speed",
+          "5.0"
+        ],
+        "world_exit_code": 143,
+        "gate_exit_code": 0,
+        "metrics_exit_code": -15,
+        "elapsed_s": 806.3179236840006
+      },
+      "autopilot_exit_codes": {
+        "Drone1": 0,
+        "Drone2": 0,
+        "Drone3": 0,
+        "Drone4": 0
+      },
+      "SIGTERM_exit_semantics_evidence": ".local/evidence/coupling/rate-100-02/shutdown-interpretation.json"
+    }
+  },
+  "resources": {
+    "flight": {
+      "samples": 752,
+      "span_s": 751.5546754300012,
       "processes": {
         "73254": {
+          "start_ticks": 3390450,
           "name": "ScenarioStudio",
-          "mean_cpu_percent_one_core_100": 224.00876048415324,
-          "rss_max_bytes": 9417670656
+          "executable": "/home/brook_avionuas/snr/.local/unreal/releases/cooked-content-recovery/ScenarioStudio/Binaries/Linux/ScenarioStudio",
+          "samples": 752,
+          "span_s": 751.5546754300012,
+          "mean_cpu_percent_one_core_100": 249.1142775379328,
+          "rss_max_bytes": 11320766464
         },
-        "211373": {
-          "name": "ScenarioStudio",
-          "mean_cpu_percent_one_core_100": 204.59066417765342,
-          "rss_max_bytes": 2270425088
-        },
-        "214700": {
-          "name": "UnrealEditor-Cm",
-          "mean_cpu_percent_one_core_100": 348.97522047719616,
-          "rss_max_bytes": 11604234240
-        },
-        "214719": {
+        "292395": {
+          "start_ticks": 5236596,
           "name": "UnrealEditor",
-          "mean_cpu_percent_one_core_100": 325.3031597736662,
-          "rss_max_bytes": 15177756672
+          "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
+          "samples": 15,
+          "span_s": 14.011682129996188,
+          "mean_cpu_percent_one_core_100": 217.46139911902438,
+          "rss_max_bytes": 18215096320
         },
-        "220282": {
-          "name": "arducopter",
-          "mean_cpu_percent_one_core_100": 3.1028916778411237,
-          "rss_max_bytes": 8388608
+        "299658": {
+          "start_ticks": 5249684,
+          "name": "UnrealEditor-Cm",
+          "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
+          "samples": 62,
+          "span_s": 61.04967273800139,
+          "mean_cpu_percent_one_core_100": 125.9957614025339,
+          "rss_max_bytes": 13593698304
         },
-        "220284": {
-          "name": "arducopter",
-          "mean_cpu_percent_one_core_100": 3.152938317806303,
-          "rss_max_bytes": 8388608
+        "299710": {
+          "start_ticks": 5249711,
+          "name": "UnrealEditor",
+          "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
+          "samples": 117,
+          "span_s": 116.08912313300243,
+          "mean_cpu_percent_one_core_100": 224.3707187809331,
+          "rss_max_bytes": 20863754240
         },
-        "220286": {
+        "309083": {
+          "start_ticks": 5273522,
+          "name": "UnrealEditor-Cm",
+          "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
+          "samples": 330,
+          "span_s": 329.24986520600214,
+          "mean_cpu_percent_one_core_100": 151.66900666384743,
+          "rss_max_bytes": 15383355392
+        },
+        "310363": {
+          "start_ticks": 5273807,
+          "name": "ScenarioStudio",
+          "executable": "/home/brook_avionuas/snr-coupling/.local/unreal/releases/coupling-geodesy/ScenarioStudio/Binaries/Linux/ScenarioStudio",
+          "samples": 752,
+          "span_s": 751.5546754300012,
+          "mean_cpu_percent_one_core_100": 123.75413664586088,
+          "rss_max_bytes": 1937281024
+        },
+        "310693": {
+          "start_ticks": 5274275,
           "name": "arducopter",
-          "mean_cpu_percent_one_core_100": 3.052845037875944,
+          "executable": "/home/brook_avionuas/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
+          "samples": 752,
+          "span_s": 751.5546754300012,
+          "mean_cpu_percent_one_core_100": 2.927265403200735,
           "rss_max_bytes": 8519680
         },
-        "220288": {
+        "310695": {
+          "start_ticks": 5274275,
           "name": "arducopter",
-          "mean_cpu_percent_one_core_100": 2.9527517579455855,
-          "rss_max_bytes": 8257536
+          "executable": "/home/brook_avionuas/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
+          "samples": 752,
+          "span_s": 751.5546754300012,
+          "mean_cpu_percent_one_core_100": 2.995124737547661,
+          "rss_max_bytes": 8519680
+        },
+        "310698": {
+          "start_ticks": 5274275,
+          "name": "arducopter",
+          "executable": "/home/brook_avionuas/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
+          "samples": 752,
+          "span_s": 751.5546754300012,
+          "mean_cpu_percent_one_core_100": 2.9898024368145686,
+          "rss_max_bytes": 8519680
+        },
+        "310700": {
+          "start_ticks": 5274275,
+          "name": "arducopter",
+          "executable": "/home/brook_avionuas/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
+          "samples": 752,
+          "span_s": 751.5546754300012,
+          "mean_cpu_percent_one_core_100": 2.9552074820494685,
+          "rss_max_bytes": 8388608
+        },
+        "312879": {
+          "start_ticks": 5280636,
+          "name": "UnrealEditor",
+          "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
+          "samples": 121,
+          "span_s": 120.08925002100295,
+          "mean_cpu_percent_one_core_100": 189.967045310135,
+          "rss_max_bytes": 6344044544
+        },
+        "315036": {
+          "start_ticks": 5282939,
+          "name": "UnrealEditor-Cm",
+          "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
+          "samples": 356,
+          "span_s": 355.2648147910004,
+          "mean_cpu_percent_one_core_100": 139.00616651005035,
+          "rss_max_bytes": 16484126720
+        },
+        "317467": {
+          "start_ticks": 5285326,
+          "name": "UnrealEditor-Cm",
+          "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
+          "samples": 343,
+          "span_s": 342.2530891290007,
+          "mean_cpu_percent_one_core_100": 141.00384052869833,
+          "rss_max_bytes": 15259123712
+        },
+        "320088": {
+          "start_ticks": 5290810,
+          "name": "UnrealEditor",
+          "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
+          "samples": 121,
+          "span_s": 120.09304079299909,
+          "mean_cpu_percent_one_core_100": 182.4418788576237,
+          "rss_max_bytes": 6886400000
+        },
+        "321653": {
+          "start_ticks": 5292864,
+          "name": "UnrealEditor",
+          "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
+          "samples": 470,
+          "span_s": 469.3450426260024,
+          "mean_cpu_percent_one_core_100": 287.5624279418408,
+          "rss_max_bytes": 29055340544
+        },
+        "325773": {
+          "start_ticks": 5303020,
+          "name": "UnrealEditor",
+          "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
+          "samples": 408,
+          "span_s": 407.2950086600031,
+          "mean_cpu_percent_one_core_100": 228.89305790099417,
+          "rss_max_bytes": 21538680832
+        },
+        "329234": {
+          "start_ticks": 5312155,
+          "name": "UnrealEditor-Cm",
+          "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
+          "samples": 387,
+          "span_s": 386.2789288999993,
+          "mean_cpu_percent_one_core_100": 157.19728791036346,
+          "rss_max_bytes": 15658532864
+        },
+        "334074": {
+          "start_ticks": 5324055,
+          "name": "UnrealEditor",
+          "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
+          "samples": 302,
+          "span_s": 301.2179931960054,
+          "mean_cpu_percent_one_core_100": 234.76685190577058,
+          "rss_max_bytes": 25351557120
+        },
+        "338941": {
+          "start_ticks": 5340080,
+          "name": "UnrealEditor",
+          "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
+          "samples": 142,
+          "span_s": 141.10399714600499,
+          "mean_cpu_percent_one_core_100": 308.8573029926664,
+          "rss_max_bytes": 28762038272
+        },
+        "341924": {
+          "start_ticks": 5344018,
+          "name": "UnrealEditor",
+          "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
+          "samples": 103,
+          "span_s": 102.0747624200012,
+          "mean_cpu_percent_one_core_100": 244.7519779395016,
+          "rss_max_bytes": 12725026816
+        },
+        "344939": {
+          "start_ticks": 5349365,
+          "name": "UnrealEditor-Cm",
+          "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
+          "samples": 27,
+          "span_s": 26.01818635199743,
+          "mean_cpu_percent_one_core_100": 121.18446525608586,
+          "rss_max_bytes": 3571269632
+        },
+        "346803": {
+          "start_ticks": 5350936,
+          "name": "UnrealEditor-Cm",
+          "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
+          "samples": 33,
+          "span_s": 32.02379622000444,
+          "mean_cpu_percent_one_core_100": 134.86845751604028,
+          "rss_max_bytes": 5973303296
+        },
+        "348648": {
+          "start_ticks": 5352177,
+          "name": "UnrealEditor",
+          "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
+          "samples": 21,
+          "span_s": 20.015376818999357,
+          "mean_cpu_percent_one_core_100": 129.50043476271577,
+          "rss_max_bytes": 2934775808
         }
       },
-      "gpu": {
-        "load_percent": {
-          "count": 38,
-          "mean": 96.94736842105263,
-          "p50": 97.0,
-          "p95": 97.0,
-          "max": 97.0
+      "native": {
+        "coupling": {
+          "sampled_frame_timings_ms": {
+            "frameMs": {
+              "count": 752,
+              "min": 100.00009834766388,
+              "p50": 100.00032931566238,
+              "p95": 100.57980678975582,
+              "max": 232.64077305793762,
+              "mean": 100.28752696482425
+            },
+            "gameMs": {
+              "count": 752,
+              "min": 1.0160000324249268,
+              "p50": 3.3475000858306885,
+              "p95": 8.3360996723175,
+              "max": 16.19300079345703,
+              "mean": 3.9586515946591154
+            },
+            "renderMs": {
+              "count": 752,
+              "min": 3.76200008392334,
+              "p50": 10.505499839782715,
+              "p95": 19.572599506378165,
+              "max": 33.909000396728516,
+              "mean": 10.813273933339627
+            },
+            "gpuMs": {
+              "count": 752,
+              "min": 3.6410000324249268,
+              "p50": 20.250499725341797,
+              "p95": 30.79349956512451,
+              "max": 39.77199935913086,
+              "mean": 18.475162241687165
+            }
+          },
+          "telemetry_age_s": {
+            "count": 752,
+            "min": 0.001688,
+            "p50": 0.2885265,
+            "p95": 0.48174835,
+            "max": 0.506185,
+            "mean": 0.2717481263297872
+          }
         },
-        "memory_activity_percent": {
-          "count": 38,
-          "mean": 15.789473684210526,
-          "p50": 16.0,
-          "p95": 16.0,
-          "max": 16.0
+        "live": {
+          "sampled_frame_timings_ms": {
+            "frameMs": {
+              "count": 752,
+              "min": 16.666753217577934,
+              "p50": 16.667046584188938,
+              "p95": 22.751045227050767,
+              "max": 400.0000059604645,
+              "mean": 18.180154699911462
+            },
+            "gameMs": {
+              "count": 752,
+              "min": 1.0709999799728394,
+              "p50": 2.2009999752044678,
+              "p95": 6.590000152587891,
+              "max": 14.91100025177002,
+              "mean": 2.818022612086002
+            },
+            "renderMs": {
+              "count": 752,
+              "min": 2.996000051498413,
+              "p50": 7.950000047683716,
+              "p95": 16.112499809265135,
+              "max": 407.2030029296875,
+              "mean": 8.821812488614245
+            },
+            "gpuMs": {
+              "count": 752,
+              "min": 8.942999839782715,
+              "p50": 9.986000061035156,
+              "p95": 21.145599937438963,
+              "max": 39.553001403808594,
+              "mean": 12.221930855132165
+            }
+          },
+          "telemetry_age_s": {
+            "count": 752,
+            "min": 0.002064,
+            "p50": 0.26588999999999996,
+            "p95": 0.46885625,
+            "max": 0.510912,
+            "mean": 0.25531553457446804
+          }
+        }
+      },
+      "gpus": {
+        "GPU-2367bf48-9a27-f54c-8234-95933828e5f7": {
+          "utilization_percent": {
+            "count": 752,
+            "min": 11.0,
+            "p50": 70.0,
+            "p95": 95.0,
+            "max": 98.0,
+            "mean": 72.44946808510639
+          },
+          "memory_utilization_percent": {
+            "count": 752,
+            "min": 5.0,
+            "p50": 17.0,
+            "p95": 19.0,
+            "max": 22.0,
+            "mean": 16.511968085106382
+          },
+          "memory_used_mib": {
+            "count": 752,
+            "min": 13670.0,
+            "p50": 19646.0,
+            "p95": 25556.45,
+            "max": 28785.0,
+            "mean": 19850.441489361703
+          },
+          "power_w": {
+            "count": 752,
+            "min": 203.47,
+            "p50": 296.355,
+            "p95": 312.2245,
+            "max": 324.65,
+            "mean": 295.92700797872345
+          }
+        }
+      },
+      "editor_present_samples": 752,
+      "editor_native_frame_timing_available": false
+    },
+    "baseline_evidence": ".local/evidence/coupling/baseline-02.jsonl",
+    "comparison_evidence": ".local/evidence/coupling/gate-600-01/analysis/resource-comparison.json",
+    "comparison": {
+      "purpose": "Informational development resource comparison; isolated cutover performance remains unmeasured.",
+      "causal_isolation": false,
+      "interpretation": "The coupled world uses the recorded320x180 viewport and10FPS cap. Baseline and full-run windows contain different editor processes/workloads; their durations differ. Differences do not isolate coupling cost or prove unchanged editor performance. Native frame values are sampled telemetry, not exhaustive frame traces. CPU100% denotes one core.",
+      "baseline": {
+        "source": "/home/brook_avionuas/snr-coupling/.local/evidence/coupling/baseline-02.jsonl",
+        "sha256": "6b537262c13359fabe5937c993f82ee30dac0d1c287b4db8be3272c3cd6bc9ff",
+        "samples": 30,
+        "span_s": 29.02114925999922,
+        "first_utc": "2026-10-28T19:32:04.143930+00:00",
+        "last_utc": "2026-10-28T19:32:33.165356+00:00",
+        "processes": {
+          "73254": {
+            "start_ticks": 3390450,
+            "name": "ScenarioStudio",
+            "executable": "/home/brook_avionuas/snr/.local/unreal/releases/cooked-content-recovery/ScenarioStudio/Binaries/Linux/ScenarioStudio",
+            "samples": 30,
+            "span_s": 29.02114925999922,
+            "mean_cpu_percent_one_core_100": 221.5970133500036,
+            "rss_max_bytes": 10459561984
+          },
+          "275251": {
+            "start_ticks": 5203457,
+            "name": "UnrealEditor-Cm",
+            "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
+            "samples": 30,
+            "span_s": 29.02114925999922,
+            "mean_cpu_percent_one_core_100": 306.1215777641549,
+            "rss_max_bytes": 12642193408
+          },
+          "283770": {
+            "start_ticks": 5218666,
+            "name": "UnrealEditor-Cm",
+            "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
+            "samples": 16,
+            "span_s": 15.009423223003978,
+            "mean_cpu_percent_one_core_100": 163.6305381965542,
+            "rss_max_bytes": 5520494592
+          }
         },
-        "memory_mib": {
-          "count": 38,
-          "mean": 14377.894736842105,
-          "p50": 14380.0,
-          "p95": 14380.0,
-          "max": 14380.0
+        "native": {
+          "live": {
+            "sampled_frame_timings_ms": {
+              "frameMs": {
+                "count": 30,
+                "min": 16.666751354932785,
+                "mean": 16.688184688488644,
+                "p50": 16.66689943522215,
+                "p95": 16.667058877646923,
+                "max": 17.30550080537796
+              },
+              "gameMs": {
+                "count": 30,
+                "min": 0.9929999709129333,
+                "mean": 1.1478666802247366,
+                "p50": 1.121500015258789,
+                "p95": 1.4037500381469723,
+                "max": 1.5670000314712524
+              },
+              "renderMs": {
+                "count": 30,
+                "min": 2.2060000896453857,
+                "mean": 2.7076666593551635,
+                "p50": 2.60099995136261,
+                "p95": 3.3058000683784483,
+                "max": 3.3589999675750732
+              },
+              "gpuMs": {
+                "count": 30,
+                "min": 8.048999786376953,
+                "mean": 8.271033255259196,
+                "p50": 8.305000305175781,
+                "p95": 8.343099927902221,
+                "max": 8.348999977111816
+              }
+            },
+            "telemetry_age_s": {
+              "count": 30,
+              "min": 0.276368,
+              "mean": 0.29391843333333334,
+              "p50": 0.2958425,
+              "p95": 0.3011591,
+              "max": 0.302517
+            }
+          }
         },
-        "power_watts": {
-          "count": 38,
-          "mean": 293.7536842105263,
-          "p50": 293.855,
-          "p95": 296.2455,
-          "max": 296.76
+        "gpus": {
+          "GPU-2367bf48-9a27-f54c-8234-95933828e5f7": {
+            "utilization_percent": {
+              "count": 30,
+              "min": 47.0,
+              "mean": 49.1,
+              "p50": 49.0,
+              "p95": 50.0,
+              "max": 53.0
+            },
+            "memory_utilization_percent": {
+              "count": 30,
+              "min": 12.0,
+              "mean": 12.6,
+              "p50": 13.0,
+              "p95": 13.0,
+              "max": 14.0
+            },
+            "memory_used_mib": {
+              "count": 30,
+              "min": 7831.0,
+              "mean": 7831.0,
+              "p50": 7831.0,
+              "p95": 7831.0,
+              "max": 7831.0
+            },
+            "power_w": {
+              "count": 30,
+              "min": 262.81,
+              "mean": 280.66133333333335,
+              "p50": 279.405,
+              "p95": 295.3895,
+              "max": 297.48
+            }
+          }
+        },
+        "editor_present_samples": 30,
+        "editor_native_frame_timing_available": false
+      },
+      "full_minus_baseline": {
+        "live_frame_timings_ms": {
+          "frameMs": {
+            "mean": 1.4919700114228185,
+            "p50": 0.0001471489667892456,
+            "p95": 6.083986349403844,
+            "max": 382.6945051550865
+          },
+          "gameMs": {
+            "mean": 1.6701559318612653,
+            "p50": 1.0794999599456787,
+            "p95": 5.186250114440918,
+            "max": 13.344000220298767
+          },
+          "renderMs": {
+            "mean": 6.114145829259082,
+            "p50": 5.349000096321106,
+            "p95": 12.806699740886685,
+            "max": 403.8440029621124
+          },
+          "gpuMs": {
+            "mean": 3.9508975998729685,
+            "p50": 1.680999755859375,
+            "p95": 12.802500009536741,
+            "max": 31.204001426696777
+          }
+        },
+        "same_process_mean_cpu_percentage_points": {
+          "73254": 27.517264187929186
+        },
+        "gpu_mean_difference": {
+          "GPU-2367bf48-9a27-f54c-8234-95933828e5f7": {
+            "utilization_percent": 23.349468085106388,
+            "memory_utilization_percent": 3.9119680851063823,
+            "memory_used_mib": 12019.441489361703,
+            "power_w": 15.265674645390106
+          }
         }
       }
+    },
+    "profile": {
+      "viewport_pixels": [320, 180],
+      "frame_cap_fps": 10,
+      "container_cpu_limit": 4,
+      "PixelStreaming": false
+    },
+    "limitations": [
+      "Coexistence is informational during development per approved task scope; isolated performance remains for final cutover.",
+      "Editor CPU is sampled when present; editor frame time is unavailable.",
+      "Host GPU utilization includes other workloads; native frame/GPU timings are sampled telemetry, not exhaustive frame traces."
+    ]
+  },
+  "prior_experiments": {
+    "accepted_blocker_report": ".local/evidence/coupling/before-resume-measurements.json",
+    "rate100_before_GPS_fix": {
+      "report": ".local/evidence/coupling/rate-100-01/flight/report.json",
+      "failure": "GPS timing prearm rejection; shutdown acknowledgement timeout required explicit owned-container kill.",
+      "shutdown": ".local/evidence/coupling/rate-100-01/shutdown-failure.json"
+    },
+    "rate100_after_GPS_fix": {
+      "summary": ".local/evidence/coupling/rate-100-02/analysis/summary.json",
+      "whole_flight_pose": ".local/evidence/coupling/rate-100-02/whole-flight-pose-audit.json",
+      "fault_audit": ".local/evidence/coupling/rate-100-02/fault-audit.json",
+      "tracking": ".local/evidence/coupling/rate-100-02/analysis/controller-tracking.json",
+      "wrapper_assertion_correction": ".local/evidence/coupling/rate-100-02/shutdown-interpretation.json"
     }
   },
-  "runtime_limitations": [
-    "Editor processes were absent from baseline and present during diagnostic; these samples do not isolate coupling-only cost.",
-    "Editor frame timing was not available; unchanged editor performance is unproven.",
-    "Native timings are sampled telemetry, not a complete engine frame trace.",
-    "Live frame and GPU times increased; unchanged live performance gate failed."
-  ],
-  "builds": {
-    "flight_diagnostic_binary_sha256": "dba997f0698e4d914105f545954cd98e7bb2296d07606aeeb8535a84ec3babeb",
-    "after_liveness_fix": {
-      "completed_utc": "2026-10-28T18:58:03.930899+00:00",
-      "revision": "fb773567896014da007bca58358704d4a0d8516f",
-      "binary": "/home/brook_avionuas/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
-      "sha256": "56c6e3575984725974f0ab82ee1a30dcfcab0bb2eedc0289b7d67bcfd9166878",
-      "bytes": 5651744,
-      "build_command": "PYTHONDONTWRITEBYTECODE=1 python modules/waf/waf-light copter -j4 --no-submodule-update",
-      "build_exit_code": 0,
-      "python": "3.10.12",
-      "compiler": "g++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0",
-      "patches_and_builder": {
-        "mission_planner/gcs/sitl-airsim-liveness.patch": "629b30d8274d9fa606054ff40eb6bfd730f36c5446620ab624f2e3b3ca838d1a",
-        "mission_planner/gcs/sitl-loopback.patch": "848cc7063171d1b37bf5ab4defc552177449b33f2c3846ff2082fd047dc94358",
-        "mission_planner/gcs/build-sitl.sh": "7f34919d9472abf85c332a231786bc1f4ae6ee71bc8107292efa2c54e5d1b87b"
-      },
-      "api_source_verification": {
-        "socket_recv": "libraries/AP_HAL/utility/Socket.cpp:347 passes timeout_ms to select via pollin; returns -1 with EWOULDBLOCK on timeout or interrupted select",
-        "previous_loop": "libraries/SITL/SIM_AirSim.cpp:269-286 repeated 100ms receives indefinitely and resent servos after >1000ms",
-        "termination": "libraries/AP_HAL_SITL/HAL_SITL_Class.cpp:176-189 sets Scheduler::_should_exit on SIGTERM, consumed only at main loop line288",
-        "panic": "libraries/AP_HAL_SITL/system.cpp:36-58 spins forever unless SITL_PANIC_EXIT is set; this patch uses stderr and exit(1) directly"
-      },
-      "checks": {
-        "patch_apply_fuzz_zero": true,
-        "reverse_dry_run": true,
-        "bash_syntax": true,
-        "git_diff_whitespace": true
-      },
-      "runtime_verified": false,
-      "processes_started_for_runtime_test": 0,
-      "limitations": [
-        "No aircraft process or Unreal instance started for this build; timeout and SIGTERM behavior require a dedicated runtime acceptance test."
-      ]
-    }
+  "validation_extraction": {
+    "parity": ".local/evidence/coupling/validation/parity-final.json",
+    "full_path_check": ".local/evidence/coupling/validation/gate-measured-home-plan.json",
+    "behavior_changed": false
   },
-  "missing_sensor_test": {
-    "test": "airsim_sensor_timeout_without_unreal",
-    "returncode": 1,
-    "elapsed_s": 1.0045099339986336,
-    "stderr": "No sensor message: AirSim receive failed on port 9203 (timeout=1000 ms, bytes=-1, errno=11)\n",
-    "arguments": [
-      "/home/brook_avionuas/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
-      "--model",
-      "airsim-copter",
-      "--instance",
-      "20",
-      "--sysid",
-      "1",
-      "--home",
-      "37.869096729843584,-119.393449415667,2632.73,0",
-      "--sim-address",
-      "127.0.0.1",
-      "--rc-in-port",
-      "5701",
-      "--serial0",
-      "none",
-      "--serial1",
-      "udpclient:127.0.0.1:14620",
-      "--serial2",
-      "none",
-      "--defaults",
-      "/home/brook_avionuas/snr-coupling/.local/vendor/ardupilot/Tools/autotest/default_params/copter.parm,/home/brook_avionuas/snr-coupling/.local/vendor/ardupilot/Tools/autotest/default_params/airsim-quadX.parm,/home/brook_avionuas/snr/.local/evidence/coupling/timeout-01/safety.parm"
-    ],
-    "expected_exit": 1,
-    "passed": true
+  "checks": {
+    "npm_test": ".local/evidence/coupling/checks-02/npm-test.log",
+    "typecheck": ".local/evidence/coupling/checks-02/typecheck.log",
+    "format": ".local/evidence/coupling/checks-03/format.log",
+    "ruff_check": ".local/evidence/coupling/checks-03/ruff.log",
+    "ruff_format": ".local/evidence/coupling/checks-03/ruff-format.log",
+    "unittest": ".local/evidence/coupling/checks-03/unittest.log"
   },
-  "unreal": {
-    "container_name": "snr-unreal-coupling",
-    "image_digest": "sha256:d737ab3d1825f65286633211fbadc3c435d265b19d5d5ba3d39228544d310f78",
-    "release": "/home/brook_avionuas/snr/.local/unreal/releases/cooked-content-recovery",
-    "release_mounted_read_only": true,
-    "cpu_limit": 4,
-    "pixel_streaming": false,
-    "status": "stopped",
-    "plugin_patch_applied_to_package": false
-  },
+  "cleanup_evidence": ".local/evidence/coupling/gate-600-01/cleanup.json",
+  "installed_services_modified": false,
+  "fal_runners_started": 0,
+  "metadata_contract_changed": false,
   "versions": {
     "cosysairsim": "3.5.0",
     "pymavlink": "2.4.50",
@@ -839,34 +2163,24 @@
     "websockets": "15.0.1",
     "ruff": "0.17.3"
   },
-  "blockers": [
-    "Packaged Cosys uses spherical spawn geodesy and wrong vertical frame in Environment initialization. Prepared airsim-geodesy.patch requires an isolated plugin/package build.",
-    "Cosys fixed physics step and official AirSim controller rate do not satisfy current ArduPilot prearm rate requirements. Controller/physics rate decision and full measured gate remain.",
-    "Live/editor resource coexistence is not accepted.",
-    "Coupled graceful shutdown requires a new complete runtime gate after liveness fix."
-  ],
-  "checks": {
-    "npm_test": ".local/evidence/coupling/setup/npm-test-final.log",
-    "typecheck": ".local/evidence/coupling/setup/typecheck-final.log",
-    "format": ".local/evidence/coupling/setup/format-check-final.log",
-    "ruff_check": ".local/evidence/coupling/setup/ruff-check-final.log",
-    "ruff_format": ".local/evidence/coupling/setup/ruff-format-final.log",
-    "unittest": ".local/evidence/coupling/setup/unittest-final.log"
-  },
-  "installed_services_modified": false,
-  "fal_runners_started": 0,
-  "metadata_contract_changed": false,
   "changed_files": [
     ".gitignore",
     "deploy/runtime.env.example",
     "mission_planner/gcs/README.md",
     "mission_planner/gcs/bench_sitl.py",
     "mission_planner/gcs/build-sitl.sh",
+    "mission_planner/gcs/coupling_gate.py",
     "mission_planner/gcs/fleet.py",
+    "mission_planner/gcs/service.py",
     "mission_planner/gcs/sitl-airsim-liveness.patch",
+    "mission_planner/gcs/sitl-gps-cadence.patch",
     "mission_planner/gcs/sitl-loopback.patch",
     "mission_planner/gcs/sitl.py",
+    "mission_planner/gcs/test_coupling_gate.py",
+    "mission_planner/gcs/test_service.py",
     "mission_planner/gcs/test_sitl.py",
+    "mission_planner/gcs/test_validation.py",
+    "mission_planner/gcs/validation.py",
     "mission_planner/measurements/cosys-coupling.json",
     "world/cosys/README.md",
     "world/cosys/airsim-geodesy.patch",
@@ -880,15 +2194,18 @@
     "world/unreal/scripts/runtime-launch.test.ts",
     "world/unreal/scripts/unreal-container.sh"
   ],
-  "source_patch_sha256": {
-    "world/cosys/airsim-geodesy.patch": "98569ba47d40840b85b8a31a8ff6c9b3b4403d4e2316c3bb609c10ba8817c63f",
-    "mission_planner/gcs/sitl-loopback.patch": "26e0c2e314ee7286a4bfdd99a52d2fb299828376c35ea89b00e5d480de197e88",
-    "mission_planner/gcs/sitl-airsim-liveness.patch": "629b30d8274d9fa606054ff40eb6bfd730f36c5446620ab624f2e3b3ca838d1a"
-  },
   "implementation_commits": [
+    "f05cf14ca00865c07617d66392251b6f2f8d10a9",
+    "a4fdac0125378551fe74803342b467800326641d",
+    "56e8c450e5f7bbdb9e78f3fbebb3bc92772ce81d",
+    "dbcbb7a3bad286803ccb189e7bcd299003c2e029",
+    "52853cf3c5edc7d42c19bac2740274b7fe122040",
+    "8343a79458d291226ca7e06eedbd56c46e3f55d4",
+    "b072a46462623d1f445b52905f307a450a3c1ea7",
+    "0172ccfc6854481b25fb7063e9fcd58848b42d67",
+    "1135fc41f3fb348343398e508e0d454593b6baa3",
     "419f5559c75b0cc8e746ed3ccead65a186d6a97a",
     "22ccdb43917b5c539b25f94c07e91a51e2b43d2d",
     "f1949b0d2b855b791c1edc0df990dfc85fe3b43c"
-  ],
-  "cleanup_evidence": ".local/evidence/coupling/setup/cleanup.json"
+  ]
 }
