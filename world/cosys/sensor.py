@@ -33,20 +33,26 @@ class GroundTrack:
     def __init__(self):
         self.previous = None
         self.distance = 0.0
-        self.total = 0.0
+        self.auto_total = 0.0
+        self.physical_previous = None
+        self.physical_total = 0.0
 
     def update(self, state):
+        current = (state["north_m"], state["east_m"])
+        assert all(math.isfinite(value) for value in current)
+        if self.physical_previous is not None:
+            self.physical_total += math.dist(current, self.physical_previous)
+        self.physical_previous = current
         if state["mode"] != "AUTO" or not state["armed"]:
             self.previous = None
             return False
-        current = (state["north_m"], state["east_m"])
         if self.previous is not None:
             delta = math.dist(current, self.previous)
             assert math.isfinite(delta) and delta < SPACING_M, (
                 "Ground-track sample gap is too large"
             )
             self.distance += delta
-            self.total += delta
+            self.auto_total += delta
         self.previous = current
         if self.distance < SPACING_M:
             return False
@@ -74,13 +80,15 @@ class MissionSensor:
                 task.result()
                 assert self.stopping.is_set(), "Sensor task stopped unexpectedly"
 
-    async def _capture(self, name, index, track_m, state, previous):
+    async def _capture(self, name, index, auto_track_m, physical_track_m, state, previous):
         start = time.perf_counter()
         frame, preview = await self.capture.capture(name, f"frame-{index:06d}")
         assert (frame["width"], frame["height"]) == (3840, 2160)
         position = frame["cameraPositionWorldM"]
         acquired_track = (
-            capture_ground_track(frame, state, track_m) if frame["validation"]["accepted"] else None
+            capture_ground_track(frame, state, physical_track_m)
+            if frame["validation"]["accepted"]
+            else None
         )
         spacing = (
             None
@@ -88,7 +96,8 @@ class MissionSensor:
             else math.dist([position[k] for k in "xy"], [previous["position"][k] for k in "xy"])
         )
         frame["captureTrigger"] = {
-            "autoGroundTrackM": track_m,
+            "autoGroundTrackM": auto_track_m,
+            "physicalGroundTrackM": physical_track_m,
             "requestedSpacingM": SPACING_M,
             "missionSequence": state["mission_current"],
             "mavlinkReceivedAtMs": state["received_at_ms"],
@@ -138,7 +147,9 @@ class MissionSensor:
                     )
                     index += 1
                     pending = asyncio.create_task(
-                        self._capture(name, index, track.total, state, previous)
+                        self._capture(
+                            name, index, track.auto_total, track.physical_total, state, previous
+                        )
                     )
                 await asyncio.sleep(0.05)
         finally:

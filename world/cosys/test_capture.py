@@ -116,7 +116,7 @@ class GroundTrackTests(unittest.TestCase):
         self.assertFalse(track.update(self.sample(0, 0)))
         self.assertFalse(track.update(self.sample(6, 0)))
         self.assertTrue(track.update(self.sample(6, 6)))
-        self.assertEqual(track.total, 12)
+        self.assertEqual(track.auto_total, 12)
         self.assertFalse(track.update(self.sample(6, 6)))
 
     def test_brake_travel_is_excluded_when_auto_resumes(self):
@@ -126,7 +126,51 @@ class GroundTrackTests(unittest.TestCase):
         self.assertFalse(track.update(self.sample(30, 0, "BRAKE")))
         self.assertFalse(track.update(self.sample(31, 0)))
         self.assertTrue(track.update(self.sample(36, 0)))
-        self.assertEqual(track.total, 12)
+        self.assertEqual(track.auto_total, 12)
+
+    def test_image_during_brake_and_resumed_image_share_physical_track(self):
+        track = GroundTrack()
+
+        def update(mode, north, ms):
+            state = {**self.sample(north, 0, mode), "received_at_ms": ms}
+            return state, track.update(state)
+
+        def record(timestamp, rows):
+            return {
+                "validation": {"captureUnixNs": timestamp},
+                "mavlinkSamples": [
+                    {
+                        "receivedAtUnixNs": ms * 1_000_000,
+                        "positionWorldM": {"x": north, "y": 0},
+                        "mode": mode,
+                    }
+                    for ms, north, mode in rows
+                ],
+            }
+
+        update("AUTO", 0, 0)
+        update("AUTO", 6, 500)
+        trigger, fired = update("AUTO", 12, 1000)
+        self.assertTrue(fired)
+        at_trigger = track.physical_total
+        self.assertFalse(update("BRAKE", 15, 2000)[1])
+        first = capture_ground_track(
+            record(2_000_000_000, [(1000, 12, "AUTO"), (2000, 15, "BRAKE")]),
+            trigger,
+            at_trigger,
+        )
+        self.assertEqual(first, 15)
+        self.assertFalse(update("BRAKE", 17, 2500)[1])
+        self.assertFalse(update("AUTO", 17, 3000)[1])
+        self.assertFalse(update("AUTO", 23, 3500)[1])
+        trigger, fired = update("AUTO", 29, 4000)
+        self.assertTrue(fired)
+        self.assertEqual(track.auto_total, 24)
+        self.assertEqual(track.physical_total, 29)
+        second = capture_ground_track(
+            record(4_001_000_000, [(4010, 29, "AUTO")]), trigger, track.physical_total
+        )
+        self.assertEqual(second - first, 14)
 
     def test_large_sample_gap_fails_instead_of_skipping_frames(self):
         track = GroundTrack()
