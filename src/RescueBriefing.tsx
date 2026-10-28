@@ -9,7 +9,6 @@ export default function RescueBriefing({
   disabled,
   editPlacement,
   launch,
-  launched,
 }: {
   briefing: Briefing;
   setBriefing: (briefing: Briefing) => void;
@@ -18,7 +17,6 @@ export default function RescueBriefing({
   disabled: boolean;
   editPlacement: () => void;
   launch: () => void;
-  launched: boolean;
 }) {
   return (
     <article className="rescue-briefing">
@@ -101,11 +99,6 @@ export default function RescueBriefing({
         Launch Search &amp; Rescue Mission
         <ArrowRight size={18} />
       </button>
-      {launched && (
-        <p role="status" className="launch-notice">
-          Your rescue case is ready. Mission execution will be connected in the next phase.
-        </p>
-      )}
       <footer className="briefing-footer">
         <button className="creator-back" disabled={disabled} onClick={editPlacement}>
           <ArrowLeft size={14} />

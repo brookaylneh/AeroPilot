@@ -36,6 +36,10 @@
   origin. Reuse existing transforms, flight controls, and capture helpers.
 - Evaluator truth is private and used only for explicitly requested evaluation.
 
+Phase 3A: `mission/fleet.py`, `geodesy.py`, `service.py`, and `tools.py` own SITL,
+MAVLink, the mission WebSocket and Wonder tools. `src/Mission*` implements `/mission`.
+`docs/mission-tools.md` is the catalogue; `docs/gcs-phase3a.md` records measured acceptance.
+
 # Running
 
 - Install `mission/requirements.txt` in `.venv-cosys`; deployment requirements
@@ -74,3 +78,8 @@
 - Run `.venv-cosys/bin/ruff check` and `.venv-cosys/bin/ruff format --check`.
 - Record sources, exact dependency versions, image digest, and runner usage.
 - Scale task-owned fal runners to zero after experiments, including failures.
+
+Phase 3A: work in `/home/brook_avionuas/snr-gcs`, build SITL with at most four jobs,
+and follow `docs/gcs-sitl.md` and `docs/gcs-phase3a.md`. Read saved briefings through
+`SNR_SCENARIO_DATA_DIR=/srv/snr/data/unreal-scenarios`; never access calibration data.
+The mission service binds `127.0.0.1:8765`; the web server proxies `/api/mission`.
