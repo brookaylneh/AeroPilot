@@ -219,6 +219,38 @@ allowed dimensions, including full sensor frames, and always closes its browser.
 The child and senior labels are visual categories; exact ages are unverified. Animation,
 outdoor materials and detector performance require separate acceptance.
 
+### Clothing and revised selections
+
+Rocketbox clothing is part of the body mesh, not a modular wardrobe preset. Texture/color edits
+are simpler than changing garment geometry. The creators describe a shared neck boundary for
+same-gender models and compatible texture layouts, which support head/body combinations.
+A body swap still needs neck alignment, skin matching and deformation checks; it is not an
+already verified outfit selector. Prefer existing casual/outdoor clothing when selecting stock
+models. Keep age and body-shape gaps explicit instead of replacing them with clothing claims.
+See the creators’ [model structure and limitations](https://www.frontiersin.org/journals/virtual-reality/articles/10.3389/frvir.2020.561558/full#h5).
+
+`rocketbox-outdoor.lock.json` pins the replacement adult in a hooded jacket, cargo trousers and
+trainers. `rocketbox-selection.json` explicitly selects completed captures from asset manifests;
+it excludes rejected Child 3 and the previous Adult 2. The missing child slot remains unresolved.
+The library contains only four stock child models; excluding one leaves three distinct bases.
+A new appearance variant or another source is needed to restore four children.
+
+Assemble a selection without rerendering unchanged characters, then publish it:
+
+```sh
+.venv-cosys/bin/python -m world.unreal.characters.select_rocketbox \
+  world/unreal/characters/rocketbox-selection.json \
+  .local/evidence/characters/<new-run>/selected
+.venv-cosys/bin/python -m world.unreal.characters.review_rocketbox \
+  .local/evidence/characters/<new-run>/selected/review-manifest.json \
+  .local/evidence/characters/<new-run>/selected/render \
+  .local/evidence/characters/<new-run>/review character-rocketbox-outdoor
+```
+
+The selector requires matching renderer profiles, fixed exposure and white balance. It records
+source/output hashes for every copied preview and capture, preserves the source assets, and
+fails if the destination exists. Its derived manifest is for publication, not asset acquisition.
+
 ## Quixel preset selection
 
 `quixel-presets.json` maps the twelve roster roles to explicit Epic catalog preset IDs and a
