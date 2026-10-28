@@ -15,8 +15,8 @@
 }
 .gcs-sensor-caption {
   position: absolute;
-  bottom: 28px;
-  left: 28px;
+  bottom: calc(var(--gcs-fleet-height) + 60px);
+  left: 16px;
   display: flex;
   flex-direction: column;
   align-items: flex-start;

@@ -16,6 +16,7 @@
   --gcs-warn: #edbd73;
   --gcs-bad: #f09691;
   --gcs-mono: 'IBM Plex Mono', monospace;
+  --gcs-fleet-height: 168px;
   height: 100dvh;
   min-height: 640px;
   overflow: hidden;
@@ -53,36 +54,27 @@
   font-weight: 600;
 }
 .gcs-header {
-  height: 88px;
+  height: 24px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 28px;
-  padding: 0 28px;
+  gap: 16px;
+  padding: 0 12px;
   border-bottom: 1px solid var(--gcs-line);
   background: #151d21;
 }
 .gcs-brand {
   display: flex;
-  gap: 12px;
+  gap: 6px;
   align-items: center;
   color: #d1e4dd;
-  padding-right: 24px;
+  padding-right: 16px;
   border-right: 1px solid var(--gcs-line);
-}
-.gcs-brand div {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  white-space: nowrap;
 }
 .gcs-brand strong {
-  font-size: 13px;
-  letter-spacing: 2px;
-}
-.gcs-brand span {
-  font-size: 9px;
-  letter-spacing: 1.8px;
-  color: var(--gcs-muted);
+  font-size: 11px;
+  font-weight: 500;
 }
 .gcs-case {
   flex: 1;
@@ -91,39 +83,34 @@
 .gcs-case h1 {
   font-family: Manrope, sans-serif;
   font-weight: 600;
-  font-size: 17px;
-  margin-top: 4px;
+  font-size: 11px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .gcs-clock {
   display: flex;
-  flex-direction: column;
-  gap: 4px;
+  align-items: center;
 }
 .gcs-clock strong {
   font-family: var(--gcs-mono);
-  font-size: 21px;
+  font-size: 11px;
   font-weight: 400;
-  letter-spacing: 1px;
 }
 .gcs-autonomy {
   display: flex;
   background: #0e1518;
-  padding: 4px;
-  border: 1px solid var(--gcs-line);
-  border-radius: 6px;
+  border-inline: 1px solid var(--gcs-line);
 }
 .gcs-autonomy button {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 8px 12px;
-  border-radius: 3px;
+  gap: 4px;
+  height: 23px;
+  padding: 0 8px;
   color: var(--gcs-muted);
-  font-size: 12px;
+  font-size: 10px;
 }
 .gcs-autonomy button[aria-pressed='true'] {
   background: #31443f;
@@ -134,6 +121,7 @@
   gap: 6px;
   align-items: center;
   color: var(--gcs-muted);
+  font-size: 10px;
 }
 .gcs-link-summary strong {
   font-family: var(--gcs-mono);
@@ -145,11 +133,10 @@
 .gcs-alert-button {
   display: flex;
   align-items: center;
-  gap: 8px;
-  height: 36px;
-  padding: 8px 12px;
-  border: 1px solid var(--gcs-line);
-  border-radius: 4px;
+  gap: 4px;
+  height: 23px;
+  padding: 0 8px;
+  font-size: 10px;
 }
 .gcs-alert-button.has-alerts {
   color: var(--gcs-warn);
@@ -169,20 +156,20 @@
   flex-direction: column;
 }
 .gcs-tabs {
-  height: 52px;
+  height: 28px;
   flex-shrink: 0;
   display: flex;
   align-items: stretch;
-  gap: 4px;
-  padding: 0 20px;
+  padding: 0 8px;
   background: #151d21;
   border-bottom: 1px solid var(--gcs-line);
 }
 .gcs-tabs button {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
-  padding: 0 20px;
+  padding: 0 12px;
+  font-size: 11px;
   color: var(--gcs-muted);
   border-bottom: 2px solid transparent;
 }
@@ -234,18 +221,15 @@
 }
 .gcs-inset {
   position: absolute;
-  width: 272px;
-  height: 188px;
-  right: 24px;
-  bottom: 60px;
+  width: 232px;
+  height: 156px;
+  right: 16px;
+  top: 116px;
   border: 1px solid #66756e;
   border-radius: 5px;
   overflow: hidden;
   z-index: 2;
   box-shadow: 0 4px 16px #0005;
-}
-.gcs-inset-map {
-  bottom: 100px;
 }
 .gcs-inset-swap {
   position: absolute;
@@ -267,7 +251,7 @@
 }
 .gcs-stage-key {
   position: absolute;
-  top: 24px;
+  top: 16px;
   left: 50%;
   transform: translateX(-50%);
   display: flex;
@@ -327,8 +311,8 @@
 }
 .gcs-map-caption {
   position: absolute;
-  top: 24px;
-  left: 24px;
+  top: 16px;
+  left: 16px;
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -348,8 +332,8 @@
 }
 .gcs-map-tools {
   position: absolute;
-  left: 24px;
-  top: 116px;
+  left: 16px;
+  top: 108px;
   display: flex;
   flex-direction: column;
   background: #18231f;
@@ -368,8 +352,8 @@
 }
 .gcs-north {
   position: absolute;
-  top: 24px;
-  right: 28px;
+  top: 16px;
+  right: 20px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -386,9 +370,9 @@
 }
 .gcs-map-bottom {
   position: absolute;
-  left: 24px;
-  right: 24px;
-  bottom: 20px;
+  left: 16px;
+  right: 16px;
+  bottom: 12px;
   display: flex;
   align-items: flex-end;
   gap: 24px;
@@ -415,12 +399,9 @@
 }
 .gcs-map-waiting {
   position: absolute;
-  bottom: 76px;
-  left: 24px;
-  padding: 10px 12px;
-  background: #1d2a23;
-  border: 1px solid #52645a;
-  border-radius: 4px;
+  bottom: calc(var(--gcs-fleet-height) + 60px);
+  left: 16px;
+  text-shadow: 0 1px 3px #07120d;
   display: flex;
   gap: 8px;
   align-items: center;
@@ -497,9 +478,9 @@
 }
 .gcs-video-top {
   position: absolute;
-  top: 24px;
-  left: 28px;
-  right: 28px;
+  top: 16px;
+  left: 16px;
+  right: 16px;
   display: flex;
   justify-content: space-between;
   font: 11px var(--gcs-mono);
@@ -566,18 +547,40 @@
   font-size: 8px;
 }
 .gcs-fleet {
-  padding: 16px 20px 16px;
-  background: #141b1f;
-  border-top: 1px solid var(--gcs-line);
-  flex-shrink: 0;
+  position: absolute;
+  inset: auto 16px 44px;
+  z-index: 3;
+  pointer-events: none;
+  text-shadow: 0 1px 2px #07120d;
+}
+.gcs-stage:has(.gcs-fleet:not([open])) {
+  --gcs-fleet-height: 28px;
 }
 .gcs-fleet-heading {
   display: flex;
   gap: 12px;
   align-items: center;
-  margin-bottom: 12px;
-  font-size: 11px;
-  color: var(--gcs-muted);
+  min-height: 24px;
+  margin-bottom: 4px;
+  font-size: 10px;
+  color: #c9d5d0;
+  list-style: none;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.gcs-fleet-heading::-webkit-details-marker {
+  display: none;
+}
+.gcs-fleet-toggle {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.gcs-fleet[open] .gcs-fleet-toggle svg {
+  transform: rotate(90deg);
+}
+.gcs-fleet-heading .gcs-eyebrow {
+  color: inherit;
 }
 .gcs-fleet-note {
   margin-left: auto;
@@ -585,13 +588,15 @@
 .gcs-fleet-cards {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
+  gap: 8px;
 }
 .gcs-vehicle {
-  background: #1a2328;
-  border: 1px solid var(--gcs-line);
-  border-radius: 5px;
-  padding: 12px;
+  --gcs-muted: #c0cdca;
+  background: #101c1a99;
+  border: 1px solid #a6bbb64d;
+  border-radius: 4px;
+  padding: 8px;
+  pointer-events: auto;
 }
 .gcs-vehicle.selected {
   border-color: var(--drone);
@@ -607,15 +612,15 @@
   align-items: center;
   gap: 6px;
   padding: 0;
-  color: var(--drone);
+  color: inherit;
 }
 .gcs-vehicle-name strong {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
 }
 .gcs-mode-pill {
-  padding: 3px 6px;
-  border: 1px solid #4a585d;
+  padding: 2px 4px;
+  border: 1px solid #8caaa066;
   border-radius: 3px;
   color: #c8d6d8;
   font: 9px var(--gcs-mono);
@@ -630,7 +635,7 @@
   gap: 8px;
   font-size: 10px;
   color: var(--gcs-muted);
-  margin-top: 8px;
+  margin-top: 4px;
 }
 .gcs-vehicle-state > span:last-child {
   display: flex;
@@ -640,13 +645,13 @@
 .gcs-telemetry {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
-  margin: 16px 0 12px;
+  margin: 8px 0 4px;
   gap: 4px;
 }
 .gcs-telemetry > div {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 .gcs-telemetry span {
   font-size: 9px;
@@ -654,12 +659,8 @@
   color: var(--gcs-muted);
 }
 .gcs-telemetry strong {
-  font: 17px var(--gcs-mono);
+  font: 14px var(--gcs-mono);
   white-space: nowrap;
-}
-.gcs-telemetry small {
-  color: var(--gcs-muted);
-  font-size: 10px;
 }
 .gcs-vehicle-link {
   display: flex;
@@ -688,12 +689,13 @@
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 4px;
-  border-top: 1px solid var(--gcs-line);
-  margin-top: 12px;
-  padding-top: 8px;
+  border-top: 1px solid #a6bbb64d;
+  margin-top: 4px;
+  padding-top: 4px;
 }
 .gcs-quick-actions button {
-  padding: 6px 2px;
+  padding: 0 2px;
+  height: 24px;
   display: flex;
   gap: 4px;
   align-items: center;
@@ -702,12 +704,12 @@
   border-radius: 3px;
 }
 .gcs-footer {
-  height: 32px;
+  height: 20px;
   flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 24px;
-  padding: 0 20px;
+  padding: 0 12px;
   font-size: 10px;
   color: var(--gcs-muted);
   border-top: 1px solid #2a353b;
@@ -732,29 +734,29 @@
 .gcs-agent-heading {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 24px;
+  gap: 8px;
+  padding: 12px 16px;
 }
 .gcs-agent-mark {
-  width: 40px;
-  height: 40px;
+  width: 28px;
+  height: 28px;
   border: 1px solid #556d65;
   color: #c0d8ce;
   background: #25352f;
-  border-radius: 7px;
+  border-radius: 4px;
   display: grid;
   place-items: center;
 }
 .gcs-agent-heading h2 {
   font-family: Manrope, sans-serif;
   font-weight: 600;
-  font-size: 15px;
+  font-size: 13px;
 }
 .gcs-agent-heading > div > span {
   color: var(--gcs-muted);
-  font-size: 11px;
+  font-size: 10px;
   display: block;
-  margin-top: 4px;
+  margin-top: 2px;
 }
 .gcs-agent-status {
   margin-left: auto;
@@ -1127,23 +1129,27 @@
   overflow: auto;
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 12px 24px;
+  gap: 8px;
+  padding: 8px 12px;
   border-bottom: 1px solid #98655c;
   background: #352824;
   color: #f3c4b8;
 }
 .gcs-error > svg {
-  margin-top: 2px;
   flex-shrink: 0;
 }
+.gcs-error > div {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
 .gcs-error strong {
-  font-size: 12px;
+  font-size: 11px;
 }
 .gcs-error p {
-  margin-top: 4px;
-  font-size: 12px;
-  line-height: 1.6;
+  font-size: 11px;
+  line-height: 1.5;
   overflow-wrap: anywhere;
 }
 .gcs-error button {
@@ -1276,59 +1282,19 @@
   clip-path: inset(50%);
 }
 @media (max-width: 1600px) {
-  .gcs-header {
-    height: 76px;
-    padding: 0 20px;
-    gap: 20px;
-  }
-  .gcs-brand {
-    padding-right: 20px;
-  }
   .gcs-body {
     grid-template-columns: minmax(0, 1fr) 380px;
-  }
-  .gcs-case h1 {
-    font-size: 15px;
   }
   .gcs-link-summary > span {
     display: none;
   }
-  .gcs-tabs {
-    padding: 0 12px;
-    height: 48px;
-  }
-  .gcs-tabs button {
-    padding: 0 12px;
-  }
-  .gcs-fleet {
-    padding: 12px;
-  }
-  .gcs-fleet-cards {
-    gap: 8px;
-  }
-  .gcs-vehicle {
-    padding: 10px;
-  }
   .gcs-quick-actions button {
-    flex-direction: column;
-    gap: 5px;
+    gap: 3px;
     font-size: 9px;
-  }
-  .gcs-telemetry strong {
-    font-size: 15px;
-  }
-  .gcs-telemetry small {
-    font-size: 9px;
-  }
-  .gcs-inset {
-    width: 232px;
-    height: 164px;
-    right: 20px;
   }
   .gcs-stage-key {
-    top: 24px;
     left: auto;
-    right: 80px;
+    right: 64px;
     transform: none;
     gap: 12px;
     font-size: 10px;
@@ -1340,9 +1306,6 @@
   .gcs-fence-key {
     max-width: 220px;
   }
-  .gcs-agent-heading {
-    padding: 20px;
-  }
   .gcs-conversation {
     padding: 20px;
   }
@@ -1351,7 +1314,7 @@
   .gcs-header {
     gap: 12px;
   }
-  .gcs-brand div {
+  .gcs-brand strong {
     display: none;
   }
   .gcs-body {
@@ -1360,35 +1323,19 @@
   .gcs-tabs button {
     padding: 0 10px;
   }
-  .gcs-tabs kbd {
+  .gcs-tabs kbd,
+  .gcs-stage-key,
+  .gcs-fence-key,
+  .gcs-quick-actions svg {
     display: none;
   }
-  .gcs-mode-pill {
-    font-size: 8px;
-  }
-  .gcs-vehicle-state {
-    flex-direction: column;
-  }
-  .gcs-telemetry {
-    grid-template-columns: 1fr 1fr;
-    row-gap: 8px;
-  }
-  .gcs-telemetry > div:last-child {
-    grid-column: 1 / -1;
-    flex-direction: row;
-    align-items: center;
-  }
-  .gcs-vehicle-link {
-    font-size: 8px;
-  }
-  .gcs-stage-key {
-    display: none;
-  }
-  .gcs-fence-key {
-    display: none;
-  }
+  .gcs-mode-pill,
+  .gcs-vehicle-link,
   .gcs-quick-actions button {
     font-size: 8px;
+  }
+  .gcs-telemetry strong {
+    font-size: 12px;
   }
 }
 

@@ -4,7 +4,7 @@
   top: 16px;
   left: 16px;
   width: 280px;
-  max-height: calc(100% - 100px);
+  max-height: calc(100% - var(--gcs-fleet-height) - 76px);
   background: #182126f2;
   border: 1px solid var(--gcs-line);
   border-radius: 8px;
@@ -192,7 +192,11 @@
 
 .gcs-main-map:has(.gcs-search-panel) .gcs-map-tools {
   left: auto;
-  right: 24px;
+  right: 260px;
+}
+
+.gcs-main-map:has(.gcs-search-panel) .gcs-map-caption {
+  left: 312px;
 }
 
 .gcs-search-world polygon,

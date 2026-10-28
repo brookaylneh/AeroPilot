@@ -50,7 +50,7 @@ export default function MissionMap({
 }) {
   const surface = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 1000, height: 700, inset });
-  const [view, setView] = useState<MapView>(wholeWorld);
+  const [viewState, setView] = useState<MapView | 'cover'>('cover');
   const [cursor, setCursor] = useState<{ north_m: number; east_m: number } | null>(null);
   const drag = useRef<{ x: number; y: number; view: MapView } | null>(null);
   const trails = useRef<Record<string, { north_m: number; east_m: number }[]>>({});
@@ -61,6 +61,8 @@ export default function MissionMap({
     maxY: (920 * size.width) / size.height,
   };
   const span = bounds.maxY - bounds.minY;
+  const coverView = mapView(0.5, 0.5, Math.max(span, bounds.maxX - bounds.minX) / (2 * extent));
+  const view = viewState === 'cover' ? coverView : viewState;
   const visibleWidth = span / view.zoom;
   const scale = mapScale(visibleWidth);
   const projection = (north_m: number, east_m: number) => {
@@ -111,16 +113,17 @@ export default function MissionMap({
     const wheel = (e: WheelEvent) => {
       e.preventDefault();
       const rect = el.getBoundingClientRect();
-      setView((v) =>
-        zoomMap(v, v.zoom * (e.deltaY < 0 ? 1.25 : 0.8), {
+      setView((current) => {
+        const v = current === 'cover' ? coverView : current;
+        return zoomMap(v, v.zoom * (e.deltaY < 0 ? 1.25 : 0.8), {
           u: (e.clientX - rect.left) / rect.width,
           v: (e.clientY - rect.top) / rect.height,
-        }),
-      );
+        });
+      });
     };
     el.addEventListener('wheel', wheel, { passive: false });
     return () => el.removeEventListener('wheel', wheel);
-  }, []);
+  }, [coverView.zoom]);
   const topLeft = projection(extent, -extent);
   const bottomRight = projection(-extent, extent);
   const active = vehicles.find((v) => v.id === selected);

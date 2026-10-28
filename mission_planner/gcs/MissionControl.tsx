@@ -1,11 +1,9 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import {
   Activity,
-  ArrowDownToLine,
   ArrowLeftRight,
   ArrowUp,
   ArrowUpRight,
-  Battery,
   Bell,
   Check,
   ChevronRight,
@@ -14,9 +12,6 @@ import {
   Download,
   Home,
   Map,
-  Navigation,
-  Pause,
-  Play,
   Radio,
   Route,
   Send,
@@ -24,6 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import MissionMap from './MissionMap';
+import FleetStrip from './FleetStrip';
 import SearchPanel from './SearchPanel';
 import SearchApproval from './SearchApproval';
 import RouteApproval from './RouteApproval';
@@ -31,7 +27,6 @@ import SensorFeed from './SensorFeed';
 import {
   droneColors,
   droneIds,
-  flightState,
   linkLost,
   routeArgumentsSchema,
   useMission,
@@ -135,7 +130,6 @@ export default function MissionControl() {
   const conversation = useRef<HTMLDivElement>(null);
   const connected = connection === 'connected';
   const vehicles = state ? state.vehicles : [];
-  const vehicle = vehicles.find((v) => v.id === selected);
   const live = vehicles.filter((v) => !linkLost(v, age, connected)).length;
   const missionAlerts = state ? state.mission.alerts : [];
   const lost = vehicles
@@ -193,18 +187,14 @@ export default function MissionControl() {
     <div className="gcs-app" data-connection={connection} data-state-age-s={age}>
       <header className="gcs-header">
         <a className="gcs-brand" href="/mission" aria-label="Mission control">
-          <Compass size={28} strokeWidth={1.5} />
-          <div>
-            <strong>Search &amp; Rescue</strong>
-            <span>MISSION CONTROL</span>
-          </div>
+          <Compass size={14} strokeWidth={1.5} />
+          <strong>Search &amp; Rescue</strong>
         </a>
         <div className="gcs-case">
-          <span className="gcs-eyebrow">SEARCH &amp; RESCUE</span>
           <h1>{state ? state.mission.case_name : 'Mission control'}</h1>
         </div>
         <div className="gcs-clock">
-          <span className="gcs-eyebrow">MISSION TIME</span>
+          <span className="gcs-sr-only">Mission time</span>
           <strong>{state ? clock(state.mission.elapsed_s + age) : '—:—:—'}</strong>
         </div>
         <div className="gcs-autonomy" role="group" aria-label="Autonomy mode">
@@ -215,13 +205,13 @@ export default function MissionControl() {
               aria-pressed={state ? state.mission.autonomy === mode : mode === 'Supervised'}
               onClick={() => send({ type: 'autonomy', mode })}
             >
-              {mode === 'Supervised' && <ShieldCheck size={14} />}
+              {mode === 'Supervised' && <ShieldCheck size={12} />}
               {mode}
             </button>
           ))}
         </div>
         <div className={`gcs-link-summary ${live === 4 ? 'healthy' : ''}`}>
-          <Radio size={16} />
+          <Radio size={12} />
           <strong>{live} / 4</strong>
           <span>linked</span>
         </div>
@@ -231,7 +221,7 @@ export default function MissionControl() {
           aria-expanded={alertsOpen}
           onClick={() => setAlertsOpen(!alertsOpen)}
         >
-          <Bell size={17} />
+          <Bell size={12} />
           <span>{alerts.length}</span>
         </button>
       </header>
@@ -400,115 +390,15 @@ export default function MissionControl() {
                 )}
               </section>
             )}
-          </section>
-          <section className="gcs-fleet" aria-label="Fleet controls">
-            <div className="gcs-fleet-heading">
-              <span className="gcs-eyebrow">FLEET</span>
-              <span>
-                {state
-                  ? `${vehicles.filter((v) => v.landed_state === 2).length} airborne`
-                  : 'Waiting for telemetry'}
-              </span>
-              <span className="gcs-fleet-note">ALT = above home</span>
-            </div>
-            <div className="gcs-fleet-cards">
-              {droneIds.map((id) => {
-                const v = vehicles.find((item) => item.id === id),
-                  isLost = v ? linkLost(v, age, connected) : true;
-                return (
-                  <article
-                    key={id}
-                    className={`gcs-vehicle ${selected === id ? 'selected' : ''} ${isLost ? 'link-lost' : ''}`}
-                    style={{ '--drone': droneColors[id] } as CSSProperties}
-                    data-drone-card={id}
-                    data-drone-id={id}
-                    data-mode={v ? v.mode : 'unknown'}
-                  >
-                    <header>
-                      <button className="gcs-vehicle-name" onClick={() => setSelected(id)}>
-                        <Navigation size={15} fill="currentColor" />
-                        <strong>{id}</strong>
-                      </button>
-                      <span className={`gcs-mode-pill ${isLost ? 'lost' : ''}`}>
-                        {v ? (isLost ? 'LINK LOST' : v.mode) : 'NO LINK'}
-                      </span>
-                    </header>
-                    <div className="gcs-vehicle-state">
-                      <span>
-                        {v ? `${flightState(v)} · ${v.armed ? 'Armed' : 'Disarmed'}` : 'Awaiting autopilot'}
-                      </span>
-                      <span>
-                        <Battery size={13} />
-                        {formatValue(v?.battery_percent, '%', 0)}
-                      </span>
-                    </div>
-                    <div className="gcs-telemetry">
-                      <div>
-                        <span>ALT</span>
-                        <strong>{formatValue(v?.altitude_above_home_m, 'm')}</strong>
-                      </div>
-                      <div>
-                        <span>SPEED</span>
-                        <strong>{formatValue(v?.ground_speed_mps, 'm/s')}</strong>
-                      </div>
-                      <div>
-                        <span>MISSION</span>
-                        <strong>
-                          {v
-                            ? `${v.mission_current === null ? '—' : v.mission_current} / ${v.mission_total}`
-                            : '—'}
-                        </strong>
-                      </div>
-                    </div>
-                    <div className="gcs-vehicle-link">
-                      <span>
-                        <i className={`gcs-status-dot ${!isLost ? 'healthy' : ''}`} />
-                        {v ? `${formatValue(v.heartbeat_age_s + age, 's')} link age` : 'No heartbeat'}
-                      </span>
-                      <span>{formatValue(v?.update_rate_hz, 'Hz')}</span>
-                    </div>
-                    <div className="gcs-quick-actions">
-                      <button
-                        aria-label={`Hold ${id}`}
-                        title="Hold · BRAKE"
-                        disabled={!enabled || isLost}
-                        onClick={() => tool('hold', id)}
-                      >
-                        <Pause size={13} />
-                        Hold
-                      </button>
-                      <button
-                        aria-label={`Resume ${id}`}
-                        title="Resume · AUTO"
-                        disabled={!enabled || isLost}
-                        onClick={() => tool('resume', id)}
-                      >
-                        <Play size={13} />
-                        Resume
-                      </button>
-                      <button
-                        aria-label={`Return ${id}`}
-                        title="Return home · RTL"
-                        disabled={!enabled || isLost}
-                        onClick={() => tool('return_home', id)}
-                      >
-                        <Home size={13} />
-                        Return
-                      </button>
-                      <button
-                        aria-label={`Land ${id}`}
-                        title="Land"
-                        disabled={!enabled || isLost}
-                        onClick={() => tool('land', id)}
-                      >
-                        <ArrowDownToLine size={13} />
-                        Land
-                      </button>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
+            <FleetStrip
+              vehicles={vehicles}
+              selected={selected}
+              select={setSelected}
+              age={age}
+              connected={connected}
+              enabled={enabled}
+              tool={tool}
+            />
           </section>
           <footer className="gcs-footer">
             <span>
@@ -526,7 +416,7 @@ export default function MissionControl() {
         <aside className="gcs-agent-panel">
           <header className="gcs-agent-heading">
             <div className="gcs-agent-mark">
-              <Compass size={20} />
+              <Compass size={16} />
             </div>
             <div>
               <h2>Mission copilot</h2>
