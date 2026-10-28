@@ -1,6 +1,7 @@
 # Character authoring
 
-Create characters directly from Epic MetaHuman presets and explicit appearance settings.
+Review Rocketbox assets and author MetaHuman characters through the workflows below.
+Rocketbox trial assets use MIT; MetaHuman AI calibration/evaluation rights remain unresolved.
 `roster.json` specifies twelve fictional characters: four children, four adults and four seniors.
 Age, gender presentation, build, skin tone, hair and clothing are authoring targets that require
 visual review. Children also require individual proportion and deformation checks.
@@ -153,6 +154,58 @@ The Blueprint's `MHExportQuality` metadata independently verifies the Cinematic 
 The audit hashes every new character asset and capture, verifies texture dimensions, saved rig and
 assembly results, and checks that the original samples and comparison files retain their hashes.
 Raw manifests and browser evidence stay under the evidence directory. Existing reports fail.
+
+## Rocketbox trial
+
+`rocketbox-assets.lock.json` pins three Microsoft Rocketbox facial meshes, original textures,
+catalog previews and MIT notices to one repository commit and Git blob hashes. Acquisition
+records SHA-256 hashes and exact byte sizes for every file:
+
+```sh
+.venv-cosys/bin/python -m world.unreal.characters.fetch_rocketbox \
+  .local/evidence/characters/<new-run>/acquisition
+```
+
+An existing vendor directory fails. Use `--verify` explicitly to verify an existing acquisition
+into a new evidence directory without downloading again. Keep the MIT copyright and permission
+notice with redistributed assets. Using Rocketbox does not grant rights to other scene content.
+
+Run `import_rocketbox.py NEW_OUTPUT` through `UnrealEditor-Cmd -run=pythonscript` with
+`-nullrhi`, `-EnablePlugins=PythonScriptPlugin,EditorScriptingUtilities`,
+`-ExecCmds="Interchange.FeatureFlags.Import.FBX 0"` and `-ScriptErrorsAreFatal`.
+Use the provisioned `unreal-container.sh exec` mode. The importer asserts source hashes,
+imports the highest-detail facial FBX with morph targets, and writes only to the manifest's
+new asset folders. Existing folders fail. It creates materials from the original color,
+normal and specular maps, with head roughness 0.45 and body/hair roughness 0.7. Hair cards use
+masked alpha; no Epic character textures, meshes, grooms or rigs are added. Roughness values
+are authored review settings, not measured source PBR data.
+
+Run `render_rocketbox.py IMPORT_RESULT_JSON NEW_OUTPUT` through the editor's
+`-ExecutePythonScript` and `unreal-container.sh character-authoring`. Use `/Engine/Maps/Entry`,
+`-vulkan -sm6` and the SM6 renderer overrides documented above. The script verifies the
+renderer CVars in `review-cameras.json`. It reads each character's actual bounds and head bone
+and captures portraits, full body and three-quarter views at 4096 square. Drone-distance views
+are 3840 by 2160 at 70-degree horizontal FOV and 30 m altitude; the oblique view has an
+additional 15 m horizontal offset. Exposure is fixed at EV100 5 and white balance at 6500 K.
+The neutral studio is an appearance test, not an outdoor perception or runtime benchmark.
+
+Publish the successful render directory to a new gallery:
+
+```sh
+.venv-cosys/bin/python -m world.unreal.characters.review_rocketbox \
+  .local/evidence/characters/<run>/<render> \
+  .local/evidence/characters/<run>/review character-rocketbox
+node world/unreal/characters/capture-review.mjs \
+  http://35.81.229.78/character-rocketbox/index.html \
+  .local/evidence/characters/<run>/browser 18 4096,640,1280x720,3840x2160
+```
+
+Load `.local/runtime.env` before browser checks. The review page includes original source
+previews, actual Unreal renders, full sensor frames and 640-square crops without resampling.
+Each original PNG is hashed. `capture-review.mjs` checks every linked PNG against the explicit
+allowed dimensions, including full sensor frames, and always closes its browser.
+The child and senior labels are visual categories; exact ages are unverified. Animation,
+outdoor materials and detector performance require separate acceptance.
 
 ## Quixel preset selection
 

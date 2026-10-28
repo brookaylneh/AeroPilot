@@ -13,7 +13,7 @@
       "fbx": "Assets/Avatars/Children/Male_Child_02/Export/Male_Child_02_facial.fbx",
       "textures": "Assets/Avatars/Children/Male_Child_02/Textures",
       "preview": "Assets/Avatars/Children/Male_Child_02/Male_Child_02.png",
-      "asset_folder": "/Game/Characters/Rocketbox/Male_Child_02"
+      "asset_folder": "/Game/Characters/RocketboxSamples/Male_Child_02"
     },
     {
       "id": "adult",
@@ -24,7 +24,7 @@
       "fbx": "Assets/Avatars/Adults/Female_Adult_04/Export/Female_Adult_04_facial.fbx",
       "textures": "Assets/Avatars/Adults/Female_Adult_04/Textures",
       "preview": "Assets/Avatars/Adults/Female_Adult_04/Female_Adult_04.png",
-      "asset_folder": "/Game/Characters/Rocketbox/Female_Adult_04"
+      "asset_folder": "/Game/Characters/RocketboxSamples/Female_Adult_04"
     },
     {
       "id": "senior",
@@ -35,7 +35,7 @@
       "fbx": "Assets/Avatars/Adults/Male_Adult_03/Export/Male_Adult_03_facial.fbx",
       "textures": "Assets/Avatars/Adults/Male_Adult_03/Textures",
       "preview": "Assets/Avatars/Adults/Male_Adult_03/Male_Adult_03.png",
-      "asset_folder": "/Game/Characters/Rocketbox/Male_Adult_03"
+      "asset_folder": "/Game/Characters/RocketboxSamples/Male_Adult_03"
     }
   ],
   "files": [

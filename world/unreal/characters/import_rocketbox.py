@@ -128,11 +128,12 @@ def character(recipe, vendor):
     assert (ROOT / "world/unreal/ScenarioStudio/Content" / (package + ".uasset")).is_file()
     slots = mesh.get_editor_property("materials")
     records = []
-    for slot in slots:
+    for index, slot in enumerate(slots):
         name = str(slot.material_slot_name)
         assert name.startswith(recipe["texture_prefix"] + "_"), name
         roughness = 0.45 if name.endswith("_head") else 0.7
         slot.material_interface = material(folder, name, textures, roughness)
+        slots[index] = slot
         records.append(
             {
                 "name": name,
@@ -141,6 +142,10 @@ def character(recipe, vendor):
             }
         )
     mesh.set_editor_property("materials", slots)
+    assigned = mesh.get_editor_property("materials")
+    assert [slot.material_interface.get_path_name() for slot in assigned] == [
+        item["material"] for item in records
+    ]
     unreal.AutomationLibrary.finish_loading_before_screenshot()
     for asset in imported:
         assert LIB.save_loaded_asset(asset)
