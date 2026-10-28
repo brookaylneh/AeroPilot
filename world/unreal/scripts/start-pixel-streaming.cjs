@@ -5,8 +5,12 @@ const fs = require('node:fs');
 const crypto = require('node:crypto');
 const express = require('express');
 const { SignallingServer, InitLogging } = require('../../../.local/vendor/pixel-streaming/Signalling');
+const required = (name) => {
+  if (!process.env[name]) throw new Error(`Missing ${name}`);
+  return process.env[name];
+};
 InitLogging({
-  logDir: path.resolve(__dirname, '../../../.local/evidence/signalling'),
+  logDir: path.resolve(required('SNR_SIGNALLING_LOG_DIR')),
   logLevelConsole: 'warn',
   logLevelFile: 'warn',
   logMessagesToConsole: 'none',
@@ -14,10 +18,6 @@ InitLogging({
 
 const app = express();
 const server = http.createServer(app);
-const required = (name) => {
-  if (!process.env[name]) throw new Error(`Missing ${name}`);
-  return process.env[name];
-};
 const playerPort = Number(required('PIXEL_PLAYER_PORT'));
 const streamerPort = Number(required('SNR_STREAMER_PORT'));
 const turnPort = Number(required('SNR_TURN_PORT'));
