@@ -17,7 +17,7 @@ page.on('pageerror', (error) => errors.push(error.message));
 const client = await page.context().newCDPSession(page);
 await client.send('Performance.enable');
 await page.goto(url);
-await page.waitForFunction(() => window.missionRenderSamples?.length >= 20, { timeout: 60000 });
+await page.waitForFunction(() => window.missionRenderSamples?.length >= 20, null, { timeout: 60000 });
 const started = Date.now();
 const memory = [];
 const pans = [];

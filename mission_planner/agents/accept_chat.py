@@ -77,7 +77,9 @@ class Acceptance:
             )
 
         await self.wait(finished, 210, "Chat completed: " + text)
-        results = [e for e in self.events[index:] if e["kind"] == "tool_result"]
+        results = [
+            e for e in self.events[index:] if e["kind"] == "tool_result" and e["source"] == "agent"
+        ]
         calls = [
             e["name"] for e in results if e["name"] in expected or CATEGORIES[e["name"]] == "flight"
         ]
@@ -89,14 +91,16 @@ class Acceptance:
                 assert item["result"]["ok"], item["result"]
         self.approve = True
 
-    async def run(self, case_id):
+    async def run(self, case_id, part):
         await self.send({"type": "connect", "case_id": case_id})
         await self.wait(lambda: len(self.state["vehicles"]) == 4, 120, "Four real autopilots ready")
         assert self.state["mission"]["autonomy"] == "Supervised"
-        await self.chat("Read the current rescue briefing and alerts.", ["get_mission"])
-        await self.chat("How is the whole fleet doing right now?", ["get_fleet"])
-        await self.chat("Give me Drone1's battery, GPS and mode.", ["get_drone"])
-        await self.chat("Centre the map on Drone1.", ["show_on_map"])
+        if part == "inspection":
+            await self.chat("Read the current rescue briefing and alerts.", ["get_mission"])
+            await self.chat("How is the whole fleet doing right now?", ["get_fleet"])
+            await self.chat("Give me Drone1's battery, GPS and mode.", ["get_drone"])
+            await self.chat("Centre the map on Drone1.", ["show_on_map"])
+            return
         for name in ("Drone1", "Drone2", "Drone3", "Drone4"):
             await self.chat(f"Take off {name} to 30 metres above home.", ["take_off"])
             await self.wait(
@@ -175,7 +179,7 @@ async def run(args):
     async with connect(f"ws://127.0.0.1:{args.port}", max_size=2**22) as socket:
         acceptance = Acceptance(socket, args.output)
         try:
-            await acceptance.run(args.case)
+            await acceptance.run(args.case, args.part)
         finally:
             acceptance.log.close()
 
@@ -184,5 +188,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--case", required=True)
     parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--part", choices=("inspection", "flight"), default="flight")
     parser.add_argument("--output", type=Path, required=True)
     asyncio.run(run(parser.parse_args()))

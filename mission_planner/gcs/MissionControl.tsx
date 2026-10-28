@@ -623,7 +623,19 @@ export default function MissionControl() {
                         </strong>
                         <time>{timestamp(event.timestamp_ms)}</time>
                       </header>
-                      <p>{event.text}</p>
+                      <p>
+                        {event.text
+                          .split(/(\*\*[^*\n]+\*\*|`[^`\n]+`)/g)
+                          .map((part, index) =>
+                            part.startsWith('**') && part.endsWith('**') ? (
+                              <strong key={index}>{part.slice(2, -2)}</strong>
+                            ) : part.startsWith('`') && part.endsWith('`') ? (
+                              <code key={index}>{part.slice(1, -1)}</code>
+                            ) : (
+                              part
+                            ),
+                          )}
+                      </p>
                     </article>
                   ) : null,
                 )}
