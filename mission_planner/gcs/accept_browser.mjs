@@ -654,7 +654,7 @@ async function performanceRun(browser, url, output, servicePid, seconds) {
       await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
       const start = await page.evaluate(() => performance.now());
       await page.mouse.down();
-      await page.mouse.move(box.x + box.width * (step % 2 ? 0.65 : 0.35), box.y + box.height * 0.55, {
+      await page.mouse.move(box.x + box.width * (step % 2 ? 0.65 : 0.35), box.y + box.height * 0.5, {
         steps: 60,
       });
       await page.mouse.up();
