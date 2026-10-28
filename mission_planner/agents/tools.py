@@ -7,7 +7,11 @@ from mission_planner.gcs.geodesy import (
     LAUNCH_HALF_WIDTH_M,
     LAUNCH_SOUTH_M,
     MAX_ALTITUDE_M,
+    MAX_MAP_RADIUS_M,
+    MAX_SPEED_MPS,
     MIN_ALTITUDE_M,
+    MIN_MAP_RADIUS_M,
+    MIN_SPEED_MPS,
     NAMES,
 )
 
@@ -15,7 +19,7 @@ DRONE = {"type": "string", "enum": list(NAMES)}
 POSITION = {"type": "number", "minimum": -BOUND_M, "maximum": BOUND_M}
 NORTH = {"type": "number", "minimum": LAUNCH_SOUTH_M, "maximum": BOUND_M}
 ALTITUDE = {"type": "number", "minimum": MIN_ALTITUDE_M, "maximum": MAX_ALTITUDE_M}
-SPEED = {"type": "number", "minimum": 0.5, "maximum": 15}
+SPEED = {"type": "number", "minimum": MIN_SPEED_MPS, "maximum": MAX_SPEED_MPS}
 
 
 def parameters(properties):
@@ -56,7 +60,11 @@ DEFINITIONS = [
             "drone_id": DRONE,
             "north_m": NORTH,
             "east_m": POSITION,
-            "radius_m": {"type": "number", "minimum": 1, "maximum": 804},
+            "radius_m": {
+                "type": "number",
+                "minimum": MIN_MAP_RADIUS_M,
+                "maximum": MAX_MAP_RADIUS_M,
+            },
         },
     ),
     (
@@ -126,7 +134,7 @@ AGENT_INSTRUCTIONS = f"""You are Wonder, the search-and-rescue commander's missi
 Use only supplied briefing and measured telemetry; never infer private target truth or claim an action without its tool result.
 Use the registered tools for live information and requested actions. When all arguments are supplied, call the requested tool directly: the service validates safety and manages operator approval.
 Only Drone1, Drone2, Drone3 and Drone4 exist. Reject unknown drone identities without substituting another drone.
-Positions are metres north/east of the search centre. The search square is ±{BOUND_M:g} m on each axis. An authorized launch corridor extends south to north {LAUNCH_SOUTH_M:g} m only within east ±{LAUNCH_HALF_WIDTH_M:g} m; flight altitude is {MIN_ALTITUDE_M:g}–{MAX_ALTITUDE_M:g} m above home and speed is 0.5–15 m/s. Refuse requests explicitly outside these limits without a flight call.
+Positions are metres north/east of the search centre. The search square is ±{BOUND_M:g} m on each axis. An authorized launch corridor extends south to north {LAUNCH_SOUTH_M:g} m only within east ±{LAUNCH_HALF_WIDTH_M:g} m; flight altitude is {MIN_ALTITUDE_M:g}–{MAX_ALTITUDE_M:g} m above home and speed is {MIN_SPEED_MPS:g}–{MAX_SPEED_MPS:g} m/s. Refuse requests explicitly outside these limits without a flight call.
 Supervised flight actions require an approval card; never imply approval yourself. An operator decline is final for that request.
 Never retry a failed tool, invent a replacement route, or disable safety checks. Report the precise error and await a new operator instruction.
 Explain concepts and answer greetings without a tool when no live information or action is needed. Ask for missing flight arguments; do not guess them.
@@ -152,9 +160,11 @@ def argument_error(error):
         if field == "altitude_above_home_m":
             return f"Requested altitude is {value:g} m above home; use {MIN_ALTITUDE_M:g}–{MAX_ALTITUDE_M:g} m."
         if field == "speed_mps":
-            return f"Requested speed is {value:g} m/s; use 0.5–15 m/s."
+            return f"Requested speed is {value:g} m/s; use {MIN_SPEED_MPS:g}–{MAX_SPEED_MPS:g} m/s."
         if field == "radius_m":
-            return f"Requested radius is {value:g} m; use 1–804 m."
+            return (
+                f"Requested radius is {value:g} m; use {MIN_MAP_RADIUS_M:g}–{MAX_MAP_RADIUS_M:g} m."
+            )
     if error.validator == "required":
         missing = [
             key.replace("_", " ") for key in error.validator_value if key not in error.instance

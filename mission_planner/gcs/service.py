@@ -509,7 +509,7 @@ class Mission:
             self.event(
                 "approval",
                 f"{item['card']['arguments']['drone_id']} · {item['card']['name'].replace('_', ' ')} "
-                + ("approved by operator" if message["approved"] else "Operator declined"),
+                + ("approved by operator" if message["approved"] else "declined by operator"),
                 result={"id": message["id"], "approved": message["approved"]},
                 name=item["card"]["name"],
                 arguments=item["card"]["arguments"],
