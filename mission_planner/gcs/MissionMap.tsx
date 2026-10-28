@@ -288,21 +288,23 @@ export default function MissionMap({
                       .join(' ')}
                   />
                 )}
-                {v.mission.map((w) => {
-                  const q = projection(w.north_m, w.east_m);
-                  return (
-                    <g
-                      key={w.seq}
-                      className={`gcs-waypoint ${w.seq === v.mission_current ? 'active' : ''}`}
-                      transform={`translate(${q.x},${q.y})`}
-                    >
-                      <circle r={w.seq === v.mission_current ? 13 : 10} />
-                      <text textAnchor="middle" dy="4">
-                        {w.seq}
-                      </text>
-                    </g>
-                  );
-                })}
+                {v.mission
+                  .filter((w) => v.mission.length <= 12 || w.seq === v.mission_current)
+                  .map((w) => {
+                    const q = projection(w.north_m, w.east_m);
+                    return (
+                      <g
+                        key={w.seq}
+                        className={`gcs-waypoint ${w.seq === v.mission_current ? 'active' : ''}`}
+                        transform={`translate(${q.x},${q.y})`}
+                      >
+                        <circle r={w.seq === v.mission_current ? 13 : 10} />
+                        <text textAnchor="middle" dy="4">
+                          {w.seq}
+                        </text>
+                      </g>
+                    );
+                  })}
                 <g className="gcs-home" transform={`translate(${h.x},${h.y})`}>
                   <path d="M-6 0L0-6L6 0V7H-6Z" />
                   <title>{v.id} home</title>

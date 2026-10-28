@@ -20,6 +20,7 @@ export default function SearchPanel({
     [domain, setDomain] = useState('');
   const [bounds, setBounds] = useState(['', '', '', '']);
   if (!search) return null;
+  const editable = enabled && !['starting', 'running'].includes(search.summary.status);
   const tool = (name: string, args: Record<string, unknown>) => send({ type: 'tool', name, arguments: args });
   return (
     <aside className={`gcs-search-panel ${open ? '' : 'collapsed'}`} aria-label="Search planner">
@@ -73,7 +74,7 @@ export default function SearchPanel({
             </details>
           )}
           <button
-            disabled={!enabled}
+            disabled={!editable}
             className={marking ? 'active' : ''}
             onClick={() => setMarking(!marking)}
           >
@@ -147,9 +148,28 @@ export default function SearchPanel({
                   ))}
                 </select>
               </label>
-              <button disabled={!enabled || !search.profile}>Set search area</button>
+              <button disabled={!editable || !search.profile}>Set search area</button>
             </form>
           </details>
+          {search.plan && (
+            <button
+              onClick={() => {
+                const points = Object.values(search.plan!.routes).flatMap((r) => r.waypoints);
+                const north = points.map((p) => p.north_m),
+                  east = points.map((p) => p.east_m);
+                tool('show_on_map', {
+                  target: 'area',
+                  north_m: (Math.min(...north) + Math.max(...north)) / 2,
+                  east_m: (Math.min(...east) + Math.max(...east)) / 2,
+                  radius_m:
+                    Math.max(Math.max(...north) - Math.min(...north), Math.max(...east) - Math.min(...east)) /
+                    2,
+                });
+              }}
+            >
+              Focus planned routes
+            </button>
+          )}
           {search.summary.retained_in_world_mass !== null && (
             <p>
               Prior mass inside world:{' '}
@@ -207,13 +227,13 @@ export default function SearchPanel({
           <p className="gcs-search-camera">{search.summary.coverage.message}</p>
           <div className="gcs-search-actions">
             <button
-              disabled={!enabled || !search.point || !search.vertices}
+              disabled={!editable || !search.point || !search.vertices}
               onClick={() => tool('plan_search', {})}
             >
               Plan coverage
             </button>
             <button
-              disabled={!enabled || search.summary.status !== 'planned'}
+              disabled={!editable || search.summary.status !== 'planned'}
               onClick={() => tool('start_search', { plan_id: search.plan!.plan_id })}
             >
               Review fleet search
