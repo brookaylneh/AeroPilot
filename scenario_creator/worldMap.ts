@@ -4,6 +4,24 @@ export type MapPoint = { u: number; v: number };
 export type MapView = MapPoint & { zoom: number };
 export const wholeWorld: MapView = { u: 0.5, v: 0.5, zoom: 1 };
 
+export function fitMapBounds(bounds: MapBounds, size: { width: number; height: number }): MapBounds {
+  const north = bounds.maxX - bounds.minX,
+    east = bounds.maxY - bounds.minY;
+  if (![north, east, size.width, size.height].every((v) => Number.isFinite(v) && v > 0))
+    throw new Error('Map extents and stage dimensions must be positive');
+  const unitsPerPixel = Math.max(north / size.height, east / size.width),
+    halfNorth = (unitsPerPixel * size.height) / 2,
+    halfEast = (unitsPerPixel * size.width) / 2,
+    centerNorth = (bounds.minX + bounds.maxX) / 2,
+    centerEast = (bounds.minY + bounds.maxY) / 2;
+  return {
+    minX: centerNorth - halfNorth,
+    maxX: centerNorth + halfNorth,
+    minY: centerEast - halfEast,
+    maxY: centerEast + halfEast,
+  };
+}
+
 export function worldToMap(p: { x: number; y: number }, b: MapBounds): MapPoint {
   return { u: (p.y - b.minY) / (b.maxY - b.minY), v: (b.maxX - p.x) / (b.maxX - b.minX) };
 }
@@ -12,6 +30,18 @@ export function mapView(u: number, v: number, zoom: number): MapView {
   const z = Math.max(1, Math.min(16, zoom)),
     half = 0.5 / z;
   return { u: Math.max(half, Math.min(1 - half, u)), v: Math.max(half, Math.min(1 - half, v)), zoom: z };
+}
+
+export function fitMapView(bounds: MapBounds, area: MapBounds): MapView {
+  const center = worldToMap({ x: (area.minX + area.maxX) / 2, y: (area.minY + area.maxY) / 2 }, bounds);
+  return mapView(
+    center.u,
+    center.v,
+    Math.min(
+      (bounds.maxX - bounds.minX) / (area.maxX - area.minX),
+      (bounds.maxY - bounds.minY) / (area.maxY - area.minY),
+    ),
+  );
 }
 
 export function mapToScreen(p: MapPoint, view: MapView): MapPoint {

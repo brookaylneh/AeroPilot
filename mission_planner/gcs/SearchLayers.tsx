@@ -1,3 +1,4 @@
+import world from '../../world/cosys/world.json';
 import { memo } from 'react';
 import type { SearchState } from './searchState';
 import { droneColors, type DroneId } from './missionState';
@@ -10,10 +11,10 @@ const Geometry = memo(function Geometry({ search }: { search: SearchState }) {
       {search.heatmap && (
         <image
           href={search.heatmap}
-          x={-804.672}
-          y={-804.672}
-          width={1609.344}
-          height={1609.344}
+          x={world.searchBoundsCm.min.y / 100}
+          y={-world.searchBoundsCm.max.x / 100}
+          width={(world.searchBoundsCm.max.y - world.searchBoundsCm.min.y) / 100}
+          height={(world.searchBoundsCm.max.x - world.searchBoundsCm.min.x) / 100}
           preserveAspectRatio="none"
         />
       )}

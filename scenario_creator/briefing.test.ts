@@ -1,3 +1,4 @@
+import world from '../world/cosys/world.json';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import express from 'express';
@@ -23,7 +24,15 @@ const rescueCase = {
     environmentId: 'open-meadow',
     assetVersion: 'test',
     coordinateSystem: 'UE_LH_Z_UP_CENTIMETERS',
-    searchBounds: [{ id: 'open-meadow', minX: -80467.2, maxX: 80467.2, minY: -80467.2, maxY: 80467.2 }],
+    searchBounds: [
+      {
+        id: 'open-meadow',
+        minX: world.searchBoundsCm.min.x,
+        maxX: world.searchBoundsCm.max.x,
+        minY: world.searchBoundsCm.min.y,
+        maxY: world.searchBoundsCm.max.y,
+      },
+    ],
   },
 };
 

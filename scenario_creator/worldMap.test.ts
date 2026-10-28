@@ -1,6 +1,9 @@
+import world from '../world/cosys/world.json';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  fitMapBounds,
+  fitMapView,
   insideMap,
   mapScale,
   mapToScreen,
@@ -45,7 +48,62 @@ test('zoom keeps the cursor on the same world point; pan and zoom retain reversi
 });
 
 test('scale bar uses readable ground distances at every map zoom', () => {
-  const widths = [1609.344, 804.672, 402.336, 201.168, 100.584];
-  assert.deepEqual(widths.map(mapScale), [500, 200, 100, 50, 20]);
+  const widths = [1, 2, 4, 8, 16].map(
+    (zoom) => (world.searchBoundsCm.max.y - world.searchBoundsCm.min.y) / (100 * zoom),
+  );
+  assert.deepEqual(widths.map(mapScale), [500, 200, 200, 100, 50]);
   for (const width of widths) assert(mapScale(width) / width <= 1 / 3);
+});
+
+test('the first mission view contains the rectangle at both acceptance sizes without stretching', () => {
+  const region = {
+    minX: world.searchBoundsCm.min.x / 100,
+    maxX: world.searchBoundsCm.max.x / 100,
+    minY: world.searchBoundsCm.min.y / 100,
+    maxY: world.searchBoundsCm.max.y / 100,
+  };
+  const north = region.maxX - region.minX,
+    east = region.maxY - region.minY;
+  const padded = {
+    minX: region.minX - north / 8,
+    maxX: region.maxX + north / 8,
+    minY: region.minY - east / 8,
+    maxY: region.maxY + east / 8,
+  };
+  for (const [width, height, expectedWidth, expectedHeight] of [
+    [1500, 1008, 1500, 1000],
+    [2140, 1368, 2052, 1368],
+  ]) {
+    const bounds = fitMapBounds(padded, { width, height }),
+      view = fitMapView(bounds, region);
+    const project = (x: number, y: number) => mapToScreen(worldToMap({ x, y }, bounds), view);
+    const northwest = project(region.maxX, region.minY),
+      southeast = project(region.minX, region.maxY);
+    assert(northwest.u >= -1e-12 && northwest.v >= -1e-12);
+    assert(southeast.u <= 1 + 1e-12 && southeast.v <= 1 + 1e-12);
+    assert(Math.abs((southeast.u - northwest.u) * width - expectedWidth) < 1e-9);
+    assert(Math.abs((southeast.v - northwest.v) * height - expectedHeight) < 1e-9);
+    for (const [northFraction, eastFraction] of [
+      [0.13, 0],
+      [0.71, 1],
+      [0.29, 0.83],
+      [0.87, 0.21],
+    ]) {
+      const point = worldToMap(
+        { x: region.minX + north * northFraction, y: region.minY + east * eastFraction },
+        bounds,
+      );
+      const focused = mapView(point.u, point.v, 4);
+      assert(
+        insideMap(mapToScreen(point, focused)),
+        'Focusing an asymmetric point or far edge keeps it visible',
+      );
+      const screen = mapToScreen(point, focused),
+        restored = screenToMap(screen, focused);
+      assert(Math.abs(restored.u - point.u) < 1e-12);
+      assert(Math.abs(restored.v - point.v) < 1e-12);
+      const zoomed = zoomMap(focused, 8, screen);
+      assert(insideMap(mapToScreen(point, zoomed)));
+    }
+  }
 });

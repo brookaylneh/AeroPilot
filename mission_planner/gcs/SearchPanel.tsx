@@ -1,3 +1,4 @@
+import world from '../../world/cosys/world.json';
 import { useState } from 'react';
 import { Crosshair, Search, ChevronDown } from 'lucide-react';
 import type { SearchState } from './searchState';
@@ -120,8 +121,8 @@ export default function SearchPanel({
                   <input
                     aria-label={label}
                     type="number"
-                    min="-804.672"
-                    max="804.672"
+                    min={world.searchBoundsCm.min[i < 2 ? 'x' : 'y'] / 100}
+                    max={world.searchBoundsCm.max[i < 2 ? 'x' : 'y'] / 100}
                     step="any"
                     required
                     value={bounds[i]}
@@ -129,8 +130,20 @@ export default function SearchPanel({
                   />
                 </label>
               ))}
-              <button type="button" onClick={() => setBounds(['-804.672', '804.672', '-804.672', '804.672'])}>
-                Use full search square
+              <button
+                type="button"
+                onClick={() =>
+                  setBounds(
+                    [
+                      world.searchBoundsCm.min.x,
+                      world.searchBoundsCm.max.x,
+                      world.searchBoundsCm.min.y,
+                      world.searchBoundsCm.max.y,
+                    ].map((value) => String(value / 100)),
+                  )
+                }
+              >
+                Use full search area
               </button>
               <label>
                 Published statistical domain

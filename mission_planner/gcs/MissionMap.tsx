@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { LocateFixed, Minus, Plus, Scan } from 'lucide-react';
 import {
+  fitMapBounds,
+  fitMapView,
   mapScale,
   mapToScreen,
   mapView,
   screenToMap,
-  wholeWorld,
   worldToMap,
   zoomMap,
   type MapView,
@@ -18,13 +19,32 @@ import {
   type Vehicle,
   type RouteArguments,
 } from './missionState';
+import world from '../../world/cosys/world.json';
 import { formatValue } from './display';
 import { groupPadLabels, placeLabels } from './mapLabels';
 
 import SearchLayers from './SearchLayers';
 import type { SearchState, SearchPoint } from './searchState';
 
-const extent = 804.672;
+const searchBounds = {
+  minX: world.searchBoundsCm.min.x / 100,
+  maxX: world.searchBoundsCm.max.x / 100,
+  minY: world.searchBoundsCm.min.y / 100,
+  maxY: world.searchBoundsCm.max.y / 100,
+};
+const northSpan = searchBounds.maxX - searchBounds.minX;
+const eastSpan = searchBounds.maxY - searchBounds.minY;
+const navigationBounds = {
+  minX: searchBounds.minX - northSpan / 8,
+  maxX: searchBounds.maxX + northSpan / 8,
+  minY: searchBounds.minY - eastSpan / 8,
+  maxY: searchBounds.maxY + eastSpan / 8,
+};
+function gridTicks(minimum: number, maximum: number) {
+  const first = Math.ceil(minimum / 200),
+    last = Math.floor(maximum / 200);
+  return Array.from({ length: last - first + 1 }, (_, i) => (first + i) * 200);
+}
 export default function MissionMap({
   search = null,
   onMark,
@@ -50,19 +70,14 @@ export default function MissionMap({
 }) {
   const surface = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 1000, height: 700, inset });
-  const [viewState, setView] = useState<MapView | 'cover'>('cover');
+  const [viewState, setView] = useState<MapView | 'fit'>('fit');
   const [cursor, setCursor] = useState<{ north_m: number; east_m: number } | null>(null);
   const drag = useRef<{ x: number; y: number; view: MapView } | null>(null);
   const trails = useRef<Record<string, { north_m: number; east_m: number }[]>>({});
-  const bounds = {
-    minX: -920,
-    maxX: 920,
-    minY: (-920 * size.width) / size.height,
-    maxY: (920 * size.width) / size.height,
-  };
+  const bounds = fitMapBounds(navigationBounds, size);
   const span = bounds.maxY - bounds.minY;
-  const coverView = mapView(0.5, 0.5, Math.max(span, bounds.maxX - bounds.minX) / (2 * extent));
-  const view = viewState === 'cover' ? coverView : viewState;
+  const fitView = fitMapView(bounds, searchBounds);
+  const view = viewState === 'fit' ? fitView : viewState;
   const visibleWidth = span / view.zoom;
   const scale = mapScale(visibleWidth);
   const projection = (north_m: number, east_m: number) => {
@@ -104,7 +119,9 @@ export default function MissionMap({
       center(
         focus.north_m,
         focus.east_m,
-        focus.target === 'area' && focus.radius_m !== null ? 1840 / (focus.radius_m * 2.4) : 4,
+        focus.target === 'area' && focus.radius_m !== null
+          ? Math.min(span, bounds.maxX - bounds.minX) / (focus.radius_m * 2.4)
+          : 4,
       );
     }
   }, [focusKey]);
@@ -114,7 +131,7 @@ export default function MissionMap({
       e.preventDefault();
       const rect = el.getBoundingClientRect();
       setView((current) => {
-        const v = current === 'cover' ? coverView : current;
+        const v = current === 'fit' ? fitView : current;
         return zoomMap(v, v.zoom * (e.deltaY < 0 ? 1.25 : 0.8), {
           u: (e.clientX - rect.left) / rect.width,
           v: (e.clientY - rect.top) / rect.height,
@@ -123,9 +140,9 @@ export default function MissionMap({
     };
     el.addEventListener('wheel', wheel, { passive: false });
     return () => el.removeEventListener('wheel', wheel);
-  }, [coverView.zoom]);
-  const topLeft = projection(extent, -extent);
-  const bottomRight = projection(-extent, extent);
+  }, [fitView.zoom]);
+  const topLeft = projection(searchBounds.maxX, searchBounds.minY);
+  const bottomRight = projection(searchBounds.minX, searchBounds.maxY);
   const active = vehicles.find((v) => v.id === selected);
   const fence = active ? active.fence : [];
   const groups = groupPadLabels(
@@ -239,16 +256,32 @@ export default function MissionMap({
             className="gcs-terrain"
           />
           <SearchLayers search={search} project={projection} />
-          {[-800, -600, -400, -200, 0, 200, 400, 600, 800].map((n) => {
-            const h1 = projection(n, -extent),
-              h2 = projection(n, extent),
-              v1 = projection(extent, n),
-              v2 = projection(-extent, n);
+          {gridTicks(searchBounds.minX, searchBounds.maxX).map((north) => {
+            const start = projection(north, searchBounds.minY),
+              end = projection(north, searchBounds.maxY);
             return (
-              <g key={n} className="gcs-grid">
-                <line x1={h1.x} y1={h1.y} x2={h2.x} y2={h2.y} />
-                <line x1={v1.x} y1={v1.y} x2={v2.x} y2={v2.y} />
-              </g>
+              <line
+                key={`north-${north}`}
+                className="gcs-grid"
+                x1={start.x}
+                y1={start.y}
+                x2={end.x}
+                y2={end.y}
+              />
+            );
+          })}
+          {gridTicks(searchBounds.minY, searchBounds.maxY).map((east) => {
+            const start = projection(searchBounds.minX, east),
+              end = projection(searchBounds.maxX, east);
+            return (
+              <line
+                key={`east-${east}`}
+                className="gcs-grid"
+                x1={start.x}
+                y1={start.y}
+                x2={end.x}
+                y2={end.y}
+              />
             );
           })}
           {fence.length > 0 && (
@@ -402,6 +435,8 @@ export default function MissionMap({
           {focus && focus.target !== 'drone' && focus.north_m !== null && focus.east_m !== null && (
             <g
               className="gcs-map-focus"
+              data-north={focus.north_m}
+              data-east={focus.east_m}
               transform={`translate(${projection(focus.north_m, focus.east_m).x},${projection(focus.north_m, focus.east_m).y})`}
             >
               <circle
@@ -446,7 +481,7 @@ export default function MissionMap({
             >
               <Minus size={17} />
             </button>
-            <button title="Fit search area" aria-label="Fit search area" onClick={() => setView(wholeWorld)}>
+            <button title="Fit search area" aria-label="Fit search area" onClick={() => setView('fit')}>
               <Scan size={17} />
             </button>
             <button

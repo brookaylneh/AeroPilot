@@ -1,3 +1,4 @@
+import world from '../../world/cosys/world.json' with { type: 'json' };
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
@@ -166,7 +167,10 @@ async function states(browser, url, output) {
   );
   refusals.push(await sendTool(page, 'get_drone', { drone_id: 'Drone9' }));
   assert(refusals.every((e) => e.result.ok === false));
-  assert.equal(refusals[0].result.error, 'Waypoint 1 is 900 m north; the fence limit is 804.7 m.');
+  assert.equal(
+    refusals[0].result.error,
+    `Waypoint 1 is 900 m north; the fence limit is ${(world.searchBoundsCm.max.x / 100).toFixed(1)} m.`,
+  );
   const failed = page.locator('.gcs-tool.failed').first();
   await failed.waitFor();
   await failed.evaluate((node) => (node.open = true));
@@ -599,6 +603,105 @@ async function capture(browser, url, directory, label) {
   assert.equal(errors.length, 0, errors.join('\n'));
 }
 
+async function worldViews(browser, url, output) {
+  const measurements = [],
+    errors = [];
+  let page;
+  const northSpan = world.searchBoundsCm.max.x - world.searchBoundsCm.min.x,
+    eastSpan = world.searchBoundsCm.max.y - world.searchBoundsCm.min.y,
+    aspect = eastSpan / northSpan;
+  for (const [width, height] of [
+    [1920, 1080],
+    [2560, 1440],
+  ]) {
+    page = await browser.newPage({ viewport: { width, height } });
+    page.on('pageerror', (error) => errors.push(error.message));
+    await page.goto(url);
+    const surface = page.locator('.gcs-main-map [data-testid="mission-map"]');
+    await surface.waitFor();
+    await page.evaluate(() => document.fonts.ready);
+    await page.evaluate(
+      () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+    );
+    const stage = await surface.boundingBox(),
+      terrain = await page.locator('.gcs-main-map .gcs-terrain').boundingBox();
+    assert(stage && terrain);
+    assert(terrain.x >= stage.x - 0.1 && terrain.y >= stage.y - 0.1);
+    assert(terrain.x + terrain.width <= stage.x + stage.width + 0.1);
+    assert(terrain.y + terrain.height <= stage.y + stage.height + 0.1);
+    assert(Math.abs(terrain.width - Math.min(stage.width, stage.height * aspect)) < 0.1);
+    assert(Math.abs(terrain.height - Math.min(stage.height, stage.width / aspect)) < 0.1);
+    const image = await page.evaluate(async () => {
+      const image = new Image();
+      image.src = '/maps/open-meadow-topographic.png';
+      await image.decode();
+      return { width: image.naturalWidth, height: image.naturalHeight };
+    });
+    assert(
+      Math.abs(image.width / image.height - aspect) < 0.001,
+      'Minimap pixels must have the world aspect ratio',
+    );
+    const screenshot = `first-view-${width}.png`;
+    await page.screenshot({ path: `${output}/${screenshot}` });
+    measurements.push({ viewport: { width, height }, stage, terrain, image, screenshot });
+  }
+  const surface = page.locator('.gcs-main-map [data-testid="mission-map"]');
+  const focused = [];
+  for (const [northFraction, eastFraction] of [
+    [0.29, 0],
+    [0.73, 1],
+  ]) {
+    const point = {
+      north_m: (world.searchBoundsCm.min.x + northFraction * northSpan) / 100,
+      east_m: (world.searchBoundsCm.min.y + eastFraction * eastSpan) / 100,
+    };
+    const result = await sendTool(page, 'show_on_map', { target: 'point', ...point });
+    assert.equal(result.result.ok, true, JSON.stringify(result));
+    await page.locator('.gcs-main-map .gcs-map-focus').waitFor();
+    await page.waitForFunction(({ north_m, east_m }) => {
+      const focus = document.querySelector('.gcs-main-map .gcs-map-focus');
+      return (
+        focus &&
+        focus.getAttribute('data-north') === String(north_m) &&
+        focus.getAttribute('data-east') === String(east_m)
+      );
+    }, point);
+    const stage = await surface.boundingBox(),
+      marker = await page.locator('.gcs-main-map .gcs-map-focus').boundingBox();
+    assert(stage && marker);
+    assert(marker.x >= stage.x && marker.y >= stage.y);
+    assert(
+      marker.x + marker.width <= stage.x + stage.width && marker.y + marker.height <= stage.y + stage.height,
+    );
+    const before = await page.locator('.gcs-main-map .gcs-terrain').boundingBox();
+    await page.mouse.move(stage.x + stage.width * 0.5, stage.y + stage.height * 0.5);
+    await page.mouse.wheel(0, -100);
+    await page.waitForFunction(
+      () =>
+        Number(
+          document.querySelector('.gcs-main-map [data-testid="mission-map"]').getAttribute('data-zoom'),
+        ) > 4,
+    );
+    const zoomed = await page.locator('.gcs-main-map .gcs-terrain').boundingBox();
+    assert(zoomed.width > before.width);
+    await page.mouse.down();
+    await page.mouse.move(stage.x + stage.width * 0.55, stage.y + stage.height * 0.45, { steps: 12 });
+    await page.mouse.up();
+    const panned = await page.locator('.gcs-main-map .gcs-terrain').boundingBox();
+    assert(
+      Math.hypot(panned.x - zoomed.x, panned.y - zoomed.y) > 1,
+      'Drag must move the zoomed map at each far edge',
+    );
+    focused.push({ point, marker, zoomed, panned });
+  }
+  await page.getByRole('button', { name: 'Fit search area', exact: true }).click();
+  assert.deepEqual(errors, []);
+  await writeFile(
+    `${output}/world-views.json`,
+    JSON.stringify({ measurements, focused, errors }, null, 2) + '\n',
+  );
+}
+
 async function performanceRun(browser, url, output, servicePid, seconds) {
   assert.equal(
     execFileSync('git', ['status', '--porcelain'], { encoding: 'utf8' }).trim(),
@@ -843,7 +946,9 @@ async function searchFlight(browser, url, output) {
     assert(image);
     await page.mouse.click(
       image.x + image.width / 2,
-      image.y + (image.height * (804.672 + 650)) / (2 * 804.672),
+      image.y +
+        (image.height * (world.searchBoundsCm.max.x + 650 * 100)) /
+          (world.searchBoundsCm.max.x - world.searchBoundsCm.min.x),
     );
     await until(() => observation.search.point?.source === 'operator', 'Operator last known point');
     await page.getByText('Define search area', { exact: true }).click();
@@ -917,6 +1022,7 @@ assert(
     'flight',
     'feed',
     'capture',
+    'world',
     'states',
     'approvals',
     'review',
@@ -927,7 +1033,7 @@ assert(
   ].includes(command) &&
     url &&
     output,
-  'Usage: node --import tsx mission_planner/gcs/accept_browser.mjs {flight|feed|capture|states|approvals|review|performance|proxy|land|stop} URL NEW_DIRECTORY [feed: SECONDS; capture: LABEL; performance: SERVICE_PID SECONDS; stop: SERVICE_PID]',
+  'Usage: node --import tsx mission_planner/gcs/accept_browser.mjs {flight|feed|capture|world|states|approvals|review|performance|proxy|land|stop} URL NEW_DIRECTORY [feed: SECONDS; capture: LABEL; performance: SERVICE_PID SECONDS; stop: SERVICE_PID]',
 );
 await mkdir(output, { recursive: false });
 if (command === 'proxy') await proxy(new URL(url).origin, output);
@@ -945,6 +1051,7 @@ else {
       assert(Number.isFinite(seconds) && seconds >= 10 && seconds <= 1200);
       await measureSensorFeed(browser, url, output, seconds, sendTool);
     } else if (command === 'flight') await flight(browser, url, output);
+    else if (command === 'world') await worldViews(browser, url, output);
     else if (command === 'states') await states(browser, url, output);
     else if (command === 'approvals') await approvals(browser, url, output);
     else if (command === 'land') await land(browser, url, output);
