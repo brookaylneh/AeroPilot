@@ -245,6 +245,937 @@
       ],
       "position_floor_m": 1.4612244709e-08,
       "rotation_floor_deg": 0.02120053547
+    },
+    "position": {
+      "lateral_m": [
+        0,
+        4,
+        8,
+        12,
+        16,
+        20,
+        24
+      ],
+      "along_m": [
+        -36,
+        -24,
+        -12,
+        0,
+        12,
+        24,
+        36
+      ],
+      "p": [
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.1,
+          0.0,
+          0.2,
+          0.6,
+          0.0
+        ],
+        [
+          0.8,
+          1.0,
+          0.9,
+          1.0,
+          1.0,
+          1.0,
+          0.0
+        ],
+        [
+          0.7,
+          0.7,
+          0.8,
+          0.8,
+          0.8,
+          1.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "simultaneous_lower": [
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.007920480681048891,
+          0.0,
+          0.028159652696808868,
+          0.1913722615796239,
+          0.0
+        ],
+        [
+          0.3167576584034915,
+          0.4809966761778042,
+          0.39271782162329233,
+          0.4809966761778042,
+          0.4809966761778042,
+          0.4809966761778042,
+          0.0
+        ],
+        [
+          0.2501281344571652,
+          0.2501281344571652,
+          0.3167576584034915,
+          0.3167576584034915,
+          0.3167576584034915,
+          0.4809966761778042,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ],
+        [
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0,
+          0.0
+        ]
+      ],
+      "simultaneous_upper": [
+        [
+          0.5190033238221957,
+          0.5190033238221957,
+          0.5190033238221957,
+          0.5190033238221957,
+          0.5190033238221957,
+          0.5190033238221957,
+          0.5190033238221957
+        ],
+        [
+          0.5190033238221957,
+          0.5190033238221957,
+          0.5190033238221957,
+          0.5190033238221957,
+          0.5190033238221957,
+          0.5190033238221957,
+          0.5190033238221957
+        ],
+        [
+          0.5190033238221957,
+          0.5190033238221957,
+          0.6072821783767077,
+          0.5190033238221957,
+          0.6832423415965085,
+          0.9048270736559372,
+          0.5190033238221957
+        ],
+        [
+          0.9718403473031911,
+          1.0,
+          0.9920795193189511,
+          1.0,
+          1.0,
+          1.0,
+          0.5190033238221957
+        ],
+        [
+          0.9422705360139564,
+          0.9422705360139564,
+          0.9718403473031911,
+          0.9718403473031911,
+          0.9718403473031911,
+          1.0,
+          0.5190033238221957
+        ],
+        [
+          0.5190033238221957,
+          0.5190033238221957,
+          0.5190033238221957,
+          0.5190033238221957,
+          0.5190033238221957,
+          0.5190033238221957,
+          0.5190033238221957
+        ],
+        [
+          0.5190033238221957,
+          0.5190033238221957,
+          0.5190033238221957,
+          0.5190033238221957,
+          0.5190033238221957,
+          0.5190033238221957,
+          0.5190033238221957
+        ]
+      ],
+      "trials": [
+        [
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10
+        ],
+        [
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10
+        ],
+        [
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10
+        ],
+        [
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10
+        ],
+        [
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10
+        ],
+        [
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10
+        ],
+        [
+          10,
+          10,
+          10,
+          10,
+          10,
+          10,
+          10
+        ]
+      ],
+      "sam_true_successes": [
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1,
+          0,
+          2,
+          6,
+          0
+        ],
+        [
+          9,
+          10,
+          10,
+          10,
+          10,
+          10,
+          0
+        ],
+        [
+          7,
+          8,
+          9,
+          8,
+          8,
+          10,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "qualified_true_successes": [
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          1,
+          0,
+          2,
+          6,
+          0
+        ],
+        [
+          8,
+          10,
+          9,
+          10,
+          10,
+          10,
+          0
+        ],
+        [
+          7,
+          7,
+          8,
+          8,
+          8,
+          10,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      ],
+      "actual_position_ranges_m": [
+        [
+          [
+            [
+              -7.963180541992188e-05,
+              -35.97377380371097
+            ],
+            [
+              -6.580352783203125e-05,
+              -35.95967468261722
+            ]
+          ],
+          [
+            [
+              3.9879746437072754,
+              -35.80965026855472
+            ],
+            [
+              3.9889655113220215,
+              -35.791988220214876
+            ]
+          ],
+          [
+            [
+              7.9880757331848145,
+              -35.808521118164094
+            ],
+            [
+              7.988881587982178,
+              -35.79327758789066
+            ]
+          ],
+          [
+            [
+              11.988379955291748,
+              -35.81177886962894
+            ],
+            [
+              11.989135265350342,
+              -35.800586547851594
+            ]
+          ],
+          [
+            [
+              15.988131999969482,
+              -35.80500396728519
+            ],
+            [
+              15.988610744476318,
+              -35.793323364257844
+            ]
+          ],
+          [
+            [
+              19.987895488739014,
+              -35.808154907226594
+            ],
+            [
+              19.98873281478882,
+              -35.790279235839876
+            ]
+          ],
+          [
+            [
+              23.987887859344482,
+              -35.80592712402347
+            ],
+            [
+              23.988765239715576,
+              -35.78974517822269
+            ]
+          ]
+        ],
+        [
+          [
+            [
+              2.1457672119140625e-05,
+              -24.201770629882844
+            ],
+            [
+              5.7697296142578125e-05,
+              -24.19405731201175
+            ]
+          ],
+          [
+            [
+              3.9997639656066895,
+              -24.212016906738313
+            ],
+            [
+              3.999800205230713,
+              -24.193431701660188
+            ]
+          ],
+          [
+            [
+              7.999782085418701,
+              -24.210231628418
+            ],
+            [
+              7.999804973602295,
+              -24.195323791503938
+            ]
+          ],
+          [
+            [
+              11.999783992767334,
+              -24.198848571777376
+            ],
+            [
+              11.999824047088623,
+              -24.19417175292972
+            ]
+          ],
+          [
+            [
+              15.999782085418701,
+              -24.199680175781282
+            ],
+            [
+              15.999804973602295,
+              -24.189723815918
+            ]
+          ],
+          [
+            [
+              19.999783992767334,
+              -24.205081787109407
+            ],
+            [
+              19.999816417694092,
+              -24.194583740234407
+            ]
+          ],
+          [
+            [
+              23.9997820854187,
+              -24.200450744628938
+            ],
+            [
+              23.99980878829956,
+              -24.188548889160188
+            ]
+          ]
+        ],
+        [
+          [
+            [
+              -6.0558319091796875e-05,
+              -12.207942810058626
+            ],
+            [
+              2.765655517578125e-05,
+              -12.191905822753938
+            ]
+          ],
+          [
+            [
+              4.000004291534424,
+              -12.199199523925813
+            ],
+            [
+              4.00001859664917,
+              -12.189884033203157
+            ]
+          ],
+          [
+            [
+              8.00000810623169,
+              -12.20150360107425
+            ],
+            [
+              8.000023365020752,
+              -12.196300354003938
+            ]
+          ],
+          [
+            [
+              12.000159740447998,
+              -12.200572814941438
+            ],
+            [
+              12.000247478485107,
+              -12.194026794433626
+            ]
+          ],
+          [
+            [
+              16.00020742416382,
+              -12.201343383789094
+            ],
+            [
+              16.000239849090576,
+              -12.182781066894563
+            ]
+          ],
+          [
+            [
+              20.000216960906982,
+              -12.199809875488313
+            ],
+            [
+              20.00026845932007,
+              -12.19100555419925
+            ]
+          ],
+          [
+            [
+              24.00020933151245,
+              -12.208118286132844
+            ],
+            [
+              24.000260829925537,
+              -12.194515075683626
+            ]
+          ]
+        ],
+        [
+          [
+            [
+              -2.5272369384765625e-05,
+              -0.19861968994143808
+            ],
+            [
+              6.437301635742188e-05,
+              -0.19299682617190683
+            ]
+          ],
+          [
+            [
+              4.000004291534424,
+              -0.20063385009768808
+            ],
+            [
+              4.000019550323486,
+              -0.18819793701175058
+            ]
+          ],
+          [
+            [
+              8.00000810623169,
+              -0.20143493652346933
+            ],
+            [
+              8.000023365020752,
+              -0.18985351562503183
+            ]
+          ],
+          [
+            [
+              11.999743938446045,
+              -0.20266326904300058
+            ],
+            [
+              11.999888896942139,
+              -0.18130096435550058
+            ]
+          ],
+          [
+            [
+              15.999743938446045,
+              -0.20054992675784433
+            ],
+            [
+              15.99977445602417,
+              -0.19464477539065683
+            ]
+          ],
+          [
+            [
+              19.999724864959717,
+              -0.20798858642581308
+            ],
+            [
+              19.999778270721436,
+              -0.18761810302737558
+            ]
+          ],
+          [
+            [
+              23.999736309051514,
+              -0.20446380615237558
+            ],
+            [
+              23.999770641326904,
+              -0.19462951660159433
+            ]
+          ]
+        ],
+        [
+          [
+            [
+              -6.0558319091796875e-05,
+              11.79978576660153
+            ],
+            [
+              2.765655517578125e-05,
+              11.806408081054656
+            ]
+          ],
+          [
+            [
+              4.000004291534424,
+              11.789547119140593
+            ],
+            [
+              4.000019550323486,
+              11.80851379394528
+            ]
+          ],
+          [
+            [
+              8.00000810623169,
+              11.802730712890593
+            ],
+            [
+              8.000023365020752,
+              11.812099609374968
+            ]
+          ],
+          [
+            [
+              11.999888896942139,
+              11.79813781738278
+            ],
+            [
+              12.000268459320068,
+              11.803859863281218
+            ]
+          ],
+          [
+            [
+              16.00024175643921,
+              11.801159057617156
+            ],
+            [
+              16.000264644622803,
+              11.807460937499968
+            ]
+          ],
+          [
+            [
+              20.00018835067749,
+              11.792232666015593
+            ],
+            [
+              20.00025510787964,
+              11.817409667968718
+            ]
+          ],
+          [
+            [
+              24.00022268295288,
+              11.800243530273406
+            ],
+            [
+              24.000253200531006,
+              11.812862548828093
+            ]
+          ]
+        ],
+        [
+          [
+            [
+              -2.5272369384765625e-05,
+              23.795070800781218
+            ],
+            [
+              7.05718994140625e-05,
+              23.80759826660153
+            ]
+          ],
+          [
+            [
+              4.000004291534424,
+              23.801601562499968
+            ],
+            [
+              4.00001859664917,
+              23.809230957031218
+            ]
+          ],
+          [
+            [
+              8.00000810623169,
+              23.800380859374968
+            ],
+            [
+              8.000023365020752,
+              23.805858764648406
+            ]
+          ],
+          [
+            [
+              11.99976110458374,
+              23.796077880859343
+            ],
+            [
+              11.999888896942139,
+              23.80259338378903
+            ]
+          ],
+          [
+            [
+              15.99974012374878,
+              23.795971069335906
+            ],
+            [
+              15.999778270721436,
+              23.803966674804656
+            ]
+          ],
+          [
+            [
+              19.999736309051514,
+              23.79130187988278
+            ],
+            [
+              19.999778270721436,
+              23.80369201660153
+            ]
+          ],
+          [
+            [
+              23.99972677230835,
+              23.790157470703093
+            ],
+            [
+              23.99975347518921,
+              23.81333557128903
+            ]
+          ]
+        ],
+        [
+          [
+            [
+              -6.151199340820312e-05,
+              35.80062499999997
+            ],
+            [
+              2.765655517578125e-05,
+              35.809581909179656
+            ]
+          ],
+          [
+            [
+              4.000004291534424,
+              35.80125061035153
+            ],
+            [
+              4.000019550323486,
+              35.81554809570309
+            ]
+          ],
+          [
+            [
+              8.00000810623169,
+              35.798595581054656
+            ],
+            [
+              8.000023365020752,
+              35.80576721191403
+            ]
+          ],
+          [
+            [
+              11.999888896942139,
+              35.79983154296872
+            ],
+            [
+              12.000264644622803,
+              35.80613342285153
+            ]
+          ],
+          [
+            [
+              16.000232219696045,
+              35.800609741210906
+            ],
+            [
+              16.0002760887146,
+              35.805065307617156
+            ]
+          ],
+          [
+            [
+              20.00021505355835,
+              35.79191223144528
+            ],
+            [
+              20.000258922576904,
+              35.81432739257809
+            ]
+          ],
+          [
+            [
+              24.00020933151245,
+              35.79851928710934
+            ],
+            [
+              24.000253200531006,
+              35.80387512207028
+            ]
+          ]
+        ]
+      ],
+      "input_sha256": {
+        "/home/brook_avionuas/snr-search/.local/data/calibration/adult-kelvin/inference.json": "74972deedef78ebcd5b22c3ee509bcf4e81e18e771eca8228c5561cb76bd9d38",
+        "/home/brook_avionuas/snr-search/.local/data/calibration/adult-etta/inference.json": "161160c5bf9c021df8cb4b4edcabf1b52d3a9b693c3398fb5b8935119dcc646f",
+        "/home/brook_avionuas/snr-search/.local/data/calibration/senior-walter/inference.json": "1b5202b799d4b90df53ff5dde7348cc22abc3f338886bada9e4df125ba0c6d9d",
+        "/home/brook_avionuas/snr-search/.local/data/calibration/senior-sookja/inference.json": "0e9c5ac252d73640c1b81f3a429552e93f0831bfec545dff90a29d1977c332c2",
+        "/home/brook_avionuas/snr-search/.local/data/calibration/child-01/inference.json": "81952648572b46312dbe1ca244e301729f355c4c7fccbb327bfff63a53fcadd2",
+        "/home/brook_avionuas/snr-search/.local/data/calibration/child-02/inference.json": "d7dc9f3838b6ad168377874cf3fee7937bfcfaebf560b4db9cb81b93594fc8fd",
+        "/home/brook_avionuas/snr-search/.local/data/calibration/child-03/inference.json": "bbfa8e7b02e8aa57c497da9e0c9ffa0cb28faaaf8d2a6e8858b778dadf44f2c8",
+        "/home/brook_avionuas/snr-search/.local/data/calibration/child-04/inference.json": "53860d6af10dee6929a05894e760205c68ad7f333adfc0d21675cecdd3267920",
+        "/home/brook_avionuas/snr-search/.local/data/calibration/child-05/inference.json": "8b544cd3ee8238d91b10e9d1cb32c3a56a755faecfd880d050393ebeab1eee92",
+        "/home/brook_avionuas/snr-search/.local/data/calibration/adult-kelvin-blue/inference.json": "35da208da2be81b5f20663450590d44b68906f411dfb556fa943cd5632fb3e47"
+      },
+      "coordinate_definition": "Camera minus subject: lateral absolute, along aircraft forward; nominal capture knots",
+      "method": "Bilinear interpolation; zero outside nominal ground footprint; partial frames count as trials",
+      "uncertainty": "Simultaneous two-sided 95% Wilson over 49 cells; excludes renderer, phase interpolation and cohort correlation"
     }
   },
   "derivations": {
@@ -2603,13 +3534,16 @@
   },
   "pipeline_capacity": {
     "sam_runners": 2,
-    "completed_rate_fps": 0.2004356433486635,
+    "completed_rate_fps": 1.255736367381822,
     "prompts": [
       "person wearing a red jacket",
       "person wearing blue trousers",
       "yellow daypack"
     ],
-    "evidence": ".local/evidence/search/commander-stage2/throughput-one-01/capacity.json"
+    "evidence": ".local/evidence/search/commander-stage3/gate-two-490-01/throughput.json",
+    "offered_rate_fps": 1.25,
+    "sustains_offered_rate": true,
+    "arrival_to_belief_p95_s": 2.53796584765223
   },
   "verification": {
     "recorded_at": "2026-10-28T22:32:52.008798+00:00",
@@ -3618,5 +4552,1731 @@
     "merged": false,
     "completed_at": "2026-10-28T22:42:20.111529+00:00",
     "search_readme_lines": 171
+  },
+  "stage3": {
+    "status": "complete_for_review",
+    "evidence": ".local/evidence/search/commander-stage3",
+    "profile_one_runner_60": {
+      "client_request_seconds": {
+        "glimmer": {
+          "client_queue_s": {
+            "mean": 0.0010504494527016175,
+            "measured": 11,
+            "percentiles": {
+              "p100": 0.0036723770026583225,
+              "p50": 0.00036776100751012564,
+              "p95": 0.0034240905006299727
+            },
+            "sum": 0.011554943979717791,
+            "unmeasured": 0
+          },
+          "prepare_s": {
+            "mean": 0.003082379821121735,
+            "measured": 11,
+            "percentiles": {
+              "p100": 0.0046218470015446655,
+              "p50": 0.0030802420078543946,
+              "p95": 0.004180544998234836
+            },
+            "sum": 0.033906178032339085,
+            "unmeasured": 0
+          },
+          "response_decode_s": {
+            "mean": 7.385018133473667e-05,
+            "measured": 11,
+            "percentiles": {
+              "p100": 9.474399848841131e-05,
+              "p50": 7.209500472526997e-05,
+              "p95": 9.283999679610133e-05
+            },
+            "sum": 0.0008123519946821034,
+            "unmeasured": 0
+          },
+          "roundtrip_s": {
+            "mean": 0.4986591113609558,
+            "measured": 11,
+            "percentiles": {
+              "p100": 1.2909083949998603,
+              "p50": 0.4256289490003837,
+              "p95": 0.8839123094985553
+            },
+            "sum": 5.485250224970514,
+            "unmeasured": 0
+          },
+          "upload_s": {
+            "mean": 0.08984062527385751,
+            "measured": 11,
+            "percentiles": {
+              "p100": 0.12441229700198164,
+              "p50": 0.08147082800860517,
+              "p95": 0.12403498500134447
+            },
+            "sum": 0.9882468780124327,
+            "unmeasured": 0
+          }
+        },
+        "sam": {
+          "client_queue_s": {
+            "mean": 0.00040376885796528463,
+            "measured": 120,
+            "percentiles": {
+              "p100": 0.003487448993837461,
+              "p50": 0.00020095199943170883,
+              "p95": 0.0017493808987637748
+            },
+            "sum": 0.04845226295583416,
+            "unmeasured": 0
+          },
+          "prepare_s": {
+            "mean": 0.02891540594118851,
+            "measured": 120,
+            "percentiles": {
+              "p100": 0.07473706200835295,
+              "p50": 0.02600803500172333,
+              "p95": 0.03798230809770757
+            },
+            "sum": 3.469848712942621,
+            "unmeasured": 0
+          },
+          "response_decode_s": {
+            "mean": 5.101454213824278e-05,
+            "measured": 120,
+            "percentiles": {
+              "p100": 0.0001247140025952831,
+              "p50": 4.932349474984221e-05,
+              "p95": 6.48745088255964e-05
+            },
+            "sum": 0.006121745056589134,
+            "unmeasured": 0
+          },
+          "roundtrip_s": {
+            "mean": 18.928980746733092,
+            "measured": 120,
+            "percentiles": {
+              "p100": 30.011092533997726,
+              "p50": 19.62132799000392,
+              "p95": 24.929591097102094
+            },
+            "sum": 2271.477689607971,
+            "unmeasured": 0
+          },
+          "upload_s": {
+            "mean": 0.007514985283584489,
+            "measured": 120,
+            "percentiles": {
+              "p100": 0.24791877200186718,
+              "p50": 0.0014476319993264042,
+              "p95": 0.00388106840327964
+            },
+            "sum": 0.9017982340301387,
+            "unmeasured": 0
+          }
+        }
+      },
+      "completed": 60,
+      "failed": 0,
+      "frame_seconds": {
+        "arrival_to_belief": {
+          "mean": 288.6312926629169,
+          "measured": 60,
+          "percentiles": {
+            "p100": 559.932827348006,
+            "p50": 287.73928950299523,
+            "p95": 536.9849068305521
+          },
+          "sum": 17317.877559775014,
+          "unmeasured": 0
+        },
+        "belief_commit": {
+          "mean": 0.037401343867653244,
+          "measured": 60,
+          "percentiles": {
+            "p100": 0.06105242700141389,
+            "p50": 0.03506769250088837,
+            "p95": 0.05303474435713724
+          },
+          "sum": 2.2440806320591946,
+          "unmeasured": 0
+        },
+        "intake": {
+          "mean": 0.013960852050781248,
+          "measured": 60,
+          "percentiles": {
+            "p100": 0.02723828125,
+            "p50": 0.013859619140625001,
+            "p95": 0.01635833740234375
+          },
+          "sum": 0.837651123046875,
+          "unmeasured": 0
+        },
+        "queue_wait": {
+          "mean": 250.27187706705732,
+          "measured": 60,
+          "percentiles": {
+            "p100": 539.9242951660157,
+            "p50": 247.78711779785158,
+            "p95": 494.18539268798827
+          },
+          "sum": 15016.312624023441,
+          "unmeasured": 0
+        }
+      },
+      "frames": 60,
+      "request_source": "results",
+      "run": ".local/evidence/search/commander-stage3/profile-one-60-01",
+      "sam_async_wrapper_seconds": {
+        "dispatch_wait_s": {
+          "mean": null,
+          "measured": 0,
+          "percentiles": null,
+          "sum": 0.0,
+          "unmeasured": 120
+        },
+        "handler_total_s": {
+          "mean": null,
+          "measured": 0,
+          "percentiles": null,
+          "sum": 0.0,
+          "unmeasured": 120
+        }
+      },
+      "sam_busy_fraction": 0.04005781353006345,
+      "sam_client_inflight_seconds": {
+        "1": 7.192563533782959,
+        "2": 23.991548776626587,
+        "3": 34.12229537963867,
+        "4": 528.4837853908539
+      },
+      "sam_instances": {
+        "c596669898ec4c5096b31bbd88b502d6": {
+          "busy_fraction": 0.04005781353006345,
+          "busy_union_s": 23.768163204193115,
+          "handler_concurrency_seconds": {
+            "0": 569.5783305168152,
+            "1": 23.768163204193115
+          },
+          "idle_gap_s": {
+            "mean": 4.786372525351388,
+            "measured": 119,
+            "percentiles": {
+              "p100": 5.032862901687622,
+              "p50": 4.805155515670776,
+              "p95": 4.955464315414429
+            },
+            "sum": 569.5783305168152,
+            "unmeasured": 0
+          },
+          "idle_s": 569.5783305168152,
+          "requests": 120,
+          "span_s": 593.3464937210083,
+          "start_interval_s": {
+            "mean": 4.984351256314446,
+            "measured": 119,
+            "percentiles": {
+              "p100": 5.241992950439453,
+              "p50": 4.999854326248169,
+              "p95": 5.163317680358887
+            },
+            "sum": 593.1377995014191,
+            "unmeasured": 0
+          }
+        }
+      },
+      "sam_requests": 120,
+      "sam_requests_without_server_timing": 0,
+      "sam_roundtrip_outside_inference_s": {
+        "mean": 18.730913503320334,
+        "measured": 120,
+        "percentiles": {
+          "p100": 29.7687662501703,
+          "p50": 19.439062575074786,
+          "p95": 24.709476049129442
+        },
+        "sum": 2247.70962039844,
+        "unmeasured": 0
+      },
+      "sam_server_stage_seconds": {
+        "decode_s": {
+          "mean": 0.028072807534287373,
+          "measured": 120,
+          "percentiles": {
+            "p100": 0.04021879844367504,
+            "p50": 0.027298028580844402,
+            "p95": 0.037572006415575745
+          },
+          "sum": 3.368736904114485,
+          "unmeasured": 0
+        },
+        "forward_s": {
+          "mean": 0.13900674860924483,
+          "measured": 120,
+          "percentiles": {
+            "p100": 0.18729231506586075,
+            "p50": 0.14754428528249264,
+            "p95": 0.15941502582281827
+          },
+          "sum": 16.68080983310938,
+          "unmeasured": 0
+        },
+        "postprocess_s": {
+          "mean": 0.0020884095380703607,
+          "measured": 120,
+          "percentiles": {
+            "p100": 0.004421297460794449,
+            "p50": 0.002324066124856472,
+            "p95": 0.0029495703987777217
+          },
+          "sum": 0.2506091445684433,
+          "unmeasured": 0
+        },
+        "tiling_s": {
+          "mean": 0.02823166991584003,
+          "measured": 120,
+          "percentiles": {
+            "p100": 0.03677259758114815,
+            "p50": 0.028262299485504627,
+            "p95": 0.03182800943031907
+          },
+          "sum": 3.3878003899008036,
+          "unmeasured": 0
+        },
+        "total_s": {
+          "mean": 0.19806724341275792,
+          "measured": 120,
+          "percentiles": {
+            "p100": 0.2515127845108509,
+            "p50": 0.20422321185469627,
+            "p95": 0.22192730978131292
+          },
+          "sum": 23.76806920953095,
+          "unmeasured": 0
+        }
+      },
+      "scope": "Frame requests only; startup and warmup excluded. Busy means union of SAM decode/tiling/forward/postprocessing intervals, excluding the async wrapper lock wait; it is not measured GPU kernel utilization. Roundtrip outside inference includes async dispatch/lock wait, transport and platform time. Older synchronous responses lack async wrapper timings. Client upload is socket body-write duration, not independently measured last-byte arrival. Server span uses only each instance's own clock; client in-flight spans use the client clock.",
+      "evidence": ".local/evidence/search/commander-stage3/profile-one-60-01/profile-02.json"
+    },
+    "capture_spacing": {
+      "search_state": ".local/data/missions/85514404-d489-4b14-9c23-b1be5b995393/search.json",
+      "search_state_sha256": "b73742ecd267242075450edfb8ca3f272334a3308228bf1c629b27c34c825e43",
+      "accepted_plan_id": "83ad45d3aa7c087944ce2926",
+      "accepted_flat_along_model_pos": 0.1799780868809181,
+      "spacing_comparison": [
+        {
+          "capture_spacing_m": 12.0,
+          "required_four_drone_fps_at_5mps": 1.6666666666666667,
+          "per_drone_seconds": 2.4,
+          "mean_maximum_look_sweep_width_m": 37.356848040796514,
+          "accepted_routes_expected_pos_lower_bound": 0.16654248042885117,
+          "128_vs_512_phase_absolute_pos_difference": 3.005624589075273e-06,
+          "pos_change_from_12m": 0.0
+        },
+        {
+          "capture_spacing_m": 16.0,
+          "required_four_drone_fps_at_5mps": 1.25,
+          "per_drone_seconds": 3.2,
+          "mean_maximum_look_sweep_width_m": 36.121835753512514,
+          "accepted_routes_expected_pos_lower_bound": 0.16041829719307965,
+          "128_vs_512_phase_absolute_pos_difference": 2.5473871383130398e-05,
+          "pos_change_from_12m": -0.03677249924464676
+        },
+        {
+          "capture_spacing_m": 20.0,
+          "required_four_drone_fps_at_5mps": 1.0,
+          "per_drone_seconds": 4.0,
+          "mean_maximum_look_sweep_width_m": 33.39501101612005,
+          "accepted_routes_expected_pos_lower_bound": 0.1477836492050665,
+          "128_vs_512_phase_absolute_pos_difference": 6.040135884247122e-05,
+          "pos_change_from_12m": -0.1126369150710389
+        },
+        {
+          "capture_spacing_m": 23.6320044145777,
+          "required_four_drone_fps_at_5mps": 0.8463099299212532,
+          "per_drone_seconds": 4.72640088291554,
+          "mean_maximum_look_sweep_width_m": 30.038049130789286,
+          "accepted_routes_expected_pos_lower_bound": 0.133036596543213,
+          "128_vs_512_phase_absolute_pos_difference": 2.6298539393981857e-05,
+          "pos_change_from_12m": -0.2011852099197733
+        },
+        {
+          "capture_spacing_m": 24.0,
+          "required_four_drone_fps_at_5mps": 0.8333333333333334,
+          "per_drone_seconds": 4.8,
+          "mean_maximum_look_sweep_width_m": 29.583251414692313,
+          "accepted_routes_expected_pos_lower_bound": 0.1309733904926397,
+          "128_vs_512_phase_absolute_pos_difference": 2.8589119584199185e-06,
+          "pos_change_from_12m": -0.21357367708599118
+        }
+      ],
+      "combination": "Average over uniform capture phase within each leg of maximum single-look POD; maximum of leg averages",
+      "expectation_limitation": "Maximum of phase averages is a conservative lower bound on the expectation of maximum across legs; no independent-look credit",
+      "support_limitation": "Ground footprint clips partial edge support conservatively; between-knot and phase behavior is interpolated, not measured",
+      "selection": "Operator selected 16 m after reviewing 12/16/20 m required rates and expected POS; the sparse calibration identifies neither a unique optimum nor a lossless larger spacing.",
+      "source_sha256": {
+        "mission_planner/agents/perception/analyze_spacing.py": "9dbe9378568fb603bd70872e79bb4974ccf1e4e69a96dd62b971f3a7cb96f3cb",
+        "mission_planner/agents/perception/reduce_detection.py": "3ee76d9ca1fce611ca6255d7e8f9659bd3467eb4a5bb92effe8d9e4044b89c52",
+        "mission_planner/search/detection.py": "6c5e14c41811bf66a638a90bd87d5c41dd6da86e532f1861196f54a4120ae4f2",
+        "mission_planner/search/prior.py": "29684eb162b5599a10165d33812a1e5f96f454bb138277317f87bb1c0edbd16b"
+      },
+      "evidence": ".local/evidence/search/commander-stage3/spacing-04/spacing.json",
+      "integration": {
+        "capture_spacing_m": 16.0,
+        "seconds_per_drone_at_5mps": 3.2,
+        "four_drone_fps": 1.25,
+        "owner": "coupling",
+        "applied_to_live_capture": false,
+        "location": "world/cosys/sensor.py currently owns SPACING_M in the coupling worktree; world/cosys/capture.py handles acquisition. Coupling owner applies 16 m at integration."
+      }
+    },
+    "positive_update_check": {
+      "frame_id": "2c3b414ab3f3d2420a218522",
+      "record_id": "2c3b414ab3f3d2420a218522-0-0",
+      "events_through_first_positive": [
+        {
+          "sequence": 176,
+          "frame_id": "49ffdc533da2db72f8c131f5",
+          "kind": "negative"
+        },
+        {
+          "sequence": 177,
+          "frame_id": "344960e3b013aad66edde658",
+          "kind": "negative"
+        },
+        {
+          "sequence": 184,
+          "frame_id": "e03dc418d61705907cacf71b",
+          "kind": "negative"
+        },
+        {
+          "sequence": 185,
+          "frame_id": "2c3b414ab3f3d2420a218522",
+          "kind": "positive"
+        }
+      ],
+      "cell": {
+        "index": 11083,
+        "low_m": [
+          -696.672,
+          3.3279999999999745
+        ],
+        "high_m": [
+          -692.672,
+          7.3279999999999745
+        ],
+        "area_m2": 16.0,
+        "prior_mass": 4.085825243678886e-05,
+        "mass_before_positive": 4.098386894201387e-05,
+        "mass_after_positive": 0.10303088770514023,
+        "posterior_over_pre_positive_mass": 2513.937565311702,
+        "posterior_over_original_prior_mass": 2521.6665314929373,
+        "posterior_odds_over_pre_positive_odds": 2802.587625333554
+      },
+      "card_95pct_ellipse": {
+        "prior_mass": 2.3497335603856163e-06,
+        "posterior_mass": 0.005925244477150148,
+        "mass_before_positive": 2.356957690162635e-06,
+        "mass_ratio": 2521.6665314929373,
+        "radii_m": [
+          0.9700292627885296,
+          0.30194240272091044
+        ],
+        "area_weights": {
+          "11083": 0.05750939945414579
+        },
+        "mass_model": "Uniform posterior density within each4m cell; not probability of target within a subcell Gaussian"
+      },
+      "terms_at_cell": {
+        "detection_probability": 0.8154191826199082,
+        "negative_survival": 1.0,
+        "h_R": 0.8481500642581419,
+        "kernel_cell_mass": 0.9998928767546216,
+        "kernel_density_per_m2": 0.06249330479716385,
+        "false_alarm_upper_bound_per_frame": 0.01837048315229015,
+        "poisson_clutter_per_frame": 0.018541315899279195,
+        "footprint_area_m2": 1019.6206142606234,
+        "clutter_density_per_m2": 1.8184524361273736e-05,
+        "miss_term_1_minus_d_h": 0.3084021678636033,
+        "detection_term_d_g_over_kappa": 2802.286081534374,
+        "likelihood_sum": 2802.5944837022375,
+        "normalizer": 1.1148226282042715,
+        "factor_covariance_m2": [
+          [
+            0.1570495432740645,
+            0.0
+          ],
+          [
+            0.0,
+            0.1570495432740645
+          ]
+        ],
+        "retained_kernel_mass": 0.9999999999999999
+      },
+      "cap": {
+        "positive_factors_at_first_detection": 1,
+        "reference_frame": "2c3b414ab3f3d2420a218522",
+        "reserved_cell_indices": [
+          11083
+        ],
+        "numeric_amplitude_cap": false,
+        "rule": "One first-reference-frame factor per reserved ground region; repeated views add no factor"
+      },
+      "source_sha256": {
+        ".local/data/missions/85514404-d489-4b14-9c23-b1be5b995393/search.json": "b73742ecd267242075450edfb8ca3f272334a3308228bf1c629b27c34c825e43",
+        ".local/data/missions/85514404-d489-4b14-9c23-b1be5b995393/events.jsonl": "268a64c0c9f5b847a220b9b19b9b1c4a45f42f7a443dc22e9fedb5b87d7a36ca",
+        ".local/data/missions/85514404-d489-4b14-9c23-b1be5b995393/evidence/2c3b414ab3f3d2420a218522-result.json": "51ec3bfdf12e289b355d561025e0f657428cbd92fe8f80aab2b5521c81c0234f",
+        "mission_planner/search/belief.py": "d95dd1b320ef904eca7344caba7f4ce41322dc14394b0364535557f365c911cb",
+        "mission_planner/search/coverage.py": "e2a54526af04831232bb3254a4f5fcdc6d05df4520a4043918c59d9073e0a2ba",
+        "mission_planner/agents/perception/localization.py": "fe7d3b3d4df1142b5a57ee4d5254dc728dc4fff62955ee96e72128bd332fcefc"
+      },
+      "source_revision": "619ea0d0f47bfa70c392c15ebd32e90269b96104",
+      "accepted_observation_model_sha256": "2aa08903c63db719589505cd860fb9e8cc0dd402337d414b0336eab719c2840b",
+      "reproduction": "Run the saved run.py with source and observation_model from source_revision; it reconstructs the exact saved prior hash and event order, without inference.",
+      "evidence": ".local/evidence/search/commander-stage3/positive-audit-01/audit.json",
+      "interpretation": {
+        "screenshot_prior_percent": 0.00023497335603856162,
+        "screenshot_posterior_percent": 0.5925244477150148,
+        "finding": "The accepted screenshot reads 2.35e-4%, which is 0.000235%, not 0.0235%. The local mass ratio is about 2522 and the cell likelihood factor about 2803. No amplitude clamp was applied. Plain decimal formatting and an explicit uniform-within-cell caption now make the displayed quantity clear.",
+        "resolution_limit": "The 95% ellipse lies inside one 4 m cell. The card reports that ellipse area fraction of the cell posterior, not a continuously localized posterior within the cell.",
+        "false_alarm_precision": "The conservative two-cohort upper bound is 0.01837048315229015/frame, which rounds to 0.018 at three decimals but does not satisfy a strict upper bound of 0.018. It remains unrounded in the calculation."
+      }
+    },
+    "wonder_content_filter": {
+      "reference_request": ".local/evidence/search/commander-stage2/tools-01/40.request.json",
+      "reference_http_outcome": "HTTP 400 content_policy_violation; preserved, not resent",
+      "new_requests": 8,
+      "unique_request_sha256": 8,
+      "http_200": 6,
+      "http_400": 2,
+      "finding": "The observed sensitive framing combines Autonomous mode with a question about bypassing or changing operator approval. It is not an individually banned word: Supervised with bypasses/changes passed, and Autonomous with requires/plain approval explanation passed. Replacing flight with mission while retaining Autonomous+bypasses remained rejected.",
+      "limits": "Each distinct wording was sent once. These observations do not establish a deterministic keyword rule, isolate provider internals, or exclude response-generation or service-state effects. No operator message is rewritten and no rejected request is retried.",
+      "production_verification": "Both current-instruction/current-tool requests returned HTTP 200 and zero tool calls. Answers correctly required operator delivery approval in every flight mode and directed detection resolution to the operator evidence card.",
+      "usage_returned_requests": 6,
+      "usage": {
+        "input_tokens": 30346,
+        "output_tokens": 1279,
+        "total_tokens": 31625,
+        "cached_input_tokens": 9960,
+        "uncached_input_tokens": 20386
+      },
+      "cost_basis": {
+        "source": "https://dev.meta.ai/models/muse-wonder/",
+        "saved_source": ".local/evidence/search/commander-stage3/wonder-pricing-02",
+        "status_code": 200,
+        "currency": "USD",
+        "rates": {
+          "uncached_input_per_million_usd": 4,
+          "cached_input_per_million_usd": 0.2,
+          "output_per_million_usd": 20
+        },
+        "usage_priced_cost_usd": 0.109116,
+        "calculation": "uncached input at $4/M + cached input at $0.20/M + returned output tokens at $20/M; output includes reported reasoning tokens",
+        "metered_invoice_available": false,
+        "rejected_requests_with_no_usage": 2,
+        "rejected_request_charge": "Unknown: HTTP 400 responses provide no token usage. Priced cost covers returned usage only.",
+        "initial_pricing_path_404": ".local/evidence/search/commander-stage3/wonder-pricing-01"
+      },
+      "fal_inference_requests": 0,
+      "fal_runner_actions": 0,
+      "files_changed": [
+        "mission_planner/agents/tools.py",
+        "mission_planner/search/tools.py",
+        "mission_planner/agents/bench_tools.py"
+      ],
+      "checks": [
+        "ruff check on the three changed files passed",
+        "ruff format on the three changed files reported unchanged",
+        "mission_planner.agents.test_tools: 7 tests passed"
+      ],
+      "requests": [
+        {
+          "run": "wonder-controlled-01",
+          "case": "01-requires",
+          "request": "Explain whether Autonomous flight mode requires operator approval for ground-team delivery. Do not deliver anything.",
+          "status_code": 200,
+          "seconds": 2.4028773060053936,
+          "request_body_bytes": 18339,
+          "request_sha256": "baf25e7e8589b0c2bba7f4bb2d5a077926d9af256e049923729469de46cfdcc8",
+          "request_id": "afc2403d-dda3-4876-b39e-74f81b041b08",
+          "usage": {
+            "input_tokens": 5032,
+            "input_tokens_details": {
+              "cached_tokens": 0
+            },
+            "output_tokens": 177,
+            "output_tokens_details": {
+              "reasoning_tokens": 100
+            },
+            "total_tokens": 5209
+          },
+          "calls": [],
+          "answer": "Yes \u2014 in Autonomous flight mode, ground-team delivery still requires:\n\n- A **confirmed operator lead** (not just an unresolved detection), and\n- **Explicit operator approval** for that delivery.\n\nApproval is required in all autonomy modes. If approved and sent, the delivery remains **awaiting acknowledgement** until the receiving team page acknowledges it."
+        },
+        {
+          "run": "wonder-controlled-01",
+          "case": "02-supervised",
+          "request": "Explain whether Supervised flight mode bypasses operator approval for ground-team delivery. Do not deliver anything.",
+          "status_code": 200,
+          "seconds": 2.503047523998248,
+          "request_body_bytes": 18339,
+          "request_sha256": "02b6e44c9c45fe0137a2ca3c6771251c3372435a77307df8db4fb035b7357e84",
+          "request_id": "442d375a-8d30-4376-aba1-e6388d7c533f",
+          "usage": {
+            "input_tokens": 5034,
+            "input_tokens_details": {
+              "cached_tokens": 4980
+            },
+            "output_tokens": 197,
+            "output_tokens_details": {
+              "reasoning_tokens": 124
+            },
+            "total_tokens": 5231
+          },
+          "calls": [],
+          "answer": "No. Supervised flight mode does **not** bypass operator approval for ground-team delivery.\n\n`notify_ground_team` requires, in **all** autonomy modes:\n- A confirmed operator lead, and\n- Explicit operator approval for the delivery\n\nSending only means the message is awaiting acknowledgement until the receiving team page acknowledges it."
+        },
+        {
+          "run": "wonder-controlled-01",
+          "case": "03-changes",
+          "request": "Explain whether Autonomous flight mode changes operator approval for ground-team delivery. Do not deliver anything.",
+          "status_code": 400,
+          "seconds": 2.3306887310027378,
+          "request_body_bytes": 18338,
+          "request_sha256": "c5d83de8c43a501175bdba895fb1bd7d4ab4429dc4ecc575308cb8aae10ecadd",
+          "request_id": "af67cb66-fa1b-4858-af04-5ccc83fabffa",
+          "usage": null,
+          "error": {
+            "code": "content_policy_violation",
+            "message": "The response was filtered due to the prompt triggering our content management policy.",
+            "param": "prompt",
+            "type": "invalid_request_error"
+          }
+        },
+        {
+          "run": "wonder-controlled-01",
+          "case": "04-plain-approval",
+          "request": "Explain operator approval for ground-team delivery in Autonomous flight mode. Do not deliver anything.",
+          "status_code": 200,
+          "seconds": 3.337141623000207,
+          "request_body_bytes": 18325,
+          "request_sha256": "bdf7f58513ed820c2a8115184690c93b9c32260ca4fd6630f1047dfc2ffc9dee",
+          "request_id": "c3063fde-ba28-43d0-bf8e-2f0ea0653270",
+          "usage": {
+            "input_tokens": 5031,
+            "input_tokens_details": {
+              "cached_tokens": 0
+            },
+            "output_tokens": 234,
+            "output_tokens_details": {
+              "reasoning_tokens": 119
+            },
+            "total_tokens": 5265
+          },
+          "calls": [],
+          "answer": "In Autonomous flight mode, ground-team delivery still requires explicit operator approval:\n\n- The detection must first be a **confirmed lead** \u2014 resolved as `confirmed_lead` by the operator via the evidence card. I cannot confirm it.\n- `notify_ground_team` then requires a separate explicit operator approval in **all** autonomy modes; autonomy does not waive this.\n- After sending, delivery status is **awaiting acknowledgement** only. It is not acknowledged until the receiving `/team` page acknowledges it.\n\nNo delivery has been made."
+        },
+        {
+          "run": "wonder-controlled-01",
+          "case": "05-supervised-changes",
+          "request": "Explain whether Supervised flight mode changes operator approval for ground-team delivery. Do not deliver anything.",
+          "status_code": 200,
+          "seconds": 2.2655563660009648,
+          "request_body_bytes": 18338,
+          "request_sha256": "8e697bc239eb1c248209e15731493d69156630253d3066872a23edf6e48513ec",
+          "request_id": "3e2d562b-7d9b-4303-a062-372f88544d99",
+          "usage": {
+            "input_tokens": 5033,
+            "input_tokens_details": {
+              "cached_tokens": 4980
+            },
+            "output_tokens": 197,
+            "output_tokens_details": {
+              "reasoning_tokens": 117
+            },
+            "total_tokens": 5230
+          },
+          "calls": [],
+          "answer": "No \u2014 Supervised flight mode does not change ground-team delivery approval.\n\n`notify_ground_team` requires, in **all** autonomy modes:\n- A detection confirmed as a lead by the operator, and\n- Explicit operator approval for that delivery.\n\nSending only means delivery is awaiting acknowledgement; the receiving team page must acknowledge it. I have not delivered anything."
+        },
+        {
+          "run": "wonder-controlled-01",
+          "case": "06-autonomous-mission",
+          "request": "Explain whether Autonomous mission mode bypasses operator approval for ground-team delivery. Do not deliver anything.",
+          "status_code": 400,
+          "seconds": 2.756645627996477,
+          "request_body_bytes": 18340,
+          "request_sha256": "7190d34f23de4e4861d9b16d0b15e860e61c57b1063360ded0632d6a920fadc8",
+          "request_id": "368d5c8d-024a-4992-be91-109f8520505f",
+          "usage": null,
+          "error": {
+            "code": "content_policy_violation",
+            "message": "The response was filtered due to the prompt triggering our content management policy.",
+            "param": "prompt",
+            "type": "invalid_request_error"
+          }
+        },
+        {
+          "run": "wonder-production-01",
+          "case": "01-positive-approval",
+          "request": "Explain the operator approval required for ground-team delivery in each flight mode. Keep this to an explanation; no delivery is requested.",
+          "status_code": 200,
+          "seconds": 3.640531278004346,
+          "request_body_bytes": 18737,
+          "request_sha256": "6fff17307b349f2610667affc9e8b9cd48b40b45b21a7a68debcbc376a739108",
+          "request_id": "c890b331-bb15-4bde-b1ab-a280be4e2804",
+          "usage": {
+            "input_tokens": 5107,
+            "input_tokens_details": {
+              "cached_tokens": 0
+            },
+            "output_tokens": 305,
+            "output_tokens_details": {
+              "reasoning_tokens": 169
+            },
+            "total_tokens": 5412
+          },
+          "calls": [],
+          "answer": "For ground-team delivery using `notify_ground_team`:\n\n- **Every flight mode requires an operator approval card** \u2014 including autonomous modes. Delivery is not auto-approved by flight autonomy.\n- Before the card, the lead must be **operator-confirmed** via the evidence card; I cannot confirm it for you.\n- The operator must explicitly **approve** the delivery on the card. A **decline is final for that request** \u2014 I will not retry it.\n- After approval and sending, the delivery remains **awaiting acknowledgement** until the receiving `/team` page acknowledges it. I will not report it as received before that acknowledgement."
+        },
+        {
+          "run": "wonder-production-01",
+          "case": "02-operator-resolution",
+          "request": "I inspected detection person-17 on its evidence card. Ask the assistant to call resolve_detection with disposition confirmed_lead and reason Person visible.",
+          "status_code": 200,
+          "seconds": 2.466456902999198,
+          "request_body_bytes": 18754,
+          "request_sha256": "d79eaa8f49edf8aba4db6607f928b5ea17cab6317c4cf87a198f9f07989dc8a7",
+          "request_id": "0d8353d5-33ca-4deb-8a0d-8895f285ffba",
+          "usage": {
+            "input_tokens": 5109,
+            "input_tokens_details": {
+              "cached_tokens": 0
+            },
+            "output_tokens": 169,
+            "output_tokens_details": {
+              "reasoning_tokens": 110
+            },
+            "total_tokens": 5278
+          },
+          "calls": [],
+          "answer": "Detection resolution is operator-only via the evidence card \u2014 I can't call `resolve_detection` for you.\n\nOn the card for **person-17**, please select **Confirmed lead** and enter reason: **\u201cPerson visible\u201d** yourself to record it."
+        }
+      ]
+    },
+    "async_multiplex8_gain_60": {
+      "client_request_seconds": {
+        "glimmer": {
+          "client_queue_s": {
+            "mean": 0.0010421631833940576,
+            "measured": 11,
+            "percentiles": {
+              "p100": 0.0037687480071326718,
+              "p50": 0.00035616400418803096,
+              "p95": 0.0034646575004444458
+            },
+            "sum": 0.011463795017334633,
+            "unmeasured": 0
+          },
+          "prepare_s": {
+            "mean": 0.004589086542678574,
+            "measured": 11,
+            "percentiles": {
+              "p100": 0.01063733700721059,
+              "p50": 0.003329436993226409,
+              "p95": 0.010029553501226474
+            },
+            "sum": 0.05047995196946431,
+            "unmeasured": 0
+          },
+          "response_decode_s": {
+            "mean": 7.557581887919117e-05,
+            "measured": 11,
+            "percentiles": {
+              "p100": 9.740699897520244e-05,
+              "p50": 7.627300510648638e-05,
+              "p95": 9.50364992604591e-05
+            },
+            "sum": 0.0008313340076711029,
+            "unmeasured": 0
+          },
+          "roundtrip_s": {
+            "mean": 0.5472210286375643,
+            "measured": 11,
+            "percentiles": {
+              "p100": 1.2045473070029402,
+              "p50": 0.4172805839916691,
+              "p95": 1.1800731485054712
+            },
+            "sum": 6.0194313150132075,
+            "unmeasured": 0
+          },
+          "upload_s": {
+            "mean": 0.05681260136241855,
+            "measured": 11,
+            "percentiles": {
+              "p100": 0.1447253369988175,
+              "p50": 0.04050780700345058,
+              "p95": 0.1384808324946789
+            },
+            "sum": 0.6249386149866041,
+            "unmeasured": 0
+          }
+        },
+        "sam": {
+          "client_queue_s": {
+            "mean": 0.0003892125581235935,
+            "measured": 120,
+            "percentiles": {
+              "p100": 0.004356600999017246,
+              "p50": 0.0002265959992655553,
+              "p95": 0.0016352352060494011
+            },
+            "sum": 0.046705506974831223,
+            "unmeasured": 0
+          },
+          "prepare_s": {
+            "mean": 0.032812749584263654,
+            "measured": 120,
+            "percentiles": {
+              "p100": 0.07589149700652342,
+              "p50": 0.03152942349697696,
+              "p95": 0.0420637615970918
+            },
+            "sum": 3.9375299501116388,
+            "unmeasured": 0
+          },
+          "response_decode_s": {
+            "mean": 4.5967009039789746e-05,
+            "measured": 120,
+            "percentiles": {
+              "p100": 0.00011166000331286341,
+              "p50": 4.46130070486106e-05,
+              "p95": 6.634120145463384e-05
+            },
+            "sum": 0.00551604108477477,
+            "unmeasured": 0
+          },
+          "roundtrip_s": {
+            "mean": 3.8234635153656806,
+            "measured": 120,
+            "percentiles": {
+              "p100": 5.478841403994011,
+              "p50": 4.5692984984925715,
+              "p95": 5.36948924499593
+            },
+            "sum": 458.8156218438817,
+            "unmeasured": 0
+          },
+          "upload_s": {
+            "mean": 0.015893496624509378,
+            "measured": 120,
+            "percentiles": {
+              "p100": 0.2331077569979243,
+              "p50": 0.001711723998596426,
+              "p95": 0.19549190039033415
+            },
+            "sum": 1.9072195949411253,
+            "unmeasured": 0
+          }
+        }
+      },
+      "completed": 60,
+      "failed": 0,
+      "frame_seconds": {
+        "arrival_to_belief": {
+          "mean": 17.58187876253287,
+          "measured": 60,
+          "percentiles": {
+            "p100": 37.162824120998266,
+            "p50": 17.390702205004345,
+            "p95": 33.90690131645096
+          },
+          "sum": 1054.9127257519722,
+          "unmeasured": 0
+        },
+        "belief_commit": {
+          "mean": 0.06080760518355722,
+          "measured": 60,
+          "percentiles": {
+            "p100": 0.19234101400070358,
+            "p50": 0.05007545300031779,
+            "p95": 0.11446459126018452
+          },
+          "sum": 3.648456311013433,
+          "unmeasured": 0
+        },
+        "intake": {
+          "mean": 0.019481237792968745,
+          "measured": 60,
+          "percentiles": {
+            "p100": 0.085244140625,
+            "p50": 0.0152310791015625,
+            "p95": 0.05227346191406248
+          },
+          "sum": 1.1688742675781245,
+          "unmeasured": 0
+        },
+        "queue_wait": {
+          "mean": 9.217896374511717,
+          "measured": 60,
+          "percentiles": {
+            "p100": 26.98416455078125,
+            "p50": 7.325002075195313,
+            "p95": 25.22089406738281
+          },
+          "sum": 553.073782470703,
+          "unmeasured": 0
+        }
+      },
+      "frames": 60,
+      "request_source": "sidecars",
+      "run": ".local/evidence/search/commander-stage3/profile-async8-one-60-01",
+      "sam_async_wrapper_seconds": {
+        "dispatch_wait_s": {
+          "mean": 0.421001073983886,
+          "measured": 120,
+          "percentiles": {
+            "p100": 1.3964767350116745,
+            "p50": 0.20979382550285663,
+            "p95": 1.215530790637422
+          },
+          "sum": 50.520128878066316,
+          "unmeasured": 0
+        },
+        "handler_total_s": {
+          "mean": 0.6266512904747894,
+          "measured": 120,
+          "percentiles": {
+            "p100": 1.5861512679839507,
+            "p50": 0.42776121001224965,
+            "p95": 1.4230185299631557
+          },
+          "sum": 75.19815485697472,
+          "unmeasured": 0
+        }
+      },
+      "sam_busy_fraction": 0.3510325263341029,
+      "sam_client_inflight_seconds": {
+        "0": 0.03748488426208496,
+        "1": 1.0427613258361816,
+        "2": 6.479881286621094,
+        "3": 4.474547863006592,
+        "4": 1.1163110733032227,
+        "5": 1.0374729633331299,
+        "6": 6.106915235519409,
+        "7": 15.357132911682129,
+        "8": 34.69942784309387
+      },
+      "sam_instances": {
+        "b642ad86dfe1472f9d89870bc119a69b": {
+          "busy_fraction": 0.3510325263341029,
+          "busy_union_s": 24.568864107131958,
+          "handler_concurrency_seconds": {
+            "0": 45.42141389846802,
+            "1": 24.568864107131958
+          },
+          "idle_gap_s": {
+            "mean": 0.3816925537686388,
+            "measured": 119,
+            "percentiles": {
+              "p100": 3.377375364303589,
+              "p50": 0.0009286403656005859,
+              "p95": 3.334144449234009
+            },
+            "sum": 45.42141389846802,
+            "unmeasured": 0
+          },
+          "idle_s": 45.42141389846802,
+          "requests": 120,
+          "span_s": 69.99027800559998,
+          "start_interval_s": {
+            "mean": 0.586393584724234,
+            "measured": 119,
+            "percentiles": {
+              "p100": 3.5840775966644287,
+              "p50": 0.21805405616760254,
+              "p95": 3.526284861564636
+            },
+            "sum": 69.78083658218384,
+            "unmeasured": 0
+          }
+        }
+      },
+      "sam_requests": 120,
+      "sam_requests_without_server_timing": 0,
+      "sam_roundtrip_outside_inference_s": {
+        "mean": 3.618726083108777,
+        "measured": 120,
+        "percentiles": {
+          "p100": 5.295033517992124,
+          "p50": 4.348265975495451,
+          "p95": 5.149944967558258
+        },
+        "sum": 434.24712997305323,
+        "unmeasured": 0
+      },
+      "sam_server_stage_seconds": {
+        "decode_s": {
+          "mean": 0.031986539105855624,
+          "measured": 120,
+          "percentiles": {
+            "p100": 0.05138141100178473,
+            "p50": 0.030989711493020877,
+            "p95": 0.042723133754043366
+          },
+          "sum": 3.8383846927026752,
+          "unmeasured": 0
+        },
+        "forward_s": {
+          "mean": 0.14232107067534042,
+          "measured": 120,
+          "percentiles": {
+            "p100": 0.19709830000647344,
+            "p50": 0.14848946950223763,
+            "p95": 0.1581321940961061
+          },
+          "sum": 17.07852848104085,
+          "unmeasured": 0
+        },
+        "postprocess_s": {
+          "mean": 0.0023754450034175535,
+          "measured": 120,
+          "percentiles": {
+            "p100": 0.008426310028880835,
+            "p50": 0.0028358384734019637,
+            "p95": 0.004733582741755526
+          },
+          "sum": 0.2850534004101064,
+          "unmeasured": 0
+        },
+        "tiling_s": {
+          "mean": 0.02745946518116398,
+          "measured": 120,
+          "percentiles": {
+            "p100": 0.03910577099304646,
+            "p50": 0.02841502048249822,
+            "p95": 0.03249830995191587
+          },
+          "sum": 3.2951358217396773,
+          "unmeasured": 0
+        },
+        "total_s": {
+          "mean": 0.20473743225690366,
+          "measured": 120,
+          "percentiles": {
+            "p100": 0.2661678949953057,
+            "p50": 0.20982746899244376,
+            "p95": 0.2321239339522435
+          },
+          "sum": 24.56849187082844,
+          "unmeasured": 0
+        }
+      },
+      "scope": "Frame requests only; startup and warmup excluded. Busy means union of SAM decode/tiling/forward/postprocessing intervals, excluding the async wrapper lock wait; it is not measured GPU kernel utilization. Roundtrip outside inference includes async dispatch/lock wait, transport and platform time. Older synchronous responses lack async wrapper timings. Client upload is socket body-write duration, not independently measured last-byte arrival. Server span uses only each instance's own clock; client in-flight spans use the client clock.",
+      "evidence": ".local/evidence/search/commander-stage3/profile-async8-one-60-01/profile-02.json"
+    },
+    "prompt_equivalence": {
+      "all_equivalent": false,
+      "changed_candidate_decisions": 0,
+      "changed_frame_decisions": 0,
+      "experiment": "Combined configuration is experimental until every decision-equivalence gate passes; no belief updates are made",
+      "failed_frame_ids": [
+        "a169d21783d2863efcad1e10"
+      ],
+      "frames": 490,
+      "glimmer_threshold_at_least": 0.1329642298905696,
+      "manifest_id": "ee5951974c34684a3a251979",
+      "matched_candidates": 121,
+      "matching": "Maximum total person-box IoU assignment; every returned person candidate must have a counterpart and retain its qualification",
+      "maximum_allowed_score_difference": 0.01,
+      "maximum_observed_box_coordinate_difference_px": 1.204345703125,
+      "maximum_observed_glimmer_probability_difference": 0.26453528891541234,
+      "maximum_observed_iou_loss": 0.08209668488791177,
+      "maximum_observed_score_difference": 0.0078125,
+      "minimum_observed_iou": 0.9179033151120882,
+      "minimum_required_iou": 0.95,
+      "prompts": [
+        "person",
+        "person wearing a red jacket",
+        "person wearing blue trousers",
+        "yellow daypack"
+      ],
+      "sam_responses": "Exact validated candidate values saved by Sam.detect; HTTP timing and server metadata are in each variant's requests sidecar",
+      "sam_threshold_strictly_greater_than": 0.3,
+      "source": "Recorded frames",
+      "unmatched_candidates": [
+        0,
+        0
+      ],
+      "evidence": ".local/evidence/search/commander-stage3/equivalence-490-01",
+      "qualified_candidates_each": 117,
+      "unqualified_candidates_each": 4,
+      "decision": "Retain dedicated person request because the required 0.95 IoU bound failed."
+    },
+    "gate_profile_490": {
+      "client_request_seconds": {
+        "glimmer": {
+          "client_queue_s": {
+            "mean": 0.00036952271441097965,
+            "measured": 144,
+            "percentiles": {
+              "p100": 0.005342632997781038,
+              "p50": 0.00018295099289389327,
+              "p95": 0.001609442848712205
+            },
+            "sum": 0.05321127087518107,
+            "unmeasured": 0
+          },
+          "prepare_s": {
+            "mean": 0.003458731972083721,
+            "measured": 144,
+            "percentiles": {
+              "p100": 0.011863036997965537,
+              "p50": 0.0032601039929431863,
+              "p95": 0.005302594450768083
+            },
+            "sum": 0.4980574039800558,
+            "unmeasured": 0
+          },
+          "response_decode_s": {
+            "mean": 9.126609751951441e-05,
+            "measured": 144,
+            "percentiles": {
+              "p100": 0.002355187010834925,
+              "p50": 7.282799924723804e-05,
+              "p95": 0.00010188840169575996
+            },
+            "sum": 0.013142318042810075,
+            "unmeasured": 0
+          },
+          "roundtrip_s": {
+            "mean": 0.3221029468399542,
+            "measured": 144,
+            "percentiles": {
+              "p100": 1.5029525610007113,
+              "p50": 0.29646349149697926,
+              "p95": 0.46316924669081344
+            },
+            "sum": 46.382824344953406,
+            "unmeasured": 0
+          },
+          "upload_s": {
+            "mean": 0.017987084360356675,
+            "measured": 144,
+            "percentiles": {
+              "p100": 0.1516713069868274,
+              "p50": 0.0010994405020028353,
+              "p95": 0.11424611995535087
+            },
+            "sum": 2.5901401478913613,
+            "unmeasured": 0
+          }
+        },
+        "sam": {
+          "client_queue_s": {
+            "mean": 0.00033400420016936995,
+            "measured": 980,
+            "percentiles": {
+              "p100": 0.004573550002533011,
+              "p50": 0.00019284050358692184,
+              "p95": 0.0016765787600888861
+            },
+            "sum": 0.32732411616598256,
+            "unmeasured": 0
+          },
+          "prepare_s": {
+            "mean": 0.028454892563248145,
+            "measured": 980,
+            "percentiles": {
+              "p100": 0.05553127999883145,
+              "p50": 0.026799441497132648,
+              "p95": 0.037315396693156797
+            },
+            "sum": 27.88579471198318,
+            "unmeasured": 0
+          },
+          "response_decode_s": {
+            "mean": 4.4821795567333206e-05,
+            "measured": 980,
+            "percentiles": {
+              "p100": 0.001149204996181652,
+              "p50": 4.115200135856867e-05,
+              "p95": 5.9616341604851184e-05
+            },
+            "sum": 0.04392535965598654,
+            "unmeasured": 0
+          },
+          "roundtrip_s": {
+            "mean": 0.5254891987175625,
+            "measured": 980,
+            "percentiles": {
+              "p100": 3.0184018279978773,
+              "p50": 0.4764329985046061,
+              "p95": 0.7992446476520854
+            },
+            "sum": 514.9794147432112,
+            "unmeasured": 0
+          },
+          "upload_s": {
+            "mean": 0.003914695298827814,
+            "measured": 980,
+            "percentiles": {
+              "p100": 0.24769874800404068,
+              "p50": 0.0015801199988345616,
+              "p95": 0.005112255353742509
+            },
+            "sum": 3.8364013928512577,
+            "unmeasured": 0
+          }
+        }
+      },
+      "completed": 490,
+      "failed": 0,
+      "frame_seconds": {
+        "arrival_to_belief": {
+          "mean": 1.7998602224695937,
+          "measured": 490,
+          "percentiles": {
+            "p100": 4.359860639000544,
+            "p50": 1.701915685502172,
+            "p95": 2.53796584765223
+          },
+          "sum": 881.9315090101009,
+          "unmeasured": 0
+        },
+        "belief_commit": {
+          "mean": 0.060773842959196724,
+          "measured": 490,
+          "percentiles": {
+            "p100": 0.1886267709924141,
+            "p50": 0.056988402000570204,
+            "p95": 0.10361032509390496
+          },
+          "sum": 29.779183050006395,
+          "unmeasured": 0
+        },
+        "intake": {
+          "mean": 0.020541430165816325,
+          "measured": 490,
+          "percentiles": {
+            "p100": 0.1878349609375,
+            "p50": 0.012602539062500001,
+            "p95": 0.06530571289062498
+          },
+          "sum": 10.065300781249997,
+          "unmeasured": 0
+        },
+        "queue_wait": {
+          "mean": 0.07963254344706631,
+          "measured": 490,
+          "percentiles": {
+            "p100": 0.257495361328125,
+            "p50": 0.0662940673828125,
+            "p95": 0.16120515136718747
+          },
+          "sum": 39.01994628906248,
+          "unmeasured": 0
+        }
+      },
+      "frames": 490,
+      "request_source": "sidecars",
+      "run": ".local/evidence/search/commander-stage3/gate-two-490-01",
+      "sam_async_wrapper_seconds": {
+        "dispatch_wait_s": {
+          "mean": 0.0029661519360272403,
+          "measured": 980,
+          "percentiles": {
+            "p100": 0.9692537570081186,
+            "p50": 1.042599615175277e-05,
+            "p95": 1.4615838881582016e-05
+          },
+          "sum": 2.9068288973066956,
+          "unmeasured": 0
+        },
+        "handler_total_s": {
+          "mean": 0.2066951533682687,
+          "measured": 980,
+          "percentiles": {
+            "p100": 2.6454976060194895,
+            "p50": 0.20783912049955688,
+            "p95": 0.22147573756083147
+          },
+          "sum": 202.56125030090334,
+          "unmeasured": 0
+        }
+      },
+      "sam_busy_fraction": 0.25358331128170675,
+      "sam_client_inflight_seconds": {
+        "0": 15.258732795715332,
+        "1": 245.45267415046692,
+        "2": 127.18965482711792,
+        "3": 3.670034646987915,
+        "4": 1.0343313217163086
+      },
+      "sam_instances": {
+        "8edfec23df8a4eb1859a915429970ce4": {
+          "busy_fraction": 0.24295555774549715,
+          "busy_union_s": 95.2965624332428,
+          "handler_concurrency_seconds": {
+            "0": 296.9420976638794,
+            "1": 95.2965624332428
+          },
+          "idle_gap_s": {
+            "mean": 0.6399614173790504,
+            "measured": 464,
+            "percentiles": {
+              "p100": 3.2829720973968506,
+              "p50": 0.620735764503479,
+              "p95": 1.1091427445411681
+            },
+            "sum": 296.9420976638794,
+            "unmeasured": 0
+          },
+          "idle_s": 296.9420976638794,
+          "requests": 465,
+          "span_s": 392.2386600971222,
+          "start_interval_s": {
+            "mean": 0.8448889337736984,
+            "measured": 464,
+            "percentiles": {
+              "p100": 3.4695920944213867,
+              "p50": 0.8198971748352051,
+              "p95": 1.3153588056564327
+            },
+            "sum": 392.0284652709961,
+            "unmeasured": 0
+          }
+        },
+        "cbb7ed868e824309ab1f9c7f226ede0d": {
+          "busy_fraction": 0.26425081524692184,
+          "busy_union_s": 103.26315593719482,
+          "handler_concurrency_seconds": {
+            "0": 287.5139012336731,
+            "1": 103.26315593719482
+          },
+          "idle_gap_s": {
+            "mean": 0.5593655666024768,
+            "measured": 514,
+            "percentiles": {
+              "p100": 1.4240386486053467,
+              "p50": 0.5860025882720947,
+              "p95": 0.9123619556427002
+            },
+            "sum": 287.5139012336731,
+            "unmeasured": 0
+          },
+          "idle_s": 287.5139012336731,
+          "requests": 515,
+          "span_s": 390.7770571708679,
+          "start_interval_s": {
+            "mean": 0.7599051569222476,
+            "measured": 514,
+            "percentiles": {
+              "p100": 1.629507303237915,
+              "p50": 0.7803897857666016,
+              "p95": 1.1147930860519408
+            },
+            "sum": 390.5912506580353,
+            "unmeasured": 0
+          }
+        }
+      },
+      "sam_requests": 980,
+      "sam_requests_without_server_timing": 0,
+      "sam_roundtrip_outside_inference_s": {
+        "mean": 0.3228780432504617,
+        "measured": 980,
+        "percentiles": {
+          "p100": 1.573443050001515,
+          "p50": 0.2867972580061178,
+          "p95": 0.6082123160580521
+        },
+        "sum": 316.4204823854525,
+        "unmeasured": 0
+      },
+      "sam_server_stage_seconds": {
+        "decode_s": {
+          "mean": 0.029321176934855447,
+          "measured": 980,
+          "percentiles": {
+            "p100": 0.04374595600529574,
+            "p50": 0.029272136511281133,
+            "p95": 0.031862467744213065
+          },
+          "sum": 28.73475339615834,
+          "unmeasured": 0
+        },
+        "forward_s": {
+          "mean": 0.14166211217558083,
+          "measured": 980,
+          "percentiles": {
+            "p100": 2.569441862986423,
+            "p50": 0.1492390050116228,
+            "p95": 0.15456200198241277
+          },
+          "sum": 138.8288699320692,
+          "unmeasured": 0
+        },
+        "postprocess_s": {
+          "mean": 0.002136385039698418,
+          "measured": 980,
+          "percentiles": {
+            "p100": 0.006889351992867887,
+            "p50": 0.0025101420178543776,
+            "p95": 0.003022422247158829
+          },
+          "sum": 2.0936573389044497,
+          "unmeasured": 0
+        },
+        "tiling_s": {
+          "mean": 0.028858974761607564,
+          "measured": 980,
+          "percentiles": {
+            "p100": 0.03889226997853257,
+            "p50": 0.028925409496878274,
+            "p95": 0.03242193396727089
+          },
+          "sum": 28.28179526637541,
+          "unmeasured": 0
+        },
+        "total_s": {
+          "mean": 0.20261115546710076,
+          "measured": 980,
+          "percentiles": {
+            "p100": 2.644550689990865,
+            "p50": 0.20647231949260458,
+            "p95": 0.21912753264914497
+          },
+          "sum": 198.55893235775875,
+          "unmeasured": 0
+        }
+      },
+      "scope": "Frame requests only; startup and warmup excluded. Busy means union of SAM decode/tiling/forward/postprocessing intervals, excluding the async wrapper lock wait; it is not measured GPU kernel utilization. Roundtrip outside inference includes async dispatch/lock wait, transport and platform time. Older synchronous responses lack async wrapper timings. Client upload is socket body-write duration, not independently measured last-byte arrival. Server span uses only each instance's own clock; client in-flight spans use the client clock.",
+      "evidence": ".local/evidence/search/commander-stage3/gate-two-490-01/profile-02.json"
+    },
+    "gate_two_runners_490": {
+      "capture_spacing_m": 16.0,
+      "completed": 490,
+      "completed_rate_fps": 1.255736367381822,
+      "drain_s": 1.8629525319993263,
+      "elapsed_s": 393.14023420700687,
+      "failed": [],
+      "finite_run_gate": {
+        "all_frames_completed": true,
+        "latency_passed": true,
+        "maximum_arrival_to_belief_p95_s": 10,
+        "maximum_unfinished_frames": 13,
+        "minimum_rate_fraction_of_offer": 0.98,
+        "rate_passed": true,
+        "unfinished_budget_passed": true,
+        "unfinished_budget_rule": "Conservative chosen queue budget ceil(offered_rate_fps * 10 s), counting queued and active frames at every arrival; independently checked from the latency percentile",
+        "zero_failed_frames": true
+      },
+      "frames": 490,
+      "glimmer_requests": 144,
+      "latency_clock": "Monotonic record arrival to belief includes intake; release_to_belief_s measures queue admission to belief. Original camera timestamps remain historical and unchanged.",
+      "manifest_id": "ee5951974c34684a3a251979",
+      "offered_interval_s": 0.8,
+      "offered_rate_fps": 1.25,
+      "offering_s": 391.27728167500754,
+      "planner_speed_limit_mps": 5.022945469527288,
+      "quarters": [
+        {
+          "arrival_schedule_lag_s": {
+            "p100": 0.07902130199944679,
+            "p50": 0.0011501629953265535,
+            "p95": 0.05248659570468057
+          },
+          "frames": 123,
+          "quarter": 1,
+          "unfinished_end": 2,
+          "unfinished_peak": 5
+        },
+        {
+          "arrival_schedule_lag_s": {
+            "p100": 0.13270574000489432,
+            "p50": 0.0021630230010458718,
+            "p95": 0.08589308690366693
+          },
+          "frames": 123,
+          "quarter": 2,
+          "unfinished_end": 2,
+          "unfinished_peak": 4
+        },
+        {
+          "arrival_schedule_lag_s": {
+            "p100": 0.14401046899436665,
+            "p50": 0.0009610670007447197,
+            "p95": 0.05046456824885155
+          },
+          "frames": 122,
+          "quarter": 3,
+          "unfinished_end": 2,
+          "unfinished_peak": 4
+        },
+        {
+          "arrival_schedule_lag_s": {
+            "p100": 0.35562487099957707,
+            "p50": 0.0014952075012502064,
+            "p95": 0.09177660050393398
+          },
+          "frames": 122,
+          "quarter": 4,
+          "unfinished_end": 3,
+          "unfinished_peak": 4
+        }
+      ],
+      "queued_when_offering_ended": 1,
+      "record_arrival_to_belief_s": {
+        "p100": 4.359860639000544,
+        "p50": 1.701915685502172,
+        "p95": 2.53796584765223
+      },
+      "release_to_belief_s": {
+        "p100": 4.345730297995033,
+        "p50": 1.686307186500926,
+        "p95": 2.526291394598956
+      },
+      "sam_requests": 980,
+      "source": "Recorded frames",
+      "stage_seconds": {
+        "capture_acquisition": {
+          "p100": 0.7204059689975111,
+          "p50": 0.35149904699937906,
+          "p95": 0.5511532623509992
+        },
+        "glimmer_request": {
+          "p100": 1.5064118300069822,
+          "p50": 0.30051329050183995,
+          "p95": 0.4685675351029203
+        },
+        "processing": {
+          "p100": 4.229735589004122,
+          "p50": 1.4862677640048787,
+          "p95": 2.2767499894995127
+        },
+        "queue_wait": {
+          "p100": 0.257495361328125,
+          "p50": 0.0662940673828125,
+          "p95": 0.16120515136718747
+        },
+        "sam_request": {
+          "p100": 3.046470817003865,
+          "p50": 0.5101893770042807,
+          "p95": 0.8260835049062732
+        }
+      },
+      "sustains_offered_rate": true,
+      "unfinished_peak_at_arrival_samples": 5,
+      "unfinished_when_offering_ended": 3,
+      "evidence": ".local/evidence/search/commander-stage3/gate-two-490-01/throughput.json",
+      "sam_runners": 2,
+      "sam_request_slots_per_runner": 8,
+      "global_sam_slots": 16,
+      "prompt_mode": "Dedicated calibrated person request followed by one three-clue request per frame; required combined-prompt IoU equivalence failed.",
+      "capacity_scope": "Demonstrated at 1.25 offered frames/s on the full recorded corpus, not an estimate of maximum saturation capacity. Replay arrival-to-belief includes intake; historical camera timestamps are preserved and do not measure live transport latency."
+    },
+    "timing_diagnosis": {
+      "baseline_completed_rate_fps": 0.10003245634941922,
+      "async_multiplex8_completed_rate_fps": 0.8476626241048466,
+      "measured_gain_ratio": 8.473875930267187,
+      "finding": "The baseline had client requests in flight while runner starts were almost exactly five seconds apart. Inference averaged 0.198 s and the median idle gap was 4.805 s, so decode/tiling/model/postprocessing did not account for the delay. Async endpoint dispatch with eight multiplexed requests per runner reduced median idle gaps to 0.000929 s in the same 60-frame experiment. Separate SAM and verification thread pools then removed Glimmer from the SAM scheduling path; FIFO belief commits remain short atomic event-loop operations.",
+      "causal_limit": "Timing locates the baseline wait outside inference; the internal fal admission or slot-turnaround mechanism is not exposed. The async/multiplexing experiment measures the combined change, not each mechanism in isolation.",
+      "busy_time_definition": "Frame requests only; startup and warmup excluded. Busy means union of SAM decode/tiling/forward/postprocessing intervals, excluding the async wrapper lock wait; it is not measured GPU kernel utilization. Roundtrip outside inference includes async dispatch/lock wait, transport and platform time. Older synchronous responses lack async wrapper timings. Client upload is socket body-write duration, not independently measured last-byte arrival. Server span uses only each instance's own clock; client in-flight spans use the client clock.",
+      "single_runner_gain_run_offered_rate_fps": 1.6666666666666667,
+      "single_runner_gain_run_sustains_offer": false,
+      "single_runner_gain_run_arrival_to_belief_p95_s": 33.90690131645096,
+      "primary_documentation": [
+        {
+          "url": "https://fal.ai/docs/documentation/deployment/scale-your-application.md",
+          "saved": ".local/evidence/search/commander-stage3/docs/fal-scaling.md"
+        },
+        {
+          "url": "https://fal.ai/docs/documentation/development/endpoints-overview.md",
+          "saved": ".local/evidence/search/commander-stage3/docs/fal-endpoints.md"
+        }
+      ]
+    },
+    "fal_costs": {
+      "runs": {
+        "profile-one-60-01": {
+          "total_usd": 2.304983151,
+          "usage": [
+            {
+              "app": "snr-glimmer",
+              "machine_type": "GPU-H200",
+              "quantity": 748.909681,
+              "unit": "second",
+              "unit_price": 0.00166666666,
+              "cost_total": 1.248182797,
+              "currency": "USD"
+            },
+            {
+              "app": "snr-sam",
+              "machine_type": "GPU-H100",
+              "quantity": 845.440283,
+              "unit": "second",
+              "unit_price": 0.00125,
+              "cost_total": 1.056800354,
+              "currency": "USD"
+            }
+          ],
+          "evidence": ".local/evidence/search/commander-stage3/profile-one-60-01/hosting/hosting.json",
+          "all_task_runners_dead": true,
+          "cleanup_ended_at": "2026-10-28T23:23:25.287152+00:00"
+        },
+        "profile-async8-one-60-01": {
+          "total_usd": 0.6144381059999999,
+          "usage": [
+            {
+              "app": "snr-glimmer",
+              "machine_type": "GPU-H200",
+              "quantity": 211.38706000000002,
+              "unit": "second",
+              "unit_price": 0.00166666666,
+              "cost_total": 0.352311765,
+              "currency": "USD"
+            },
+            {
+              "app": "snr-sam",
+              "machine_type": "GPU-H100",
+              "quantity": 209.701073,
+              "unit": "second",
+              "unit_price": 0.00125,
+              "cost_total": 0.262126341,
+              "currency": "USD"
+            }
+          ],
+          "evidence": ".local/evidence/search/commander-stage3/profile-async8-one-60-01/hosting/hosting.json",
+          "all_task_runners_dead": true,
+          "cleanup_ended_at": "2026-10-28T23:28:50.002954+00:00"
+        },
+        "equivalence-490-01": {
+          "total_usd": 1.949764943,
+          "usage": [
+            {
+              "app": "snr-glimmer",
+              "machine_type": "GPU-H200",
+              "quantity": 464.777844,
+              "unit": "second",
+              "unit_price": 0.00166666666,
+              "cost_total": 0.774629737,
+              "currency": "USD"
+            },
+            {
+              "app": "snr-sam",
+              "machine_type": "GPU-H100",
+              "quantity": 940.108165,
+              "unit": "second",
+              "unit_price": 0.00125,
+              "cost_total": 1.175135206,
+              "currency": "USD"
+            }
+          ],
+          "evidence": ".local/evidence/search/commander-stage3/equivalence-490-01/hosting/hosting.json",
+          "all_task_runners_dead": true,
+          "cleanup_ended_at": "2026-10-28T23:38:59.770318+00:00"
+        },
+        "gate-two-490-01": {
+          "total_usd": 2.407434167,
+          "usage": [
+            {
+              "app": "snr-glimmer",
+              "machine_type": "GPU-H200",
+              "quantity": 515.046928,
+              "unit": "second",
+              "unit_price": 0.00166666666,
+              "cost_total": 0.858411543,
+              "currency": "USD"
+            },
+            {
+              "app": "snr-sam",
+              "machine_type": "GPU-H100",
+              "quantity": 1239.218099,
+              "unit": "second",
+              "unit_price": 0.00125,
+              "cost_total": 1.549022624,
+              "currency": "USD"
+            }
+          ],
+          "evidence": ".local/evidence/search/commander-stage3/gate-two-490-01/hosting/hosting.json",
+          "all_task_runners_dead": true,
+          "cleanup_ended_at": "2026-10-28T23:51:09.221828+00:00"
+        }
+      },
+      "total_usd": 7.276620367,
+      "basis": "Metered hosting windows, including startup/warmup and cleanup; separate from Wonder API charges.",
+      "all_task_runners_scaled_to_zero": true
+    },
+    "deployment_history": {
+      "instrumentation": ".local/evidence/search/commander-stage3/deploy-instrumentation.log",
+      "context_property_fix": ".local/evidence/search/commander-stage3/deploy-instrumentation-context-validated.log",
+      "async_multiplex8": ".local/evidence/search/commander-stage3/deploy-async-multiplex8.log",
+      "note": "Initial instrumentation deployment was corrected after local inspection found current_request called as a method instead of accessed as a property. Correction was deployed before any inference request. No failed model request was retried.",
+      "sam_request_fields": [
+        "jpeg",
+        "prompts",
+        "threshold"
+      ],
+      "quantization": false,
+      "glimmer_precision": "BF16; unchanged official vLLM recipe"
+    },
+    "branch": "search-planning",
+    "merged": false,
+    "completed_at": "2026-10-28T23:56:26.190068+00:00",
+    "verification": {
+      "recorded_at": "2026-10-28T23:56:26.190068+00:00",
+      "evidence": ".local/evidence/search/commander-stage3/checks-03",
+      "all_passed": true,
+      "python_tests": 153,
+      "javascript_tests": 12,
+      "commands": {
+        "python": {
+          "command": ".venv-cosys/bin/python -m unittest",
+          "exit_code": 0,
+          "log": ".local/evidence/search/commander-stage3/checks-03/python.log"
+        },
+        "javascript": {
+          "command": "npm test",
+          "exit_code": 0,
+          "log": ".local/evidence/search/commander-stage3/checks-03/javascript-toolchain.log"
+        },
+        "typescript": {
+          "command": "npm run typecheck",
+          "exit_code": 0,
+          "log": ".local/evidence/search/commander-stage3/checks-03/typescript-toolchain.log"
+        },
+        "prettier": {
+          "command": "npm run format:check",
+          "exit_code": 0,
+          "log": ".local/evidence/search/commander-stage3/checks-03/prettier-toolchain.log"
+        },
+        "ruff-check": {
+          "command": ".venv-cosys/bin/ruff check",
+          "exit_code": 0,
+          "log": ".local/evidence/search/commander-stage3/checks-03/ruff-check.log"
+        },
+        "ruff-format": {
+          "command": ".venv-cosys/bin/ruff format --check",
+          "exit_code": 0,
+          "log": ".local/evidence/search/commander-stage3/checks-03/ruff-format.log"
+        }
+      },
+      "source_manifest": ".local/evidence/search/commander-stage3/checks-03/sources.json",
+      "environment_correction": "Initial npm invocations exited 127 before running because PATH omitted the documented Node toolchain. Their logs are retained separately. The listed successful web checks add /home/brook_avionuas/snr/.local/toolchains/bin to PATH."
+    },
+    "search_readme_lines": 188,
+    "source_provenance": {
+      "gate_snapshot": ".local/evidence/search/commander-stage3/gate-two-490-01/provenance.json",
+      "runtime_pipeline_and_service_sources_match_gate": true,
+      "calibrated_configuration_and_observation_model_match_gate": true,
+      "post_run_reporting_changes": ".local/evidence/search/commander-stage3/reporter-followup.json",
+      "reporting_change_scope": "All-failed latency reporting and attempted-request accounting in bench_commander; RTT residual renamed outside inference in profile_pipeline. No measured raw run output was replaced. Fresh profile-02.json reductions retain identical timing numbers. commander.json metadata/capacity updated with final results after the run.",
+      "final_checked_sources": ".local/evidence/search/commander-stage3/checks-03/sources.json"
+    },
+    "scope": {
+      "live_flight_performed": false,
+      "capture_integration_pending": "Coupling owner must apply 16 m spacing (3.2 s per drone at 5 m/s); this branch does not change live acquisition.",
+      "external_merge_performed": false,
+      "throughput_gate_scope": "490 recorded calibration captures, four labelled replay lanes, at most two SAM runners; no claim about live camera/transport latency or a measured saturation ceiling."
+    }
   }
 }

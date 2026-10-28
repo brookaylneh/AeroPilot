@@ -77,6 +77,8 @@ export const searchSchema = z.object({
         completed_rate_fps: number.nonnegative(),
         required_rate_fps: number.positive(),
         speed_limit_mps: number.nonnegative(),
+        capture_spacing_m: number.positive(),
+        arrival_to_belief_p95_s: number.nonnegative().nullable(),
         per_drone_interval_s: number.positive(),
         applies_to_profile: z.boolean(),
         sustains_required_rate: z.boolean(),

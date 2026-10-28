@@ -38,6 +38,49 @@ def recorded():
 
 
 class Configuration(unittest.TestCase):
+    def test_combined_calibration_requires_the_exact_verified_prompt_order(self):
+        config, _ = load_configuration()
+        prompts = ["red jacket", "blue trousers", "yellow daypack"]
+        combined = {
+            **config,
+            "person_batching": "verified_decisions",
+            "person_batching_prompts": ["person", *prompts],
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            with self.assertRaises(AssertionError):
+                Processor(temporary, prompts[::-1], combined, None, None)
+            with self.assertRaises(AssertionError):
+                Processor(temporary, ["red jacket", "blue trousers", "bag"], combined, None, None)
+            processor = Processor(temporary, prompts, combined, None, None)
+            self.assertEqual(processor.prompts, combined["person_batching_prompts"])
+
+    def test_later_failure_keeps_each_request_timing(self):
+        record, payload = recorded()
+        config, _ = load_configuration()
+
+        def detect(image, prompts, threshold, timing):
+            timing.update(status_code=200, roundtrip_s=0.25)
+            return {p: [Detection((950, 500, 970, 550), 0.8, 50)] for p in prompts}
+
+        def decide(images, question, timing):
+            timing.update(status_code=503, roundtrip_s=0.5)
+            raise RuntimeError("Glimmer failed")
+
+        with tempfile.TemporaryDirectory() as temporary:
+            processor = Processor(
+                temporary,
+                ["backpack"],
+                config,
+                SimpleNamespace(detect=detect),
+                SimpleNamespace(decide=decide),
+            )
+            with self.assertRaisesRegex(RuntimeError, "Glimmer failed"):
+                processor.process(record, payload, "fixture", "recorded", "Drone2", lambda s: None)
+            requests = json.loads(Path(temporary, "fixture-requests.json").read_text())
+            self.assertEqual([r["model"] for r in requests], ["sam", "sam", "glimmer"])
+            self.assertEqual([r["status_code"] for r in requests], [200, 200, 503])
+            self.assertFalse(Path(temporary, "fixture-inference.json").exists())
+
     def test_saved_capture_rejects_truth_extra_fields_and_changed_image(self):
         record, payload = recorded()
         with tempfile.TemporaryDirectory() as name:
@@ -108,12 +151,12 @@ class Configuration(unittest.TestCase):
         config = {**config, "person_batching": "dedicated"}
         requests, questions = [], []
 
-        def detect(image, prompts, threshold):
+        def detect(image, prompts, threshold, timing):
             requests.append(prompts)
             self.assertEqual(threshold, 0.3)
             return {p: [Detection((950, 500, 970, 550), 0.8, 50)] for p in prompts}
 
-        def decide(images, question):
+        def decide(images, question, timing):
             questions.append(question)
             self.assertEqual(len(images), 1)
             return {
@@ -164,7 +207,7 @@ class Queue(unittest.IsolatedAsyncioTestCase):
             ingestion = Ingestion(
                 temporary,
                 "recorded",
-                SimpleNamespace(process=process),
+                SimpleNamespace(detect=process, verify=lambda result, stage: result),
                 lambda result: completed.append(result["frame_id"]),
                 lambda: None,
             )
@@ -227,7 +270,11 @@ class Queue(unittest.IsolatedAsyncioTestCase):
             ),
         ):
             ingestion = Ingestion(
-                temporary, "recorded", SimpleNamespace(process=process), commit, lambda: None
+                temporary,
+                "recorded",
+                SimpleNamespace(detect=process, verify=lambda result, stage: result),
+                commit,
+                lambda: None,
             )
             identity = await ingestion.ingest("capture.json", "Drone1")
             await ingestion.close()

@@ -4,11 +4,13 @@ import asyncio
 import inspect
 import json
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from mission_planner.agents.perception.configuration import digest, encode, read_capture
 
 LANES = ("Drone1", "Drone2", "Drone3", "Drone4")
+SAM_FRAMES_PER_LANE = 4
 
 
 def capture_id(record):
@@ -39,9 +41,16 @@ class Ingestion:
         self.processor, self.on_complete, self.on_change = processor, on_complete, on_change
         self.frames, self.last_timestamp, self.tasks = {}, dict.fromkeys(LANES, 0), []
         self.queues = {name: asyncio.Queue() for name in LANES}
+        self.results = {name: asyncio.Queue() for name in LANES}
         self.closed = False
         self.loop = asyncio.get_running_loop()
-        self.tasks = [asyncio.create_task(self.worker(name)) for name in LANES]
+        self.sam_executor = ThreadPoolExecutor(max_workers=len(LANES) * SAM_FRAMES_PER_LANE)
+        self.verify_executor = ThreadPoolExecutor(max_workers=len(LANES))
+        self.tasks = [
+            asyncio.create_task(work(name))
+            for name in LANES
+            for work in (self.worker, self.committer)
+        ]
 
     def changed(self):
         self.directory.joinpath("frames.json").write_text(encode(list(self.frames.values())) + "\n")
@@ -103,28 +112,71 @@ class Ingestion:
 
     async def worker(self, lane):
         queue = self.queues[lane]
+        slots = asyncio.Semaphore(SAM_FRAMES_PER_LANE)
         while True:
             item = await queue.get()
             if item is None:
                 queue.task_done()
+                self.results[lane].put_nowait(None)
                 return
+            await slots.acquire()
             identity, record, payload = item
             state = self.frames[identity]
             state.update(status="processing", stage="preparing", started_at_ms=time.time() * 1000)
             self.changed()
-            result = await asyncio.gather(
-                asyncio.to_thread(
-                    self.processor.process,
-                    record,
-                    payload,
-                    identity,
-                    self.source,
-                    state["replay_lane"],
-                    lambda stage: self.loop.call_soon_threadsafe(self.stage, identity, stage),
-                ),
-                return_exceptions=True,
+            task = asyncio.create_task(self.process(identity, record, payload, slots))
+
+            def finished(task, identity=identity):
+                error = task.exception()
+                if error is not None:
+                    self.failed(identity, error)
+
+            task.add_done_callback(finished)
+            self.results[lane].put_nowait((identity, task))
+
+    def failed(self, identity, error):
+        state = self.frames[identity]
+        state.update(
+            status="failed",
+            failure_stage=state["stage"],
+            stage="failed",
+            error=f"{type(error).__name__}: {error}",
+            completed_at_ms=time.time() * 1000,
+        )
+        self.changed()
+
+    async def process(self, identity, record, payload, slots):
+        def stage(value):
+            self.loop.call_soon_threadsafe(self.stage, identity, value)
+
+        try:
+            prepared = await self.loop.run_in_executor(
+                self.sam_executor,
+                self.processor.detect,
+                record,
+                payload,
+                identity,
+                self.source,
+                self.frames[identity]["replay_lane"],
+                stage,
             )
-            outcome = result[0]
+        finally:
+            slots.release()
+        self.stage(identity, "Waiting for Glimmer")
+        result = await self.loop.run_in_executor(
+            self.verify_executor, self.processor.verify, prepared, stage
+        )
+        self.stage(identity, "Awaiting ordered belief")
+        return result
+
+    async def committer(self, lane):
+        while True:
+            item = await self.results[lane].get()
+            if item is None:
+                return
+            identity, task = item
+            state = self.frames[identity]
+            outcome = (await asyncio.gather(task, return_exceptions=True))[0]
             if not isinstance(outcome, BaseException):
                 state["stage"] = "Belief"
                 outcome["timings"]["queued_at_ms"] = state["queued_at_ms"]
@@ -134,23 +186,22 @@ class Ingestion:
                 commit = await asyncio.gather(self.complete(outcome), return_exceptions=True)
                 state["belief_committed"] = "belief" in outcome
                 outcome = commit[0]
-            state["completed_at_ms"] = time.time() * 1000
             if isinstance(outcome, BaseException):
-                state.update(
-                    status="failed",
-                    failure_stage=state["stage"],
-                    stage="failed",
-                    error=f"{type(outcome).__name__}: {outcome}",
-                )
+                if state["status"] != "failed":
+                    self.failed(identity, outcome)
             else:
-                state.update(status="complete", stage="complete")
+                state.update(
+                    status="complete", stage="complete", completed_at_ms=time.time() * 1000
+                )
             self.changed()
-            queue.task_done()
+            self.queues[lane].task_done()
 
     async def complete(self, result):
+        started = time.monotonic()
         value = self.on_complete(result)
         if inspect.isawaitable(value):
             await value
+        result["timings"]["belief_commit_s"] = time.monotonic() - started
         result["timings"]["belief_updated_at_ms"] = time.time() * 1000
         result["timings"]["release_to_belief_s"] = (
             time.monotonic() - result["timings"]["queued_monotonic_s"]
@@ -170,14 +221,12 @@ class Ingestion:
             waiting = [f for f in frames if f["status"] == "queued"]
             current = [f for f in frames if f["status"] == "processing"]
             pending = [f for f in frames if f["status"] in ("queued", "processing")]
-            assert len(current) <= 1
             lanes.append(
                 {
                     "lane": name,
                     "queued": len(waiting),
                     "oldest_age_s": (now - pending[0]["queued_at_ms"]) / 1000 if pending else 0.0,
-                    "current_frame": current[0]["id"] if current else None,
-                    "current_stage": current[0]["stage"] if current else None,
+                    "active": [{"frame_id": f["id"], "stage": f["stage"]} for f in current],
                     "completed": sum(f["status"] == "complete" for f in frames),
                     "failed": sum(f["status"] == "failed" for f in frames),
                 }
@@ -200,3 +249,5 @@ class Ingestion:
         for queue in self.queues.values():
             queue.put_nowait(None)
         await asyncio.gather(*self.tasks)
+        self.sam_executor.shutdown()
+        self.verify_executor.shutdown()

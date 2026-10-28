@@ -8,7 +8,7 @@ import numpy as np
 
 from mission_planner.gcs.geodesy import NAMES
 from mission_planner.gcs.validation import validate_route, validate_separation
-from mission_planner.search.detection import AGL_M, lateral_probability
+from mission_planner.search.detection import AGL_M, CAPTURE_SPACING_M, track_probability
 from mission_planner.search.grid import inside
 from mission_planner.search.terrain import terrain_leg
 from mission_planner.search.timing import SPEED_MPS, landing_seconds, launch_seconds, travel_seconds
@@ -71,7 +71,10 @@ def track_pod(centers, a, b, model, mask):
     delta = centers - start
     along = delta[:, 0] * unit[0] + delta[:, 1] * unit[1]
     lateral = delta[:, 0] * unit[1] - delta[:, 1] * unit[0]
-    return lateral_probability(lateral, model) * mask * (along >= 0) * (along <= length)
+    result = np.zeros(len(centers))
+    ids = np.flatnonzero(mask)
+    result[ids] = track_probability(lateral[ids], along[ids], length, model, CAPTURE_SPACING_M)
+    return result
 
 
 def transit(home, first, last, sector):
@@ -125,7 +128,10 @@ def candidate(grid, probability, vertices, homes, model, spacing, axis, prioriti
             (waypoint(a["north_m"], a["east_m"], z), waypoint(b["north_m"], b["east_m"], z))
             for a, b in legs
         ]
-        pods = [track_pod(centers, a, b, model, area_mask) for a, b in legs]
+        pods = [
+            (track_pod(centers, a, b, model, area_mask), track_pod(centers, b, a, model, area_mask))
+            for a, b in legs
+        ]
         paths = [(terrain_leg(a, b, z)[0], terrain_leg(b, a, z)[0]) for a, b in legs]
         chosen = []
         prefix = []
@@ -156,7 +162,8 @@ def candidate(grid, probability, vertices, homes, model, spacing, axis, prioriti
                     - travel_seconds(waypoints)
                     + landing_seconds(egress[-1]["altitude_above_home_m"])
                 )
-                gain = float(probability @ np.maximum(pods[i] - cumulative, 0))
+                candidate_pod = pods[i][int(reverse)]
+                gain = float(probability @ np.maximum(candidate_pod - cumulative, 0))
                 if now + cost + max(RESERVE_SECONDS, candidate_return_time) <= AIRBORNE_SECONDS:
                     options.append(
                         (
@@ -169,17 +176,20 @@ def candidate(grid, probability, vertices, homes, model, spacing, axis, prioriti
                             candidate_return_time,
                             duration,
                             waypoints,
+                            candidate_pod,
                         )
                     )
             if not options:
                 break
-            _, _, i, a, b, cost, return_time, duration, prefix = max(options, key=lambda v: v[:2])
+            _, _, i, a, b, cost, return_time, duration, prefix, selected_pod = max(
+                options, key=lambda v: v[:2]
+            )
             if first is None:
                 first = a
             start_time = now + cost - duration
             assert start_time >= now - 1e-8, "Terrain connector produced overlapping search legs"
             now += cost
-            cumulative = np.maximum(cumulative, pods[i])
+            cumulative = np.maximum(cumulative, selected_pod)
             chosen.append({"start": a, "end": b, "starts_s": start_time, "ends_s": now})
             timeline.append({"drone_id": name, **chosen[-1]})
             current = b
@@ -337,11 +347,12 @@ def plan(grid, probability, vertices, states, readbacks, model, inputs):
     assert baseline is not None
     baseline = materialize(baseline, states, readbacks)
     selected["comparison"] = {
-        "label": "Model expectation; stationary target, conditional on in-world presence",
+        "label": "Conservative phase-averaged maximum-look expectation; stationary target, conditional on in-world presence",
         "planned": curve(selected, grid, probability, vertices, model),
         "uniform_lawnmower": curve(baseline, grid, probability, vertices, model),
     }
     selected["alternatives"] = alternatives
+    selected["capture_spacing_m"] = CAPTURE_SPACING_M
     selected["inputs"] = inputs
     selected["provisional"] = True
     selected["plan_id"] = hashlib.sha256(encode(selected).encode()).hexdigest()[:24]

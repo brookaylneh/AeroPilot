@@ -11,7 +11,7 @@ from mission_planner.agents.perception.localization import ELLIPSE_95
 from mission_planner.agents.perception.reduce_detection import reduce_calibration
 from mission_planner.environment import ROOT
 from mission_planner.search.belief import Evidence, region_probability
-from mission_planner.search.detection import lateral_probability
+from mission_planner.search.detection import negative_model, positional_probability
 from mission_planner.search.detections import Detections
 
 
@@ -126,20 +126,15 @@ class EvidenceCaps(unittest.TestCase):
 
     def test_actual_lower_curve_allows_a_later_positive_to_restore_mass(self):
         model = reduce_calibration(ROOT / ".local/data/calibration")
-        lower = {
-            **model,
-            "bins": [
-                {**b, "p": b["simultaneous_wilson"][0]} if b["trials"] else b for b in model["bins"]
-            ],
-        }
-        self.pod = lateral_probability(self.grid["centers"][:, 1], lower)
+        lower = negative_model(model)
+        self.pod = positional_probability(self.grid["centers"][:, 1], 0, lower)
         self.assertTrue((self.pod < 1).all())
         self.apply("negative", [])
         location = record("a", "positive", 1, 1)["localization"]
         reduced = self.evidence.mass(location)["posterior_mass"]
         self.assertLess(reduced, self.evidence.mass(location)["prior_mass"])
         self.assertTrue((self.evidence.probability > 0).all())
-        self.pod = lateral_probability(self.grid["centers"][:, 1], model)
+        self.pod = positional_probability(self.grid["centers"][:, 1], 0, model)
         self.apply("positive", [record("a", "positive", 1, 1)])
         self.assertGreater(self.evidence.mass(location)["posterior_mass"], reduced)
 

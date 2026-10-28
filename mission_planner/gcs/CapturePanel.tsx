@@ -100,10 +100,13 @@ export default function CapturePanel({
                 </span>
               </div>
               <span>
-                {lane.current_stage === null ? 'Idle' : lane.current_stage} · {lane.completed} complete ·{' '}
-                {lane.failed} failed
+                {lane.active.length} active · {lane.completed} complete · {lane.failed} failed
               </span>
-              {lane.current_frame !== null && <small title={lane.current_frame}>{lane.current_frame}</small>}
+              {lane.active.map((frame) => (
+                <small key={frame.frame_id} title={frame.frame_id}>
+                  {frame.stage} · {frame.frame_id}
+                </small>
+              ))}
             </div>
           ))}
           {commander.failed_frames.length > 0 && (

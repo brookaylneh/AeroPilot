@@ -34,6 +34,60 @@ def wilson(k, n, z):
     return [max(0.0, mid - half), min(1.0, mid + half)]
 
 
+def positional_model(root, threshold):
+    lateral, along = list(range(0, 25, 4)), list(range(-36, 37, 12))
+    trials = np.zeros((len(along), len(lateral)), dtype=int)
+    successes = np.zeros_like(trials)
+    sam_successes = np.zeros_like(trials)
+    actual = [[[] for _ in lateral] for _ in along]
+    sources = {}
+    for name in COHORT:
+        path = Path(root) / name / "inference.json"
+        raw = path.read_bytes()
+        sources[str(path)] = hashlib.sha256(raw).hexdigest()
+        data = json.loads(raw)
+        assert data["schemaVersion"] == 2 and data["samThreshold"] == 0.05
+        assert len(data["frames"]) == 49
+        crops = linked_crops(data)
+        for frame in data["frames"]:
+            i, j = along.index(frame["alongM"]), lateral.index(frame["offsetM"])
+            trials[i, j] += 1
+            sam_successes[i, j] += any(
+                d["true"] and d["confidence"] > SAM_THRESHOLD for d in frame["detections"]
+            )
+            successes[i, j] += any(
+                c["kind"] == "detection"
+                and c["file"] == frame["file"]
+                and c["detection"]["true"]
+                and c["detection"]["confidence"] > SAM_THRESHOLD
+                and c["yes"] >= threshold
+                for c in crops
+            )
+            actual[i][j].append([frame["actualOffsetM"], frame["actualAlongM"]])
+    assert (trials == len(COHORT)).all() and (successes <= sam_successes).all()
+    z = norm.ppf(1 - 0.05 / (2 * trials.size))
+    interval = np.array([wilson(k, n, z) for k, n in zip(successes.flat, trials.flat)])
+    interval = interval.reshape(*trials.shape, 2)
+    return {
+        "lateral_m": lateral,
+        "along_m": along,
+        "p": (successes / trials).tolist(),
+        "simultaneous_lower": interval[:, :, 0].tolist(),
+        "simultaneous_upper": interval[:, :, 1].tolist(),
+        "trials": trials.tolist(),
+        "sam_true_successes": sam_successes.tolist(),
+        "qualified_true_successes": successes.tolist(),
+        "actual_position_ranges_m": [
+            [[np.min(cell, axis=0).tolist(), np.max(cell, axis=0).tolist()] for cell in row]
+            for row in actual
+        ],
+        "input_sha256": sources,
+        "coordinate_definition": "Camera minus subject: lateral absolute, along aircraft forward; nominal capture knots",
+        "method": "Bilinear interpolation; zero outside nominal ground footprint; partial frames count as trials",
+        "uncertainty": "Simultaneous two-sided 95% Wilson over 49 cells; excludes renderer, phase interpolation and cohort correlation",
+    }
+
+
 def reduce_calibration(root):
     root = Path(root)
     data = []
@@ -104,6 +158,7 @@ def reduce_calibration(root):
         "sweep_interval_m": [
             integral([b["simultaneous_wilson"][i] for b in bins[:-1]] + [0]) for i in (0, 1)
         ],
+        "position": positional_model(root, threshold),
         "combination": "maximum qualified single-look POD; not independent frames",
         "interval_limitation": "Binomial envelope excludes phase, renderer, symmetry and correlated-cohort uncertainty",
     }

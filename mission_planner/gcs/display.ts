@@ -17,7 +17,7 @@ export function formatPosition(north_m: number, east_m: number) {
 export function formatProbability(value: number) {
   if (!Number.isFinite(value) || value < 0 || value > 1) throw new Error('Invalid probability');
   const percent = value * 100;
-  return `${value === 0 ? '0' : percent < 0.01 ? percent.toExponential(2) : percent.toPrecision(3)}%`;
+  return `${percent.toLocaleString('en-US', { maximumSignificantDigits: 3, useGrouping: false })}%`;
 }
 
 const titles: Record<string, string> = {

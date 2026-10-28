@@ -73,25 +73,29 @@ def rate(hits, trials):
     return {"hits": hits, "trials": trials, "rate": hits / trials if trials else None}
 
 
-def prefix(manifest_path, count, output):
+def select(manifest_path, indices, output, label):
     manifest = load_replay(manifest_path)
-    assert 0 < count < len(manifest["records"])
+    assert indices and len(set(indices)) == len(indices) and indices == sorted(indices)
+    assert 0 <= indices[0] <= indices[-1] < len(manifest["records"])
     output.mkdir(parents=True, exist_ok=False)
     output.joinpath("frames").mkdir()
     labels = json.loads(Path(manifest_path).with_name("labels.json").read_text())
     rows = []
-    for row in manifest["records"][:count]:
+    for lane_index, index in enumerate(indices):
+        row = manifest["records"][index]
         record_path = Path(row["record"])
         record = json.loads(record_path.read_text())
         output.joinpath("frames", record_path.name).write_bytes(record_path.read_bytes())
         output.joinpath("frames", record["file"]).write_bytes(
             record_path.with_name(record["file"]).read_bytes()
         )
-        rows.append({**row, "record": "frames/" + record_path.name})
+        rows.append(
+            {**row, "record": "frames/" + record_path.name, "replay_lane": LANES[lane_index % 4]}
+        )
     value = {
         **manifest,
         "id": digest(encode(rows).encode())[:24],
-        "label": f"Recorded calibration frames · first {count} captures",
+        "label": label,
         "records": rows,
     }
     output.joinpath("manifest.json").write_text(encode(value) + "\n")
@@ -99,6 +103,16 @@ def prefix(manifest_path, count, output):
         encode({row["frame_id"]: labels[row["frame_id"]] for row in rows}) + "\n"
     )
     return value
+
+
+def prefix(manifest_path, count, output):
+    assert count > 0
+    return select(
+        manifest_path,
+        list(range(count)),
+        output,
+        f"Recorded calibration frames · first {count} captures",
+    )
 
 
 def score(manifest_path, run, episodes):

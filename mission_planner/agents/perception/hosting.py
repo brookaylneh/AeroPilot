@@ -39,7 +39,7 @@ def usage(start, end):
 
 
 def ready(directory, sam_concurrency):
-    deadline = time.monotonic() + 300
+    deadline = time.monotonic() + 1800
     while True:
         apps = json.loads(cli("apps", "list", "--json"))
         runners = json.loads(cli("runners", "list", "--json"))
@@ -52,12 +52,13 @@ def ready(directory, sam_concurrency):
             sum(r["alias"] == "snr-sam" for r in active) == sam_concurrency
             and sum(r["alias"] == "snr-glimmer" for r in active) == 1
         ):
+            ready_at = datetime.now(timezone.utc).isoformat()
             directory.joinpath("ready.json").write_text(
-                json.dumps({"apps": apps, "runners": runners}, indent=2) + "\n"
+                json.dumps({"apps": apps, "runners": runners, "readyAt": ready_at}, indent=2) + "\n"
             )
-            return
+            return ready_at
         assert time.monotonic() < deadline, (
-            "Requested fal runners did not become ready within 300 s"
+            "Requested fal runners did not become ready within 1800 s"
         )
         time.sleep(2)
 
@@ -111,6 +112,11 @@ def inference_session(directory, sam_concurrency=1):
             runners=runners,
         )
         report["usage"] = usage(started, report["endedAt"])
+        if "readyAt" in report:
+            report["usageWindows"] = {
+                "startup": usage(started, report["readyAt"]),
+                "readyThroughCleanup": usage(report["readyAt"], report["endedAt"]),
+            }
         (directory / "hosting.json").write_text(json.dumps(report, indent=2) + "\n")
 
     with ExitStack() as cleanup:

@@ -20,7 +20,7 @@ import sys
 import unittest
 from pathlib import Path
 
-private = ('reduce_detection', 'evaluate_commander', 'infer_calibration', 'glimmer_calibration', 'analyze_calibration', 'calibrate', 'report_flight')
+private = ('profile_pipeline', 'compare_prompts', 'bench_prompt_equivalence', 'analyze_spacing', 'reduce_detection', 'evaluate_commander', 'infer_calibration', 'glimmer_calibration', 'analyze_calibration', 'calibrate', 'report_flight')
 original_import = builtins.__import__
 def guarded_import(name, *args, **kwargs):
     assert not any(part in name.split('.') for part in private), 'Private module imported'
@@ -45,11 +45,11 @@ from mission_planner.agents.perception.pipeline import Processor
 from mission_planner.search.belief import Evidence
 from mission_planner.search.detections import Detections
 class Sam:
-    def detect(self, jpeg, prompts, threshold):
+    def detect(self, jpeg, prompts, threshold, *, timing):
         assert prompts == ['person'] and threshold == 0.3
         return {'person': [Detection((950, 500, 970, 550), 0.8, 800)]}
 class Glimmer:
-    def decide(self, images, question):
+    def decide(self, images, question, *, timing):
         assert len(images) == 1 and question == 'Does this image show a person?'
         return {'yes': 0.9, 'no': 0.1, 'outside_mass': 0.01}
 config, model = load_configuration()

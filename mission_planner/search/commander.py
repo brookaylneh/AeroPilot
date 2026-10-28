@@ -1,7 +1,6 @@
 """Mission camera source, evidence ledger and operator review."""
 
 import asyncio
-import copy
 import json
 import time
 from pathlib import Path
@@ -13,7 +12,7 @@ from mission_planner.agents.perception.ingestion import Ingestion, load_replay
 from mission_planner.environment import ROOT
 from mission_planner.search.belief import Evidence
 from mission_planner.search.coverage import capture_pod
-from mission_planner.search.detection import CAPTURE_SPACING_M
+from mission_planner.search.detection import CAPTURE_SPACING_M, negative_model
 from mission_planner.search.detections import Detections
 from mission_planner.search.timing import SPEED_MPS
 
@@ -34,9 +33,7 @@ class Commander:
         self.capacity = json.loads(
             (ROOT / "mission_planner/measurements/commander.json").read_text()
         )["pipeline_capacity"]
-        self.negative_model = copy.deepcopy(self.model)
-        for row in self.negative_model["bins"][:-1]:
-            row["p"] = row["simultaneous_wilson"][0]
+        self.negative_model = negative_model(self.model)
         self.ledger, self.evidence = Detections(), None
         self.source, self.manifest = None, None
         self.replay_status = "not_started"
@@ -88,14 +85,19 @@ class Commander:
         rate = self.capacity["completed_rate_fps"]
         assert np.isfinite(rate) and rate > 0
         required = 4 * SPEED_MPS / CAPTURE_SPACING_M
+        latency = self.capacity["arrival_to_belief_p95_s"]
+        sustained = self.capacity["sustains_offered_rate"] and latency is not None and latency <= 10
+        demonstrated_rate = self.capacity["offered_rate_fps"] if sustained else rate
         return {
             "sam_runners": self.capacity["sam_runners"],
             "completed_rate_fps": rate,
             "required_rate_fps": required,
-            "speed_limit_mps": rate * CAPTURE_SPACING_M / 4,
-            "per_drone_interval_s": 4 / rate,
+            "capture_spacing_m": CAPTURE_SPACING_M,
+            "speed_limit_mps": demonstrated_rate * CAPTURE_SPACING_M / 4,
+            "per_drone_interval_s": 4 / demonstrated_rate,
+            "arrival_to_belief_p95_s": latency,
             "applies_to_profile": prompts == self.capacity["prompts"],
-            "sustains_required_rate": rate >= required,
+            "sustains_required_rate": sustained and self.capacity["offered_rate_fps"] >= required,
             "evidence": self.capacity["evidence"],
         }
 

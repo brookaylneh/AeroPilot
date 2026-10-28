@@ -36,7 +36,11 @@ class OrderedIngestion(unittest.IsolatedAsyncioTestCase):
 
     async def create(self, process, source="recorded"):
         ingestion = Ingestion(
-            self.directory, source, SimpleNamespace(process=process), Mock(), Mock()
+            self.directory,
+            source,
+            SimpleNamespace(detect=process, verify=lambda result, stage: result),
+            Mock(),
+            Mock(),
         )
         self.addAsyncCleanup(ingestion.close)
         return ingestion
@@ -67,7 +71,7 @@ class OrderedIngestion(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([f["status"] for f in persisted], ["failed", "complete"])
         ingestion.on_complete.assert_called_once()
 
-    async def test_busy_lane_exposes_backlog_and_age_without_overtaking(self):
+    async def test_busy_lane_bounds_sam_concurrency_and_exposes_backlog(self):
         entered, release = threading.Event(), threading.Event()
         calls = []
 
@@ -81,16 +85,20 @@ class OrderedIngestion(unittest.IsolatedAsyncioTestCase):
         try:
             first = await ingestion.ingest("1.json", "Drone1")
             self.assertTrue(await asyncio.to_thread(entered.wait, 2))
-            await ingestion.ingest("2.json", "Drone1")
+            active_ids = [first]
+            for index in range(2, 5):
+                active_ids.append(await ingestion.ingest(str(index) + ".json", "Drone1"))
+            await ingestion.ingest("5.json", "Drone1")
+            await asyncio.sleep(0.01)
             lane = ingestion.summary()["lanes"][0]
-            self.assertEqual(lane["current_frame"], first)
+            self.assertEqual([f["frame_id"] for f in lane["active"]], active_ids)
             self.assertEqual(lane["queued"], 1)
             self.assertGreaterEqual(lane["oldest_age_s"], 0)
-            self.assertEqual(calls, [1])
+            self.assertEqual(sorted(calls), [1, 2, 3, 4])
         finally:
             release.set()
         await asyncio.wait_for(ingestion.drain(), 2)
-        self.assertEqual(calls, [1, 2])
+        self.assertEqual(sorted(calls), [1, 2, 3, 4, 5])
 
     async def test_recorded_requires_lane_and_live_forbids_it(self):
         ingestion = await self.create(Mock())
@@ -98,12 +106,120 @@ class OrderedIngestion(unittest.IsolatedAsyncioTestCase):
             await ingestion.ingest("1.json")
         self.assertFalse(ingestion.frames)
         live = Ingestion(
-            self.directory / "live", "live", SimpleNamespace(process=Mock()), Mock(), Mock()
+            self.directory / "live", "live", SimpleNamespace(detect=Mock()), Mock(), Mock()
         )
         self.addAsyncCleanup(live.close)
         with self.assertRaises(AssertionError):
             await live.ingest("1.json", "Drone1")
         self.assertFalse(live.frames)
+
+    async def test_verification_and_failures_cannot_reorder_belief_or_block_sam(self):
+        first_detect, release_first, first_verify, release_verify = (
+            threading.Event() for _ in range(4)
+        )
+        detected, verified, committed = [], [], []
+
+        def detect(record, payload, identity, source, lane, stage):
+            timestamp = record["timestampNs"]
+            stage("SAM")
+            if timestamp == 1:
+                first_detect.set()
+                assert release_first.wait(3)
+            detected.append(timestamp)
+            if timestamp == 2:
+                raise RuntimeError("Terminal SAM failure")
+            return {"frame_id": identity, "timestamp": timestamp, "timings": {}}
+
+        def verify(result, stage):
+            stage("Glimmer")
+            if result["timestamp"] == 1:
+                first_verify.set()
+                assert release_verify.wait(3)
+            verified.append(result["timestamp"])
+            return result
+
+        ingestion = Ingestion(
+            self.directory,
+            "recorded",
+            SimpleNamespace(detect=detect, verify=verify),
+            lambda result: committed.append(result["timestamp"]),
+            Mock(),
+        )
+        try:
+            ids = [await ingestion.ingest(str(i) + ".json", "Drone1") for i in range(1, 6)]
+            self.assertTrue(await asyncio.to_thread(first_detect.wait, 2))
+            for _ in range(100):
+                if len(detected) == 4:
+                    break
+                await asyncio.sleep(0.01)
+            self.assertEqual(sorted(detected), [2, 3, 4, 5])
+            self.assertFalse(committed)
+            self.assertEqual(ingestion.frames[ids[1]]["status"], "failed")
+            self.assertEqual(ingestion.frames[ids[1]]["failure_stage"], "SAM")
+            self.assertEqual(ingestion.summary()["lanes"][0]["failed"], 1)
+            release_first.set()
+            self.assertTrue(await asyncio.to_thread(first_verify.wait, 2))
+            self.assertFalse(committed)
+            self.assertEqual(sorted(verified), [3, 4, 5])
+            await ingestion.ingest("6.json", "Drone1")
+            for _ in range(100):
+                if 6 in verified:
+                    break
+                await asyncio.sleep(0.01)
+            self.assertIn(6, detected)
+            self.assertIn(6, verified)
+            self.assertFalse(committed)
+            closing = asyncio.create_task(ingestion.close())
+            await asyncio.sleep(0)
+            self.assertFalse(closing.done())
+            release_verify.set()
+            await asyncio.wait_for(closing, 3)
+            self.assertEqual(committed, [1, 3, 4, 5, 6])
+            self.assertEqual(ingestion.frames[ids[1]]["status"], "failed")
+            self.assertEqual(ingestion.frames[ids[1]]["failure_stage"], "SAM")
+            self.assertTrue(all(task.done() for task in ingestion.tasks))
+            self.assertEqual(ingestion.summary()["lanes"][0]["active"], [])
+        finally:
+            release_first.set()
+            release_verify.set()
+            if not ingestion.closed:
+                await ingestion.close()
+
+    async def test_full_verification_pool_leaves_sam_dispatch_available(self):
+        full, release, fifth_detected = (threading.Event() for _ in range(3))
+        lock, entered = threading.Lock(), []
+
+        def detect(record, payload, identity, source, lane, stage):
+            if record["timestampNs"] == 5:
+                fifth_detected.set()
+            return {"frame_id": identity, "timings": {}}
+
+        def verify(result, stage):
+            with lock:
+                entered.append(result["frame_id"])
+                if len(entered) == 4:
+                    full.set()
+            assert release.wait(3)
+            return result
+
+        ingestion = Ingestion(
+            self.directory,
+            "recorded",
+            SimpleNamespace(detect=detect, verify=verify),
+            Mock(),
+            Mock(),
+        )
+        try:
+            for index in range(1, 5):
+                await ingestion.ingest(str(index) + ".json", "Drone1")
+            self.assertTrue(await asyncio.to_thread(full.wait, 2))
+            await ingestion.ingest("5.json", "Drone1")
+            self.assertTrue(await asyncio.to_thread(fifth_detected.wait, 2))
+            self.assertEqual(len(entered), 4)
+        finally:
+            release.set()
+            await asyncio.wait_for(ingestion.close(), 3)
+        self.assertTrue(all(frame["status"] == "complete" for frame in ingestion.frames.values()))
 
     async def test_closing_while_reading_rejects_before_queueing_to_stopped_workers(self):
         entered, release = threading.Event(), threading.Event()
@@ -113,7 +229,7 @@ class OrderedIngestion(unittest.IsolatedAsyncioTestCase):
             assert release.wait(2), "Test did not release capture read"
             return capture(path)
 
-        processor = SimpleNamespace(process=Mock())
+        processor = SimpleNamespace(detect=Mock())
         ingestion = Ingestion(self.directory, "recorded", processor, Mock(), Mock())
         with patch(
             "mission_planner.agents.perception.ingestion.read_capture", side_effect=blocked_read
@@ -133,7 +249,7 @@ class OrderedIngestion(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(all(task.done() for task in ingestion.tasks))
         self.assertFalse(ingestion.frames)
         self.assertTrue(all(queue.empty() for queue in ingestion.queues.values()))
-        processor.process.assert_not_called()
+        processor.detect.assert_not_called()
 
     def test_replay_manifest_rejects_missing_source_and_path_escape(self):
         path = self.directory / "manifest.json"

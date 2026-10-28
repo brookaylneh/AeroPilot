@@ -19,12 +19,19 @@ class Processor:
         self.directory.mkdir(parents=True, exist_ok=True)
         assert prompts and all(p.strip() for p in prompts) and len(set(prompts)) == len(prompts)
         self.prompts = list(dict.fromkeys(["person", *prompts]))
+        assert configuration["person_batching"] in ("dedicated", "verified_decisions")
+        if configuration["person_batching"] == "verified_decisions":
+            assert self.prompts == configuration["person_batching_prompts"]
+            assert len(self.prompts) == 4
         self.configuration, self.sam, self.glimmer = configuration, sam, glimmer
         self.configuration_sha256 = digest(encode(configuration).encode())
 
     def process(self, record, payload, frame_id, source, replay_lane, stage):
-        from mission_planner.agents.perception.localization import localize
+        return self.verify(
+            self.detect(record, payload, frame_id, source, replay_lane, stage), stage
+        )
 
+    def detect(self, record, payload, frame_id, source, replay_lane, stage):
         assert source in ("live", "recorded")
         assert source == "recorded" or replay_lane is None
         started = time.monotonic()
@@ -36,19 +43,55 @@ class Processor:
         resized = prepare_frame(payload)
         self.directory.joinpath(input_ref).write_bytes(resized)
         groups = (
-            [self.prompts[i : i + 3] for i in range(0, len(self.prompts), 3)]
-            if config["person_batching"] == "verified_identical"
+            [self.prompts]
+            if config["person_batching"] == "verified_decisions"
             else [["person"], *[self.prompts[i : i + 3] for i in range(1, len(self.prompts), 3)]]
         )
-        detections, sam_seconds, glimmer_seconds = [], [], []
+        found_groups, sam_seconds, requests = [], [], []
         for group_index, prompts in enumerate(groups):
             stage("SAM")
             begin = time.monotonic()
-            found = self.sam.detect(resized, prompts, config["sam_threshold"])
-            sam_seconds.append(time.monotonic() - begin)
+            timing = {}
+            try:
+                found = self.sam.detect(resized, prompts, config["sam_threshold"], timing=timing)
+            finally:
+                sam_seconds.append(time.monotonic() - begin)
+                requests.append({"model": "sam", "prompts": prompts, **timing})
+                self.directory.joinpath(frame_id + "-requests.json").write_text(
+                    encode(requests) + "\n"
+                )
             self.directory.joinpath(f"{frame_id}-sam-{group_index}.json").write_text(
                 encode({p: [asdict(d) for d in values] for p, values in found.items()}) + "\n"
             )
+            found_groups.append(found)
+        return {
+            "record": record,
+            "payload": payload,
+            "frame_id": frame_id,
+            "source": source,
+            "replay_lane": replay_lane,
+            "started": started,
+            "started_ms": started_ms,
+            "is_calibrated": is_calibrated,
+            "frame_ref": frame_ref,
+            "input_ref": input_ref,
+            "resized": resized,
+            "found_groups": found_groups,
+            "sam_seconds": sam_seconds,
+            "requests": requests,
+        }
+
+    def verify(self, prepared, stage):
+        from mission_planner.agents.perception.localization import localize
+
+        record, payload, frame_id = (prepared[key] for key in ("record", "payload", "frame_id"))
+        source, replay_lane = prepared["source"], prepared["replay_lane"]
+        started, started_ms = prepared["started"], prepared["started_ms"]
+        is_calibrated, resized = prepared["is_calibrated"], prepared["resized"]
+        frame_ref, input_ref = prepared["frame_ref"], prepared["input_ref"]
+        sam_seconds, requests = prepared["sam_seconds"], prepared["requests"]
+        config, detections, glimmer_seconds = self.configuration, [], []
+        for found in prepared["found_groups"]:
             for prompt, candidates in found.items():
                 for index, detection in enumerate(candidates):
                     assert detection.confidence > config["sam_threshold"]
@@ -63,8 +106,15 @@ class Processor:
                         if prompt == "person"
                         else f"Does this image show {prompt}?"
                     )
-                    decision = self.glimmer.decide([crop_bytes], question)
-                    glimmer_seconds.append(time.monotonic() - begin)
+                    timing = {}
+                    try:
+                        decision = self.glimmer.decide([crop_bytes], question, timing=timing)
+                    finally:
+                        glimmer_seconds.append(time.monotonic() - begin)
+                        requests.append({"model": "glimmer", "candidate_id": identity, **timing})
+                        self.directory.joinpath(frame_id + "-requests.json").write_text(
+                            encode(requests) + "\n"
+                        )
                     self.directory.joinpath(identity + "-glimmer.json").write_text(
                         encode(decision) + "\n"
                     )
@@ -116,6 +166,7 @@ class Processor:
                 "processing_s": time.monotonic() - started,
                 "sam_s": sam_seconds,
                 "glimmer_s": glimmer_seconds,
+                "requests": requests,
             },
         }
         self.directory.joinpath(frame_id + "-inference.json").write_text(encode(result) + "\n")

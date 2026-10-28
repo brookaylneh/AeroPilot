@@ -212,8 +212,8 @@ export default function EvidenceCard({
           {percent(review.prior_mass)} → {percent(review.posterior_mass)}
         </strong>
         <p>
-          Inside the displayed 95% ellipse. Provisional person-search posterior; identity requires operator
-          review.
+          Estimated inside the displayed 95% ellipse, assuming uniform probability within each map cell.
+          Provisional person-search posterior; identity requires operator review.
         </p>
         <small>
           {review.reference_frame_id === null

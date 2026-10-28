@@ -5,6 +5,7 @@ import io
 import json
 import math
 import os
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -25,10 +26,52 @@ class Detection:
     mask_area_px: int
 
 
-def post(client, path, body):
-    response = client.post(path, json=body)
-    response.raise_for_status()
-    return response.json()
+def post(client, path, body, timing=None):
+    started, started_at = time.monotonic(), time.time()
+    events = []
+
+    def trace(name, info):
+        events.append({"event": name, "seconds": time.monotonic() - started})
+
+    request = client.build_request("POST", path, json=body, extensions={"trace": trace})
+    dispatched = time.monotonic()
+    response, received, complete = None, None, False
+    try:
+        response = client.send(request)
+        received = time.monotonic()
+        response.raise_for_status()
+        value = response.json()
+        complete = True
+        return value
+    finally:
+        finished = time.monotonic()
+        upload = [
+            e["seconds"]
+            for e in events
+            if e["event"].endswith("send_request_body.started")
+            or e["event"].endswith("send_request_body.complete")
+        ]
+        if timing is not None:
+            timing.update(
+                started_at_unix_s=started_at,
+                complete=complete,
+                status_code=response.status_code if response is not None else None,
+                prepare_s=dispatched - started,
+                client_queue_s=events[0]["seconds"] - (dispatched - started) if events else None,
+                upload_s=upload[1] - upload[0] if len(upload) == 2 else None,
+                roundtrip_s=(received if received is not None else finished) - dispatched,
+                response_decode_s=finished - received if received is not None else None,
+                response_bytes=len(response.content) if response is not None else None,
+                request_bytes=len(request.content),
+                events=events,
+                response_headers={
+                    k: v
+                    for k, v in response.headers.items()
+                    if k in ("date", "x-request-id", "x-fal-request-id", "x-fal-runner-id")
+                }
+                if response is not None
+                else {},
+            )
 
 
 def data_url(data):
@@ -49,12 +92,14 @@ class Sam:
         self.http = fal_http("SAM_URL")
 
     def detect(
-        self, jpeg: bytes, prompts: list[str], threshold: float
+        self, jpeg: bytes, prompts: list[str], threshold: float, timing: dict | None = None
     ) -> dict[str, list[Detection]]:
         assert 0 <= threshold <= 1 and prompts and len(set(prompts)) == len(prompts)
         w, h = Image.open(io.BytesIO(jpeg)).size
         body = dict(jpeg=base64.b64encode(jpeg).decode(), prompts=prompts, threshold=threshold)
-        response = post(self.http, "", body)
+        response = post(self.http, "", body, timing)
+        if timing is not None:
+            timing.update(server=response["server"], server_timings=response["timings"])
         assert (response["width"], response["height"]) == (w, h)
         assert set(response["detections"]) == set(prompts)
         found = {p: [] for p in prompts}
@@ -96,7 +141,9 @@ class Glimmer:
             top_k=64,
         )
 
-    def decide(self, images: list[bytes], question: str) -> dict[str, float]:
+    def decide(
+        self, images: list[bytes], question: str, timing: dict | None = None
+    ) -> dict[str, float]:
         system = "Answer questions with exactly one lowercase word: yes or no."
         body = self._body(images, question, system)
         body["messages"][1:1] = [
@@ -114,7 +161,7 @@ class Glimmer:
             top_p=1.0,
             top_k=-1,
         )
-        response = post(self.http, "/v1/chat/completions", body)
+        response = post(self.http, "/v1/chat/completions", body, timing)
         rendered, usage = response["prompt_text"], response["usage"]
         assert rendered.endswith(self.prefix) and "assistant to=self" not in rendered
         choice = response["choices"][0]

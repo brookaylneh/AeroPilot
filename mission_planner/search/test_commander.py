@@ -262,6 +262,9 @@ class Sources(unittest.IsolatedAsyncioTestCase):
     def test_capacity_applies_only_to_the_measured_prompt_configuration(self):
         self.commander.capacity = {
             "completed_rate_fps": 1.2,
+            "offered_rate_fps": 1.2,
+            "sustains_offered_rate": True,
+            "arrival_to_belief_p95_s": 9.0,
             "sam_runners": 2,
             "prompts": ["person wearing a red jacket", "backpack"],
             "evidence": "measured-run",
@@ -273,8 +276,15 @@ class Sources(unittest.IsolatedAsyncioTestCase):
         view = self.commander.capacity_view()
         self.assertTrue(view["applies_to_profile"])
         self.assertFalse(view["sustains_required_rate"])
-        self.assertAlmostEqual(view["speed_limit_mps"], 3.6)
+        self.assertAlmostEqual(view["required_rate_fps"], 1.25)
+        self.assertAlmostEqual(view["speed_limit_mps"], 4.8)
         self.assertAlmostEqual(view["per_drone_interval_s"], 10 / 3)
+        self.commander.capacity.update(completed_rate_fps=1.249, offered_rate_fps=1.25)
+        self.assertTrue(self.commander.capacity_view()["sustains_required_rate"])
+        self.commander.capacity["arrival_to_belief_p95_s"] = 10.1
+        self.assertFalse(self.commander.capacity_view()["sustains_required_rate"])
+        self.commander.capacity["arrival_to_belief_p95_s"] = None
+        self.assertFalse(self.commander.capacity_view()["sustains_required_rate"])
         self.search.profile["clue_prompts"][0]["text"] = "bicycle"
         self.assertFalse(self.commander.capacity_view()["applies_to_profile"])
         self.search.profile = None

@@ -1,5 +1,8 @@
+import asyncio
 import base64
 import io
+import time
+import uuid
 
 import fal
 from pydantic import BaseModel
@@ -36,6 +39,8 @@ class Sam(fal.App):
         from sam3.model_builder import build_sam3_image_model
         from sam3.train.transforms import basic_for_api as T
 
+        self.instance_id = uuid.uuid4().hex
+        self.inference_lock = asyncio.Lock()
         checkpoint = hf_hub_download(
             "facebook/sam3.1",
             "sam3.1_multiplex.pt",
@@ -54,10 +59,24 @@ class Sam(fal.App):
         buffer = io.BytesIO()
         Image.new("RGB", (TILE_SIZE, TILE_SIZE), "green").save(buffer, format="JPEG")
         warmup = base64.b64encode(buffer.getvalue()).decode()
-        self.detect(Input(jpeg=warmup, prompts=["person"], threshold=0.5))
+        self.infer(Input(jpeg=warmup, prompts=["person"], threshold=0.5))
 
     @fal.endpoint("/")
-    def detect(self, data: Input) -> dict:
+    async def detect(self, data: Input) -> dict:
+        started, started_at = time.perf_counter(), time.time()
+        context = self.current_request
+        assert context is not None and context.request_id
+        async with self.inference_lock:
+            waiting = time.perf_counter() - started
+            result = await asyncio.to_thread(self.infer, data)
+        result["timings"].update(
+            dispatch_wait_s=waiting, handler_total_s=time.perf_counter() - started
+        )
+        result["server"]["handler_started_at_unix_s"] = started_at
+        result["server"]["request_id"] = context.request_id
+        return result
+
+    def infer(self, data: Input) -> dict:
         import torch
         from PIL import Image
         from sam3.eval.postprocessors import PostProcessImage
@@ -66,14 +85,18 @@ class Sam(fal.App):
         from sam3.train.data.collator import collate_fn_api
         from torchvision.ops import nms
 
+        started, started_at = time.perf_counter(), time.time()
+        timings = dict(decode_s=0.0, tiling_s=0.0, forward_s=0.0, postprocess_s=0.0)
         assert 0 <= data.threshold <= 1
-        assert data.prompts and len(set(data.prompts)) == len(data.prompts) <= 3
+        assert data.prompts and len(set(data.prompts)) == len(data.prompts) <= 4
         assert all(p.strip() for p in data.prompts)
         frame = Image.open(io.BytesIO(base64.b64decode(data.jpeg, validate=True)))
         assert frame.format == "JPEG"
         frame = frame.convert("RGB")
         w, h = frame.size
         assert 1 <= w <= 3840 and 1 <= h <= 2160
+        timings["decode_s"] = time.perf_counter() - started
+        tiling_started = time.perf_counter()
 
         def starts(length):
             last = max(0, length - TILE_SIZE)
@@ -92,8 +115,10 @@ class Sam(fal.App):
             to_cpu=False,
         )
         found = {p: [] for p in data.prompts}
+        timings["tiling_s"] += time.perf_counter() - tiling_started
         with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
             for offset in range(0, len(images), 4):
+                tiling_started = time.perf_counter()
                 datapoints, identities = [], []
                 for index in range(offset, min(offset + 4, len(images))):
                     im = images[index]
@@ -110,7 +135,14 @@ class Sam(fal.App):
                     datapoints.append(self.transform(datapoint))
                 batch = collate_fn_api(datapoints, dict_key="batch")["batch"]
                 batch = copy_data_to_device(batch, torch.device("cuda"))
-                results = post.process_results(self.model(batch), batch.find_metadatas)
+                torch.cuda.synchronize()
+                timings["tiling_s"] += time.perf_counter() - tiling_started
+                forward_started = time.perf_counter()
+                prediction = self.model(batch)
+                torch.cuda.synchronize()
+                timings["forward_s"] += time.perf_counter() - forward_started
+                post_started = time.perf_counter()
+                results = post.process_results(prediction, batch.find_metadatas)
                 for identity, (index, prompt) in enumerate(identities):
                     result = results[identity]
                     im = images[index]
@@ -129,6 +161,9 @@ class Sam(fal.App):
                             mask_area_px=area,
                         )
                         found[prompt].append(detection)
+                torch.cuda.synchronize()
+                timings["postprocess_s"] += time.perf_counter() - post_started
+            post_started = time.perf_counter()
             for prompt, detections in found.items():
                 if detections:
                     keep = nms(
@@ -137,4 +172,17 @@ class Sam(fal.App):
                         0.5,
                     )
                     found[prompt] = [detections[i] for i in keep.tolist()]
-        return dict(detections=found, width=w, height=h, tiles=len(images))
+            timings["postprocess_s"] += time.perf_counter() - post_started
+        timings["total_s"] = time.perf_counter() - started
+        return dict(
+            detections=found,
+            width=w,
+            height=h,
+            tiles=len(images),
+            timings=timings,
+            server=dict(
+                instance_id=self.instance_id,
+                started_at_unix_s=started_at,
+                finished_at_unix_s=time.time(),
+            ),
+        )

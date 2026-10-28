@@ -263,10 +263,18 @@ export default function SearchPanel({
                 </p>
                 {capacity.applies_to_profile && (
                   <p>
-                    At 12 m capture spacing: speed limit {capacity.speed_limit_mps.toFixed(2)} m/s. At 5 m/s:
-                    at least {capacity.per_drone_interval_s.toFixed(2)} s between each drone’s frames.
+                    At {capacity.capture_spacing_m} m capture spacing, the measured rate corresponds to{' '}
+                    {capacity.speed_limit_mps.toFixed(2)} m/s. At 5 m/s: at least{' '}
+                    {capacity.per_drone_interval_s.toFixed(2)} s between each drone’s frames.
                   </p>
                 )}
+                <p>
+                  Arrival to belief p95:{' '}
+                  {capacity.arrival_to_belief_p95_s === null
+                    ? 'unmeasured'
+                    : `${capacity.arrival_to_belief_p95_s.toFixed(2)} s`}
+                  . Required: at most 10 s with a bounded queue.
+                </p>
                 <small>Evidence: {capacity.evidence}</small>
               </>
             )}

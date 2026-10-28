@@ -3,7 +3,7 @@
 import numpy as np
 
 from mission_planner.agents.perception.geometry import Camera
-from mission_planner.search.detection import AGL_M, lateral_probability
+from mission_planner.search.detection import AGL_M, positional_probability
 from world.cosys.terrain import terrain_height
 
 
@@ -33,11 +33,12 @@ def capture_pod(frame, grid, model):
         & (points[:, 1] <= max(east))
     )
     lateral = camera.rotation[:, 1] * np.array([1, 1, -1])
+    along = camera.rotation[:, 2] * np.array([1, 1, -1])
     for i in ids:
         n, e = points[i]
         point = {"x": float(n), "y": float(e), "z": terrain_height(n, e)}
         pixel = camera.project(point)
         if 0 <= pixel[0] < camera.width and 0 <= pixel[1] < camera.height:
             delta = np.array([point[k] - camera.world[k] for k in "xyz"])
-            pod[i] = float(lateral_probability(delta @ lateral, model))
+            pod[i] = float(positional_probability(delta @ lateral, delta @ along, model))
     return pod, [{"north_m": p["x"], "east_m": p["y"]} for p in corners]

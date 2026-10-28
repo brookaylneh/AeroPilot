@@ -831,8 +831,7 @@ async function commanderLoop(browser, observation, output, beforeGrid) {
   const { page } = observation;
   await page.getByRole('button', { name: 'Start recorded frames', exact: true }).click();
   await until(
-    () =>
-      observation.search.commander.lanes.some((lane) => lane.current_stage !== null || lane.completed > 0),
+    () => observation.search.commander.lanes.some((lane) => lane.active.length > 0 || lane.completed > 0),
     'Recorded frames processing',
     300,
   );
@@ -1031,7 +1030,7 @@ async function commanderLoop(browser, observation, output, beforeGrid) {
   await until(
     () =>
       ['complete', 'failed'].includes(observation.search.commander.replay_status) &&
-      observation.search.commander.lanes.every((lane) => lane.queued === 0 && lane.current_frame === null),
+      observation.search.commander.lanes.every((lane) => lane.queued === 0 && lane.active.length === 0),
     'All recorded frames reach a terminal state',
     900,
   );

@@ -229,7 +229,7 @@ CASES += [
         ],
     ),
     (
-        "Explain whether Autonomous flight mode bypasses operator approval for ground-team delivery. Do not deliver anything.",
+        "Explain the operator approval required for ground-team delivery in each flight mode. Keep this to an explanation; no delivery is requested.",
         [],
     ),
     (

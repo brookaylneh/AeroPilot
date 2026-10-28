@@ -22,7 +22,7 @@ test('small positive posterior masses remain distinguishable from zero', () => {
   assert.equal(formatProbability(0), '0%');
   assert.equal(formatProbability(1), '100%');
   assert.equal(formatProbability(0.12345), '12.3%');
-  assert.equal(formatProbability(3.14e-8), '3.14e-6%');
+  assert.equal(formatProbability(3.14e-8), '0.00000314%');
   assert.notEqual(formatProbability(Number.MIN_VALUE), formatProbability(0));
   for (const value of [NaN, Infinity, -0.1, 1.1]) assert.throws(() => formatProbability(value));
 });

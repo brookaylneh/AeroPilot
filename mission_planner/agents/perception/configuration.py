@@ -66,7 +66,10 @@ def load_configuration():
     assert config["glimmer_threshold"] == model["glimmer_threshold"]
     assert config["crop_native_pixels"] == 512 and config["jpeg_quality"] == 95
     assert config["jpeg_subsampling"] == 0 and config["resize"] == "Pillow Lanczos"
-    assert config["person_batching"] in ("dedicated", "verified_identical")
+    assert config["person_batching"] in ("dedicated", "verified_decisions")
+    if config["person_batching"] == "verified_decisions":
+        prompts = config["person_batching_prompts"]
+        assert len(prompts) == len(set(prompts)) == 4 and prompts[0] == "person"
     return config, model
 
 

@@ -20,8 +20,11 @@ positive final secant. A derivative-matched exponential tail preserves continuou
 density, exact knots and unit normalization. The finite world is explicitly
 conditioned; retained unconditioned probability is reported separately.
 
-`planner.py` compares separated terrain-following tracks using single-look
-calibrated detection probabilities. POA, POD, POS, route duration and per-drone
+`planner.py` compares separated terrain-following tracks using calibrated
+probability by lateral and along-frame position. It averages the maximum look
+over capture phase; overlapping looks receive no independent credit. The selected
+16 m capture spacing means 3.2 s per drone at 5 m/s. The coupling capture owner
+applies that cadence at integration. POA, POD, POS, route duration and per-drone
 reserve refer to the saved plan and actual emitted waypoints. Unsupported prior
 categories, stale plans and infeasible routes fail with an error.
 
@@ -52,11 +55,13 @@ The capture owner must write that contract before calling ingestion. Extra priva
 actor/label fields are rejected. Replay exports are prepared offline; the service
 reads only the selected manifest and its camera records.
 
-`ingestion.py` is the single entry point. A serial worker serves each actual drone,
-or each explicitly labelled replay lane. It verifies increasing capture timestamps,
-keeps every frame and persists queued, processing, complete or failed state.
+`ingestion.py` is the single entry point. Each actual drone or explicitly labelled
+replay lane has four SAM slots and an ordered commit queue. SAM releases its slot
+before Glimmer verification; belief commits remain atomic and follow capture order.
+It verifies increasing capture timestamps, keeps every frame and persists queued,
+processing, complete or failed state.
 Post-inference persistence errors explicitly retain whether belief was already
-committed. Backlog, oldest unfinished age, current stage and terminal errors are visible.
+committed. Backlog, oldest unfinished age, every active frame/stage and terminal errors are visible.
 An inference failure is terminal and receives no negative evidence; subsequent
 frames proceed in order. No retry or silent frame/candidate drop is implemented.
 
@@ -80,9 +85,9 @@ calibration reducer. `pipeline.py` applies the exact calibrated transforms:
   0.1329642298905696; retain outside-option mass separately.
 
 Briefing prompts also run through SAM/Glimmer, but their leads are marked
-**uncalibrated** and earn no likelihood or negative credit. The pinned-service
-batch comparison found differing person outputs, so the calibrated request stays
-separate. A lower operator visual look earns no detection credit.
+**uncalibrated** and earn no likelihood or negative credit. The full-corpus
+combined-prompt comparison failed the required person-box IoU bound, so the
+calibrated person request stays separate. A lower operator visual look earns no detection credit.
 
 Each saved detection contains source/drone/frame, prompt, box, mask area, SAM
 score, Glimmer P(yes)/outside mass, image references, timestamps and configuration
@@ -97,7 +102,7 @@ the cluster location; repeated views do not divide its covariance by member coun
 
 `belief.py` combines a fixed prior, maximum-look negative survival and capped
 positive reference-frame factors. Completed calibrated frames with no qualified
-person use the simultaneous-Wilson lower detection curve. Positive factors use
+person use the simultaneous-Wilson lower positional detection surface. Positive factors use
 observed mean TPR and a nonzero conservative false-alarm upper bound derived from
 separate operational-empty and grass cohorts. The derivation, counts, caveats and
 all numerical inputs are stored in commander.json and its named evidence files.
@@ -107,7 +112,8 @@ Multiple new clusters in one frame share it; repeated views/images earn no furth
 credit. Dismissal removes the relevant factor contribution but keeps its region
 reserved. Spatial kernels are integrated over cells, including truncation mass;
 finite range and posterior normalization are asserted. Cards show prior and current
-mass inside the displayed 95% ellipse. This provisional composite posterior is
+mass inside the displayed 95% ellipse, assuming uniform density within each map
+cell. Small percentages use plain decimal notation. This provisional composite posterior is
 not a measured probability that a visible person is the missing subject.
 
 ## Evidence and operator actions
@@ -143,15 +149,26 @@ scale-to-zero cleanup and metered usage on both success and failure. Preserve
 new output directories and raw request outcomes. Never replace measured numbers
 with nominal rates. The end-to-end benchmark includes image preparation, all
 prompts/candidates, georeferencing, clustering, belief and rendering/state writes.
+SAM uses an async endpoint with eight fal request slots per runner and a serialized
+model section; weights and inference precision stay pinned. Separate SAM and
+verification thread pools prevent slow Glimmer work from blocking SAM dispatch.
 
-`agents/perception/bench_commander.py` provides `batching` and `throughput`
-commands with explicit manifest, prompts and output. Throughput also requires
-profile, release interval and SAM concurrency. Four-drone acceptance load is one
-release every 0.6 s. Report backlog growth and drain capacity; buffering does not
+`agents/perception/bench_commander.py` provides recorded-frame throughput with
+explicit manifest, prompts, profile, release interval, SAM concurrency and output.
+`bench_prompt_equivalence.py` compares dedicated and combined person decisions
+over the entire corpus, including qualified/unqualified candidates, box IoU and scores.
+`profile_pipeline.py` reduces saved request clocks into server-stage durations,
+handler busy time, upload, round trip, queue wait and belief-commit timing.
+Four-drone load at 16 m spacing is one release every 0.8 s. Report backlog growth,
+arrival-to-belief p95 and drain capacity; buffering does not
 establish that the pipeline can sustain that rate. Runner cost and planner cadence
 limits are recorded beside the measured capacity in commander.json. The planner
 reports an unsupported rate without silently changing flight speed or capture
 spacing. Its POS curve uses capture time and excludes processing delay.
+The recorded gate requires every frame to complete, zero failures, p95 at most
+10 s and a declared unfinished-frame budget of `ceil(offered_rate × 10 s)`
+(13 at 1.25 frames/s). The rate check allows 2% finite-run timing variation;
+arrival lag and quarterly backlog counts remain in the evidence.
 
 `evaluate_commander.py export` writes truth-free replay records plus a separate
 private label file; `prefix` creates an explicit prefix manifest. `score`
