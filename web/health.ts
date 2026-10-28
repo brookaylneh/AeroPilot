@@ -17,6 +17,16 @@ export async function rendererHealth() {
   assert(response.ok, 'Signalling health failed');
   const health = (await response.json()) as { streamers: { players: number }[] };
   assert(Array.isArray(health.streamers), 'Invalid signalling health');
+  const unit = await execute(
+    '/usr/bin/systemctl',
+    ['show', 'snr-unreal', '--property=ActiveState', '--value'],
+    {
+      timeout: 2000,
+    },
+  );
+  const state = unit.stdout.trim();
+  assert(state, 'Missing renderer service state');
+  if (!['active', 'activating', 'reloading'].includes(state)) return { state: 'unavailable', maxEditors: 1 };
   const streamer = health.streamers[0];
   if (streamer) {
     const file = path.join(required('SNR_DRONE_DATA_DIR'), 'runtime.json');

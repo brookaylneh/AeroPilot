@@ -24,7 +24,8 @@ app.get('/healthz', async (_req, res) => {
 });
 app.get('/api/unreal/status', async (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
-  res.json(await rendererHealth());
+  const result = await rendererHealth();
+  res.status(result.state === 'unavailable' ? 503 : 200).json(result);
 });
 if (development) {
   const { createServer: createViteServer } = await import('vite');
