@@ -2,8 +2,9 @@ import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { launchBrowser } from '../../../mission_planner/agents/perception/browser.mjs';
 
-const [url, output] = process.argv.slice(2);
-assert(url && output, 'Usage: capture-review.mjs URL NEW_OUTPUT_DIRECTORY');
+const [url, output, expectedModels] = process.argv.slice(2);
+assert(url && output && expectedModels, 'Usage: capture-review.mjs URL NEW_OUTPUT_DIRECTORY MODEL_COUNT');
+assert(Number.isSafeInteger(Number(expectedModels)) && Number(expectedModels) > 0);
 await mkdir(output);
 const browser = await launchBrowser(['--enable-unsafe-swiftshader']);
 const errors = [];
@@ -13,7 +14,7 @@ try {
   page.on('pageerror', (error) => errors.push(error.message));
   const response = await page.goto(url, { waitUntil: 'networkidle', timeout: 60000 });
   assert.equal(response.status(), 200);
-  assert.equal(await page.locator('article').count(), 12);
+  assert((await page.locator('article').count()) > 0);
   await page.locator('article').last().scrollIntoViewIfNeeded();
   await page.evaluate(async () => {
     await Promise.all([...document.images].map((image) => image.decode()));
@@ -22,6 +23,7 @@ try {
   await page.screenshot({ path: output + '/gallery.png', fullPage: true });
   const buttons = page.locator('[data-model]');
   const count = await buttons.count();
+  assert.equal(count, Number(expectedModels));
   for (let index = 0; index < count; index += 1) {
     const button = buttons.nth(index);
     const file = await button.getAttribute('data-model');

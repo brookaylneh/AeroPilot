@@ -96,6 +96,7 @@ def main():
     parser.add_argument("character")
     parser.add_argument("output", type=Path)
     parser.add_argument("--image-run", type=Path)
+    parser.add_argument("--mesh-model", choices=("hunyuan", "meshy"))
     args = parser.parse_args()
     output = args.output.resolve()
     assert output.is_relative_to(ROOT / ".local"), "Generation output must live in .local"
@@ -103,7 +104,9 @@ def main():
     character = next(item for item in recipe["characters"] if item["id"] == args.character)
     assert 8 <= character["age"] <= 100
     assert (args.stage == "mesh") == (args.image_run is not None)
-    arguments = dict(recipe[args.stage]["arguments"])
+    assert (args.stage == "mesh") == (args.mesh_model is not None)
+    model = recipe["image"] if args.stage == "image" else recipe["mesh"][args.mesh_model]
+    arguments = dict(model["arguments"])
     if args.stage == "image":
         arguments["prompt"] = recipe["prompt"].format(**character)
         arguments["seed"] = character["seed"]
@@ -114,17 +117,20 @@ def main():
         assert source["stage"] == "image" and source["safety_clear"]
         image_path = ROOT / source["files"][0]["path"]
         assert digest(image_path) == source["files"][0]["sha256"]
-        assert image_path.stat().st_size <= 8_000_000, "Hunyuan input exceeds 8 MB"
-        assert all(128 <= size <= 5000 for size in source["image_size"])
+        limit = {"hunyuan": 8_000_000, "meshy": 20_000_000}[args.mesh_model]
+        assert image_path.stat().st_size <= limit
+        if args.mesh_model == "hunyuan":
+            assert all(128 <= size <= 5000 for size in source["image_size"])
         image_response = json.loads((image_run / "response.json").read_text())
-        arguments["input_image_url"] = image_response["images"][0]["url"]
+        image_key = {"hunyuan": "input_image_url", "meshy": "image_url"}[args.mesh_model]
+        arguments[image_key] = image_response["images"][0]["url"]
     output.mkdir(parents=True, exist_ok=False)
-    result, request_id, seconds = infer(recipe[args.stage]["endpoint"], arguments, output)
+    result, request_id, seconds = infer(model["endpoint"], arguments, output)
     record = {
         "recorded_at": datetime.now(timezone.utc).isoformat(),
         "stage": args.stage,
         "character": character,
-        "endpoint": recipe[args.stage]["endpoint"],
+        "endpoint": model["endpoint"],
         "recipe_sha256": digest(RECIPE),
         "request_id": request_id,
         "inference_elapsed_seconds": seconds,
@@ -152,6 +158,14 @@ def main():
             assert kind.isalnum()
             if kind != "glb" and file is not None:
                 record["files"].append(download(file["url"], output / f"model.{kind}"))
+        if args.mesh_model == "meshy":
+            record["provider_seed"] = result["seed"]
+            for index, textures in enumerate(result["texture_urls"]):
+                for channel, file in textures.items():
+                    assert channel.replace("_", "").isalnum()
+                    if file is not None:
+                        target = output / f"texture-{index}-{channel}.png"
+                        record["files"].append(download(file["url"], target))
         record["source_image_sha256"] = source["files"][0]["sha256"]
     write_json(output / "result.json", record)
     print(

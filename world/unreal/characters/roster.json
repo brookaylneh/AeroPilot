@@ -13,11 +13,27 @@
     }
   },
   "mesh": {
-    "endpoint": "fal-ai/hunyuan-3d/v3.1/pro/image-to-3d",
-    "arguments": {
-      "generate_type": "Normal",
-      "enable_pbr": true,
-      "face_count": 1500000
+    "hunyuan": {
+      "endpoint": "fal-ai/hunyuan-3d/v3.1/pro/image-to-3d",
+      "arguments": {
+        "generate_type": "Normal",
+        "enable_pbr": true,
+        "face_count": 1500000
+      }
+    },
+    "meshy": {
+      "endpoint": "fal-ai/meshy/v7.1/image-to-3d",
+      "arguments": {
+        "model_type": "standard",
+        "geometry_resolution": "4k",
+        "should_remesh": false,
+        "should_texture": true,
+        "enable_pbr": true,
+        "pose_mode": "",
+        "enable_rigging": false,
+        "enable_animation": false,
+        "enable_safety_checker": true
+      }
     }
   },
   "prompt": "Full-body photographic scanning reference, exact front view. The person stands in an A-POSE: both arms extended diagonally outwards and downwards at 40 degrees from the torso, straight elbows, a large clear triangular gap between each arm and the body. BOTH OPEN HANDS held well away from the hips, all ten fingers gently spread and clearly visible, palms facing the camera. Feet separated shoulder-width, legs straight. Entire body, hair, all fingertips and both complete shoes visible with generous margins. Subject: {description}. Clothing: {clothing}. Neutral closed-mouth expression, eyes open, face unobstructed. Real ordinary human, realistic age and build. Exceptionally realistic unretouched photograph with authentic skin pores, natural age detail, fine hairs and subtle asymmetry, natural fabric texture. Soft even neutral light from a large studio light tent, plain light grey seamless background. Frontal camera at mid-body height, 70mm lens, sharp detail across the entire body. One person only. No jewelry, glasses, hats, props, makeup, beauty retouching, branding, text or watermarks.",

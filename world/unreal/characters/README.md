@@ -13,7 +13,7 @@ Run from the project root with Python 3.10 and the shared environment loader:
   .local/evidence/characters/<image-run>/adult-01
 .venv-cosys/bin/python -m world.unreal.characters.generate mesh adult-01 \
   .local/evidence/characters/<mesh-run>/adult-01 \
-  --image-run .local/evidence/characters/<image-run>/adult-01
+  --image-run .local/evidence/characters/<image-run>/adult-01 --mesh-model hunyuan
 ```
 
 Outputs must be new directories. Requests, provider responses, status logs, original media, SHA-256
@@ -32,6 +32,29 @@ Actual faces, texture dimensions and material channels must be inspected in the 
 The API does not expose texture resolution, diffusion steps, guidance or a GPU selector.
 One front image leaves the rear surface inferred. Additional views help only when they depict the
 same geometry and identity; independently invented side views must not be treated as ground truth.
+
+## Alternative reconstruction models
+
+Select `--mesh-model meshy` for Meshy 7.1 using the same accepted image. The tracked recipe requests
+standard generation, 4K geometry, original geometry without remeshing, textures and PBR. It preserves
+the source pose and omits rigging. Meshy recommends disabling remeshing for maximum source detail.
+Geometry resolution does not specify texture resolution. Meshy's direct API exposes 2K/4K/8K texture
+selection; fal's schema currently does not. Inspect the delivered maps instead of assuming 4K textures.
+
+Compare results using a selection array with required `key` (unique filename slug), `id`, `label`,
+`image_run` and `mesh_run` fields. Entries sharing a character ID must have identical input hashes.
+
+```sh
+.venv-cosys/bin/python -m world.unreal.characters.compare \
+  .local/evidence/characters/<comparison-selection>.json character-comparison-v1 \
+  .local/evidence/characters/<publication>.json
+```
+
+Each source is published with original PBR, unlit base color and plain clay material variants.
+Diagnostic variants preserve the original geometry, transforms and binary data. Clay omits textures
+and normal maps; unlit omits lighting. Inspect all modes before attributing defects to the renderer.
+Pass the actual number of model buttons to `capture-review.mjs`; each source has three modes.
+These previews do not establish physical skin shading, correct anatomy or a usable facial rig.
 
 ## Review
 
@@ -64,7 +87,7 @@ node world/unreal/characters/validate-mesh.mjs \
   .local/evidence/characters/<mesh-run>/adult-01/gltf-validation.json
 node --env-file=.local/runtime.env world/unreal/characters/capture-review.mjs \
   http://35.81.229.78/character-review-v1/index.html \
-  .local/evidence/characters/<new-screenshot-run>
+  .local/evidence/characters/<new-screenshot-run> 12
 ```
 
 The GLB inventory checks binary bounds, finite vertex data, indices, normals, UVs and embedded images.
@@ -89,3 +112,7 @@ Sources:
 - [fal request reliability controls](https://fal.ai/docs/documentation/model-apis/inference/reliability)
 - [Epic From Custom Mesh](https://dev.epicgames.com/documentation/metahuman/metahuman-creator-from-custom-mesh-tool-in-unreal-engine)
 - [model-viewer](https://modelviewer.dev/)
+
+- [Meshy fal schema](https://fal.ai/models/fal-ai/meshy/v7.1/image-to-3d/api)
+- [Meshy native API controls](https://docs.meshy.ai/en/api/image-to-3d)
+- [TRELLIS 2 fal schema](https://fal.ai/models/fal-ai/trellis-2/api)
