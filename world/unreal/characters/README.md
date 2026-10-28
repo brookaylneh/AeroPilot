@@ -96,10 +96,14 @@ node --env-file=.local/runtime.env world/unreal/characters/capture-review.mjs \
   .local/evidence/characters/<new-screenshot-run> 12
 ```
 
-The GLB inventory checks binary bounds, finite vertex data, indices, normals, UVs and embedded images.
+The GLB inventory checks binary bounds, finite vertex data, indices, normals, UVs and embedded images,
+including WebP textures through `EXT_texture_webp`.
 It records face counts and material texture references; it is not a full glTF conformance validator
-or a proof of good anatomy. The separate validator uses the pinned Khronos glTF validator from
-`package-lock.json` and retains errors and warnings before failing on invalid assets. Generated physical stature must be calibrated before importing into
+or a proof of good anatomy. PBR channel completeness records the presence of a normal map as well as
+metallic/roughness; a missing normal map alone does not make a PBR material invalid.
+The separate validator uses the pinned Khronos glTF validator from
+`package-lock.json` and retains every issue without truncation before failing on invalid assets.
+Raw assets that fail validation can be shown for diagnosis, clearly labeled, but are not accepted for import. Generated physical stature must be calibrated before importing into
 Unreal centimetres. The browser capture records front, side, back, face and both hand views through the installed
 HTTP service and releases its browser when finished. It never connects to the Studio editing lease.
 

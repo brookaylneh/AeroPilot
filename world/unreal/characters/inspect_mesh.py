@@ -60,7 +60,8 @@ def main():
     parser.add_argument("output", type=Path)
     args = parser.parse_args()
     document, binary = read_glb(args.model)
-    assert "extensionsRequired" not in document, "Compressed/extended mesh needs its decoder"
+    required = document["extensionsRequired"] if "extensionsRequired" in document else []
+    assert set(required) <= {"EXT_texture_webp"}, "Required extension needs its decoder"
     primitives = []
     for mesh in document["meshes"]:
         for primitive in mesh["primitives"]:
