@@ -102,6 +102,7 @@ class Planner(unittest.TestCase):
         allowed = {
             "asyncio",
             "base64",
+            "functools",
             "hashlib",
             "io",
             "json",
