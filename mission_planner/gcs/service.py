@@ -168,6 +168,10 @@ class Mission:
             text = item["drone_id"] + " firmware verified"
         elif kind == "safety_parameters_verified":
             text = item["drone_id"] + " safety parameters verified"
+        elif kind == "sitl_ports_verified":
+            text = "SITL listener ports verified"
+        elif kind == "home_comparison":
+            text = f"{item['drone_id']} home position error {item['home_error_m']:.3f} m"
         else:
             assert kind == "parameter", f"Unknown fleet event: {kind}"
             text = f"{item['drone_id']} {item['name']} verified: {item['value']}"

@@ -2,6 +2,7 @@
 
 import json
 import unittest
+from unittest.mock import Mock
 
 import httpx
 
@@ -9,6 +10,20 @@ from mission_planner.gcs.service import Mission, compact_vehicle, fence_summary,
 
 
 class AgentContext(unittest.TestCase):
+    def test_coupled_startup_events_reach_the_mission_log(self):
+        mission = object.__new__(Mission)
+        mission.event = Mock()
+        port_event = {"kind": "sitl_ports_verified", "ports": [14620, 5701, 9203]}
+        home_event = {"kind": "home_comparison", "drone_id": "Drone1", "home_error_m": 2.372}
+        mission.fleet_event(port_event)
+        mission.event.assert_called_with("mode", "SITL listener ports verified", result=port_event)
+        mission.fleet_event(home_event)
+        mission.event.assert_called_with(
+            "mode", "Drone1 home position error 2.372 m", result=home_event
+        )
+        with self.assertRaisesRegex(AssertionError, "Unknown fleet event"):
+            mission.fleet_event({"kind": "unexpected"})
+
     def test_command_result_omits_unbounded_telemetry(self):
         vehicle = {
             "id": "Drone1",

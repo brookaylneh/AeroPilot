@@ -21,6 +21,7 @@ SAFETY_PARAMETERS = {
     "FENCE_ALT_MAX": 100,
     "FENCE_MARGIN": 2,
 }
+AIRSIM_PARAMETERS = {"SCHED_LOOP_RATE": 100}
 
 
 def check_ports(ports):
@@ -56,7 +57,12 @@ def launches(directory):
         )
         safety = Path(directory) / "safety.parm"
         with safety.open("x") as stream:
-            stream.write("".join(f"{key} {value}\n" for key, value in SAFETY_PARAMETERS.items()))
+            stream.write(
+                "".join(
+                    f"{key} {value}\n"
+                    for key, value in (SAFETY_PARAMETERS | AIRSIM_PARAMETERS).items()
+                )
+            )
         defaults.append(safety)
     assert all(path.is_file() for path in defaults), defaults
     spawn_settings = json.loads((ROOT / "world/cosys/settings.json").read_text())
@@ -84,6 +90,9 @@ def launches(directory):
                 "home": home,
                 "mavlink_port": mavlink_port,
                 "ports": ports,
+                "expected_parameters": SAFETY_PARAMETERS | AIRSIM_PARAMETERS
+                if model == "airsim-copter"
+                else SAFETY_PARAMETERS,
                 "arguments": [
                     str(binary),
                     "--model",
