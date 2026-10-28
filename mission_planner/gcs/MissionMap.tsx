@@ -32,6 +32,7 @@ export default function MissionMap({
   areaDraft,
   onDraw,
   finishDrawing,
+  reviewDetection,
   vehicles,
   selected,
   select,
@@ -47,6 +48,7 @@ export default function MissionMap({
   areaDraft: SearchPoint[] | null;
   onDraw: (vertices: SearchPoint[]) => void;
   finishDrawing: () => void;
+  reviewDetection: (id: string) => void;
   vehicles: Vehicle[];
   selected: DroneId;
   select: (id: DroneId) => void;
@@ -285,7 +287,7 @@ export default function MissionMap({
             height={bottomRight.y - topLeft.y}
             className="gcs-terrain"
           />
-          <SearchLayers search={search} project={projection} />
+          <SearchLayers search={search} project={projection} reviewDetection={reviewDetection} />
           {areaDraft && (
             <polygon
               className="gcs-search-draft"

@@ -9,10 +9,7 @@ import numpy as np
 from matplotlib import colormaps
 from PIL import Image
 
-from mission_planner.environment import ROOT
-from mission_planner.search.belief import negative_update
-from mission_planner.search.coverage import capture_pod
-from mission_planner.search.detection import reduce_calibration
+from mission_planner.search.commander import Commander
 from mission_planner.search.grid import make_grid, polygon_areas, validate_area
 from mission_planner.search.planner import encode, plan
 from mission_planner.search.prior import TABLES, initialize
@@ -41,6 +38,8 @@ class Search:
         self.footprints = []
         self.negative_count = 0
         self.camera_source = None
+        self.paused = {}
+        self.commander = Commander(self)
 
     def changed(self):
         self.revision += 1
@@ -61,9 +60,11 @@ class Search:
         self.heatmap_scale = None
         self.pod = None
         assert not self.captures, "A new search hypothesis cannot silently discard camera evidence"
+        self.commander.evidence = None
 
     def mark_point(self, north, east):
         self.editable()
+        assert self.commander.source is None, "Camera source selection locks search inputs"
         assert np.isfinite([north, east]).all()
         from mission_planner.gcs.geodesy import point_in_polygon
 
@@ -90,7 +91,8 @@ class Search:
                 self.grid, self.point, self.profile["category"]["value"], self.domain
             )
             self.pod = np.zeros_like(self.probability)
-            self.model = reduce_calibration(ROOT / ".local/data/calibration")
+            self.model = self.commander.model
+            self.commander.initialize_evidence()
             self.render_heatmap()
 
     def render_heatmap(self):
@@ -99,7 +101,7 @@ class Search:
         assert np.isfinite(ratio).all() and ((ratio >= 0) & (ratio <= 1)).all()
         colourmap = colormaps["viridis"]
         rgba = colourmap(ratio, bytes=True)
-        rgba[:, 3] = np.where(self.grid["areas"] > 0, 215, 0)
+        rgba[:, 3] = np.where(self.grid["areas"] > 0, 110, 0)
         self.heatmap_scale = {
             "maximum": maximum,
             "colours": [
@@ -132,6 +134,8 @@ class Search:
             "status": self.status,
             "retained_in_world_mass": self.retained,
             "coverage": self.coverage_summary(),
+            "paused_drones": self.paused,
+            "pipeline_capacity": self.commander.capacity_view(),
         }
         if self.probability is not None:
             top = np.argsort(-self.probability, kind="stable")[:3]
@@ -167,13 +171,15 @@ class Search:
         return result
 
     def coverage_summary(self):
+        ingestion = self.commander.ingestion
         return {
             "source": self.camera_source,
             "message": "Coverage has no camera source"
             if self.camera_source is None
-            else "Capture geometry and explicitly processed negatives",
+            else "Calibrated person evidence; briefing prompts are uncalibrated leads",
             "captures": len(self.captures),
             "negative_observations": self.negative_count,
+            "backlog": None if ingestion is None else ingestion.summary()["lanes"],
         }
 
     def view(self):
@@ -205,11 +211,15 @@ class Search:
             "plan": self.plan,
             "summary": self.summary(),
             "footprints": self.footprints,
+            "commander": self.commander.view(),
         }
 
-    async def execute(self, name, arguments):
+    async def execute(self, name, arguments, source="operator"):
+        if name in ("list_detections", "review_detection", "resolve_detection"):
+            return await self.commander.execute(name, arguments, source)
         if name == "record_subject_profile":
             self.editable()
+            assert self.commander.source is None, "Camera source selection locks search inputs"
             validate_profile(arguments, self.mission.case["report"])
             self.profile = arguments
             p = explicit_point(arguments)
@@ -223,6 +233,7 @@ class Search:
             return self.summary()
         if name == "define_search_area":
             self.editable()
+            assert self.commander.source is None, "Camera source selection locks search inputs"
             assert self.mission.fleet_ready
             validate_area(arguments["vertices"], self.mission.vehicles()[0]["fence"])
             self.vertices = arguments["vertices"]
@@ -263,18 +274,12 @@ class Search:
         assert self.plan["inputs"] == self.inputs(), "Search inputs changed since planning"
         return self.plan
 
-    def consume_capture(self, frame, outcome):
-        assert outcome in ("unprocessed", "negative")
-        self.initialize()
-        key = f"{frame['vehicleId']}:{frame['timestampNs']}"
-        assert key not in self.captures, "Duplicate capture record"
-        assert isinstance(frame["sha256"], str) and len(frame["sha256"]) == 64
-        pd, footprint = capture_pod(frame, self.grid, self.model)
-        if outcome == "negative":
-            self.probability, self.pod = negative_update(self.probability, self.pod, pd)
-            self.negative_count += 1
-            self.render_heatmap()
-        self.captures[key] = frame["sha256"]
-        self.camera_source = "Cosys capture records"
-        self.footprints.append({"id": key, "vertices": footprint, "outcome": outcome})
-        self.changed()
+    async def consume_capture(self, path):
+        assert self.commander.source == "live", "Select the live source before capture"
+        return await self.commander.ingest(path)
+
+    def complete_capture(self, result):
+        return self.commander.complete_capture(result)
+
+    def review_detection(self, detection_id):
+        return self.commander.review(detection_id)

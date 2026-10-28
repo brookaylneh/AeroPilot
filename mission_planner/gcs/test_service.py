@@ -1,10 +1,13 @@
 """Agent context boundaries, independent of live flight acceptance."""
 
 import json
+import tempfile
 import unittest
+from pathlib import Path
 
 import httpx
 
+from mission_planner.environment import ROOT
 from mission_planner.gcs.service import Mission, compact_vehicle, fence_summary, operator_error
 
 
@@ -42,6 +45,9 @@ class AgentContext(unittest.TestCase):
         mission = object.__new__(Mission)
         from mission_planner.search.state import Search
 
+        temporary = tempfile.TemporaryDirectory(dir=ROOT / ".local")
+        self.addCleanup(temporary.cleanup)
+        mission.directory = Path(temporary.name)
         mission.search = Search(mission)
         mission.autonomy = "Supervised"
         mission.case = {

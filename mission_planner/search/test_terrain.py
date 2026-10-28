@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import numpy as np
 
-from mission_planner.search.terrain import terrain_leg
+from mission_planner.search.terrain import PLANNED_AGL_TOLERANCE_M, terrain_leg
 
 
 class Terrain(unittest.TestCase):
@@ -20,12 +20,14 @@ class Terrain(unittest.TestCase):
         a, b = {"north_m": 0, "east_m": 0}, {"north_m": 8, "east_m": 0}
         with patch("mission_planner.search.terrain.terrain_height", side_effect=ground):
             route, error = terrain_leg(a, b, 0)
-        self.assertLessEqual(error, 2)
+        self.assertLessEqual(error, PLANNED_AGL_TOLERANCE_M)
         for count in range(2, len(route)):
             for middle in itertools.combinations(range(1, 8), count - 2):
                 indices = [0, *middle, 8]
                 interpolated = np.interp(np.arange(9), indices, heights[indices])
-                self.assertGreater(float(np.abs(interpolated - heights).max()), 2)
+                self.assertGreater(
+                    float(np.abs(interpolated - heights).max()), PLANNED_AGL_TOLERANCE_M
+                )
         self.assertEqual(route[0]["north_m"], 0)
         self.assertEqual(route[-1]["north_m"], 8)
 

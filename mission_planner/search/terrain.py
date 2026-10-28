@@ -10,6 +10,7 @@ from world.cosys.terrain import terrain_height
 
 # Quarter metres survive MAVLink float32 and ArduPilot integer-centimetre storage exactly.
 ALTITUDE_STEP_M = 0.25
+PLANNED_AGL_TOLERANCE_M = 1.0
 
 
 def waypoint(north, east, home_z):
@@ -39,7 +40,7 @@ def terrain_leg(a, b, home_z):
     assert ((altitude >= MIN_ALTITUDE_M) & (altitude <= MAX_ALTITUDE_M)).all()
     count = len(samples)
     direct_error = float(np.abs(np.linspace(altitude[0], altitude[-1], count) - target).max())
-    if direct_error <= 2:
+    if direct_error <= PLANNED_AGL_TOLERANCE_M:
         return [samples[0], samples[-1]], direct_error
     links = np.full(count, count, dtype=int)
     successor = np.full(count, -1, dtype=int)
@@ -47,8 +48,12 @@ def terrain_leg(a, b, home_z):
     for i in range(count - 2, -1, -1):
         offsets = np.arange(1, count - i)
         slopes = (altitude[i + 1 :] - altitude[i]) / offsets
-        lower = np.maximum.accumulate((target[i + 1 :] - 2 - altitude[i]) / offsets)
-        upper = np.minimum.accumulate((target[i + 1 :] + 2 - altitude[i]) / offsets)
+        lower = np.maximum.accumulate(
+            (target[i + 1 :] - PLANNED_AGL_TOLERANCE_M - altitude[i]) / offsets
+        )
+        upper = np.minimum.accumulate(
+            (target[i + 1 :] + PLANNED_AGL_TOLERANCE_M - altitude[i]) / offsets
+        )
         eligible = np.flatnonzero((slopes >= lower) & (slopes <= upper)) + i + 1
         assert len(eligible), "No terrain segment satisfies the calibration flight tolerance"
         best = int(eligible[np.flatnonzero(links[eligible] == links[eligible].min())[-1]])
@@ -59,5 +64,5 @@ def terrain_leg(a, b, home_z):
     assert len(indices) == links[0] + 1
     interpolated = np.interp(np.arange(count), indices, altitude[indices])
     maximum = float(np.abs(interpolated - target).max())
-    assert maximum <= 2, "Terrain-following leg exceeds calibration flight tolerance"
+    assert maximum <= PLANNED_AGL_TOLERANCE_M, "Terrain leg consumes the tracking margin"
     return [samples[i] for i in indices], maximum

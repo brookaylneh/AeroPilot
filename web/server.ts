@@ -2,6 +2,7 @@ import express from 'express';
 import compression from 'compression';
 import path from 'node:path';
 import { existsSync } from 'node:fs';
+import { readFile } from 'node:fs/promises';
 import { createServer, request } from 'node:http';
 import { required, port as configuredPort } from './runtime';
 import { health, rendererHealth } from './health';
@@ -18,6 +19,21 @@ if (host !== '127.0.0.1') throw new Error('Internal web service must bind loopba
 const development = process.argv.includes('--dev');
 const port = configuredPort(development ? 'SNR_DEV_PORT' : 'SNR_WEB_PORT');
 app.get('/', (_req, res) => res.redirect(308, '/studio'));
+app.get('/api/evidence/:mission/:asset', async (req, res) => {
+  const { mission, asset } = req.params;
+  if (!/^[a-f0-9-]{36}$/.test(mission) || !/^[a-f0-9-]+-(?:frame|input|crop)\.jpg$/.test(asset)) {
+    res.sendStatus(400);
+    return;
+  }
+  const directory = path.resolve('.local/data/missions', mission, 'evidence');
+  const registry: string[] = JSON.parse(await readFile(path.join(directory, 'assets.json'), 'utf8'));
+  if (!registry.includes(asset)) {
+    res.sendStatus(404);
+    return;
+  }
+  res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
+  res.sendFile(asset, { root: directory });
+});
 app.get('/healthz', async (_req, res) => {
   if (missionOnly) {
     res.status(503).json({ ok: false, reason: 'Mission-only development slot has no renderer' });
@@ -45,7 +61,7 @@ if (development) {
   if (!existsSync(path.join(dist, 'index.html')))
     throw new Error('Missing browser build; run npm run build.');
   app.use(express.static(dist, { index: false }));
-  app.get(['/studio', '/mission'], (_req, res) => res.sendFile('index.html', { root: dist }));
+  app.get(['/studio', '/mission', '/team'], (_req, res) => res.sendFile('index.html', { root: dist }));
 }
 app.use((_req, res) => res.sendStatus(404));
 app.use((error: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -62,11 +78,11 @@ server.on('upgrade', (req, socket, head) => {
   } catch {
     /* rejected below */
   }
-  if (!['/api/stream', '/api/mission'].includes(req.url!) || !sameOrigin) {
+  if (!['/api/stream', '/api/mission', '/api/team'].includes(req.url!) || !sameOrigin) {
     socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
     return;
   }
-  const upstreamPort = req.url === '/api/mission' ? missionPort : pixelPlayerPort;
+  const upstreamPort = req.url === '/api/stream' ? pixelPlayerPort : missionPort;
   if (upstreamPort === null) {
     socket.end('HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n');
     return;
@@ -74,7 +90,7 @@ server.on('upgrade', (req, socket, head) => {
   const upstream = request({
     hostname: '127.0.0.1',
     port: upstreamPort,
-    path: '/',
+    path: req.url === '/api/team' ? '/team' : '/',
     method: 'GET',
     headers: { ...req.headers, host: `127.0.0.1:${upstreamPort}` },
   });

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Crosshair, Search, ChevronDown, RectangleHorizontal } from 'lucide-react';
 import type { SearchPoint, SearchState } from './searchState';
+import CapturePanel from './CapturePanel';
 import './search.css';
 
 export default function SearchPanel({
@@ -13,6 +14,7 @@ export default function SearchPanel({
   startDrawing,
   cancelDrawing,
   enabled,
+  review,
 }: {
   search: SearchState | null;
   send: (m: Record<string, unknown>) => void;
@@ -23,6 +25,7 @@ export default function SearchPanel({
   startDrawing: () => void;
   cancelDrawing: () => void;
   enabled: boolean;
+  review: () => void;
 }) {
   const [open, setOpen] = useState(true),
     [domain, setDomain] = useState('');
@@ -34,6 +37,7 @@ export default function SearchPanel({
     if (search?.domain) setDomain(search.domain);
   }, [search?.domain]);
   if (!search) return null;
+  const capacity = search.summary.pipeline_capacity;
   const editable = enabled && !['starting', 'running'].includes(search.summary.status);
   const area = draft ?? search.vertices;
   const areaM2 = area
@@ -238,6 +242,48 @@ export default function SearchPanel({
             </div>
           )}
           <p className="gcs-search-camera">{search.summary.coverage.message}</p>
+          <section
+            className={`gcs-search-throughput ${capacity?.applies_to_profile && !capacity.sustains_required_rate ? 'limited' : ''}`}
+            aria-label="Perception throughput"
+          >
+            <strong>
+              {capacity?.applies_to_profile
+                ? capacity.sustains_required_rate
+                  ? 'Perception keeps up at 5 m/s'
+                  : 'Perception cannot keep up at 5 m/s'
+                : 'Current prompt throughput unmeasured'}
+            </strong>
+            {capacity !== null && (
+              <>
+                {!capacity.applies_to_profile && <p>This measurement uses a different prompt load.</p>}
+                <p>
+                  {capacity.sam_runners} SAM runners · {capacity.completed_rate_fps.toFixed(2)} frames/s
+                  measured
+                  {capacity.applies_to_profile && ` · ${capacity.required_rate_fps.toFixed(2)} required`}
+                </p>
+                {capacity.applies_to_profile && (
+                  <p>
+                    At 12 m capture spacing: speed limit {capacity.speed_limit_mps.toFixed(2)} m/s. At 5 m/s:
+                    at least {capacity.per_drone_interval_s.toFixed(2)} s between each drone’s frames.
+                  </p>
+                )}
+                <small>Evidence: {capacity.evidence}</small>
+              </>
+            )}
+            <small>POS curve uses capture time; processing delay is excluded.</small>
+          </section>
+          <CapturePanel
+            commander={search.commander}
+            send={send}
+            enabled={enabled}
+            canSelect={
+              search.profile !== null &&
+              search.point !== null &&
+              search.vertices !== null &&
+              search.plan !== null
+            }
+            review={review}
+          />
           <div className="gcs-search-actions">
             <button
               disabled={!editable || !search.point || !search.vertices}

@@ -38,22 +38,60 @@ def usage(start, end):
     return data
 
 
+def ready(directory, sam_concurrency):
+    deadline = time.monotonic() + 300
+    while True:
+        apps = json.loads(cli("apps", "list", "--json"))
+        runners = json.loads(cli("runners", "list", "--json"))
+        active = [
+            r
+            for r in runners["runners"]
+            if r["alias"] in APPS and r["state"] in ("IDLE", "RUNNING")
+        ]
+        if (
+            sum(r["alias"] == "snr-sam" for r in active) == sam_concurrency
+            and sum(r["alias"] == "snr-glimmer" for r in active) == 1
+        ):
+            directory.joinpath("ready.json").write_text(
+                json.dumps({"apps": apps, "runners": runners}, indent=2) + "\n"
+            )
+            return
+        assert time.monotonic() < deadline, (
+            "Requested fal runners did not become ready within 300 s"
+        )
+        time.sleep(2)
+
+
 @contextmanager
-def inference_session(directory):
+def inference_session(directory, sam_concurrency=1):
     load_env()
+    assert sam_concurrency in (1, 2)
     directory.mkdir(parents=True, exist_ok=False)
     started = datetime.now(timezone.utc).isoformat()
     report = dict(startedAt=started, before=json.loads(cli("apps", "list", "--json")))
     owned = [a for a in report["before"]["apps"] if a["alias"] in APPS]
     report["beforeRunners"] = json.loads(cli("runners", "list", "--json"))
     assert len(owned) == 2 and all(a["min_concurrency"] == 0 for a in owned)
+    limits = {a["alias"]: a["max_concurrency"] for a in owned}
+    report["requestedSamConcurrency"] = sam_concurrency
     assert all(
         r["state"] == "DEAD" for r in report["beforeRunners"]["runners"] if r["alias"] in APPS
     )
     (directory / "hosting.json").write_text(json.dumps(report, indent=2) + "\n")
 
     def scale(app, count):
-        text = cli("apps", "scale", app, "--min-concurrency", str(count), "--keep-alive", "0")
+        maximum = sam_concurrency if count and app == "snr-sam" else limits[app]
+        text = cli(
+            "apps",
+            "scale",
+            app,
+            "--min-concurrency",
+            str(count),
+            "--max-concurrency",
+            str(maximum),
+            "--keep-alive",
+            "0",
+        )
         (directory / f"{app}-scale-{count}.txt").write_text(text)
 
     def finish():
@@ -79,5 +117,5 @@ def inference_session(directory):
         cleanup.callback(finish)
         for app in APPS:
             cleanup.callback(scale, app, 0)
-            scale(app, 1)
+            scale(app, sam_concurrency if app == "snr-sam" else 1)
         yield report

@@ -10,6 +10,8 @@ from mission_planner.search.timing import PARAMETERS
 
 
 def flight_label(name, arguments):
+    if name == "notify_ground_team":
+        return "Ground team " + arguments["team_id"]
     return "Fleet search" if name == "start_search" else arguments["drone_id"]
 
 
@@ -111,14 +113,20 @@ async def finish(search, started):
             assert not state["link_lost"] and state["ekf_healthy"], (
                 f"{name} search telemetry unhealthy"
             )
+            if name in search.paused or name in mission.active_flight:
+                continue
             last = search.plan["routes"][name]["waypoints"][-1]
             error = math.dist(
                 [state[k] for k in ("north_m", "east_m", "altitude_above_home_m")],
                 [last[k] for k in ("north_m", "east_m", "altitude_above_home_m")],
             )
             if state["mission_current"] == state["mission_total"] - 1 and error < 2:
-                await mission.fleet.execute("return_home", {"drone_id": name})
-                pending.remove(name)
+                mission.active_flight.add(name)
+                try:
+                    await mission.fleet.execute("return_home", {"drone_id": name})
+                    pending.remove(name)
+                finally:
+                    mission.active_flight.remove(name)
         await asyncio.sleep(0.2)
     await until(
         mission,

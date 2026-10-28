@@ -1,6 +1,7 @@
 import { memo } from 'react';
 import type { SearchState } from './searchState';
 import { droneColors, type DroneId } from './missionState';
+import { formatProbability } from './display';
 
 const Geometry = memo(function Geometry({ search }: { search: SearchState }) {
   const points = (rows: { north_m: number; east_m: number }[]) =>
@@ -19,8 +20,10 @@ const Geometry = memo(function Geometry({ search }: { search: SearchState }) {
       )}
       {search.vertices && <polygon points={points(search.vertices)} className="gcs-search-area" />}
       {search.footprints.map((f) => (
-        <polygon key={f.id} points={points(f.vertices)} className="gcs-covered-footprint">
-          <title>{f.outcome === 'negative' ? 'Processed negative' : 'Captured; unprocessed'}</title>
+        <polygon key={f.id} points={points(f.vertices)} className={`gcs-covered-footprint ${f.outcome}`}>
+          <title>
+            {f.outcome === 'unprocessed' ? 'Captured; unprocessed' : `Frame outcome: ${f.outcome}`}
+          </title>
         </polygon>
       ))}
       {search.plan &&
@@ -45,9 +48,11 @@ const Geometry = memo(function Geometry({ search }: { search: SearchState }) {
 export default function SearchLayers({
   search,
   project,
+  reviewDetection,
 }: {
   search: SearchState | null;
   project: (n: number, e: number) => { x: number; y: number };
+  reviewDetection: (id: string) => void;
 }) {
   if (!search) return null;
   const origin = project(0, 0),
@@ -66,6 +71,45 @@ export default function SearchLayers({
           </text>
         </g>
       )}
+      {search.commander.clusters.map((cluster, index) => {
+        const point = project(cluster.localization.ground.north_m, cluster.localization.ground.east_m);
+        const ellipse = cluster.localization.ellipse95;
+        const open = () => reviewDetection(cluster.representative_id);
+        return (
+          <g key={cluster.id} transform={`translate(${point.x},${point.y})`}>
+            <ellipse
+              className="gcs-detection-ellipse"
+              rx={ellipse.radii_m[0] * scale}
+              ry={ellipse.radii_m[1] * scale}
+              transform={`rotate(${(ellipse.angle_rad * 180) / Math.PI - 90})`}
+            />
+            <g
+              className={`gcs-detection-pin ${cluster.status}`}
+              role="button"
+              tabIndex={0}
+              aria-label={`Review evidence cluster ${index + 1}`}
+              onPointerDown={(event) => event.stopPropagation()}
+              onClick={(event) => {
+                event.stopPropagation();
+                open();
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  open();
+                }
+              }}
+            >
+              <circle r="8" />
+              <text x="13" y="4">
+                {index + 1} · {cluster.calibrated ? 'Person' : 'Uncalibrated'} ·{' '}
+                {formatProbability(cluster.posterior_mass)}
+              </text>
+              <title>{cluster.member_ids.length} member detections · 95% location ellipse</title>
+            </g>
+          </g>
+        );
+      })}
     </g>
   );
 }

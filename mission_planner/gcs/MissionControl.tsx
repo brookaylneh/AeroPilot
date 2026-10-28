@@ -27,6 +27,7 @@ import {
 import MissionMap from './MissionMap';
 import SearchPanel from './SearchPanel';
 import SearchApproval from './SearchApproval';
+import EvidenceCard from './EvidenceCard';
 import type { SearchPoint } from './searchState';
 import RouteApproval from './RouteApproval';
 import {
@@ -176,7 +177,7 @@ export default function MissionControl() {
   const pendingRoute = approval?.name === 'fly_route' ? routeArgumentsSchema.parse(approval.arguments) : null;
   const [selected, setSelected] = useState<DroneId>('Drone1');
   const [view, setView] = useState<'map' | 'video'>('map');
-  const [panel, setPanel] = useState<'agent' | 'log'>('agent');
+  const [panel, setPanel] = useState<'agent' | 'evidence' | 'log'>('agent');
   const [text, setText] = useState('');
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [briefingOpen, setBriefingOpen] = useState(false);
@@ -201,6 +202,15 @@ export default function MissionControl() {
     ...lost,
   ];
   const enabled = connected && state !== null;
+  const reviewed = events
+    .filter(
+      (event) =>
+        event.kind === 'tool_result' && event.name === 'review_detection' && event.result?.ok === true,
+    )
+    .at(-1);
+  useEffect(() => {
+    if (reviewed) setPanel('evidence');
+  }, [reviewed?.id]);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if ((e.target as Element).closest('input,textarea,select') || e.ctrlKey || e.altKey || e.metaKey)
@@ -216,7 +226,7 @@ export default function MissionControl() {
   }, []);
   useEffect(() => {
     const el = conversation.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (el && panel !== 'evidence') el.scrollTop = el.scrollHeight;
   }, [events.length, state?.approvals.length, panel]);
   function tool(name: string, id: DroneId) {
     setPanel('agent');
@@ -345,6 +355,14 @@ export default function MissionControl() {
                 areaDraft={areaDraft}
                 onDraw={setAreaDraft}
                 finishDrawing={() => setDrawing(false)}
+                reviewDetection={(id) => {
+                  setPanel('evidence');
+                  send({
+                    type: 'tool',
+                    name: 'review_detection',
+                    arguments: { detection_id: id, model_review: false },
+                  });
+                }}
                 onMark={
                   marking
                     ? (point) => {
@@ -383,6 +401,7 @@ export default function MissionControl() {
                     setDrawing(false);
                   }}
                   enabled={connected && !state?.agent_busy && !approval}
+                  review={() => setPanel('evidence')}
                 />
               )}
               {view !== 'map' && (
@@ -609,6 +628,9 @@ export default function MissionControl() {
               Flight log
               <span>{events.filter((e) => ['statustext', 'mode', 'error'].includes(e.kind)).length}</span>
             </button>
+            <button className={panel === 'evidence' ? 'active' : ''} onClick={() => setPanel('evidence')}>
+              Evidence <span>{search?.commander.clusters.length ?? 0}</span>
+            </button>
           </div>
           <div className="gcs-conversation" ref={conversation} aria-live="polite">
             {panel === 'agent' ? (
@@ -700,6 +722,17 @@ export default function MissionControl() {
                   </div>
                 )}
               </>
+            ) : panel === 'evidence' ? (
+              search &&
+              caseId && (
+                <EvidenceCard
+                  key={`${reviewed?.id}:${search.commander.review?.selected_id}`}
+                  commander={search.commander}
+                  send={send}
+                  enabled={enabled && !state?.agent_busy && !approval}
+                  caseId={caseId}
+                />
+              )
             ) : (
               <div className="gcs-log">
                 {events.length ? (
@@ -722,7 +755,7 @@ export default function MissionControl() {
             )}
           </div>
           {state && state.approvals.length > 0 && (
-            <div className="gcs-approval-dock" aria-label="Pending flight approvals">
+            <div className="gcs-approval-dock" aria-label="Pending operator approvals">
               {state.approvals.slice(0, 1).map((approval) => (
                 <section
                   className="gcs-approval"
@@ -746,7 +779,9 @@ export default function MissionControl() {
                     <RouteApproval key={approval.id} route={pendingRoute} />
                   ) : (
                     <details className="gcs-approval-arguments" open>
-                      <summary>Flight details</summary>
+                      <summary>
+                        {approval.name === 'notify_ground_team' ? 'Delivery details' : 'Flight details'}
+                      </summary>
                       <Arguments values={approval.arguments} />
                     </details>
                   )}
@@ -767,7 +802,7 @@ export default function MissionControl() {
                       onClick={() => send({ type: 'approval', id: approval.id, approved: true })}
                     >
                       <Check size={15} />
-                      Approve flight
+                      {approval.name === 'notify_ground_team' ? 'Approve delivery' : 'Approve flight'}
                     </button>
                   </div>
                 </section>

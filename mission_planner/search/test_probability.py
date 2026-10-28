@@ -8,11 +8,11 @@ import numpy as np
 from scipy.integrate import quad
 
 from mission_planner.agents.perception.geometry import Camera
+from mission_planner.agents.perception.reduce_detection import COHORT, reduce_calibration
 from mission_planner.environment import ROOT
 from mission_planner.gcs.geodesy import fence_vertices
 from mission_planner.search.belief import negative_update
 from mission_planner.search.coverage import capture_pod
-from mission_planner.search.detection import COHORT, reduce_calibration
 from mission_planner.search.grid import make_grid
 from mission_planner.search.prior import QUANTILES, TABLES, cdf, density, initialize, table
 

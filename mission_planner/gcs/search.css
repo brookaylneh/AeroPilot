@@ -36,6 +36,8 @@
 .gcs-search-body {
   padding: 0 12px 12px;
   overflow: auto;
+  scrollbar-color: #47575e transparent;
+  scrollbar-width: thin;
   display: flex;
   flex-direction: column;
   gap: 11px;
@@ -51,6 +53,21 @@
   color: inherit;
   border-radius: 4px;
   padding: 7px;
+}
+.gcs-search-throughput {
+  border: 1px solid var(--gcs-line);
+  border-radius: 4px;
+  padding: 9px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.gcs-search-throughput.limited > strong {
+  color: var(--gcs-warn);
+}
+.gcs-search-throughput small {
+  display: block;
+  color: var(--gcs-muted);
+  overflow-wrap: anywhere;
 }
 .gcs-search-body button.active {
   border-color: var(--gcs-warn);

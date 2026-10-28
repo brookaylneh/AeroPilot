@@ -6,9 +6,9 @@ import unittest
 
 import numpy as np
 
+from mission_planner.agents.perception.reduce_detection import reduce_calibration
 from mission_planner.environment import ROOT
 from mission_planner.gcs.geodesy import fence_vertices, homes, to_geodetic
-from mission_planner.search.detection import reduce_calibration
 from mission_planner.search.grid import make_grid, polygon_areas
 from mission_planner.search.planner import (
     AIRBORNE_SECONDS,
@@ -153,51 +153,63 @@ class Planner(unittest.TestCase):
 
     def test_runtime_has_no_truth_or_actor_dependency(self):
         allowed = {
-            "asyncio",
-            "base64",
-            "hashlib",
-            "io",
-            "json",
-            "math",
-            "matplotlib",
-            "re",
-            "time",
-            "pathlib",
-            "numpy",
-            "PIL",
-            "scipy.interpolate",
-            "scipy.stats",
-            "mission_planner.environment",
-            "mission_planner.search",
-            "mission_planner.gcs.geodesy",
-            "mission_planner.gcs.validation",
+            "mission_planner.agents.models",
+            "mission_planner.agents.tools",
+            "mission_planner.agents.perception.configuration",
             "mission_planner.agents.perception.geometry",
-            "mission_planner.agents.perception.glimmer_calibration",
+            "mission_planner.agents.perception.hosting",
+            "mission_planner.agents.perception.ingestion",
+            "mission_planner.agents.perception.localization",
+            "mission_planner.agents.perception.pipeline",
+            "mission_planner.environment",
+            "mission_planner.gcs.fleet",
+            "mission_planner.gcs.geodesy",
+            "mission_planner.gcs.ground_team",
+            "mission_planner.gcs.service",
+            "mission_planner.gcs.validation",
             "world.cosys.terrain",
         }
-        for path in (ROOT / "mission_planner/search").glob("*.py"):
-            if path.name.startswith("test_") or path.name == "report_flight.py":
+        allowed.update(
+            "mission_planner.search." + name
+            for name in (
+                "belief",
+                "commander",
+                "coverage",
+                "detection",
+                "detections",
+                "execution",
+                "grid",
+                "planner",
+                "prior",
+                "relook",
+                "state",
+                "subject",
+                "terrain",
+                "timing",
+                "tools",
+            )
+        )
+        pending, checked = ["mission_planner.gcs.service"], set()
+        while pending:
+            module = pending.pop()
+            if module in checked:
                 continue
-            tree = ast.parse(path.read_text())
-            for node in ast.walk(tree):
-                if isinstance(node, ast.ImportFrom) and node.module == "mission_planner.search":
-                    self.assertNotIn("report_flight", [alias.name for alias in node.names])
-                modules = (
-                    [node.module]
+            self.assertIn(module, allowed)
+            checked.add(module)
+            path = ROOT.joinpath(*module.split(".")).with_suffix(".py")
+            for node in ast.walk(ast.parse(path.read_text())):
+                imports = (
+                    [node.module, *(node.module + "." + a.name for a in node.names)]
                     if isinstance(node, ast.ImportFrom)
                     else [a.name for a in node.names]
                     if isinstance(node, ast.Import)
                     else []
                 )
-                for module in modules:
-                    self.assertNotEqual(module, "mission_planner.search.report_flight")
-                    self.assertTrue(
-                        any(
-                            module == prefix or module.startswith(prefix + ".")
-                            for prefix in allowed
-                        ),
-                        (path, module),
-                    )
+                for name in imports:
+                    if name.startswith(("mission_planner.", "world.")):
+                        imported = ROOT.joinpath(*name.split(".")).with_suffix(".py")
+                        if imported.is_file():
+                            pending.append(name)
                 if isinstance(node, ast.Constant) and isinstance(node.value, str):
                     self.assertFalse(
                         any(
@@ -208,10 +220,13 @@ class Planner(unittest.TestCase):
                                 "runtime-actors",
                                 "evaluator/",
                                 "scenario.json",
+                                ".local/data/calibration",
+                                "labels.json",
                             )
                         ),
                         (path, node.value),
                     )
+        self.assertEqual(checked, allowed)
 
 
 class Subject(unittest.TestCase):

@@ -2,7 +2,8 @@
 
 Four ArduCopter autopilots use built-in quad physics. One Python process owns their
 MAVLink connections, Wonder, approvals and the event log. The browser receives actual
-telemetry, mission and fence readback; video has no source yet.
+telemetry, mission and fence readback. The search commander processes explicitly selected
+recorded captures or the coupled live capture contract; see [search](../search/README.md).
 
 ## Start and stop
 
@@ -78,7 +79,7 @@ ArduPilot firmware type 3, and the read-back inclusion fence.
 
 ## Acceptance and diagnostics
 
-[Tool contracts and Wonder context](../agents/README.md) describe the seventeen registered
+[Tool contracts and Wonder context](../agents/README.md) describe the twenty-two registered
 tools. Each operator request starts a bounded conversation; continuations contain compact
 results and omit the briefing. Events log actual input/output token counts and request
 sizes. HTTP failures retain the failed body and safe response headers without credentials.
@@ -116,3 +117,9 @@ Protocol references: [SITL/multiple vehicles](https://ardupilot.org/dev/docs/usi
 Search coverage uses the [search modules](../search/README.md) and a single fleet approval.
 `accept_browser.mjs search URL NEW_DIRECTORY` exercises the quoted profile, operator point,
 planning, approval and actual takeoff/coverage/return sequence in the assigned slot.
+
+The commander acceptance command is `accept_browser.mjs commander URL NEW_DIRECTORY MANIFEST_ID`.
+It selects an explicit recorded manifest, warms inference, releases frames after approved search,
+reviews evidence, approves a re-look, resumes the saved route, confirms a lead and delivers it
+to a separate `/team` browser that explicitly acknowledges receipt. Re-look and ground delivery
+require operator approval even in Autonomous mode. Only the operator resolves detections.

@@ -176,6 +176,9 @@ documented in [streaming](../world/unreal/streaming.md).
 | `/studio`                        | Scenario Creator                                              | web, `127.0.0.1:3001`                                           |
 | `/mission?case=<uuid>`           | Mission Control                                               | web, `127.0.0.1:3001`                                           |
 | `/api/mission`                   | Mission WebSocket                                             | web origin check, then `127.0.0.1:8765`                         |
+| `/team?case=<uuid>&team=<id>` | Receiving page with explicit lead acknowledgement | same web origin |
+| `/api/team` | Team-limited delivery/acknowledgement WebSocket | origin check, mission listener `/team` |
+| `/api/evidence/<mission>/<asset>` | Registered immutable frame and crop JPEGs | same web origin, mission-owned registry |
 | `/api/unreal/status`             | Renderer readiness and occupancy                              | web, signalling health                                          |
 | `/api/stream`                    | Pixel Streaming player WebSocket                              | web origin check, then `127.0.0.1:8080`                         |
 | `/healthz`                       | All six units plus mission, renderer and TURN protocol health | web; 503 if any check fails                                     |

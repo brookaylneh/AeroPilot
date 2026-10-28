@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { commanderSchema } from './commanderState';
 const number = z.number().finite();
 export const searchPoint = z.object({ north_m: number, east_m: number });
 const waypoint = searchPoint.extend({ altitude_above_home_m: number });
@@ -6,6 +7,7 @@ const evidence = z.array(z.object({ field: z.string(), quote: z.string() }));
 const field = z.object({ value: z.union([z.string(), number, z.array(z.string()), z.null()]), evidence });
 const curve = z.array(z.object({ seconds: number, pos: number.min(0).max(1) }));
 export const searchSchema = z.object({
+  commander: commanderSchema,
   revision: number.int(),
   profile: z
     .object({
@@ -69,6 +71,18 @@ export const searchSchema = z.object({
   summary: z.object({
     status: z.string(),
     retained_in_world_mass: number.nullable(),
+    pipeline_capacity: z
+      .object({
+        sam_runners: number.int().positive(),
+        completed_rate_fps: number.nonnegative(),
+        required_rate_fps: number.positive(),
+        speed_limit_mps: number.nonnegative(),
+        per_drone_interval_s: number.positive(),
+        applies_to_profile: z.boolean(),
+        sustains_required_rate: z.boolean(),
+        evidence: z.string(),
+      })
+      .nullable(),
     coverage: z.object({
       source: z.string().nullable(),
       message: z.string(),
@@ -81,7 +95,7 @@ export const searchSchema = z.object({
     z.object({
       id: z.string(),
       vertices: z.array(searchPoint),
-      outcome: z.enum(['unprocessed', 'negative']),
+      outcome: z.enum(['unprocessed', 'negative', 'positive', 'uncalibrated', 'repeated', 'failed']),
     }),
   ),
 });

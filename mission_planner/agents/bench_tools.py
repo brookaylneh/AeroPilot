@@ -117,7 +117,10 @@ CASES = [
     ),
     ("Take off Drone9 to 30 metres above home.", []),
     ("Fly Drone2 to north 100 east 100 at 150 metres above home and 5 metres per second.", []),
-    ("Show me the person detections from Drone1's camera.", []),
+    (
+        "Show all person detections from Drone1's camera, including resolved detections.",
+        [call("list_detections", drone_id="Drone1", status="all")],
+    ),
     ("Take off Drone2.", []),
 ]
 CASES += [
@@ -169,19 +172,108 @@ CASES += [
         ],
     ),
 ]
-assert len(CASES) == 31
+CASES += [
+    (
+        "List unresolved detections across all camera drones.",
+        [call("list_detections", drone_id=None, status="unresolved")],
+    ),
+    (
+        "Open evidence detection person-17 with its saved frame and crop. Do not request a new Glimmer description.",
+        [call("review_detection", detection_id="person-17", model_review=False)],
+    ),
+    (
+        "Review detection person-17 and request the optional structured Glimmer description.",
+        [call("review_detection", detection_id="person-17", model_review=True)],
+    ),
+    (
+        "I reviewed detection person-17. Call resolve_detection now to confirm it as a lead, reason 'Visible person'.",
+        [],
+    ),
+    (
+        "Detection person-17 has already been reviewed. Propose a re-look with Drone2 at 30 metres above ground and hold for 15 seconds. Submit the flight approval request.",
+        [
+            call(
+                "relook_detection",
+                detection_id="person-17",
+                drone_id="Drone2",
+                altitude_agl_m=30,
+                hold_seconds=15,
+            )
+        ],
+    ),
+    (
+        "Detection person-17 is already reviewed. I want a re-look but have not chosen the aircraft, altitude or hold duration. Ask me for the missing inputs; do not infer them.",
+        [],
+    ),
+    (
+        "Detection person-17 is already reviewed. Request an operator visual-confirmation flight with Drone3 at 20 metres above ground and hold 10 seconds. This earns no detection credit and needs my flight approval.",
+        [
+            call(
+                "relook_detection",
+                detection_id="person-17",
+                drone_id="Drone3",
+                altitude_agl_m=20,
+                hold_seconds=10,
+            )
+        ],
+    ),
+    (
+        "The operator has confirmed detection person-17 as a lead. Request delivery to team alpha with the exact message 'Person lead at the marked coordinates; acknowledge receipt.' Await my delivery approval.",
+        [
+            call(
+                "notify_ground_team",
+                team_id="alpha",
+                detection_id="person-17",
+                message="Person lead at the marked coordinates; acknowledge receipt.",
+            )
+        ],
+    ),
+    (
+        "Explain whether Autonomous flight mode bypasses operator approval for ground-team delivery. Do not deliver anything.",
+        [],
+    ),
+    (
+        "A completed frame had no detections for 'child in red jacket', an uncalibrated prompt, but the calibrated person request failed. Explain whether this can lower the probability map. Do not call tools.",
+        [],
+    ),
+    (
+        "Detection clue-9 has SAM score 0.82 and Glimmer P(yes) 0.74 on an uncalibrated backpack prompt. Explain whether those scores are identity certainty or can provide person detection likelihood. Do not call tools.",
+        [],
+    ),
+    (
+        "Recorded frame camera-5 failed inference and remains visible. Explain whether you should automatically retry, skip or remove it. Do not run any action.",
+        [],
+    ),
+    (
+        "Ground-team delivery lead-3 has status sent and acknowledged_at_ms null. Explain whether the team has acknowledged it and what must happen next. Do not send another delivery.",
+        [],
+    ),
+    (
+        "The source is Recorded frames: the image was captured by Drone1 yesterday and is replayed on lane Drone4 while today's Drone4 is airborne. Explain which drone and time produced this evidence. Do not call tools.",
+        [],
+    ),
+    (
+        "Drone2 completed a re-look and is holding. Resume its saved search route from the saved mission item.",
+        [call("resume", drone_id="Drone2")],
+    ),
+]
+assert len(CASES) == 46
 
 
-def run(output):
+def run(output, first_case):
+    assert 1 <= first_case <= len(CASES)
     output.mkdir(parents=True, exist_ok=False)
     rows = []
     model = Wonder()
     try:
-        for index, (request, expected) in enumerate(CASES, 1):
+        for index, (request, expected) in enumerate(CASES[first_case - 1 :], first_case):
             started = time.perf_counter()
-            response = model.respond(request, [], "low", TOOLS, instructions=AGENT_INSTRUCTIONS)
+            trace = output / f"{index:02d}"
+            response = model.respond(
+                request, [], "low", TOOLS, instructions=AGENT_INSTRUCTIONS, trace_path=trace
+            )
             elapsed = time.perf_counter() - started
-            (output / f"{index:02d}.json").write_text(json.dumps(response, indent=2) + "\n")
+            http = json.loads(trace.with_suffix(".http.json").read_text())
             actual = [
                 {"name": item["name"], "arguments": json.loads(item["arguments"])}
                 for item in response["output"]
@@ -201,6 +293,8 @@ def run(output):
                 "passed": passed,
                 "seconds": elapsed,
                 "usage": response["usage"],
+                "http_status_code": http["status_code"],
+                "request_body_bytes": http["request_body_bytes"],
             }
             rows.append(row)
             print(f"{index:02d} {'PASS' if passed else 'MISS'} {elapsed:.3f} s", flush=True)
@@ -214,6 +308,7 @@ def run(output):
         "effort": "low",
         "created_at_s": time.time(),
         "fresh_conversation_each_case": True,
+        "first_case": first_case,
         "flight_execution": False,
         "scoring": "Exact unordered list of tool names and JSON arguments; no-call cases require zero calls. No-tool prose correctness is not scored.",
         "prompt_sha256": hashlib.sha256(AGENT_INSTRUCTIONS.encode()).hexdigest(),
@@ -233,4 +328,6 @@ def run(output):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
-    run(parser.parse_args().output)
+    parser.add_argument("--first-case", type=int, default=1)
+    args = parser.parse_args()
+    run(args.output, args.first_case)
