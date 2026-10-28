@@ -688,7 +688,7 @@ export default function MissionControl() {
                     <DroneLabel value={approval.arguments.drone_id} />
                   </header>
                   <p>{approvalSentence(approval.name, approval.arguments)}</p>
-                  <details className="gcs-approval-arguments" open={approval.name !== 'fly_route'}>
+                  <details className="gcs-approval-arguments" open>
                     <summary>Flight details</summary>
                     <Arguments values={approval.arguments} />
                   </details>

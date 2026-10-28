@@ -33,7 +33,7 @@ export default function MissionMap({
   inset?: boolean;
 }) {
   const surface = useRef<HTMLDivElement>(null);
-  const [size, setSize] = useState({ width: 1000, height: 700 });
+  const [size, setSize] = useState({ width: 1000, height: 700, inset });
   const [view, setView] = useState<MapView>(wholeWorld);
   const [cursor, setCursor] = useState<{ north_m: number; east_m: number } | null>(null);
   const drag = useRef<{ x: number; y: number; view: MapView } | null>(null);
@@ -57,11 +57,11 @@ export default function MissionMap({
   }
   useEffect(() => {
     const observer = new ResizeObserver(([entry]) =>
-      setSize({ width: entry.contentRect.width, height: entry.contentRect.height }),
+      setSize({ width: entry.contentRect.width, height: entry.contentRect.height, inset }),
     );
     observer.observe(surface.current!);
     return () => observer.disconnect();
-  }, []);
+  }, [inset]);
   useEffect(() => {
     for (const v of vehicles) {
       if (!trails.current[v.id]) trails.current[v.id] = [];
@@ -109,23 +109,24 @@ export default function MissionMap({
   const bottomRight = projection(-extent, extent);
   const active = vehicles.find((v) => v.id === selected);
   const fence = active ? active.fence : [];
-  const labels = inset
-    ? {}
-    : placeLabels(
-        vehicles.map((v) => ({
-          ...projection(v.north_m, v.east_m),
-          id: v.id,
-          width: linkLost(v, age, connected) ? 154 : 70,
-          height: linkLost(v, age, connected) ? 40 : 24,
-        })),
-        vehicles.flatMap((v) =>
-          [v, v.home, ...v.mission].map((point) => {
-            const p = projection(point.north_m, point.east_m);
-            return { x: p.x - 18, y: p.y - 18, width: 36, height: 36 };
-          }),
-        ),
-        size,
-      );
+  const labels =
+    inset || size.inset !== inset
+      ? {}
+      : placeLabels(
+          vehicles.map((v) => ({
+            ...projection(v.north_m, v.east_m),
+            id: v.id,
+            width: linkLost(v, age, connected) ? 154 : 70,
+            height: linkLost(v, age, connected) ? 40 : 24,
+          })),
+          vehicles.flatMap((v) =>
+            [v, v.home, ...v.mission].map((point) => {
+              const p = projection(point.north_m, point.east_m);
+              return { x: p.x - 18, y: p.y - 18, width: 36, height: 36 };
+            }),
+          ),
+          size,
+        );
   return (
     <div className={`gcs-map ${inset ? 'is-inset' : ''}`}>
       <div

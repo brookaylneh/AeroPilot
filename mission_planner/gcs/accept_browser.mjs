@@ -36,7 +36,10 @@ async function screenshots(page, output, label, approval = false) {
 async function observe(browser, url) {
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
   const observation = { page, state: null, events: [], errors: [] };
-  page.on('pageerror', (error) => observation.errors.push(error.message));
+  page.on('pageerror', (error) => {
+    observation.errors.push(error.message);
+    console.error(error.message);
+  });
   page.on('websocket', (socket) =>
     socket.on('framereceived', ({ payload }) => {
       const value = JSON.parse(payload.toString());
@@ -305,13 +308,13 @@ async function flight(browser, url, output) {
     }
     await page.getByLabel('Ground speed (m/s)').fill('5');
     await page.getByRole('button', { name: 'Request flight approval', exact: true }).click();
-    await approve('fly_route', id);
+    await approve('fly_route', id, id === 'Drone1' ? 'route-approval' : undefined);
   }
   await page.getByRole('button', { name: 'Hold Drone1', exact: true }).click();
-  await approve('hold', 'Drone1');
+  await approve('hold', 'Drone1', 'hold-approval');
   await wait(() => drone('Drone1').mode === 'BRAKE', 'Drone1 BRAKE');
   await page.getByRole('button', { name: 'Resume Drone1', exact: true }).click();
-  await approve('resume', 'Drone1');
+  await approve('resume', 'Drone1', 'resume-approval');
   await wait(() => drone('Drone1').mode === 'AUTO', 'Drone1 resumes AUTO');
   await select('Drone1');
   const downloadPromise = page.waitForEvent('download');
@@ -326,7 +329,7 @@ async function flight(browser, url, output) {
   }
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.getByRole('button', { name: 'Return Drone1', exact: true }).click();
-  await approve('return_home', 'Drone1');
+  await approve('return_home', 'Drone1', 'return-approval');
   await wait(
     () => !drone('Drone1').armed && drone('Drone1').landed_state === 1,
     'Drone1 returns and lands',
@@ -334,7 +337,7 @@ async function flight(browser, url, output) {
   );
   for (const id of ['Drone2', 'Drone3', 'Drone4']) {
     await page.getByRole('button', { name: `Land ${id}`, exact: true }).click();
-    await approve('land', id);
+    await approve('land', id, id === 'Drone2' ? 'landing-approval' : undefined);
   }
   await wait(
     () => observation.state.vehicles.every((v) => !v.armed && v.landed_state === 1),
