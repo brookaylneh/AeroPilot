@@ -114,7 +114,6 @@ async def condition_flight(fleet, condition, scenario_id, directory):
             assert rpc.ping() and not rpc.simIsPause()
             actors = rpc.simListSceneObjects(".*BP_Person_.*")
             assert len(actors) == 1 and "_C_" in actors[0], actors
-            sim.set_view(rpc, name, -90)
             return actors[0]
 
         actor = await asyncio.to_thread(scene_actor)
