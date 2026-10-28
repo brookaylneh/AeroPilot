@@ -11,6 +11,10 @@ class SCENARIOSTUDIO_API UScenarioLandscapeTools : public UBlueprintFunctionLibr
     GENERATED_BODY()
   public:
     UFUNCTION(BlueprintCallable, Category = "Scenario|Authoring")
-    static AActor *CreateLandscape(const FString &HeightFile, int32 Resolution, double WidthCm,
+    static AActor *CreateLandscape(const FString &WorldFile, const FString &HeightFile,
+                                   int32 ResolutionX, int32 ResolutionY,
                                    UMaterialInterface *Material);
+
+    UFUNCTION(BlueprintCallable, Category = "Scenario|Authoring")
+    static FVector TraceLandscape(const FVector &Start, const FVector &End);
 };
