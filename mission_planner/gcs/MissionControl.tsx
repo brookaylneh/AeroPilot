@@ -170,7 +170,13 @@ export default function MissionControl() {
   const lost = vehicles
     .filter((v) => linkLost(v, age, connected))
     .map((v) => `${v.id} link lost. Last heartbeat ${(v.heartbeat_age_s + age).toFixed(1)} s ago.`);
-  const alerts = [...missionAlerts, ...lost];
+  const alerts = [
+    ...missionAlerts.filter(
+      (alert) =>
+        !vehicles.some((v) => linkLost(v, age, connected) && alert === `${v.id} telemetry link lost`),
+    ),
+    ...lost,
+  ];
   const enabled = connected && state !== null;
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
