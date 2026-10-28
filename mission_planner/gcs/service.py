@@ -610,7 +610,7 @@ class Mission:
                 if search_revision != self.search.revision:
                     await websocket.send(encode({"type": "search", "search": self.search.view()}))
                     search_revision = self.search.revision
-                for drone, message in self.sensor_frames.items():
+                for drone, message in tuple(self.sensor_frames.items()):
                     capture_id = message["frame"]["capture_id"]
                     if drone not in sensor_cursors or sensor_cursors[drone] != capture_id:
                         await websocket.send(encode(message))
