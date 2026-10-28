@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { execFileSync } from 'node:child_process';
 import {
@@ -33,6 +33,16 @@ try {
   assert.equal(new URL(page.url()).pathname, '/studio');
   result.tls = await response.securityDetails();
   await waitForCreator(page);
+  result.people = await page.evaluate(() =>
+    window.snrStates.at(-1).catalog.people.map((p) => ({
+      id: p.id,
+      supportedSituations: p.supportedSituations,
+    })),
+  );
+  const expectedPeople = JSON.parse(
+    await readFile(new URL('../world/unreal/creator-people.json', import.meta.url), 'utf8'),
+  ).map((p) => ({ id: p.id, supportedSituations: p.supportedSituations }));
+  assert.deepEqual(result.people, expectedPeople);
   await page.getByRole('button', { name: 'Scenarios', exact: true }).click();
   await page.getByRole('button', { name: 'New scenario', exact: true }).click();
   await waitForCreator(page);
@@ -91,7 +101,10 @@ try {
         return {
           ...Object.fromEntries(fields.map((key) => [key, video[key]])),
           route: {
+            policy: peer.getConfiguration().iceTransportPolicy,
             localType: local.candidateType,
+            localAddress: local.address,
+            localPort: local.port,
             remoteType: remote.candidateType,
             protocol: local.protocol,
             relayProtocol: local.relayProtocol,
@@ -100,10 +113,6 @@ try {
       }),
     );
   }
-  assert(
-    result.stream.every((s) => s.route.localType === 'relay'),
-    'Video bypassed TURN',
-  );
   const first = result.stream[0],
     last = result.stream.at(-1);
   const seconds = (last.timestamp - first.timestamp) / 1000;
@@ -121,6 +130,18 @@ try {
     width: last.frameWidth,
     height: last.frameHeight,
   };
+  // ICE may relabel a TURN candidate as prflx after discovering its private address.
+  assert(
+    result.stream.every(
+      ({ route }) =>
+        route.policy === 'relay' &&
+        ['relay', 'prflx'].includes(route.localType) &&
+        ['udp', 'tcp'].includes(route.relayProtocol) &&
+        route.localPort >= Number(process.env.SNR_TURN_RELAY_MIN) &&
+        route.localPort <= Number(process.env.SNR_TURN_RELAY_MAX),
+    ),
+    'Selected media route does not match the configured TURN relay',
+  );
   assert.equal(last.frameWidth, 1920);
   assert.equal(last.frameHeight, 1080);
   await assertScenarioProtocol(page);

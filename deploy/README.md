@@ -186,7 +186,10 @@ node --env-file=.local/runtime.env deploy/accept-browser.mjs \
 
 The harness creates a scenario, measures one minute of navigation and selected ICE candidates,
 then launches its briefing into Mission Control. It records screenshots, decoded FPS, drops,
-freezes and bitrate. It requires an idle mission service and complete character assets.
+freezes and bitrate. Relay verification checks the browser policy, TURN transport and configured relay port range.
+Candidate addresses are recorded when Chromium exposes them. ICE can label a relayed candidate `prflx` after discovering its private
+address, so the candidate type alone is insufficient. The harness requires an idle mission service
+and complete character assets.
 The parity browser runs on AWS and therefore does not establish remote Wi-Fi performance.
 
 The packaged module permanently disables TraceLog through `UE::Trace::Panic()` before the first frame.
@@ -233,6 +236,7 @@ aws ec2 revoke-security-group-ingress --region us-west-2 --group-id sg-007dd0426
 
 ## Sources
 
+- [WebRTC peer-reflexive candidate discovery](https://webrtc.googlesource.com/src/+/refs/heads/main/p2p/base/connection.cc#1767)
 - [Caddy automatic HTTPS controls](https://caddyserver.com/docs/automatic-https)
 - [Caddy reverse proxy and WebSockets](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy)
 - [Caddy systemd service guidance](https://caddyserver.com/docs/running)
