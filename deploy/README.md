@@ -117,14 +117,17 @@ The build CPU limit is a packaging setting; it does not select the live simulati
 
 ### Parallel development slots
 
-| | Installed services (`~/snr`) | Search (`~/snr-search`) | Coupling (`~/snr-coupling`) |
-| --- | --- | --- | --- |
-| Branch | `aws-migration` | `search-planning` | `cosys-coupling` |
-| Mission WebSocket | 8765 | 8766 | 8767 |
-| Dev server | 5174 | 5175 | 5176 |
-| `SNR_MAVLINK_BASE_PORT` | 14600 | 14610 | 14620 |
-| `SNR_SITL_RC_BASE_PORT` | 5501 | 5601 | 5701 |
-| Cosys RPC | 41451 | — | 41452 |
+|                          | Installed services (`~/snr`) | Search (`~/snr-search`) | Coupling (`~/snr-coupling`) | World (`~/snr-world`) |
+| ------------------------ | ---------------------------- | ----------------------- | --------------------------- | --------------------- |
+| Branch                   | `aws-migration`              | `search-planning`       | `cosys-coupling`            | `world-resize`        |
+| Mission WebSocket        | 8765                         | 8766                    | 8767                        | 8768                  |
+| Dev server               | 5174                         | 5175                    | 5176                        | 5177                  |
+| `SNR_MAVLINK_BASE_PORT`  | 14600                        | 14610                   | 14620                       | 14630                 |
+| `SNR_SITL_RC_BASE_PORT`  | 5501                         | 5601                    | 5701                        | 5801                  |
+| Cosys RPC                | 41451                        | —                       | 41452                       | 41453                 |
+| `SNR_SITL_INSTANCE_BASE` | 0                            | —                       | 20                          | 30                    |
+| AirSim sensor UDP        | 9003–9033, step 10           | —                       | 9203–9233, step 10          | 9303–9333, step 10    |
+| AirSim control UDP       | 9002–9032, step 10           | —                       | 9202–9232, step 10          | 9302–9332, step 10    |
 
 Each development worktree keeps its ports in one ignored `.local/slot.env`;
 `.local/runtime.env` may link to it for existing commands. MAVLink uses four
@@ -138,6 +141,11 @@ Development agents never edit, build or restart in `~/snr`, touch installed
 `.local/toolchains`, `.local/vendor`, `.venv-cosys`, `.venv-fal` and `.env` are
 read-only by task policy (symlinks do not enforce filesystem permissions).
 The shared `.local/evidence` link permits search writes only under `search/`.
+World writes only under `world/`, keeps generated terrain in its own `.local/world/`,
+and copies required Content without hardlinks. `SNR_EVIDENCE_DIR` exposes only that
+task's evidence directory as writable inside the build container; shared symlink
+targets remain read-only. Check disk space before copies, builds and packaging,
+leaving at least 40 GiB free. World editor builds use six parallel actions.
 Each worktree owns its `.local/data` copy and its `node_modules` from `npm ci`.
 The character agent owns `~/snr/world/unreal/characters/`; the coupling agent
 owns its Cosys bridge, fleet, capture and video work. Search owns planning,
@@ -170,23 +178,23 @@ Units start at boot, fail visibly and do not restart automatically after errors.
 The packaged renderer uses SM5 and a six-CPU limit. The live resolution and encoding profile are
 documented in [streaming](../world/unreal/streaming.md).
 
-| Route or endpoint                | Purpose                                                       | Listener / upstream                                             |
-| -------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------- |
-| `http://35.81.229.78/` | Redirect to `/studio`                                         | Caddy, 80 TCP                                               |
-| `/studio`                        | Scenario Creator                                              | web, `127.0.0.1:3001`                                           |
-| `/mission?case=<uuid>`           | Mission Control                                               | web, `127.0.0.1:3001`                                           |
-| `/api/mission`                   | Mission WebSocket                                             | web origin check, then `127.0.0.1:8765`                         |
-| `/api/unreal/status`             | Renderer readiness and occupancy                              | web, signalling health                                          |
-| `/api/stream`                    | Pixel Streaming player WebSocket                              | web origin check, then `127.0.0.1:8080`                         |
-| `/healthz`                       | All six units plus mission, renderer and TURN protocol health | web; 503 if any check fails                                     |
-| Internal streamer                | Unreal to signalling                                          | `127.0.0.1:8888`                                                |
-| Internal Cosys RPC               | Native simulation control                                     | `127.0.0.1:41451`                                               |
-| Internal MAVLink                 | Four SITL telemetry inputs                                    | `127.0.0.1:14600–14603` UDP                                     |
-| Internal RC input                | Four SITL inputs                                              | `127.0.0.1:5501,5511,5521,5531` UDP                             |
-| TURN                             | Browser relay control                                         | `172.31.61.189:3478` TCP/UDP, public EIP translation            |
-| TURN relay                       | Relayed media                                                 | `172.31.61.189:49300–49350` UDP                                 |
-| Unreal WebRTC                    | Local media endpoint reached by TURN                          | `49160–49200` UDP; no public ingress required with forced relay |
-| Development                      | One server, reached by SSH tunnel                             | `127.0.0.1:5174`                                                |
+| Route or endpoint      | Purpose                                                       | Listener / upstream                                             |
+| ---------------------- | ------------------------------------------------------------- | --------------------------------------------------------------- |
+| `http://35.81.229.78/` | Redirect to `/studio`                                         | Caddy, 80 TCP                                                   |
+| `/studio`              | Scenario Creator                                              | web, `127.0.0.1:3001`                                           |
+| `/mission?case=<uuid>` | Mission Control                                               | web, `127.0.0.1:3001`                                           |
+| `/api/mission`         | Mission WebSocket                                             | web origin check, then `127.0.0.1:8765`                         |
+| `/api/unreal/status`   | Renderer readiness and occupancy                              | web, signalling health                                          |
+| `/api/stream`          | Pixel Streaming player WebSocket                              | web origin check, then `127.0.0.1:8080`                         |
+| `/healthz`             | All six units plus mission, renderer and TURN protocol health | web; 503 if any check fails                                     |
+| Internal streamer      | Unreal to signalling                                          | `127.0.0.1:8888`                                                |
+| Internal Cosys RPC     | Native simulation control                                     | `127.0.0.1:41451`                                               |
+| Internal MAVLink       | Four SITL telemetry inputs                                    | `127.0.0.1:14600–14603` UDP                                     |
+| Internal RC input      | Four SITL inputs                                              | `127.0.0.1:5501,5511,5521,5531` UDP                             |
+| TURN                   | Browser relay control                                         | `172.31.61.189:3478` TCP/UDP, public EIP translation            |
+| TURN relay             | Relayed media                                                 | `172.31.61.189:49300–49350` UDP                                 |
+| Unreal WebRTC          | Local media endpoint reached by TURN                          | `49160–49200` UDP; no public ingress required with forced relay |
+| Development            | One server, reached by SSH tunnel                             | `127.0.0.1:5174`                                                |
 
 Caddy proxies to the web server so production and development share the existing same-origin WebSocket
 checks. The old `/pixel-streaming` path is removed. The root redirects explicitly; unknown paths return 404. TURN and its media endpoints are the network-facing exception to the loopback service rule.

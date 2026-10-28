@@ -2,6 +2,10 @@
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
 : "${UE_ROOT:?Set UE_ROOT to an installed Unreal Engine 5.8.2 directory}"
+archive_dir=$(realpath -m "${1:?Usage: package-unreal.sh NEW_BUILD_DIRECTORY NEW_EVIDENCE_DIRECTORY}")
+evidence_dir=$(realpath -m "${2:?Usage: package-unreal.sh NEW_BUILD_DIRECTORY NEW_EVIDENCE_DIRECTORY}")
+[[ ! -e "$archive_dir" && ! -e "$evidence_dir" ]] || { echo 'Build and evidence destinations must be new.' >&2; exit 2; }
+mkdir -p "$archive_dir" "$evidence_dir"
 python3 - "$UE_ROOT" <<'PY'
 import json,sys,pathlib
 v=json.loads((pathlib.Path(sys.argv[1])/'Engine/Build/Build.version').read_text())
@@ -24,13 +28,19 @@ done
 "$UE_ROOT/Engine/Build/BatchFiles/RunUAT.sh" BuildCookRun \
   -project="$project" -noP4 -platform=Linux -clientconfig=Development \
   -build -cook -map=/Game/OpenMeadow/OpenMeadow -stage -pak -archive \
+  -UbtArgs="-MaxParallelActions=6 -NoUBA" \
   -ddc=InstalledNoZenLocalFallback -AdditionalCookerOptions="-SkipZenStore" \
-  -archivedirectory="$PWD/.local/unreal/Packaged" | tee "$PWD/.local/evidence/unreal-package-internal.log"
-python3 - <<'PY'
+  -archivedirectory="$archive_dir" | tee "$evidence_dir/package.log"
+python3 - "$archive_dir" "$evidence_dir" <<'PY'
+import shutil
+import sys
 from pathlib import Path
-log = Path('.local/evidence/unreal-package-internal.log').read_text(errors='replace')
+archive, evidence = map(Path, sys.argv[1:])
+log = (evidence / 'package.log').read_text(errors='replace')
 failures = ['Failed to compile Material', "doesn't have a valid ShaderMap", 'LogCook: Error:']
 if any(message in log for message in failures):
-    raise SystemExit('Package contains cook/material failures; inspect .local/evidence/unreal-package-internal.log')
-Path('.local/unreal/Packaged/Linux/scenario-map.txt').write_text('/Game/OpenMeadow/OpenMeadow\n')
+    raise SystemExit(f'Package contains cook/material failures; inspect {evidence / "package.log"}')
+(archive / 'Linux/scenario-map.txt').write_text('/Game/OpenMeadow/OpenMeadow\n')
+shutil.copy2('world/cosys/world.json', archive / 'Linux/world.json')
+shutil.copy2('world/cosys/settings.json', archive / 'Linux/cosys-settings.json')
 PY

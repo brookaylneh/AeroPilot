@@ -28,7 +28,7 @@ bash world/unreal/scripts/unreal-container.sh run-packaged
 
 A release must contain its executable, cooked content, `scenario-map.txt`, `world.json` and
 `cosys-settings.json`; select it with `SNR_PACKAGE_ROOT`. Navigation validation also needs
-`.local/vendor/open-meadow/height.r16`. `SNR_STREAM_CODEC=H264` selects NVENC (build the browser with
+the heightfield at `world.json`'s `heightfield.path`. `SNR_STREAM_CODEC=H264` selects NVENC (build the browser with
 `VITE_STREAM_CODEC=H264`). For remote viewers configure TURN with `scripts/configure-turn.py`. Never expose
 Cosys RPC, editor debugging or the streamer endpoint.
 
@@ -52,12 +52,104 @@ docker build --build-arg SNR_UID="$(id -u)" --build-arg SNR_GID="$(id -g)" \
   -t snr-unreal:5.8.2-ubuntu24.04 - < world/unreal/docker/editor.Dockerfile
 python3 world/cosys/fetch-cosys.py
 bash world/unreal/scripts/unreal-container.sh build
-bash world/unreal/scripts/unreal-container.sh exec bash world/unreal/scripts/package-unreal.sh
+bash world/unreal/scripts/unreal-container.sh exec bash world/unreal/scripts/package-unreal.sh \
+  .local/unreal/Packaged .local/evidence/world/package
 bash world/unreal/scripts/stage-live-release.sh
 ```
 
 `metahuman-login` and `fab-authoring` modes of `unreal-container.sh` need Epic's licensed components and an
 authorized account; Fab also needs `docker build -t snr-unreal-fab:5.8.2 - < world/unreal/docker/fab.Dockerfile`.
+
+## Rectangular terrain authoring
+
+`world/cosys/world.json` owns the search bounds, heightfield layout and version.
+Generate its terrain and masks using the [Cosys commands](../cosys/README.md#terrain-dimensions-and-sampling).
+`build-open-meadow` replaces only the landscape and updates cloned material masks
+with independent north/east UV scales. `resize-horizon` removes scenery overlapping
+the search bounds while preserving southern triangles. `build-drone-port` rebuilds
+the pad actors using their existing support mesh and materials. None changes the
+roster, homes, PlayerStart or launch corridor.
+
+Set `SNR_EVIDENCE_DIR` to a new directory before authoring. Each script refuses an
+existing report. With the editor module built, run these scripts in order:
+
+```sh
+for script in build-open-meadow resize-horizon build-drone-port validate-landscape; do
+  ss -lntup
+  bash world/unreal/scripts/author-unreal.sh "$script"
+done
+```
+
+`validate-landscape` compares exact asymmetric editor collision traces with public
+heightfield lookups, including the rectangle's corners and east/west edges. Its
+report contains every queried point and the maximum difference in centimetres.
+The editor API verifies the supplied north/east resolutions against the manifest.
+
+## Integration procedure
+
+These steps are for the operator after accepting `world-resize` and coordinating
+the character and coupling changes. They have not been executed in `~/snr`.
+First integrate the tracked commits into a clean installed checkout without
+discarding the character agent's work. Keep the existing installed release active
+while preparing the new assets; do not copy this worktree's Content over the
+character agent's Content.
+
+```sh
+cd /home/brook_avionuas/snr
+set -euo pipefail
+test -z "$(git status --porcelain)"
+export PATH="$PWD/.local/toolchains/bin:$PATH"
+export UE_ROOT="$PWD/.local/toolchains/UnrealEngine-5.8.2"
+export SNR_CPU_LIMIT=6 SNR_MEMORY_LIMIT=32g
+export SNR_UNREAL_HOME="$PWD/.local/data/world-integration-editor"
+export SNR_EVIDENCE_DIR="$PWD/.local/evidence/world/integration-v04"
+mkdir "$SNR_EVIDENCE_DIR"
+df -B1 .
+test ! -e .local/world/open-meadow
+cp -a world/unreal/ScenarioStudio/Content/OpenMeadow "$SNR_EVIDENCE_DIR/Content-OpenMeadow-before"
+.venv-cosys/bin/python -m world.unreal.scripts.generate-open-meadow --evidence-dir "$SNR_EVIDENCE_DIR"
+.venv-cosys/bin/python -m world.unreal.scripts.generate-vegetation-mask --evidence-dir "$SNR_EVIDENCE_DIR"
+.venv-cosys/bin/python -m world.unreal.scripts.generate-minimap --evidence-dir "$SNR_EVIDENCE_DIR"
+ss -lntup
+bash world/unreal/scripts/unreal-container.sh build
+for script in build-open-meadow resize-horizon build-drone-port validate-landscape; do
+  ss -lntup
+  bash world/unreal/scripts/author-unreal.sh "$script"
+done
+```
+
+Before each copy/build/package step check `df` and the source size, retaining at
+least 40 GiB. The editor cache belongs to `SNR_UNREAL_HOME`; shared SDK, vendor and
+virtual-environment symlinks are mounted read-only. If a prior integration output
+exists, explicitly archive it under a new evidence name before a new operation.
+Compare the terrain hash, retained southern-geometry hash and orientation report
+with `mission_planner/measurements/world-resize.json`.
+
+Stage an independent copy of the tested release, then generate installed-slot
+settings. This does not activate it:
+
+```sh
+df -B1 .
+du -sb /home/brook_avionuas/snr-world/.local/unreal/Packaged/Linux
+test ! -e .local/unreal/releases/world-v04
+cp -a /home/brook_avionuas/snr-world/.local/unreal/Packaged/Linux .local/unreal/releases/world-v04
+.venv-cosys/bin/python -m world.cosys.configure-drones \
+  --rpc-port 41451 --instance-base 0 \
+  --output .local/unreal/releases/world-v04/cosys-settings-installed.json
+```
+
+Use the tested release only while its roster matches the newly integrated catalog.
+If character integration changes cooked references, package the integrated Content
+into a new destination using `package-unreal.sh NEW_BUILD NEW_EVIDENCE` and accept
+that release before activation. Run `npm run build` against the installed runtime
+configuration. At the scheduled cutover, land and disarm the installed fleet,
+terminate its world while autopilots still supply motor responses, wait for world
+`EndPlay`/`CleanupWorld`, and then stop the mission service. Point the installed
+runtime configuration's `SNR_PACKAGE_ROOT`, `SNR_WORLD_CONFIG` and
+`SNR_COSYS_SETTINGS` at the staged release and its installed-slot settings, then
+start the installed world and mission service together. Recheck fence readback,
+homes, map fit and camera poses before releasing the slot. The exact coupled
+service shutdown/start commands are in [Cosys cutover](../cosys/README.md#installed-cutover-after-merge).
 
 ## Engine plugin overrides
 

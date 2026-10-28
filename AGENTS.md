@@ -45,6 +45,15 @@
   edit/build/restart in `~/snr`, touch installed `snr-*` services, or stop a
   process owned by another task. Tests and acceptance use the assigned slot.
 
+| Worktree      | Branch         | Mission | Dev  | MAVLink base | RC base | Cosys RPC | SITL instance base |
+| ------------- | -------------- | ------- | ---- | ------------ | ------- | --------- | ------------------ |
+| `~/snr-world` | `world-resize` | 8768    | 5177 | 14630        | 5801    | 41453     | 30                 |
+
+World resize writes shared evidence only under `.local/evidence/world/` and
+generated terrain only under its own `.local/world/`. Its Unreal Content is
+copied, never hardlinked. Keep at least 40 GiB free and four CPU cores available;
+editor rebuilds use `-MaxParallelActions=6`.
+
 # Running
 
 - `.venv-cosys` installs `requirements.txt`; fal deployment uses Python 3.12 `.venv-fal`

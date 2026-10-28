@@ -152,6 +152,21 @@ Search coverage uses the [search modules](../search/README.md) and a single flee
 `accept_browser.mjs search URL NEW_DIRECTORY` exercises the quoted profile, operator point,
 planning, approval and actual takeoff/coverage/return sequence in the assigned slot.
 
+`accept_world.py --case UUID --output NEW_DIRECTORY` serves the actual mission
+class and owns its coupled fleet in the assigned mission port. Wait for its
+`ready.json`, run browser acceptance, then create `start-flight` in that directory
+to begin the prevalidated AUTO missions. It logs MAVLink and Cosys ground-truth
+pose comparisons without reading actor placement. On completion or failure it
+writes `ready-to-stop-world`; stop the task-owned world, wait for `CleanupWorld`,
+and create `world-stopped` so it can terminate its autopilots in order. The
+supervisor must acknowledge within the documented shutdown deadline.
+
+`accept_browser.mjs world URL NEW_DIRECTORY` records first-view containment at
+both acceptance sizes and tests east/west map focus, zoom and pan. Run it before
+any persistent map-focus command. `scenario_creator/accept_world_map.mjs` records
+isolated Studio map-component evidence when a slot has no Pixel Streaming ports;
+that evidence does not establish an end-to-end Studio session.
+
 `bench_world.py --output NEW_JSON` measures one full-world plan and one negative
 belief update from a recorded calibration frame without a simulator or inference
 request. Run it with `OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1`; it records grid,

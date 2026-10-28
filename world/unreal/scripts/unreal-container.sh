@@ -6,15 +6,28 @@ mode="${1:-build}"
 if (( $# )); then shift; fi
 cache_root="${SNR_UNREAL_HOME:?}"
 mkdir -p "$cache_root"
+mkdir -p "$cache_root/.config"
 cpu_limit="${SNR_CPU_LIMIT:-6}"
 [[ "$cpu_limit" =~ ^[1-9][0-9]*$ ]] || { echo 'SNR_CPU_LIMIT must be a positive integer' >&2; exit 2; }
 memory_limit="${SNR_MEMORY_LIMIT:-48g}"
 [[ "$memory_limit" =~ ^[1-9][0-9]*[mg]$ ]] || { echo 'SNR_MEMORY_LIMIT must use Docker units, for example 24g' >&2; exit 2; }
 container_flags=(--rm --init "--cpus=$cpu_limit" "--memory=$memory_limit" --shm-size=2g --ulimit core=0 --network=host
   --user "$(id -u):$(id -g)"
+  -e XDG_CONFIG_HOME=/home/snr/.config
   --mount "type=bind,src=$PWD,dst=$PWD"
   --mount "type=bind,src=$cache_root,dst=/home/snr"
   --workdir "$PWD")
+for input in .local/vendor .local/evidence .venv-cosys .venv-fal .env; do
+  if [[ -L "$input" ]]; then
+    resolved_input=$(realpath "$input")
+    container_flags+=(--mount "type=bind,src=$resolved_input,dst=$resolved_input,readonly")
+  fi
+done
+if [[ -n "${SNR_EVIDENCE_DIR:-}" ]]; then
+  evidence_dir=$(realpath "$SNR_EVIDENCE_DIR")
+  [[ -d "$evidence_dir" ]] || exit 2
+  container_flags+=(--mount "type=bind,src=$evidence_dir,dst=$evidence_dir" -e SNR_EVIDENCE_DIR)
+fi
 # Cooked releases contain the engine runtime. Only editor/build modes need the SDK.
 if [[ "$mode" != run-packaged ]]; then
   [[ -f "$engine_root/Engine/Build/Build.version" ]] || { echo "Missing Unreal SDK: $engine_root" >&2; exit 2; }

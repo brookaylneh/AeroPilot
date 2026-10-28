@@ -1,6 +1,7 @@
 # World
 
-The simulated search area: a one-mile Open Meadow in Unreal Engine 5.8.2 with four Cosys-AirSim quadcopters.
+The simulated search area is Open Meadow in Unreal Engine 5.8.2 with four Cosys-AirSim quadcopters.
+Its rectangular extent and terrain grid are defined in [`cosys/world.json`](cosys/world.json).
 
 - [`unreal/`](unreal/README.md): the Unreal project, its asset manifests, container images and the scripts that
   build, package, run and stream it.
@@ -13,8 +14,8 @@ commands. Private scenario truth is used only by authoring and explicitly reques
 ## Coordinates
 
 - Unreal: left-handed centimetres, +X north, +Y east, +Z up.
-- Search bounds: X/Y ±80,467.2 cm. PlayerStart: (0, 0, 4,000) cm.
-- Drone port top centre: (−81,667.2, 0, 1,125) cm, 5 m outside the search boundary; not valid placement terrain.
+- Search bounds, PlayerStart and drone spawns come from `cosys/world.json`.
+- The drone port lies outside the southern search boundary and is not valid placement terrain.
 - Cosys returns flight, state and camera positions in each aircraft's local NED origin, not a shared world origin.
 - For native origin `O` in centimetres and vehicle-local NED point `p` in metres, world metres are
   `(O.x / 100 + p.x, O.y / 100 + p.y, O.z / 100 − p.z)`.

@@ -10,4 +10,4 @@ PY
 exec "$engine_root/Engine/Build/BatchFiles/Linux/Build.sh" \
   ScenarioStudioEditor Linux Development \
   -Project="$PWD/world/unreal/ScenarioStudio/ScenarioStudio.uproject" \
-  -WaitMutex -MaxParallelActions=4 -NoUBA "$@"
+  -WaitMutex -MaxParallelActions=6 -NoUBA "$@"
