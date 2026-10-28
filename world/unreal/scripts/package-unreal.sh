@@ -6,6 +6,9 @@ archive_dir=$(realpath -m "${1:?Usage: package-unreal.sh NEW_BUILD_DIRECTORY NEW
 evidence_dir=$(realpath -m "${2:?Usage: package-unreal.sh NEW_BUILD_DIRECTORY NEW_EVIDENCE_DIRECTORY}")
 [[ ! -e "$archive_dir" && ! -e "$evidence_dir" ]] || { echo 'Build and evidence destinations must be new.' >&2; exit 2; }
 mkdir -p "$archive_dir" "$evidence_dir"
+export uebp_EngineSavedFolder="$evidence_dir/commandlets"
+export uebp_LogFolder="$evidence_dir/automation"
+mkdir "$uebp_EngineSavedFolder" "$uebp_LogFolder"
 python3 - "$UE_ROOT" <<'PY'
 import json,sys,pathlib
 v=json.loads((pathlib.Path(sys.argv[1])/'Engine/Build/Build.version').read_text())
