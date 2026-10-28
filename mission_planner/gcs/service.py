@@ -22,6 +22,9 @@ from mission_planner.agents.tools import (
 from mission_planner.environment import ROOT, load_env
 from mission_planner.gcs.fleet import Fleet
 from mission_planner.gcs.geodesy import BOUND_M, NAMES
+from mission_planner.search.execution import flight_label, start_search
+from mission_planner.search.state import Search
+from mission_planner.search.tools import NAMES as SEARCH_TOOLS
 
 MESSAGE_FIELDS = {
     "connect": {"type", "case_id"},
@@ -30,6 +33,7 @@ MESSAGE_FIELDS = {
     "approval": {"type", "id", "approved"},
     "autonomy": {"type", "mode"},
     "export_plan": {"type", "drone_id"},
+    "search_point": {"type", "north_m", "east_m"},
 }
 
 
@@ -133,6 +137,7 @@ class Mission:
         self.fleet_error = None
         self.fleet = Fleet(self.directory / "sitl", self.fleet_event)
         self.model = Wonder()
+        self.search = Search(self)
 
     def event(
         self, kind, text, *, name=None, arguments=None, result=None, call_id=None, source=None
@@ -240,6 +245,10 @@ class Mission:
 
     async def execute(self, name, arguments, source, call_id):
         validate_arguments(name, arguments)
+        if name in SEARCH_TOOLS and name != "start_search":
+            return await self.search.execute(name, arguments)
+        if name == "start_search":
+            self.search.require_plan(arguments["plan_id"])
         if name == "get_mission":
             return {
                 **self.summary(),
@@ -318,7 +327,7 @@ class Mission:
             }
             self.event(
                 "approval",
-                f"{arguments['drone_id']} · {name.replace('_', ' ')} awaiting operator approval",
+                f"{flight_label(name, arguments)} · {name.replace('_', ' ')} awaiting operator approval",
                 result={"approval_id": approval_id},
                 name=name,
                 arguments=arguments,
@@ -330,12 +339,14 @@ class Mission:
             assert approved, "Operator declined"
         self.event(
             "tool_running",
-            f"{arguments['drone_id']} · {name.replace('_', ' ')} running",
+            f"{flight_label(name, arguments)} · {name.replace('_', ' ')} running",
             name=name,
             arguments=arguments,
             call_id=call_id,
             source=source,
         )
+        if name == "start_search":
+            return await start_search(self.search, arguments["plan_id"])
         state = await self.fleet.execute(name, arguments)
         return {**compact_vehicle(state), "acknowledged_command": name}
 
@@ -369,6 +380,7 @@ class Mission:
     def instructions(self, initial):
         context = {
             "autonomy": self.autonomy,
+            "search": self.search.summary(),
             "operator_events": [
                 {
                     "kind": event["kind"],
@@ -508,7 +520,7 @@ class Mission:
             assert not item["future"].done(), "Approval already resolved"
             self.event(
                 "approval",
-                f"{item['card']['arguments']['drone_id']} · {item['card']['name'].replace('_', ' ')} "
+                f"{flight_label(item['card']['name'], item['card']['arguments'])} · {item['card']['name'].replace('_', ' ')} "
                 + ("approved by operator" if message["approved"] else "declined by operator"),
                 result={"id": message["id"], "approved": message["approved"]},
                 name=item["card"]["name"],
@@ -517,6 +529,8 @@ class Mission:
                 source="operator",
             )
             item["future"].set_result(message["approved"])
+        elif kind == "search_point":
+            self.search.mark_point(message["north_m"], message["east_m"])
         elif kind == "autonomy":
             assert message["mode"] in ("Supervised", "Autonomous")
             assert not self.approvals, "Resolve pending approvals before changing autonomy"
@@ -544,11 +558,15 @@ class Mission:
 
         async def publish():
             nonlocal cursor
+            search_revision = -1
             while True:
                 for event in [e for e in self.events if e["sequence"] > cursor]:
                     await websocket.send(encode({"type": "event", "event": event}))
                     cursor = event["sequence"]
                 await websocket.send(encode(self.state()))
+                if search_revision != self.search.revision:
+                    await websocket.send(encode({"type": "search", "search": self.search.view()}))
+                    search_revision = self.search.revision
                 await asyncio.sleep(0.1)
 
         async def consume():

@@ -40,6 +40,9 @@ class AgentContext(unittest.TestCase):
 
     def test_tool_continuation_does_not_repeat_briefing(self):
         mission = object.__new__(Mission)
+        from mission_planner.search.state import Search
+
+        mission.search = Search(mission)
         mission.autonomy = "Supervised"
         mission.case = {
             "report": {

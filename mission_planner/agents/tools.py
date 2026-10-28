@@ -1,4 +1,4 @@
-"""The eleven implemented mission tools; flight execution belongs to MAVLink."""
+"""Implemented mission tools; flight execution belongs to MAVLink."""
 
 from jsonschema import Draft202012Validator
 
@@ -13,6 +13,12 @@ from mission_planner.gcs.geodesy import (
     MIN_MAP_RADIUS_M,
     MIN_SPEED_MPS,
     NAMES,
+)
+from mission_planner.search.tools import (
+    DEFINITIONS as SEARCH_DEFINITIONS,
+)
+from mission_planner.search.tools import (
+    INSTRUCTIONS as SEARCH_INSTRUCTIONS,
 )
 
 DRONE = {"type": "string", "enum": list(NAMES)}
@@ -114,6 +120,7 @@ DEFINITIONS = [
         {"drone_id": DRONE},
     ),
 ]
+DEFINITIONS.extend(SEARCH_DEFINITIONS)
 TOOLS = [
     {
         "type": "function",
@@ -129,7 +136,7 @@ map_tool["strict"] = False
 map_tool["parameters"]["required"] = ["target"]
 CATEGORIES = {name: category for name, category, _, _ in DEFINITIONS}
 SCHEMAS = {tool["name"]: Draft202012Validator(tool["parameters"]) for tool in TOOLS}
-assert len(TOOLS) == 11 and len(SCHEMAS) == len(TOOLS)
+assert len(SCHEMAS) == len(TOOLS)
 AGENT_INSTRUCTIONS = f"""You are Wonder, the search-and-rescue commander's mission assistant.
 Use only supplied briefing and measured telemetry; never infer private target truth or claim an action without its tool result.
 Use the registered tools for live information and requested actions. When all arguments are supplied, call the requested tool directly: the service validates safety and manages operator approval.
@@ -138,7 +145,7 @@ Positions are metres north/east of the search centre. The search square is ±{BO
 Supervised flight actions require an approval card; never imply approval yourself. An operator decline is final for that request.
 Never retry a failed tool, invent a replacement route, or disable safety checks. Report the precise error and await a new operator instruction.
 Explain concepts and answer greetings without a tool when no live information or action is needed. Ask for missing flight arguments; do not guess them.
-Perception, search planning, belief maps, ground-team messaging and video are unavailable. Say so; do not pretend to invoke them.
+{SEARCH_INSTRUCTIONS}
 Operator actions in the supplied event context have the same authority as chat instructions. Keep replies short, concrete and operational.
 """
 
