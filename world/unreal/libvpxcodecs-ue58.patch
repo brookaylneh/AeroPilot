@@ -1,0 +1,22 @@
+--- a/Source/LibVpxCodecs/Private/Video/Encoders/Configs/VideoEncoderConfigLibVpx.cpp
++++ b/Source/LibVpxCodecs/Private/Video/Encoders/Configs/VideoEncoderConfigLibVpx.cpp
+@@ -82,6 +82,9 @@
+ template <>
+ DLLEXPORT FAVResult FAVExtension::TransformConfig(FVideoEncoderConfigLibVpx& OutConfig, FVideoEncoderConfigVP8 const& InConfig)
+ {
++	// SNR: retain the VP8-specific core budget through the libvpx adapter.
++	OutConfig.NumberOfCores = InConfig.NumberOfCores;
++	OutConfig.bDenoisingOn = InConfig.bDenoisingOn;
+ 	return FAVExtension::TransformConfig<FVideoEncoderConfigLibVpx, FVideoEncoderConfig>(OutConfig, InConfig);
+ }
+ 
+--- a/Source/LibVpxCodecs/Public/Video/Encoders/VideoEncoderLibVpxVP8.hpp
++++ b/Source/LibVpxCodecs/Public/Video/Encoders/VideoEncoderLibVpxVP8.hpp
+@@ -187,6 +187,7 @@
+ 
+ 				// Determine number of threads based on the image size and #cores.
+ 				VpxConfig->g_threads = NumberOfThreads(VpxConfig->g_w, VpxConfig->g_h, PendingConfig.NumberOfCores);
++				UE_LOG(LogTemp, Display, TEXT("SNR VP8 libvpx encoder threads: %u (core budget %d)"), VpxConfig->g_threads, PendingConfig.NumberOfCores);
+ 
+ 				// Creating a wrapper to the image - setting image data to NULL.
+ 				// Actual pointer will be set in encode. Setting align to 1, as it

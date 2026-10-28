@@ -4,12 +4,12 @@
 port and telemetry. The JSON files beside it are asset manifests and locks. [Assets](assets.md) lists licences;
 [streaming](streaming.md) covers Pixel Streaming quality.
 
-| Path | Purpose |
-| --- | --- |
-| `ScenarioStudio/Source/` | C++ game module |
+| Path                      | Purpose                                                              |
+| ------------------------- | -------------------------------------------------------------------- |
+| `ScenarioStudio/Source/`  | C++ game module                                                      |
 | `ScenarioStudio/Scripts/` | Editor Python operations, run with `scripts/author-unreal.sh <name>` |
-| `scripts/` | Build, package, stage, run and stream |
-| `docker/` | Editor, runtime and Fab images; `runtime.env.example` |
+| `scripts/`                | Build, package, stage, run and stream                                |
+| `docker/`                 | Editor, runtime and Fab images; `runtime.env.example`                |
 
 Licensed content (`Content/`, `Plugins/`) and engine output are not tracked. Packaged builds, releases and the
 `Live` link live in `.local/unreal/`.
@@ -47,3 +47,11 @@ bash world/unreal/scripts/stage-live-release.sh
 
 `metahuman-login` and `fab-authoring` modes of `unreal-container.sh` need Epic's licensed components and an
 authorized account; Fab also needs `docker build -t snr-unreal-fab:5.8.2 - < world/unreal/docker/fab.Dockerfile`.
+
+## Engine plugin overrides
+
+`PixelStreaming2` and `LibVpxCodecs` are reconstructed from the licensed engine plugins by
+`UE_ROOT=/path/to/UnrealEngine-5.8.2 bash world/unreal/scripts/fetch-engine-plugins.sh NEW_DIRECTORY`.
+The fetcher checks the engine changelist and original-file hashes, excludes build outputs and applies
+`pixelstreaming2-ue58.patch` and `libvpxcodecs-ue58.patch` without fuzz. Existing destinations fail.
+The patches preserve the project include path, VP8 thread budget and encoder diagnostics.

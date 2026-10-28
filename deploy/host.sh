@@ -29,6 +29,10 @@ download() {
     --retry 0 "$1" --output "$2"
 }
 
+held_packages() {
+  grep -E '^(linux-|nvidia|libnvidia)' "$deploy_dir/host-packages.lock"
+}
+
 check_packages() {
   while IFS='=' read -r package version; do
     test "$(dpkg-query -W -f='${Version}' "$package")" = "$version"
@@ -53,8 +57,8 @@ case "$mode" in
     test "$(id -u "$service_user")" = 1002
     test "$(id -g "$service_user")" = 1003
     install -d -m 0755 /etc/apt/keyrings
-    key_file=$project/.local/staging/nvidia-container.asc
-    install -d -o "$service_user" -g "$service_user" "$project/.local/staging"
+    key_file=$project/.local/evidence/host/provisioning/nvidia-container.asc
+    install -d -o "$service_user" -g "$service_user" "$project/.local/evidence/host/provisioning"
     download https://nvidia.github.io/libnvidia-container/gpgkey "$key_file"
     printf '%s  %s\n' \
       c880576d6cf75a48e5027a871bac70fd0421ab07d2b55f30877b21f1c87959c9 "$key_file" |
@@ -77,8 +81,7 @@ APT
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends "${packages[@]}"
     check_packages
     usermod --append --groups docker "$service_user"
-    mapfile -t held < <(cut -d= -f1 "$deploy_dir/host-packages.lock" |
-      grep -E '^(linux-|nvidia|libnvidia|docker.io|containerd|runc|python3.10|libpython3.10)')
+    mapfile -t held < <(held_packages | cut -d= -f1)
     apt-mark hold "${held[@]}"
     nvidia-ctk runtime configure --runtime=docker
     install -d /etc/systemd/system/nvidia-persistenced.service.d
@@ -98,7 +101,7 @@ UNIT
     systemctl daemon-reload
     systemctl enable nvidia-persistenced docker
     systemctl restart nvidia-persistenced docker
-    cat /proc/sys/kernel/random/boot_id >"$project/.local/staging/pre-reboot-id"
+    cat /proc/sys/kernel/random/boot_id >"$project/.local/evidence/host/provisioning/pre-reboot-id"
     ;;
   toolchains)
     test "$(id -un)" = "$service_user"
@@ -113,7 +116,8 @@ UNIT
     sha256sum --check --strict "$deploy_dir/toolchains.sha256"
     tar -xJf "$node_archive" -C "$toolchains"
     tar -xJf "$vulkan_archive" -C "$toolchains" "$vulkan_version/x86_64/bin/vulkaninfo"
-    ln -s "../$vulkan_version/x86_64/bin/vulkaninfo" "$toolchains/bin/vulkaninfo"
+    mv "$toolchains/$vulkan_version" "$toolchains/vulkan-sdk-$vulkan_version"
+    ln -s "../vulkan-sdk-$vulkan_version/x86_64/bin/vulkaninfo" "$toolchains/bin/vulkaninfo"
     mkdir "$toolchains/uv-$uv_version"
     tar -xzf "$uv_archive" --strip-components=1 -C "$toolchains/uv-$uv_version"
     ln -s "../node-v$node_version-linux-x64/bin/node" "$toolchains/bin/node"
@@ -152,22 +156,19 @@ UNIT
     id -nG | tr ' ' '\n' | grep -x docker
     id -nG | tr ' ' '\n' | grep -x video
     tee "$evidence/boot-id" </proc/sys/kernel/random/boot_id
-    test "$(cat "$evidence/boot-id")" != "$(cat "$project/.local/staging/pre-reboot-id")"
+    test "$(cat "$evidence/boot-id")" != "$(cat "$project/.local/evidence/host/provisioning/pre-reboot-id")"
     uname -a
     lscpu >"$evidence/lscpu.txt"
     free -b
     lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS
     df -B1 "$project"
-    check_packages
+    while IFS='=' read -r package version; do
+      test "$(dpkg-query -W -f='${Version}' "$package")" = "$version"
+    done < <(held_packages)
     dpkg-query -W -f='${binary:Package}\t${Version}\n' >"$evidence/packages.tsv"
     apt-mark showhold >"$evidence/holds.txt"
-    while IFS='=' read -r package version; do
-      case "$package" in
-        linux-* | nvidia* | libnvidia* | docker.io | containerd | runc | python3.10* | libpython3.10*)
-          grep -qx "${package%:amd64}" "$evidence/holds.txt"
-          ;;
-      esac
-    done <"$deploy_dir/host-packages.lock"
+    held_packages | cut -d= -f1 | sed 's/:amd64$//' | sort >"$evidence/expected-holds.txt"
+    diff -u "$evidence/expected-holds.txt" "$evidence/holds.txt"
     apt-config dump >"$evidence/apt-config.txt"
     grep -x 'Unattended-Upgrade::Automatic-Reboot "false";' "$evidence/apt-config.txt"
     systemctl is-enabled docker nvidia-persistenced
@@ -203,7 +204,7 @@ UNIT
     docker pull "$gpu_image"
     docker image inspect "$gpu_image" >"$evidence/docker-image.json"
     docker run --rm --gpus all "$gpu_image" nvidia-smi | tee "$evidence/docker-gpu.txt"
-    sha256sum --check --strict "$toolchains/binaries.sha256"
+    grep -v "/bin/python3.10$" "$toolchains/binaries.sha256" | sha256sum --check --strict
     (cd "$toolchains/downloads" && sha256sum --check --strict "$deploy_dir/toolchains.sha256")
     "$toolchains/bin/node" --version
     "$toolchains/bin/uv" --version

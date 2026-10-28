@@ -24,9 +24,8 @@ sudo chown -R brook_avionuas:brook_avionuas /home/brook_avionuas/snr
 sudo -u brook_avionuas git -C /home/brook_avionuas/snr switch -c aws-migration
 ```
 
-Place the staged `deploy/` files in the checkout before the remaining stages. Preserve the bundle
-under `.local/staging/main.bundle` and verify it from inside the checkout with
-`git bundle verify .local/staging/main.bundle` and `git fsck --full --strict`.
+Place the staged `deploy/` files in the checkout before the remaining stages. Verify the bundle with `git bundle verify` and the cloned history with `git fsck --full --strict`.
+Delete the temporary bundle and remove its local Git remote after verification.
 
 ```sh
 sudo bash /home/brook_avionuas/snr/deploy/host.sh packages
@@ -41,8 +40,8 @@ sudo -u brook_avionuas bash /home/brook_avionuas/snr/deploy/host.sh verify \
   /home/brook_avionuas/snr/.local/evidence/host/<new-run>
 ```
 
-The package stage holds the kernel, NVIDIA driver and toolkit, container runtime, and Python
-packages in the lock. It disables unattended reboots and unattended kernel removal while leaving
+The package stage holds only the kernel, NVIDIA driver and container-toolkit packages in the lock.
+Docker, containerd, runc and system Python remain eligible for security updates. It disables unattended reboots and unattended kernel removal while leaving
 other security updates enabled. The prebuilt `-aws` open NVIDIA module supplies the driver;
 DKMS is not used. The NVIDIA persistence daemon starts at boot with persistence enabled.
 Docker uses the NVIDIA runtime configured by `nvidia-ctk`.
@@ -58,7 +57,7 @@ The installer records executable hashes in `.local/toolchains/binaries.sha256`.
 | `node`, `npm`, `npx`                 | Official Node Linux archive; web build and services            |
 | `uv`                                 | Astral release archive; Python environment tooling             |
 | `python3.12`                         | Astral standalone CPython; fal environment                     |
-| `python3.10`                         | Link to the pinned system interpreter; Cosys environment       |
+| `python3.10`                         | Link to the system interpreter; Cosys environment              |
 | `vulkaninfo`                         | Binary from the LunarG SDK; current Vulkan feature enumeration |
 
 Use `export PATH="$HOME/snr/.local/toolchains/bin:$PATH"` in an interactive shell.
@@ -68,12 +67,12 @@ are separate operations. The engine's destination is
 
 The Python archive is downloaded and checked first. uv installs it from a local file mirror,
 with the CPython build pinned and network retries disabled. It does not choose another interpreter.
-Only `vulkaninfo` is extracted from the SDK; it uses the system loader and NVIDIA driver.
+Only `vulkaninfo` is extracted into `vulkan-sdk-1.4.363.0/`; it uses the system loader and NVIDIA driver.
 Ubuntu's older diagnostic binary does not enumerate the mesh-shader feature structure.
 
 ## Verification
 
-Verification asserts the running kernel and package pins, user and groups, package holds,
+Verification asserts the running kernel and held-package pins, user and groups, package holds,
 disabled automatic reboot, boot services, a changed boot ID, the open NVIDIA module, and
 persistence mode. It records GPU power limits, clock limits, ECC, CPU, memory and disk information.
 
@@ -124,3 +123,8 @@ The build CPU limit is a packaging setting; it does not select the live simulati
 - [uv environment settings](https://docs.astral.sh/uv/reference/environment/)
 - [LunarG SDK installation](https://vulkan.lunarg.com/doc/view/latest/linux/getting_started.html)
 - [NVIDIA codec engine and format matrix](https://developer.nvidia.com/video-encode-decode-support-matrix)
+
+## Cutover cleanup
+
+After final acceptance at cutover, delete `deploy/transfer.md`, `deploy/transfer.mjs` and its test,
+remove this transfer-tool documentation, and retain `mission_planner/measurements/aws-transfer.json`.

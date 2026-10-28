@@ -1,0 +1,25 @@
+--- a/Source/PixelStreaming2/PixelStreaming2.Build.cs
++++ b/Source/PixelStreaming2/PixelStreaming2.Build.cs
+@@ -10,6 +10,9 @@
+         public PixelStreaming2(ReadOnlyTargetRules Target) : base(Target)
+         {
+ 			bRequiresPlatformSDK = true;
++            // Engine plugins receive Internal header access implicitly. This
++            // pinned project-local copy needs its existing PixelCapture dependency explicitly.
++            PrivateIncludePaths.Add(Path.Combine(EngineDirectory, "Plugins/Media/PixelCapture/Source/PixelCapture/Internal"));
+ 			
+             // This is so for game projects using our public headers don't have to include extra modules they might not know about.
+             PublicDependencyModuleNames.AddRange(new string[]
+--- a/Source/PixelStreaming2RTC/Private/EpicRtcVideoEncoder.cpp
++++ b/Source/PixelStreaming2RTC/Private/EpicRtcVideoEncoder.cpp
+@@ -125,6 +125,10 @@
+ 			{
+ 				FVideoEncoderConfigVP8 VideoConfig;
+ 				SetInitialSettings(Config, VideoConfig);
++				// SNR: UE 5.8.2 omits this VP8-specific setting (VP9 already sets it).
++				// Zero selects one libvpx thread, even on a multi-core host.
++				VideoConfig.NumberOfCores = Config._numberOfCores > 0 ? Config._numberOfCores : FPlatformMisc::NumberOfCoresIncludingHyperthreads();
++				UE_LOG(LogPixelStreaming2RTC, Log, TEXT("SNR VP8 encoder core budget: %d (RTC reported %d)"), VideoConfig.NumberOfCores, Config._numberOfCores);
+ 
+ 				return FVideoEncoder::Create<TVideoResource>(FAVDevice::GetHardwareDevice(), VideoConfig);
+ 			}
