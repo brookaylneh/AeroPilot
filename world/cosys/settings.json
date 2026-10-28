@@ -27,9 +27,7 @@
         "AutoExposureMaxBrightness": 13,
         "AutoExposureBias": 0,
         "MotionBlurAmount": 0,
-        "BloomIntensity": 0,
-        "LumenGIEnable": false,
-        "LumenReflectionEnable": false
+        "BloomIntensity": 0
       }
     ]
   },
@@ -63,9 +61,7 @@
               "AutoExposureMaxBrightness": 13,
               "AutoExposureBias": 0,
               "MotionBlurAmount": 0,
-              "BloomIntensity": 0,
-              "LumenGIEnable": false,
-              "LumenReflectionEnable": false
+              "BloomIntensity": 0
             },
             {
               "ImageType": 0,
@@ -77,9 +73,7 @@
               "AutoExposureMaxBrightness": 13,
               "AutoExposureBias": 0,
               "MotionBlurAmount": 0,
-              "BloomIntensity": 0,
-              "LumenGIEnable": false,
-              "LumenReflectionEnable": false
+              "BloomIntensity": 0
             }
           ]
         }
@@ -114,9 +108,7 @@
               "AutoExposureMaxBrightness": 13,
               "AutoExposureBias": 0,
               "MotionBlurAmount": 0,
-              "BloomIntensity": 0,
-              "LumenGIEnable": false,
-              "LumenReflectionEnable": false
+              "BloomIntensity": 0
             },
             {
               "ImageType": 0,
@@ -128,9 +120,7 @@
               "AutoExposureMaxBrightness": 13,
               "AutoExposureBias": 0,
               "MotionBlurAmount": 0,
-              "BloomIntensity": 0,
-              "LumenGIEnable": false,
-              "LumenReflectionEnable": false
+              "BloomIntensity": 0
             }
           ]
         }
@@ -165,9 +155,7 @@
               "AutoExposureMaxBrightness": 13,
               "AutoExposureBias": 0,
               "MotionBlurAmount": 0,
-              "BloomIntensity": 0,
-              "LumenGIEnable": false,
-              "LumenReflectionEnable": false
+              "BloomIntensity": 0
             },
             {
               "ImageType": 0,
@@ -179,9 +167,7 @@
               "AutoExposureMaxBrightness": 13,
               "AutoExposureBias": 0,
               "MotionBlurAmount": 0,
-              "BloomIntensity": 0,
-              "LumenGIEnable": false,
-              "LumenReflectionEnable": false
+              "BloomIntensity": 0
             }
           ]
         }
@@ -216,9 +202,7 @@
               "AutoExposureMaxBrightness": 13,
               "AutoExposureBias": 0,
               "MotionBlurAmount": 0,
-              "BloomIntensity": 0,
-              "LumenGIEnable": false,
-              "LumenReflectionEnable": false
+              "BloomIntensity": 0
             },
             {
               "ImageType": 0,
@@ -230,9 +214,7 @@
               "AutoExposureMaxBrightness": 13,
               "AutoExposureBias": 0,
               "MotionBlurAmount": 0,
-              "BloomIntensity": 0,
-              "LumenGIEnable": false,
-              "LumenReflectionEnable": false
+              "BloomIntensity": 0
             }
           ]
         }

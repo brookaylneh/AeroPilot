@@ -12,8 +12,6 @@ exposure = {
     "AutoExposureBias": 0,
     "MotionBlurAmount": 0,
     "BloomIntensity": 0,
-    "LumenGIEnable": False,
-    "LumenReflectionEnable": False,
 }
 settings = {
     "SettingsVersion": 2.0,

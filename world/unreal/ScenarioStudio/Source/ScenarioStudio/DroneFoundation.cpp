@@ -126,6 +126,20 @@ void ADroneFoundation::Poll()
             // with texture/landscape-grass streaming so distant drone imagery
             // does not depend on where the browser camera is looking.
             auto *Capture = Camera->getCaptureComponent(APIPCamera::ImageType::Scene, false);
+            checkf(Capture, TEXT("Missing RGB capture component for %s"), *Name);
+            auto &Settings = Capture->PostProcessSettings;
+            // Cosys otherwise overrides both lighting methods to None. The world
+            // supplies lighting; exposure and white balance remain sensor controls.
+            Settings.bOverride_DynamicGlobalIlluminationMethod = false;
+            Settings.bOverride_ReflectionMethod = false;
+            Settings.bOverride_WhiteTemp = Settings.bOverride_WhiteTint = true;
+            Settings.WhiteTemp = 6500.f;
+            Settings.WhiteTint = 0.f;
+            check(Settings.AutoExposureMinBrightness == Settings.AutoExposureMaxBrightness);
+            check(Settings.BloomIntensity == 0.f && Settings.MotionBlurAmount == 0.f);
+            Item->SetNumberField(TEXT("exposureEv100"), Settings.AutoExposureMinBrightness);
+            Item->SetNumberField(TEXT("whiteBalanceKelvin"), Settings.WhiteTemp);
+            Item->SetStringField(TEXT("lighting"), TEXT("world"));
             const float Width = CaptureHeight * 16.f / 9.f;
             const float Fov = Capture ? Capture->FOVAngle : 70.f;
             IStreamingManager::Get().AddViewInformation(
