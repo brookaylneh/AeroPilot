@@ -9,3 +9,10 @@
          return false;
      }
      if (!rc_in.set_blocking(false)) {
+--- a/libraries/SITL/SIM_AirSim.cpp
++++ b/libraries/SITL/SIM_AirSim.cpp
+@@ -58,3 +58,3 @@
+ void AirSim::set_interface_ports(const char* address, const int port_in, const int port_out)
+ {
+-    static const char *port_in_addr = "0.0.0.0";
++    static const char *port_in_addr = "127.0.0.1";

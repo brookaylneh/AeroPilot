@@ -5,15 +5,19 @@ import asyncio
 import hashlib
 import importlib.metadata
 import json
+import os
 import subprocess
 import time
 from pathlib import Path
 
+from mission_planner.environment import load_env
 from mission_planner.gcs.fleet import Fleet
 from mission_planner.gcs.geodesy import ORIGIN, ROOT, homes
 
 
 async def run(output):
+    load_env()
+    assert os.environ["SNR_SITL_MODEL"] == "quad", "bench_sitl measures built-in physics"
     output.mkdir(parents=True, exist_ok=False)
     report = {
         "schema_version": 1,
@@ -24,7 +28,7 @@ async def run(output):
             ["git", "-C", str(ROOT / ".local/vendor/ardupilot"), "rev-parse", "HEAD"], text=True
         ).strip(),
         "binary_sha256": hashlib.sha256(
-            (ROOT / ".local/vendor/ardupilot/build/sitl/bin/arducopter").read_bytes()
+            Path(os.environ["SNR_SITL_BINARY"]).read_bytes()
         ).hexdigest(),
         "versions": {
             name: importlib.metadata.version(name)

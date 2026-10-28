@@ -20,9 +20,7 @@ from mission_planner.gcs.geodesy import (  # noqa: E402
     MIN_ALTITUDE_M,
     MIN_SEPARATION_M,
     NAMES,
-    ROOT,
     fence_vertices,
-    homes,
     point_in_polygon,
     rtl_route,
     segment_distance,
@@ -30,6 +28,7 @@ from mission_planner.gcs.geodesy import (  # noqa: E402
     to_geodetic,
     to_local,
 )
+from mission_planner.gcs.sitl import SAFETY_PARAMETERS, check_ports, launches  # noqa: E402
 
 MAV = mavutil.mavlink
 RATES = {0: 2, 1: 5, 24: 5, 33: 10, 42: 5, 193: 5, 245: 5, 242: 1}
@@ -42,17 +41,6 @@ REQUIRED = (
     "EXTENDED_SYS_STATE",
     "HOME_POSITION",
 )
-SAFETY_PARAMETERS = {
-    "ARMING_SKIPCHK": 0,
-    "FS_THR_ENABLE": 1,
-    "RTL_ALT_M": 15,
-    "RTL_ALT_FINAL_M": 0,
-    "RTL_CLIMB_MIN_M": 0,
-    "RTL_CONE_SLOPE": 3,
-    "RTL_ALT_TYPE": 0,
-    "FENCE_ALT_MAX": 100,
-    "FENCE_MARGIN": 2,
-}
 
 
 class Fleet:
@@ -67,44 +55,20 @@ class Fleet:
     async def start(self):
         load_env()
         self.directory.mkdir(parents=True, exist_ok=False)
-        binary = ROOT / ".local/vendor/ardupilot/build/sitl/bin/arducopter"
-        assert binary.is_file(), f"Build required: {binary}"
-        for index, (name, home) in enumerate(homes().items()):
+        aircraft = launches(self.directory)
+        preflight = check_ports([port for launch in aircraft for port in launch["ports"]])
+        self.on_event({"kind": "sitl_ports_verified", **preflight})
+        for index, launch in enumerate(aircraft):
+            name, home, args = (launch[key] for key in ("name", "home", "arguments"))
             directory = self.directory / name
             directory.mkdir()
             connection = mavutil.mavlink_connection(
-                f"udpin:127.0.0.1:{int(os.environ['SNR_MAVLINK_BASE_PORT']) + index}",
+                f"udpin:127.0.0.1:{launch['mavlink_port']}",
                 source_system=255,
                 source_component=190,
                 dialect="ardupilotmega",
             )
             logfile = (directory / "autopilot.log").open("w")
-            args = [
-                str(binary),
-                "--model",
-                "quad",
-                "--instance",
-                str(index),
-                "--sysid",
-                str(index + 1),
-                "--home",
-                f"{home['latitude_deg']},{home['longitude_deg']},{home['altitude_msl_m']},{home['heading_deg']}",
-                "--sim-address",
-                "127.0.0.1",
-                "--rc-in-port",
-                str(
-                    int(os.environ["SNR_SITL_RC_BASE_PORT"])
-                    + index * int(os.environ["SNR_SITL_PORT_STEP"])
-                ),
-                "--serial0",
-                "none",
-                "--serial1",
-                f"udpclient:127.0.0.1:{int(os.environ['SNR_MAVLINK_BASE_PORT']) + index}",
-                "--serial2",
-                "none",
-                "--defaults",
-                str(ROOT / ".local/vendor/ardupilot/Tools/autotest/default_params/copter.parm"),
-            ]
             process = await asyncio.create_subprocess_exec(
                 *args, cwd=directory, stdout=logfile, stderr=asyncio.subprocess.STDOUT
             )
@@ -275,7 +239,27 @@ class Fleet:
         )
         home = vehicle["messages"]["HOME_POSITION"]
         north, east = to_local(home.latitude / 1e7, home.longitude / 1e7)
-        assert math.dist((north, east), (vehicle["home"]["north_m"], vehicle["home"]["east_m"])) < 1
+        home_error_m = math.dist(
+            (north, east), (vehicle["home"]["north_m"], vehicle["home"]["east_m"])
+        )
+        self.on_event(
+            {
+                "kind": "home_comparison",
+                "drone_id": name,
+                "intended": vehicle["home"],
+                "actual": {
+                    "latitude_deg": home.latitude / 1e7,
+                    "longitude_deg": home.longitude / 1e7,
+                    "altitude_msl_m": home.altitude / 1000,
+                    "north_m": north,
+                    "east_m": east,
+                },
+                "home_error_m": home_error_m,
+            }
+        )
+        assert home_error_m < 1, (
+            f"{name}: HOME_POSITION differs from configured spawn by {home_error_m:.6f} m"
+        )
         for parameter, expected in SAFETY_PARAMETERS.items():
             reply = await self._expect(
                 name,

@@ -3,6 +3,10 @@ set -Eeuo pipefail
 trap 'printf "build-sitl.sh failed at line %s\n" "$LINENO" >&2' ERR
 cd "$(dirname "$0")/../.."
 project=$PWD
+test "$#" = 1
+destination=$(realpath -m "$1")
+[[ "$destination" == "$project/.local/"* ]]
+test ! -e "$destination"
 export PATH="$project/.venv-cosys/bin:$project/.local/toolchains/bin:$PATH"
 python -c 'from mission_planner.environment import load_env; load_env()'
 revision=$(node -p "require('./mission_planner/measurements/gcs-sitl.json').commit")
@@ -33,9 +37,10 @@ fetch() {
   fi
 }
 
-fetch "$project/.local/vendor/ardupilot" https://github.com/ArduPilot/ardupilot.git "$revision"
-cd "$project/.local/vendor/ardupilot"
+fetch "$destination" https://github.com/ArduPilot/ardupilot.git "$revision"
+cd "$destination"
 patch --batch --fuzz=0 -p1 <"$project/mission_planner/gcs/sitl-loopback.patch"
+patch --batch --fuzz=0 -p1 <"$project/mission_planner/gcs/sitl-airsim-liveness.patch"
 python modules/waf/waf-light configure --board sitl --no-submodule-update
 python modules/waf/waf-light copter -j"$jobs" --no-submodule-update
 test -x build/sitl/bin/arducopter

@@ -1,6 +1,9 @@
 # Mission control
 
-Four ArduCopter autopilots use built-in quad physics. One Python process owns their
+Four ArduCopter autopilots select their physics through required `SNR_SITL_MODEL`.
+`airsim-copter` couples to Cosys; `quad` is retained for the named `bench_sitl.py`
+built-in-physics benchmark. Coupled startup is not accepted yet; see the
+[coupling gate](../../world/cosys/README.md). One Python process owns their
 MAVLink connections, Wonder, approvals and the event log. The browser receives actual
 telemetry, mission and fence readback; video has no source yet.
 
@@ -12,19 +15,26 @@ that first case, starts the fleet and retains it across browser disconnects. Sto
 after landing before changing cases. The fixed loopback listener is exposed only through the same-origin
 `/api/mission` WebSocket proxy.
 
-Build the pinned source and submodules with `bash mission_planner/gcs/build-sitl.sh`.
+Build the pinned source and submodules with
+`bash mission_planner/gcs/build-sitl.sh .local/build/ardupilot`.
 The script requires a new destination directory, uses the recorded revision and four jobs,
-applies `sitl-loopback.patch` to restrict the RC-input sockets,
+applies `sitl-loopback.patch` to restrict the RC and AirSim sensor sockets,
 and disables Waf's automatic submodule updates. See upstream
 [build instructions](https://github.com/ArduPilot/ardupilot/blob/fb773567896014da007bca58358704d4a0d8516f/BUILD.md).
 
-The compiled binary must exist at `.local/vendor/ardupilot/build/sitl/bin/arducopter`.
+`SNR_SITL_BINARY` must point to that compiled binary. `SNR_SITL_INSTANCE_BASE`
+is required; instance IDs select AirSim ports `9003 + 10*instance` for sensor input
+and `9002 + 10*instance` for motor output. `SNR_COSYS_SETTINGS` must match those
+instances, the configured RPC port and the authored spawns. Every launch checks
+`ss -lntup` before creating listeners. The coupling slot uses `.local/slot.env`.
 The pinned release, prerequisites and parameter baseline are recorded in
 [the fleet measurements](../measurements/gcs-sitl.json). Build with at most four jobs.
 Instances 0–3 use system IDs 1–4 and UDP ports 14600–14603, without MAVProxy or a router.
 Do not run the standalone fleet check alongside the service.
 
-SIGTERM or Ctrl-C stops the service and all four child autopilots. Each start creates a
+The service sends SIGTERM to its four child autopilots on shutdown. The coupled
+startup diagnostic exposed a shutdown timeout while the stock simulator waited
+for packets; clean coupled shutdown remains part of the unpassed gate. Each start creates a
 new `.local/data/missions/<mission-id>/` containing JSONL events, model request/response
 traces and separate autopilot logs. Existing run directories fail; requests never retry
 and the browser does not reconnect automatically. Reload after restoring a connection.
