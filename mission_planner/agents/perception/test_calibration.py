@@ -9,6 +9,7 @@ from unittest.mock import patch
 
 import numpy as np
 
+from mission_planner.agents.perception import geometry
 from mission_planner.agents.perception.analyze_calibration import analyze, operating
 from mission_planner.agents.perception.geometry import Camera
 from mission_planner.agents.perception.glimmer_calibration import annotate, glimmer, linked_crops
@@ -36,10 +37,10 @@ class GeometryTests(unittest.TestCase):
         np.testing.assert_allclose(camera.project(dict(x=10, y=20, z=0)), [960, 540])
         self.assertLess(camera.project(dict(x=11, y=20, z=0))[1], 540)
         self.assertGreater(camera.project(dict(x=10, y=21, z=0))[0], 960)
-        with patch.object(sim, "terrain_height", lambda x, y: 0.02 * x + 0.03 * y):
+        with patch.object(geometry, "terrain_height", lambda x, y: 0.02 * x + 0.03 * y):
             self.assertLess(camera.check(), 0.5)
             ground = camera.ground([100, 900])
-            self.assertLess(abs(ground["z"] - sim.terrain_height(ground["x"], ground["y"])), 0.005)
+            self.assertLess(abs(ground["z"] - (0.02 * ground["x"] + 0.03 * ground["y"])), 0.005)
 
     def test_recorded_origin_and_horizon_fail(self):
         metadata = frame()

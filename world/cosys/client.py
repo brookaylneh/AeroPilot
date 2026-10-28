@@ -14,6 +14,8 @@ import cosysairsim as airsim
 import numpy as np
 from PIL import Image
 
+from world.cosys.terrain import terrain_height
+
 ROOT = Path(__file__).resolve().parents[2]
 WORLD = json.loads(
     Path(os.environ.get("SNR_WORLD_CONFIG", str(ROOT / "world/cosys/world.json"))).read_text()
@@ -333,9 +335,6 @@ def land(name):
     return state(c, name)
 
 
-_height = None
-
-
 def validate_waypoint(point):
     if set(point) != set("xyz") or not all(
         isinstance(v, (int, float)) and math.isfinite(v) for v in point.values()
@@ -356,27 +355,3 @@ def validate_waypoint(point):
     ground = terrain_height(x, y) if inside else port["z"] / 100
     if point["z"] < ground + 1:
         raise ValueError("Airborne waypoint lacks ground clearance")
-
-
-def terrain_height(x, y):
-    global _height
-    if _height is None:
-        _height = (
-            np.fromfile(ROOT / ".local/vendor/open-meadow/height.r16", dtype="<u2")
-            .reshape(2017, 2017)
-            .astype(float)
-            - 32768
-        ) / 128
-    b = WORLD["searchBoundsCm"]
-    i = (x * 100 - b["min"]["x"]) / (b["max"]["x"] - b["min"]["x"]) * 2016
-    j = (y * 100 - b["min"]["y"]) / (b["max"]["y"] - b["min"]["y"]) * 2016
-    if not (0 <= i <= 2016 and 0 <= j <= 2016):
-        raise ValueError("Outside searchable landscape")
-    a, b = min(int(i), 2015), min(int(j), 2015)
-    u, v = i - a, j - b
-    return float(
-        _height[b, a] * (1 - u) * (1 - v)
-        + _height[b, a + 1] * u * (1 - v)
-        + _height[b + 1, a] * (1 - u) * v
-        + _height[b + 1, a + 1] * u * v
-    )
