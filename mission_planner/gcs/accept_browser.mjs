@@ -489,6 +489,9 @@ async function flight(browser, url, output) {
     'UI test starts with four landed aircraft',
   );
   assert.equal(observation.state.mission.autonomy, 'Supervised');
+  await page.keyboard.press('1');
+  await page.getByRole('button', { name: 'Expand map', exact: true }).click();
+  await page.locator('.gcs-main-map').waitFor();
   for (const id of ['Drone1', 'Drone2', 'Drone3', 'Drone4']) {
     await select(id);
     await page.getByRole('button', { name: 'Take off', exact: true }).click();
