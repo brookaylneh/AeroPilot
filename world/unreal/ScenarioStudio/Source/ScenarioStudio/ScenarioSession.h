@@ -19,6 +19,7 @@ class SCENARIOSTUDIO_API AScenarioSession : public AActor
     GENERATED_BODY()
   public:
     AScenarioSession();
+    bool IsReady() const { return bInitialized && BoundStreamer.IsValid(); }
     UPROPERTY(EditAnywhere) TObjectPtr<AScenarioManager> Manager;
     UPROPERTY(EditAnywhere) TObjectPtr<UMaterialInterface> MarkerMaterial;
     virtual void BeginPlay() override;

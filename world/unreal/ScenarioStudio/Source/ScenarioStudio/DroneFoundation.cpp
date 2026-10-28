@@ -1,4 +1,5 @@
 #include "DroneFoundation.h"
+#include "ScenarioSession.h"
 #include "EngineUtils.h"
 #include "Engine/World.h"
 #include "Engine/TextureRenderTarget2D.h"
@@ -79,6 +80,8 @@ void ADroneFoundation::Poll()
     }
     auto Report = MakeShared<FJsonObject>();
     Report->SetNumberField(TEXT("schemaVersion"), 1);
+    TActorIterator<AScenarioSession> Session(GetWorld());
+    Report->SetBoolField(TEXT("scenarioReady"), Session && Session->IsReady());
     Report->SetStringField(TEXT("capturedAt"), FDateTime::UtcNow().ToIso8601());
     Report->SetObjectField(TEXT("globalNedOriginUeCm"), V(Mode->getGlobalNedTransform().getGlobalOffset()));
     Report->SetObjectField(TEXT("worldOriginOffsetCm"), V(FVector(GetWorld()->OriginLocation)));

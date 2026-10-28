@@ -120,7 +120,7 @@ void AScenarioSession::BindStream()
         FString Error;
         if (!ResetScenario(Error))
         {
-            UE_LOG(LogTemp, Warning, TEXT("Scenario initialization: %s"), *Error);
+            UE_LOG(LogTemp, Fatal, TEXT("Scenario initialization: %s"), *Error);
             return;
         }
         bInitialized = true;
