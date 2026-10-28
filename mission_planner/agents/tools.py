@@ -3,7 +3,8 @@
 from jsonschema import Draft202012Validator
 
 from mission_planner.gcs.geodesy import (
-    BOUND_M,
+    EAST_MAX_M,
+    EAST_MIN_M,
     LAUNCH_HALF_WIDTH_M,
     LAUNCH_SOUTH_M,
     MAX_ALTITUDE_M,
@@ -13,6 +14,8 @@ from mission_planner.gcs.geodesy import (
     MIN_MAP_RADIUS_M,
     MIN_SPEED_MPS,
     NAMES,
+    NORTH_MAX_M,
+    NORTH_MIN_M,
 )
 from mission_planner.search.tools import (
     DEFINITIONS as SEARCH_DEFINITIONS,
@@ -22,8 +25,8 @@ from mission_planner.search.tools import (
 )
 
 DRONE = {"type": "string", "enum": list(NAMES)}
-POSITION = {"type": "number", "minimum": -BOUND_M, "maximum": BOUND_M}
-NORTH = {"type": "number", "minimum": LAUNCH_SOUTH_M, "maximum": BOUND_M}
+POSITION = {"type": "number", "minimum": EAST_MIN_M, "maximum": EAST_MAX_M}
+NORTH = {"type": "number", "minimum": LAUNCH_SOUTH_M, "maximum": NORTH_MAX_M}
 ALTITUDE = {"type": "number", "minimum": MIN_ALTITUDE_M, "maximum": MAX_ALTITUDE_M}
 SPEED = {"type": "number", "minimum": MIN_SPEED_MPS, "maximum": MAX_SPEED_MPS}
 
@@ -149,7 +152,7 @@ Use the registered tools for live information and requested actions. When all ar
 Each user message is a new request. A historical tool result acknowledges only its original request; a repeated flight request requires a new tool call and result before reporting acceptance.
 Only Drone1, Drone2, Drone3 and Drone4 exist. Reject unknown drone identities without substituting another drone.
 open_feed shows the last actual camera capture and subsequent mission captures. It is not continuous video; do not claim to have inspected an image from its tool result.
-Positions are metres north/east of the search centre. The search square is ±{BOUND_M:g} m on each axis. An authorized launch corridor extends south to north {LAUNCH_SOUTH_M:g} m only within east ±{LAUNCH_HALF_WIDTH_M:g} m; flight altitude is {MIN_ALTITUDE_M:g}–{MAX_ALTITUDE_M:g} m above home and speed is {MIN_SPEED_MPS:g}–{MAX_SPEED_MPS:g} m/s. Refuse requests explicitly outside these limits without a flight call.
+Positions are metres north/east of the search centre. The search bounds are north {NORTH_MIN_M:g}–{NORTH_MAX_M:g} m and east {EAST_MIN_M:g}–{EAST_MAX_M:g} m. An authorized launch corridor extends south to north {LAUNCH_SOUTH_M:g} m only within east ±{LAUNCH_HALF_WIDTH_M:g} m; flight altitude is {MIN_ALTITUDE_M:g}–{MAX_ALTITUDE_M:g} m above home and speed is {MIN_SPEED_MPS:g}–{MAX_SPEED_MPS:g} m/s. Refuse requests explicitly outside these limits without a flight call.
 Supervised flight actions require an approval card; never imply approval yourself. An operator decline is final for that request.
 Never retry a failed tool, invent a replacement route, or disable safety checks. Report the precise error and await a new operator instruction.
 Explain concepts and answer greetings without a tool when no live information or action is needed. Ask for missing flight arguments; do not guess them.
@@ -204,7 +207,7 @@ def validate_arguments(name, arguments):
     elif name == "fly_to":
         points = [arguments]
     for point in points:
-        assert point["north_m"] >= -BOUND_M or abs(point["east_m"]) <= LAUNCH_HALF_WIDTH_M, (
+        assert point["north_m"] >= NORTH_MIN_M or abs(point["east_m"]) <= LAUNCH_HALF_WIDTH_M, (
             f"Destination is outside the fence; the southern launch corridor extends only {LAUNCH_HALF_WIDTH_M:g} m east and west."
         )
     if name == "show_on_map":
@@ -219,5 +222,10 @@ def validate_arguments(name, arguments):
         )
         if target == "area":
             assert all(
-                abs(arguments[k]) + arguments["radius_m"] <= BOUND_M for k in ("north_m", "east_m")
+                low <= arguments[k] - arguments["radius_m"]
+                and arguments[k] + arguments["radius_m"] <= high
+                for k, low, high in (
+                    ("north_m", NORTH_MIN_M, NORTH_MAX_M),
+                    ("east_m", EAST_MIN_M, EAST_MAX_M),
+                )
             ), "Map area extends outside the search fence"

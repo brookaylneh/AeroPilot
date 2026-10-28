@@ -4,7 +4,10 @@ import math
 import unittest
 
 from mission_planner.gcs.geodesy import (
-    BOUND_M,
+    EAST_MAX_M,
+    EAST_MIN_M,
+    NORTH_MAX_M,
+    NORTH_MIN_M,
     fence_vertices,
     homes,
     point_in_polygon,
@@ -35,8 +38,8 @@ class GcsSafety(unittest.TestCase):
     def test_spawn_and_fence_round_trip(self):
         for home in homes().values():
             self.assertTrue(point_in_polygon(home, fence_vertices()))
-        for n in (-BOUND_M - 40, -BOUND_M, 0, BOUND_M):
-            for e in (-BOUND_M, 0, BOUND_M):
+        for n in (NORTH_MIN_M - 40, NORTH_MIN_M, 0, NORTH_MAX_M):
+            for e in (EAST_MIN_M, 0, EAST_MAX_M):
                 self.assertLess(math.dist((n, e), to_local(*to_geodetic(n, e))), 1e-6)
 
     def test_concave_fence(self):

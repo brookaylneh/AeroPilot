@@ -173,7 +173,7 @@ phase or exact pixels.
   people on average, no wholly negative benchmark images, and substantial
   threshold/evaluation dependence. Its numbers are context, not calibration inputs.
 - [Platt (1999), author-posted paper](https://www.researchgate.net/profile/John-Platt-2/publication/2594015_Probabilistic_Outputs_for_Support_Vector_Machines_and_Comparisons_to_Regularized_Likelihood_Methods/links/004635154cff5262d6000000/Probabilistic-Outputs-for-Support-Vector-Machines-and-Comparisons-to-Regularized-Likelihood-Methods.pdf),
-  section 2; [Guo et al. (ICML 2017)](https://proceedings.mlr.press/v70/guo17a.html):
+  section 2; [Guo et al. (ICML)](https://proceedings.mlr.press/v70/guo17a.html):
   sigmoid calibration and reliability diagrams. Classification accuracy alone is
   insufficient evidence of calibrated probabilities.
 - [SAM 3 paper](https://ai.meta.com/research/publications/sam-3-segment-anything-with-concepts/),

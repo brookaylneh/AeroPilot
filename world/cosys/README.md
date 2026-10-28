@@ -225,7 +225,7 @@ Run them as brook_avionuas only after the accepted revision is merged into a cle
 installed checkout. Land and disarm the installed fleet and release the authoring
 player first. Keep the intended saved case's Mission Control page ready to reload.
 
-~~~sh
+```sh
 cd /home/brook_avionuas/snr
 set -euo pipefail
 umask 077
@@ -242,7 +242,7 @@ ss -lntup > "$SNR_CUTOVER_EVIDENCE/listeners-before.txt"
 sudo systemctl stop snr-mission
 sudo systemctl stop snr-unreal
 sudo systemctl stop snr-web snr-signalling
-~~~
+```
 
 That initial order applies to the currently installed built-in-physics fleet.
 Subsequent coupled shutdowns use the ordered procedure below. Stage the accepted
@@ -251,7 +251,7 @@ cooked Paks files are hardlinked; executable, libraries, settings and other runt
 files receive independent copies. The accepted SITL executable is copied into the
 new release too.
 
-~~~sh
+```sh
 .venv-cosys/bin/python - <<'PY'
 import hashlib
 import json
@@ -353,7 +353,7 @@ sudo systemd-analyze verify /etc/systemd/system/snr-unreal.service
 set -a
 . .local/runtime.env
 set +a
-~~~
+```
 
 The environment update takes coupling fields from the installed profile in
 deploy/runtime.env.example; web, signalling, TURN, viewport and resource settings
@@ -365,7 +365,7 @@ Docker stop: the container removes itself after exit, so an ensuing ExecStop mus
 not try to stop it again. Use the ordered coupled shutdown below instead of stopping
 the Unreal unit directly.
 
-~~~sh
+```sh
 ss -lntup > "$SNR_CUTOVER_EVIDENCE/listeners-before-start.txt"
 .venv-cosys/bin/python - <<'PY'
 from mission_planner.gcs.sitl import check_ports
@@ -377,7 +377,7 @@ sudo systemctl start snr-signalling snr-web
 sudo systemctl start snr-unreal
 timeout 120 bash -c 'until ss -H -ltn sport = :41451 | rg -q "127.0.0.1:41451"; do sleep 1; done'
 sudo systemctl start snr-mission
-~~~
+```
 
 Reload the intended saved case immediately: snr-mission starts idle and that
 connection creates all four controllers. Verify the unchanged startup checks,
@@ -393,7 +393,7 @@ signals Unreal, observes only new log output, then stops Mission Control as soon
 world EndPlay has stopped AirSim physics. The log follower is the only helper it
 terminates.
 
-~~~sh
+```sh
 cd /home/brook_avionuas/snr
 set -euo pipefail
 set -a
@@ -439,4 +439,39 @@ from mission_planner.gcs.sitl import check_ports
 check_ports([8765, 41451, 9002, 9012, 9022, 9032, 9003, 9013, 9023, 9033,
              14600, 14601, 14602, 14603, 5501, 5511, 5521, 5531])
 PY
-~~~
+```
+
+## Terrain dimensions and sampling
+
+`world.json` is the source of search bounds, heightfield path, per-axis sample counts,
+spacing, row/column orientation, encoding and release hash. `terrain.py` verifies
+those relationships and the raw file hash before supplying north/east heights.
+Rows increase east (+Y); columns increase north (+X). The planner, perception
+geometry, tool schemas, mission fence and browser maps derive their bounds from
+this file. The launch corridor and authored homes remain separate infrastructure.
+
+Generate a new terrain directory with these commands from the repository root:
+
+```sh
+.venv-cosys/bin/python -m world.unreal.scripts.generate-open-meadow
+.venv-cosys/bin/python -m world.unreal.scripts.generate-vegetation-mask
+.venv-cosys/bin/python -m world.unreal.scripts.generate-minimap
+```
+
+The generator refuses an existing destination. It verifies every sample in the
+original calibration square against the immutable vendor heightfield before
+writing under `.local/world/`. The original release dimensions and hash are
+explicit regression constants in the generator; current dimensions come only
+from the world file. Mask generation retains its deterministic noise, trail and
+coverage equations with per-axis texture dimensions, so physical patch scale is
+preserved. The minimap transposes raw axes and reverses north to put north at the
+top. Generation measurements are written only under `.local/evidence/world/`.
+
+`test_terrain.py` checks asymmetric corners/edge samples, original-square bit
+identity and duplicated extent literals in tracked source. Historical measurement
+records and font licence text are excluded from the literal check.
+
+Array orientation and resampling follow the primary
+[NumPy meshgrid documentation](https://numpy.org/doc/stable/reference/generated/numpy.meshgrid.html),
+[SciPy zoom documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.zoom.html)
+and [Pillow image documentation](https://pillow.readthedocs.io/en/stable/reference/Image.html).

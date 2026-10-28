@@ -31,11 +31,13 @@ def run():
     assert r["worldToMeters"] == 100
     assert r["worldOriginOffsetCm"] == dict(x=0, y=0, z=0)
     assert distance(r["globalNedOriginUeCm"], WORLD["playerStartUeCm"]) < 0.01
-    for axis in "xy":
+    field = WORLD["heightfield"]
+    assert (field["rowAxis"], field["columnAxis"]) == ("+Y", "+X")
+    for axis, count in (("x", field["columns"]), ("y", field["rows"])):
         assert (
             abs(
                 (WORLD["searchBoundsCm"]["max"][axis] - WORLD["searchBoundsCm"]["min"][axis]) / 100
-                - 1609.344
+                - (count - 1) * field["sampleSpacingMetres"]
             )
             < 1e-6
         )

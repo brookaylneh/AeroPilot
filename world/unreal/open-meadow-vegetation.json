@@ -1,7 +1,5 @@
 {
   "environmentId": "open-meadow-unreal",
-  "widthMetres": 1609.344,
-  "depthMetres": 1609.344,
   "locationCount": 1,
   "trees": false,
   "packs": [
@@ -44,5 +42,6 @@
   ],
   "acquisitionStatus": "All three requested packs acquired, downloaded, integrated, cooked and visible in the live packaged UE 5.8.2 scene. Release 20261026T195608Z passed the public browser workflow and 720p/30 FPS performance gate (28.9 decoded FPS, zero freezes).",
   "temporarySource": "Previous release only: Poly Haven grass_medium_01 (CC0). Active vegetation uses the requested Fab packs.",
-  "assetVersion": "open-meadow-unreal-0.3.0"
+  "assetVersion": "open-meadow-unreal-0.3.0",
+  "worldConfig": "world/cosys/world.json"
 }

@@ -2,6 +2,7 @@
 
 from mission_planner.search.prior import CATEGORIES, TABLES
 from mission_planner.search.subject import BRIEFING_FIELDS
+from world.cosys.terrain import EAST_MAX_M, EAST_MIN_M, NORTH_MAX_M, NORTH_MIN_M
 
 
 def obj(properties):
@@ -33,8 +34,8 @@ def sourced(value):
 
 POINT = obj(
     {
-        "north_m": {"type": "number", "minimum": -804.672, "maximum": 804.672},
-        "east_m": {"type": "number", "minimum": -804.672, "maximum": 804.672},
+        "north_m": {"type": "number", "minimum": NORTH_MIN_M, "maximum": NORTH_MAX_M},
+        "east_m": {"type": "number", "minimum": EAST_MIN_M, "maximum": EAST_MAX_M},
     }
 )
 PROFILE = {

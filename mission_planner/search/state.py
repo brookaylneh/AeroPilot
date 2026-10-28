@@ -203,9 +203,10 @@ class Search:
             self.profile = arguments
             p = explicit_point(arguments)
             if p is not None and (self.point is None or self.point["source"] != "operator"):
-                from mission_planner.gcs.geodesy import BOUND_M
+                from world.cosys.terrain import EAST_MAX_M, EAST_MIN_M, NORTH_MAX_M, NORTH_MIN_M
 
-                assert abs(p["north_m"]) <= BOUND_M and abs(p["east_m"]) <= BOUND_M
+                assert NORTH_MIN_M <= p["north_m"] <= NORTH_MAX_M
+                assert EAST_MIN_M <= p["east_m"] <= EAST_MAX_M
                 self.point = p
             self.invalidate()
             self.changed()

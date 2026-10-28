@@ -4,6 +4,8 @@ import json
 import math
 from pathlib import Path
 
+from world.cosys.terrain import EAST_MAX_M, EAST_MIN_M, NORTH_MAX_M, NORTH_MIN_M
+
 ROOT = Path(__file__).resolve().parents[2]
 NAMES = tuple(f"Drone{i}" for i in range(1, 5))
 ORIGIN = {
@@ -12,8 +14,7 @@ ORIGIN = {
     "longitude_deg": -119.393421,
     "altitude_msl_m": 2621.28,
 }
-BOUND_M = 804.672
-LAUNCH_SOUTH_M = -BOUND_M - 40.0
+LAUNCH_SOUTH_M = NORTH_MIN_M - 40.0
 LAUNCH_HALF_WIDTH_M = 25.0
 MIN_ALTITUDE_M = 10.0
 MAX_ALTITUDE_M = 100.0
@@ -21,7 +22,7 @@ MIN_SEPARATION_M = 3.5
 MIN_SPEED_MPS = 0.5
 MAX_SPEED_MPS = 15.0
 MIN_MAP_RADIUS_M = 1.0
-MAX_MAP_RADIUS_M = 804.0
+MAX_MAP_RADIUS_M = min(NORTH_MAX_M - NORTH_MIN_M, EAST_MAX_M - EAST_MIN_M) / 2
 _LAT = math.radians(ORIGIN["latitude_deg"])
 _E2 = 6.6943799901413165e-3
 _W = math.sqrt(1 - _E2 * math.sin(_LAT) ** 2)
@@ -71,14 +72,14 @@ def fence_vertices():
     return [
         {"north_m": north, "east_m": east}
         for north, east in (
-            (-BOUND_M, -BOUND_M),
-            (-BOUND_M, -LAUNCH_HALF_WIDTH_M),
+            (NORTH_MIN_M, EAST_MIN_M),
+            (NORTH_MIN_M, -LAUNCH_HALF_WIDTH_M),
             (LAUNCH_SOUTH_M, -LAUNCH_HALF_WIDTH_M),
             (LAUNCH_SOUTH_M, LAUNCH_HALF_WIDTH_M),
-            (-BOUND_M, LAUNCH_HALF_WIDTH_M),
-            (-BOUND_M, BOUND_M),
-            (BOUND_M, BOUND_M),
-            (BOUND_M, -BOUND_M),
+            (NORTH_MIN_M, LAUNCH_HALF_WIDTH_M),
+            (NORTH_MIN_M, EAST_MAX_M),
+            (NORTH_MAX_M, EAST_MAX_M),
+            (NORTH_MAX_M, EAST_MIN_M),
         )
     ]
 

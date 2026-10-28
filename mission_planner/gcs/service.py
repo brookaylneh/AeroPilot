@@ -21,12 +21,13 @@ from mission_planner.agents.tools import (
 )
 from mission_planner.environment import ROOT, load_env
 from mission_planner.gcs.fleet import Fleet
-from mission_planner.gcs.geodesy import BOUND_M, NAMES
+from mission_planner.gcs.geodesy import NAMES
 from mission_planner.gcs.sensor_feed import sensor_message
 from mission_planner.search.execution import flight_label, start_search
 from mission_planner.search.state import Search
 from mission_planner.search.tools import NAMES as SEARCH_TOOLS
 from world.cosys.sensor import MissionSensor
+from world.cosys.terrain import BOUNDS
 
 MESSAGE_FIELDS = {
     "connect": {"type", "case_id"},
@@ -110,10 +111,10 @@ def read_case(case_id):
     for bounds in world["searchBounds"]:
         assert set(bounds) == {"id", "minX", "maxX", "minY", "maxY"}
         assert (bounds["minX"], bounds["maxX"], bounds["minY"], bounds["maxY"]) == (
-            -BOUND_M * 100,
-            BOUND_M * 100,
-            -BOUND_M * 100,
-            BOUND_M * 100,
+            BOUNDS["min"]["x"],
+            BOUNDS["max"]["x"],
+            BOUNDS["min"]["y"],
+            BOUNDS["max"]["y"],
         ), "Rescue case search bounds differ from the configured mission fence"
     return value
 

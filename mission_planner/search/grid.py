@@ -2,7 +2,8 @@
 
 import numpy as np
 
-from mission_planner.gcs.geodesy import BOUND_M, segment_in_polygon
+from mission_planner.gcs.geodesy import segment_in_polygon
+from world.cosys.terrain import EAST_MAX_M, EAST_MIN_M, NORTH_MAX_M, NORTH_MIN_M
 
 CELL_M = 4.0
 
@@ -46,16 +47,17 @@ def clipped_area(polygon, low, high):
 
 def make_grid(fence, cell_m=CELL_M):
     assert 0 < cell_m <= CELL_M
-    edges = np.append(np.arange(-BOUND_M, BOUND_M, cell_m), BOUND_M)
-    lo_n, lo_e = np.meshgrid(edges[:-1], edges[:-1], indexing="ij")
-    hi_n, hi_e = np.meshgrid(edges[1:], edges[1:], indexing="ij")
+    north_edges = np.append(np.arange(NORTH_MIN_M, NORTH_MAX_M, cell_m), NORTH_MAX_M)
+    east_edges = np.append(np.arange(EAST_MIN_M, EAST_MAX_M, cell_m), EAST_MAX_M)
+    lo_n, lo_e = np.meshgrid(north_edges[:-1], east_edges[:-1], indexing="ij")
+    hi_n, hi_e = np.meshgrid(north_edges[1:], east_edges[1:], indexing="ij")
     low = np.column_stack([lo_n.ravel(), lo_e.ravel()])
     high = np.column_stack([hi_n.ravel(), hi_e.ravel()])
     grid = {
         "centers": (low + high) / 2,
         "low": low,
         "high": high,
-        "shape": [len(edges) - 1] * 2,
+        "shape": [len(north_edges) - 1, len(east_edges) - 1],
         "cell_m": cell_m,
     }
     grid["areas"] = polygon_areas(grid, fence)
@@ -93,7 +95,9 @@ def polygon_areas(grid, polygon):
 def validate_area(vertices, fence):
     assert 3 <= len(vertices) <= 32 and all(set(p) == {"north_m", "east_m"} for p in vertices)
     assert all(
-        np.isfinite(list(p.values())).all() and max(abs(v) for v in p.values()) <= BOUND_M
+        np.isfinite(list(p.values())).all()
+        and NORTH_MIN_M <= p["north_m"] <= NORTH_MAX_M
+        and EAST_MIN_M <= p["east_m"] <= EAST_MAX_M
         for p in vertices
     )
     assert area([(p["north_m"], p["east_m"]) for p in vertices]) > CELL_M**2

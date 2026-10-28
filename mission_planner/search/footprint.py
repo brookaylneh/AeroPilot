@@ -1,23 +1,21 @@
 """Nadir image footprints clipped to the measured heightfield domain."""
 
-import math
 from functools import lru_cache
 
 import numpy as np
 
-from world.cosys.terrain import WORLD, heights, terrain_height
+from world.cosys.terrain import COLUMNS, ROWS, WORLD, heights, terrain_height
 
 
 @lru_cache(maxsize=1)
 def domain():
     values = np.asarray(heights(), dtype=np.int32)
-    side = math.isqrt(len(values))
-    assert side * side == len(values)
-    values = values.reshape(side, side)
+    assert ROWS * COLUMNS == len(values)
+    values = values.reshape(ROWS, COLUMNS)
     bounds = WORLD["searchBoundsCm"]
     low = np.array([bounds["min"][k] / 100 for k in "xy"])
     high = np.array([bounds["max"][k] / 100 for k in "xy"])
-    step = (high - low) / (side - 1)
+    step = (high - low) / np.array([COLUMNS - 1, ROWS - 1])
 
     def point(row, column):
         xy = np.minimum(high, low + step * [column, row])
@@ -33,10 +31,10 @@ def domain():
         adjacent[axis] += 1
         slopes.append(abs(point(*index)[2] - point(*adjacent)[2]) / step[1 - axis])
     border = (
-        [(0, i) for i in range(side - 1)]
-        + [(i, side - 1) for i in range(side - 1)]
-        + [(side - 1, i) for i in range(side - 1, 0, -1)]
-        + [(i, 0) for i in range(side - 1, 0, -1)]
+        [(0, i) for i in range(COLUMNS - 1)]
+        + [(i, COLUMNS - 1) for i in range(ROWS - 1)]
+        + [(ROWS - 1, i) for i in range(COLUMNS - 1, 0, -1)]
+        + [(i, 0) for i in range(ROWS - 1, 0, -1)]
     )
     return low, high, minimum, maximum, np.array(slopes), np.array([point(*p) for p in border])
 

@@ -57,8 +57,8 @@ longitude offset is east/(N cos(latitude)), in radians. Round trips are asserted
 X/Y/Z are **NED metres**; home elevation adds the world's `40−Z` metre spawn height.
 The settings generator asserts spawn/home consistency.
 
-The ±804.672 m square has the authorized southern launch corridor: east ±25 m, extending
-south to north −844.672 m. One eight-vertex inclusion polygon contains all four homes.
+The rectangle in `world/cosys/world.json` has the authorized southern launch corridor:
+east ±25 m, extending 40 m south of its southern search bound. One eight-vertex inclusion polygon contains all four homes.
 Every autopilot uploads and downloads it before enabling the fence. The map and command
 guards use this readback, including the concave corridor shoulders.
 
@@ -151,3 +151,11 @@ Protocol references: [SITL/multiple vehicles](https://ardupilot.org/dev/docs/usi
 Search coverage uses the [search modules](../search/README.md) and a single fleet approval.
 `accept_browser.mjs search URL NEW_DIRECTORY` exercises the quoted profile, operator point,
 planning, approval and actual takeoff/coverage/return sequence in the assigned slot.
+
+`bench_world.py --output NEW_JSON` measures one full-world plan and one negative
+belief update from a recorded calibration frame without a simulator or inference
+request. Run it with `OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1`; it records grid,
+prior, planning, frame projection and update times separately, source hashes,
+dependency versions and CPU affinity. Its full polygon comes from the world file.
+For a before/after comparison, run the same benchmark script with `PYTHONPATH`
+pointing at each source checkout and retain separate output files.

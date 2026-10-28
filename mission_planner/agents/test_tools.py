@@ -3,6 +3,7 @@
 import unittest
 
 from mission_planner.agents.tools import TOOLS, validate_arguments
+from world.cosys.terrain import EAST_MAX_M, EAST_MIN_M, NORTH_MAX_M
 
 
 class ToolContracts(unittest.TestCase):
@@ -24,7 +25,7 @@ class ToolContracts(unittest.TestCase):
             validate_arguments("take_off", {"drone_id": "Drone9", "altitude_above_home_m": 30})
 
     def test_outside_route_is_refused(self):
-        with self.assertRaisesRegex(AssertionError, "fence limit is 804.7 m"):
+        with self.assertRaisesRegex(AssertionError, f"fence limit is {NORTH_MAX_M:.1f} m"):
             validate_arguments(
                 "fly_route",
                 {
@@ -55,6 +56,19 @@ class ToolContracts(unittest.TestCase):
             )
         with self.assertRaisesRegex(AssertionError, "requires exactly"):
             validate_arguments("show_on_map", {"target": "area", "north_m": 10, "east_m": 20})
+
+    def test_map_focus_at_rectangular_east_and_west_edges(self):
+        for east in (EAST_MIN_M, EAST_MAX_M):
+            validate_arguments("show_on_map", {"target": "point", "north_m": 0, "east_m": east})
+        validate_arguments(
+            "show_on_map",
+            {"target": "area", "north_m": 0, "east_m": EAST_MAX_M - 20, "radius_m": 20},
+        )
+        with self.assertRaisesRegex(AssertionError, "Map area extends outside"):
+            validate_arguments(
+                "show_on_map",
+                {"target": "area", "north_m": 0, "east_m": EAST_MAX_M - 10, "radius_m": 20},
+            )
 
     def test_flight_parameters_are_required_and_bounded(self):
         with self.assertRaisesRegex(AssertionError, "Required values missing"):
