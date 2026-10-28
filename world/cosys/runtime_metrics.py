@@ -12,7 +12,7 @@ from pathlib import Path
 from mission_planner.environment import load_env
 
 
-def sample(native_paths, sitl_binary):
+def sample(native_paths, sitl_binary, process_pids):
     started = time.monotonic()
     processes = []
     listing = subprocess.run(
@@ -24,7 +24,12 @@ def sample(native_paths, sitl_binary):
     ).stdout
     for line in listing.splitlines():
         pid, parent, name = line.split(maxsplit=2)
-        if name not in ("ScenarioStudio", "UnrealEditor", "UnrealEditor-Cm", "arducopter"):
+        if int(pid) not in process_pids and name not in (
+            "ScenarioStudio",
+            "UnrealEditor",
+            "UnrealEditor-Cm",
+            "arducopter",
+        ):
             continue
         executable = Path(f"/proc/{pid}/exe").resolve(strict=True)
         if name == "arducopter" and executable != sitl_binary:
@@ -100,8 +105,10 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--seconds", type=float, required=True)
     parser.add_argument("--native", action="append", required=True, metavar="LABEL=PATH")
+    parser.add_argument("--pid", type=int, action="append", default=[])
     args = parser.parse_args()
     assert math.isfinite(args.seconds) and args.seconds > 0
+    assert len(set(args.pid)) == len(args.pid) and all(pid > 0 for pid in args.pid)
     paths = dict(item.split("=", 1) for item in args.native)
     assert len(paths) == len(args.native) and all(label and path for label, path in paths.items())
     native_paths = {label: Path(path) for label, path in paths.items()}
@@ -110,7 +117,9 @@ def main():
     with args.output.open("x") as output:
         while time.monotonic() < end:
             started = time.monotonic()
-            output.write(json.dumps(sample(native_paths, sitl_binary), allow_nan=False) + "\n")
+            output.write(
+                json.dumps(sample(native_paths, sitl_binary, args.pid), allow_nan=False) + "\n"
+            )
             output.flush()
             time.sleep(max(0, 1 - (time.monotonic() - started)))
 
