@@ -71,7 +71,8 @@ score. We conservatively combine qualified looks using maximum single-look POD,
 not independent trials. At 12 m capture spacing, overlapping frames are correlated.
 
 `coverage.py` uses `perception/geometry.py` and the pure heightfield sampler to project
-real capture metadata. Only nominal 30 m AGL with the flight tolerance is accepted.
+real capture metadata. Unprocessed frames supply footprints at their measured altitude;
+calibrated negative updates require nominal 30 m AGL with the flight tolerance.
 `belief.py` tracks previous maximum POD and applies the incremental conditional
 hazard in `P ← P(1−pd)/(1−ΣP·pd)`. Repeated equal looks add no evidence. It asserts
 finite, bounded, normalized probabilities. Captured but unprocessed images do not
@@ -123,8 +124,11 @@ controller-error bounds or collision avoidance.
 six registrations documented in the [tool catalogue](../agents/README.md).
 Wonder receives compact summaries; grids and routes travel only in browser messages.
 `SearchPanel`, `SearchLayers` and `SearchApproval` display quoted facts, source-labelled
-last known point, probability, geometry, expected POS and fleet approval. Without
-real capture ingestion, the UI explicitly says coverage has no camera source.
+last known point, probability, geometry, expected POS and fleet approval. The mission
+service writes accepted camera records into its mission directory and calls
+`Search.consume_capture(record, "unprocessed")` for each. This single ingestion
+records live coverage before search inputs exist and retains it when inputs change.
+Processed negatives prevent hypothesis changes that would discard their evidence.
 
 Tests beside these modules cover real metadata transform parity, negative evidence,
 prior normalization, quoted facts, deterministic plans and truth isolation. Use the
@@ -132,4 +136,4 @@ repository checks in `AGENTS.md`. The existing browser harness's `search` comman
 exercises profile → operator map point → plan → approval → four actual flights.
 Its `capture` and `performance` commands record both acceptance sizes and pan timing.
 Follow the assigned development slot in [deployment](../../deploy/README.md);
-`web/server.ts --mission-only` explicitly disables renderer endpoints for this slot.
+`web/server.ts --mission-only` disables renderer endpoints when no world is assigned.

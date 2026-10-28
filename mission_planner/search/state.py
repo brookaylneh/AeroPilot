@@ -10,7 +10,7 @@ from PIL import Image
 
 from mission_planner.environment import ROOT
 from mission_planner.search.belief import negative_update
-from mission_planner.search.coverage import capture_pod
+from mission_planner.search.coverage import capture_geometry, capture_pod
 from mission_planner.search.detection import reduce_calibration
 from mission_planner.search.grid import make_grid, polygon_areas, validate_area
 from mission_planner.search.planner import encode, plan
@@ -47,6 +47,9 @@ class Search:
     def editable(self):
         assert not self.mission.approvals, "Resolve pending approval before changing search inputs"
         assert self.status not in ("starting", "running"), "Search is already executing"
+        assert self.negative_count == 0, (
+            "A new search hypothesis cannot silently discard processed camera evidence"
+        )
 
     def invalidate(self):
         self.plan = None
@@ -57,7 +60,6 @@ class Search:
         self.prior_fit = None
         self.heatmap = None
         self.pod = None
-        assert not self.captures, "A new search hypothesis cannot silently discard camera evidence"
 
     def mark_point(self, north, east):
         self.editable()
@@ -252,12 +254,14 @@ class Search:
 
     def consume_capture(self, frame, outcome):
         assert outcome in ("unprocessed", "negative")
-        self.initialize()
         key = f"{frame['vehicleId']}:{frame['timestampNs']}"
         assert key not in self.captures, "Duplicate capture record"
         assert isinstance(frame["sha256"], str) and len(frame["sha256"]) == 64
-        pd, footprint = capture_pod(frame, self.grid, self.model)
-        if outcome == "negative":
+        if outcome == "unprocessed":
+            _, footprint = capture_geometry(frame)
+        else:
+            self.initialize()
+            pd, footprint = capture_pod(frame, self.grid, self.model)
             self.probability, self.pod = negative_update(self.probability, self.pod, pd)
             self.negative_count += 1
             self.render_heatmap()
