@@ -9,6 +9,7 @@ import { execFileSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from '@playwright/test';
 import { missionPlanSchema } from './missionPlan.ts';
+import { port as configuredPort } from '../../web/runtime.ts';
 
 const sizes = [
   [1920, 1080],
@@ -414,7 +415,8 @@ async function stop(browser, url, output, servicePid) {
   process.kill(servicePid, 'SIGTERM');
   await until(() => children.every((pid) => !existsSync(`/proc/${pid}`)), 'All four autopilots stopped');
   const seconds = (performance.now() - start) / 1000;
-  const ports = [14600, 14601, 14602, 14603];
+  const base = configuredPort('SNR_MAVLINK_BASE_PORT');
+  const ports = Array.from({ length: 4 }, (_, i) => base + i);
   for (const port of ports) {
     await new Promise((resolve, reject) => {
       const socket = createSocket('udp4');

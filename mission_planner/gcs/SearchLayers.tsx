@@ -1,33 +1,19 @@
+import { memo } from 'react';
 import type { SearchState } from './searchState';
 import { droneColors, type DroneId } from './missionState';
 
-export default function SearchLayers({
-  search,
-  project,
-}: {
-  search: SearchState | null;
-  project: (n: number, e: number) => { x: number; y: number };
-}) {
-  if (!search) return null;
+const Geometry = memo(function Geometry({ search }: { search: SearchState }) {
   const points = (rows: { north_m: number; east_m: number }[]) =>
-    rows
-      .map((p) => {
-        const q = project(p.north_m, p.east_m);
-        return `${q.x},${q.y}`;
-      })
-      .join(' ');
-  const top = project(804.672, -804.672),
-    bottom = project(-804.672, 804.672);
-  const lkp = search.point ? project(search.point.north_m, search.point.east_m) : null;
+    rows.map((p) => `${p.east_m},${-p.north_m}`).join(' ');
   return (
-    <g className="gcs-search-layers" aria-label="Search probability and planned coverage">
+    <g className="gcs-search-world">
       {search.heatmap && (
         <image
           href={search.heatmap}
-          x={top.x}
-          y={top.y}
-          width={bottom.x - top.x}
-          height={bottom.y - top.y}
+          x={-804.672}
+          y={-804.672}
+          width={1609.344}
+          height={1609.344}
           preserveAspectRatio="none"
         />
       )}
@@ -52,6 +38,26 @@ export default function SearchLayers({
             ))}
           </g>
         ))}
+    </g>
+  );
+});
+
+export default function SearchLayers({
+  search,
+  project,
+}: {
+  search: SearchState | null;
+  project: (n: number, e: number) => { x: number; y: number };
+}) {
+  if (!search) return null;
+  const origin = project(0, 0),
+    scale = project(0, 1).x - origin.x;
+  const lkp = search.point ? project(search.point.north_m, search.point.east_m) : null;
+  return (
+    <g className="gcs-search-layers" aria-label="Search probability and planned coverage">
+      <g transform={`translate(${origin.x},${origin.y}) scale(${scale})`}>
+        <Geometry search={search} />
+      </g>
       {lkp && (
         <g transform={`translate(${lkp.x},${lkp.y})`} className="gcs-lkp">
           <path d="M0-12L10 0L0 12L-10 0Z" />

@@ -194,3 +194,8 @@
   left: auto;
   right: 24px;
 }
+
+.gcs-search-world polygon,
+.gcs-search-world polyline {
+  vector-effect: non-scaling-stroke;
+}
