@@ -618,6 +618,19 @@ async function performanceRun(browser, url, output, servicePid, seconds) {
   const started = Date.now();
   const memory = [];
   const pans = [];
+  async function sampleMemory() {
+    const metrics = Object.fromEntries(
+      (await client.send('Performance.getMetrics')).metrics.map((m) => [m.name, m.value]),
+    );
+    const status = await readFile(`/proc/${servicePid}/status`, 'utf8');
+    const rss = /VmRSS:\s+(\d+) kB/.exec(status);
+    assert(rss);
+    memory.push({
+      elapsed_s: (Date.now() - started) / 1000,
+      service_rss_kib: Number(rss[1]),
+      browser_js_heap_bytes: metrics.JSHeapUsedSize,
+    });
+  }
   await page.evaluate(() => {
     window.gcsFrames = [];
     window.gcsFrameStart = performance.now();
@@ -636,17 +649,7 @@ async function performanceRun(browser, url, output, servicePid, seconds) {
   await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
   await page.mouse.wheel(0, -600);
   for (let step = 0; Date.now() - started < seconds * 1000; step++) {
-    const metrics = Object.fromEntries(
-      (await client.send('Performance.getMetrics')).metrics.map((m) => [m.name, m.value]),
-    );
-    const status = await readFile(`/proc/${servicePid}/status`, 'utf8');
-    const rss = /VmRSS:\s+(\d+) kB/.exec(status);
-    assert(rss);
-    memory.push({
-      elapsed_s: (Date.now() - started) / 1000,
-      service_rss_kib: Number(rss[1]),
-      browser_js_heap_bytes: metrics.JSHeapUsedSize,
-    });
+    await sampleMemory();
     if (step < 6) {
       await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
       const start = await page.evaluate(() => performance.now());
@@ -668,6 +671,7 @@ async function performanceRun(browser, url, output, servicePid, seconds) {
     }
     await page.waitForTimeout(10000);
   }
+  await sampleMemory();
   const data = await page.evaluate(() => {
     window.gcsRecording = false;
     return {
