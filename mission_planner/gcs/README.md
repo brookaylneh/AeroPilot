@@ -19,6 +19,11 @@ Only `briefings/` is read from the scenario directory. The mission service binds
 `127.0.0.1:8765`; `/api/mission` uses the web server's same-origin WebSocket check.
 `SNR_MISSION_PORT` must match the service's `--port` if it differs from 8765.
 
+Build the pinned source and submodules with `bash mission_planner/gcs/build-sitl.sh`.
+The script requires a new destination directory, uses the recorded revision and four jobs,
+and disables Waf's automatic submodule updates. See upstream
+[build instructions](https://github.com/ArduPilot/ardupilot/blob/fb773567896014da007bca58358704d4a0d8516f/BUILD.md).
+
 The compiled binary must exist at `.local/vendor/ardupilot/build/sitl/bin/arducopter`.
 The pinned release, prerequisites and parameter baseline are recorded in
 [the fleet measurements](../measurements/gcs-sitl.json). Build with at most four jobs.
