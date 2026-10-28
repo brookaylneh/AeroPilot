@@ -1,0 +1,295 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-28T22:14:37.668596+00:00",
+  "status": "adult_replacement_published; child_replacement_pending",
+  "code_commit": "e039c918675d2ab0cd350d15f38a05e0ccdff4d4",
+  "url": "http://35.81.229.78/character-rocketbox-outdoor/index.html",
+  "stable_preview_url": "http://35.81.229.78/character-rocketbox-candidates/index.html",
+  "previous_selection_url": "http://35.81.229.78/character-rocketbox-candidates/previous.html",
+  "selection": {
+    "path": "world/unreal/characters/rocketbox-selection.json",
+    "bytes": 2159,
+    "sha256": "1564bd730d1114087db7a99ad75bf3e8043784a889a5bbb127360897594bbb1e"
+  },
+  "asset_manifest": {
+    "path": "world/unreal/characters/rocketbox-outdoor.lock.json",
+    "bytes": 2969,
+    "sha256": "2c81258ad020174530e1a5fc9fa7396bafc34c910d53665aa3fd25b7b74863da"
+  },
+  "adult_replacement": {
+    "id": "adult-02",
+    "old_model": "Male_Adult_15",
+    "selected_model": "Male_Adult_17",
+    "outfit": "blue hooded jacket, jeans, trainers and cap",
+    "verified_source_files": 10,
+    "source_bytes": 77809153,
+    "unreal_asset_files": 10,
+    "unreal_asset_bytes": 28123180,
+    "mesh": "/Game/Characters/RocketboxOutdoor/Male_Adult_17/Male_Adult_17_facial.Male_Adult_17_facial",
+    "bone_count": 81,
+    "bounds_height_cm": 181.16994266211987
+  },
+  "child_replacement": {
+    "id": "child-03",
+    "excluded_model": "Female_Child_02",
+    "status": "pending; not replaced by a duplicate or an adult",
+    "remaining_stock_child_models": 3,
+    "options": [
+      "Author a distinct appearance variant using a remaining child base.",
+      "Source another child model."
+    ]
+  },
+  "visual_review": {
+    "selected_model": "Male_Adult_17",
+    "five_views_inspected": true,
+    "assessment": "No missing materials or the prominent hair-card strip artifact seen in Male_Adult_04. Outfit is casual outdoor clothing.",
+    "rejected_trial": {
+      "name": "Male_Adult_04",
+      "evidence": ".local/evidence/characters/rocketbox-outdoor/render",
+      "decision": "Rejected after visual inspection: prominent polygon/card strips visible in the hair in the portrait. Preserve all assets and captures.",
+      "replacement": "Male_Adult_17"
+    },
+    "rejected_trial_source_files": 11,
+    "rejected_trial_source_bytes": 94967157
+  },
+  "capture": {
+    "new_selected_images": 5,
+    "reused_images": 50,
+    "displayed_models": 11,
+    "gallery_captures": 55,
+    "profile": {
+      "renderer_cvars": {
+        "r.RayTracing": 1,
+        "r.DynamicGlobalIlluminationMethod": 1,
+        "r.ReflectionMethod": 1,
+        "r.Lumen.HardwareRayTracing": 1,
+        "r.Shadow.Virtual.Enable": 1
+      },
+      "exposure_ev100": 6.5,
+      "white_balance_kelvin": 6500
+    },
+    "portrait_px": [
+      4096,
+      4096
+    ],
+    "sensor_px": [
+      3840,
+      2160
+    ],
+    "crop_resampled": false,
+    "render_process_seconds": 128.36150968100264,
+    "render_time_includes_preparation_and_fixed_waits": true
+  },
+  "acceptance": {
+    "visible_detail_images": 66,
+    "overview_portraits": 11,
+    "verified_full_png_links": 88,
+    "mobile_width_px": 390,
+    "mobile_overflow_px": 0,
+    "rejected_child_absent_from_active_selection": true,
+    "stable_link_reaches_updated_gallery": true,
+    "previous_selection_http_status": 200,
+    "browser_errors": [],
+    "browsers_closed": true,
+    "review_containers_stopped": true
+  },
+  "preservation": {
+    "unchanged_prior_asset_and_sample_page_paths": 169,
+    "old_gallery_page_archived_with_identical_sha256": true,
+    "old_gallery_pngs_preserved": 96,
+    "both_new_trial_assets_and_captures_retained": true
+  },
+  "clothing_capability": {
+    "sources": [
+      "https://github.com/microsoft/Microsoft-Rocketbox",
+      "https://www.frontiersin.org/journals/virtual-reality/articles/10.3389/frvir.2020.561558/full"
+    ],
+    "findings": [
+      "Clothing is part of the body mesh. Texture/color editing is simpler than garment-geometry replacement.",
+      "The creators describe a common neck boundary for same-gender models and compatible texture layouts, supporting custom head/body combinations.",
+      "No wardrobe selector or tested body-swap workflow has been implemented in this project. Individual combinations require seam, skin and deformation checks."
+    ],
+    "stock_child_fbx": [
+      "Assets/Avatars/Children/Female_Child_01/Export/Female_Child_01_facial.fbx",
+      "Assets/Avatars/Children/Female_Child_02/Export/Female_Child_02_facial.fbx",
+      "Assets/Avatars/Children/Male_Child_01/Export/Male_Child_01_facial.fbx",
+      "Assets/Avatars/Children/Male_Child_02/Export/Male_Child_02_facial.fbx"
+    ],
+    "excluded_child": "Female_Child_02",
+    "remaining_stock_children": 3,
+    "active_choice": "Use an original casual outdoor adult; leave child replacement unresolved instead of duplicating or relabeling a model without a stated choice."
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "test"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.9170963350043166
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.5850736959982896
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "format:check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.595153850998031
+    },
+    {
+      "command": [
+        ".venv-cosys/bin/ruff",
+        "check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.01334582799609052
+    },
+    {
+      "command": [
+        ".venv-cosys/bin/ruff",
+        "format",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.0093240789938136
+    },
+    {
+      "command": [
+        ".venv-cosys/bin/python",
+        "-m",
+        "unittest"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.655859774997225
+    }
+  ],
+  "remaining_work": [
+    "Replace Child candidate 3; only three non-rejected stock child bases remain.",
+    "Replace or author outdoor outfits for Adult 3 and Older 1, 2 and 3.",
+    "Resolve the previously documented senior age, skin-tone and heavier-build gaps.",
+    "Validate any future body/outfit swap for neck seams, skin consistency and deformation.",
+    "Animation, outdoor scene integration, detector performance and streaming performance are not established by these static captures."
+  ],
+  "evidence": [
+    {
+      "path": ".local/evidence/characters/rocketbox-outdoor-jacket/acquisition/files.json",
+      "bytes": 4428,
+      "sha256": "4d9b8b09d3a8f2c0fddd75db01edbbc46a336251abefa58a3ecd54cef4e63d6a"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-outdoor-jacket/verification/files.json",
+      "bytes": 4428,
+      "sha256": "4d9b8b09d3a8f2c0fddd75db01edbbc46a336251abefa58a3ecd54cef4e63d6a"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-outdoor-jacket/import/result.json",
+      "bytes": 1383,
+      "sha256": "a060cd1b9b4bf7b83ab6f47dc60e8eca22232197150fcc45a90a0096c5b66b58"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-outdoor-jacket/import-process.json",
+      "bytes": 966,
+      "sha256": "c279db9c940f915061dae0fc74a85b985e00dbbec95288544a71965498a37a28"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-outdoor-jacket/import.log",
+      "bytes": 283648,
+      "sha256": "f026547c6c9cf3fe01e1181b00ea35224eca1fa93929090669607da9867a0ed3"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-outdoor-jacket/environment.json",
+      "bytes": 817,
+      "sha256": "add479e5bf6a4e62204dd670695eb40ec541b9d16234d2626f289c95e515e18f"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-outdoor-jacket/unreal-assets.json",
+      "bytes": 2344,
+      "sha256": "9b5bba93f932e34c163eb444781cc0795d163ee19a615ed08773a4c23410df66"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-outdoor-jacket/render/result.json",
+      "bytes": 2897,
+      "sha256": "23e24ec6010ad11609b0fcf3c4e4117bdb14b49d6ac2da4aafeab89f6a336261"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-outdoor-jacket/render-process.json",
+      "bytes": 1503,
+      "sha256": "dc5ff2b7644aad7d189ebb4999aed555fd52a14f86926ca514833b9eedfd5342"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-outdoor-jacket/render.log",
+      "bytes": 408027,
+      "sha256": "893a7561fe510376dd4b2126751d602be791a367ce4709e75c58b61ccbce663c"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-outdoor-jacket/selected/copies.json",
+      "bytes": 20676,
+      "sha256": "19f96db217e03662f112e92666b5dcb17317c37a6a52f7b17a2a6ac7f7987b55"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-outdoor-jacket/selected/review-manifest.json",
+      "bytes": 7571,
+      "sha256": "1a854c72611bdda12b1eb5b54d82291aaccdd13cde3cabd24387e4bdefe31c41"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-outdoor-jacket/selected/render/result.json",
+      "bytes": 29323,
+      "sha256": "d96139d0e7ea3b2e35d70404a87bbfbfc9108225685340e0764bb73e6e7a1564"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-outdoor-jacket/review/result.json",
+      "bytes": 32952,
+      "sha256": "513c7aa2b8b32479b5d690a696180c1bcf3bcf3ff35e894da283805d5ff79146"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-outdoor-jacket/browser/result.json",
+      "bytes": 27391,
+      "sha256": "95449c2d9efd7c3b06c461606e12de9c8a386e79b8765377fcc6dbf413697d9b"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-outdoor-jacket/browser-navigation/result.json",
+      "bytes": 485,
+      "sha256": "7f9307b8b98f57c165b39f054a7127e1af92b57dac6219bbd0a7d14d384c68ae"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-outdoor-jacket/navigation.json",
+      "bytes": 321,
+      "sha256": "9cbc4b681cbce745b351518763bc503fcec1bd414f0ec17295dae6ef09295fcf"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-outdoor-jacket/preservation-verification.json",
+      "bytes": 300,
+      "sha256": "865112542a4ac299e232cf94d6e9f2caf2b25df66efa3498c04d5a657a66d96b"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-outdoor-jacket/clothing-review.json",
+      "bytes": 1199,
+      "sha256": "0e9c2e30ff83b714ae2bfc025c0944e848aaeff1cc318183287b5d447842463d"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-outdoor-jacket/rejected-candidate.json",
+      "bytes": 285,
+      "sha256": "64480f4cd6e44272e17a0c326e342b1a9f5f3373d444668c0cd540e2724024ee"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-outdoor-jacket/rejected-candidate-manifest.json",
+      "bytes": 3148,
+      "sha256": "32455eab977756154f7bc2c62726b213e2759e8e8521f0ae94d2f9d91d9ee804"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-outdoor-jacket/checks/result.json",
+      "bytes": 856,
+      "sha256": "124aed251544b79767ddf3415da28d47032be0be65378ad1d60e2758514cabaa"
+    }
+  ]
+}
