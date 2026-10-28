@@ -21,11 +21,66 @@ Cosys-AirSim 3.5.0 (`5.8-v3.5.0`) provides the simulated aircraft and cameras in
 `SNR_COSYS_PORT` matching that instance.
 
 The fetcher requires the shared `.env`, verifies release archive hashes, and applies
-`airsim-ue58.patch` and `airsim-geodesy.patch`. The first avoids resetting an unchanged
+`airsim-ue58.patch`, `airsim-geodesy.patch` and `airsim-sensor.patch`. The first avoids resetting an unchanged
 CustomDepth value during startup, which would invalidate Landscape PSO precaching in
 UE 5.8. The geodesy patch uses the global NED transform and WGS84 conversion for each
 spawn home. Coupled flight requires a game binary built with both patches; the recovery
 package does not contain the geodesy correction.
+
+## Camera acquisition
+
+`capture.FrameCapture` is the unpaused image writer shared by missions and calibration.
+`sensor.MissionSensor` starts one worker per aircraft and triggers an image for every
+12 metres accumulated in armed AUTO flight. Ground track follows successive MAVLink
+positions, including turns; movement outside AUTO does not accumulate distance.
+Only one request per aircraft may be in flight. A request still running at the next
+trigger fails loudly. Network errors propagate without another request.
+
+The generator sets a 3840×2160 scene capture with 70° horizontal FOV. The documented
+camera `Gimbal` fixes world pitch at −90° and roll at 0° with stabilization 1. Yaw is
+deliberately omitted so heading can follow the aircraft; the pinned parser uses NaN
+for uncontrolled axes. Runtime `simSetCameraPose` changes these gimbal targets and
+must not be used during a sensor flight. Equal exposure minimum/maximum values fix
+the existing exposure profile at 13. The actual compensation key is
+`AutoExposureCompensation`. Motion blur amount/max and bloom intensity are zero.
+White balance is explicitly 6500 K with tint 0 for the flight. `airsim-sensor.patch`
+adds these missing settings to the pinned plugin and applies Unreal's white-balance
+overrides. It also samples each image timestamp alongside its camera pose in the
+game-thread render callback; the stock timestamp instead follows pixel readback.
+
+The image response owns the camera pose and simulator timestamp. Capture brackets
+ground truth with IMU timestamps and records MAVLink positions concurrently; it never
+calls `simPause`. The validator interpolates vehicle position and body orientation to
+image time, rotates the 0.6 m forward / 0.05 m down camera mount, and compares the
+result against the image camera. The explicit acceptance limits in `capture.LIMITS`
+are 1° from nadir, 0.75 m camera/ground-truth error, and 2 m image-inferred-body/MAVLink
+error. Simulator brackets must fit 2 s, individual truth samples 0.1 s, and MAVLink
+receipt brackets 0.5 s. These are rejection criteria, not measured accuracy claims.
+UTC is interpolated between the simulator/host clock brackets; the record retains
+the complete bracket and its wall duration rather than assuming simulator time is UTC.
+
+Records preserve the calibration schema, coordinate fields and image-response pose.
+`vehicleStateBefore`/`After` now contain explicitly labelled simulator ground truth;
+ArduCopter's AirSim estimated-state and landed-state APIs are unimplemented. MAVLink
+samples supply flight state. Added fields include `imagePath`, `capturedAtUtc`,
+`droneId`, `captureId`, `validation` and timing/size measurements. Calibration alone
+may pass an actor observation callback; actor translation above 0.01 m rejects the
+frame. Mission capture has no actor-placement access.
+
+JPEG images and JSON records are written under the supplied mission directory before
+the accepted-frame callback runs. That callback is the single search/perception
+ingestion path. Rejected images remain with `validation.accepted=false` and explicit
+reasons; they are excluded from ingestion and the feed. `sensor.jsonl` records every
+attempt, requested spacing, measured camera displacement, latency and encoded sizes.
+Accepted captures also produce a 960×540 JPEG preview at quality 75; only this preview
+is sent to the browser at capture cadence. Full images remain in the mission directory.
+
+Camera settings and image timing are checked against the pinned
+[settings](https://github.com/Cosys-Lab/Cosys-AirSim/blob/5.8-v3.5.0/docs/settings.md),
+[image APIs](https://github.com/Cosys-Lab/Cosys-AirSim/blob/5.8-v3.5.0/docs/image_apis.md),
+`AirSimSettings.hpp`, `PIPCamera.cpp`, `UnrealImageCapture.cpp` and `RenderRequest.cpp`.
+Archived primary sources and the field-by-field camera review are under
+`.local/evidence/coupling/sensor-sources/`.
 
 ## Coupled settings
 

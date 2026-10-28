@@ -23,8 +23,11 @@ def generate(world, rpc_port, instance_base):
     exposure = {
         "AutoExposureMinBrightness": 13,
         "AutoExposureMaxBrightness": 13,
-        "AutoExposureBias": 0,
+        "AutoExposureCompensation": 0,
+        "WhiteBalanceTemperature": 6500,
+        "WhiteBalanceTint": 0,
         "MotionBlurAmount": 0,
+        "MotionBlurMax": 0,
         "BloomIntensity": 0,
         "LumenGIEnable": False,
         "LumenReflectionEnable": False,
@@ -93,6 +96,7 @@ def generate(world, rpc_port, instance_base):
                     "Pitch": -90,
                     "Yaw": 0,
                     "Roll": 0,
+                    "Gimbal": {"Stabilization": 1, "Pitch": -90, "Roll": 0},
                     "CaptureSettings": [
                         dict(ImageType=-1, FOV_Degrees=70, **exposure),
                         dict(

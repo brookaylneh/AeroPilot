@@ -1,6 +1,5 @@
 """Stock Cosys interfaces with explicit world/vehicle frames. No target knowledge."""
 
-import hashlib
 import json
 import math
 import os
@@ -11,8 +10,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import cosysairsim as airsim
-import numpy as np
-from PIL import Image
 
 from world.cosys.terrain import terrain_height
 
@@ -90,18 +87,17 @@ def distance(a, b):
 
 
 def state(c, name):
-    s = c.getMultirotorState(vehicle_name=name)
-    p = xyz(s.kinematics_estimated.position)
+    s = c.simGetGroundTruthKinematics(vehicle_name=name)
+    p = xyz(s.position)
     collision = c.simGetCollisionInfo(vehicle_name=name)
     return {
         "id": name,
-        "timestampNs": s.timestamp,
+        "timestampNs": c.getImuData(imu_name="Imu", vehicle_name=name).time_stamp,
+        "stateSource": "Cosys ground truth",
         "positionLocalNedM": p,
         "positionWorldM": to_world(name, p),
-        "orientationNed": quat(s.kinematics_estimated.orientation),
-        "velocityLocalNedMps": xyz(s.kinematics_estimated.linear_velocity),
-        "landed": s.landed_state == airsim.LandedState.Landed,
-        "apiControl": c.isApiControlEnabled(vehicle_name=name),
+        "orientationNed": quat(s.orientation),
+        "velocityLocalNedMps": xyz(s.linear_velocity),
         "collision": {
             "hasCollided": collision.has_collided,
             "timestampNs": collision.time_stamp,
@@ -151,188 +147,12 @@ def set_view(c, name, pitch=-90, yaw=0):
     )
 
 
-def capture(name, directory, tag, freeze=False, observe=None, jpeg_quality=None):
-    c = connect()
-    directory = Path(directory)
-    directory.mkdir(parents=True, exist_ok=True)
-    if freeze:
-        c.simPause(True)
-    try:
-        observation = observe(c) if observe is not None else None
-        before = state(c, name)
-        start = time.perf_counter()
-        r = c.simGetImages(
-            [airsim.ImageRequest("front_center", airsim.ImageType.Scene, False, False)],
-            vehicle_name=name,
-        )[0]
-        latency = time.perf_counter() - start
-        after = state(c, name)
-        if r.message or r.width <= 0 or r.height <= 0:
-            raise RuntimeError(r.message or "Empty camera frame")
-        data = np.frombuffer(r.image_data_uint8, dtype=np.uint8)
-        assert data.size == r.width * r.height * 3, (r.width, r.height, data.size)
-        # Pinned Cosys 3.5 RenderRequest explicitly writes R,G,B, with no flip.
-        image = Image.fromarray(data.reshape(r.height, r.width, 3), "RGB")
-        suffix = "png" if jpeg_quality is None else "jpg"
-        path = directory / f"{tag}-{name}.{suffix}"
-        if jpeg_quality is None:
-            image.save(path)
-        else:
-            assert 1 <= jpeg_quality <= 100
-            image.save(path, quality=jpeg_quality, subsampling=0)
-        info = {
-            "schemaVersion": 1,
-            "vehicleId": name,
-            "cameraId": "front_center",
-            "imageType": "RGB",
-            "file": path.name,
-            "width": r.width,
-            "height": r.height,
-            "timestampNs": r.time_stamp,
-            "cameraPoseLocalNed": {
-                "position": xyz(r.camera_position),
-                "orientation": quat(r.camera_orientation),
-            },
-            "cameraPositionWorldM": to_world(name, xyz(r.camera_position)),
-            "localNedOriginUeCm": origin(name),
-            "coordinateSystem": WORLD["coordinateSystem"],
-            "horizontalFovDegrees": c.simGetCameraInfo("front_center", vehicle_name=name).fov,
-            "vehicleStateBefore": before,
-            "vehicleStateAfter": after,
-            "physicsPausedForCapture": freeze,
-            "vehiclePoseTiming": "Frozen physics state"
-            if freeze
-            else "Bracketing samples; camera pose and timestamp are supplied by Cosys at capture",
-            "captureLatencySeconds": latency,
-            "transportBytes": len(r.image_data_uint8),
-            "pngBytes" if jpeg_quality is None else "jpegBytes": path.stat().st_size,
-            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
-        }
-        if observe is not None:
-            assert freeze, "Observations must share the frozen image state"
-            info["observation"] = observe(c)
-            assert info["observation"] == observation, "Observed actor moved during frozen capture"
-        path.with_suffix(".json").write_text(json.dumps(info, indent=2) + "\n")
-        return info
-    finally:
-        if freeze:
-            c.simPause(False)
-
-
-def takeoff(name):
-    c = connect()
-    c.enableApiControl(True, vehicle_name=name)
-    assert c.armDisarm(True, vehicle_name=name)
-    c.takeoffAsync(timeout_sec=20, vehicle_name=name).get()
-    return state(c, name)
-
-
-def move(name, point, speed=5):
-    validate_waypoint(point)
-    p = to_local(name, point)
-    c = connect()
-    c.moveToPositionAsync(
-        p["x"],
-        p["y"],
-        p["z"],
-        speed,
-        timeout_sec=90,
-        drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom,
-        yaw_mode=airsim.YawMode(False, WORLD["vehicles"][name]["yawDegrees"]),
-        vehicle_name=name,
-    ).get()
-    # The stock API completes inside its acceptance radius while the aircraft
-    # can still be braking. Finish with a slower approach before asking it to
-    # hold its current pose; otherwise hover can preserve an overshoot.
-    time.sleep(0.7)
-    for _ in range(2):
-        actual = state(c, name)
-        if (
-            distance(actual["positionWorldM"], point) < 0.6
-            and distance(actual["velocityLocalNedMps"], dict(x=0, y=0, z=0)) < 0.15
-        ):
-            break
-        c.moveToPositionAsync(
-            p["x"],
-            p["y"],
-            p["z"],
-            0.8,
-            timeout_sec=15,
-            drivetrain=airsim.DrivetrainType.MaxDegreeOfFreedom,
-            yaw_mode=airsim.YawMode(False, WORLD["vehicles"][name]["yawDegrees"]),
-            vehicle_name=name,
-        )
-        deadline = time.monotonic() + 15
-        while time.monotonic() < deadline:
-            actual = state(c, name)
-            if (
-                distance(actual["positionWorldM"], point) < 0.6
-                and distance(actual["velocityLocalNedMps"], dict(x=0, y=0, z=0)) < 0.2
-            ):
-                break
-            time.sleep(0.2)
-    c.hoverAsync(vehicle_name=name).get()
-    time.sleep(0.7)
-    actual = state(c, name)
-    error = distance(actual["positionWorldM"], point)
-    if error > 1.2:
-        raise RuntimeError(f"{name} waypoint error {error:.2f} m")
-    return {"state": actual, "waypointWorldM": point, "errorMetres": error}
-
-
 def home(name):
     return {k: v / 100 for k, v in WORLD["vehicles"][name]["spawnUeCm"].items()}
 
 
 def entry_axis():
     return {"south": "x", "west": "y"}[WORLD["port"]["boundary"]]
-
-
-def land(name):
-    c = connect()
-    started = state(c, name)["timestampNs"]
-    if state(c, name)["landed"]:
-        c.armDisarm(False, vehicle_name=name)
-        c.enableApiControl(False, vehicle_name=name)
-        return state(c, name)
-    # Stock land() can return early while still ascending: it counts z_velocity
-    # <= its near-zero threshold. Establish descent before invoking it, and use
-    # reported landed state as the completion gate. No flight dynamics changed.
-    p = to_local(name, {**home(name), "z": home(name)["z"] + 1.5})
-    c.moveToPositionAsync(p["x"], p["y"], p["z"], 2, timeout_sec=90, vehicle_name=name).get()
-    c.moveToPositionAsync(p["x"], p["y"], p["z"], 0.5, timeout_sec=20, vehicle_name=name).get()
-    c.moveByVelocityAsync(0, 0, 0.5, 1, vehicle_name=name).get()
-    c.landAsync(timeout_sec=45, vehicle_name=name).get()
-    deadline = time.monotonic() + 8
-    s = state(c, name)
-
-    def on_platform(s):
-        # Cosys simGetCollisionInfo resets has_collided on read. Timestamp and
-        # contact geometry survive other telemetry readers and identify the hit.
-        return (
-            s["collision"]["timestampNs"] >= started
-            and s["collision"]["normalLocalNed"]["z"] < -0.9
-            and abs(s["positionWorldM"]["z"] - home(name)["z"]) < 0.3
-            and math.hypot(
-                s["positionWorldM"]["x"] - home(name)["x"],
-                s["positionWorldM"]["y"] - home(name)["y"],
-            )
-            < 1.2
-            and distance(s["velocityLocalNedMps"], dict(x=0, y=0, z=0)) < 0.1
-        )
-
-    while not s["landed"] and not on_platform(s) and time.monotonic() < deadline:
-        time.sleep(0.2)
-        s = state(c, name)
-    if not s["landed"] and not on_platform(s):
-        raise RuntimeError(f"{name} has no verified ground contact")
-    assert c.armDisarm(False, vehicle_name=name)
-    time.sleep(0.3)
-    s = state(c, name)
-    if not s["landed"]:
-        raise RuntimeError(f"{name} did not report landed after ground contact and disarm")
-    c.enableApiControl(False, vehicle_name=name)
-    return state(c, name)
 
 
 def validate_waypoint(point):

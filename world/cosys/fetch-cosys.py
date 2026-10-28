@@ -48,7 +48,7 @@ for entry in lock["files"]:
                 raise SystemExit("Archive contains an unsafe path")
         archive.extractall(destination)
     if entry["name"].startswith("AirSim"):
-        for patch in ("airsim-ue58.patch", "airsim-geodesy.patch"):
+        for patch in ("airsim-ue58.patch", "airsim-geodesy.patch", "airsim-sensor.patch"):
             subprocess.run(
                 [
                     "patch",
