@@ -34,6 +34,39 @@
         "enable_animation": false,
         "enable_safety_checker": true
       }
+    },
+    "trellis": {
+      "endpoint": "fal-ai/trellis-2",
+      "arguments": {
+        "texture_size": 4096,
+        "remesh_band": 1,
+        "tex_slat_sampling_steps": 12,
+        "ss_guidance_interval_start": 0.6,
+        "uv_unwrap_smooth_strength": 1,
+        "tex_slat_guidance_interval_start": 0.6,
+        "ss_guidance_strength": 7.5,
+        "shape_slat_guidance_strength": 7.5,
+        "shape_slat_guidance_rescale": 0.5,
+        "uv_unwrap_global_iterations": 1,
+        "shape_slat_guidance_interval_end": 1,
+        "tex_slat_guidance_strength": 1,
+        "uv_unwrap_refine_iterations": 0,
+        "tex_slat_guidance_interval_end": 0.9,
+        "uv_unwrap_angle_threshold_deg": 90,
+        "decimation_target": 2000000,
+        "ss_guidance_interval_end": 1,
+        "shape_slat_sampling_steps": 12,
+        "resolution": 1536,
+        "ss_rescale_t": 5,
+        "shape_slat_rescale_t": 3,
+        "shape_slat_guidance_interval_start": 0.6,
+        "tex_slat_guidance_rescale": 0,
+        "ss_sampling_steps": 12,
+        "ss_guidance_rescale": 0.7,
+        "remesh_project": 1,
+        "tex_slat_rescale_t": 3,
+        "remesh": true
+      }
     }
   },
   "prompt": "Full-body photographic scanning reference, exact front view. The person stands in an A-POSE: both arms extended diagonally outwards and downwards at 40 degrees from the torso, straight elbows, a large clear triangular gap between each arm and the body. BOTH OPEN HANDS held well away from the hips, all ten fingers gently spread and clearly visible, palms facing the camera. Feet separated shoulder-width, legs straight. Entire body, hair, all fingertips and both complete shoes visible with generous margins. Subject: {description}. Clothing: {clothing}. Neutral closed-mouth expression, eyes open, face unobstructed. Real ordinary human, realistic age and build. Exceptionally realistic unretouched photograph with authentic skin pores, natural age detail, fine hairs and subtle asymmetry, natural fabric texture. Soft even neutral light from a large studio light tent, plain light grey seamless background. Frontal camera at mid-body height, 70mm lens, sharp detail across the entire body. One person only. No jewelry, glasses, hats, props, makeup, beauty retouching, branding, text or watermarks.",

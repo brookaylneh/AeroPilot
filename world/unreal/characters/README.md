@@ -41,6 +41,12 @@ the source pose and omits rigging. Meshy recommends disabling remeshing for maxi
 Geometry resolution does not specify texture resolution. Meshy's direct API exposes 2K/4K/8K texture
 selection; fal's schema currently does not. Inspect the delivered maps instead of assuming 4K textures.
 
+Select `--mesh-model trellis` for TRELLIS 2 with the roster seed, 1536 geometry resolution and
+4096-pixel textures. Its recipe pins the documented sampling/guidance defaults, requests the maximum
+exposed decimation target of 2,000,000, and projects remeshed vertices back onto the source surface.
+Higher guidance and more sampling steps are tuning experiments, not a guarantee of better likeness.
+The endpoint returns only a GLB; inventory its embedded material channels before assessing quality.
+
 Compare results using a selection array with required `key` (unique filename slug), `id`, `label`,
 `image_run` and `mesh_run` fields. Entries sharing a character ID must have identical input hashes.
 

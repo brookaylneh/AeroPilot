@@ -96,7 +96,7 @@ def main():
     parser.add_argument("character")
     parser.add_argument("output", type=Path)
     parser.add_argument("--image-run", type=Path)
-    parser.add_argument("--mesh-model", choices=("hunyuan", "meshy"))
+    parser.add_argument("--mesh-model", choices=("hunyuan", "meshy", "trellis"))
     args = parser.parse_args()
     output = args.output.resolve()
     assert output.is_relative_to(ROOT / ".local"), "Generation output must live in .local"
@@ -117,12 +117,17 @@ def main():
         assert source["stage"] == "image" and source["safety_clear"]
         image_path = ROOT / source["files"][0]["path"]
         assert digest(image_path) == source["files"][0]["sha256"]
-        limit = {"hunyuan": 8_000_000, "meshy": 20_000_000}[args.mesh_model]
-        assert image_path.stat().st_size <= limit
+        if args.mesh_model in ("hunyuan", "meshy"):
+            limit = {"hunyuan": 8_000_000, "meshy": 20_000_000}[args.mesh_model]
+            assert image_path.stat().st_size <= limit
+        if args.mesh_model == "trellis":
+            arguments["seed"] = character["seed"]
         if args.mesh_model == "hunyuan":
             assert all(128 <= size <= 5000 for size in source["image_size"])
         image_response = json.loads((image_run / "response.json").read_text())
-        image_key = {"hunyuan": "input_image_url", "meshy": "image_url"}[args.mesh_model]
+        image_key = {"hunyuan": "input_image_url", "meshy": "image_url", "trellis": "image_url"}[
+            args.mesh_model
+        ]
         arguments[image_key] = image_response["images"][0]["url"]
     output.mkdir(parents=True, exist_ok=False)
     result, request_id, seconds = infer(model["endpoint"], arguments, output)
@@ -153,11 +158,12 @@ def main():
         record["safety_clear"] = True
     else:
         record["files"].append(download(result["model_glb"]["url"], output / "model.glb"))
-        record["files"].append(download(result["thumbnail"]["url"], output / "thumbnail.png"))
-        for kind, file in result["model_urls"].items():
-            assert kind.isalnum()
-            if kind != "glb" and file is not None:
-                record["files"].append(download(file["url"], output / f"model.{kind}"))
+        if args.mesh_model in ("hunyuan", "meshy"):
+            record["files"].append(download(result["thumbnail"]["url"], output / "thumbnail.png"))
+            for kind, file in result["model_urls"].items():
+                assert kind.isalnum()
+                if kind != "glb" and file is not None:
+                    record["files"].append(download(file["url"], output / f"model.{kind}"))
         if args.mesh_model == "meshy":
             record["provider_seed"] = result["seed"]
             for index, textures in enumerate(result["texture_urls"]):
