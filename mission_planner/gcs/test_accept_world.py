@@ -1,0 +1,51 @@
+"""The acceptance sorties reach both edges and return through the launch corridor."""
+
+import unittest
+
+from mission_planner.gcs.accept_world import routes, validate_sortie
+from mission_planner.gcs.geodesy import NAMES, fence_vertices, homes, rtl_route, to_geodetic
+from mission_planner.gcs.validation import validate_route
+from world.cosys.terrain import BOUNDS
+
+
+class WorldRoutes(unittest.TestCase):
+    def setUp(self):
+        self.states = [
+            {"id": name, "home": home, "altitude_above_home_m": 0, **home}
+            for name, home in homes().items()
+        ]
+        self.fence = [
+            {
+                "x": round(to_geodetic(p["north_m"], p["east_m"])[0] * 1e7),
+                "y": round(to_geodetic(p["north_m"], p["east_m"])[1] * 1e7),
+            }
+            for p in fence_vertices()
+        ]
+
+    def test_full_sorties_reserve_takeoff_auto_and_rtl_paths(self):
+        plans = routes(self.states)
+        returns = validate_sortie(self.states, plans, {name: self.fence for name in NAMES})
+        for name, boundary in (("Drone1", "min"), ("Drone2", "max")):
+            self.assertLessEqual(
+                min(abs(p["east_m"] - BOUNDS[boundary]["y"] / 100) for p in plans[name]), 50
+            )
+        for state in self.states:
+            last = returns[state["id"]][-1]
+            self.assertEqual(last["altitude_above_home_m"], 0)
+            self.assertEqual(last["north_m"], state["home"]["north_m"])
+            self.assertEqual(last["east_m"], state["home"]["east_m"])
+
+    def test_direct_rtl_from_far_edges_exits_corridor(self):
+        plans = routes(self.states)
+        for state in self.states[:2]:
+            edge = {**state, **plans[state["id"]][2]}
+            with self.assertRaisesRegex(AssertionError, "Route segment exits"):
+                validate_route(rtl_route(edge)[:-1], self.fence)
+
+    def test_route_assignment_rejects_reordered_vehicles(self):
+        with self.assertRaises(AssertionError):
+            routes(list(reversed(self.states)))
+
+
+if __name__ == "__main__":
+    unittest.main()
