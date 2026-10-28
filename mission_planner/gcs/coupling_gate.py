@@ -95,6 +95,16 @@ def diagnostics(fleet):
     }
 
 
+async def command_batch(*commands):
+    tasks = [asyncio.create_task(command) for command in commands]
+    try:
+        return await asyncio.gather(*tasks)
+    finally:
+        for task in tasks:
+            task.cancel()
+        await asyncio.gather(*tasks, return_exceptions=True)
+
+
 async def until(fleet, predicate, timeout, label):
     deadline = time.monotonic() + timeout
     while not predicate(fleet.snapshot()):
@@ -179,6 +189,8 @@ async def run(output, shutdown_file, seconds, speed):
                     ), state
                     assert state["update_rate_hz"] >= 5, (name, state["update_rate_hz"])
                     position = fleet.vehicles[name]["messages"]["GLOBAL_POSITION_INT"]
+                    status = fleet.vehicles[name]["messages"]["SYS_STATUS"]
+                    ekf = fleet.vehicles[name]["messages"]["EKF_STATUS_REPORT"]
                     age = time.monotonic() - fleet.vehicles[name]["times"]["GLOBAL_POSITION_INT"]
                     assert age <= 0.5, (name, "stale position for pose comparison", age)
                     local = ground[name]["position_local_ned_m"]
@@ -199,16 +211,30 @@ async def run(output, shutdown_file, seconds, speed):
                         if state["ground_speed_mps"] >= 1
                         else "transition"
                     )
-                    airborne = (
-                        state["armed"] and state["landed_state"] == MAV.MAV_LANDED_STATE_IN_AIR
+                    airborne = state["armed"] and state["landed_state"] in (
+                        MAV.MAV_LANDED_STATE_IN_AIR,
+                        MAV.MAV_LANDED_STATE_TAKEOFF,
+                        MAV.MAV_LANDED_STATE_LANDING,
                     )
                     if airborne:
+                        assert (
+                            status.onboard_control_sensors_health & MAV.MAV_SYS_STATUS_SENSOR_GPS
+                        ), (
+                            name,
+                            "GPS sensor unhealthy",
+                            status.to_dict(),
+                        )
+                        assert not ekf.flags & MAV.EKF_GPS_GLITCHING, (name, ekf.to_dict())
                         errors[name][label].append(error)
                     if state["mission_current"] is not None:
                         sequences[name].add(state["mission_current"])
                     current[name] = {
                         **ground[name],
                         "mavlink": position.to_dict(),
+                        "sys_status": status.to_dict(),
+                        "sys_status_age_s": time.monotonic()
+                        - fleet.vehicles[name]["times"]["SYS_STATUS"],
+                        "ekf_status_report": ekf.to_dict(),
                         "mavlink_age_s": age,
                         "mavlink_position_neu_m": measured,
                         "ground_truth_position_neu_m": actual,
@@ -268,7 +294,7 @@ async def run(output, shutdown_file, seconds, speed):
             event({"kind": "prearm_wait_started", "telemetry": diagnostics(fleet)})
             await until(fleet, ready_to_arm, 30, "four GPS and prearm health flags")
             event({"kind": "prearm_ready", "telemetry": diagnostics(fleet)})
-            await asyncio.gather(
+            await command_batch(
                 *(
                     command("take_off", {"drone_id": name, "altitude_above_home_m": altitude})
                     for name, altitude in zip(NAMES, altitudes)
@@ -295,7 +321,7 @@ async def run(output, shutdown_file, seconds, speed):
             phase["name"] = "initial_hover"
             await asyncio.sleep(10)
             phase["name"] = "auto"
-            await asyncio.gather(
+            await command_batch(
                 *(
                     command(
                         "fly_route",
@@ -311,7 +337,7 @@ async def run(output, shutdown_file, seconds, speed):
                 "AUTO progress before BRAKE",
             )
             phase["name"] = "brake"
-            await asyncio.gather(*(command("hold", {"drone_id": name}) for name in NAMES))
+            await command_batch(*(command("hold", {"drone_id": name}) for name in NAMES))
             await until(
                 fleet,
                 lambda states: all(
@@ -322,7 +348,7 @@ async def run(output, shutdown_file, seconds, speed):
             )
             await asyncio.sleep(5)
             phase["name"] = "resumed_auto"
-            await asyncio.gather(*(command("resume", {"drone_id": name}) for name in NAMES))
+            await command_batch(*(command("resume", {"drone_id": name}) for name in NAMES))
             await until(
                 fleet,
                 lambda states: all(
@@ -348,7 +374,10 @@ async def run(output, shutdown_file, seconds, speed):
                 )
                 < seconds
             ):
-                assert all(v["airborne"] for v in latest.values()), latest
+                assert all(
+                    v["armed"] and v["landed_state"] == MAV.MAV_LANDED_STATE_IN_AIR
+                    for v in latest.values()
+                ), latest
                 assert time.monotonic() - start_wall < max(seconds * 2, 300), (
                     "Simulator did not sustain requested time"
                 )
@@ -359,7 +388,7 @@ async def run(output, shutdown_file, seconds, speed):
                 for name in NAMES
             }
             phase["name"] = "rtl"
-            await asyncio.gather(*(command("return_home", {"drone_id": name}) for name in NAMES))
+            await command_batch(*(command("return_home", {"drone_id": name}) for name in NAMES))
 
             def landed(states):
                 return all(
@@ -372,7 +401,7 @@ async def run(output, shutdown_file, seconds, speed):
             await takeoff((10, 10, 10, 10))
             await asyncio.sleep(5)
             phase["name"] = "land"
-            await asyncio.gather(*(command("land", {"drone_id": name}) for name in NAMES))
+            await command_batch(*(command("land", {"drone_id": name}) for name in NAMES))
             await until(fleet, landed, 120, "LAND disarm")
 
         monitor = asyncio.create_task(observe())
