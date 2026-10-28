@@ -158,16 +158,13 @@ export default function SearchPanel({
                 const north = points.map((p) => p.north_m),
                   east = points.map((p) => p.east_m);
                 tool('show_on_map', {
-                  target: 'area',
+                  target: 'point',
                   north_m: (Math.min(...north) + Math.max(...north)) / 2,
                   east_m: (Math.min(...east) + Math.max(...east)) / 2,
-                  radius_m:
-                    Math.max(Math.max(...north) - Math.min(...north), Math.max(...east) - Math.min(...east)) /
-                    2,
                 });
               }}
             >
-              Focus planned routes
+              Center search routes
             </button>
           )}
           {search.summary.retained_in_world_mass !== null && (
