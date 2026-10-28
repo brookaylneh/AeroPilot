@@ -24,10 +24,11 @@ Untracked state (data, raw evidence, vendored dependencies, builds, Unreal relea
 Node 22 and Python 3.10+.
 
 ```sh
-npm ci && npm run fonts && npm run build
+npm ci && npm run fonts
 python3 -m venv .venv-cosys && .venv-cosys/bin/pip install -r requirements.txt
 cp .env.example .env
-npm start
+cp deploy/runtime.env.example .local/runtime.env
+npm run build && npm start
 ```
 
 `/` opens the scenario creator and `/mission?case=<id>` mission control. The creator needs a running packaged

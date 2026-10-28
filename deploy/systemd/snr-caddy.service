@@ -1,0 +1,16 @@
+[Unit]
+Description=SNR public HTTPS origin
+After=network-online.target snr-web.service
+Wants=network-online.target
+
+[Service]
+Type=notify
+ExecStart=@ROOT@/.local/toolchains/bin/caddy run --config @ROOT@/deploy/Caddyfile --adapter caddyfile
+Environment=XDG_DATA_HOME=@ROOT@/.local/data/caddy
+Environment=XDG_CONFIG_HOME=@ROOT@/.local/data/caddy-config
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target

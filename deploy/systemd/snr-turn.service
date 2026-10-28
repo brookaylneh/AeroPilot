@@ -1,0 +1,13 @@
+[Unit]
+Description=SNR TURN relay
+Requires=docker.service
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/docker run --rm --init --name snr-turn --network=host --user @UID@:@GID@ --mount type=bind,src=@ROOT@/.secrets/turnserver.conf,dst=/etc/coturn/turnserver.conf,readonly ${SNR_TURN_IMAGE} -c /etc/coturn/turnserver.conf
+ExecStop=/usr/bin/docker stop --time=30 snr-turn
+
+[Install]
+WantedBy=multi-user.target

@@ -4,12 +4,12 @@
 port and telemetry. The JSON files beside it are asset manifests and locks. [Assets](assets.md) lists licences;
 [streaming](streaming.md) covers Pixel Streaming quality.
 
-| Path                      | Purpose                                                              |
-| ------------------------- | -------------------------------------------------------------------- |
-| `ScenarioStudio/Source/`  | C++ game module                                                      |
-| `ScenarioStudio/Scripts/` | Editor Python operations, run with `scripts/author-unreal.sh <name>` |
-| `scripts/`                | Build, package, stage, run and stream                                |
-| `docker/`                 | Editor, runtime and Fab images; `runtime.env.example`                |
+| Path                      | Purpose                                                                               |
+| ------------------------- | ------------------------------------------------------------------------------------- |
+| `ScenarioStudio/Source/`  | C++ game module                                                                       |
+| `ScenarioStudio/Scripts/` | Editor Python operations, run with `scripts/author-unreal.sh <name>`                  |
+| `scripts/`                | Build, package, stage, run and stream                                                 |
+| `docker/`                 | Editor, runtime and Fab images; runtime configuration in `deploy/runtime.env.example` |
 
 Licensed content (`Content/`, `Plugins/`) and engine output are not tracked. Packaged builds, releases and the
 `Live` link live in `.local/unreal/`.

@@ -113,7 +113,112 @@ bash world/unreal/scripts/unreal-container.sh exec bash world/unreal/scripts/pac
 
 The build CPU limit is a packaging setting; it does not select the live simulation profile.
 
+## Installed services
+
+`runtime.env.example` is the single runtime configuration: copy it to `.local/runtime.env` before
+building or installing. Its values contain no secrets. Keep the copied file in sync when changing a
+profile. The installer renders the repository path and service identity into the tracked systemd units.
+
+```sh
+cp deploy/runtime.env.example .local/runtime.env
+export PATH="$PWD/.local/toolchains/bin:$PATH"
+set -a
+. .local/runtime.env
+set +a
+bash deploy/fetch-caddy.sh
+bash deploy/fetch-browser.sh
+npm run build
+bash world/unreal/scripts/stage-live-release.sh
+sudo bash deploy/install-services.sh
+sudo systemctl start snr-turn snr-signalling snr-unreal snr-mission snr-web
+# Start Caddy after the security group permits HTTP and HTTPS.
+sudo systemctl start snr-caddy
+```
+
+Acquisition scripts require new destinations; do not rerun them over installed toolchains.
+Units start at boot, fail visibly and do not restart automatically after errors.
+`journalctl -u snr-<service>` records their output. Restart only the affected installed unit after a fix.
+The packaged renderer retains the SM5, native 1080p60 H.264 profile and six-CPU limit for parity.
+
+| Route or endpoint                | Purpose                                                       | Listener / upstream                                             |
+| -------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------- |
+| `https://35-81-229-78.sslip.io/` | Redirect to `/studio`                                         | Caddy, 80/443 TCP                                               |
+| `/studio`                        | Scenario Creator                                              | web, `127.0.0.1:3001`                                           |
+| `/mission?case=<uuid>`           | Mission Control                                               | web, `127.0.0.1:3001`                                           |
+| `/api/mission`                   | Mission WebSocket                                             | web origin check, then `127.0.0.1:8765`                         |
+| `/api/unreal/status`             | Renderer readiness and occupancy                              | web, signalling health                                          |
+| `/api/stream`                    | Pixel Streaming player WebSocket                              | web origin check, then `127.0.0.1:8080`                         |
+| `/healthz`                       | All six units plus mission, renderer and TURN protocol health | web; 503 if any check fails                                     |
+| Internal streamer                | Unreal to signalling                                          | `127.0.0.1:8888`                                                |
+| Internal Cosys RPC               | Native simulation control                                     | `127.0.0.1:41451`                                               |
+| Internal MAVLink                 | Four SITL telemetry inputs                                    | `127.0.0.1:14600–14603` UDP                                     |
+| Internal RC input                | Four SITL inputs                                              | `127.0.0.1:5501,5511,5521,5531` UDP                             |
+| TURN                             | Browser relay control                                         | `172.31.61.189:3478` TCP/UDP, public EIP translation            |
+| TURN relay                       | Relayed media                                                 | `172.31.61.189:49300–49350` UDP                                 |
+| Unreal WebRTC                    | Local media endpoint reached by TURN                          | `49160–49200` UDP; no public ingress required with forced relay |
+| Development                      | One server, reached by SSH tunnel                             | `127.0.0.1:5174`                                                |
+
+Caddy proxies to the web server so production and development share the existing same-origin WebSocket
+checks. The old `/pixel-streaming` path is removed. The root redirects explicitly; unknown paths return 404. TURN and its media endpoints are the network-facing exception to the loopback service rule.
+Caddy's admin endpoint and HTTP/3 are disabled; only TCP 80/443 are needed for the public origin.
+
+The mission service starts idle. The first `/mission?case=<uuid>` connection selects a saved briefing
+and starts the four autopilots. It keeps that mission across browser disconnects and rejects another
+case. Land all aircraft and stop/restart `snr-mission` before choosing another case. No model inference
+or autonomous flight is started merely by connecting a browser.
+
+Run development with `npm run dev`. Vite middleware and API/WebSocket handlers share the single fixed
+listener; reload the browser after changes. Tunnel it with:
+
+```sh
+ssh -i ~/.ssh/snr-oregon -L 5174:127.0.0.1:5174 ubuntu@35.81.229.78
+```
+
+Acceptance uses the installed public origin. Do not allocate temporary listening ports.
+
+```sh
+node --env-file=.local/runtime.env deploy/accept-browser.mjs \
+  https://35-81-229-78.sslip.io .local/evidence/services/<new-browser-run>
+```
+
+The harness creates a scenario, measures one minute of navigation and selected ICE candidates,
+then launches its briefing into Mission Control. It records screenshots, decoded FPS, drops,
+freezes and bitrate. It requires an idle mission service and complete character assets.
+The parity browser runs on AWS and therefore does not establish remote Wi-Fi performance.
+
+The packaged module permanently disables TraceLog through `UE::Trace::Panic()` before the first frame.
+UE 5.8 exposes no runtime flag for its 1985 control listener; the permanent mute prevents that listener
+and subsequent trace updates. The engine logs its standard TraceLog-disabled diagnostic. CSV profiling
+and the native frame/GPU telemetry remain available. Editor tracing is unchanged.
+
+Renderer readiness requires a connected streamer and fresh native `scenarioReady` telemetry. A connected
+signalling socket alone is insufficient. Invalid scenario initialization terminates the renderer visibly.
+
+## Security group
+
+The operator runs these commands with AWS credentials. Do not run an authorize operation again after
+success: AWS rejects duplicate rules. Keep SSH restricted to the existing source address.
+
+```sh
+aws ec2 authorize-security-group-ingress --region us-west-2 --group-id sg-007dd04266b7ed321 \
+  --ip-permissions '[{"IpProtocol":"tcp","FromPort":80,"ToPort":80,"IpRanges":[{"CidrIp":"0.0.0.0/0","Description":"SNR HTTPS redirect and ACME"}]},{"IpProtocol":"tcp","FromPort":443,"ToPort":443,"IpRanges":[{"CidrIp":"0.0.0.0/0","Description":"SNR public HTTPS origin"}]}]'
+aws ec2 revoke-security-group-ingress --region us-west-2 --group-id sg-007dd04266b7ed321 \
+  --protocol tcp --port 5173 --cidr 0.0.0.0/0
+```
+
+Keep TURN 3478 TCP/UDP and 49300–49350 UDP open. After a browser measurement verifies a selected relay
+candidate, remove direct WebRTC ingress:
+
+```sh
+aws ec2 revoke-security-group-ingress --region us-west-2 --group-id sg-007dd04266b7ed321 \
+  --protocol udp --port 49160-49200 --cidr 0.0.0.0/0
+```
+
 ## Sources
+
+- [Caddy reverse proxy and WebSockets](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy)
+- [Caddy systemd service guidance](https://caddyserver.com/docs/running)
+- [AWS security-group ingress CLI](https://docs.aws.amazon.com/cli/latest/reference/ec2/authorize-security-group-ingress.html)
 
 - [Ubuntu server NVIDIA installation](https://ubuntu.com/server/docs/nvidia-drivers-installation/)
 - [NVIDIA Container Toolkit installation](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/1.17.8/install-guide.html)

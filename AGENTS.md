@@ -33,6 +33,14 @@
 - Tests live beside their code (`test_*.py`, `*.test.ts`).
 - Evaluator truth is private and used only for explicitly requested evaluation.
 
+# Serving
+
+- Installed services and fixed ports are defined in `deploy/runtime.env.example` and
+  `deploy/README.md`. Load `.local/runtime.env` for command-line tools.
+- Use one development server: `npm run dev` binds `127.0.0.1:5174`, reached by SSH
+  tunnel. Tests and acceptance use installed services or that documented dev port.
+  Never choose a new port. Do not run a second dev server.
+
 # Running
 
 - `.venv-cosys` installs `requirements.txt`; fal deployment uses Python 3.12 `.venv-fal`
