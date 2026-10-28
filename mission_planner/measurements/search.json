@@ -1,0 +1,726 @@
+{
+  "acceptance": null,
+  "auditCommands": [
+    "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=$PWD .venv-cosys/bin/python .local/evidence/search/stage1/search-audit.py",
+    "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=$PWD .venv-cosys/bin/python .local/evidence/search/stage1/search-prior-audit.py",
+    "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=$PWD .venv-cosys/bin/python .local/evidence/search/stage1/search-camera-audit.py",
+    "PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=$PWD .venv-cosys/bin/python .local/evidence/search/stage1/terrain-spacing-audit.py"
+  ],
+  "auditScriptHashes": {
+    "search-audit.py": "24f031865e0fdf35726d5da6b9b6f6c39fed0f178d43ed23a765928b75bcbf70",
+    "search-camera-audit.py": "a70406a9204f4a86b83a3b87534fc6d85f767e05a776d7bf979bc3a17f11ddf8",
+    "search-prior-audit.py": "e169f4852786d726823d29fd9dffaafaaa25f84353cf49d17c4d873f1de3d56f",
+    "terrain-spacing-audit.py": "b47b1b500deda040ce691e690155e9e2b18c0813aae7432f8605a33bbc7917ba"
+  },
+  "baseCommit": "93e1b07",
+  "branch": "search-planning",
+  "camera": {
+    "agl_range_m": [30.202649072039446, 30.493710315556044],
+    "input_manifest_sha256": "13e2614be57cb1993e1b77fa5010723a102681ef0b10811791d7c9a8ea2d6361",
+    "records": 490,
+    "roundtrip_max_px": 2.0515419088189537e-10,
+    "source": "Existing Camera with saved metadata; no simulator connection."
+  },
+  "checks": {
+    "camera_geometry": "exit 0; camera-audit.log",
+    "documentation": "Prettier initially reported formatting in the new README/JSON; formatted before final verification.",
+    "explicit_partial_audit": "exit 0; audit.log",
+    "full_manifest_reduction": "exit 1: missing adult-kelvin-forest/inference.json; full-reduction.log",
+    "implementation_checks": "not run: Stage 2 not started",
+    "npm_ci": "exit 0; npm-ci.log",
+    "prior_fit": "exit 0; prior-audit.log",
+    "terrain_spacing": "exit 0; terrain-spacing.json"
+  },
+  "counts": {
+    "capture_records": 539,
+    "captured_conditions": 11,
+    "containing_frames": 61,
+    "empty_frames": 310,
+    "inferred_conditions": 10,
+    "inferred_frames": 490,
+    "manifest_conditions": 26,
+    "partial_frames": 119
+  },
+  "design": {
+    "airborne_budget_minutes": 30,
+    "baseline_pan_fps": 58.85536463274045,
+    "baseline_pan_source": "mission_planner/measurements/gcs-acceptance.json#/performance",
+    "capture_spacing_m": 12,
+    "combination": "Per-cell max qualified look POD; conditional incremental hazard for repeated negatives",
+    "comparison_minutes": [5, 10, 15, 20],
+    "endurance_status": "Proposed simulation policy; not a measured aircraft limit",
+    "footprint_to_capture_spacing": 1.9693337012148084,
+    "grid_cell_m": 4,
+    "minimum_return_reserve_minutes": 5,
+    "moduleEstimates": [
+      {
+        "concept": "Quoted profile and prompt validation",
+        "estimated_lines": 140,
+        "path": "mission_planner/search/subject.py"
+      },
+      {
+        "concept": "Published radial prior and fit",
+        "estimated_lines": 120,
+        "path": "mission_planner/search/prior.py"
+      },
+      {
+        "concept": "Polygon-clipped grid mass",
+        "estimated_lines": 100,
+        "path": "mission_planner/search/grid.py"
+      },
+      {
+        "concept": "Deterministic calibration reduction",
+        "estimated_lines": 160,
+        "path": "mission_planner/search/detection.py"
+      },
+      {
+        "concept": "Capture footprints and qualified cell POD",
+        "estimated_lines": 100,
+        "path": "mission_planner/search/coverage.py"
+      },
+      {
+        "concept": "Correlated negative updates",
+        "estimated_lines": 90,
+        "path": "mission_planner/search/belief.py"
+      },
+      {
+        "concept": "Relative-home terrain-following routes",
+        "estimated_lines": 90,
+        "path": "mission_planner/search/terrain.py"
+      },
+      {
+        "concept": "Candidate allocation and comparison",
+        "estimated_lines": 240,
+        "path": "mission_planner/search/planner.py"
+      },
+      {
+        "concept": "Plan lifecycle and batch flight dispatch",
+        "estimated_lines": 140,
+        "path": "mission_planner/search/execution.py"
+      },
+      {
+        "concept": "Search tool schemas and compact results",
+        "estimated_lines": 150,
+        "path": "mission_planner/search/tools.py"
+      },
+      {
+        "concept": "Dependency-free height sampler extraction",
+        "estimated_lines": 60,
+        "path": "world/cosys/terrain.py"
+      },
+      {
+        "concept": "Heat raster, routes, area, point, footprints",
+        "estimated_lines": 160,
+        "path": "mission_planner/gcs/SearchLayers.tsx"
+      },
+      {
+        "concept": "Subject evidence, point marking, POS/time",
+        "estimated_lines": 180,
+        "path": "mission_planner/gcs/SearchPanel.tsx"
+      },
+      {
+        "concept": "Fleet approval card",
+        "estimated_lines": 110,
+        "path": "mission_planner/gcs/SearchApproval.tsx"
+      },
+      {
+        "concept": "Domain and acceptance invariants",
+        "estimated_lines": 500,
+        "path": "Adjacent `test_*.py` / `*.test.mjs"
+      }
+    ],
+    "tools": [
+      "record_subject_profile",
+      "define_search_area",
+      "plan_search",
+      "start_search",
+      "get_probability_map",
+      "get_coverage"
+    ],
+    "track_spacing_candidates_m": [12, 16, 20, 24, 32, 40],
+    "viewports": [
+      [1920, 1080],
+      [1440, 900]
+    ]
+  },
+  "detectionModel": {
+    "conditions": [
+      {
+        "capture_records": 49,
+        "condition": "adult-kelvin",
+        "inference": true,
+        "sha256": "74972deedef78ebcd5b22c3ee509bcf4e81e18e771eca8228c5561cb76bd9d38"
+      },
+      {
+        "capture_records": 49,
+        "condition": "adult-etta",
+        "inference": true,
+        "sha256": "161160c5bf9c021df8cb4b4edcabf1b52d3a9b693c3398fb5b8935119dcc646f"
+      },
+      {
+        "capture_records": 49,
+        "condition": "senior-walter",
+        "inference": true,
+        "sha256": "1b5202b799d4b90df53ff5dde7348cc22abc3f338886bada9e4df125ba0c6d9d"
+      },
+      {
+        "capture_records": 49,
+        "condition": "senior-sookja",
+        "inference": true,
+        "sha256": "0e9c5ac252d73640c1b81f3a429552e93f0831bfec545dff90a29d1977c332c2"
+      },
+      {
+        "capture_records": 49,
+        "condition": "child-01",
+        "inference": true,
+        "sha256": "81952648572b46312dbe1ca244e301729f355c4c7fccbb327bfff63a53fcadd2"
+      },
+      {
+        "capture_records": 49,
+        "condition": "child-02",
+        "inference": true,
+        "sha256": "d7dc9f3838b6ad168377874cf3fee7937bfcfaebf560b4db9cb81b93594fc8fd"
+      },
+      {
+        "capture_records": 49,
+        "condition": "child-03",
+        "inference": true,
+        "sha256": "bbfa8e7b02e8aa57c497da9e0c9ffa0cb28faaaf8d2a6e8858b778dadf44f2c8"
+      },
+      {
+        "capture_records": 49,
+        "condition": "child-04",
+        "inference": true,
+        "sha256": "53860d6af10dee6929a05894e760205c68ad7f333adfc0d21675cecdd3267920"
+      },
+      {
+        "capture_records": 49,
+        "condition": "child-05",
+        "inference": true,
+        "sha256": "8b544cd3ee8238d91b10e9d1cb32c3a56a755faecfd880d050393ebeab1eee92"
+      },
+      {
+        "capture_records": 49,
+        "condition": "adult-kelvin-blue",
+        "inference": true,
+        "sha256": "35da208da2be81b5f20663450590d44b68906f411dfb556fa943cd5632fb3e47"
+      },
+      {
+        "capture_records": 49,
+        "condition": "adult-kelvin-forest",
+        "inference": false
+      },
+      {
+        "capture_records": 0,
+        "condition": "adult-kelvin-sand",
+        "inference": false
+      },
+      {
+        "capture_records": 0,
+        "condition": "adult-kelvin-charcoal",
+        "inference": false
+      },
+      {
+        "capture_records": 0,
+        "condition": "adult-kelvin-cream",
+        "inference": false
+      },
+      {
+        "capture_records": 0,
+        "condition": "child-01-blue",
+        "inference": false
+      },
+      {
+        "capture_records": 0,
+        "condition": "child-01-forest",
+        "inference": false
+      },
+      {
+        "capture_records": 0,
+        "condition": "child-01-sand",
+        "inference": false
+      },
+      {
+        "capture_records": 0,
+        "condition": "child-01-charcoal",
+        "inference": false
+      },
+      {
+        "capture_records": 0,
+        "condition": "child-01-cream",
+        "inference": false
+      },
+      {
+        "capture_records": 0,
+        "condition": "adult-kelvin-lost",
+        "inference": false
+      },
+      {
+        "capture_records": 0,
+        "condition": "adult-kelvin-injured",
+        "inference": false
+      },
+      {
+        "capture_records": 0,
+        "condition": "child-01-lost",
+        "inference": false
+      },
+      {
+        "capture_records": 0,
+        "condition": "child-01-injured",
+        "inference": false
+      },
+      {
+        "capture_records": 0,
+        "condition": "adult-kelvin-daypack",
+        "inference": false
+      },
+      {
+        "capture_records": 0,
+        "condition": "adult-kelvin-native",
+        "inference": false
+      },
+      {
+        "capture_records": 0,
+        "condition": "child-01-native",
+        "inference": false
+      }
+    ],
+    "glimmer": {
+      "auc": 0.9979309631366599,
+      "aucPopulation": "SAM detection crops only, labelled by crop presence",
+      "classCounts": [376, 617],
+      "decision": "keep",
+      "decisionRule": "AUC >= 0.95; >= 98% crop-positive retention; >= 80% rejection separately for SAM background crops and grass. Zero-count groups have no measured rate.",
+      "grassAuc": 0.9990272262400826,
+      "grassTrials": 993,
+      "medianOutsideMass": 0.012735751878735213,
+      "negativeRejection": {
+        "grass": {
+          "rate": 0.998992950654582,
+          "rejected": 992,
+          "trials": 993
+        },
+        "samBackground": {
+          "rate": 0.9920212765957447,
+          "rejected": 373,
+          "trials": 376
+        }
+      },
+      "operatingSamBackground": {
+        "rate": null,
+        "rejected": 0,
+        "trials": 0
+      },
+      "operatingSamThreshold": 0.3,
+      "operatingSamThresholdComparison": ">= (requested diagnostic; SAM serving uses strict >)",
+      "platt": {
+        "a": 33.68791091457625,
+        "b": -4.291778770883294
+      },
+      "plattMethod": "sigmoid(a * P(yes) + b); Platt smoothing; SAM detection crops only; in-sample fit",
+      "reliability": [
+        [0.0, 0.1, 383, 0.028042655749030497, 0.02610966057441253],
+        [0.1, 0.2, 24, 0.1607336676576375, 0.9583333333333334],
+        [0.2, 0.3, 47, 0.25759251726506494, 0.9574468085106383],
+        [0.3, 0.4, 34, 0.3556332077476959, 1.0],
+        [0.4, 0.5, 42, 0.4408749697342519, 1.0],
+        [0.5, 0.6, 148, 0.5621547524354338, 1.0],
+        [0.6, 0.7, 178, 0.6528867343760747, 1.0],
+        [0.7, 0.8, 136, 0.7314653027815049, 1.0],
+        [0.8, 0.9, 1, 0.8175744828610095, 1.0],
+        [0.9, 1.0, 0, null, null]
+      ],
+      "reliabilityColumns": ["lower", "upper", "n", "meanP", "observed"],
+      "threshold": 0.1329642298905696,
+      "trueRetention": 0.9805510534846029
+    },
+    "included_conditions": [
+      "adult-kelvin",
+      "adult-etta",
+      "senior-walter",
+      "senior-sookja",
+      "child-01",
+      "child-02",
+      "child-03",
+      "child-04",
+      "child-05",
+      "adult-kelvin-blue"
+    ],
+    "lateral": [
+      {
+        "all_frames": 70,
+        "along_present": [0],
+        "contains": 10,
+        "empty": 40,
+        "lateral_m": 0,
+        "p": 0.8,
+        "partial": 20,
+        "successes": 8,
+        "wilson95": [0.49016247153664183, 0.9433178485456247],
+        "wilson_bonferroni": [0.3925931350522803, 0.9611720762756124]
+      },
+      {
+        "all_frames": 70,
+        "along_present": [0],
+        "contains": 10,
+        "empty": 40,
+        "lateral_m": 4,
+        "p": 1.0,
+        "partial": 20,
+        "successes": 10,
+        "wilson95": [0.7224672001371107, 0.9999999999999999],
+        "wilson_bonferroni": [0.5896086855464875, 1.0]
+      },
+      {
+        "all_frames": 70,
+        "along_present": [0],
+        "contains": 10,
+        "empty": 40,
+        "lateral_m": 8,
+        "p": 0.9,
+        "partial": 20,
+        "successes": 9,
+        "wilson95": [0.5958499732047615, 0.9821237869049271],
+        "wilson_bonferroni": [0.48309343315541897, 0.9885935152817712]
+      },
+      {
+        "all_frames": 70,
+        "along_present": [0],
+        "contains": 10,
+        "empty": 40,
+        "lateral_m": 12,
+        "p": 1.0,
+        "partial": 20,
+        "successes": 10,
+        "wilson95": [0.7224672001371107, 0.9999999999999999],
+        "wilson_bonferroni": [0.5896086855464875, 1.0]
+      },
+      {
+        "all_frames": 70,
+        "along_present": [0],
+        "contains": 10,
+        "empty": 40,
+        "lateral_m": 16,
+        "p": 1.0,
+        "partial": 20,
+        "successes": 10,
+        "wilson95": [0.7224672001371107, 0.9999999999999999],
+        "wilson_bonferroni": [0.5896086855464875, 1.0]
+      },
+      {
+        "all_frames": 70,
+        "along_present": [0, 12],
+        "contains": 11,
+        "empty": 40,
+        "lateral_m": 20,
+        "p": 1.0,
+        "partial": 19,
+        "successes": 11,
+        "wilson95": [0.7411670330319684, 1.0],
+        "wilson_bonferroni": [0.6124584707141765, 1.0]
+      },
+      {
+        "all_frames": 70,
+        "along_present": [],
+        "contains": 0,
+        "empty": 70,
+        "lateral_m": 24,
+        "p": null,
+        "partial": 0,
+        "successes": 0,
+        "wilson95": null,
+        "wilson_bonferroni": null
+      }
+    ],
+    "manifest_sha256": "051ef537f2ce93d096e9c64779b41a59c95b087477c05546c048e0302461bf1b",
+    "model": {
+      "altitude_agl_m": 30,
+      "footprint_length_m": 23.6320044145777,
+      "footprint_width_m": 42.01245229258258,
+      "glimmer_comparison": ">=",
+      "integration": "Symmetric piecewise linear interpolation at nominal offsets 0,4,...24; geometric zero at 24; clipped to ideal nadir footprint half-width; zero outside. Envelope assumes independent Bernoulli trials; not a field confidence guarantee.",
+      "sam_comparison": ">",
+      "sam_threshold": 0.3,
+      "sweep_width_bonferroni_wilson_envelope_m": [23.113078613756215, 41.512765955569144],
+      "sweep_width_m": 40.159329528212524
+    },
+    "runner_usage": {
+      "fal_requests": 0,
+      "fal_runners_started": 0
+    },
+    "status": "provisional_partial_audit_not_full_manifest_reduction",
+    "terrain": {
+      "above_home_band_m": {
+        "Drone1": [23.4953125, 64.1515625],
+        "Drone2": [23.4953125, 64.1515625],
+        "Drone3": [23.4953125, 64.1515625],
+        "Drone4": [23.4953125, 64.1515625]
+      },
+      "bound_m": 804.672,
+      "height_range_m": [4.9453125, 45.6015625],
+      "heightfield_sha256": "a523142668a99568c9bdd22ef0b153a06b8791c085ed41caa6f0e6b16750a4c1",
+      "home_height_m": {
+        "Drone1": 11.45,
+        "Drone2": 11.45,
+        "Drone3": 11.45,
+        "Drone4": 11.45
+      },
+      "proof": "Bilinear interpolation is a convex combination of vertices: vertex bounds cover the entire square, not just sampled points.",
+      "shape": [2017, 2017],
+      "vertex_pitch_m": 0.7982857142857143,
+      "vertices": 4068289
+    },
+    "throughput": {
+      "capture_spacing_m": 12,
+      "errors": 0,
+      "fleet": 4,
+      "glimmer_single_candidate_p50_s": 0.15830277399800252,
+      "glimmer_single_candidate_p90_s": 0.19408759679936355,
+      "n": 102,
+      "offered_fps": 1.7,
+      "offered_seconds": 60,
+      "p90_s": 0.34848299839213726,
+      "proposed_fps": 1.6666666666666667,
+      "proposed_speed_mps": 5,
+      "source": "mission_planner/measurements/models.json#/cases/sam_load",
+      "source_sha256": "29be915877885c25a9bab47f8cdc663de479498833746a2221aa54152c113500",
+      "speed_ceiling_mps": 5.1
+    }
+  },
+  "evidence": ".local/evidence/search/stage1",
+  "limitations": [
+    "Only dementia distance percentiles verified; other category priors blocked.",
+    "Original Stone/Frost allocation treatment and requested NSS/IAMSAR terms not directly verified.",
+    "Manifest has no exclusions despite missing captures/inference; partial cohort is an explicit audit, not a repaired full reduction.",
+    "Old renderer/characters, one-sided nominal bins, sparse along-track phases, assumed edge taper/symmetry and within-band altitude transfer.",
+    "Wilson envelope does not cover renderer transfer or correlated conditions; no field coverage guarantee.",
+    "Proposed endurance and reserve are policy, not aircraft measurements.",
+    "SAM offered load does not prove complete detection/verification throughput or multiple-prompt capacity.",
+    "Fleet batch safety API is coupling-owned integration work; geometry extraction alone does not remove AirSim import from Camera.",
+    "No real live capture or processed-negative outcome source connected; geometric coverage alone is not negative evidence.",
+    "No implementation, selected plan, POS comparison, tool benchmark, acceptance, screenshot or new FPS measurement.",
+    "Stationary radial prior and domain-conditioned probabilities omit motion and outside-domain investigation."
+  ],
+  "plan": null,
+  "posComparison": null,
+  "prior": {
+    "fit": "CDF piecewise linear in squared radius from (0,0) through published percentiles; constant density per annulus. Beyond r95, survival = 0.05 exp(-lambda (r^2-r95^2)), with lambda equal to final CDF slope / 0.05. This tail is a modelling assumption, not observed data.",
+    "normalization": "At implementation integrate cells clipped to read-back fence and searchable terrain bounds, retain preconditioning mass and divide by its sum; never renormalize to the operator search subarea.",
+    "pdf_page": 4,
+    "printed_page": 164,
+    "source": "https://www.dbs-sar.com/LPB/Dementia.pdf",
+    "source_sha256": "00e038920042023b26837ff263b848d0994ba00afb41efacc71d4342844450b3",
+    "tables": [
+      {
+        "category": "dementia",
+        "cdf": [0.25, 0.5, 0.75, 0.95],
+        "density_per_m2": [
+          8.841941282883075e-7, 1.4468631190172303e-7, 2.679376146328204e-8, 9.752141120826918e-10
+        ],
+        "n": 95,
+        "radii_m": [300.0, 800.0, 1900.0, 8300.0],
+        "residuals": [0.0, 0.0, 0.0, 0.0],
+        "tail_hazard_per_m2": 6.127450980392155e-8,
+        "terrain": "temperate_mountainous"
+      },
+      {
+        "category": "dementia",
+        "cdf": [0.25, 0.5, 0.75, 0.95],
+        "density_per_m2": [
+          8.841941282883075e-7, 8.744777092961284e-8, 1.6717956207131862e-8, 4.0271999770216426e-10
+        ],
+        "n": 175,
+        "radii_m": [300.0, 1000.0, 2400.0, 12800.0],
+        "residuals": [0.0, 0.0, 0.0, 0.0],
+        "tail_hazard_per_m2": 2.530364372469635e-8,
+        "terrain": "temperate_flat"
+      },
+      {
+        "category": "dementia",
+        "cdf": [0.25, 0.5, 0.75, 0.95],
+        "density_per_m2": [
+          7.957747154594766e-8, 3.048945269959681e-8, 1.3262911924324612e-8, 2.3065933781434102e-9
+        ],
+        "n": 14,
+        "radii_m": [1000.0, 1900.0, 3100.0, 6100.0],
+        "residuals": [0.0, 0.0, 0.0, 0.0],
+        "tail_hazard_per_m2": 1.4492753623188403e-7,
+        "terrain": "dry_mountainous"
+      },
+      {
+        "category": "dementia",
+        "cdf": [0.25, 0.5, 0.75, 0.95],
+        "density_per_m2": [
+          3.1830988618379064e-7, 3.444912188136263e-8, 7.651679956341123e-9, 5.041334909467701e-10
+        ],
+        "n": 15,
+        "radii_m": [500.0, 1600.0, 3600.0, 11800.0],
+        "residuals": [0.0, 0.0, 0.0, 0.0],
+        "tail_hazard_per_m2": 3.1675641431738986e-8,
+        "terrain": "dry_flat"
+      },
+      {
+        "category": "dementia",
+        "cdf": [0.25, 0.5, 0.75, 0.95],
+        "density_per_m2": [
+          8.841941282883075e-7, 7.105131388031041e-8, 8.812566062674161e-9, 4.2864245378910665e-10
+        ],
+        "n": 336,
+        "radii_m": [300.0, 1100.0, 3200.0, 12600.0],
+        "residuals": [0.0, 0.0, 0.0, 0.0],
+        "tail_hazard_per_m2": 2.6932399676811195e-8,
+        "terrain": "urban"
+      }
+    ],
+    "unit": "Published kilometre table converted to metres; independently rounded mile table is not substituted.",
+    "unsupported": "Other subject-category percentile tables not verified; their prior construction is blocked."
+  },
+  "recordedAt": "2026-10-28T18:57:08.233292+00:00",
+  "schemaVersion": 1,
+  "scope": {
+    "fal_requests": 0,
+    "fal_runners_started": 0,
+    "flight_commands": 0,
+    "installed_services_touched": false,
+    "services_started": 0
+  },
+  "screenshots": [],
+  "slotDocumentationCommit": "4470ac4",
+  "sources": [
+    {
+      "evidence": ".local/evidence/search/stage1/dementia.download",
+      "pages": {
+        "pdf": 4,
+        "printed": 164
+      },
+      "role": "ISRID horizontal distance percentiles; dementia only",
+      "sha256": "00e038920042023b26837ff263b848d0994ba00afb41efacc71d4342844450b3",
+      "status": "verified",
+      "url": "https://www.dbs-sar.com/LPB/Dementia.pdf"
+    },
+    {
+      "evidence": ".local/evidence/search/stage1/categories.download",
+      "pages": {
+        "printed": [91, 92]
+      },
+      "role": "ISRID attribution and category precedence",
+      "sha256": "f180b2ba661af7e360a19cfadd201122f2adb6b0e2b0ec75a0212681a9ce3e79",
+      "status": "verified",
+      "url": "https://www.dbs-sar.com/LPB/8SubjectCategories.pdf"
+    },
+    {
+      "evidence": ".local/evidence/search/stage1/limitations.download",
+      "pages": {
+        "printed": 31
+      },
+      "role": "No supplied weights for terrain/history",
+      "sha256": "9c1ba4fd7a926c8da3a370739cc018cb94121b388243c851b8957312e23d6e8b",
+      "status": "verified",
+      "url": "https://www.dbs-sar.com/LPB/3Limitations.pdf"
+    },
+    {
+      "evidence": ".local/evidence/search/stage1/koopman.download",
+      "pages": {
+        "equation": 27,
+        "pdf": [40, 41],
+        "printed": [28, 29]
+      },
+      "role": "Lateral pass curve, sweep width and rate",
+      "sha256": "61716312a70e5f15590d64afb4094353f4046f22dd754665bd052ca43238deab",
+      "status": "verified",
+      "url": "https://tile.loc.gov/storage-services/public/gdcmassbookdig/searchscreening56koop/searchscreening56koop.pdf"
+    },
+    {
+      "evidence": ".local/evidence/search/stage1/notes.download",
+      "pages": {
+        "printed": [382, 383]
+      },
+      "role": "Frost attribution; PSR=W*speed*density; POC=POA",
+      "sha256": "98afbd1b20d8e46186da517a6dfc038be7f72055d2632eb3ad4aea932121cecb",
+      "status": "verified_authoritative_secondary",
+      "url": "https://www.dbs-sar.com/LPB/Notes.pdf"
+    },
+    {
+      "evidence": ".local/evidence/search/stage1/byu.download",
+      "pages": {
+        "printed": [709, 710]
+      },
+      "role": "Probability accumulation subject to flight-time budget; numerical aircraft results not reused",
+      "sha256": "7a25aacf4ff410643b8a6c982f25dd6e7d515625f2da067c2fe566457c1ab136",
+      "status": "verified_with_font_extraction_limitation",
+      "url": "https://faculty.cs.byu.edu/~mike/mikeg/papers/LinGoodrichIROS2009.pdf"
+    },
+    {
+      "evidence": ".local/evidence/search/stage1/dji.download",
+      "pages": {},
+      "role": "55-minute no-payload windless maximum ending at zero battery, about 8 m/s; not SITL endurance",
+      "sha256": "5a26b97e440e9227f54192c3d29d0e4d4584910af20589031cef6e981f194e36",
+      "status": "verified",
+      "url": "https://enterprise.dji.com/matrice-350-rtk/specs"
+    },
+    {
+      "evidence": ".local/evidence/search/stage1/uscg.download",
+      "pages": {},
+      "role": "NSS/IAMSAR terms not directly verified",
+      "sha256": "47fcb1b22244784711b966110a8bae42a9c760e1d39ddfc69fd4ac3cddc98a84",
+      "status": "blocked_http_403",
+      "url": "https://media.defense.gov/2025/Jul/17/2003756425/-1/-1/0/CI_16130_2H.PDF"
+    },
+    {
+      "evidence": ".local/evidence/search/stage1/nss.download",
+      "pages": {},
+      "role": "Older addendum not read",
+      "sha256": "b099575cc5124775bf4e963cae3474be2f014a2bd2020186f8c674b231da69e7",
+      "status": "blocked_http_403",
+      "url": "https://www.dco.uscg.mil/Portals/9/CG-5R/manuals/COMDTINST%20M16130.2F.pdf"
+    },
+    {
+      "evidence": ".local/evidence/search/stage1/frost-uscg.download",
+      "pages": {},
+      "role": "Original Cooper/Frost/Robe not read",
+      "sha256": "151f686cdee04702a4eae318ddf999252262316422385c6cfb9584305db9b6c6",
+      "status": "blocked_http_403",
+      "url": "https://www.dco.uscg.mil/Portals/9/CG-5R/manuals/LandSearchMethodsReview.pdf"
+    },
+    {
+      "evidence": ".local/evidence/search/stage1/frost-sarinz.download",
+      "pages": {},
+      "role": "Original Frost not read",
+      "sha256": "6dc9c7fc93bb488bb0520a6c780a8d3c0fb5486a4711aca49b4c53fac7393023",
+      "status": "unavailable_landing_page",
+      "url": "https://www.sarinz.com/index.cfm/3,112,261/principles_of_search_theory.pdf"
+    },
+    {
+      "evidence": ".local/evidence/search/stage1/stone.download",
+      "pages": {},
+      "role": "Publisher attempt; original Stone allocation treatment not verified",
+      "sha256": "957203faae1920baeccb29cf9d3b264dd4772b6cb8cdab04696803984eaed30b",
+      "status": "blocked_http_403",
+      "url": "https://pubsonline.informs.org/doi/10.1287/opre.19.2.469"
+    },
+    {
+      "role": "IAMSAR mirror not read",
+      "status": "blocked_tls_certificate_verification",
+      "url": "https://news.ncac.mn/uploads/bookSubject/2022-11/637b03cdc0d60.pdf"
+    }
+  ],
+  "stage": 1,
+  "status": "design_audited_with_explicit_blockers_implementation_not_started",
+  "terrainSpacing": {
+    "axis_aligned_test_samples": 6498774,
+    "check_spacing_m": 1,
+    "diagonal_routes": "Not tested; every final leg must be sampled independently.",
+    "home_frame_agreement": true,
+    "max_agl_error_m": 0.10332967967072193,
+    "waypoint_spacing_m": 12
+  },
+  "toolBenchmark": null,
+  "versions": {
+    "cosysairsim": "3.5.0",
+    "numpy": "1.23.5",
+    "pillow": "11.0.0",
+    "ruff": "0.17.3",
+    "scipy": "1.15.3"
+  }
+}

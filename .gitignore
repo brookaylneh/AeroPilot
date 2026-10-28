@@ -2,6 +2,8 @@
 .local/
 node_modules/
 .venv*/
+.venv-cosys
+.venv-fal
 __pycache__/
 *.py[cod]
 .ruff_cache/
