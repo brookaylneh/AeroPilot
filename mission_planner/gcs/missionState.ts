@@ -54,7 +54,18 @@ const object = z.record(z.string(), z.unknown());
 const eventSchema = z.object({
   id: z.string(),
   timestamp_ms: number,
-  kind: z.enum(['operator', 'agent', 'tool_call', 'tool_result', 'approval', 'mode', 'statustext', 'error']),
+  kind: z.enum([
+    'operator',
+    'agent',
+    'tool_call',
+    'tool_running',
+    'tool_result',
+    'approval',
+    'mode',
+    'statustext',
+    'error',
+    'model_usage',
+  ]),
   text: z.string(),
   name: z.string().nullable(),
   arguments: object.nullable(),
@@ -94,7 +105,13 @@ const stateSchema = z.object({
     ),
   agent_busy: z.boolean(),
   approvals: z.array(
-    z.object({ id: z.string(), name: z.string(), arguments: object, source: z.enum(['agent', 'operator']) }),
+    z.object({
+      id: z.string(),
+      call_id: z.string(),
+      name: z.string(),
+      arguments: object,
+      source: z.enum(['agent', 'operator']),
+    }),
   ),
   map_focus: focusSchema.nullable(),
 });

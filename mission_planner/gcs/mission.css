@@ -438,12 +438,12 @@
 .gcs-aircraft.lost .gcs-aircraft-arrow {
   fill: #748184;
 }
-.gcs-aircraft rect {
+.gcs-map-label rect {
   fill: #162127;
   stroke: currentColor;
   stroke-width: 0.7;
 }
-.gcs-aircraft text {
+.gcs-map-label text {
   fill: currentColor;
   font: 11px var(--gcs-mono);
 }
@@ -1011,10 +1011,6 @@
   border-radius: 4px;
   background: #302422;
 }
-.gcs-message.approval {
-  color: #ddc191;
-  font-size: 11px;
-}
 .gcs-tool {
   margin-top: 12px;
   border: 1px solid #3e4f54;
@@ -1069,7 +1065,7 @@
   overflow-y: auto;
 }
 .gcs-approval {
-  margin-top: 20px;
+  margin: 0;
   padding: 16px;
   border: 1px solid #a3854b;
   border-radius: 5px;
@@ -1086,20 +1082,11 @@
   display: flex;
   justify-content: space-between;
   margin-top: 16px;
-  text-transform: capitalize;
   font-size: 14px;
 }
 .gcs-approval p span {
   font-size: 12px;
   color: #d8c9ae;
-}
-.gcs-approval pre {
-  background: #202119;
-  padding: 12px;
-  border-radius: 3px;
-  font: 10px/1.65 var(--gcs-mono);
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
 }
 .gcs-approval small {
   font-size: 10px;
@@ -1465,4 +1452,71 @@
   height: 5px;
   border-radius: 50%;
   background: currentColor;
+}
+
+.gcs-map-label {
+  pointer-events: none;
+}
+.gcs-map-label line {
+  stroke: currentColor;
+  stroke-width: 1;
+  opacity: 0.8;
+}
+.gcs-map-label .gcs-label-age {
+  font-size: 10px;
+}
+.gcs-action-title {
+  flex: 1;
+  font:
+    12px 'DM Sans',
+    sans-serif;
+}
+.gcs-tool-status {
+  flex: none;
+  color: #c6d3d5;
+}
+.gcs-approval-dock {
+  flex: none;
+  padding: 12px 20px;
+  border-top: 1px solid var(--gcs-line);
+}
+.gcs-approval p {
+  margin: 12px 0;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.gcs-approval-arguments {
+  margin: 8px 0;
+}
+.gcs-approval-arguments summary {
+  cursor: pointer;
+  color: #e4d5b9;
+  font-size: 11px;
+}
+.gcs-approval-arguments .gcs-argument-values {
+  max-height: 120px;
+  overflow-y: auto;
+}
+.gcs-argument-values {
+  margin: 8px 0;
+  font-size: 11px;
+}
+.gcs-argument-values > div {
+  display: grid;
+  grid-template-columns: 116px 1fr;
+  gap: 8px;
+  padding: 4px 0;
+}
+.gcs-argument-values dt {
+  color: #b6c4c5;
+}
+.gcs-argument-values dd {
+  margin: 0;
+  font-family: var(--gcs-mono);
+  overflow-wrap: anywhere;
+}
+.gcs-result-error {
+  color: #f0bd9e;
+  font-size: 12px;
+  line-height: 1.6;
 }

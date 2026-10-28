@@ -35,6 +35,14 @@ import {
   type MissionEvent,
   type Vehicle,
 } from './missionState';
+import {
+  actionStatus,
+  actionTitle,
+  approvalSentence,
+  argumentRows,
+  flightLogText,
+  formatValue,
+} from './display';
 import './mission.css';
 
 function clock(seconds: number) {
@@ -58,8 +66,7 @@ function NoVideo({ vehicle, inset = false }: { vehicle: Vehicle | undefined; ins
       {!inset && (
         <div className="gcs-compass">
           <span>HEADING</span>
-          <b>{vehicle && vehicle.heading_deg !== null ? `${Math.round(vehicle.heading_deg)}°` : '—'}</b>
-          <span>DEG</span>
+          <b>{formatValue(vehicle?.heading_deg, '°', 0)}</b>
         </div>
       )}
       <div className="gcs-video-empty">
@@ -80,24 +87,15 @@ function NoVideo({ vehicle, inset = false }: { vehicle: Vehicle | undefined; ins
         <div className="gcs-video-hud">
           <div>
             <span>ALT ABOVE HOME</span>
-            <strong>
-              {vehicle ? vehicle.altitude_above_home_m.toFixed(1) : '—'}
-              <small> m</small>
-            </strong>
+            <strong>{formatValue(vehicle?.altitude_above_home_m, 'm')}</strong>
           </div>
           <div>
             <span>GROUND SPEED</span>
-            <strong>
-              {vehicle ? vehicle.ground_speed_mps.toFixed(1) : '—'}
-              <small> m/s</small>
-            </strong>
+            <strong>{formatValue(vehicle?.ground_speed_mps, 'm/s')}</strong>
           </div>
           <div>
             <span>VERTICAL SPEED</span>
-            <strong>
-              {vehicle ? vehicle.climb_rate_mps.toFixed(1) : '—'}
-              <small> m/s</small>
-            </strong>
+            <strong>{formatValue(vehicle?.climb_rate_mps, 'm/s')}</strong>
           </div>
           <div>
             <span>GPS / SATELLITES</span>
@@ -117,31 +115,45 @@ function DroneLabel({ value }: { value: unknown }) {
     </span>
   ) : null;
 }
-function ToolRow({ event, result }: { event: MissionEvent; result: MissionEvent | undefined }) {
-  const failed = result?.result !== null && result?.result !== undefined && result.result.ok === false;
+function Arguments({ values }: { values: Record<string, unknown> }) {
   return (
-    <details className={`gcs-tool ${failed ? 'failed' : ''}`}>
+    <dl className="gcs-argument-values">
+      {argumentRows(values).map(([label, value]) => (
+        <div key={label}>
+          <dt>{label}</dt>
+          <dd>{value}</dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+function ToolRow({ event, events }: { event: MissionEvent; events: MissionEvent[] }) {
+  const related = events.filter((e) => e.call_id === event.call_id);
+  const result = related.find((e) => e.kind === 'tool_result');
+  const status = actionStatus(related);
+  const drone = droneIds.find((id) => id === event.arguments?.drone_id);
+  return (
+    <details
+      className={`gcs-tool ${status === 'Failed' ? 'failed' : ''}`}
+      data-call-id={event.call_id}
+      data-status={status}
+      style={drone ? { borderLeft: `2px solid ${droneColors[drone]}` } : undefined}
+    >
       <summary>
         <ChevronRight size={13} />
-        <span>{event.name}</span>
-        {event.arguments !== null && <DroneLabel value={event.arguments.drone_id} />}
-        {result ? (
-          failed ? (
-            <span className="gcs-tool-status">Refused</span>
-          ) : (
-            <Check size={13} />
-          )
-        ) : (
-          <span className="gcs-tool-status">Pending</span>
-        )}
+        <span className="gcs-action-title">{actionTitle(event.name!, event.arguments!)}</span>
+        <span className="gcs-tool-status">{status}</span>
       </summary>
       <div className="gcs-tool-detail">
-        <span>ARGUMENTS</span>
-        <pre>{JSON.stringify(event.arguments, null, 2)}</pre>
+        <Arguments values={event.arguments!} />
         {result && (
           <>
             <span>RESULT</span>
-            <pre>{JSON.stringify(result.result, null, 2)}</pre>
+            {result.result?.ok === false ? (
+              <p className="gcs-result-error">{String(result.result.error)}</p>
+            ) : (
+              <pre>{JSON.stringify(result.result, null, 2)}</pre>
+            )}
           </>
         )}
       </div>
@@ -169,7 +181,7 @@ export default function MissionControl() {
   const missionAlerts = state ? state.mission.alerts : [];
   const lost = vehicles
     .filter((v) => linkLost(v, age, connected))
-    .map((v) => `${v.id} link lost. Last heartbeat ${(v.heartbeat_age_s + age).toFixed(1)} s ago.`);
+    .map((v) => `${v.id} link lost. Last heartbeat ${formatValue(v.heartbeat_age_s + age, 's')} ago.`);
   const alerts = [
     ...missionAlerts.filter(
       (alert) =>
@@ -224,7 +236,7 @@ export default function MissionControl() {
         <a className="gcs-brand" href="/mission" aria-label="Mission control">
           <Compass size={28} strokeWidth={1.5} />
           <div>
-            <strong>WILDLANDS</strong>
+            <strong>Search &amp; Rescue</strong>
             <span>MISSION CONTROL</span>
           </div>
         </a>
@@ -443,23 +455,17 @@ export default function MissionControl() {
                       </span>
                       <span>
                         <Battery size={13} />
-                        {v && v.battery_percent !== null ? `${v.battery_percent}%` : '—'}
+                        {formatValue(v?.battery_percent, '%', 0)}
                       </span>
                     </div>
                     <div className="gcs-telemetry">
                       <div>
                         <span>ALT</span>
-                        <strong>
-                          {v ? v.altitude_above_home_m.toFixed(1) : '—'}
-                          <small> m</small>
-                        </strong>
+                        <strong>{formatValue(v?.altitude_above_home_m, 'm')}</strong>
                       </div>
                       <div>
                         <span>SPEED</span>
-                        <strong>
-                          {v ? v.ground_speed_mps.toFixed(1) : '—'}
-                          <small> m/s</small>
-                        </strong>
+                        <strong>{formatValue(v?.ground_speed_mps, 'm/s')}</strong>
                       </div>
                       <div>
                         <span>MISSION</span>
@@ -473,9 +479,9 @@ export default function MissionControl() {
                     <div className="gcs-vehicle-link">
                       <span>
                         <i className={`gcs-status-dot ${!isLost ? 'healthy' : ''}`} />
-                        {v ? `${(v.heartbeat_age_s + age).toFixed(1)} s link age` : 'No heartbeat'}
+                        {v ? `${formatValue(v.heartbeat_age_s + age, 's')} link age` : 'No heartbeat'}
                       </span>
-                      <span>{v ? `${v.update_rate_hz.toFixed(1)} Hz` : '— Hz'}</span>
+                      <span>{formatValue(v?.update_rate_hz, 'Hz')}</span>
                     </div>
                     <div className="gcs-quick-actions">
                       <button
@@ -609,13 +615,9 @@ export default function MissionControl() {
                   </div>
                 )}
                 {events.map((event) =>
-                  event.kind === 'tool_call' ? (
-                    <ToolRow
-                      key={event.id}
-                      event={event}
-                      result={events.find((e) => e.kind === 'tool_result' && e.call_id === event.call_id)}
-                    />
-                  ) : ['agent', 'operator', 'error', 'approval'].includes(event.kind) ? (
+                  event.kind === 'tool_call' && state?.approvals[0]?.call_id !== event.call_id ? (
+                    <ToolRow key={event.id} event={event} events={events} />
+                  ) : ['agent', 'operator', 'error'].includes(event.kind) ? (
                     <article key={event.id} className={`gcs-message ${event.kind}`}>
                       <header>
                         <strong>
@@ -623,9 +625,7 @@ export default function MissionControl() {
                             ? 'You'
                             : event.kind === 'agent'
                               ? 'Wonder'
-                              : event.kind === 'approval'
-                                ? 'Flight approval'
-                                : 'Command error'}
+                              : 'Command error'}
                         </strong>
                         <time>{timestamp(event.timestamp_ms)}</time>
                       </header>
@@ -645,39 +645,6 @@ export default function MissionControl() {
                     </article>
                   ) : null,
                 )}
-                {state?.approvals.map((approval) => (
-                  <section className="gcs-approval" key={approval.id}>
-                    <header>
-                      <ShieldCheck size={18} />
-                      <strong>Approval required</strong>
-                    </header>
-                    <p>
-                      {approval.name.replaceAll('_', ' ')}
-                      <DroneLabel value={approval.arguments.drone_id} />
-                    </p>
-                    <pre>{JSON.stringify(approval.arguments, null, 2)}</pre>
-                    <small>
-                      Requested by {approval.source === 'agent' ? 'Wonder' : 'operator controls'}. Safety
-                      checks run again before execution.
-                    </small>
-                    <div>
-                      <button
-                        disabled={!enabled}
-                        onClick={() => send({ type: 'approval', id: approval.id, approved: false })}
-                      >
-                        Decline
-                      </button>
-                      <button
-                        className="gcs-primary"
-                        disabled={!enabled}
-                        onClick={() => send({ type: 'approval', id: approval.id, approved: true })}
-                      >
-                        <Check size={15} />
-                        Approve flight
-                      </button>
-                    </div>
-                  </section>
-                ))}
                 {state?.agent_busy && (
                   <div className="gcs-working">
                     <i className="gcs-status-dot healthy" />
@@ -689,11 +656,11 @@ export default function MissionControl() {
               <div className="gcs-log">
                 {events.length ? (
                   events
-                    .filter((e) => !['agent', 'operator'].includes(e.kind))
+                    .filter((e) => !['agent', 'operator', 'model_usage'].includes(e.kind))
                     .map((event) => (
                       <div className={event.kind === 'error' ? 'error' : ''} key={event.id}>
                         <time>{timestamp(event.timestamp_ms)}</time>
-                        <span>{event.text || event.name}</span>
+                        <span>{flightLogText(event)}</span>
                       </div>
                     ))
                 ) : (
@@ -706,6 +673,49 @@ export default function MissionControl() {
               </div>
             )}
           </div>
+          {state && state.approvals.length > 0 && (
+            <div className="gcs-approval-dock" aria-label="Pending flight approvals">
+              {state.approvals.slice(0, 1).map((approval) => (
+                <section
+                  className="gcs-approval"
+                  key={approval.id}
+                  data-call-id={approval.call_id}
+                  data-status="Awaiting approval"
+                >
+                  <header>
+                    <ShieldCheck size={18} />
+                    <strong>Awaiting approval</strong>
+                    <DroneLabel value={approval.arguments.drone_id} />
+                  </header>
+                  <p>{approvalSentence(approval.name, approval.arguments)}</p>
+                  <details className="gcs-approval-arguments" open={approval.name !== 'fly_route'}>
+                    <summary>Flight details</summary>
+                    <Arguments values={approval.arguments} />
+                  </details>
+                  <small>
+                    Requested by {approval.source === 'agent' ? 'Wonder' : 'operator controls'}. Safety checks
+                    run before execution.
+                  </small>
+                  <div className="gcs-approval-buttons">
+                    <button
+                      disabled={!enabled}
+                      onClick={() => send({ type: 'approval', id: approval.id, approved: false })}
+                    >
+                      Decline
+                    </button>
+                    <button
+                      className="gcs-primary"
+                      disabled={!enabled}
+                      onClick={() => send({ type: 'approval', id: approval.id, approved: true })}
+                    >
+                      <Check size={15} />
+                      Approve flight
+                    </button>
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
           <div className="gcs-command-bar">
             <span style={{ color: droneColors[selected] }}>
               <i />

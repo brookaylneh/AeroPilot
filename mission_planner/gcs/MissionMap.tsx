@@ -11,6 +11,8 @@ import {
   type MapView,
 } from '../../scenario_creator/worldMap';
 import { droneColors, linkLost, type DroneId, type MapFocus, type Vehicle } from './missionState';
+import { formatValue } from './display';
+import { placeLabels } from './mapLabels';
 
 const extent = 804.672;
 export default function MissionMap({
@@ -107,6 +109,23 @@ export default function MissionMap({
   const bottomRight = projection(-extent, extent);
   const active = vehicles.find((v) => v.id === selected);
   const fence = active ? active.fence : [];
+  const labels = inset
+    ? {}
+    : placeLabels(
+        vehicles.map((v) => ({
+          ...projection(v.north_m, v.east_m),
+          id: v.id,
+          width: linkLost(v, age, connected) ? 154 : 70,
+          height: linkLost(v, age, connected) ? 40 : 24,
+        })),
+        vehicles.flatMap((v) =>
+          [v, v.home, ...v.mission].map((point) => {
+            const p = projection(point.north_m, point.east_m);
+            return { x: p.x - 18, y: p.y - 18, width: 36, height: 36 };
+          }),
+        ),
+        size,
+      );
   return (
     <div className={`gcs-map ${inset ? 'is-inset' : ''}`}>
       <div
@@ -207,7 +226,7 @@ export default function MissionMap({
           {vehicles.map((v) => {
             const p = projection(v.north_m, v.east_m),
               h = projection(v.home.north_m, v.home.east_m),
-              color = droneColors[v.id];
+              color = linkLost(v, age, connected) ? '#a1adaf' : droneColors[v.id];
             const lost = linkLost(v, age, connected);
             return (
               <g key={v.id} style={{ color }}>
@@ -274,17 +293,42 @@ export default function MissionMap({
                       transform={`rotate(${v.heading_deg})`}
                     />
                   )}
-                  {!inset && (
-                    <g
-                      transform={`translate(${v.id === 'Drone1' || v.id === 'Drone3' ? -76 : 24},${v.id === 'Drone1' || v.id === 'Drone2' ? -26 : 14})`}
-                    >
-                      <rect x="-5" y="-13" width="66" height="23" rx="3" />
-                      <text y="3">{v.id}</text>
-                    </g>
-                  )}
                   <title>
-                    {v.id}: {lost ? 'Link lost' : v.mode}, {v.altitude_above_home_m.toFixed(1)} m above home
+                    {v.id}: {lost ? 'Link lost' : v.mode}, {formatValue(v.altitude_above_home_m, 'm')} above
+                    home
                   </title>
+                </g>
+              </g>
+            );
+          })}
+          {vehicles.map((v) => {
+            const label = labels[v.id];
+            if (!label) return null;
+            const p = projection(v.north_m, v.east_m);
+            const lost = linkLost(v, age, connected);
+            return (
+              <g
+                key={`label-${v.id}`}
+                className="gcs-map-label"
+                data-label={v.id}
+                style={{ color: lost ? '#a1adaf' : droneColors[v.id] }}
+              >
+                <line
+                  x1={p.x}
+                  y1={p.y}
+                  x2={Math.max(label.x, Math.min(p.x, label.x + label.width))}
+                  y2={Math.max(label.y, Math.min(p.y, label.y + label.height))}
+                />
+                <g transform={`translate(${label.x},${label.y})`}>
+                  <rect width={label.width} height={label.height} rx="3" />
+                  <text x="8" y="16">
+                    {v.id}
+                  </text>
+                  {lost && (
+                    <text className="gcs-label-age" x="8" y="31">
+                      Last seen {formatValue(v.heartbeat_age_s + age, 's')} ago
+                    </text>
+                  )}
                 </g>
               </g>
             );
@@ -358,11 +402,11 @@ export default function MissionMap({
           )}
           <div className="gcs-map-bottom">
             <div className="gcs-scale" style={{ width: (scale / visibleWidth) * size.width }}>
-              {scale} m
+              {formatValue(scale, 'm', 0)}
             </div>
             <span>
               {cursor
-                ? `${cursor.north_m.toFixed(1)} m N / ${cursor.east_m.toFixed(1)} m E`
+                ? `${formatValue(cursor.north_m, 'm N')} / ${formatValue(cursor.east_m, 'm E')}`
                 : 'Drag to pan · Scroll to zoom'}
             </span>
             <span className="gcs-fence-key">
