@@ -45,7 +45,7 @@ are migrated explicitly with a waiting situation and an empty briefing.
   world reference and boundaries. No target transform or actual situation is
   copied to this record.
 
-The searchable world remains 1,609.344 × 1,609.344 m. Its frame is Unreal
+The searchable extent comes from [`world.json`](../world/cosys/world.json). Its frame is Unreal
 centimeters: +X north, +Y east, +Z up. The existing southern drone port stays
 outside character-placement bounds. No permanent search sectors are introduced.
 
@@ -115,3 +115,17 @@ Missing assets, skeletons, tint parameters or animations fail authoring explicit
 
 Always visually review new rigs and animations before packaging. Asset import
 or a successful compile alone is not acceptance.
+
+## Map component acceptance
+
+`node --env-file=.local/slot.env scenario_creator/accept_world_map.mjs ORIGIN NEW_DIRECTORY`
+bundles the actual `WorldMap` component with the public world bounds and existing
+Studio styles. It uses Playwright route fulfillment at the assigned origin; it
+starts no server and adds no application route. The existing web server supplies
+the minimap and fonts. Run from a clean committed worktree and put its output
+under `.local/evidence/world/`.
+
+The screenshots and JSON explicitly identify isolated component evidence. They
+check the rectangle, zoom, drag and fit controls, without a Pixel Streaming
+session or native camera travel. End-to-end Studio acceptance still requires its
+live editing session.

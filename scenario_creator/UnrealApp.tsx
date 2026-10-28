@@ -1,3 +1,4 @@
+import world from '../world/cosys/world.json';
 import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, Save, TreePine } from 'lucide-react';
 import { useUnrealSession } from './useUnrealSession';
@@ -289,7 +290,13 @@ export default function UnrealApp() {
           {stage === 'placement' && (
             <>
               <div className="placement-heading">
-                <div className="creator-kicker">WORLD PLACEMENT · 1 MILE × 1 MILE</div>
+                <div className="creator-kicker">
+                  WORLD PLACEMENT ·{' '}
+                  {((world.searchBoundsCm.max.y - world.searchBoundsCm.min.y) / 100).toLocaleString('en-US')}{' '}
+                  m ×{' '}
+                  {((world.searchBoundsCm.max.x - world.searchBoundsCm.min.x) / 100).toLocaleString('en-US')}{' '}
+                  m
+                </div>
                 <h1>Choose their location</h1>
                 <p>Explore on foot · Click the map to travel · Double-click the ground to place</p>
                 <p>Double-click another location to reposition the person.</p>

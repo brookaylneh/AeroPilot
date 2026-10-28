@@ -107,3 +107,19 @@ test('the first mission view contains the rectangle at both acceptance sizes wit
     }
   }
 });
+
+test('development serves the public world manifest while other world and private files stay blocked', async () => {
+  const { resolveConfig, isFileLoadingAllowed } = await import('vite');
+  const { resolve } = await import('node:path');
+  const config = await resolveConfig({}, 'serve');
+  assert.equal(isFileLoadingAllowed(config, resolve('world/cosys/world.json')), true);
+  for (const file of [
+    'world/cosys/settings.json',
+    'world/unreal/characters/roster.json',
+    'world/cosys/subdir/world.json',
+    'world/README.md',
+    '.env',
+    '.local/data/world.json',
+  ])
+    assert.equal(isFileLoadingAllowed(config, resolve(file)), false, file);
+});

@@ -1,3 +1,4 @@
+import world from '../world/cosys/world.json';
 import { ArrowLeft, ArrowRight, ClipboardList, Compass, LockKeyhole, UserRound } from 'lucide-react';
 import type { Briefing } from './briefing';
 
@@ -104,7 +105,11 @@ export default function RescueBriefing({
           <ArrowLeft size={14} />
           Edit placement
         </button>
-        <span>Open Meadow · 1 mile × 1 mile</span>
+        <span>
+          Open Meadow ·{' '}
+          {((world.searchBoundsCm.max.y - world.searchBoundsCm.min.y) / 100).toLocaleString('en-US')} m ×{' '}
+          {((world.searchBoundsCm.max.x - world.searchBoundsCm.min.x) / 100).toLocaleString('en-US')} m
+        </span>
       </footer>
     </article>
   );
