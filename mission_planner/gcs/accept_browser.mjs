@@ -825,6 +825,10 @@ async function searchFlight(browser, url, output) {
     await chat('Plan the search for this case.');
     assert(observation.search.profile !== null, 'Wonder must record the quoted profile');
     assert.equal(observation.search.point, null, 'Landmark text cannot supply coordinates');
+    await page.locator('.gcs-search-subject summary').click();
+    assert((await page.locator('.gcs-search-subject blockquote').count()) > 0);
+    await screenshots(page, output, 'search-profile');
+    await page.locator('.gcs-search-subject summary').click();
     await page.getByRole('button', { name: 'Mark last known point', exact: true }).click();
     const image = await page.locator('.gcs-terrain').boundingBox();
     assert(image);
