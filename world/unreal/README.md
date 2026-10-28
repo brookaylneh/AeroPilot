@@ -41,8 +41,9 @@ docker build --build-arg SNR_UID="$(id -u)" --build-arg SNR_GID="$(id -g)" \
   -t snr-unreal:5.8.2-ubuntu24.04 - < world/unreal/docker/editor.Dockerfile
 python3 world/cosys/fetch-cosys.py
 bash world/unreal/scripts/unreal-container.sh build
-bash world/unreal/scripts/unreal-container.sh exec bash world/unreal/scripts/package-unreal.sh
-bash world/unreal/scripts/stage-live-release.sh
+bash world/unreal/scripts/unreal-container.sh exec bash world/unreal/scripts/package-unreal.sh \
+  .local/unreal/builds/<new-build> .local/evidence/builds/<new-build>
+bash world/unreal/scripts/stage-live-release.sh .local/unreal/builds/<new-build>/Linux
 ```
 
 `metahuman-login` and `fab-authoring` modes of `unreal-container.sh` need Epic's licensed components and an
@@ -92,5 +93,7 @@ A supported device still needs SM6 shaders and the project's uncooked assets for
 
 ## Characters
 
-[Character authoring](characters/README.md) creates MetaHumans from Epic presets and explicit
-appearance settings, then renders fixed views for review before live integration.
+[Character authoring](characters/README.md) imports the approved Microsoft Rocketbox selection,
+retargets its pinned animations to each original skeleton, and builds the runtime catalog.
+The eleven-character selection uses fixed original clothing. Earlier authoring assets remain
+preserved outside the active catalog.

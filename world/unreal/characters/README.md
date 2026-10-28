@@ -157,6 +157,40 @@ Raw manifests and browser evidence stay under the evidence directory. Existing r
 
 ## Rocketbox characters
 
+### Simulation integration
+
+The approved selection contains eleven characters: three children, four adults and four older-adult
+candidates. `rocketbox-selection.json` identifies the reviewed source assets;
+`../creator-people.json` defines their runtime IDs and appearance descriptions. Rejected Child 3 is
+excluded. Exact ages, heavy body builds and senior demographic coverage are not established.
+
+`rocketbox-motion.lock.json` pins the library's female/male breathing, waving and walking clips,
+including the MIT notice. Acquire them with `fetch_rocketbox.py`. Run these editor Python commands
+with fresh evidence directories, in order:
+
+1. `import_rocketbox_runtime.py NEW_OUTPUT` duplicates the selected meshes and skeletons under
+   `/Game/Scenario/Rocketbox`, preserving the reviewed assets, and imports the pinned source motions.
+2. `configure_rocketbox.py IMPORT_RESULT_JSON NEW_OUTPUT` bakes the motions onto each character's
+   original limb lengths. Horizontal displacement belongs to scenario behavior. A separate authored
+   seated-rest loop supplies the injured situation. The catalog uses a new asset version so old
+   scenarios cannot silently select different people; their files remain preserved.
+3. `capture_rocketbox_runtime.py CONFIGURE_RESULT_JSON NEW_OUTPUT` captures all four activities with
+   the fixed review lighting and records bone positions. Use the SM6 editor invocation below. Inspect
+   these captures before accepting the packaged world; animation import alone is not acceptance.
+4. `configure_rocketbox_catalog.py CONFIGURE_RESULT_JSON NEW_OUTPUT` publishes the actor catalog
+   with descriptions from `creator-people.json`. Run this after reviewing the poses.
+
+Back up `Content/OpenMeadow/Catalog.uasset` before configuration. These commands fail on existing
+output assets. Preserve unsuccessful logs and correct the cause before an explicitly named new run.
+The native authoring helpers are in `ScenarioRocketboxAnimation.cpp`; rebuild the editor module
+before running them.
+
+Original clothing colors are retained. The browser hides unsupported recoloring and backpack
+controls, and descriptions name the visible garments. Runtime portraits are reduced copies of the
+reviewed neutral-light renders. The packaged release includes `licenses/Microsoft-Rocketbox-MIT.txt`.
+Old catalogs, characters, portraits, preview galleries and releases are retained. Unreal packaging
+cooks the active map and catalog dependencies instead of every historical character directory.
+
 `rocketbox-assets.lock.json` pins three Microsoft Rocketbox facial meshes, original textures,
 catalog previews and MIT notices to one repository commit and Git blob hashes.
 `rocketbox-candidates.lock.json` separately pins twelve comparison candidates and their individual

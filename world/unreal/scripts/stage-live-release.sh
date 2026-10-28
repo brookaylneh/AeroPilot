@@ -2,11 +2,12 @@
 # Keep packaging output separate from the executable serving browsers.
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
-test -x .local/unreal/Packaged/Linux/ScenarioStudio.sh
+package_path="$(realpath "${1:?Usage: stage-live-release.sh PACKAGE_LINUX_DIRECTORY}")"
+test -x "$package_path/ScenarioStudio.sh"
 release_id="$(date -u +%Y%m%dT%H%M%SZ)"
 release_path="$PWD/.local/unreal/releases/$release_id"
 mkdir -p "$release_path"
-cp -a --reflink=auto .local/unreal/Packaged/Linux/. "$release_path/"
+cp -a --reflink=auto "$package_path/." "$release_path/"
 jq --argjson port "${SNR_COSYS_PORT:?}" ' .ApiServerPort = $port | .LocalHostIp = "127.0.0.1"' \
   world/cosys/settings.json >"$release_path/cosys-settings.json"
 cp world/cosys/world.json "$release_path/world.json"

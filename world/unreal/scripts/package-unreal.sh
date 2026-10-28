@@ -2,6 +2,11 @@
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
 : "${UE_ROOT:?Set UE_ROOT to an installed Unreal Engine 5.8.2 directory}"
+package_path="$(realpath -m "${1:?Usage: package-unreal.sh NEW_PACKAGE_DIRECTORY NEW_EVIDENCE_DIRECTORY}")"
+evidence_path="$(realpath -m "${2:?Provide a new evidence directory}")"
+test ! -e "$package_path"
+test ! -e "$evidence_path"
+mkdir -p "$package_path" "$evidence_path"
 python3 - "$UE_ROOT" <<'PY'
 import json,sys,pathlib
 v=json.loads((pathlib.Path(sys.argv[1])/'Engine/Build/Build.version').read_text())
@@ -25,12 +30,17 @@ done
   -project="$project" -noP4 -platform=Linux -clientconfig=Development \
   -build -cook -map=/Game/OpenMeadow/OpenMeadow -stage -pak -archive \
   -ddc=InstalledNoZenLocalFallback -AdditionalCookerOptions="-SkipZenStore" \
-  -archivedirectory="$PWD/.local/unreal/Packaged" | tee "$PWD/.local/evidence/unreal-package-internal.log"
-python3 - <<'PY'
+  -archivedirectory="$package_path" | tee "$evidence_path/package.log"
+python3 - "$package_path" "$evidence_path" <<'PY'
+import sys
 from pathlib import Path
-log = Path('.local/evidence/unreal-package-internal.log').read_text(errors='replace')
+package, evidence = map(Path, sys.argv[1:])
+log = (evidence / 'package.log').read_text(errors='replace')
 failures = ['Failed to compile Material', "doesn't have a valid ShaderMap", 'LogCook: Error:']
 if any(message in log for message in failures):
-    raise SystemExit('Package contains cook/material failures; inspect .local/evidence/unreal-package-internal.log')
-Path('.local/unreal/Packaged/Linux/scenario-map.txt').write_text('/Game/OpenMeadow/OpenMeadow\n')
+    raise SystemExit('Package contains cook/material failures; inspect the recorded package.log')
+(package / 'Linux/scenario-map.txt').write_text('/Game/OpenMeadow/OpenMeadow\n')
 PY
+
+mkdir -p "$package_path/Linux/licenses"
+cp .local/vendor/rocketbox-motion/LICENSE.md "$package_path/Linux/licenses/Microsoft-Rocketbox-MIT.txt"
