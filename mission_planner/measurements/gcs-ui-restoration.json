@@ -1,0 +1,581 @@
+{
+  "schema_version": 1,
+  "recorded_utc_s": 1793227387.792687,
+  "branch": "cosys-coupling",
+  "base_commit": "33ab353c455557a3ff009a6a4302064d46f308c8",
+  "implementation_commit": "9b4f947193213fb36c9854374ba53acfa5eb439e",
+  "passed": true,
+  "request": "Restore unmerged GCP mission UI changes in the coupled AWS worktree",
+  "patches": [
+    {
+      "path": ".local/staging/gcs-unmerged/0001-Fill-the-mission-map-stage-with-terrain-on-initial-v.patch",
+      "sha256": "532d3c7830a6ab3e931d34915555084c6cb96f65dce4544aa90c8141fddc8646",
+      "action": "applied unchanged"
+    },
+    {
+      "path": ".local/staging/gcs-unmerged/0002-Serve-the-public-mission-UI-from-the-GCS-worktree-bu.patch",
+      "sha256": "a4c4e7c5444ff3b8d0ebe0d02987ae6b984015756a376b3a0c00ee99d67e99a8",
+      "action": "skipped: GCP-only"
+    },
+    {
+      "path": ".local/staging/gcs-unmerged/0003-Give-mission-map-a-thin-header-and-translucent-fleet.patch",
+      "sha256": "e6d7c79163c6e0e1dbaab9a63dc3138089fbd5633309d9bdbf0e1e513ccc8611",
+      "action": "ported by hand"
+    }
+  ],
+  "changes": [
+    "Initial map view covers the available stage with terrain",
+    "Thin header and compact copilot",
+    "Collapsible fleet overlay with translucent neutral cards and selected border color",
+    "Sensor captions and expanded search panel reserve fleet clearance",
+    "Map caption sits beside the search panel"
+  ],
+  "line_counts": {
+    "MissionControl.tsx": {
+      "before": 886,
+      "after": 776,
+      "delta": -110
+    },
+    "all_tracked_css": {
+      "before": 3332,
+      "after": 3283,
+      "delta": -49
+    },
+    "FleetStrip.tsx": 123
+  },
+  "acceptance": {
+    "commit": "9b4f947193213fb36c9854374ba53acfa5eb439e",
+    "mode": "performance",
+    "built_page_sha256": "e7f0a8880c4a3ddafab4b4fe0a318cfdcbe4075614eef1a95642fd24ddcf4088",
+    "errors": [],
+    "passed": true,
+    "evidence": {
+      "path": ".local/evidence/coupling/ui-restoration/performance-01/results.json",
+      "sha256": "7338c9267495f31461362448a2db5e2f8dff69409f0705a45d30b0bc27418a2d"
+    },
+    "viewports": [
+      {
+        "width": 1920,
+        "height": 1080,
+        "mission_id": "394722e4-825f-4ba1-87c4-5408d2ac81fb",
+        "initial": {
+          "map": {
+            "x": 0,
+            "y": 52,
+            "width": 1500,
+            "height": 1008
+          },
+          "terrain": {
+            "x": 0,
+            "y": -194,
+            "width": 1500,
+            "height": 1500
+          },
+          "header": {
+            "x": 0,
+            "y": 0,
+            "width": 1920,
+            "height": 24
+          },
+          "tabs": {
+            "x": 0,
+            "y": 24,
+            "width": 1500,
+            "height": 28
+          },
+          "fleet": {
+            "x": 16,
+            "y": 848,
+            "width": 1468,
+            "height": 168
+          },
+          "copilot": {
+            "x": 1501,
+            "y": 24,
+            "width": 419,
+            "height": 57
+          },
+          "map_caption": {
+            "x": 312,
+            "y": 68,
+            "width": 126.5625,
+            "height": 61
+          },
+          "legend": {
+            "x": 598.828125,
+            "y": 68,
+            "width": 302.34375,
+            "height": 32
+          }
+        },
+        "screenshots": [
+          ".local/evidence/coupling/ui-restoration/performance-01/map-first-1920.png",
+          ".local/evidence/coupling/ui-restoration/performance-01/search-expanded-1920.png",
+          ".local/evidence/coupling/ui-restoration/performance-01/fleet-collapsed-1920.png",
+          ".local/evidence/coupling/ui-restoration/performance-01/sensor-drone4-1920.png",
+          ".local/evidence/coupling/ui-restoration/performance-01/after-pan-1920.png"
+        ],
+        "card_styles": [
+          {
+            "drone": "Drone1",
+            "selected": true,
+            "background": "rgba(16, 28, 26, 0.6)",
+            "border": "rgb(86, 180, 233)",
+            "name": "rgb(233, 239, 239)"
+          },
+          {
+            "drone": "Drone2",
+            "selected": false,
+            "background": "rgba(16, 28, 26, 0.6)",
+            "border": "rgba(166, 187, 182, 0.3)",
+            "name": "rgb(233, 239, 239)"
+          },
+          {
+            "drone": "Drone3",
+            "selected": false,
+            "background": "rgba(16, 28, 26, 0.6)",
+            "border": "rgba(166, 187, 182, 0.3)",
+            "name": "rgb(233, 239, 239)"
+          },
+          {
+            "drone": "Drone4",
+            "selected": false,
+            "background": "rgba(16, 28, 26, 0.6)",
+            "border": "rgba(166, 187, 182, 0.3)",
+            "name": "rgb(233, 239, 239)"
+          }
+        ],
+        "expanded_search": {
+          "x": 16,
+          "y": 68,
+          "width": 280,
+          "height": 508
+        },
+        "collapsed_fleet": {
+          "x": 16,
+          "y": 988,
+          "width": 1468,
+          "height": 28
+        },
+        "sensor_caption": {
+          "x": 16,
+          "y": 757,
+          "width": 256.4375,
+          "height": 75
+        },
+        "performance": {
+          "pan_frames": 306,
+          "pan_seconds": 5.12340000001341,
+          "pan_fps": 59.725963227387886,
+          "coverage": {
+            "source": "Cosys capture records",
+            "message": "Capture geometry and explicitly processed negatives",
+            "captures": 108,
+            "negative_observations": 0
+          },
+          "telemetry": [
+            {
+              "drone_id": "Drone1",
+              "update_rate_hz": 9.993320525828352
+            },
+            {
+              "drone_id": "Drone2",
+              "update_rate_hz": 9.993830124162544
+            },
+            {
+              "drone_id": "Drone3",
+              "update_rate_hz": 9.994005921184884
+            },
+            {
+              "drone_id": "Drone4",
+              "update_rate_hz": 9.995960535399592
+            }
+          ]
+        }
+      },
+      {
+        "width": 2560,
+        "height": 1440,
+        "mission_id": "394722e4-825f-4ba1-87c4-5408d2ac81fb",
+        "initial": {
+          "map": {
+            "x": 0,
+            "y": 52,
+            "width": 2140,
+            "height": 1368
+          },
+          "terrain": {
+            "x": 0,
+            "y": -334,
+            "width": 2140,
+            "height": 2140
+          },
+          "header": {
+            "x": 0,
+            "y": 0,
+            "width": 2560,
+            "height": 24
+          },
+          "tabs": {
+            "x": 0,
+            "y": 24,
+            "width": 2140,
+            "height": 28
+          },
+          "fleet": {
+            "x": 16,
+            "y": 1208,
+            "width": 2108,
+            "height": 168
+          },
+          "copilot": {
+            "x": 2141,
+            "y": 24,
+            "width": 419,
+            "height": 57
+          },
+          "map_caption": {
+            "x": 312,
+            "y": 68,
+            "width": 126.5625,
+            "height": 61
+          },
+          "legend": {
+            "x": 918.828125,
+            "y": 68,
+            "width": 302.34375,
+            "height": 32
+          }
+        },
+        "screenshots": [
+          ".local/evidence/coupling/ui-restoration/performance-01/map-first-2560.png",
+          ".local/evidence/coupling/ui-restoration/performance-01/search-expanded-2560.png",
+          ".local/evidence/coupling/ui-restoration/performance-01/fleet-collapsed-2560.png",
+          ".local/evidence/coupling/ui-restoration/performance-01/sensor-drone4-2560.png",
+          ".local/evidence/coupling/ui-restoration/performance-01/after-pan-2560.png"
+        ],
+        "card_styles": [
+          {
+            "drone": "Drone1",
+            "selected": true,
+            "background": "rgba(16, 28, 26, 0.6)",
+            "border": "rgb(86, 180, 233)",
+            "name": "rgb(233, 239, 239)"
+          },
+          {
+            "drone": "Drone2",
+            "selected": false,
+            "background": "rgba(16, 28, 26, 0.6)",
+            "border": "rgba(166, 187, 182, 0.3)",
+            "name": "rgb(233, 239, 239)"
+          },
+          {
+            "drone": "Drone3",
+            "selected": false,
+            "background": "rgba(16, 28, 26, 0.6)",
+            "border": "rgba(166, 187, 182, 0.3)",
+            "name": "rgb(233, 239, 239)"
+          },
+          {
+            "drone": "Drone4",
+            "selected": false,
+            "background": "rgba(16, 28, 26, 0.6)",
+            "border": "rgba(166, 187, 182, 0.3)",
+            "name": "rgb(233, 239, 239)"
+          }
+        ],
+        "expanded_search": {
+          "x": 16,
+          "y": 68,
+          "width": 280,
+          "height": 508
+        },
+        "collapsed_fleet": {
+          "x": 16,
+          "y": 1348,
+          "width": 2108,
+          "height": 28
+        },
+        "sensor_caption": {
+          "x": 16,
+          "y": 1117,
+          "width": 256.4375,
+          "height": 75
+        },
+        "performance": {
+          "pan_frames": 452,
+          "pan_seconds": 7.620400000005961,
+          "pan_fps": 59.31447168123018,
+          "coverage": {
+            "source": "Cosys capture records",
+            "message": "Capture geometry and explicitly processed negatives",
+            "captures": 108,
+            "negative_observations": 0
+          },
+          "telemetry": [
+            {
+              "drone_id": "Drone1",
+              "update_rate_hz": 9.997452407981342
+            },
+            {
+              "drone_id": "Drone2",
+              "update_rate_hz": 9.996593611999415
+            },
+            {
+              "drone_id": "Drone3",
+              "update_rate_hz": 9.993866933106805
+            },
+            {
+              "drone_id": "Drone4",
+              "update_rate_hz": 9.994422434270035
+            }
+          ]
+        }
+      }
+    ],
+    "pan_method": "requestAnimationFrame timestamps inside six actual pointer drags per viewport,60 pointer steps per drag; all four aircraft remain in the map viewport. Raw drag bounds and frame timestamps retained in evidence. Fresh page at each viewport; served HTML equals the clean committed build.",
+    "layout_checks": [
+      "Terrain covers initial map at both sizes",
+      "No document overflow",
+      "Header and tabs each at most32px",
+      "Fleet is inside the map stage",
+      "Uniform translucent card fill and neutral title color; only selected border uses aircraft color",
+      "Collapse survives more than one second of actual telemetry and tab switches",
+      "Expanded search, map caption/legend and sensor time/pose do not overlap fleet",
+      "Actual sensor frames received for all four drones",
+      "No browser errors"
+    ],
+    "harness": {
+      "path": ".local/evidence/coupling/harness/accept_restored_layout.mjs",
+      "sha256": "75bff1cc6e4ee05128ce2b596fe51560a2beb8d17ca43fac3303ff49b4c6296d"
+    }
+  },
+  "screenshots": [
+    {
+      "path": ".local/evidence/coupling/ui-restoration/performance-01/map-first-1920.png",
+      "sha256": "f30a4fb5c3938a1416c08d6563a3e259a867084f1e82170a320a57afc450a04f",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      }
+    },
+    {
+      "path": ".local/evidence/coupling/ui-restoration/performance-01/search-expanded-1920.png",
+      "sha256": "02f4fe3a683f2e377f6c19d3c0c778f6dff962a544823007ad5a9b4643a457ea",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      }
+    },
+    {
+      "path": ".local/evidence/coupling/ui-restoration/performance-01/fleet-collapsed-1920.png",
+      "sha256": "e1825c3083ea514e1300dc55e73e1e37796fc788586412d80b5b321365d98a3a",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      }
+    },
+    {
+      "path": ".local/evidence/coupling/ui-restoration/performance-01/sensor-drone4-1920.png",
+      "sha256": "ad100c8b92b8aa4c3db8168fd836f8cb363066f60560bb24bf8b3d46d1f39744",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      }
+    },
+    {
+      "path": ".local/evidence/coupling/ui-restoration/performance-01/after-pan-1920.png",
+      "sha256": "6d4109e68c0007b483e300b719d350ab45dc984ebddd62a8ff645b2b72864de9",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      }
+    },
+    {
+      "path": ".local/evidence/coupling/ui-restoration/performance-01/map-first-2560.png",
+      "sha256": "b80a8accedbaa6034ffe6019de16c0ae76aaa8af72d32d79f799370665b6fbde",
+      "viewport": {
+        "width": 2560,
+        "height": 1440
+      }
+    },
+    {
+      "path": ".local/evidence/coupling/ui-restoration/performance-01/search-expanded-2560.png",
+      "sha256": "8b48be9e2ac59b1560c1a8ff9255f026c3c27dcf01eee87cf37804e1f52aad8c",
+      "viewport": {
+        "width": 2560,
+        "height": 1440
+      }
+    },
+    {
+      "path": ".local/evidence/coupling/ui-restoration/performance-01/fleet-collapsed-2560.png",
+      "sha256": "9cf8e8595a111e91562e48ae890d789c47cd4709ae9f5ac5148e969f75374312",
+      "viewport": {
+        "width": 2560,
+        "height": 1440
+      }
+    },
+    {
+      "path": ".local/evidence/coupling/ui-restoration/performance-01/sensor-drone4-2560.png",
+      "sha256": "d2b177572425d243d3738b33321b9af3318478b1b2d7e57552c11b24f6f44044",
+      "viewport": {
+        "width": 2560,
+        "height": 1440
+      }
+    },
+    {
+      "path": ".local/evidence/coupling/ui-restoration/performance-01/after-pan-2560.png",
+      "sha256": "bfa81b0775ce7d69ddd7a7e07b9299e767d6b5ca780dcc3a50112f0a7a344280",
+      "viewport": {
+        "width": 2560,
+        "height": 1440
+      }
+    }
+  ],
+  "flight": {
+    "evidence": {
+      "path": ".local/evidence/coupling/ui-restoration/flight-01/report.json",
+      "sha256": "6e1346e50ea6c0bf0b5dcacfa4c005c29e6b41fbf51dad3dc89155f983d0ee22"
+    },
+    "mission_id": "394722e4-825f-4ba1-87c4-5408d2ac81fb",
+    "mission_directory": "/home/brook_avionuas/snr-coupling/.local/data/missions/394722e4-825f-4ba1-87c4-5408d2ac81fb",
+    "waypoints_per_drone": {
+      "Drone1": 12,
+      "Drone2": 12,
+      "Drone3": 12,
+      "Drone4": 12
+    },
+    "accepted_frames_per_drone": {
+      "Drone1": 27,
+      "Drone2": 27,
+      "Drone3": 27,
+      "Drone4": 27
+    },
+    "final_landed": true,
+    "autopilot_exit_codes": {
+      "Drone1": 0,
+      "Drone2": 0,
+      "Drone3": 0,
+      "Drone4": 0
+    }
+  },
+  "checks": {
+    "node-test": {
+      "command": "npm test",
+      "exit_code": 0,
+      "evidence": {
+        "path": ".local/evidence/coupling/ui-restoration/checks/node-test.log",
+        "sha256": "110cc6f053526e97b7d20a4f94685859c8a60b7cec9024810982ed24a8147e7c"
+      },
+      "tests": 18
+    },
+    "typecheck": {
+      "command": "npm run typecheck",
+      "exit_code": 0,
+      "evidence": {
+        "path": ".local/evidence/coupling/ui-restoration/checks/typecheck.log",
+        "sha256": "581605940d2fbc4c851259433e6b11692463ba2b77780d5355b65da1897a4a65"
+      }
+    },
+    "format-check": {
+      "command": "npm run format:check",
+      "exit_code": 0,
+      "evidence": {
+        "path": ".local/evidence/coupling/ui-restoration/checks/format-check.log",
+        "sha256": "a0453ca8153222f6117f4ada2fb05dea2cc5eaddf9ebd48a8c1e3330d572a587"
+      }
+    },
+    "ruff-check": {
+      "command": ".venv-cosys/bin/ruff check",
+      "exit_code": 0,
+      "evidence": {
+        "path": ".local/evidence/coupling/ui-restoration/checks/ruff-check.log",
+        "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+      }
+    },
+    "ruff-format": {
+      "command": ".venv-cosys/bin/ruff format --check",
+      "exit_code": 0,
+      "evidence": {
+        "path": ".local/evidence/coupling/ui-restoration/checks/ruff-format.log",
+        "sha256": "3a21445bb7ec5bd865e583bec08d6571c4b3b289821acb041d1505c596e90257"
+      }
+    },
+    "python-test": {
+      "command": ".venv-cosys/bin/python -m unittest",
+      "exit_code": 0,
+      "evidence": {
+        "path": ".local/evidence/coupling/ui-restoration/checks/python-test.log",
+        "sha256": "009b253faf40924fc7d4ec83ce87756af4ba0cfb07b039bb4f73ba1a98303084"
+      },
+      "tests": 109
+    },
+    "committed-build": {
+      "command": "npm run build",
+      "exit_code": 0,
+      "evidence": {
+        "path": ".local/evidence/coupling/ui-restoration/checks/committed-build.log",
+        "sha256": "2e5c50f3d010d396e82972081f4faba8cf98f0f2b01edddda60d646ed3ecf11c"
+      }
+    }
+  },
+  "shutdown": {
+    "service_exit_code": 0,
+    "world_exit_code": 143,
+    "metrics_exit_code": 1,
+    "shutdown_s": 1.192198318996816,
+    "elapsed_s": 465.85303996499715
+  },
+  "cleanup": {
+    "evidence": {
+      "path": ".local/evidence/coupling/ui-restoration/cleanup.json",
+      "sha256": "30eab118990ab578899167f2c26b17f63942510b796ea05146d1fe84722a0ce4"
+    },
+    "coupling_ports_free": [
+      5176, 8767, 41452, 14620, 14621, 14622, 14623, 5701, 5711, 5721, 5731, 9202, 9203, 9212, 9213, 9222,
+      9223, 9232, 9233
+    ]
+  },
+  "diagnostics": [
+    {
+      "evidence": {
+        "path": ".local/evidence/coupling/ui-restoration/checks/review-build.log",
+        "sha256": "32d4808d75f5fdcb89a6bcbc6fac3bd289ed6149c922a1e747fdabc904291fa1"
+      },
+      "result": "Initial npm build stopped because .local/runtime.env did not exist. Added ignored runtime.env symlink to slot.env, keeping one file for slot values. Subsequent recorded build passed."
+    },
+    {
+      "evidence": {
+        "path": ".local/evidence/coupling/ui-restoration/review-01/results.json",
+        "sha256": "afb2eead113f9eb8b57c600bcae7330fb3a8357611eaa64cba8e5f9fd84496ca"
+      },
+      "result": "Initial visual review found map title behind search panel; placed it beside the panel before committed acceptance."
+    },
+    {
+      "evidence": {
+        "path": ".local/evidence/coupling/ui-restoration/session-01/metrics.log",
+        "sha256": "04bd92915627544204b9077b577ae36a15f02e6332f12f7e2de531870ae69b27"
+      },
+      "result": "Optional process/native sampler failed because the installed live-world runtime.json was absent. Browser pan measurement uses independent rAF timestamps and passed. No process CPU/GPU claim is made for this run."
+    }
+  ],
+  "installed_services_modified": false,
+  "fal_runners_started": 0,
+  "changed_files": [
+    "mission_planner/gcs/FleetStrip.tsx",
+    "mission_planner/gcs/MissionControl.tsx",
+    "mission_planner/gcs/MissionMap.tsx",
+    "mission_planner/gcs/mission.css",
+    "mission_planner/gcs/search.css",
+    "mission_planner/gcs/sensorFeed.css",
+    "mission_planner/measurements/gcs-ui-restoration.json"
+  ],
+  "implementation_source_sha256": {
+    "mission_planner/gcs/FleetStrip.tsx": "145cee57742a2073e80126cfe9b0d151e64f8d7a97880d5cd20a98cbbb3b2bfa",
+    "mission_planner/gcs/MissionControl.tsx": "de002da4df1d5bfb57071ef77d2bb2fd1e818c8a49e45def7fcff59896bd186d",
+    "mission_planner/gcs/MissionMap.tsx": "8dd97c5bfb4f24c67361cb41ec8582f515601d779dc5d9ee6a28c90199418e7f",
+    "mission_planner/gcs/mission.css": "d690fc43e8c19d8e8b9097d8481a8cdaf2c65e6e0dbc10d36029745a8a1a5f46",
+    "mission_planner/gcs/search.css": "424aa0896f373b87b012f845e4bc05f903156461bbd01bae84aaae447cb63997",
+    "mission_planner/gcs/sensorFeed.css": "c6b1b1bda40db0ddc2ec2f638fbdf11c674085d3f0d4657258ffc3edc429114d"
+  }
+}
