@@ -91,7 +91,10 @@ node --import tsx mission_planner/gcs/accept_browser.mjs flight 'http://127.0.0.
 
 The browser harness also provides `capture URL NEW_DIRECTORY LABEL`, `states URL NEW_DIRECTORY`,
 `performance URL NEW_DIRECTORY SERVICE_PID SECONDS`, `proxy URL NEW_DIRECTORY`, and
-`land URL NEW_DIRECTORY`. `states` requires landed aircraft, captures both viewport sizes,
+`land URL NEW_DIRECTORY`, `review URL NEW_DIRECTORY`, and `stop URL NEW_DIRECTORY SERVICE_PID`.
+`review` captures existing action errors and flight logs without issuing commands. `stop`
+verifies landed state and child process ownership, sends SIGTERM, and checks port release.
+`states` requires landed aircraft, captures both viewport sizes,
 checks approvals/refusals, pauses and resumes the verified Drone3 process to test link loss,
 and restores Supervised mode. `land` is an explicit cleanup command; it does not run on failure.
 Run flight sequences separately. The performance observer sends no aircraft commands.

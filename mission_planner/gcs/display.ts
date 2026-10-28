@@ -21,12 +21,15 @@ const titles: Record<string, string> = {
   return_home: 'Return home',
   land: 'Land',
 };
+function waypointCount(count: number) {
+  return `${count} ${count === 1 ? 'waypoint' : 'waypoints'}`;
+}
 export function actionTitle(name: string, args: Record<string, unknown>) {
   const parts = [titles[name]];
   if (typeof args.drone_id === 'string') parts.push(args.drone_id);
   if (name === 'take_off' && typeof args.altitude_above_home_m === 'number')
     parts.push(formatValue(args.altitude_above_home_m, 'm', 0));
-  if (name === 'fly_route' && Array.isArray(args.waypoints)) parts.push(`${args.waypoints.length} waypoints`);
+  if (name === 'fly_route' && Array.isArray(args.waypoints)) parts.push(waypointCount(args.waypoints.length));
   return parts.join(' · ');
 }
 
@@ -34,7 +37,7 @@ export function approvalSentence(name: string, args: Record<string, unknown>) {
   if (name === 'take_off' && typeof args.altitude_above_home_m === 'number')
     return `Take off ${args.drone_id} to ${formatValue(args.altitude_above_home_m, 'm', 0)} above home`;
   if (name === 'fly_route' && Array.isArray(args.waypoints))
-    return `Fly ${args.drone_id} through ${args.waypoints.length} waypoints`;
+    return `Fly ${args.drone_id} through ${waypointCount(args.waypoints.length)}`;
   if (name === 'fly_to') return `Fly ${args.drone_id} to the selected destination`;
   if (name === 'return_home') return `Return ${args.drone_id} home and land`;
   if (name === 'land') return `Land ${args.drone_id} at its current position`;

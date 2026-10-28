@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { createSocket } from 'node:dgram';
 import { request } from 'node:http';
 import { randomBytes } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -10,10 +12,23 @@ const sizes = [
   [1920, 1080],
   [1440, 900],
 ];
-async function screenshots(page, output, label, approval = false) {
+async function screenshots(page, output, label, approval = false, focus = null) {
   for (const [width, height] of sizes) {
     await page.setViewportSize({ width, height });
     await page.evaluate(() => document.fonts.ready);
+    if (focus !== null) {
+      const target = page.locator(focus).first();
+      await target.evaluate((node) => node.scrollIntoView({ block: 'center' }));
+      const box = await target.boundingBox();
+      const conversation = await page.locator('.gcs-conversation').boundingBox();
+      assert(
+        box &&
+          conversation &&
+          box.y >= conversation.y &&
+          box.y + box.height <= conversation.y + conversation.height,
+        `Reviewed content must be visible inside the conversation: ${JSON.stringify({ box, conversation })}`,
+      );
+    }
     if (approval) {
       const button = await page.getByRole('button', { name: 'Approve flight', exact: true }).boundingBox();
       const composer = await page.locator('.gcs-composer').boundingBox();
@@ -148,7 +163,7 @@ async function states(browser, url, output) {
   await failed.waitFor();
   await failed.evaluate((node) => (node.open = true));
   await failed.scrollIntoViewIfNeeded();
-  await screenshots(page, output, 'refusal');
+  await screenshots(page, output, 'refusal', false, '.gcs-tool.failed .gcs-result-error');
   await page.getByRole('button', { name: 'Flight log' }).click();
   await screenshots(page, output, 'log');
   await page.getByRole('button', { name: 'Conversation', exact: true }).click();
@@ -224,6 +239,70 @@ async function land(browser, url, output) {
     `${output}/results.json`,
     JSON.stringify(
       { passed: true, armed_before: armed, vehicles: o.state.vehicles, events: o.events },
+      null,
+      2,
+    ) + '\n',
+  );
+}
+
+async function review(browser, url, output) {
+  const o = await observe(browser, url);
+  await until(() => o.state?.vehicles.length === 4, 'Four aircraft');
+  const failed = o.page.locator('.gcs-tool.failed').first();
+  await failed.waitFor();
+  await failed.evaluate((node) => (node.open = true));
+  await screenshots(o.page, output, 'refusal', false, '.gcs-tool.failed .gcs-result-error');
+  await o.page.getByRole('button', { name: 'Flight log' }).click();
+  await screenshots(o.page, output, 'log');
+  await o.page.getByRole('button', { name: 'Conversation', exact: true }).click();
+  const declined = o.page.locator('.gcs-tool[data-status="Declined"]').first();
+  await declined.evaluate((node) => (node.open = true));
+  await screenshots(o.page, output, 'declined', false, '.gcs-tool[data-status="Declined"]');
+  await declined.evaluate((node) => (node.open = false));
+  await o.page.locator('.gcs-conversation').evaluate((el) => (el.scrollTop = el.scrollHeight));
+  await screenshots(o.page, output, 'map');
+  await o.page.keyboard.press('1');
+  await screenshots(o.page, output, 'video');
+  assert.equal(o.errors.length, 0);
+  await writeFile(`${output}/results.json`, JSON.stringify({ passed: true, errors: o.errors }) + '\n');
+}
+
+async function stop(browser, url, output, servicePid) {
+  const o = await observe(browser, url);
+  await until(() => o.state?.vehicles.length === 4, 'Four aircraft');
+  assert(
+    o.state.vehicles.every((v) => !v.armed && v.landed_state === 1),
+    'Land all aircraft before stopping',
+  );
+  const children = o.events.filter((e) => e.result?.kind === 'autopilot_started').map((e) => e.result.pid);
+  assert.equal(children.length, 4);
+  for (const pid of children) {
+    const status = await readFile(`/proc/${pid}/status`, 'utf8');
+    assert.equal(Number(/^PPid:\s+(\d+)/m.exec(status)[1]), servicePid);
+  }
+  const start = performance.now();
+  process.kill(servicePid, 'SIGTERM');
+  await until(() => children.every((pid) => !existsSync(`/proc/${pid}`)), 'All four autopilots stopped');
+  const seconds = (performance.now() - start) / 1000;
+  const ports = [14600, 14601, 14602, 14603];
+  for (const port of ports) {
+    await new Promise((resolve, reject) => {
+      const socket = createSocket('udp4');
+      socket.on('error', reject);
+      socket.bind(port, '127.0.0.1', () => socket.close(resolve));
+    });
+  }
+  await writeFile(
+    `${output}/results.json`,
+    JSON.stringify(
+      {
+        passed: true,
+        all_landed_before_sigterm: true,
+        service_pid: servicePid,
+        child_pids: children,
+        children_exit_seconds: seconds,
+        udp_ports_released: ports,
+      },
       null,
       2,
     ) + '\n',
@@ -533,8 +612,10 @@ async function proxy(base, output) {
 
 const [command, url, output, ...options] = process.argv.slice(2);
 assert(
-  ['flight', 'capture', 'states', 'performance', 'proxy', 'land'].includes(command) && url && output,
-  'Usage: node --import tsx mission_planner/gcs/accept_browser.mjs {flight|capture|states|performance|proxy|land} URL NEW_DIRECTORY [capture: LABEL; performance: SERVICE_PID SECONDS]',
+  ['flight', 'capture', 'states', 'review', 'performance', 'proxy', 'land', 'stop'].includes(command) &&
+    url &&
+    output,
+  'Usage: node --import tsx mission_planner/gcs/accept_browser.mjs {flight|capture|states|review|performance|proxy|land|stop} URL NEW_DIRECTORY [capture: LABEL; performance: SERVICE_PID SECONDS; stop: SERVICE_PID]',
 );
 await mkdir(output, { recursive: false });
 if (command === 'proxy') await proxy(new URL(url).origin, output);
@@ -544,7 +625,13 @@ else {
     if (command === 'flight') await flight(browser, url, output);
     else if (command === 'states') await states(browser, url, output);
     else if (command === 'land') await land(browser, url, output);
-    else if (command === 'capture') {
+    else if (command === 'review') await review(browser, url, output);
+    else if (command === 'stop') {
+      assert.equal(options.length, 1, 'stop requires service PID');
+      const pid = Number(options[0]);
+      assert(Number.isInteger(pid) && pid > 1);
+      await stop(browser, url, output, pid);
+    } else if (command === 'capture') {
       assert.equal(options.length, 1, 'capture requires a label');
       await capture(browser, url, output, options[0]);
     } else {

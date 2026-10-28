@@ -29,7 +29,7 @@ def token_history(directory):
     return rows
 
 
-def collect(run, baseline, base_commit):
+def collect(run, baseline, base_commit, checks):
     chat = read(run / "chat/result.json")
     ui = read(run / "screenshots/ui/results.json")
     states = read(run / "screenshots/states/results.json")
@@ -44,6 +44,8 @@ def collect(run, baseline, base_commit):
         ["git", "ls-files", "--others", "--exclude-standard"], text=True
     ).splitlines()
     plan = run / "screenshots/ui/Drone1.plan"
+    cleanup_paths = sorted(run.glob("*shutdown/results.json"))
+    assert cleanup_paths, "No recorded fleet shutdown."
     memory = performance.pop("memory")
     performance["memory"] = {
         "samples": len(memory),
@@ -65,11 +67,11 @@ def collect(run, baseline, base_commit):
                 "duration_s",
                 "approval_decisions",
                 "operator_declines",
-                "usage",
                 "errors",
             )
         },
         "chat_source": str(run / "chat/result.json"),
+        "inspection": read(run / "inspection/result.json"),
         "token_counts_before": token_history(baseline),
         "token_counts_after": chat["usage"],
         "ui": {
@@ -82,7 +84,8 @@ def collect(run, baseline, base_commit):
         "states": states,
         "performance": performance,
         "proxy": read(run / "proxy/results.json"),
-        "checks": read(run / "checks/results.json"),
+        "checks": read(checks / "results.json"),
+        "cleanup": [{"source": str(path), **read(path)} for path in cleanup_paths],
         "tools": {
             key: tools[key]
             for key in ("correct", "total", "accuracy", "misses", "raw_directory", "scoring_output")
@@ -100,6 +103,7 @@ def collect(run, baseline, base_commit):
         "limitations": [
             "Video and future perception/planning tools remain unavailable.",
             "Performance covers Python RSS and browser JS heap, not total browser/GPU memory.",
+            "The ten-minute performance observer started before the final map/video resize guard and approval-details visibility changes; separate browser acceptance validates those changes.",
             "Origin ground elevation is approximate; route separation checks do not model controller tracking error.",
         ],
     }
@@ -144,12 +148,13 @@ if __name__ == "__main__":
     report.add_argument("--run", type=Path, required=True)
     report.add_argument("--baseline-mission", type=Path, required=True)
     report.add_argument("--base-commit", required=True)
+    report.add_argument("--checks", type=Path, required=True)
     report.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if args.command == "checks":
         check(args.output)
     else:
-        result = collect(args.run, args.baseline_mission, args.base_commit)
+        result = collect(args.run, args.baseline_mission, args.base_commit, args.checks)
         with args.output.open("x") as output:
             output.write(json.dumps(result, indent=2) + "\n")
         print(
