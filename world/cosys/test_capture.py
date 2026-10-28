@@ -1,11 +1,19 @@
 """Capture geometry, timestamp and spacing rejection without simulator processes."""
 
+import asyncio
 import copy
+import json
 import math
+import tempfile
+import time
 import unittest
+from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
-from world.cosys.capture import capture_time, nadir_error, validate
-from world.cosys.sensor import GroundTrack
+from mission_planner.agents.perception.geometry import Camera
+from world.cosys.capture import FrameCapture, capture_time, nadir_error, validate
+from world.cosys.sensor import GroundTrack, capture_ground_track
 
 
 def frame():
@@ -125,6 +133,74 @@ class GroundTrackTests(unittest.TestCase):
         track.update(self.sample(0, 0))
         with self.assertRaisesRegex(AssertionError, "sample gap"):
             track.update(self.sample(13, 0))
+
+    def test_acquired_spacing_includes_motion_between_trigger_and_image(self):
+        record = {
+            "validation": {"captureUnixNs": 1_500_000_000},
+            "mavlinkSamples": [
+                {"receivedAtUnixNs": 1_000_000_000, "positionWorldM": {"x": 2, "y": 0}},
+                {"receivedAtUnixNs": 2_000_000_000, "positionWorldM": {"x": 2, "y": 4}},
+            ],
+        }
+        trigger = {"north_m": 0, "east_m": 0, "received_at_ms": 0}
+        self.assertEqual(capture_ground_track(record, trigger, 12), 16)
+
+
+class AsyncCaptureTests(unittest.IsolatedAsyncioTestCase):
+    async def test_slow_image_io_keeps_telemetry_loop_running_and_writes_camera_contract(self):
+        ticks = []
+        stopping = asyncio.Event()
+
+        async def telemetry():
+            while not stopping.is_set():
+                ticks.append(time.monotonic())
+                await asyncio.sleep(0.005)
+
+        def acquire(name, observe):
+            record, _ = frame()
+            record["vehicleStateBefore"]["sampleUnixNs"] = time.time_ns()
+            time.sleep(0.12)
+            record["vehicleStateAfter"]["sampleUnixNs"] = time.time_ns()
+            record.update(
+                schemaVersion=1,
+                vehicleId=name,
+                droneId=name,
+                width=160,
+                height=90,
+                horizontalFovDegrees=70,
+                localNedOriginUeCm={"x": 0, "y": 0, "z": 4000},
+                coordinateSystem="UE_LH_Z_UP_CENTIMETERS",
+                physicsPausedForCapture=False,
+            )
+            record["cameraPoseLocalNed"]["position"] = {"x": 11.6, "y": 20, "z": 10.05}
+            return record, bytes(160 * 90 * 3), None
+
+        def mavlink(fleet, name):
+            return {
+                "receivedAtUnixNs": time.time_ns(),
+                "positionWorldM": {"x": 11, "y": 20, "z": 30},
+            }
+
+        with tempfile.TemporaryDirectory() as directory:
+            capture = FrameCapture(directory, SimpleNamespace(_check_tasks=lambda: None))
+            task = asyncio.create_task(telemetry())
+            try:
+                with (
+                    mock.patch.object(capture, "_acquire", side_effect=acquire),
+                    mock.patch("world.cosys.capture.mavlink_sample", side_effect=mavlink),
+                ):
+                    record, preview = await capture.capture("Drone1", "test")
+                self.assertGreater(len(ticks), 2)
+                self.assertTrue(record["validation"]["accepted"], record["validation"])
+                self.assertEqual(Camera(record).width, 160)
+                self.assertEqual((preview["width"], preview["height"]), (960, 540))
+                path = Path(record["imagePath"])
+                self.assertTrue(path.exists())
+                self.assertEqual(json.loads(path.with_suffix(".json").read_text()), record)
+            finally:
+                stopping.set()
+                await task
+                await capture.close()
 
 
 if __name__ == "__main__":

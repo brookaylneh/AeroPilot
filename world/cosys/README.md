@@ -73,6 +73,8 @@ the accepted-frame callback runs. That callback is the single search/perception
 ingestion path. Rejected images remain with `validation.accepted=false` and explicit
 reasons; they are excluded from ingestion and the feed. `sensor.jsonl` records every
 attempt, requested spacing, measured camera displacement, latency and encoded sizes.
+Acquired ground-track spacing integrates the MAVLink path up to each image time;
+it retains turn distance and includes travel between the trigger and acquisition.
 Accepted captures also produce a 960×540 JPEG preview at quality 75; only this preview
 is sent to the browser at capture cadence. Full images remain in the mission directory.
 

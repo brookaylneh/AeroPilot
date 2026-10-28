@@ -11,6 +11,24 @@ from world.cosys.client import NAMES, write_json
 SPACING_M = 12.0
 
 
+def capture_ground_track(frame, trigger, total_m):
+    previous = (trigger["north_m"], trigger["east_m"])
+    previous_ns = int(trigger["received_at_ms"] * 1e6)
+    timestamp = frame["validation"]["captureUnixNs"]
+    assert previous_ns <= timestamp
+    for sample in frame["mavlinkSamples"]:
+        current_ns = sample["receivedAtUnixNs"]
+        if current_ns <= previous_ns:
+            continue
+        current = tuple(sample["positionWorldM"][k] for k in "xy")
+        distance = math.dist(previous, current)
+        if current_ns >= timestamp:
+            return total_m + distance * (timestamp - previous_ns) / (current_ns - previous_ns)
+        total_m += distance
+        previous, previous_ns = current, current_ns
+    raise AssertionError("MAVLink does not bracket the acquired ground track")
+
+
 class GroundTrack:
     def __init__(self):
         self.previous = None
@@ -61,10 +79,13 @@ class MissionSensor:
         frame, preview = await self.capture.capture(name, f"frame-{index:06d}")
         assert (frame["width"], frame["height"]) == (3840, 2160)
         position = frame["cameraPositionWorldM"]
+        acquired_track = (
+            capture_ground_track(frame, state, track_m) if frame["validation"]["accepted"] else None
+        )
         spacing = (
             None
             if previous is None
-            else math.dist([position[k] for k in "xy"], [previous[k] for k in "xy"])
+            else math.dist([position[k] for k in "xy"], [previous["position"][k] for k in "xy"])
         )
         frame["captureTrigger"] = {
             "autoGroundTrackM": track_m,
@@ -72,6 +93,10 @@ class MissionSensor:
             "missionSequence": state["mission_current"],
             "mavlinkReceivedAtMs": state["received_at_ms"],
             "cameraSpacingM": spacing,
+            "acquiredGroundTrackM": acquired_track,
+            "acquiredGroundTrackSpacingM": None
+            if previous is None or acquired_track is None
+            else acquired_track - previous["groundTrackM"],
         }
         write_json(self.capture.directory / f"{frame['captureId']}.json", frame)
         metric = {
@@ -92,9 +117,10 @@ class MissionSensor:
         self.metrics.flush()
         if frame["validation"]["accepted"]:
             await self.on_capture(frame, preview)
+            return {"position": position, "groundTrackM": acquired_track}
         else:
             self.fleet.on_event({"kind": "capture_rejected", **metric})
-        return position
+            return previous
 
     async def _run(self, name):
         track = GroundTrack()
