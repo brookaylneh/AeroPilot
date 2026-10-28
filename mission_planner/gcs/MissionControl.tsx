@@ -25,11 +25,13 @@ import {
   X,
 } from 'lucide-react';
 import MissionMap from './MissionMap';
+import RouteApproval from './RouteApproval';
 import {
   droneColors,
   droneIds,
   flightState,
   linkLost,
+  routeArgumentsSchema,
   useMission,
   type DroneId,
   type MissionEvent,
@@ -163,6 +165,8 @@ function ToolRow({ event, events }: { event: MissionEvent; events: MissionEvent[
 export default function MissionControl() {
   const caseId = new URLSearchParams(location.search).get('case');
   const { state, events, connection, error, setError, send, now, age } = useMission(caseId);
+  const approval = state?.approvals[0];
+  const pendingRoute = approval?.name === 'fly_route' ? routeArgumentsSchema.parse(approval.arguments) : null;
   const [selected, setSelected] = useState<DroneId>('Drone1');
   const [view, setView] = useState<'map' | 'video'>('map');
   const [panel, setPanel] = useState<'agent' | 'log'>('agent');
@@ -333,6 +337,7 @@ export default function MissionControl() {
                 selected={selected}
                 select={setSelected}
                 focus={state ? state.map_focus : null}
+                pendingRoute={pendingRoute}
                 age={age}
                 connected={connected}
                 inset={view !== 'map'}
@@ -688,10 +693,14 @@ export default function MissionControl() {
                     <DroneLabel value={approval.arguments.drone_id} />
                   </header>
                   <p>{approvalSentence(approval.name, approval.arguments)}</p>
-                  <details className="gcs-approval-arguments" open>
-                    <summary>Flight details</summary>
-                    <Arguments values={approval.arguments} />
-                  </details>
+                  {pendingRoute ? (
+                    <RouteApproval key={approval.id} route={pendingRoute} />
+                  ) : (
+                    <details className="gcs-approval-arguments" open>
+                      <summary>Flight details</summary>
+                      <Arguments values={approval.arguments} />
+                    </details>
+                  )}
                   <small>
                     Requested by {approval.source === 'agent' ? 'Wonder' : 'operator controls'}. Safety checks
                     run before execution.

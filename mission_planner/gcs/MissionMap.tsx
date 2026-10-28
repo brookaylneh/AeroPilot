@@ -10,9 +10,16 @@ import {
   zoomMap,
   type MapView,
 } from '../../scenario_creator/worldMap';
-import { droneColors, linkLost, type DroneId, type MapFocus, type Vehicle } from './missionState';
+import {
+  droneColors,
+  linkLost,
+  type DroneId,
+  type MapFocus,
+  type Vehicle,
+  type RouteArguments,
+} from './missionState';
 import { formatValue } from './display';
-import { placeLabels } from './mapLabels';
+import { groupPadLabels, placeLabels } from './mapLabels';
 
 const extent = 804.672;
 export default function MissionMap({
@@ -20,6 +27,7 @@ export default function MissionMap({
   selected,
   select,
   focus,
+  pendingRoute,
   age,
   connected,
   inset = false,
@@ -28,6 +36,7 @@ export default function MissionMap({
   selected: DroneId;
   select: (id: DroneId) => void;
   focus: MapFocus | null;
+  pendingRoute: RouteArguments | null;
   age: number;
   connected: boolean;
   inset?: boolean;
@@ -109,16 +118,23 @@ export default function MissionMap({
   const bottomRight = projection(-extent, extent);
   const active = vehicles.find((v) => v.id === selected);
   const fence = active ? active.fence : [];
+  const groups = groupPadLabels(
+    vehicles.map((v) => ({
+      ...projection(v.north_m, v.east_m),
+      id: v.id,
+      width: linkLost(v, age, connected) ? 154 : 70,
+      height: linkLost(v, age, connected) ? 40 : 24,
+      onPad:
+        !linkLost(v, age, connected) &&
+        v.landed_state === 1 &&
+        Math.hypot(v.north_m - v.home.north_m, v.east_m - v.home.east_m) <= 15,
+    })),
+  );
   const labels =
     inset || size.inset !== inset
       ? {}
       : placeLabels(
-          vehicles.map((v) => ({
-            ...projection(v.north_m, v.east_m),
-            id: v.id,
-            width: linkLost(v, age, connected) ? 154 : 70,
-            height: linkLost(v, age, connected) ? 40 : 24,
-          })),
+          groups,
           vehicles.flatMap((v) =>
             [v, v.home, ...v.mission].map((point) => {
               const p = projection(point.north_m, point.east_m);
@@ -302,17 +318,42 @@ export default function MissionMap({
               </g>
             );
           })}
-          {vehicles.map((v) => {
-            const label = labels[v.id];
+          {pendingRoute && (
+            <g className="gcs-pending-route" aria-label={`${pendingRoute.drone_id} route pending approval`}>
+              <polyline
+                points={[vehicles.find((v) => v.id === pendingRoute.drone_id)!, ...pendingRoute.waypoints]
+                  .map((w) => {
+                    const p = projection(w.north_m, w.east_m);
+                    return `${p.x},${p.y}`;
+                  })
+                  .join(' ')}
+              />
+              {pendingRoute.waypoints.map((w, i) => {
+                const p = projection(w.north_m, w.east_m);
+                return (
+                  <g key={i} transform={`translate(${p.x},${p.y})`}>
+                    <circle r="11" />
+                    <text textAnchor="middle" dy="4">
+                      {i + 1}
+                    </text>
+                  </g>
+                );
+              })}
+            </g>
+          )}
+          {groups.map((group) => {
+            const label = labels[group.id];
             if (!label) return null;
-            const p = projection(v.north_m, v.east_m);
+            const v = vehicles.find((v) => v.id === group.members[0])!;
+            const p = group;
             const lost = linkLost(v, age, connected);
             return (
               <g
-                key={`label-${v.id}`}
+                key={`label-${group.id}`}
                 className="gcs-map-label"
-                data-label={v.id}
-                style={{ color: lost ? '#a1adaf' : droneColors[v.id] }}
+                data-label={group.id}
+                data-members={group.members.join(',')}
+                style={{ color: lost ? '#a1adaf' : group.members.length > 1 ? '#d1e4dd' : droneColors[v.id] }}
               >
                 <line
                   x1={p.x}
@@ -323,7 +364,7 @@ export default function MissionMap({
                 <g transform={`translate(${label.x},${label.y})`}>
                   <rect width={label.width} height={label.height} rx="3" />
                   <text x="8" y="16">
-                    {v.id}
+                    {group.text}
                   </text>
                   {lost && (
                     <text className="gcs-label-age" x="8" y="31">
@@ -353,6 +394,12 @@ export default function MissionMap({
       </div>
       {!inset && (
         <>
+          {pendingRoute && (
+            <div className="gcs-pending-key">
+              <i />
+              Pending approval · {pendingRoute.drone_id} · {pendingRoute.waypoints.length} waypoints
+            </div>
+          )}
           <div className="gcs-map-caption">
             <span className="gcs-eyebrow">SEARCH AREA</span>
             <strong>Open Meadow</strong>

@@ -13,6 +13,12 @@ export const droneColors: Record<DroneId, string> = {
 };
 const number = z.number().finite();
 const point = z.object({ north_m: number, east_m: number });
+export const routeArgumentsSchema = z.object({
+  drone_id: z.enum(droneIds),
+  speed_mps: number,
+  waypoints: z.array(point.extend({ altitude_above_home_m: number })).min(1),
+});
+export type RouteArguments = z.infer<typeof routeArgumentsSchema>;
 const geoPoint = point.extend({
   latitude_deg: number.min(-90).max(90),
   longitude_deg: number.min(-180).max(180),

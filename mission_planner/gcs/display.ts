@@ -8,6 +8,12 @@ export function formatValue(value: number | null | undefined, unit: string, digi
   return number + (unit === '°' || unit === '%' ? unit : ` ${unit}`);
 }
 
+export function formatPosition(north_m: number, east_m: number) {
+  const direction = (value: number, positive: string, negative: string) =>
+    `${formatValue(Math.abs(value), 'm')} ${Number(value.toFixed(1)) < 0 ? negative : positive}`;
+  return `${direction(north_m, 'north', 'south')} · ${direction(east_m, 'east', 'west')}`;
+}
+
 const titles: Record<string, string> = {
   get_mission: 'Mission briefing',
   get_fleet: 'Fleet status',
@@ -47,6 +53,8 @@ export function approvalSentence(name: string, args: Record<string, unknown>) {
 
 export function argumentRows(args: Record<string, unknown>): [string, string][] {
   const rows: [string, string][] = [];
+  if (typeof args.north_m === 'number' && typeof args.east_m === 'number')
+    rows.push(['Position', formatPosition(args.north_m, args.east_m)]);
   const units: Record<string, [string, string]> = {
     altitude_above_home_m: ['Altitude above home', 'm'],
     speed_mps: ['Ground speed', 'm/s'],
@@ -55,6 +63,7 @@ export function argumentRows(args: Record<string, unknown>): [string, string][] 
     radius_m: ['Radius', 'm'],
   };
   for (const [key, value] of Object.entries(args)) {
+    if ((key === 'north_m' || key === 'east_m') && rows.some(([label]) => label === 'Position')) continue;
     if (key === 'waypoints' && Array.isArray(value)) {
       value.forEach((point, i) =>
         rows.push([
@@ -105,10 +114,14 @@ export function flightLogText(event: MissionEvent) {
         event.result && 'approved' in event.result
           ? event.result.approved
             ? 'approved by operator'
-            : 'Operator declined'
+            : 'declined by operator'
           : 'awaiting operator approval';
     if (event.kind === 'tool_result')
-      status = event.result?.ok ? 'acknowledged' : String(event.result?.error);
+      status = event.result?.ok
+        ? 'acknowledged'
+        : event.result?.error === 'Operator declined'
+          ? 'declined by operator'
+          : String(event.result?.error);
     return `${event.arguments.drone_id} · ${action} ${status}`;
   }
   return event.text;

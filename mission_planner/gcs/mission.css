@@ -1094,12 +1094,12 @@
   display: block;
   color: #d6c7ac;
 }
-.gcs-approval > div {
+.gcs-approval-buttons {
   display: flex;
   gap: 8px;
   margin-top: 16px;
 }
-.gcs-approval > div > button {
+.gcs-approval-buttons > button {
   flex: 1;
   padding: 10px 8px;
   border: 1px solid #826e46;
@@ -1494,8 +1494,109 @@
   font-size: 11px;
 }
 .gcs-approval-arguments .gcs-argument-values {
-  max-height: 120px;
-  overflow-y: auto;
+  overflow-wrap: anywhere;
+}
+.gcs-route-speed,
+.gcs-route-count {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+  padding: 8px 0;
+  color: #d6c7ac;
+}
+.gcs-route-speed strong {
+  font: 11px var(--gcs-mono);
+  color: #f2e7cf;
+}
+.gcs-route-table {
+  max-height: 176px;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+  scrollbar-width: auto;
+  scrollbar-color: #b5a077 #191e1e;
+  border: 1px solid #74613e;
+  background: #20221e;
+}
+.gcs-route-table::-webkit-scrollbar {
+  width: 12px;
+}
+.gcs-route-table::-webkit-scrollbar-track {
+  background: #191e1e;
+}
+.gcs-route-table::-webkit-scrollbar-thumb {
+  background: #b5a077;
+  border: 2px solid #191e1e;
+  border-radius: 6px;
+}
+.gcs-route-table table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+}
+.gcs-route-table th {
+  position: sticky;
+  top: 0;
+  background: #333126;
+  color: #e4d5b9;
+  font-size: 10px;
+  text-align: left;
+  font-weight: 500;
+}
+.gcs-route-table th,
+.gcs-route-table td {
+  padding: 6px 4px;
+  border-bottom: 1px solid #524b36;
+}
+.gcs-route-table th:first-child {
+  width: 24px;
+}
+.gcs-route-table th:last-child {
+  width: 68px;
+}
+.gcs-route-table td {
+  font: 10px/1.6 var(--gcs-mono);
+  vertical-align: top;
+}
+.gcs-route-table td:last-child {
+  white-space: nowrap;
+}
+.gcs-pending-route {
+  color: #f4c779;
+  pointer-events: none;
+}
+.gcs-pending-route polyline {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-dasharray: 8 5;
+}
+.gcs-pending-route circle {
+  fill: #302b20;
+  stroke: currentColor;
+  stroke-width: 1.5;
+}
+.gcs-pending-route text {
+  fill: #f4d69f;
+  font: 10px var(--gcs-mono);
+}
+.gcs-pending-key {
+  position: absolute;
+  top: 76px;
+  right: 24px;
+  padding: 8px 12px;
+  border: 1px solid #a3854b;
+  border-radius: 4px;
+  background: #2b2a21;
+  color: #f4d69f;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gcs-pending-key i {
+  width: 20px;
+  border-top: 2px dashed #f4c779;
 }
 .gcs-argument-values {
   margin: 8px 0;

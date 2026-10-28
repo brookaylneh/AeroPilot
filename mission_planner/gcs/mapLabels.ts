@@ -2,6 +2,39 @@ type Point = { x: number; y: number };
 type Box = Point & { width: number; height: number };
 export type LabelAnchor = Point & { id: string; width: number; height: number };
 
+export function groupPadLabels(anchors: (LabelAnchor & { onPad: boolean })[]) {
+  const groups: (LabelAnchor & { members: string[]; text: string })[] = [];
+  const remaining = new Set(anchors);
+  for (const anchor of anchors) {
+    if (!remaining.has(anchor)) continue;
+    const members = [anchor];
+    remaining.delete(anchor);
+    if (anchor.onPad) {
+      for (const other of remaining) {
+        if (other.onPad && members.every((p) => Math.hypot(p.x - other.x, p.y - other.y) <= 40)) {
+          members.push(other);
+          remaining.delete(other);
+        }
+      }
+    }
+    const ids = members.map((p) => p.id);
+    const text =
+      members.length === 1
+        ? anchor.id
+        : `${members.length === 4 ? 'Drone1–4' : `Drone${ids.map((id) => id.slice(5)).join(',')}`} · pad`;
+    groups.push({
+      ...anchor,
+      x: members.reduce((sum, p) => sum + p.x, 0) / members.length,
+      y: members.reduce((sum, p) => sum + p.y, 0) / members.length,
+      id: ids.join('-'),
+      members: ids,
+      text,
+      width: members.length === 1 ? anchor.width : text.length * 7 + 16,
+    });
+  }
+  return groups;
+}
+
 function overlaps(a: Box, b: Box) {
   return (
     a.x < b.x + b.width + 5 && a.x + a.width + 5 > b.x && a.y < b.y + b.height + 5 && a.y + a.height + 5 > b.y
