@@ -66,6 +66,11 @@ case "$mode" in
     exec docker run "${container_flags[@]}" "${gpu_flags[@]}" --pid=host \
       snr-unreal:5.8.2-ubuntu24.04 "$@"
     ;;
+  character-authoring)
+    exec docker run "${container_flags[@]}" "${gpu_flags[@]}" --pid=host \
+      --name snr-character-authoring --ulimit memlock=-1 snr-unreal-fab:5.8.2 \
+      xvfb-run -a --server-args="-screen 0 2048x2048x24 -nolisten tcp" "$@" -ScriptErrorsAreFatal
+    ;;
   metahuman-login)
     exec docker run "${container_flags[@]}" "${gpu_flags[@]}" \
       --name snr-metahuman-authoring -e "SNR_AUTH_DIR=$PWD/.secrets" \
@@ -92,5 +97,9 @@ case "$mode" in
       -vulkan -sm5 -cefdebug=9223 -ExecCmds="t.MaxFPS 10" -ResX=1440 -ResY=900 \
       -ddc=InstalledNoZenLocalFallback -unattended -nosound -NoSplash -nocrashreports -stdout -FullStdOutLogOutput
     ;;
-  *) echo 'Usage: unreal-container.sh build | run-packaged | exec command ... | metahuman-login | fab-authoring' >&2; exit 2 ;;
+  *)
+    echo 'Usage: unreal-container.sh build | run-packaged | exec command ... |' \
+      'character-authoring command ... | metahuman-login | fab-authoring' >&2
+    exit 2
+    ;;
 esac
