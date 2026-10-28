@@ -1,7 +1,7 @@
 # Local state, dependencies and build output
 .local/
 node_modules/
-.venv*/
+.venv*
 __pycache__/
 *.py[cod]
 .ruff_cache/

@@ -8,8 +8,8 @@ runtime_binary="$package_root/ScenarioStudio/Binaries/Linux/ScenarioStudio"
 # A release must identify its cooked map; never substitute an unrelated world.
 read -r world_map < "$package_root/scenario-map.txt"
 [[ "$world_map" =~ ^/Game/[A-Za-z0-9_/]+$ ]] || { echo 'Invalid release map manifest' >&2; exit 2; }
-streamer_port="${SNR_STREAMER_PORT:?}"
-[[ "$streamer_port" =~ ^[0-9]+$ ]] && ((streamer_port > 0 && streamer_port < 65536)) || exit 2
+pixel_streaming="${SNR_PIXEL_STREAMING:?}"
+[[ "$pixel_streaming" = 0 || "$pixel_streaming" = 1 ]] || exit 2
 stream_fps="${SNR_STREAM_FPS:-60}"
 [[ "$stream_fps" = 30 || "$stream_fps" = 60 ]] || { echo 'SNR_STREAM_FPS must be 30 or 60' >&2; exit 2; }
 max_bitrate="${SNR_STREAM_MAX_BITRATE:-10000000}"
@@ -39,6 +39,15 @@ case "$stream_height" in
   *) echo 'Unsupported SNR_STREAM_HEIGHT' >&2; exit 2 ;;
 esac
 extra_flags=()
+if [[ "$pixel_streaming" = 1 ]]; then
+  streamer_port="${SNR_STREAMER_PORT:?}"
+  [[ "$streamer_port" =~ ^[0-9]+$ ]] && ((streamer_port > 0 && streamer_port < 65536)) || exit 2
+  extra_flags+=("-PixelStreamingConnectionURL=ws://127.0.0.1:$streamer_port"
+    "-PixelStreamingWebRTCMinPort=${SNR_WEBRTC_MIN_PORT:?}"
+    "-PixelStreamingWebRTCMaxPort=${SNR_WEBRTC_MAX_PORT:?}")
+else
+  extra_flags+=(-PixelStreamingInitializeDefaultStreamer=false -PixelStreamingAutoStartStream=false)
+fi
 if [[ "$stream_codec" = H264 || "$stream_codec" = AV1 ]]; then
   # Keyframes only on browser request: periodic ones burst and get lost on Wi-Fi.
   # The latency value must be the exact enum name; the plugin asserts otherwise.
@@ -80,15 +89,14 @@ install -D -m 644 world/cosys/materials.csv "$HOME/Documents/AirSim/materials.cs
 # and flushes its device-specific pipeline cache during graceful shutdown.
 exec "$runtime_binary" ScenarioStudio "$world_map" \
   -RenderOffscreen -unattended -nosound -NoSplash -vulkan -sm5 \
+  "-UserDir=$HOME/ScenarioStudio" \
   -savevulkanpsocacheonexit \
   -dpcvars=r.pso.PrecompileThreadPoolSizeMax=2,r.Streaming.PoolSize=4096,r.ScreenPercentage=100 \
   "-ResX=$stream_width" "-ResY=$stream_height" -ForceRes \
   -settings="$cosys_settings" \
   "-ScenarioSaveDir=$scenario_data_dir" \
-  "-PixelStreamingConnectionURL=ws://127.0.0.1:$streamer_port" \
   "-PixelStreamingEncoderCodec=$stream_codec" "-PixelStreamingWebRTCFps=$stream_fps" \
   "-PixelStreamingWebRTCStartBitrate=$start_bitrate" "-PixelStreamingWebRTCMinBitrate=$min_bitrate" "-PixelStreamingWebRTCMaxBitrate=$max_bitrate" \
   -PixelStreamingWebRTCDisableTransmitAudio=true \
-  "-PixelStreamingWebRTCMinPort=${SNR_WEBRTC_MIN_PORT:?}" "-PixelStreamingWebRTCMaxPort=${SNR_WEBRTC_MAX_PORT:?}" \
   "${extra_flags[@]}" \
   -ExecCmds="$runtime_commands" -stdout -FullStdOutLogOutput

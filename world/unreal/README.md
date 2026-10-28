@@ -32,6 +32,15 @@ A release must contain its executable, cooked content, `scenario-map.txt`, `worl
 `VITE_STREAM_CODEC=H264`). For remote viewers configure TURN with `scripts/configure-turn.py`. Never expose
 Cosys RPC, editor debugging or the streamer endpoint.
 
+The launcher requires `SNR_UNREAL_HOME` for each instance's writable cache and
+`SNR_PIXEL_STREAMING=0|1`. Packaged releases are mounted read-only; Unreal's user
+directory holds logs and saved state. `SNR_PIXEL_STREAMING=0` disables creation
+and automatic start of the default streamer using the packaged Pixel Streaming 2
+settings. It requires no signalling or WebRTC ports. A streaming instance requires
+`SNR_STREAMER_PORT`, `SNR_WEBRTC_MIN_PORT` and `SNR_WEBRTC_MAX_PORT`.
+The coupling slot records its paths and ports in `.local/slot.env`, uses the
+existing recovery release and caps its container at four CPUs.
+
 ## Build and package
 
 Set `UE_ROOT` to a licensed UE 5.8.2 installation, restore the licensed Open Meadow content, then:

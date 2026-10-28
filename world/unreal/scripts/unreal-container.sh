@@ -4,7 +4,7 @@ cd "$(dirname "$0")/../../.."
 engine_root="${UE_ROOT:-$HOME/UnrealEngine/5.8.2}"
 mode="${1:-build}"
 if (( $# )); then shift; fi
-cache_root="$PWD/.local/vendor/unreal-container-home"
+cache_root="${SNR_UNREAL_HOME:?}"
 mkdir -p "$cache_root"
 cpu_limit="${SNR_CPU_LIMIT:-6}"
 [[ "$cpu_limit" =~ ^[1-9][0-9]*$ ]] || { echo 'SNR_CPU_LIMIT must be a positive integer' >&2; exit 2; }
@@ -39,12 +39,15 @@ case "$mode" in
     exec docker run "${container_flags[@]}" snr-unreal:5.8.2-ubuntu24.04 bash world/unreal/scripts/build-unreal.sh "$@"
     ;;
   run-packaged)
+    package_root=$(realpath "${SNR_PACKAGE_ROOT:?}")
+    container_flags+=(--mount "type=bind,src=$package_root,dst=$package_root,readonly")
     if [ -n "${SNR_CONTAINER_NAME:-}" ]; then
       [[ "$SNR_CONTAINER_NAME" =~ ^snr-[a-z0-9-]+$ ]] || exit 2
       container_flags+=(--name "$SNR_CONTAINER_NAME")
     fi
-    exec docker run "${container_flags[@]}" "${gpu_flags[@]}" --pid=host -e "SNR_STREAMER_PORT=${SNR_STREAMER_PORT:?}" \
-      -e "SNR_WEBRTC_MIN_PORT=${SNR_WEBRTC_MIN_PORT:?}" -e "SNR_WEBRTC_MAX_PORT=${SNR_WEBRTC_MAX_PORT:?}" \
+    exec docker run "${container_flags[@]}" "${gpu_flags[@]}" --pid=host \
+      -e "SNR_PIXEL_STREAMING=${SNR_PIXEL_STREAMING:?}" \
+      -e SNR_STREAMER_PORT -e SNR_WEBRTC_MIN_PORT -e SNR_WEBRTC_MAX_PORT \
       -e "SNR_MEDIA_CAPTURE=${SNR_MEDIA_CAPTURE:-1}" \
       -e "SNR_PROFILE=${SNR_PROFILE:-0}" \
       -e "SNR_COSYS_SETTINGS=${SNR_COSYS_SETTINGS:-$PWD/world/cosys/settings.json}" \
@@ -56,7 +59,7 @@ case "$mode" in
       -e "SNR_STREAM_TARGET_BITRATE=${SNR_STREAM_TARGET_BITRATE:-}" \
       -e "SNR_STREAM_HEIGHT=${SNR_STREAM_HEIGHT:-720}" \
       -e "SNR_RHI_THREAD=${SNR_RHI_THREAD:-1}" \
-      -e "SNR_PACKAGE_ROOT=${SNR_PACKAGE_ROOT:-$PWD/.local/unreal/Packaged/Linux}" \
+      -e "SNR_PACKAGE_ROOT=$package_root" \
       -e "SNR_SCENARIO_DATA_DIR=${SNR_SCENARIO_DATA_DIR:-$PWD/.local/data/unreal-scenarios}" \
       "${SNR_UNREAL_IMAGE:-snr-unreal:5.8.2-ubuntu24.04}" bash world/unreal/scripts/run-packaged.sh "$@"
     ;;

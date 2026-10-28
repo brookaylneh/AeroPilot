@@ -24,6 +24,9 @@ test('packaged container needs no editor, accepts bounded host resources and sel
       SNR_CPU_LIMIT: '4',
       SNR_MEMORY_LIMIT: '24g',
       SNR_UNREAL_IMAGE: 'snr-unreal-runtime:test',
+      SNR_UNREAL_HOME: path.join(directory, 'home'),
+      SNR_PACKAGE_ROOT: directory,
+      SNR_PIXEL_STREAMING: '1',
       SNR_STREAM_CODEC: 'H264',
       SNR_STREAMER_PORT: '8888',
       SNR_WEBRTC_MIN_PORT: '49160',
@@ -40,6 +43,7 @@ test('packaged container needs no editor, accepts bounded host resources and sel
     assert(args.includes('--cpus=4'));
     assert(args.includes('--runtime=nvidia'));
     assert(args.includes('snr-unreal-runtime:test'));
+    assert(args.includes(`type=bind,src=${directory},dst=${directory},readonly`));
     assert(!args.some((value) => value.includes('editor-not-installed')));
     const badMemory = spawnSync('bash', ['world/unreal/scripts/unreal-container.sh', 'run-packaged'], {
       cwd: project,
@@ -78,6 +82,7 @@ test('runtime selects its manifest and H264 explicitly; missing maps and unsuppo
       HOME: directory,
       SNR_TEST_ARGUMENTS: output,
       SNR_PACKAGE_ROOT: directory,
+      SNR_PIXEL_STREAMING: '1',
       SNR_COSYS_SETTINGS: path.join(directory, 'settings.json'),
       SNR_SCENARIO_DATA_DIR: path.join(directory, 'scenarios'),
       SNR_DRONE_DATA_DIR: '',
@@ -125,6 +130,16 @@ test('runtime selects its manifest and H264 explicitly; missing maps and unsuppo
     env.SNR_STREAM_CODEC = 'not-a-codec';
     assert.equal(run().status, 2);
     env.SNR_STREAM_CODEC = 'H264';
+    env.SNR_PIXEL_STREAMING = '0';
+    delete env.SNR_STREAMER_PORT;
+    delete env.SNR_WEBRTC_MIN_PORT;
+    delete env.SNR_WEBRTC_MAX_PORT;
+    assert.equal(run().status, 0, 'A sensor-only instance needs no streaming ports');
+    const sensorOnly: string[] = JSON.parse(readFileSync(output, 'utf8'));
+    assert(sensorOnly.includes('-PixelStreamingInitializeDefaultStreamer=false'));
+    assert(sensorOnly.includes('-PixelStreamingAutoStartStream=false'));
+    assert(!sensorOnly.some((arg) => arg.startsWith('-PixelStreamingConnectionURL=')));
+    assert(!sensorOnly.some((arg) => arg.startsWith('-PixelStreamingWebRTCMinPort=')));
     rmSync(path.join(directory, 'scenario-map.txt'));
     assert.notEqual(run().status, 0, 'A missing map must never load a substitute world');
   } finally {
