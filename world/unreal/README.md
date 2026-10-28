@@ -76,8 +76,16 @@ The tool selects Adult 2, photographs fixed character, meadow and launch-pad vie
 30 seconds of settling before profiling a repeating keyboard routine. It preserves the prior
 authoring state in the private evidence directory. Use `person` for a close character view
 with small alternating zoom movements.
-This measures navigation without starting drone flight or sensor captures; it does not establish the
-full four-drone quality gate. Existing output directories fail.
+The `navigation` and `person` modes do not start flights. For the complete workload, use
+`four-drones CAPTURE_HZ` in place of `navigation`. The explicit cadence is per drone; captures
+are staggered across the period. The tool starts `world.cosys.render_workload`, which owns the
+local controller lock, verifies four parked SimpleFlight vehicles, flies separated paths,
+records 4K RGB JPEGs at quality 95 with poses and capture timings, and lands before exiting.
+Sensor capture warms for 30 seconds before the timed window. Each sample records active
+containers; the profiler records container CPU quota and cgroup throttling counters.
+Concurrent builds invalidate isolated capacity claims.
+It does not call perception services. Its cadence is an experiment input, not an inferred
+mission-service cadence. Existing output directories fail.
 
 The launcher accepts `SNR_STREAM_HEIGHT=2160` for 3840×2160 and `1440` for 2560×1440.
 Each package records its cooked shader platform in `shader-platform.txt`; the launcher requires

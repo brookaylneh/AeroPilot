@@ -7,6 +7,7 @@ import json
 import math
 import os
 import shutil
+import subprocess
 import time
 import uuid
 from datetime import datetime, timezone
@@ -39,6 +40,12 @@ def summarize(path):
             "max": ordered[-1],
         }
     return {"milliseconds": stats, "metadata": metadata}
+
+
+def cpu_stats(path):
+    return {
+        name: int(value) for name, value in (line.split() for line in path.read_text().splitlines())
+    }
 
 
 def main():
@@ -78,7 +85,32 @@ def main():
             "csvprofile STARTFILE=" + name,
             "csvprofile START",
         ]
+        cpu, memory, image, pid = subprocess.check_output(
+            [
+                "docker",
+                "inspect",
+                os.environ["SNR_CONTAINER_NAME"],
+                "--format",
+                "{{.HostConfig.NanoCpus}} {{.HostConfig.Memory}} {{.Image}} {{.State.Pid}}",
+            ],
+            text=True,
+            timeout=5,
+        ).split()
+        containers = subprocess.check_output(
+            ["docker", "ps", "--format", "{{.Names}}"], text=True, timeout=5
+        ).splitlines()
+        cgroup = Path(f"/proc/{pid}/cgroup").read_text().strip().split(":")
+        assert cgroup[:2] == ["0", ""], cgroup
+        cpu_stat = Path("/sys/fs/cgroup") / cgroup[2].removeprefix("/") / "cpu.stat"
         report = {
+            "cpu_stat_path": str(cpu_stat),
+            "cpu_before": cpu_stats(cpu_stat),
+            "runtime": {
+                "cpus": int(cpu) / 1e9,
+                "memoryBytes": int(memory),
+                "image": image,
+                "activeContainers": containers,
+            },
             "started_at": datetime.now(timezone.utc).isoformat(),
             "release": str(release),
             "source_csv": str(path),
@@ -122,6 +154,10 @@ def main():
             line for line in lines if any((query + " =") in line for query in report["queries"])
         ]
         assert len(report["render_settings"]) == len(report["queries"]), report["render_settings"]
+        report["cpu_after"] = cpu_stats(Path(report["cpu_stat_path"]))
+        report["cpu_delta"] = {
+            key: report["cpu_after"][key] - before for key, before in report["cpu_before"].items()
+        }
         destination = args.output / "engine.csv"
         assert not destination.exists()
         shutil.copy2(path, destination)
