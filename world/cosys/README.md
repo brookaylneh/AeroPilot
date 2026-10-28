@@ -220,42 +220,223 @@ Primary references:
 
 ## Installed cutover after merge
 
-Do this in the agreed deployment window after the coupling revision is merged and
-its acceptance record is complete. These steps are a plan; development does not
-modify the installed services or release.
+These are operator commands for the deployment window, not development commands.
+Run them as brook_avionuas only after the accepted revision is merged into a clean
+installed checkout. Land and disarm the installed fleet and release the authoring
+player first. Keep the intended saved case's Mission Control page ready to reload.
 
-1. Land and disarm every installed aircraft and release the authoring player. Record
-   `ss -lntup`, the installed runtime environment and the current `Live` symlink.
-   Stop `snr-mission`; the current installed fleet uses its separate built-in physics.
-   Stop `snr-unreal`, then confirm its container and listener ports are gone.
-2. Stage the accepted coupling-owned game release into a new installed release
-   directory. Copy the new executable/debug/symbol files; hardlink unchanged cooked
-   content. Verify every file against the accepted release receipt. Never overwrite
-   `releases/cooked-content-recovery`. Install the accepted patched SITL binary at
-   the `SNR_SITL_BINARY` path recorded in the new runtime environment.
-3. From the merged installed checkout, regenerate that release's settings:
-   `.venv-cosys/bin/python -m world.cosys.configure-drones --rpc-port 41451
-   --instance-base 0 --output .local/unreal/releases/<accepted-release>/cosys-settings.json`.
-   Set `SNR_SITL_MODEL=airsim-copter`, `SNR_SITL_INSTANCE_BASE=0`,
-   `SNR_COSYS_PORT=41451`, `SNR_MAVLINK_BASE_PORT=14600` and
-   `SNR_SITL_RC_BASE_PORT=5501` in `.local/runtime.env`. Preserve installed web,
-   signalling and TURN ports. Set `SNR_SIGNALLING_LOG_DIR` explicitly and point
-   `SNR_COSYS_SETTINGS`/`SNR_WORLD_CONFIG` at the new release. Atomically switch
-   `.local/unreal/Live` to that directory and build the merged browser with `npm run build`.
-4. Reload systemd's environment configuration if its generated drop-ins changed.
-   Check `ss -lntup`: RPC 41451, motor 9002/9012/9022/9032, sensor
-   9003/9013/9023/9033, MAVLink 14600–14603 and RC 5501/5511/5521/5531 must be free.
-   Start `snr-unreal`, then `snr-mission` and connect the intended saved case promptly
-   so all four controllers answer the world's motor exchange. Verify the unchanged
-   fleet startup checks, 184 Hz readback, camera frames and persisted search coverage.
-5. With the editor and development worlds stopped by their owners, repeat the
-   recorded flight/capture, feed and pan measurements. Record isolated process CPU,
-   GPU and frame times before accepting installed performance. Development resource
-   coexistence measurements are not an isolated performance result.
+~~~sh
+cd /home/brook_avionuas/snr
+set -euo pipefail
+umask 077
+test -z "$(git status --porcelain)"
+export PATH="$PWD/.local/toolchains/bin:$PATH"
+export SNR_CUTOVER_SOURCE=/home/brook_avionuas/snr-coupling
+export SNR_CUTOVER_RELEASE="$PWD/.local/unreal/releases/coupling-sensor-20261028"
+export SNR_CUTOVER_EVIDENCE="$PWD/.local/evidence/coupling/cutover-20261028"
+mkdir "$SNR_CUTOVER_EVIDENCE"
+cp .local/runtime.env "$SNR_CUTOVER_EVIDENCE/runtime-before.env"
+readlink -f .local/unreal/Live > "$SNR_CUTOVER_EVIDENCE/previous-release.txt"
+git rev-parse HEAD > "$SNR_CUTOVER_EVIDENCE/installed-commit.txt"
+ss -lntup > "$SNR_CUTOVER_EVIDENCE/listeners-before.txt"
+sudo systemctl stop snr-mission
+sudo systemctl stop snr-unreal
+sudo systemctl stop snr-web snr-signalling
+~~~
 
-For subsequent coupled shutdowns, land first. Send `docker kill --signal=TERM
-snr-unreal-live`, wait for its new `UWorld::CleanupWorld for OpenMeadow,` log marker,
-then immediately stop `snr-mission`; wait for Unreal's orderly exit and verify all
-ports are released. The marker follows world `EndPlay`, when AirSim physics stops.
-Waiting for the renderer's complete cache flush before stopping SITL can exceed its
-sensor timeout. Reversing the order can leave physics waiting for motor data.
+That initial order applies to the currently installed built-in-physics fleet.
+Subsequent coupled shutdowns use the ordered procedure below. Stage the accepted
+release without modifying its source or cooked-content-recovery. Only the verified
+cooked Paks files are hardlinked; executable, libraries, settings and other runtime
+files receive independent copies. The accepted SITL executable is copied into the
+new release too.
+
+~~~sh
+.venv-cosys/bin/python - <<'PY'
+import hashlib
+import json
+import os
+import shutil
+from pathlib import Path
+
+root = Path.cwd()
+source = Path(os.environ["SNR_CUTOVER_SOURCE"])
+destination = Path(os.environ["SNR_CUTOVER_RELEASE"])
+evidence = Path(os.environ["SNR_CUTOVER_EVIDENCE"])
+receipt_path = source / ".local/evidence/coupling/stage2/sensor-build-02/release.json"
+receipt = json.loads(receipt_path.read_text())
+release = Path(receipt["release"])
+assert release == source / ".local/unreal/releases/coupling-sensor"
+
+def digest(path):
+    value = hashlib.sha256()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(8 * 1024 * 1024), b""):
+            value.update(chunk)
+    return value.hexdigest()
+
+files = receipt["files"]
+assert len(files) == len({item["path"] for item in files})
+assert {str(p.relative_to(release)) for p in release.rglob("*") if p.is_file()} == {
+    item["path"] for item in files
+}
+destination.mkdir()
+for item in files:
+    relative = Path(item["path"])
+    assert not relative.is_absolute() and ".." not in relative.parts
+    original, copied = release / relative, destination / relative
+    assert original.is_file() and not original.is_symlink()
+    assert original.stat().st_size == item["bytes"] and digest(original) == item["sha256"]
+    copied.parent.mkdir(parents=True, exist_ok=True)
+    if (item["method"] == "hardlink_unchanged_content"
+            and relative.parts[:3] == ("ScenarioStudio", "Content", "Paks")):
+        os.link(original, copied)
+    else:
+        shutil.copy2(original, copied)
+    assert digest(copied) == item["sha256"]
+shutil.copy2(receipt_path, evidence / "game-source-receipt.json")
+accepted = json.loads(
+    (source / ".local/evidence/coupling/stage2/accepted-stage1.json").read_text()
+)
+sitl = accepted["builds"]["SITL"]
+assert digest(Path(sitl["binary"])) == sitl["binary_after_sha256"]
+shutil.copy2(sitl["binary"], destination / "arducopter")
+assert digest(destination / "arducopter") == sitl["binary_after_sha256"]
+(evidence / "sitl-source-receipt.json").write_text(json.dumps(sitl, indent=2) + "\n")
+
+def environment(path):
+    rows = [line for line in path.read_text().splitlines() if line and not line.startswith("#")]
+    pairs = [line.split("=", 1) for line in rows]
+    assert all(len(pair) == 2 for pair in pairs)
+    assert len(pairs) == len({pair[0] for pair in pairs})
+    return dict(pairs)
+
+runtime = environment(root / ".local/runtime.env")
+example = environment(root / "deploy/runtime.env.example")
+for key in (
+    "SNR_SITL_MODEL", "SNR_SITL_INSTANCE_BASE", "SNR_SITL_PORT_STEP",
+    "SNR_COSYS_PORT", "SNR_MAVLINK_BASE_PORT", "SNR_SITL_RC_BASE_PORT",
+    "SNR_PIXEL_STREAMING", "SNR_UNREAL_IMAGE", "SNR_SIGNALLING_LOG_DIR",
+):
+    runtime[key] = example[key]
+runtime.update(
+    SNR_SITL_BINARY=str(destination / "arducopter"),
+    SNR_PACKAGE_ROOT=str(root / ".local/unreal/Live"),
+    SNR_COSYS_SETTINGS=str(destination / "cosys-settings.json"),
+    SNR_WORLD_CONFIG=str(destination / "world.json"),
+)
+assert not set(example).difference(runtime), "Required runtime fields are missing"
+next_env = root / ".local/runtime.env.coupling"
+with next_env.open("x") as stream:
+    stream.write("".join(f"{key}={value}\n" for key, value in runtime.items()))
+next_env.replace(root / ".local/runtime.env")
+PY
+.venv-cosys/bin/python -m world.cosys.configure-drones \
+  --rpc-port 41451 --instance-base 0 \
+  --output "$SNR_CUTOVER_RELEASE/cosys-settings.json"
+sha256sum "$SNR_CUTOVER_RELEASE/cosys-settings.json" \
+  > "$SNR_CUTOVER_EVIDENCE/deployment-settings.sha256"
+test ! -e .local/unreal/Live.coupling
+ln -s "$SNR_CUTOVER_RELEASE" .local/unreal/Live.coupling
+mv -Tf .local/unreal/Live.coupling .local/unreal/Live
+npm ci
+npm run build
+sudo bash deploy/install-services.sh
+sudo test ! -e /etc/systemd/system/snr-unreal.service.d/coupled-shutdown.conf
+sudo tee /etc/systemd/system/snr-unreal.service.d/coupled-shutdown.conf >/dev/null <<'UNIT'
+[Service]
+ExecStop=
+SuccessExitStatus=143
+UNIT
+sudo systemctl daemon-reload
+sudo systemd-analyze verify /etc/systemd/system/snr-unreal.service
+set -a
+. .local/runtime.env
+set +a
+~~~
+
+The environment update takes coupling fields from the installed profile in
+deploy/runtime.env.example; web, signalling, TURN, viewport and resource settings
+retain their installed values. Regeneration deliberately changes the copied slot
+settings to RPC 41451 and instances 0–3. The installer renders the actual systemd
+units/drop-ins, reloads systemd and enables the services without starting them.
+The additional drop-in accepts the measured container exit status 143 and clears
+Docker stop: the container removes itself after exit, so an ensuing ExecStop must
+not try to stop it again. Use the ordered coupled shutdown below instead of stopping
+the Unreal unit directly.
+
+~~~sh
+ss -lntup > "$SNR_CUTOVER_EVIDENCE/listeners-before-start.txt"
+.venv-cosys/bin/python - <<'PY'
+from mission_planner.gcs.sitl import check_ports
+check_ports([3001, 8080, 8888, 8765, 41451,
+             9002, 9012, 9022, 9032, 9003, 9013, 9023, 9033,
+             14600, 14601, 14602, 14603, 5501, 5511, 5521, 5531])
+PY
+sudo systemctl start snr-signalling snr-web
+sudo systemctl start snr-unreal
+timeout 120 bash -c 'until ss -H -ltn sport = :41451 | rg -q "127.0.0.1:41451"; do sleep 1; done'
+sudo systemctl start snr-mission
+~~~
+
+Reload the intended saved case immediately: snr-mission starts idle and that
+connection creates all four controllers. Verify the unchanged startup checks,
+184 Hz readback, real camera frames and persisted search coverage. Keep the
+mission's case selected across reconnects. With the editor and development worlds
+stopped by their owners, repeat the recorded flight/capture, feed and pan checks;
+record isolated process CPU, GPU and frame timing before accepting installed
+performance. Development coexistence is not the installed performance result.
+
+For subsequent coupled shutdowns, land and disarm first. Do not use the service's
+60-second Docker stop timeout while Unreal is still flushing caches. This sequence
+signals Unreal, observes only new log output, then stops Mission Control as soon as
+world EndPlay has stopped AirSim physics. The log follower is the only helper it
+terminates.
+
+~~~sh
+cd /home/brook_avionuas/snr
+set -euo pipefail
+set -a
+. .local/runtime.env
+set +a
+sudo -v
+.venv-cosys/bin/python - <<'PY'
+import os
+import select
+import subprocess
+import time
+from datetime import datetime, timezone
+
+container = os.environ["SNR_CONTAINER_NAME"]
+assert container == "snr-unreal-live"
+since = datetime.now(timezone.utc).isoformat()
+logs = subprocess.Popen(
+    ["docker", "logs", "--follow", "--since", since, container],
+    stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+)
+try:
+    subprocess.run(["docker", "kill", "--signal=TERM", container], check=True)
+    deadline, buffer = time.monotonic() + 60, b""
+    while b"UWorld::CleanupWorld for OpenMeadow," not in buffer:
+        remaining = deadline - time.monotonic()
+        assert remaining > 0, "Unreal EndPlay marker timed out"
+        assert select.select([logs.stdout], [], [], remaining)[0], "Unreal EndPlay marker timed out"
+        chunk = os.read(logs.stdout.fileno(), 65536)
+        assert chunk, "Unreal log ended before EndPlay"
+        buffer = (buffer + chunk)[-131072:]
+    subprocess.run(["sudo", "-n", "systemctl", "stop", "snr-mission"], check=True)
+finally:
+    logs.terminate()
+    logs.wait(timeout=5)
+PY
+timeout 180 bash -c 'while systemctl is-active --quiet snr-unreal; do sleep 1; done'
+test "$(systemctl show snr-unreal -p ActiveState --value)" = inactive
+test "$(systemctl show snr-unreal -p Result --value)" = success
+systemctl show snr-unreal -p ExecMainStatus -p Result
+test -z "$(docker ps -aq --filter name=^/snr-unreal-live$)"
+.venv-cosys/bin/python - <<'PY'
+from mission_planner.gcs.sitl import check_ports
+check_ports([8765, 41451, 9002, 9012, 9022, 9032, 9003, 9013, 9023, 9033,
+             14600, 14601, 14602, 14603, 5501, 5511, 5521, 5531])
+PY
+~~~
