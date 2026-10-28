@@ -16,19 +16,18 @@ from pymavlink import mavutil  # noqa: E402
 
 from mission_planner.environment import load_env  # noqa: E402
 from mission_planner.gcs.geodesy import (  # noqa: E402
-    MAX_ALTITUDE_M,
-    MIN_ALTITUDE_M,
-    MIN_SEPARATION_M,
     NAMES,
     ROOT,
     fence_vertices,
     homes,
-    point_in_polygon,
     rtl_route,
-    segment_distance,
-    segment_in_polygon,
     to_geodetic,
     to_local,
+)
+from mission_planner.gcs.validation import (  # noqa: E402
+    validate_position,
+    validate_route,
+    validate_separation,
 )
 
 MAV = mavutil.mavlink
@@ -495,46 +494,15 @@ class Fleet:
         )
         await self._until(name, lambda: self.vehicles[name]["mode"] == mode, 10)
 
-    def _fence(self, name):
-        return [
-            dict(zip(("north_m", "east_m"), to_local(m["x"] / 1e7, m["y"] / 1e7)))
-            for m in self.vehicles[name]["fence"]
-        ]
-
     def _validate_route(self, name, route):
         assert route
-        polygon = self._fence(name)
-        for p in route:
-            assert all(math.isfinite(p[k]) for k in ("north_m", "east_m", "altitude_above_home_m"))
-            assert point_in_polygon(p, polygon), "Waypoint is outside the search fence"
-            assert MIN_ALTITUDE_M <= p["altitude_above_home_m"] <= MAX_ALTITUDE_M, (
-                "Altitude must be 10–100 m above home"
-            )
-
-        for a, b in zip(route, route[1:]):
-            assert segment_in_polygon(a, b, polygon), (
-                "Route segment exits the launch corridor fence"
-            )
-
+        validate_route(route, self.vehicles[name]["fence"])
         self._validate_separation(name, route)
 
     def _validate_separation(self, name, route):
-        # Routes reserve their entire spatial corridor, independent of timing.
-        def segments(points):
-            values = [
-                tuple(p[k] for k in ("north_m", "east_m", "altitude_above_home_m")) for p in points
-            ]
-            return list(zip(values, values[1:])) if len(values) > 1 else [(values[0], values[0])]
-
         reservations = list(self.planned_routes.items())
         reservations.extend((state["id"], [state]) for state in self.snapshot())
-        for other, reserved in reservations:
-            if other != name:
-                for a, b in segments(route):
-                    for c, d in segments(reserved):
-                        assert segment_distance(a, b, c, d) >= MIN_SEPARATION_M, (
-                            f"Route conflicts with {other}; minimum separation {MIN_SEPARATION_M} m"
-                        )
+        validate_separation(name, route, reservations)
 
     async def execute(self, name, args):
         async with self.command_lock:
@@ -547,9 +515,7 @@ class Fleet:
             state = next(s for s in states if s["id"] == drone)
             assert not state["link_lost"], f"{drone}: link lost"
             assert state["ekf_healthy"] and state["gps_fix"] >= 3, f"{drone}: GPS/EKF unhealthy"
-            assert point_in_polygon(state, self._fence(drone)), (
-                f"{drone}: current position is outside the search fence; launch position conflicts with required fence"
-            )
+            validate_position(drone, state, self.vehicles[drone]["fence"])
             if name == "take_off":
                 assert (
                     not state["armed"] and state["landed_state"] == MAV.MAV_LANDED_STATE_ON_GROUND
