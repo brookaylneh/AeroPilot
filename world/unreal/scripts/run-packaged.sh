@@ -31,7 +31,13 @@ case "$stream_codec" in
   *) echo 'SNR_STREAM_CODEC must be VP8, VP9, H264 or AV1' >&2; exit 2 ;;
 esac
 stream_height="${SNR_STREAM_HEIGHT:-720}"
-case "$stream_height" in 1080) stream_width=1920 ;; 720) stream_width=1280 ;; 540) stream_width=960 ;; *) exit 2 ;; esac
+case "$stream_height" in
+  2160) stream_width=3840 ;;
+  1080) stream_width=1920 ;;
+  720) stream_width=1280 ;;
+  540) stream_width=960 ;;
+  *) echo 'Unsupported SNR_STREAM_HEIGHT' >&2; exit 2 ;;
+esac
 extra_flags=()
 if [[ "$stream_codec" = H264 || "$stream_codec" = AV1 ]]; then
   # Keyframes only on browser request: periodic ones burst and get lost on Wi-Fi.

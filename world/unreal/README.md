@@ -55,3 +55,24 @@ authorized account; Fab also needs `docker build -t snr-unreal-fab:5.8.2 - < wor
 The fetcher checks the engine changelist and original-file hashes, excludes build outputs and applies
 `pixelstreaming2-ue58.patch` and `libvpxcodecs-ue58.patch` without fuzz. Existing destinations fail.
 The patches preserve the project include path, VP8 thread budget and encoder diagnostics.
+
+## Measure browser streaming
+
+Use the installed public origin with Studio's editing session free. Load the installed runtime
+configuration so the tool can assert the expected stream dimensions and TURN relay ports.
+
+```sh
+node --env-file=.local/runtime.env world/unreal/scripts/measure-stream.mjs \
+  http://35.81.229.78 .local/evidence/render-quality/<new-run> 300
+```
+
+The tool records browser WebRTC counters, video-frame callback gaps, native camera telemetry timings,
+and NVIDIA power, clocks, temperature, utilization and memory. It captures native-resolution video
+frames before and after a repeating keyboard navigation routine. Timing percentiles describe the
+received camera telemetry samples, rather than an exhaustive engine frame trace.
+This measures navigation without starting drone flight or sensor captures; it does not establish the
+full four-drone quality gate. Existing output directories fail.
+
+The launcher accepts `SNR_STREAM_HEIGHT=2160` for native 3840×2160, as well as the existing resolutions.
+A resolution experiment requires restarting `snr-unreal`; changing the setting does not alter the
+cooked lighting features or automatically select a different quality profile.
