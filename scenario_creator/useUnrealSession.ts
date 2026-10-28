@@ -117,6 +117,13 @@ export function useUnrealSession() {
         });
         const health = (await response.json()) as { state: string };
         if (!active) return;
+        if (!response.ok || health.state === 'unavailable') {
+          setConnectionStatus({
+            title: 'Scene is unavailable',
+            detail: 'The renderer is not running. Restore the service, then select Reconnect.',
+          });
+          return;
+        }
         if (health.state === 'occupied') {
           schedule(
             'Scene in use',
