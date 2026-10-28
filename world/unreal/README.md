@@ -89,3 +89,8 @@ UE_ROOT="$PWD/.local/toolchains/UnrealEngine-5.8.2" \
 The check creates only temporary Vulkan instances and uses the NVIDIA ICD. It does not start another
 renderer or listener. Both profile results must pass; it does not bypass the engine's profile checks.
 A supported device still needs SM6 shaders and the project's uncooked assets for a complete rebuild.
+
+## Generated characters
+
+[Character sources](characters/README.md) documents the FLUX reference and Hunyuan PBR mesh workflow,
+its review gallery and the separate MetaHuman acceptance step.

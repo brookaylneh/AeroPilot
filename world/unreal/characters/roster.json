@@ -1,0 +1,134 @@
+{
+  "schema_version": 1,
+  "image": {
+    "endpoint": "fal-ai/flux-pro/v1.1-ultra",
+    "arguments": {
+      "aspect_ratio": "2:3",
+      "raw": false,
+      "enhance_prompt": false,
+      "num_images": 1,
+      "output_format": "png",
+      "safety_tolerance": "2",
+      "sync_mode": false
+    }
+  },
+  "mesh": {
+    "endpoint": "fal-ai/hunyuan-3d/v3.1/pro/image-to-3d",
+    "arguments": {
+      "generate_type": "Normal",
+      "enable_pbr": true,
+      "face_count": 1500000
+    }
+  },
+  "prompt": "Full-body photographic scanning reference, exact front view. The person stands in an A-POSE: both arms extended diagonally outwards and downwards at 40 degrees from the torso, straight elbows, a large clear triangular gap between each arm and the body. BOTH OPEN HANDS held well away from the hips, all ten fingers gently spread and clearly visible, palms facing the camera. Feet separated shoulder-width, legs straight. Entire body, hair, all fingertips and both complete shoes visible with generous margins. Subject: {description}. Clothing: {clothing}. Neutral closed-mouth expression, eyes open, face unobstructed. Real ordinary human, realistic age and build. Exceptionally realistic unretouched photograph with authentic skin pores, natural age detail, fine hairs and subtle asymmetry, natural fabric texture. Soft even neutral light from a large studio light tent, plain light grey seamless background. Frontal camera at mid-body height, 70mm lens, sharp detail across the entire body. One person only. No jewelry, glasses, hats, props, makeup, beauty retouching, branding, text or watermarks.",
+  "characters": [
+    {
+      "id": "child-01",
+      "name": "Maya",
+      "group": "children",
+      "age": 8,
+      "description": "a girl aged exactly 8, with dark brown skin, West African family heritage, a small slender age-appropriate build, round youthful cheeks and short tightly curled black hair",
+      "clothing": "a plain sage-green short-sleeve cotton T-shirt, straight navy stretch trousers and simple grey low-top trainers",
+      "seed": 730281
+    },
+    {
+      "id": "child-02",
+      "name": "Leo",
+      "group": "children",
+      "age": 10,
+      "description": "a boy aged exactly 10, with fair freckled skin, Irish family heritage, an average age-appropriate build and short copper-red hair",
+      "clothing": "a plain muted-blue short-sleeve cotton T-shirt, straight charcoal stretch trousers and simple brown low-top trainers",
+      "seed": 730282
+    },
+    {
+      "id": "child-03",
+      "name": "Amina",
+      "group": "children",
+      "age": 12,
+      "description": "a girl aged exactly 12, with medium brown skin, South Asian family heritage, a sturdy age-appropriate build and dark hair neatly tied back away from her face and ears",
+      "clothing": "a plain muted-rust short-sleeve cotton T-shirt, straight dark-blue stretch trousers and simple grey low-top trainers",
+      "seed": 730283
+    },
+    {
+      "id": "child-04",
+      "name": "Jun",
+      "group": "children",
+      "age": 15,
+      "description": "a boy aged exactly 15, with light tan skin, East Asian family heritage, a tall lanky adolescent build and short straight black hair",
+      "clothing": "a plain moss-green short-sleeve cotton T-shirt, straight charcoal stretch trousers and simple dark low-top trainers",
+      "seed": 730284
+    },
+    {
+      "id": "adult-01",
+      "name": "Nia",
+      "group": "adults",
+      "age": 24,
+      "description": "a woman aged 24, with deep brown skin, East African family heritage, a tall lean athletic build, a broad natural nose and close-cropped tightly curled black hair",
+      "clothing": "a plain slate-blue close-fitting short-sleeve cotton T-shirt, straight dark-grey stretch trousers and simple grey low-top trainers",
+      "seed": 730285
+    },
+    {
+      "id": "adult-02",
+      "name": "Mateo",
+      "group": "adults",
+      "age": 36,
+      "description": "a visibly stocky heavyset man aged 36, with medium olive-brown skin, Latin American family heritage, a wide waist and rounded belly, thick arms and thighs, a broad natural face, short wavy dark-brown hair and light stubble. His sturdy heavyset build is clearly visible beneath his fitted clothes; he is an ordinary person, not a fitness model",
+      "clothing": "a plain muted-ochre close-fitting short-sleeve cotton T-shirt, straight navy stretch trousers and simple grey low-top trainers",
+      "seed": 730286
+    },
+    {
+      "id": "adult-03",
+      "name": "Mei",
+      "group": "adults",
+      "age": 47,
+      "description": "a visibly middle-aged woman aged 47, with light-medium warm skin, East Asian family heritage, a short plus-size build with a full waist and rounded hips, a natural unretouched face with visible crow feet and under-eye creases, subtle neck lines, natural lips without lipstick, and short straight black hair streaked with grey. Her fuller build and middle age must remain visible, with no beauty retouching or skin smoothing",
+      "clothing": "a plain muted-plum close-fitting short-sleeve cotton T-shirt, straight charcoal stretch trousers and simple grey low-top trainers",
+      "seed": 730287
+    },
+    {
+      "id": "adult-04",
+      "name": "Owen",
+      "group": "adults",
+      "age": 58,
+      "description": "a man aged 58, with pale lightly freckled skin, Northern European family heritage, a tall slim build, a clean-shaven angular face, natural facial lines and short salt-and-pepper hair with a receding hairline",
+      "clothing": "a plain muted-teal close-fitting short-sleeve cotton T-shirt, straight brown stretch trousers and simple grey low-top trainers",
+      "seed": 730288
+    },
+    {
+      "id": "senior-01",
+      "name": "Samira",
+      "group": "seniors",
+      "age": 65,
+      "description": "a woman aged 65, with warm olive skin, North African family heritage, an average-height sturdy build, natural age lines and short wavy silver-grey hair",
+      "clothing": "a plain muted-terracotta close-fitting short-sleeve cotton T-shirt, straight navy stretch trousers and simple grey low-top trainers",
+      "seed": 730289
+    },
+    {
+      "id": "senior-02",
+      "name": "Arthur",
+      "group": "seniors",
+      "age": 73,
+      "description": "a man aged 73, with fair skin and natural age spots, Northern European family heritage, a broad heavier build, a clean-shaven face, realistic wrinkles and short thinning white hair",
+      "clothing": "a plain muted-forest-green close-fitting short-sleeve cotton T-shirt, straight charcoal stretch trousers and simple grey low-top trainers",
+      "seed": 730290
+    },
+    {
+      "id": "senior-03",
+      "name": "Lila",
+      "group": "seniors",
+      "age": 81,
+      "description": "an elderly octogenarian woman aged 81, with medium-deep brown skin, South Asian family heritage, a small thin build, a visibly aged unretouched face with deep forehead wrinkles, crow feet, folded lower eyelids, age spots, thin natural lips, loose skin on her neck and veined aged hands. Her thin silver-white hair is neatly tied back away from her face. She looks distinctly over eighty, with no makeup, lipstick, beauty lighting or skin smoothing",
+      "clothing": "a plain muted-lavender close-fitting short-sleeve cotton T-shirt, straight dark-brown stretch trousers and simple grey low-top trainers",
+      "seed": 730291
+    },
+    {
+      "id": "senior-04",
+      "name": "Isaac",
+      "group": "seniors",
+      "age": 88,
+      "description": "a man aged 88, with dark brown skin, African Caribbean family heritage, a tall slender build, a clean-shaven face, deeply realistic facial wrinkles and very short white-grey hair",
+      "clothing": "a plain muted-cobalt close-fitting short-sleeve cotton T-shirt, straight charcoal stretch trousers and simple grey low-top trainers",
+      "seed": 730292
+    }
+  ]
+}

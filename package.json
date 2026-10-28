@@ -10,8 +10,8 @@
     "test": "tsx --test 'scenario_creator/*.test.ts' 'world/**/*.test.ts' 'mission_planner/**/*.test.mjs'",
     "fonts": "python3 web/fetch-fonts.py",
     "typecheck": "tsc --noEmit",
-    "format": "prettier --write web scenario_creator world/unreal/scripts mission_planner/gcs 'mission_planner/agents/perception/*.mjs' '*.ts' '*.json'",
-    "format:check": "prettier --check web scenario_creator world/unreal/scripts mission_planner/gcs 'mission_planner/agents/perception/*.mjs' '*.ts' '*.json'"
+    "format": "prettier --write web scenario_creator world/unreal/scripts world/unreal/characters mission_planner/gcs 'mission_planner/agents/perception/*.mjs' '*.ts' '*.json'",
+    "format:check": "prettier --check web scenario_creator world/unreal/scripts world/unreal/characters mission_planner/gcs 'mission_planner/agents/perception/*.mjs' '*.ts' '*.json'"
   },
   "dependencies": {
     "@epicgames-ps/lib-pixelstreamingfrontend-ue5.8": "^0.1.3",
@@ -31,6 +31,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^4.7.0",
     "concurrently": "^10.0.6",
+    "gltf-validator": "2.0.0-dev.3.10",
     "prettier": "3.6.2",
     "tsx": "^4.23.15",
     "typescript": "^5.9.3",
