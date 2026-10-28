@@ -9,6 +9,7 @@ from pathlib import Path
 import unreal
 
 HERE = Path(__file__).resolve().parent
+EXPOSURE_EV100 = 6.5
 ACTORS = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 
 
@@ -137,8 +138,8 @@ def main():
     post.set_editor_property("unbound", True)
     settings = post.get_editor_property("settings")
     for name, value in [
-        ("auto_exposure_min_brightness", 5),
-        ("auto_exposure_max_brightness", 5),
+        ("auto_exposure_min_brightness", EXPOSURE_EV100),
+        ("auto_exposure_max_brightness", EXPOSURE_EV100),
         ("auto_exposure_bias", 0),
         ("motion_blur_amount", 0),
         ("bloom_intensity", 0),
@@ -154,7 +155,7 @@ def main():
         "subjects": subjects,
         "views": shots,
         "renderer_cvars": profile["console_variables"],
-        "exposure_ev100": 5,
+        "exposure_ev100": EXPOSURE_EV100,
         "white_balance_kelvin": 6500,
         "images": [],
     }

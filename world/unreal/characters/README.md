@@ -186,7 +186,7 @@ Run `render_rocketbox.py IMPORT_RESULT_JSON NEW_OUTPUT` through the editor's
 renderer CVars in `review-cameras.json`. It reads each character's actual bounds and head bone
 and captures portraits, full body and three-quarter views at 4096 square. Drone-distance views
 are 3840 by 2160 at 70-degree horizontal FOV and 30 m altitude; the oblique view has an
-additional 15 m horizontal offset. Exposure is fixed at EV100 5 and white balance at 6500 K.
+additional 15 m horizontal offset. Exposure is fixed at EV100 6.5 and white balance at 6500 K.
 The neutral studio is an appearance test, not an outdoor perception or runtime benchmark.
 
 Publish the successful render directory to a new gallery:
