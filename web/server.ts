@@ -10,7 +10,8 @@ const app = express();
 app.disable('x-powered-by');
 app.use(compression());
 app.use('/api/rescue-cases', briefingRouter(path.resolve(required('SNR_SCENARIO_DATA_DIR'), 'briefings')));
-const pixelPlayerPort = configuredPort('PIXEL_PLAYER_PORT');
+const missionOnly = process.argv.includes('--mission-only');
+const pixelPlayerPort = missionOnly ? null : configuredPort('PIXEL_PLAYER_PORT');
 const missionPort = configuredPort('SNR_MISSION_PORT');
 const host = required('SNR_HOST');
 if (host !== '127.0.0.1') throw new Error('Internal web service must bind loopback');
@@ -18,12 +19,20 @@ const development = process.argv.includes('--dev');
 const port = configuredPort(development ? 'SNR_DEV_PORT' : 'SNR_WEB_PORT');
 app.get('/', (_req, res) => res.redirect(308, '/studio'));
 app.get('/healthz', async (_req, res) => {
+  if (missionOnly) {
+    res.status(503).json({ ok: false, reason: 'Mission-only development slot has no renderer' });
+    return;
+  }
   const result = await health();
   res.setHeader('Cache-Control', 'no-store');
   res.status(result.ok ? 200 : 503).json(result);
 });
 app.get('/api/unreal/status', async (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
+  if (missionOnly) {
+    res.status(503).json({ state: 'unavailable', reason: 'No renderer in this slot' });
+    return;
+  }
   const result = await rendererHealth();
   res.status(result.state === 'unavailable' ? 503 : 200).json(result);
 });
@@ -58,6 +67,10 @@ server.on('upgrade', (req, socket, head) => {
     return;
   }
   const upstreamPort = req.url === '/api/mission' ? missionPort : pixelPlayerPort;
+  if (upstreamPort === null) {
+    socket.end('HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n');
+    return;
+  }
   const upstream = request({
     hostname: '127.0.0.1',
     port: upstreamPort,

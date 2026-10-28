@@ -2,6 +2,9 @@
 
 The system that searches the world.
 
+- [`search/`](search/README.md): quoted subject profiles, sourced priors, calibrated detection,
+  terrain-following fleet planning and camera-derived belief.
+
 - [`gcs/`](gcs/README.md): ground control station. Four ArduPilot SITL autopilots over MAVLink, the mission
   service and the `/mission` browser UI.
 - [`agents/`](agents/README.md): the AI. Model clients (`models.py`), Wonder's typed tool catalogue,

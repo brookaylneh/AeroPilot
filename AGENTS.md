@@ -37,9 +37,13 @@
 
 - Installed services and fixed ports are defined in `deploy/runtime.env.example` and
   `deploy/README.md`. Load `.local/runtime.env` for command-line tools.
-- Use one development server: `npm run dev` binds `127.0.0.1:5174`, reached by SSH
-  tunnel. Tests and acceptance use installed services or that documented dev port.
-  Never choose a new port. Do not run a second dev server.
+- Use one development server per authorized worktree slot, reached by SSH tunnel;
+  the fixed slot table is in `deploy/README.md`. Search work uses `~/snr-search`
+  on `search-planning`; coupling uses `~/snr-coupling` on `cosys-coupling`.
+  Load that worktree's ignored `.local/slot.env`. Before every start inspect
+  `ss -lntup` and fail if any slot port is occupied. Never choose another port,
+  edit/build/restart in `~/snr`, touch installed `snr-*` services, or stop a
+  process owned by another task. Tests and acceptance use the assigned slot.
 
 # Running
 

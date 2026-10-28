@@ -120,7 +120,56 @@ CASES = [
     ("Show me the person detections from Drone1's camera.", []),
     ("Take off Drone2.", []),
 ]
-assert len(CASES) == 25
+CASES += [
+    (
+        "The subject profile, operator last known point and search area/domain are already recorded; fleet is healthy and landed. Compute the search plan now.",
+        [call("plan_search")],
+    ),
+    (
+        "Show the current spatial probability map and top probability areas.",
+        [call("get_probability_map")],
+    ),
+    ("How much ground have the cameras actually covered?", [call("get_coverage")]),
+    (
+        "Request approval for existing search plan 0123456789abcdef01234567.",
+        [call("start_search", plan_id="0123456789abcdef01234567")],
+    ),
+    (
+        "Define a hiker search area using Australian mixed statistics with vertices in this order: north -700 east -100, north -400 east -100, north -400 east 100, north -700 east 100.",
+        [
+            call(
+                "define_search_area",
+                domain="australian_mixed",
+                vertices=[
+                    {"north_m": n, "east_m": e}
+                    for n, e in ((-700, -100), (-400, -100), (-400, 100), (-700, 100))
+                ],
+            )
+        ],
+    ),
+    (
+        "The briefing description, reportedCircumstances and lastKnownLocation are all empty. Record the subject profile with category unknown, all other facts null and no evidence or prompts.",
+        [
+            call(
+                "record_subject_profile",
+                category={"value": "unknown", "evidence": []},
+                **{
+                    key: {"value": None, "evidence": []}
+                    for key in (
+                        "age_years",
+                        "hours_missing",
+                        "last_known_location",
+                        "clothing",
+                        "carried_items",
+                    )
+                },
+                person_prompts=[],
+                clue_prompts=[],
+            )
+        ],
+    ),
+]
+assert len(CASES) == 31
 
 
 def run(output):

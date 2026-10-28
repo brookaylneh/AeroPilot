@@ -9,6 +9,7 @@ import { execFileSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from '@playwright/test';
 import { missionPlanSchema } from './missionPlan.ts';
+import { port as configuredPort } from '../../web/runtime.ts';
 
 const sizes = [
   [1920, 1080],
@@ -52,7 +53,7 @@ async function screenshots(page, output, label, approval = false, focus = null) 
 
 async function observe(browser, url) {
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
-  const observation = { page, state: null, events: [], errors: [] };
+  const observation = { page, state: null, search: null, events: [], errors: [] };
   page.on('pageerror', (error) => {
     observation.errors.push(error.message);
     console.error(error.message);
@@ -61,6 +62,7 @@ async function observe(browser, url) {
     socket.on('framereceived', ({ payload }) => {
       const value = JSON.parse(payload.toString());
       if (value.type === 'state') observation.state = value;
+      if (value.type === 'search') observation.search = value.search;
       if (value.type === 'event') observation.events.push(value.event);
       if (value.type === 'history') observation.events.push(...value.events);
     }),
@@ -413,7 +415,8 @@ async function stop(browser, url, output, servicePid) {
   process.kill(servicePid, 'SIGTERM');
   await until(() => children.every((pid) => !existsSync(`/proc/${pid}`)), 'All four autopilots stopped');
   const seconds = (performance.now() - start) / 1000;
-  const ports = [14600, 14601, 14602, 14603];
+  const base = configuredPort('SNR_MAVLINK_BASE_PORT');
+  const ports = Array.from({ length: 4 }, (_, i) => base + i);
   for (const port of ports) {
     await new Promise((resolve, reject) => {
       const socket = createSocket('udp4');
@@ -793,11 +796,127 @@ async function proxy(base, output) {
   console.log('Mission WebSocket origin/path checks passed');
 }
 
+async function searchFlight(browser, url, output) {
+  const observation = await observe(browser, url);
+  const { page } = observation;
+  const samples = [];
+  const started = Date.now();
+  const timer = setInterval(() => {
+    if (observation.state) samples.push({ at_s: Date.now() / 1000, vehicles: observation.state.vehicles });
+  }, 1000);
+  let passed = false;
+  try {
+    await until(
+      () => observation.state?.vehicles.length === 4 && observation.search !== null,
+      'Fleet and search stream',
+      120,
+    );
+    assert(observation.state.vehicles.every((v) => !v.armed && v.landed_state === 1));
+    async function chat(text) {
+      const index = observation.events.length;
+      await page.locator('.gcs-composer textarea').fill(text);
+      await page.locator('.gcs-composer textarea').press('Enter');
+      await until(
+        () =>
+          observation.events.slice(index).some((e) => e.kind === 'agent') && !observation.state.agent_busy,
+        text,
+        210,
+      );
+      assert.equal(observation.events.slice(index).filter((e) => e.kind === 'error').length, 0);
+    }
+    await chat('Plan the search for this case.');
+    assert(observation.search.profile !== null, 'Wonder must record the quoted profile');
+    assert.equal(observation.search.point, null, 'Landmark text cannot supply coordinates');
+    await page.locator('.gcs-search-subject summary').click();
+    assert((await page.locator('.gcs-search-subject blockquote').count()) > 0);
+    await screenshots(page, output, 'search-profile');
+    await page.locator('.gcs-search-subject summary').click();
+    await page.getByRole('button', { name: 'Mark last known point', exact: true }).click();
+    const image = await page.locator('.gcs-terrain').boundingBox();
+    assert(image);
+    await page.mouse.click(
+      image.x + image.width / 2,
+      image.y + (image.height * (804.672 + 650)) / (2 * 804.672),
+    );
+    await until(() => observation.search.point?.source === 'operator', 'Operator last known point');
+    await page.getByText('Define search area', { exact: true }).click();
+    for (const [label, value] of [
+      ['South edge (north m)', '-790'],
+      ['North edge (north m)', '-500'],
+      ['West edge (east m)', '-120'],
+      ['East edge (east m)', '120'],
+    ])
+      await page.getByLabel(label, { exact: true }).fill(value);
+    await page.getByLabel('Published statistical domain', { exact: true }).selectOption('temperate');
+    await page.getByRole('button', { name: 'Set search area', exact: true }).click();
+    await until(() => observation.search.vertices !== null, 'Search area recorded');
+    await chat('The last known point and search area are marked. Plan the search now.');
+    await until(() => observation.search.plan !== null, 'Search plan');
+    assert.equal(observation.search.summary.coverage.source, null);
+    await screenshots(page, output, 'search-plan');
+    await page.getByRole('button', { name: 'Review fleet search', exact: true }).click();
+    await until(() => observation.state.approvals.length === 1, 'One fleet approval');
+    assert.equal(observation.state.approvals[0].name, 'start_search');
+    assert.equal(await page.locator('.gcs-search-approval tbody tr').count(), 4);
+    await screenshots(page, output, 'search-approval', true);
+    await page.getByRole('button', { name: 'Approve flight', exact: true }).click();
+    await until(
+      () => observation.search.summary.status === 'running' || observation.search.summary.status === 'failed',
+      'Search started',
+      240,
+    );
+    assert.equal(observation.search.summary.status, 'running');
+    await until(
+      () => observation.state.vehicles.every((v) => v.mode === 'AUTO' && v.mission_current > 0),
+      'Four AUTO missions',
+      30,
+    );
+    await screenshots(page, output, 'search-flying');
+    await until(
+      () => ['complete', 'failed'].includes(observation.search.summary.status),
+      'Search landed',
+      1800,
+    );
+    assert.equal(observation.search.summary.status, 'complete');
+    assert(observation.state.vehicles.every((v) => !v.armed && v.landed_state === 1));
+    assert.equal(observation.errors.length, 0, observation.errors.join('\n'));
+    await screenshots(page, output, 'search-complete');
+    passed = true;
+  } finally {
+    clearInterval(timer);
+    await writeFile(
+      `${output}/results.json`,
+      JSON.stringify(
+        {
+          passed,
+          duration_s: (Date.now() - started) / 1000,
+          mission_id: observation.state?.mission.id,
+          search: observation.search,
+          events: observation.events,
+          errors: observation.errors,
+          samples,
+        },
+        null,
+        2,
+      ) + '\n',
+    );
+  }
+}
+
 const [command, url, output, ...options] = process.argv.slice(2);
 assert(
-  ['flight', 'capture', 'states', 'approvals', 'review', 'performance', 'proxy', 'land', 'stop'].includes(
-    command,
-  ) &&
+  [
+    'search',
+    'flight',
+    'capture',
+    'states',
+    'approvals',
+    'review',
+    'performance',
+    'proxy',
+    'land',
+    'stop',
+  ].includes(command) &&
     url &&
     output,
   'Usage: node --import tsx mission_planner/gcs/accept_browser.mjs {flight|capture|states|approvals|review|performance|proxy|land|stop} URL NEW_DIRECTORY [capture: LABEL; performance: SERVICE_PID SECONDS; stop: SERVICE_PID]',
@@ -811,7 +930,8 @@ else {
     ignoreDefaultArgs: ['--hide-scrollbars'],
   });
   try {
-    if (command === 'flight') await flight(browser, url, output);
+    if (command === 'search') await searchFlight(browser, url, output);
+    else if (command === 'flight') await flight(browser, url, output);
     else if (command === 'states') await states(browser, url, output);
     else if (command === 'approvals') await approvals(browser, url, output);
     else if (command === 'land') await land(browser, url, output);

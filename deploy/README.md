@@ -115,6 +115,35 @@ The build CPU limit is a packaging setting; it does not select the live simulati
 
 ## Installed services
 
+### Parallel development slots
+
+| | Installed services (`~/snr`) | Search (`~/snr-search`) | Coupling (`~/snr-coupling`) |
+| --- | --- | --- | --- |
+| Branch | `aws-migration` | `search-planning` | `cosys-coupling` |
+| Mission WebSocket | 8765 | 8766 | 8767 |
+| Dev server | 5174 | 5175 | 5176 |
+| `SNR_MAVLINK_BASE_PORT` | 14600 | 14610 | 14620 |
+| `SNR_SITL_RC_BASE_PORT` | 5501 | 5601 | 5701 |
+| Cosys RPC | 41451 | — | 41452 |
+
+Each development worktree keeps its ports in one ignored `.local/slot.env`;
+`.local/runtime.env` may link to it for existing commands. MAVLink uses four
+consecutive ports; RC input uses four ports at increments of ten. Before every
+start, inspect `ss -lntup` and fail if any assigned port is occupied. No other
+ports and no second development server within a slot are permitted.
+Search has no Cosys connection and uses built-in SITL physics.
+
+Development agents never edit, build or restart in `~/snr`, touch installed
+`snr-*` services, or stop processes they did not start. Symlinks to its
+`.local/toolchains`, `.local/vendor`, `.venv-cosys`, `.venv-fal` and `.env` are
+read-only by task policy (symlinks do not enforce filesystem permissions).
+The shared `.local/evidence` link permits search writes only under `search/`.
+Each worktree owns its `.local/data` copy and its `node_modules` from `npm ci`.
+The character agent owns `~/snr/world/unreal/characters/`; the coupling agent
+owns its Cosys bridge, fleet, capture and video work. Search owns planning,
+subject, belief and their UI, with only the agreed terrain-sampler extraction
+in `world/cosys/`. Keep shared service, tool and map wiring self-contained.
+
 `runtime.env.example` is the single runtime configuration: copy it to `.local/runtime.env` before
 building or installing. Its values contain no secrets. Keep the copied file in sync when changing a
 profile. The installer renders the repository path and service identity into the tracked systemd units.
