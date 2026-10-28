@@ -1,0 +1,1017 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-28T15:42:18.293786+00:00",
+  "character_id": "adult-01",
+  "input_image": ".local/evidence/characters/flux-ultra-v3/adult-01/reference.png",
+  "models": [
+    {
+      "endpoint": "fal-ai/hunyuan-3d/v3.1/pro/image-to-3d",
+      "request_id": "01a18309-02f5-7381-a8fa-fc486708c6b3",
+      "new_request_this_comparison": false,
+      "input_sha256": "572ac5a395baf497477d4b831499569423d7d0472661c7b64a9b98a011abdf5b",
+      "settings": {
+        "generate_type": "Normal",
+        "enable_pbr": true,
+        "face_count": 1500000
+      },
+      "queue_elapsed_seconds": 251.66392070300208,
+      "glb": {
+        "path": ".local/evidence/characters/hunyuan-pro-v1/adult-01/model.glb",
+        "bytes": 76634736,
+        "sha256": "108799f5697ce762e8bcdb2ad8424801280cbd3293b958df7da9ed5c951a1ad5"
+      },
+      "triangles": 1500000,
+      "vertices": 868705,
+      "embedded_images": [
+        {
+          "index": 0,
+          "size": [4096, 4096],
+          "format": "PNG",
+          "bytes": 5383608,
+          "sha256": "d40bdc8c6cd0e69c7410051d074c1a57bf99f1badd3accb1ce4149b8f89706f7"
+        },
+        {
+          "index": 1,
+          "size": [4096, 4096],
+          "format": "PNG",
+          "bytes": 14001331,
+          "sha256": "40ea25fe212c64f080ca84cffdcddd5a0214ac7d45a78cfbc3b9bedf7a476e72"
+        },
+        {
+          "index": 2,
+          "size": [4096, 4096],
+          "format": "PNG",
+          "bytes": 11449251,
+          "sha256": "58dca99f0af5e033b0b8adf92da9323d8f174a8e0eca1e337d0cb3b396bc4a56"
+        }
+      ],
+      "material_definitions": [
+        {
+          "base_color_texture": 1,
+          "metallic_roughness_texture": 2,
+          "normal_texture": 0,
+          "definition": {
+            "doubleSided": true,
+            "extensions": {
+              "KHR_materials_specular": {
+                "specularColorFactor": [2.0, 2.0, 2.0]
+              }
+            },
+            "name": "Material.001",
+            "normalTexture": {
+              "index": 0
+            },
+            "pbrMetallicRoughness": {
+              "baseColorTexture": {
+                "index": 1
+              },
+              "metallicRoughnessTexture": {
+                "index": 2
+              }
+            }
+          }
+        }
+      ],
+      "skins": 0,
+      "animations": 0,
+      "validation": {
+        "numErrors": 0,
+        "numWarnings": 1,
+        "numInfos": 0,
+        "numHints": 0,
+        "messages": [
+          {
+            "code": "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE",
+            "message": "Material requires a tangent space but the mesh primitive does not provide it. Runtime-generated tangent space may be non-portable across implementations.",
+            "severity": 1,
+            "pointer": "/meshes/0/primitives/0/material"
+          }
+        ],
+        "truncated": false
+      },
+      "evidence": ".local/evidence/characters/hunyuan-pro-v1/adult-01"
+    },
+    {
+      "endpoint": "fal-ai/meshy/v7.1/image-to-3d",
+      "request_id": "01a18328-6585-7312-b7cd-65b89cb0045d",
+      "new_request_this_comparison": true,
+      "input_sha256": "572ac5a395baf497477d4b831499569423d7d0472661c7b64a9b98a011abdf5b",
+      "settings": {
+        "model_type": "standard",
+        "geometry_resolution": "4k",
+        "should_remesh": false,
+        "should_texture": true,
+        "enable_pbr": true,
+        "pose_mode": "",
+        "enable_rigging": false,
+        "enable_animation": false,
+        "enable_safety_checker": true
+      },
+      "queue_elapsed_seconds": 313.2926372689981,
+      "glb": {
+        "path": ".local/evidence/characters/meshy-71-v1/adult-01/model.glb",
+        "bytes": 33063496,
+        "sha256": "9f7d51a95c9ca0aa0eca60e127fc8c41494ee6fa1f30b3cd647b02ab9a5192de"
+      },
+      "triangles": 934626,
+      "vertices": 517026,
+      "embedded_images": [
+        {
+          "index": 0,
+          "size": [2048, 2048],
+          "format": "JPEG",
+          "bytes": 2188036,
+          "sha256": "fb734222dfa3ccbaa8261ba4894750048832176cbe635cb8a73a749744b0e6f3"
+        },
+        {
+          "index": 1,
+          "size": [2048, 2048],
+          "format": "JPEG",
+          "bytes": 1411178,
+          "sha256": "208f9449fc5dd1919d7f5e322c8d00cdac1e8e6a17b0be37f185eeacb236cfeb"
+        },
+        {
+          "index": 2,
+          "size": [2048, 2048],
+          "format": "JPEG",
+          "bytes": 1701618,
+          "sha256": "b72cb095401b7098248477a2dd78201a1fb8a9c83ce10a017b60cd701406b50b"
+        }
+      ],
+      "material_definitions": [
+        {
+          "base_color_texture": 0,
+          "metallic_roughness_texture": 1,
+          "normal_texture": 2,
+          "definition": {
+            "pbrMetallicRoughness": {
+              "baseColorFactor": [1.0, 1.0, 1.0, 1.0],
+              "metallicFactor": 1.0,
+              "roughnessFactor": 1.0,
+              "baseColorTexture": {
+                "index": 0,
+                "texCoord": 0
+              },
+              "metallicRoughnessTexture": {
+                "index": 1,
+                "texCoord": 0
+              }
+            },
+            "normalTexture": {
+              "index": 2,
+              "texCoord": 0
+            },
+            "alphaMode": "OPAQUE",
+            "doubleSided": true
+          }
+        }
+      ],
+      "skins": 0,
+      "animations": 0,
+      "validation": {
+        "numErrors": 0,
+        "numWarnings": 1,
+        "numInfos": 1,
+        "numHints": 0,
+        "messages": [
+          {
+            "code": "NODE_MATRIX_DEFAULT",
+            "message": "Do not specify default transform matrix.",
+            "severity": 2,
+            "pointer": "/nodes/0/matrix"
+          },
+          {
+            "code": "MESH_PRIMITIVE_GENERATED_TANGENT_SPACE",
+            "message": "Material requires a tangent space but the mesh primitive does not provide it. Runtime-generated tangent space may be non-portable across implementations.",
+            "severity": 1,
+            "pointer": "/meshes/0/primitives/0/material"
+          }
+        ],
+        "truncated": false
+      },
+      "evidence": ".local/evidence/characters/meshy-71-v1/adult-01"
+    }
+  ],
+  "browser": {
+    "url": "http://35.81.229.78/character-meshy-comparison-v1/index.html",
+    "errors": [],
+    "modelCount": 6,
+    "captures": [
+      {
+        "identity": "adult-01-hunyuan-pbr",
+        "pose": "Front",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-hunyuan-pbr-front.png",
+        "dimensions": {
+          "x": 0.661749005317688,
+          "y": 1.1758791665164594,
+          "z": 0.23211496102222134
+        },
+        "sha256": "9be343911035fa60050bad38c6997dc754929a24bfa0460e75da935edf1ab2ea"
+      },
+      {
+        "identity": "adult-01-hunyuan-pbr",
+        "pose": "Side",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-hunyuan-pbr-side.png",
+        "dimensions": {
+          "x": 0.661749005317688,
+          "y": 1.1758791665164594,
+          "z": 0.23211496102222134
+        },
+        "sha256": "86a833f3a6bcc4b5ccf0d75443e51c934492225315c4494acd0188529290af94"
+      },
+      {
+        "identity": "adult-01-hunyuan-pbr",
+        "pose": "Back",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-hunyuan-pbr-back.png",
+        "dimensions": {
+          "x": 0.661749005317688,
+          "y": 1.1758791665164594,
+          "z": 0.23211496102222134
+        },
+        "sha256": "010047bf973da85c745151bd8879e6b4e012e79d5f52250c1dd9a82a9945856a"
+      },
+      {
+        "identity": "adult-01-hunyuan-pbr",
+        "pose": "face",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-hunyuan-pbr-face.png",
+        "dimensions": {
+          "x": 0.661749005317688,
+          "y": 1.1758791665164594,
+          "z": 0.23211496102222134
+        },
+        "camera": {
+          "theta": 0,
+          "phi": 1.5707963267948966,
+          "radius": 0.37628133328526703,
+          "target": {
+            "x": 0.00024148821830749512,
+            "y": 1.081808829802044,
+            "z": 0.014020614353321602
+          }
+        },
+        "sha256": "ccf7592e3ce831dc8221cb74c918798ed7dc5423a909c554974d25879bf56cd7"
+      },
+      {
+        "identity": "adult-01-hunyuan-pbr",
+        "pose": "hand-negative-x",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-hunyuan-pbr-hand-negative-x.png",
+        "dimensions": {
+          "x": 0.661749005317688,
+          "y": 1.1758791665164594,
+          "z": 0.23211496102222134
+        },
+        "camera": {
+          "theta": 0,
+          "phi": 1.5707963267948966,
+          "radius": 0.49386924993691295,
+          "target": {
+            "x": -0.28431058406829834,
+            "y": 0.5644219965348021,
+            "z": 0.014020614353321602
+          }
+        },
+        "sha256": "35cd3b7a935f4740450508bf6f113058be899230d4b2645632b810c67ae5dfe1"
+      },
+      {
+        "identity": "adult-01-hunyuan-pbr",
+        "pose": "hand-positive-x",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-hunyuan-pbr-hand-positive-x.png",
+        "dimensions": {
+          "x": 0.661749005317688,
+          "y": 1.1758791665164594,
+          "z": 0.23211496102222134
+        },
+        "camera": {
+          "theta": 0,
+          "phi": 1.5707963267948966,
+          "radius": 0.49386924993691295,
+          "target": {
+            "x": 0.28479356050491333,
+            "y": 0.5644219965348021,
+            "z": 0.014020614353321602
+          }
+        },
+        "sha256": "fc570433781fba2e79fd4c1fce7010729c2af86a7d0c1c70000b26d600bbb082"
+      },
+      {
+        "identity": "adult-01-hunyuan-unlit",
+        "pose": "Front",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-hunyuan-unlit-front.png",
+        "dimensions": {
+          "x": 0.661749005317688,
+          "y": 1.1758791665164594,
+          "z": 0.23211496102222134
+        },
+        "sha256": "c7f6d59b89fd2eef57826de6646dacd64f07219a60961c1d2af895d826ebe3ab"
+      },
+      {
+        "identity": "adult-01-hunyuan-unlit",
+        "pose": "Side",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-hunyuan-unlit-side.png",
+        "dimensions": {
+          "x": 0.661749005317688,
+          "y": 1.1758791665164594,
+          "z": 0.23211496102222134
+        },
+        "sha256": "31c649cf0f5b02a12ae4dbbd8ce08fab206af7cb4350828d800fdd065c830354"
+      },
+      {
+        "identity": "adult-01-hunyuan-unlit",
+        "pose": "Back",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-hunyuan-unlit-back.png",
+        "dimensions": {
+          "x": 0.661749005317688,
+          "y": 1.1758791665164594,
+          "z": 0.23211496102222134
+        },
+        "sha256": "2d95e5233ca7a5a22ac7c300693cef4e979e0be3ce54b4b47cd281e6eb5a942a"
+      },
+      {
+        "identity": "adult-01-hunyuan-unlit",
+        "pose": "face",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-hunyuan-unlit-face.png",
+        "dimensions": {
+          "x": 0.661749005317688,
+          "y": 1.1758791665164594,
+          "z": 0.23211496102222134
+        },
+        "camera": {
+          "theta": 0,
+          "phi": 1.5707963267948966,
+          "radius": 0.37628133328526703,
+          "target": {
+            "x": 0.00024148821830749512,
+            "y": 1.081808829802044,
+            "z": 0.014020614353321602
+          }
+        },
+        "sha256": "d1d3452590b4e1061ce0746de042dd4dedd05d78fecaec258e0dc3d7f96ae1b8"
+      },
+      {
+        "identity": "adult-01-hunyuan-unlit",
+        "pose": "hand-negative-x",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-hunyuan-unlit-hand-negative-x.png",
+        "dimensions": {
+          "x": 0.661749005317688,
+          "y": 1.1758791665164594,
+          "z": 0.23211496102222134
+        },
+        "camera": {
+          "theta": 0,
+          "phi": 1.5707963267948966,
+          "radius": 0.49386924993691295,
+          "target": {
+            "x": -0.28431058406829834,
+            "y": 0.5644219965348021,
+            "z": 0.014020614353321602
+          }
+        },
+        "sha256": "f0595c0cbe8025fda0d559c8debb163e563785fbdb0ac6ef3b67d1f2027ed7db"
+      },
+      {
+        "identity": "adult-01-hunyuan-unlit",
+        "pose": "hand-positive-x",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-hunyuan-unlit-hand-positive-x.png",
+        "dimensions": {
+          "x": 0.661749005317688,
+          "y": 1.1758791665164594,
+          "z": 0.23211496102222134
+        },
+        "camera": {
+          "theta": 0,
+          "phi": 1.5707963267948966,
+          "radius": 0.49386924993691295,
+          "target": {
+            "x": 0.28479356050491333,
+            "y": 0.5644219965348021,
+            "z": 0.014020614353321602
+          }
+        },
+        "sha256": "a6c199e0bca8a7fdb8f11b3c5a3f5aed1ce8804507e25aaf6b3826b9db00ceb1"
+      },
+      {
+        "identity": "adult-01-hunyuan-clay",
+        "pose": "Front",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-hunyuan-clay-front.png",
+        "dimensions": {
+          "x": 0.661749005317688,
+          "y": 1.1758791665164594,
+          "z": 0.23211496102222134
+        },
+        "sha256": "07df56de9ed900923e824dccd4213043e339a4575878acdce4be983614dff208"
+      },
+      {
+        "identity": "adult-01-hunyuan-clay",
+        "pose": "Side",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-hunyuan-clay-side.png",
+        "dimensions": {
+          "x": 0.661749005317688,
+          "y": 1.1758791665164594,
+          "z": 0.23211496102222134
+        },
+        "sha256": "92c153390e0e09288debd46bb6722aacc8804fb63b8312795cc08cbde01a8b37"
+      },
+      {
+        "identity": "adult-01-hunyuan-clay",
+        "pose": "Back",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-hunyuan-clay-back.png",
+        "dimensions": {
+          "x": 0.661749005317688,
+          "y": 1.1758791665164594,
+          "z": 0.23211496102222134
+        },
+        "sha256": "fb0aa16d58c80bb223b016b1d853e692a0468e7c669ca5f8d0255804fb328c75"
+      },
+      {
+        "identity": "adult-01-hunyuan-clay",
+        "pose": "face",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-hunyuan-clay-face.png",
+        "dimensions": {
+          "x": 0.661749005317688,
+          "y": 1.1758791665164594,
+          "z": 0.23211496102222134
+        },
+        "camera": {
+          "theta": 0,
+          "phi": 1.5707963267948966,
+          "radius": 0.37628133328526703,
+          "target": {
+            "x": 0.00024148821830749512,
+            "y": 1.081808829802044,
+            "z": 0.014020614353321602
+          }
+        },
+        "sha256": "81bd14d219b931aea72c245f1d66f27f7609402bc83206579edfe35d4679fdd4"
+      },
+      {
+        "identity": "adult-01-hunyuan-clay",
+        "pose": "hand-negative-x",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-hunyuan-clay-hand-negative-x.png",
+        "dimensions": {
+          "x": 0.661749005317688,
+          "y": 1.1758791665164594,
+          "z": 0.23211496102222134
+        },
+        "camera": {
+          "theta": 0,
+          "phi": 1.5707963267948966,
+          "radius": 0.49386924993691295,
+          "target": {
+            "x": -0.28431058406829834,
+            "y": 0.5644219965348021,
+            "z": 0.014020614353321602
+          }
+        },
+        "sha256": "98ad530fa274663bbafdf0e39f38ae521779037294954c3d01b76abf698c48ab"
+      },
+      {
+        "identity": "adult-01-hunyuan-clay",
+        "pose": "hand-positive-x",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-hunyuan-clay-hand-positive-x.png",
+        "dimensions": {
+          "x": 0.661749005317688,
+          "y": 1.1758791665164594,
+          "z": 0.23211496102222134
+        },
+        "camera": {
+          "theta": 0,
+          "phi": 1.5707963267948966,
+          "radius": 0.49386924993691295,
+          "target": {
+            "x": 0.28479356050491333,
+            "y": 0.5644219965348021,
+            "z": 0.014020614353321602
+          }
+        },
+        "sha256": "c4e867b7ba053ff9576a6280d56d5ec9110e0f8d55772e1efd9aa9897c08f77c"
+      },
+      {
+        "identity": "adult-01-meshy-pbr",
+        "pose": "Front",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-meshy-pbr-front.png",
+        "dimensions": {
+          "x": 1.0890119671821594,
+          "y": 1.8990640044212341,
+          "z": 0.34786899387836456
+        },
+        "sha256": "b3e76f0a179b3dee3563fb1da5dea4f44e89a3469c35dbd991a3c763ac235cc0"
+      },
+      {
+        "identity": "adult-01-meshy-pbr",
+        "pose": "Side",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-meshy-pbr-side.png",
+        "dimensions": {
+          "x": 1.0890119671821594,
+          "y": 1.8990640044212341,
+          "z": 0.34786899387836456
+        },
+        "sha256": "f8dc9df56bb14ff8bbd6258329d8f3af35798a63533b3917198f41247c800f0e"
+      },
+      {
+        "identity": "adult-01-meshy-pbr",
+        "pose": "Back",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-meshy-pbr-back.png",
+        "dimensions": {
+          "x": 1.0890119671821594,
+          "y": 1.8990640044212341,
+          "z": 0.34786899387836456
+        },
+        "sha256": "6d8295eab8bec4420e7712abe17e1e07c3fa0f147d6d8f269ea1449adb36e704"
+      },
+      {
+        "identity": "adult-01-meshy-pbr",
+        "pose": "face",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-meshy-pbr-face.png",
+        "dimensions": {
+          "x": 1.0890119671821594,
+          "y": 1.8990640044212341,
+          "z": 0.34786899387836456
+        },
+        "camera": {
+          "theta": 0,
+          "phi": 1.5707963267948966,
+          "radius": 0.6077004814147949,
+          "target": {
+            "x": -0.0001780092716217041,
+            "y": 0.7969289088249206,
+            "z": 0.0014875009655952454
+          }
+        },
+        "sha256": "37deb78fa6f9ffb3708d2fcbdce22b154dd3bf76b71f135758a7f38949e719de"
+      },
+      {
+        "identity": "adult-01-meshy-pbr",
+        "pose": "hand-negative-x",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-meshy-pbr-hand-negative-x.png",
+        "dimensions": {
+          "x": 1.0890119671821594,
+          "y": 1.8990640044212341,
+          "z": 0.34786899387836456
+        },
+        "camera": {
+          "theta": 0,
+          "phi": 1.5707963267948966,
+          "radius": 0.7976068818569183,
+          "target": {
+            "x": -0.46845315515995023,
+            "y": -0.038659253120422364,
+            "z": 0.0014875009655952454
+          }
+        },
+        "sha256": "5cce84b9c1ebf2d2f0b903435be02377a72cd298fc19b5abd5183be2576e81a3"
+      },
+      {
+        "identity": "adult-01-meshy-pbr",
+        "pose": "hand-positive-x",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-meshy-pbr-hand-positive-x.png",
+        "dimensions": {
+          "x": 1.0890119671821594,
+          "y": 1.8990640044212341,
+          "z": 0.34786899387836456
+        },
+        "camera": {
+          "theta": 0,
+          "phi": 1.5707963267948966,
+          "radius": 0.7976068818569183,
+          "target": {
+            "x": 0.4680971366167068,
+            "y": -0.038659253120422364,
+            "z": 0.0014875009655952454
+          }
+        },
+        "sha256": "d93da5c6a77b9dc84ee6f23206607e47d3ed8fc1c6a9290cdf7d66b9f59086ca"
+      },
+      {
+        "identity": "adult-01-meshy-unlit",
+        "pose": "Front",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-meshy-unlit-front.png",
+        "dimensions": {
+          "x": 1.0890119671821594,
+          "y": 1.8990640044212341,
+          "z": 0.34786899387836456
+        },
+        "sha256": "0e1324be2023b5a31f2203ffe6e4fbec44f868c65ed2c1c9ec368b9a52ea41c4"
+      },
+      {
+        "identity": "adult-01-meshy-unlit",
+        "pose": "Side",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-meshy-unlit-side.png",
+        "dimensions": {
+          "x": 1.0890119671821594,
+          "y": 1.8990640044212341,
+          "z": 0.34786899387836456
+        },
+        "sha256": "ff2a4d29fdf9c4fdb0d7510eebfa1a7cb131d650e24a9455fe450907012e9a4a"
+      },
+      {
+        "identity": "adult-01-meshy-unlit",
+        "pose": "Back",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-meshy-unlit-back.png",
+        "dimensions": {
+          "x": 1.0890119671821594,
+          "y": 1.8990640044212341,
+          "z": 0.34786899387836456
+        },
+        "sha256": "0cfb8196c9b33ab0d239663dda22d73f6dae4a59853fc82cd28f3778a432fa58"
+      },
+      {
+        "identity": "adult-01-meshy-unlit",
+        "pose": "face",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-meshy-unlit-face.png",
+        "dimensions": {
+          "x": 1.0890119671821594,
+          "y": 1.8990640044212341,
+          "z": 0.34786899387836456
+        },
+        "camera": {
+          "theta": 0,
+          "phi": 1.5707963267948966,
+          "radius": 0.6077004814147949,
+          "target": {
+            "x": -0.0001780092716217041,
+            "y": 0.7969289088249206,
+            "z": 0.0014875009655952454
+          }
+        },
+        "sha256": "3d81beeb845d9abe3e537af167ac84cf37db6296feeb03a2ef7a5a27a59d1315"
+      },
+      {
+        "identity": "adult-01-meshy-unlit",
+        "pose": "hand-negative-x",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-meshy-unlit-hand-negative-x.png",
+        "dimensions": {
+          "x": 1.0890119671821594,
+          "y": 1.8990640044212341,
+          "z": 0.34786899387836456
+        },
+        "camera": {
+          "theta": 0,
+          "phi": 1.5707963267948966,
+          "radius": 0.7976068818569183,
+          "target": {
+            "x": -0.46845315515995023,
+            "y": -0.038659253120422364,
+            "z": 0.0014875009655952454
+          }
+        },
+        "sha256": "7581baea13329f519e7b3610096e43705b096f4177528e0a92f3551bf42eb8ef"
+      },
+      {
+        "identity": "adult-01-meshy-unlit",
+        "pose": "hand-positive-x",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-meshy-unlit-hand-positive-x.png",
+        "dimensions": {
+          "x": 1.0890119671821594,
+          "y": 1.8990640044212341,
+          "z": 0.34786899387836456
+        },
+        "camera": {
+          "theta": 0,
+          "phi": 1.5707963267948966,
+          "radius": 0.7976068818569183,
+          "target": {
+            "x": 0.4680971366167068,
+            "y": -0.038659253120422364,
+            "z": 0.0014875009655952454
+          }
+        },
+        "sha256": "1d23a6ddda3c6fe9cb59d8c9d93124e4c17eb2f40499983a2f5b685cabb689eb"
+      },
+      {
+        "identity": "adult-01-meshy-clay",
+        "pose": "Front",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-meshy-clay-front.png",
+        "dimensions": {
+          "x": 1.0890119671821594,
+          "y": 1.8990640044212341,
+          "z": 0.34786899387836456
+        },
+        "sha256": "24cbaea2bb18d615449bf7bd973e4e7cf761529ad8271934cf31605026c33c93"
+      },
+      {
+        "identity": "adult-01-meshy-clay",
+        "pose": "Side",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-meshy-clay-side.png",
+        "dimensions": {
+          "x": 1.0890119671821594,
+          "y": 1.8990640044212341,
+          "z": 0.34786899387836456
+        },
+        "sha256": "a141ec787201f4fafb30ed6f16ddcb6ba7b79017a1d44a4e33e7e07c9d9e972b"
+      },
+      {
+        "identity": "adult-01-meshy-clay",
+        "pose": "Back",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-meshy-clay-back.png",
+        "dimensions": {
+          "x": 1.0890119671821594,
+          "y": 1.8990640044212341,
+          "z": 0.34786899387836456
+        },
+        "sha256": "192570224d303708ec5686e326cf29e3c45663c3f71082c244885ed975c2df7e"
+      },
+      {
+        "identity": "adult-01-meshy-clay",
+        "pose": "face",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-meshy-clay-face.png",
+        "dimensions": {
+          "x": 1.0890119671821594,
+          "y": 1.8990640044212341,
+          "z": 0.34786899387836456
+        },
+        "camera": {
+          "theta": 0,
+          "phi": 1.5707963267948966,
+          "radius": 0.6077004814147949,
+          "target": {
+            "x": -0.0001780092716217041,
+            "y": 0.7969289088249206,
+            "z": 0.0014875009655952454
+          }
+        },
+        "sha256": "2418433b430611ea12899d3f48bded342124b93f1103431e4b2df0f15b8b7e9c"
+      },
+      {
+        "identity": "adult-01-meshy-clay",
+        "pose": "hand-negative-x",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-meshy-clay-hand-negative-x.png",
+        "dimensions": {
+          "x": 1.0890119671821594,
+          "y": 1.8990640044212341,
+          "z": 0.34786899387836456
+        },
+        "camera": {
+          "theta": 0,
+          "phi": 1.5707963267948966,
+          "radius": 0.7976068818569183,
+          "target": {
+            "x": -0.46845315515995023,
+            "y": -0.038659253120422364,
+            "z": 0.0014875009655952454
+          }
+        },
+        "sha256": "4c538efd26a7fe32cf60d44c865d0a94c2cd475e74b087bf6d58994cb98f3c12"
+      },
+      {
+        "identity": "adult-01-meshy-clay",
+        "pose": "hand-positive-x",
+        "path": ".local/evidence/characters/meshy-71-v1/browser-final/adult-01-meshy-clay-hand-positive-x.png",
+        "dimensions": {
+          "x": 1.0890119671821594,
+          "y": 1.8990640044212341,
+          "z": 0.34786899387836456
+        },
+        "camera": {
+          "theta": 0,
+          "phi": 1.5707963267948966,
+          "radius": 0.7976068818569183,
+          "target": {
+            "x": 0.4680971366167068,
+            "y": -0.038659253120422364,
+            "z": 0.0014875009655952454
+          }
+        },
+        "sha256": "2dd5cc56f5a690811065331e27b84f8e19adc6ab34f8d2ec92b7787dc575d007"
+      }
+    ]
+  },
+  "diagnostic_invariants": [
+    "Material variants preserve all source binary data and mesh definitions; asserted during publication.",
+    "Same neutral viewer lighting and height-relative camera routines; close-up radius assertions passed."
+  ],
+  "visual_review": {
+    "decision": "Neither reconstruction meets the final realism standard. Meshy is a promising facial alternative but does not justify replacing the roster from one sample.",
+    "meshy_gains": [
+      "Eye color and eye-region appearance closer to the reference in this sample.",
+      "Finer irregular hair geometry than the smooth Hunyuan clumps."
+    ],
+    "meshy_defects": [
+      "Mouth shape/expression changed; teeth are more exposed than the reference.",
+      "Outer fingers on the negative-X hand are shortened or curled relative to the source; visible in clay as well as PBR.",
+      "Trousers became much glossier under identical lighting.",
+      "Hair remains a solid mesh and physical scale is uncalibrated."
+    ],
+    "hunyuan_defects": [
+      "Eye appearance, mouth and face proportions drift from the input.",
+      "Unlit view retains facial/texture discrepancies; clay retains simplified eye/hair/hand shapes, so changing lighting alone cannot solve them.",
+      "PBR materials accentuate glossy skin and smooth hair clumps."
+    ],
+    "limits": [
+      "One adult input and one sample per model; no child or senior Meshy tests yet.",
+      "No identity similarity score or anatomy accuracy metric was measured.",
+      "fal exposes 4K geometry but not the native Meshy texture-resolution selector; delivered maps were 2048 square.",
+      "Returned source meshes have no skin/animation rigs; this test does not validate animation or MetaHuman conversion."
+    ],
+    "next_test": "Compare this identical input with the fal Hi3D portrait specialization and TRELLIS 2; Rodin 2.5 is another shortlisted candidate. Test the strongest candidate on a child and senior before any full-roster regeneration."
+  },
+  "published_gallery": "http://35.81.229.78/character-meshy-comparison-v1/index.html",
+  "published_screenshots": [
+    {
+      "path": ".local/dist/character-meshy-comparison-v1/face-comparison.webp",
+      "source": ".local/evidence/characters/meshy-71-v1/browser-final/face-comparison.webp",
+      "sha256": "f6c66d08474c4ca7fde44fa0d9142f54e75d0aaa98560879b18afb65e329f0de",
+      "bytes": 135100,
+      "url": "http://35.81.229.78/character-meshy-comparison-v1/face-comparison.webp"
+    },
+    {
+      "path": ".local/dist/character-meshy-comparison-v1/hands-comparison.webp",
+      "source": ".local/evidence/characters/meshy-71-v1/browser-final/hands-comparison.webp",
+      "sha256": "87e76ad7fd7495f7b81257ee29cbb3859ea23bcf14b49929ec2e164ff8007957",
+      "bytes": 56162,
+      "url": "http://35.81.229.78/character-meshy-comparison-v1/hands-comparison.webp"
+    },
+    {
+      "path": ".local/dist/character-meshy-comparison-v1/body-comparison.webp",
+      "source": ".local/evidence/characters/meshy-71-v1/browser-final/body-comparison.webp",
+      "sha256": "34cd3f9a41943bd83417cf1680061dec295a857a19f7103cf983c38cc598a00e",
+      "bytes": 62098,
+      "url": "http://35.81.229.78/character-meshy-comparison-v1/body-comparison.webp"
+    }
+  ],
+  "publication_record": ".local/evidence/characters/meshy-71-v1/publication.json",
+  "research": {
+    "date": "2026-10-28",
+    "scope": "Realistic full-body human source meshes for later MetaHuman authoring; no imports or roster replacement",
+    "current_hunyuan": {
+      "endpoint": "fal-ai/hunyuan-3d/v3.1/pro/image-to-3d",
+      "face_count": 1500000,
+      "enable_pbr": true,
+      "inputs": "one front image",
+      "assessment": "Already at maximum exposed polygon target with PBR. A rerun can vary, but no evidence that rerolling fixes systematic face/hair loss. Extra consistent views address unseen surfaces."
+    },
+    "candidates": [
+      {
+        "model": "Meshy 7.1",
+        "endpoint": "fal-ai/meshy/v7.1/image-to-3d",
+        "test": "Same adult-01 source; standard 4K geometry; remesh false; PBR true; original pose; no rigging",
+        "limit": "fal schema has no texture-resolution selector. Native Meshy API exposes 2K/4K/8K."
+      },
+      {
+        "model": "TRELLIS 2",
+        "endpoint": "fal-ai/trellis-2",
+        "controls": "Single input; resolution up to 1536; textures up to 4096; PBR; seed and guidance/steps",
+        "assessment": "Useful controlled alternative, not established as the strongest face reconstructor. Higher guidance/steps can create artifacts; no universal maximum-quality settings demonstrated."
+      },
+      {
+        "model": "Hi3D portrait 2.1",
+        "endpoint": "hitem3d/hi3d/image-to-3d",
+        "controls": "scene-portraitv2.1, 1536pro, textures and PBR",
+        "assessment": "Explicit portrait/character specialization makes this a relevant candidate; not yet tested on our inputs."
+      },
+      {
+        "model": "Hi3D 3.0",
+        "endpoint": "hitem3d/hi3d/v3.0/image-to-3d",
+        "controls": "2048master; recommended target 5M faces; PBR",
+        "assessment": "General model, not proof of superiority to the portrait specialization."
+      },
+      {
+        "model": "Rodin 2.5",
+        "endpoint": "fal-ai/hyper3d/rodin/v2.5",
+        "controls": "Up to five views; Extreme-High; HD textures; PBR; delighting",
+        "assessment": "Promising from first-hand comparisons; no controlled result on our roster yet."
+      },
+      {
+        "model": "Tripo H3.1",
+        "endpoint": "tripo3d/h3.1/image-to-3d",
+        "controls": "Detailed geometry and texture; PBR; original-image texture alignment; separate geometry/texture seeds",
+        "assessment": "Relevant alternative; broad ranking is not a measure of human likeness."
+      }
+    ],
+    "discussion_evidence": [
+      {
+        "url": "https://sceneos.io/kb/3d-generators-compared/",
+        "finding": "Author favored Meshy 7.1 face on one realistic person, with Rodin close. TRELLIS received only the front image while others received multiple views. Commercial site and small sample; not a controlled single-image ranking."
+      },
+      {
+        "url": "https://www.reddit.com/r/generativeAI/comments/1u2k174/whats_the_best_image_to_3d_generator_thats_free/",
+        "finding": "First-hand comments disagree on preferred model and report persistent face/hand/hair problems. Free/default tiers, versions and inputs differ; no consensus benchmark."
+      },
+      {
+        "url": "https://www.reddit.com/r/aigamedev/comments/1xfr3vh/help_with_3d_human_modeling_especially_face/",
+        "finding": "Recent positive Meshy report explicitly concerns chibi figures, while negative reports include older versions. Cannot extrapolate to photorealistic faces."
+      }
+    ],
+    "evaluation": "Original PBR, unlit base color and texture-free clay, same input hash, same viewer/light/camera; inspect face, hands, silhouette, side and back. One trial cannot establish roster-wide superiority."
+  },
+  "research_sources": [
+    {
+      "url": "https://fal.ai/api/openapi/queue/openapi.json?endpoint_id=fal-ai/meshy/v7.1/image-to-3d",
+      "path": ".local/evidence/characters/meshy-research-v1/meshy-fal-schema.json",
+      "bytes": 14757,
+      "sha256": "dbc2365277094141014136704d19fd1bd81b001fc0a1161833f17578cc8041fe"
+    },
+    {
+      "url": "https://docs.meshy.ai/en/api/image-to-3d",
+      "path": ".local/evidence/characters/meshy-research-v1/meshy-native.html",
+      "bytes": 626458,
+      "sha256": "ce558984be0dbc404dc651e7b3bf178dbcc5d29e7c50a92919bac9418b66ece9"
+    },
+    {
+      "url": "https://fal.ai/models/fal-ai/meshy/v7.1/image-to-3d",
+      "path": ".local/evidence/characters/meshy-research-v1/meshy-fal.html",
+      "bytes": 359856,
+      "sha256": "5547b81571341052fedacdaf4e92e4d151a719457b0270cd6f7c40b147c03724"
+    },
+    {
+      "url": "https://sceneos.io/kb/3d-generators-compared/",
+      "path": ".local/evidence/characters/meshy-research-v1/comparisons.html",
+      "bytes": 95179,
+      "sha256": "1a33394961740ef4eaebda23aac4f548515d75fd4a231734e3956b09053f0171"
+    },
+    {
+      "url": "https://fal.ai/models/fal-ai/trellis-2/api",
+      "path": ".local/evidence/characters/meshy-research-v1/trellis-fal.html",
+      "bytes": 363993,
+      "sha256": "ae08f679cf09c346227041d739f8d11d5d9e5a718bb3c11512630c5a48c714d6"
+    },
+    {
+      "url": "https://fal.ai/models/fal-ai/hyper3d/rodin/v2.5/api",
+      "path": ".local/evidence/characters/meshy-research-v1/rodin-fal.html",
+      "bytes": 363711,
+      "sha256": "9eb7d2a08a0d708fdb2f54096da84c51d6a567748b075e94d76dccda5559645a"
+    },
+    {
+      "url": "https://fal.ai/models/hitem3d/hi3d/image-to-3d/api",
+      "path": ".local/evidence/characters/meshy-research-v1/hi3d-portrait-fal.html",
+      "bytes": 336696,
+      "sha256": "fbdfda5d207352b37d324ccf687f9c396d42208c3ee78719a75cca77cdf903ef"
+    },
+    {
+      "url": "https://fal.ai/models/hitem3d/hi3d/v3.0/image-to-3d/api",
+      "path": ".local/evidence/characters/meshy-research-v1/hi3d-v3-fal.html",
+      "bytes": 330367,
+      "sha256": "d140bdbd31fa5e6de284a7278943ee7591182a23e5a2d37f13040f39eed05f43"
+    },
+    {
+      "url": "https://fal.ai/models/tripo3d/h3.1/image-to-3d/api",
+      "path": ".local/evidence/characters/meshy-research-v1/tripo-fal.html",
+      "bytes": 346985,
+      "sha256": "bf8f074c9659660dfd44a687080e73bdbeb48cb963f3f690bbefb511a9f4eb4b"
+    },
+    {
+      "url": "https://raw.githubusercontent.com/microsoft/TRELLIS.2/main/README.md",
+      "path": ".local/evidence/characters/meshy-research-v1/trellis-upstream.md",
+      "bytes": 16212,
+      "sha256": "adc985d5a71fda0a5cb7287f58b6baa7de8db1568c4483ac210f3447b786552b"
+    }
+  ],
+  "checks": [
+    {
+      "name": "npm-test",
+      "command": ["npm", "test"],
+      "exit_code": 0,
+      "log": ".local/evidence/characters/meshy-71-v1/checks-final/npm-test.txt"
+    },
+    {
+      "name": "typecheck",
+      "command": ["npm", "run", "typecheck"],
+      "exit_code": 0,
+      "log": ".local/evidence/characters/meshy-71-v1/checks-final/typecheck.txt"
+    },
+    {
+      "name": "format",
+      "command": ["npm", "run", "format:check"],
+      "exit_code": 0,
+      "log": ".local/evidence/characters/meshy-71-v1/checks-final/format.txt"
+    },
+    {
+      "name": "ruff-check",
+      "command": [".venv-cosys/bin/ruff", "check"],
+      "exit_code": 0,
+      "log": ".local/evidence/characters/meshy-71-v1/checks-final/ruff-check.txt"
+    },
+    {
+      "name": "ruff-format",
+      "command": [".venv-cosys/bin/ruff", "format", "--check"],
+      "exit_code": 0,
+      "log": ".local/evidence/characters/meshy-71-v1/checks-final/ruff-format.txt"
+    },
+    {
+      "name": "unittest",
+      "command": [".venv-cosys/bin/python", "-m", "unittest"],
+      "exit_code": 0,
+      "log": ".local/evidence/characters/meshy-71-v1/checks-final/unittest.txt"
+    }
+  ],
+  "health": {
+    "ok": true,
+    "services": {
+      "web": true,
+      "mission": true,
+      "signalling": true,
+      "unreal": true,
+      "turn": true,
+      "caddy": true
+    },
+    "renderer": "occupied"
+  },
+  "new_inference_requests": 1,
+  "new_inference_requests_completed": 1,
+  "task_owned_deployments": 0,
+  "task_owned_runners": 0,
+  "provider_gpu": "not exposed by hosted endpoint",
+  "preliminary_browser": {
+    "path": ".local/evidence/characters/meshy-71-v1/browser",
+    "limitation": "Hand framing cropped fingertips; superseded by browser-final captures; original evidence retained."
+  }
+}

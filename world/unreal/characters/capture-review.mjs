@@ -48,9 +48,9 @@ try {
       captures.push({ identity, pose, path, dimensions });
     }
     const closeups = [
-      { pose: 'face', x: 0, y: 0.36, radius: 0.48 },
-      { pose: 'hand-negative-x', x: -0.4, y: 0.05, radius: 0.55 },
-      { pose: 'hand-positive-x', x: 0.4, y: 0.05, radius: 0.55 },
+      { pose: 'face', x: 0, y: 0.42, radius: 0.32 },
+      { pose: 'hand-negative-x', x: -0.43, y: -0.02, radius: 0.42 },
+      { pose: 'hand-positive-x', x: 0.43, y: -0.02, radius: 0.42 },
     ];
     for (const closeup of closeups) {
       await page.getByRole('button', { name: 'Front', exact: true }).click();
@@ -67,7 +67,13 @@ try {
       );
       const path = output + '/' + identity + '-' + closeup.pose + '.png';
       await page.locator('model-viewer').screenshot({ path });
-      captures.push({ identity, pose: closeup.pose, path, dimensions });
+      const camera = await page.locator('model-viewer').evaluate((viewer) => {
+        const { theta, phi, radius } = viewer.getCameraOrbit();
+        const { x, y, z } = viewer.getCameraTarget();
+        return { theta, phi, radius, target: { x, y, z } };
+      });
+      assert(Math.abs(camera.radius - dimensions.y * closeup.radius) < 0.0001);
+      captures.push({ identity, pose: closeup.pose, path, dimensions, camera });
     }
     await page.getByRole('button', { name: 'Close', exact: true }).click();
     console.log('Captured ' + identity);
