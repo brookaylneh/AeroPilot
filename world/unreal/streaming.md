@@ -22,9 +22,14 @@ frames or browser-reported freezes. The largest video callback gap was 99.9 ms. 
 GPU time averaged 8.62 ms, with p95 9.33 ms and p99 10.22 ms. These are camera telemetry
 samples at a target 10 Hz, not an exhaustive per-frame trace.
 
-This measurement used a browser on AWS through the public HTTP origin and TURN. It does
-not establish performance on a user's device or network. Four-drone flight/capture load,
-sustained close-character performance and the complete realism gate remain unmeasured.
+A 61-second close-character run delivered 60.01 decoded FPS at 34.77 Mbps, with no dropped
+frames or browser-reported freezes and a largest video callback gap of 50 ms. Sampled GPU
+time averaged 10.25 ms, with p95 10.55 ms and p99 10.70 ms. GPU power averaged 296.28 W;
+the highest sampled temperature was 45 °C.
+
+These measurements used a browser on AWS through the public HTTP origin and TURN. They do
+not establish performance on a user's device or network, or across every character.
+Four-drone flight/capture load and the complete realism gate remain unmeasured.
 Drone-camera capture resolution is independent of the browser stream.
 
 Run reproducible measurements with `scripts/measure-stream.mjs`, as documented in
