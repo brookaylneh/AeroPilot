@@ -2,19 +2,19 @@
   "schema_version": 1,
   "model": "muse-wonder-1.0",
   "effort": "low",
-  "created_at_s": 1793144646.0783806,
+  "created_at_s": 1793152004.506253,
   "fresh_conversation_each_case": true,
   "flight_execution": false,
   "scoring": "Exact unordered list of tool names and JSON arguments; no-call cases require zero calls. No-tool prose correctness is not scored.",
-  "prompt_sha256": "7d3ee71b36de9d82b9aca9dd1c937415b4d94e0fb04572f0cc555bb60f2afaab",
-  "tools_sha256": "c67cc8a9e6cdffa00aa1d56d1215a8c46bbcf1014eb30c0f6396a24cae9abef9",
+  "prompt_sha256": "aee37c1be9783fb5f72afba9200b6074e96a5a1099cd5bbf18a07fa8589137e3",
+  "tools_sha256": "3cc9bb14ca32bef11aac8b9a7e6b8c1f4b2a259b14163790a6567b3015fb013b",
   "correct": 24,
   "total": 25,
   "accuracy": 0.96,
   "misses": [
     20
   ],
-  "raw_directory": ".local/evidence/gcs/tools-run-4",
+  "raw_directory": ".local/evidence/gcs/fixes-1/tools",
   "cases": [
     {
       "case": 1,
@@ -32,9 +32,9 @@
         }
       ],
       "passed": true,
-      "seconds": 1.061681930004852,
+      "seconds": 1.3541362280084286,
       "usage": {
-        "input_tokens": 2141,
+        "input_tokens": 2148,
         "input_tokens_details": {
           "cached_tokens": 0
         },
@@ -42,7 +42,7 @@
         "output_tokens_details": {
           "reasoning_tokens": 10
         },
-        "total_tokens": 2202
+        "total_tokens": 2209
       }
     },
     {
@@ -61,17 +61,17 @@
         }
       ],
       "passed": true,
-      "seconds": 1.375411182991229,
+      "seconds": 1.7056586160033476,
       "usage": {
-        "input_tokens": 2140,
+        "input_tokens": 2147,
         "input_tokens_details": {
           "cached_tokens": 0
         },
-        "output_tokens": 63,
+        "output_tokens": 59,
         "output_tokens_details": {
-          "reasoning_tokens": 13
+          "reasoning_tokens": 9
         },
-        "total_tokens": 2203
+        "total_tokens": 2206
       }
     },
     {
@@ -94,15 +94,15 @@
         }
       ],
       "passed": true,
-      "seconds": 1.8644316919962876,
+      "seconds": 1.4234976759762503,
       "usage": {
-        "input_tokens": 2143,
+        "input_tokens": 2150,
         "input_tokens_details": {
-          "cached_tokens": 0
+          "cached_tokens": 2036
         },
-        "output_tokens": 85,
+        "output_tokens": 78,
         "output_tokens_details": {
-          "reasoning_tokens": 18
+          "reasoning_tokens": 7
         },
         "total_tokens": 2228
       }
@@ -129,17 +129,17 @@
         }
       ],
       "passed": true,
-      "seconds": 1.2879901279957267,
+      "seconds": 2.2009469000040554,
       "usage": {
-        "input_tokens": 2138,
+        "input_tokens": 2145,
         "input_tokens_details": {
           "cached_tokens": 2036
         },
-        "output_tokens": 102,
+        "output_tokens": 111,
         "output_tokens_details": {
-          "reasoning_tokens": 18
+          "reasoning_tokens": 26
         },
-        "total_tokens": 2240
+        "total_tokens": 2256
       }
     },
     {
@@ -166,17 +166,17 @@
         }
       ],
       "passed": true,
-      "seconds": 0.9659966089966474,
+      "seconds": 3.0483066019951366,
       "usage": {
-        "input_tokens": 2147,
+        "input_tokens": 2154,
         "input_tokens_details": {
           "cached_tokens": 2036
         },
-        "output_tokens": 141,
+        "output_tokens": 151,
         "output_tokens_details": {
-          "reasoning_tokens": 34
+          "reasoning_tokens": 39
         },
-        "total_tokens": 2288
+        "total_tokens": 2305
       }
     },
     {
@@ -205,17 +205,17 @@
         }
       ],
       "passed": true,
-      "seconds": 1.7547730459918967,
+      "seconds": 1.4355594730004668,
       "usage": {
-        "input_tokens": 2149,
+        "input_tokens": 2156,
         "input_tokens_details": {
           "cached_tokens": 2036
         },
-        "output_tokens": 162,
+        "output_tokens": 161,
         "output_tokens_details": {
-          "reasoning_tokens": 35
+          "reasoning_tokens": 34
         },
-        "total_tokens": 2311
+        "total_tokens": 2317
       }
     },
     {
@@ -240,17 +240,17 @@
         }
       ],
       "passed": true,
-      "seconds": 1.0958381780073978,
+      "seconds": 1.3345493410015479,
       "usage": {
-        "input_tokens": 2142,
+        "input_tokens": 2149,
         "input_tokens_details": {
-          "cached_tokens": 116
+          "cached_tokens": 2036
         },
-        "output_tokens": 107,
+        "output_tokens": 102,
         "output_tokens_details": {
-          "reasoning_tokens": 17
+          "reasoning_tokens": 13
         },
-        "total_tokens": 2249
+        "total_tokens": 2251
       }
     },
     {
@@ -275,17 +275,17 @@
         }
       ],
       "passed": true,
-      "seconds": 1.3378101050038822,
+      "seconds": 2.020783569983905,
       "usage": {
-        "input_tokens": 2142,
+        "input_tokens": 2149,
         "input_tokens_details": {
           "cached_tokens": 2036
         },
-        "output_tokens": 129,
+        "output_tokens": 115,
         "output_tokens_details": {
-          "reasoning_tokens": 37
+          "reasoning_tokens": 23
         },
-        "total_tokens": 2271
+        "total_tokens": 2264
       }
     },
     {
@@ -316,17 +316,17 @@
         }
       ],
       "passed": true,
-      "seconds": 1.946645495001576,
+      "seconds": 1.7797763400012627,
       "usage": {
-        "input_tokens": 2161,
+        "input_tokens": 2168,
         "input_tokens_details": {
           "cached_tokens": 2036
         },
-        "output_tokens": 251,
+        "output_tokens": 191,
         "output_tokens_details": {
-          "reasoning_tokens": 89
+          "reasoning_tokens": 34
         },
-        "total_tokens": 2412
+        "total_tokens": 2359
       }
     },
     {
@@ -357,17 +357,17 @@
         }
       ],
       "passed": true,
-      "seconds": 2.000550270007807,
+      "seconds": 2.5108942080114502,
       "usage": {
-        "input_tokens": 2158,
+        "input_tokens": 2165,
         "input_tokens_details": {
           "cached_tokens": 2036
         },
-        "output_tokens": 268,
+        "output_tokens": 311,
         "output_tokens_details": {
-          "reasoning_tokens": 98
+          "reasoning_tokens": 150
         },
-        "total_tokens": 2426
+        "total_tokens": 2476
       }
     },
     {
@@ -399,7 +399,6 @@
           "name": "fly_route",
           "arguments": {
             "drone_id": "Drone1",
-            "speed_mps": 5.0,
             "waypoints": [
               {
                 "north_m": 100.0,
@@ -411,22 +410,23 @@
                 "east_m": 20.0,
                 "altitude_above_home_m": 30.0
               }
-            ]
+            ],
+            "speed_mps": 5.0
           }
         }
       ],
       "passed": true,
-      "seconds": 1.1834852430038154,
+      "seconds": 2.218514656997286,
       "usage": {
-        "input_tokens": 2171,
+        "input_tokens": 2178,
         "input_tokens_details": {
           "cached_tokens": 2036
         },
-        "output_tokens": 188,
+        "output_tokens": 226,
         "output_tokens_details": {
-          "reasoning_tokens": 9
+          "reasoning_tokens": 42
         },
-        "total_tokens": 2359
+        "total_tokens": 2404
       }
     },
     {
@@ -461,31 +461,31 @@
             "speed_mps": 6.0,
             "waypoints": [
               {
-                "altitude_above_home_m": 50.0,
+                "north_m": -200.0,
                 "east_m": 100.0,
-                "north_m": -200.0
+                "altitude_above_home_m": 50.0
               },
               {
-                "altitude_above_home_m": 50.0,
+                "north_m": -100.0,
                 "east_m": 150.0,
-                "north_m": -100.0
+                "altitude_above_home_m": 50.0
               }
             ]
           }
         }
       ],
       "passed": true,
-      "seconds": 2.597339046988054,
+      "seconds": 2.863241787010338,
       "usage": {
-        "input_tokens": 2166,
+        "input_tokens": 2173,
         "input_tokens_details": {
           "cached_tokens": 2036
         },
-        "output_tokens": 338,
+        "output_tokens": 278,
         "output_tokens_details": {
-          "reasoning_tokens": 143
+          "reasoning_tokens": 104
         },
-        "total_tokens": 2504
+        "total_tokens": 2451
       }
     },
     {
@@ -508,17 +508,17 @@
         }
       ],
       "passed": true,
-      "seconds": 1.0080502180062467,
+      "seconds": 1.8808773109922186,
       "usage": {
-        "input_tokens": 2139,
+        "input_tokens": 2146,
         "input_tokens_details": {
           "cached_tokens": 2036
         },
-        "output_tokens": 90,
+        "output_tokens": 104,
         "output_tokens_details": {
-          "reasoning_tokens": 22
+          "reasoning_tokens": 37
         },
-        "total_tokens": 2229
+        "total_tokens": 2250
       }
     },
     {
@@ -541,17 +541,17 @@
         }
       ],
       "passed": true,
-      "seconds": 1.2644981129997177,
+      "seconds": 2.238294593000319,
       "usage": {
-        "input_tokens": 2137,
+        "input_tokens": 2144,
         "input_tokens_details": {
           "cached_tokens": 2036
         },
-        "output_tokens": 82,
+        "output_tokens": 107,
         "output_tokens_details": {
-          "reasoning_tokens": 15
+          "reasoning_tokens": 39
         },
-        "total_tokens": 2219
+        "total_tokens": 2251
       }
     },
     {
@@ -574,17 +574,17 @@
         }
       ],
       "passed": true,
-      "seconds": 2.226265113989939,
+      "seconds": 1.8261968750157394,
       "usage": {
-        "input_tokens": 2142,
+        "input_tokens": 2149,
         "input_tokens_details": {
           "cached_tokens": 2036
         },
-        "output_tokens": 98,
+        "output_tokens": 101,
         "output_tokens_details": {
-          "reasoning_tokens": 25
+          "reasoning_tokens": 28
         },
-        "total_tokens": 2240
+        "total_tokens": 2250
       }
     },
     {
@@ -607,17 +607,17 @@
         }
       ],
       "passed": true,
-      "seconds": 1.5247744869993767,
+      "seconds": 1.4412670390156563,
       "usage": {
-        "input_tokens": 2140,
+        "input_tokens": 2147,
         "input_tokens_details": {
           "cached_tokens": 2036
         },
-        "output_tokens": 107,
+        "output_tokens": 102,
         "output_tokens_details": {
-          "reasoning_tokens": 37
+          "reasoning_tokens": 30
         },
-        "total_tokens": 2247
+        "total_tokens": 2249
       }
     },
     {
@@ -640,17 +640,17 @@
         }
       ],
       "passed": true,
-      "seconds": 1.2907523140020203,
+      "seconds": 1.3447647190187126,
       "usage": {
-        "input_tokens": 2138,
+        "input_tokens": 2145,
         "input_tokens_details": {
           "cached_tokens": 2036
         },
-        "output_tokens": 91,
+        "output_tokens": 90,
         "output_tokens_details": {
-          "reasoning_tokens": 23
+          "reasoning_tokens": 24
         },
-        "total_tokens": 2229
+        "total_tokens": 2235
       }
     },
     {
@@ -685,17 +685,17 @@
         }
       ],
       "passed": true,
-      "seconds": 1.8482556429953547,
+      "seconds": 1.1099289020057768,
       "usage": {
-        "input_tokens": 2138,
+        "input_tokens": 2145,
         "input_tokens_details": {
           "cached_tokens": 2036
         },
-        "output_tokens": 184,
+        "output_tokens": 156,
         "output_tokens_details": {
-          "reasoning_tokens": 66
+          "reasoning_tokens": 36
         },
-        "total_tokens": 2322
+        "total_tokens": 2301
       }
     },
     {
@@ -704,17 +704,17 @@
       "expected": [],
       "actual": [],
       "passed": true,
-      "seconds": 1.6262245980033185,
+      "seconds": 1.3900132660055533,
       "usage": {
-        "input_tokens": 2136,
+        "input_tokens": 2143,
         "input_tokens_details": {
           "cached_tokens": 2036
         },
-        "output_tokens": 61,
+        "output_tokens": 45,
         "output_tokens_details": {
-          "reasoning_tokens": 32
+          "reasoning_tokens": 27
         },
-        "total_tokens": 2197
+        "total_tokens": 2188
       }
     },
     {
@@ -728,17 +728,17 @@
         }
       ],
       "passed": false,
-      "seconds": 1.9257623820012668,
+      "seconds": 1.6908797489886638,
       "usage": {
-        "input_tokens": 2141,
+        "input_tokens": 2148,
         "input_tokens_details": {
           "cached_tokens": 2036
         },
-        "output_tokens": 159,
+        "output_tokens": 194,
         "output_tokens_details": {
-          "reasoning_tokens": 95
+          "reasoning_tokens": 133
         },
-        "total_tokens": 2300
+        "total_tokens": 2342
       }
     },
     {
@@ -747,17 +747,17 @@
       "expected": [],
       "actual": [],
       "passed": true,
-      "seconds": 1.7546440949954558,
+      "seconds": 1.738952618004987,
       "usage": {
-        "input_tokens": 2156,
+        "input_tokens": 2163,
         "input_tokens_details": {
           "cached_tokens": 2036
         },
-        "output_tokens": 87,
+        "output_tokens": 139,
         "output_tokens_details": {
-          "reasoning_tokens": 44
+          "reasoning_tokens": 102
         },
-        "total_tokens": 2243
+        "total_tokens": 2302
       }
     },
     {
@@ -766,17 +766,17 @@
       "expected": [],
       "actual": [],
       "passed": true,
-      "seconds": 1.306559891992947,
+      "seconds": 1.0416455309896264,
       "usage": {
-        "input_tokens": 2142,
+        "input_tokens": 2149,
         "input_tokens_details": {
           "cached_tokens": 2036
         },
-        "output_tokens": 79,
+        "output_tokens": 65,
         "output_tokens_details": {
-          "reasoning_tokens": 41
+          "reasoning_tokens": 27
         },
-        "total_tokens": 2221
+        "total_tokens": 2214
       }
     },
     {
@@ -785,17 +785,17 @@
       "expected": [],
       "actual": [],
       "passed": true,
-      "seconds": 1.5762739420024445,
+      "seconds": 1.2163197819900233,
       "usage": {
-        "input_tokens": 2154,
+        "input_tokens": 2161,
         "input_tokens_details": {
           "cached_tokens": 2036
         },
-        "output_tokens": 82,
+        "output_tokens": 76,
         "output_tokens_details": {
-          "reasoning_tokens": 33
+          "reasoning_tokens": 32
         },
-        "total_tokens": 2236
+        "total_tokens": 2237
       }
     },
     {
@@ -804,17 +804,17 @@
       "expected": [],
       "actual": [],
       "passed": true,
-      "seconds": 1.673359819003963,
+      "seconds": 2.8048168369859923,
       "usage": {
-        "input_tokens": 2142,
+        "input_tokens": 2149,
         "input_tokens_details": {
           "cached_tokens": 2036
         },
-        "output_tokens": 82,
+        "output_tokens": 76,
         "output_tokens_details": {
           "reasoning_tokens": 51
         },
-        "total_tokens": 2224
+        "total_tokens": 2225
       }
     },
     {
@@ -823,58 +823,19 @@
       "expected": [],
       "actual": [],
       "passed": true,
-      "seconds": 0.888399910996668,
+      "seconds": 1.538120658020489,
       "usage": {
-        "input_tokens": 2136,
+        "input_tokens": 2143,
         "input_tokens_details": {
           "cached_tokens": 2036
         },
         "output_tokens": 62,
         "output_tokens_details": {
-          "reasoning_tokens": 34
+          "reasoning_tokens": 36
         },
-        "total_tokens": 2198
+        "total_tokens": 2205
       }
     }
   ],
-  "scoring_output": "24/25 exact tool selections (96.0%). Misses: [20]",
-  "development_runs": [
-    {
-      "run": 1,
-      "correct": 22,
-      "total": 25,
-      "misses": [
-        4,
-        5,
-        6
-      ],
-      "raw_directory": ".local/evidence/gcs/tools-run-1"
-    },
-    {
-      "run": 2,
-      "correct": 23,
-      "total": 25,
-      "misses": [
-        5,
-        6
-      ],
-      "raw_directory": ".local/evidence/gcs/tools-run-2"
-    },
-    {
-      "run": 3,
-      "correct": 24,
-      "total": 25,
-      "misses": [
-        20
-      ],
-      "raw_directory": ".local/evidence/gcs/tools-run-3"
-    }
-  ],
-  "development_note": "Run 1 was rescored with JSON numeric equivalence (30 and 30.0); its raw responses are unchanged. Nullable map selectors were replaced by omitted unused fields after runs 1\u20132. Run 4 uses the final 100 m altitude ceiling.",
-  "tool_output_only_continuation": {
-    "passed": true,
-    "evidence": ".local/evidence/gcs/tool-output-turn.json",
-    "new_user_messages": 0,
-    "failed_tool_repeats": 0
-  }
+  "scoring_output": "24/25 exact tool selections (96.0%). Misses: [20]"
 }
