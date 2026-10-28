@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "recorded_at": "2026-10-28T14:37:28.764353+00:00",
-  "status": "4K60 navigation and close-character screening passed; complete realism gate pending",
+  "recorded_at": "2026-10-28T22:57:49.993952+00:00",
+  "status": "Rocketbox 4K60 baseline measured per frame; SM6 shader cook running; full flight/capture gate pending",
   "vulkan_profile_check": {
     "engine": "5.8.2",
     "implementation": "Engine generated vulkan_profiles_ue.h and vpGetPhysicalDeviceProfileSupport",
@@ -26,11 +26,11 @@
     "max_bitrate_bps": 40000000,
     "parity_measurement": "mission_planner/measurements/aws-services.json",
     "configuration": "deploy/runtime.env.example",
-    "temporary_content": ".local/unreal/releases/cooked-content-recovery"
+    "release": "/home/brook_avionuas/snr/.local/unreal/releases/20261028T223902Z"
   },
   "requested_changes": ["3840x2160 browser stream", "Lumen GI and reflections with hardware ray tracing"],
   "dependencies": {
-    "sm6_package": "Complete uncooked character assets or authenticated licensed reacquisition; temporary recovery content is cooked SM5"
+    "sm6_package": "Complete uncooked Rocketbox source accepted; SM6 baseline cook in progress."
   },
   "variants": [
     {
@@ -241,6 +241,98 @@
         ".local/evidence/render-quality/4k-person/person.png",
         ".local/evidence/render-quality/4k-person/person-start.png",
         ".local/evidence/render-quality/4k-person/person-end.png"
+      ]
+    },
+    {
+      "name": "rocketbox-sm5-4k-frames",
+      "recorded_at": "2026-10-28T22:50:39.570Z",
+      "profile": {
+        "width": 3840,
+        "height": 2160,
+        "fps": 60,
+        "codec": "H264",
+        "minBitrateBps": 10000000,
+        "maxBitrateBps": 40000000
+      },
+      "workload": "Browser navigation view; no flight or sensor capture experiment",
+      "summary": {
+        "seconds": 60.7722841796875,
+        "decodedFps": 59.99445387340957,
+        "bitrateMbps": 35.04824471797486,
+        "droppedFrames": 0,
+        "freezes": 0,
+        "freezeDurationSeconds": 0,
+        "videoCallbackGapMs": {
+          "samples": 3127,
+          "mean": 19.43744803325872,
+          "p95": 33.39999999999418,
+          "p99": 33.40000000000873,
+          "max": 50
+        },
+        "gpuMs": {
+          "samples": 3666,
+          "mean": 8.14840916530278,
+          "p95": 8.333,
+          "p99": 8.504,
+          "max": 8.645
+        },
+        "frameMs": {
+          "samples": 3666,
+          "mean": 16.667178668848827,
+          "p95": 16.6687,
+          "p99": 16.671,
+          "max": 17.6907
+        },
+        "powerW": {
+          "samples": 60,
+          "mean": 289.37500000000006,
+          "p95": 292.57,
+          "p99": 293.91,
+          "max": 293.91
+        },
+        "graphicsMHz": {
+          "samples": 60,
+          "mean": 2324.35,
+          "p95": 2332,
+          "p99": 2332,
+          "max": 2332
+        },
+        "temperatureC": {
+          "samples": 60,
+          "mean": 44.016666666666666,
+          "p95": 44,
+          "p99": 45,
+          "max": 45
+        },
+        "gameMs": {
+          "samples": 3666,
+          "mean": 1.1102825968357883,
+          "p95": 1.434,
+          "p99": 1.747,
+          "max": 8.46
+        },
+        "renderMs": {
+          "samples": 3666,
+          "mean": 2.575601200218223,
+          "p95": 3.024,
+          "p99": 3.427,
+          "max": 6.66
+        },
+        "gapsOver100Ms": 0
+      },
+      "timing_source": "Unreal CSV per-frame GPUTime, FrameTime, GameThreadTime and RenderThreadTime",
+      "evidence": ".local/evidence/render-quality/rocketbox-sm5-4k-frames/result.json",
+      "sha256": "699e940b6063a893ee61c2779ae1113690ff17dd9a8914f6cc1adcd17f9ff24f",
+      "engine_csv": {
+        "path": ".local/evidence/render-quality/rocketbox-sm5-4k-frames/engine.csv",
+        "sha256": "018efbc8c1c39eb9e18751af95185c3bec25112eee01c60ac6879b5d37100d0c"
+      },
+      "screenshots": [
+        ".local/evidence/render-quality/rocketbox-sm5-4k-frames/person.png",
+        ".local/evidence/render-quality/rocketbox-sm5-4k-frames/meadow.png",
+        ".local/evidence/render-quality/rocketbox-sm5-4k-frames/port.png",
+        ".local/evidence/render-quality/rocketbox-sm5-4k-frames/navigation-start.png",
+        ".local/evidence/render-quality/rocketbox-sm5-4k-frames/navigation-end.png"
       ]
     }
   ],
