@@ -3,3 +3,9 @@ python-dotenv==1.2.4
 jsonschema==4.26.0
 # Development
 ruff==0.17.3
+pymavlink==2.4.50
+websockets==15.0.1
+
+# ArduPilot SITL build prerequisites
+empy==3.3.4
+pexpect==4.9.0

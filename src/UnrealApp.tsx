@@ -55,7 +55,6 @@ export default function UnrealApp() {
     [name, setName] = useState('');
   const [yaw, setYaw] = useState(0);
   const [briefing, setBriefing] = useState<Briefing | null>(null);
-  const [launchNotice, setLaunchNotice] = useState(false);
   const locked = busy || working || transitioning;
   const stage = packet?.creatorStage || 'person';
   const index = steps.findIndex((step) => step.id === stage);
@@ -96,7 +95,6 @@ export default function UnrealApp() {
       };
       if (await send({ type: 'briefing', briefing: report }))
         await send({ type: 'creator-stage', stage: next });
-      setLaunchNotice(false);
     } finally {
       setWorking(false);
     }
@@ -343,9 +341,17 @@ export default function UnrealApp() {
               ready={!!packet.authoring.position}
               disabled={locked}
               editPlacement={() => void moveTo('placement')}
-              launched={launchNotice}
               launch={async () => {
-                if (await send({ type: 'briefing', briefing })) setLaunchNotice(true);
+                if (!(await send({ type: 'briefing', briefing }))) return;
+                const saved = await send({
+                  type: 'save',
+                  name: name.trim() || 'Open Meadow rescue case',
+                  summary: '',
+                });
+                if (saved) {
+                  if (!saved.lastSavedId) throw new Error('Saved rescue case has no id');
+                  location.assign(`/mission?case=${encodeURIComponent(saved.lastSavedId)}`);
+                }
               }}
             />
           )}

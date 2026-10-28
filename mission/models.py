@@ -153,21 +153,28 @@ class Wonder:
 
     def respond(
         self,
-        text: str,
+        text: str | None,
         images: list[bytes],
         effort: str,
         tools: list[dict],
         previous_response_id: str | None = None,
         tool_outputs: tuple[dict, ...] = (),
+        instructions: str | None = None,
     ) -> dict:
         assert effort in ("low", "medium")
-        content = [
-            {"type": "input_text", "text": text},
-            *[{"type": "input_image", "image_url": data_url(i)} for i in images],
-        ]
+        inputs = list(tool_outputs)
+        if text is not None:
+            assert text.strip()
+            content = [
+                {"type": "input_text", "text": text},
+                *[{"type": "input_image", "image_url": data_url(i)} for i in images],
+            ]
+            inputs.append({"role": "user", "content": content})
+        else:
+            assert tool_outputs and not images and previous_response_id is not None
         body = dict(
             model="muse-wonder-1.0",
-            input=[*tool_outputs, {"role": "user", "content": content}],
+            input=inputs,
             reasoning={"effort": effort},
             tools=tools,
             store=True,
@@ -175,6 +182,8 @@ class Wonder:
         )
         if previous_response_id is not None:
             body["previous_response_id"] = previous_response_id
+        if instructions is not None:
+            body["instructions"] = instructions
         response = post(self.http, META_URL, body)
         assert response["status"] == "completed"
         return response

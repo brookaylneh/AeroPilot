@@ -15,6 +15,9 @@ app.use(
   briefingRouter(path.resolve(process.env.SNR_SCENARIO_DATA_DIR || 'data/unreal-scenarios', 'briefings')),
 );
 const pixelPlayerPort = Number(process.env.PIXEL_PLAYER_PORT || 8080);
+const missionPort = Number(process.env.SNR_MISSION_PORT || 8765);
+if (!Number.isInteger(missionPort) || missionPort < 1 || missionPort > 65535)
+  throw new Error('Invalid local mission service port');
 if (!Number.isInteger(pixelPlayerPort) || pixelPlayerPort < 1 || pixelPlayerPort > 65535)
   throw new Error('Invalid local player port');
 // Report the renderer separately from the website. Never expose scenario data,
@@ -54,16 +57,17 @@ server.on('upgrade', (req, socket, head) => {
   } catch {
     /* rejected below */
   }
-  if (req.url !== '/pixel-streaming' || !sameOrigin) {
+  if (!['/pixel-streaming', '/api/mission'].includes(req.url!) || !sameOrigin) {
     socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
     return;
   }
+  const upstreamPort = req.url === '/api/mission' ? missionPort : pixelPlayerPort;
   const upstream = request({
     hostname: '127.0.0.1',
-    port: pixelPlayerPort,
+    port: upstreamPort,
     path: '/',
     method: 'GET',
-    headers: { ...req.headers, host: `127.0.0.1:${pixelPlayerPort}` },
+    headers: { ...req.headers, host: `127.0.0.1:${upstreamPort}` },
   });
   upstream.setTimeout(10000, () => upstream.destroy());
   upstream.on('error', () => socket.destroy());
