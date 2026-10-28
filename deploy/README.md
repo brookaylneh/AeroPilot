@@ -53,13 +53,13 @@ All downloaded tools and archives live under `~/snr/.local/toolchains/`; nothing
 in `/opt`. Versions are defined in `host.sh`; archive hashes are in `toolchains.sha256`.
 The installer records executable hashes in `.local/toolchains/binaries.sha256`.
 
-| Entry under `.local/toolchains/bin/` | Source and use |
-| --- | --- |
-| `node`, `npm`, `npx` | Official Node Linux archive; web build and services |
-| `uv` | Astral release archive; Python environment tooling |
-| `python3.12` | Astral standalone CPython; fal environment |
-| `python3.10` | Link to the pinned system interpreter; Cosys environment |
-| `vulkaninfo` | Binary from the LunarG SDK; current Vulkan feature enumeration |
+| Entry under `.local/toolchains/bin/` | Source and use                                                 |
+| ------------------------------------ | -------------------------------------------------------------- |
+| `node`, `npm`, `npx`                 | Official Node Linux archive; web build and services            |
+| `uv`                                 | Astral release archive; Python environment tooling             |
+| `python3.12`                         | Astral standalone CPython; fal environment                     |
+| `python3.10`                         | Link to the pinned system interpreter; Cosys environment       |
+| `vulkaninfo`                         | Binary from the LunarG SDK; current Vulkan feature enumeration |
 
 Use `export PATH="$HOME/snr/.local/toolchains/bin:$PATH"` in an interactive shell.
 Service units must use explicit tool paths. Python environment creation and Unreal Engine transfer
@@ -86,6 +86,33 @@ CUDA/CUVID, and checks the encoded frame count. It establishes codec availabilit
 simulation performance. A digest-pinned Ubuntu container must also expose the GPU to the service
 user with `docker run --gpus all`. Raw verification output stays in `.local/evidence/host/`;
 accepted host measurements belong in `mission_planner/measurements/`.
+
+## Transfer verification
+
+[transfer.md](transfer.md) records the transferred items, exclusions and provenance.
+Per-file manifests and command output live in .local/evidence/transfer/.
+The transfer tool hashes regular files, checks executable flags and symbolic-link targets,
+and rejects files that change during hashing. Generate manifests on the source and stream
+them to the target; verification reads both the target tree and its saved source manifest.
+
+```sh
+node deploy/transfer.mjs manifest /path/to/source __pycache__
+node deploy/transfer.mjs verify /path/to/target /path/to/source-manifest.json
+node --test deploy/transfer.test.mjs
+```
+
+The installed engine SDK is retained in full, including its intermediates and DDC.
+Project and project-plugin build outputs are regenerated. Build and package with explicit
+host resources and the transferred SDK:
+
+```sh
+export UE_ROOT="$PWD/.local/toolchains/UnrealEngine-5.8.2"
+export SNR_CPU_LIMIT=12 SNR_MEMORY_LIMIT=96g
+bash world/unreal/scripts/unreal-container.sh build
+bash world/unreal/scripts/unreal-container.sh exec bash world/unreal/scripts/package-unreal.sh
+```
+
+The build CPU limit is a packaging setting; it does not select the live simulation profile.
 
 ## Sources
 
