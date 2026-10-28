@@ -8,6 +8,7 @@ class UStaticMeshComponent;
 class UAnimSequence;
 class USkeletalMeshComponent;
 class USkeleton;
+class USkeletalMesh;
 
 USTRUCT(BlueprintType)
 struct FScenarioTintBinding
@@ -19,7 +20,7 @@ struct FScenarioTintBinding
     UPROPERTY(EditAnywhere, BlueprintReadWrite) FName ParameterName;
 };
 
-// The browser refers to catalog IDs. MetaHuman assembly details stay in this actor.
+// The browser refers to catalog IDs; skeletal assets stay in this actor.
 UCLASS(Blueprintable)
 class SCENARIOSTUDIO_API AScenarioHuman : public AScenarioPerson
 {
@@ -32,6 +33,12 @@ class SCENARIOSTUDIO_API AScenarioHuman : public AScenarioPerson
                                           FName Situation);
     UFUNCTION(BlueprintCallable, Category = "Scenario|Authoring")
     static bool PrepareActivityAnimation(UAnimSequence *Animation, UAnimSequence *Reference, FName Activity);
+    UFUNCTION(BlueprintCallable, Category = "Scenario|Authoring")
+    static bool PrepareRocketboxAnimation(UAnimSequence *Animation, UAnimSequence *Reference, FName Activity);
+    UFUNCTION(BlueprintCallable, Category = "Scenario|Authoring")
+    static bool BindRocketboxSkeleton(USkeletalMesh *Mesh, USkeleton *Skeleton);
+    UFUNCTION(BlueprintCallable, Category = "Scenario|Authoring")
+    static bool PreviewRocketboxPose(USkeletalMeshComponent *Mesh, UAnimSequence *Animation, float Time);
     AScenarioHuman();
     UPROPERTY(EditAnywhere, BlueprintReadWrite) TSubclassOf<AActor> CharacterClass;
     UPROPERTY(EditAnywhere, BlueprintReadWrite) TArray<FScenarioTintBinding> TintBindings;
