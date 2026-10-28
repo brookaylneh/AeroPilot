@@ -122,6 +122,8 @@ Before each copy/build/package step check `df` and the source size, retaining at
 least 40 GiB. The editor cache belongs to `SNR_UNREAL_HOME`; shared SDK, vendor and
 virtual-environment symlinks are mounted read-only. If a prior integration output
 exists, explicitly archive it under a new evidence name before a new operation.
+Build and editor-command containers have no network, so Unreal's internal trace
+listeners cannot occupy host ports. Packaged simulation uses the assigned host slot.
 Compare the terrain hash, retained southern-geometry hash and orientation report
 with `mission_planner/measurements/world-resize.json`.
 
@@ -150,6 +152,10 @@ runtime configuration's `SNR_PACKAGE_ROOT`, `SNR_WORLD_CONFIG` and
 start the installed world and mission service together. Recheck fence readback,
 homes, map fit and camera poses before releasing the slot. The exact coupled
 service shutdown/start commands are in [Cosys cutover](../cosys/README.md#installed-cutover-after-merge).
+After cutover, open a live Pixel Streaming Studio session at both 1920×1080 and
+2560×1440. Capture its world map and verify whole-world fit, pan and zoom at each
+size. World-slot acceptance uses explicitly labelled component screenshots because
+the slot has no Pixel Streaming endpoints; a full Studio session was not run there.
 
 ## Engine plugin overrides
 

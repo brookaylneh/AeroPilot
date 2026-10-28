@@ -32,7 +32,7 @@ done
   -project="$project" -noP4 -platform=Linux -clientconfig=Development \
   -build -cook -map=/Game/OpenMeadow/OpenMeadow -stage -pak -archive \
   -UbtArgs="-MaxParallelActions=6 -NoUBA" \
-  -ddc=InstalledNoZenLocalFallback -AdditionalCookerOptions="-SkipZenStore" \
+  -ddc=InstalledNoZenLocalFallback -AdditionalCookerOptions="-SkipZenStore -notraceserver" \
   -archivedirectory="$archive_dir" | tee "$evidence_dir/package.log"
 python3 - "$archive_dir" "$evidence_dir" <<'PY'
 import shutil

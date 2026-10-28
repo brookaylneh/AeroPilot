@@ -11,7 +11,9 @@ cpu_limit="${SNR_CPU_LIMIT:-6}"
 [[ "$cpu_limit" =~ ^[1-9][0-9]*$ ]] || { echo 'SNR_CPU_LIMIT must be a positive integer' >&2; exit 2; }
 memory_limit="${SNR_MEMORY_LIMIT:-48g}"
 [[ "$memory_limit" =~ ^[1-9][0-9]*[mg]$ ]] || { echo 'SNR_MEMORY_LIMIT must use Docker units, for example 24g' >&2; exit 2; }
-container_flags=(--rm --init "--cpus=$cpu_limit" "--memory=$memory_limit" --shm-size=2g --ulimit core=0 --network=host
+network=host
+if [[ "$mode" = build || "$mode" = exec ]]; then network=none; fi
+container_flags=(--rm --init "--cpus=$cpu_limit" "--memory=$memory_limit" --shm-size=2g --ulimit core=0 "--network=$network"
   --user "$(id -u):$(id -g)"
   -e XDG_CONFIG_HOME=/home/snr/.config
   --mount "type=bind,src=$PWD,dst=$PWD"
