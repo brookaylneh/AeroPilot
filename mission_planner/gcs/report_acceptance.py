@@ -29,11 +29,12 @@ def token_history(directory):
     return rows
 
 
-def collect(run, baseline, base_commit, checks):
+def collect(run, revision, baseline, base_commit, checks):
     chat = read(run / "chat/result.json")
     ui = read(run / "screenshots/ui/results.json")
     states = read(run / "screenshots/states/results.json")
-    performance = read(run / "performance/results.json")
+    performance = read(revision / "performance/results.json")
+    assert performance["duration_s"] >= 600, "Final performance observation must cover ten minutes."
     tools = read(run / "tools/measurement.json")
     mission = Path(".local/data/missions") / chat["mission_id"]
     events = [json.loads(line) for line in (mission / "events.jsonl").read_text().splitlines()]
@@ -44,7 +45,9 @@ def collect(run, baseline, base_commit, checks):
         ["git", "ls-files", "--others", "--exclude-standard"], text=True
     ).splitlines()
     plan = run / "screenshots/ui/Drone1.plan"
-    cleanup_paths = sorted(run.glob("*shutdown/results.json"))
+    cleanup_paths = sorted(
+        [*run.glob("*shutdown/results.json"), *revision.glob("*shutdown/results.json")]
+    )
     assert cleanup_paths, "No recorded fleet shutdown."
     memory = performance.pop("memory")
     performance["memory"] = {
@@ -54,11 +57,14 @@ def collect(run, baseline, base_commit, checks):
         "peak_service_rss_kib": max(v["service_rss_kib"] for v in memory),
         "peak_browser_js_heap_bytes": max(v["browser_js_heap_bytes"] for v in memory),
     }
-    performance["source"] = str(run / "performance/results.json")
+    performance["source"] = str(revision / "performance/results.json")
     return {
         "schema_version": 2,
         "generated_by": "mission_planner/gcs/report_acceptance.py",
         "run_directory": str(run),
+        "revision_directory": str(revision),
+        "approval_review": read(revision / "screenshots/approvals/results.json"),
+        "revised_states": read(revision / "screenshots/states/results.json"),
         "mission_id": chat["mission_id"],
         "chat": {
             key: chat[key]
@@ -98,12 +104,15 @@ def collect(run, baseline, base_commit, checks):
             "sha256": hashlib.sha256(plan.read_bytes()).hexdigest(),
             "validated": ui["plan_validated"],
         },
-        "screenshots": [str(p) for p in sorted((run / "screenshots").rglob("*.png"))],
+        "screenshots": [
+            str(p)
+            for directory in (run, revision)
+            for p in sorted((directory / "screenshots").rglob("*.png"))
+        ],
         "files_changed": sorted(set(changed)),
         "limitations": [
             "Video and future perception/planning tools remain unavailable.",
             "Performance covers Python RSS and browser JS heap, not total browser/GPU memory.",
-            "The ten-minute performance observer started before the final map/video resize guard and approval-details visibility changes; separate browser acceptance validates those changes.",
             "Origin ground elevation is approximate; route separation checks do not model controller tracking error.",
         ],
     }
@@ -146,6 +155,7 @@ if __name__ == "__main__":
     checks.add_argument("--output", type=Path, required=True)
     report = commands.add_parser("collect")
     report.add_argument("--run", type=Path, required=True)
+    report.add_argument("--revision-run", type=Path, required=True)
     report.add_argument("--baseline-mission", type=Path, required=True)
     report.add_argument("--base-commit", required=True)
     report.add_argument("--checks", type=Path, required=True)
@@ -154,7 +164,9 @@ if __name__ == "__main__":
     if args.command == "checks":
         check(args.output)
     else:
-        result = collect(args.run, args.baseline_mission, args.base_commit, args.checks)
+        result = collect(
+            args.run, args.revision_run, args.baseline_mission, args.base_commit, args.checks
+        )
         with args.output.open("x") as output:
             output.write(json.dumps(result, indent=2) + "\n")
         print(

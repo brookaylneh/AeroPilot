@@ -90,6 +90,7 @@ node --import tsx mission_planner/gcs/accept_browser.mjs flight 'http://127.0.0.
 ```
 
 The browser harness also provides `capture URL NEW_DIRECTORY LABEL`, `states URL NEW_DIRECTORY`,
+`approvals URL NEW_DIRECTORY`,
 `performance URL NEW_DIRECTORY SERVICE_PID SECONDS`, `proxy URL NEW_DIRECTORY`, and
 `land URL NEW_DIRECTORY`, `review URL NEW_DIRECTORY`, and `stop URL NEW_DIRECTORY SERVICE_PID`.
 `review` captures existing action errors and flight logs without issuing commands. `stop`
@@ -98,10 +99,15 @@ verifies landed state and child process ownership, sends SIGTERM, and checks por
 checks approvals/refusals, pauses and resumes the verified Drone3 process to test link loss,
 and restores Supervised mode. `land` is an explicit cleanup command; it does not run on failure.
 Run flight sequences separately. The performance observer sends no aircraft commands.
+`approvals` reviews three- and twelve-waypoint requests at both viewport sizes, verifies every
+table row and both decision buttons, captures the dashed pending route and clustered pad labels,
+then declines each request. It requires landed aircraft. Pending geometry is not an uploaded mission.
+`performance` requires a clean committed build and records its commit and served page checksum.
 
 `report_acceptance.py` aggregates these raw results and baseline response traces into the
 [committed acceptance measurements](../measurements/gcs-acceptance.json), including screenshot
 paths and every changed file. Use `--help` for its required inputs. Preserve old evidence.
+Pass the accepted flight run as `--run` and the final display/performance run as `--revision-run`.
 
 Protocol references: [SITL/multiple vehicles](https://ardupilot.org/dev/docs/using-sitl-for-ardupilot-testing.html),
 [mission/fence protocol](https://ardupilot.org/dev/docs/mavlink-mission-upload-download.html),
