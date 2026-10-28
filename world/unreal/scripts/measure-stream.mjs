@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { promisify } from 'node:util';
 import {
@@ -21,8 +21,11 @@ assert.equal(new URL(origin).origin, origin);
 assert(['person', 'navigation'].includes(view), 'VIEW must be person or navigation');
 const height = Number(process.env.SNR_STREAM_HEIGHT);
 const fps = Number(process.env.SNR_STREAM_FPS);
-assert([1080, 2160].includes(height));
+assert([1080, 1440, 2160].includes(height));
 assert([30, 60].includes(fps));
+const status = await fetch(`${origin}/api/unreal/status`, { signal: AbortSignal.timeout(5000) });
+assert(status.ok);
+assert.equal((await status.json()).state, 'ready', 'Release the current browser editing session first');
 await mkdir(output, { recursive: false });
 const execute = promisify(execFile);
 const result = {
@@ -39,10 +42,22 @@ const result = {
   workload: `Browser ${view} view; no flight or sensor capture experiment`,
   errors: [],
   samples: [],
+  poses: [],
 };
 const browser = await launchBrowser();
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
 page.on('pageerror', (error) => result.errors.push(error.message));
+let profiling = false;
+async function engineProfile(action) {
+  await execute('.venv-cosys/bin/python', ['world/unreal/scripts/profile-engine.py', action, output], {
+    timeout: 30000,
+    env: { ...process.env, PYTHONPATH: process.cwd() },
+  });
+}
+async function click(name) {
+  await page.getByRole('button', { name, exact: true }).click();
+  await waitForCreator(page);
+}
 async function photograph(name) {
   const png = await page.locator('video').evaluate((video) => {
     const canvas = document.createElement('canvas');
@@ -52,6 +67,8 @@ async function photograph(name) {
     return canvas.toDataURL('image/png').split(',')[1];
   });
   await writeFile(`${output}/${name}.png`, Buffer.from(png, 'base64'));
+  const camera = await page.evaluate(() => window.snrStates.at(-1).camera);
+  result.poses.push({ name, camera });
 }
 function distribution(values) {
   assert(values.length && values.every(Number.isFinite));
@@ -121,15 +138,31 @@ try {
   const response = await page.goto(`${origin}/studio`, { timeout: 30000 });
   assert(response.ok());
   await waitForCreator(page);
+  const before = await page.evaluate(() => window.snrStates.at(-1));
+  await writeFile(`${output}/before.json`, JSON.stringify(before, null, 2) + '\n');
+  await click('Scenarios');
+  await click('New scenario');
+  await page.getByRole('tab', { name: 'Adults', exact: true }).click();
+  await click('Adult 2');
+  await delay(5000);
   await photograph('person');
   if (view === 'navigation') {
     await enterWorld(page);
-    await page.getByRole('button', { name: 'Explore', exact: true }).click();
+    await delay(5000);
+    await photograph('meadow');
+    await page.locator('.minimap-port').click();
     await waitForCreator(page);
+    await delay(5000);
+    await photograph('port');
+    await enterWorld(page);
+    await click('Explore');
   }
   await page.locator('.free-navigation').focus();
   await page.mouse.move(960, 540);
+  await delay(30000);
   await photograph(`${view}-start`);
+  await engineProfile('start');
+  profiling = true;
   await page.evaluate(() => {
     window.snrFrameTimes = [];
     window.snrMeasurementStart = performance.now();
@@ -173,6 +206,14 @@ try {
     graphicsMHz: distribution(result.samples.map((s) => s.gpu.graphicsMHz)),
     temperatureC: distribution(result.samples.map((s) => s.gpu.temperatureC)),
   };
+  await engineProfile('stop');
+  profiling = false;
+  result.engine = JSON.parse(await readFile(`${output}/engine-profile.json`, 'utf8'));
+  result.summary.gpuMs = result.engine.summary.milliseconds.GPUTime;
+  result.summary.frameMs = result.engine.summary.milliseconds.FrameTime;
+  result.summary.gameMs = result.engine.summary.milliseconds.GameThreadTime;
+  result.summary.renderMs = result.engine.summary.milliseconds.RenderThreadTime;
+  result.summary.gapsOver100Ms = frameGaps.filter((gap) => gap > 100.1).length;
   await photograph(`${view}-end`);
   await assertScenarioProtocol(page);
   assert.deepEqual(result.errors, []);
@@ -183,6 +224,11 @@ try {
   result.failure = error.message;
   throw error;
 } finally {
-  await writeFile(`${output}/result.json`, JSON.stringify(result, null, 2) + '\n');
-  await browser.close();
+  try {
+    if (profiling) await engineProfile('stop');
+  } finally {
+    await browser.close();
+    result.browserClosed = true;
+    await writeFile(`${output}/result.json`, JSON.stringify(result, null, 2) + '\n');
+  }
 }

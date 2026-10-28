@@ -40,6 +40,12 @@ failures = ['Failed to compile Material', "doesn't have a valid ShaderMap", 'Log
 if any(message in log for message in failures):
     raise SystemExit('Package contains cook/material failures; inspect the recorded package.log')
 (package / 'Linux/scenario-map.txt').write_text('/Game/OpenMeadow/OpenMeadow\n')
+config = Path('world/unreal/ScenarioStudio/Config/DefaultEngine.ini').read_text()
+platforms = [line.split('=', 1)[1] for line in config.splitlines() if line.startswith('+TargetedRHIs=')]
+assert len(platforms) == 1 and platforms[0] in ('SF_VULKAN_SM5', 'SF_VULKAN_SM6'), platforms
+(package / 'Linux/shader-platform.txt').write_text(platforms[0] + '\n')
+(evidence / 'DefaultEngine.ini').write_text(config)
+
 PY
 
 mkdir -p "$package_path/Linux/licenses"

@@ -72,6 +72,7 @@ test('runtime selects its manifest and H264 explicitly; missing maps and unsuppo
     );
     writeFileSync(path.join(directory, 'ScenarioStudio.sh'), '#!/bin/sh\nexit 0\n', { mode: 0o700 });
     writeFileSync(path.join(directory, 'scenario-map.txt'), '/Game/OpenMeadow/OpenMeadow\n');
+    writeFileSync(path.join(directory, 'shader-platform.txt'), 'SF_VULKAN_SM5\n');
     writeFileSync(path.join(directory, 'settings.json'), '{}');
     const env: NodeJS.ProcessEnv = {
       ...process.env,
@@ -97,6 +98,14 @@ test('runtime selects its manifest and H264 explicitly; missing maps and unsuppo
     assert(args.includes('/Game/OpenMeadow/OpenMeadow'));
     assert(args.includes('-PixelStreamingEncoderCodec=H264'));
     assert(args.includes('-ResX=1920'));
+    assert(args.includes('-sm5'));
+    writeFileSync(path.join(directory, 'shader-platform.txt'), 'SF_VULKAN_SM6\n');
+    assert.equal(run().status, 0);
+    const sm6: string[] = JSON.parse(readFileSync(output, 'utf8'));
+    assert(sm6.includes('-sm6') && !sm6.includes('-sm5'));
+    writeFileSync(path.join(directory, 'shader-platform.txt'), 'invalid\n');
+    assert.equal(run().status, 2);
+    writeFileSync(path.join(directory, 'shader-platform.txt'), 'SF_VULKAN_SM5\n');
     assert(args.includes('-PixelStreamingWebRTCFps=60'));
     assert(args.includes('-PixelStreamingWebRTCMaxBitrate=40000000'));
     assert(args.includes('-PixelStreamingWebRTCStartBitrate=40000000'));

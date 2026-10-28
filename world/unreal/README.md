@@ -67,15 +67,22 @@ node --env-file=.local/runtime.env world/unreal/scripts/measure-stream.mjs \
   http://35.81.229.78 .local/evidence/render-quality/<new-run> 300 navigation
 ```
 
-The tool records browser WebRTC counters, video-frame callback gaps, native camera telemetry timings,
-and NVIDIA power, clocks, temperature, utilization and memory. It captures native-resolution video
-frames before and after a repeating keyboard navigation routine. Use `person` for a close character
-view with small alternating zoom movements. Timing percentiles describe the
-received camera telemetry samples, rather than an exhaustive engine frame trace.
+The tool records browser WebRTC counters, video-frame callback gaps, native camera telemetry,
+and NVIDIA power, clocks, temperature, utilization and memory. Local Cosys RPC starts and stops
+Unreal CSV profiling; `profile-engine.py` preserves the CSV, its hash, metadata and per-frame GPU,
+game-thread, render-thread and frame-time distributions. `GPUTime` is the engine
+`RHIGetGPUFrameCycles()` measurement, not a sum of overlapping render passes.
+The tool selects Adult 2, photographs fixed character, meadow and launch-pad views, then allows
+30 seconds of settling before profiling a repeating keyboard routine. It preserves the prior
+authoring state in the private evidence directory. Use `person` for a close character view
+with small alternating zoom movements.
 This measures navigation without starting drone flight or sensor captures; it does not establish the
 full four-drone quality gate. Existing output directories fail.
 
-The launcher accepts `SNR_STREAM_HEIGHT=2160` for native 3840×2160, as well as the existing resolutions.
+The launcher accepts `SNR_STREAM_HEIGHT=2160` for 3840×2160 and `1440` for 2560×1440.
+Each package records its cooked shader platform in `shader-platform.txt`; the launcher requires
+that manifest and starts the matching SM5 or SM6 RHI. Packaging saves the exact engine configuration
+beside its log. Missing or unsupported shader platforms fail before starting Unreal.
 A resolution experiment requires restarting `snr-unreal`; changing the setting does not alter the
 cooked lighting features or automatically select a different quality profile.
 

@@ -43,7 +43,7 @@ case "$mode" in
       [[ "$SNR_CONTAINER_NAME" =~ ^snr-[a-z0-9-]+$ ]] || exit 2
       container_flags+=(--name "$SNR_CONTAINER_NAME")
     fi
-    exec docker run "${container_flags[@]}" "${gpu_flags[@]}" --pid=host -e "SNR_STREAMER_PORT=${SNR_STREAMER_PORT:?}" \
+    exec docker run "${container_flags[@]}" "${gpu_flags[@]}" --pid=host --ulimit memlock=-1 -e "SNR_STREAMER_PORT=${SNR_STREAMER_PORT:?}" \
       -e "SNR_WEBRTC_MIN_PORT=${SNR_WEBRTC_MIN_PORT:?}" -e "SNR_WEBRTC_MAX_PORT=${SNR_WEBRTC_MAX_PORT:?}" \
       -e "SNR_MEDIA_CAPTURE=${SNR_MEDIA_CAPTURE:-1}" \
       -e "SNR_PROFILE=${SNR_PROFILE:-0}" \
