@@ -76,3 +76,15 @@ full four-drone quality gate. Existing output directories fail.
 The launcher accepts `SNR_STREAM_HEIGHT=2160` for native 3840×2160, as well as the existing resolutions.
 A resolution experiment requires restarting `snr-unreal`; changing the setting does not alter the
 cooked lighting features or automatically select a different quality profile.
+
+Check SM6 and hardware ray-tracing support using UE's generated Vulkan profile implementation:
+
+```sh
+UE_ROOT="$PWD/.local/toolchains/UnrealEngine-5.8.2" \
+  bash world/unreal/scripts/unreal-container.sh exec \
+  bash world/unreal/scripts/check-vulkan-profile.sh
+```
+
+The check creates only temporary Vulkan instances and uses the NVIDIA ICD. It does not start another
+renderer or listener. Both profile results must pass; it does not bypass the engine's profile checks.
+A supported device still needs SM6 shaders and the project's uncooked assets for a complete rebuild.

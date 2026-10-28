@@ -1,0 +1,40 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-28T14:22:58.440101+00:00",
+  "status": "SM6 hardware verified; runtime quality experiments pending",
+  "vulkan_profile_check": {
+    "engine": "5.8.2",
+    "implementation": "Engine generated vulkan_profiles_ue.h and vpGetPhysicalDeviceProfileSupport",
+    "header_sha256": "73739bfdc97cb2b0897f9f76f000b3a60d6a24d20a5d83b3565e968d2b2a488c",
+    "profiles": {
+      "VP_UE_Vulkan_SM6": true,
+      "VP_UE_Vulkan_SM6_RT": true
+    },
+    "device": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+    "api_version": "1.4.312",
+    "compiler": "Ubuntu GCC 13.3.0-6ubuntu2~24.04.1, editor container",
+    "log": ".local/evidence/services/sm6-readiness/profile-check-linked.txt"
+  },
+  "live_profile": {
+    "resolution": [
+      1920,
+      1080
+    ],
+    "fps": 60,
+    "shader_platform": "SF_VULKAN_SM5",
+    "scalability": 3,
+    "screen_percentage": 100,
+    "codec": "H264",
+    "min_bitrate_bps": 10000000,
+    "max_bitrate_bps": 25000000,
+    "parity_measurement": "mission_planner/measurements/aws-services.json"
+  },
+  "requested_changes": [
+    "3840x2160 browser stream",
+    "Lumen GI and reflections with hardware ray tracing"
+  ],
+  "dependencies": {
+    "4k_test": "Studio editing session must be released before the renderer restart and browser test",
+    "sm6_package": "Complete uncooked character assets or authenticated licensed reacquisition; temporary recovery content is cooked SM5"
+  }
+}
