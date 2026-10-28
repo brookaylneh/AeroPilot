@@ -16,7 +16,7 @@ await mkdir(output, { recursive: false });
 const expected = JSON.parse(await readFile(new URL('../creator-people.json', import.meta.url), 'utf8'));
 const result = { origin, recordedAt: new Date().toISOString(), people: [], errors: [] };
 const status = await fetch(`${origin}/api/unreal/status`, { signal: AbortSignal.timeout(5000) });
-assert(status.ok());
+assert(status.ok);
 assert.equal((await status.json()).state, 'ready', 'Release the current browser editing session first');
 const browser = await launchBrowser();
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });

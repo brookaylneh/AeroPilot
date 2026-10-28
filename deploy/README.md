@@ -202,11 +202,12 @@ Renderer readiness requires a connected streamer and fresh native `scenarioReady
 signalling socket alone is insufficient. Invalid scenario initialization terminates the renderer visibly.
 Before the first native telemetry file arrives, readiness remains `starting`.
 
-The current `Live` link selects `.local/unreal/releases/cooked-content-recovery`, which combines the
-AWS executable with five explicitly approved temporary cooked-content files. Their hashes and source
-paths are in `mission_planner/measurements/aws-transfer.json`. Restore the complete uncooked character
-assets, build and accept a replacement release, then remove this isolated recovery directory. The
-previous AWS release is retained; it cannot initialize the incomplete character catalog.
+The `Live` link selects a release cooked from the available uncooked world and the eleven approved
+Rocketbox characters. Character selection, all situations, scenario save/load, 4K navigation and
+Mission Control handoff passed; evidence is recorded in
+`mission_planner/measurements/rocketbox-runtime.json`. Previous releases, including the temporary
+recovery release, remain preserved. The new catalog uses a distinct asset version; old character
+scenarios remain on disk and cannot silently select different people.
 
 ## Security group
 

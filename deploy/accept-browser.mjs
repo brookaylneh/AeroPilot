@@ -142,16 +142,41 @@ try {
     ),
     'Selected media route does not match the configured TURN relay',
   );
-  assert.equal(last.frameWidth, 1920);
-  assert.equal(last.frameHeight, 1080);
+  const expectedHeight = Number(process.env.SNR_STREAM_HEIGHT);
+  assert([1080, 1440, 2160].includes(expectedHeight));
+  assert.equal(last.frameWidth, (expectedHeight * 16) / 9);
+  assert.equal(last.frameHeight, expectedHeight);
   await assertScenarioProtocol(page);
   await page.locator('.free-navigation').dblclick({ position: { x: 960, y: 760 }, delay: 120 });
   await waitForCreator(page);
   await page.getByRole('button', { name: 'Confirm Placement', exact: true }).click();
   await page
     .getByRole('textbox', { name: 'Missing-person description', exact: true })
-    .fill('Deployment acceptance: an adult hiker in Open Meadow.');
+    .fill('Deployment acceptance: the selected Rocketbox character in Open Meadow.');
   await screenshot('studio-briefing');
+  await page.getByRole('button', { name: 'Scenarios', exact: true }).click();
+  await page.getByRole('button', { name: 'Save scenario', exact: true }).click();
+  await page
+    .getByRole('textbox', { name: 'Scenario name', exact: true })
+    .fill('Rocketbox integration acceptance');
+  await page.getByRole('button', { name: 'Save scenario', exact: true }).click();
+  await waitForCreator(page);
+  const saved = await page.evaluate(() => window.snrStates.at(-1));
+  assert.match(saved.lastSavedId, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+  await page.getByRole('button', { name: 'Scenarios', exact: true }).click();
+  await page.getByRole('button', { name: 'New scenario', exact: true }).click();
+  await waitForCreator(page);
+  await page.getByRole('button', { name: 'Scenarios', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Saved scenarios', exact: true }).selectOption(saved.lastSavedId);
+  await page.getByRole('button', { name: 'Open scenario', exact: true }).click();
+  await waitForCreator(page);
+  const loaded = await page.evaluate(() => window.snrStates.at(-1));
+  assert.deepEqual(loaded.authoring.appearance, saved.authoring.appearance);
+  assert.equal(loaded.authoring.situationId, saved.authoring.situationId);
+  assert.deepEqual(loaded.briefing, saved.briefing);
+  result.saveLoad = { passed: true, personId: loaded.authoring.appearance.personId };
+  await page.getByRole('button', { name: /Prepare and launch/ }).click();
+  await waitForCreator(page);
   let fleet;
   page.on('websocket', (socket) => {
     if (!socket.url().endsWith('/api/mission')) return;

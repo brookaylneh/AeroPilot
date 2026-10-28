@@ -13,9 +13,9 @@ application does not switch quality profiles while running.
 
 The current package uses `SF_VULKAN_SM5`, screen-space GI and screen-space reflections.
 Hardware ray tracing and virtual shadow maps are off; Nanite assets use fallback meshes
-on this platform. Both UE 5.8.2 SM6 device profiles pass on the RTX PRO 6000, but enabling
-Lumen and hardware ray tracing requires an SM6 cook with the complete uncooked assets.
-The current recovery release uses explicitly approved temporary cooked content.
+on this platform. Both UE 5.8.2 SM6 device profiles pass on the RTX PRO 6000. The live Rocketbox release
+is now cooked from complete uncooked assets; the character blocker is resolved.
+SM6 lighting variants still require their own cook and performance acceptance.
 
 The five-minute navigation run delivered 59.99 decoded FPS at 35.04 Mbps with no dropped
 frames or browser-reported freezes. The largest video callback gap was 99.9 ms. Sampled

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "recorded_at": "2026-10-28T22:36:36.010748+00:00",
-  "status": "Build and native validation complete; live activation and browser acceptance pending occupied editing session",
+  "status": "Character phase complete: active release, all-character browser acceptance, save/load and mission handoff passed",
   "selection": "world/unreal/characters/rocketbox-selection.json",
   "runtime_catalog": "world/unreal/creator-people.json",
   "characters": [
@@ -219,7 +219,7 @@
       "path": ".local/evidence/characters/rocketbox-integration/web-build-reviewed.log",
       "sha256": "9d43d09c85255d20922fbcb24220ef48cd1349f3677e96df30d3b0955bd4b095"
     },
-    "published": false
+    "published": true
   },
   "checks": [
     {
@@ -304,15 +304,9 @@
     "path": ".local/evidence/characters/rocketbox-integration/environment.json",
     "sha256": "61af28d184415891d76735ea6c0455432689792266581d344f041d6268df8056"
   },
-  "pending": [
-    "Release occupied Studio editing session",
-    "Activate reviewed renderer and web build",
-    "Public browser selection/situation/placement/save-load acceptance",
-    "Navigation streaming measurement",
-    "Close character phase and continue SM6/Lumen/ray-tracing measurements"
-  ],
+  "pending": [],
   "activation_state": {
-    "state": "occupied",
+    "state": "ready",
     "maxEditors": 1
   },
   "failed_runs_preserved": [
@@ -327,11 +321,107 @@
     {
       "path": ".local/evidence/characters/rocketbox-integration/native-tests-process.json",
       "sha256": "9af563bfdabe4c32ff4931275d8918cc875efb68b25a0d39ecc76729649ffbea"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-integration/before-activation/failure.json",
+      "sha256": "52dfa01f1e2e8c80557860951e978821828de58e89d1146ff476fbcb72d1482c"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-integration/services/result.json",
+      "sha256": "cb89423cfed45141709a895dc42d582d444b7ed91c7bf3635e8b6adc7945f908"
     }
   ],
   "limitations": [
     "Eleven approved models; rejected Child 3 remains excluded",
     "Exact ages, original twelve-person demographic brief, and heavy body builds are not established",
     "Lighting and poses in the studio preview do not establish live SM6 performance"
-  ]
+  ],
+  "completed_at": "2026-10-28T22:46:22.404879+00:00",
+  "activation": {
+    "release": "/home/brook_avionuas/snr/.local/unreal/releases/20261028T223902Z",
+    "health": {
+      "path": ".local/evidence/characters/rocketbox-integration/activation/health-after.json",
+      "sha256": "71ba29ae85ecfc9a2df93613df98bf6de6a4920b8c8e07594948177435ac14a3"
+    },
+    "previous_scene": {
+      "path": ".local/evidence/characters/rocketbox-integration/before-activation-checked/result.json",
+      "sha256": "5ac04e0326e78aa7a8fdcf4b379611ca2eeeacfb606edd977eab736804062c58"
+    },
+    "previous_release": "/home/brook_avionuas/snr/.local/unreal/releases/cooked-content-recovery",
+    "web_backup_and_hashes": {
+      "path": ".local/evidence/characters/rocketbox-integration/activation/web-files.json",
+      "sha256": "a28d5b9940329bee6054d6a4ce2d2c35c63ae9af52eee490a2abf8a3fa1d8547"
+    }
+  },
+  "browser_acceptance": {
+    "result": {
+      "path": ".local/evidence/characters/rocketbox-integration/browser/result.json",
+      "sha256": "b411126f7daa33ff60fc99bd6662fec1bf305e3127eab51e39789f0bf1bf7cb0"
+    },
+    "screenshots": 45,
+    "characters": 11,
+    "activities_checked": [
+      "lost",
+      "waiting",
+      "injured"
+    ],
+    "native_navigation_distance_cm": 375.3041489932232,
+    "browser_closed": true
+  },
+  "service_acceptance": {
+    "result": {
+      "path": ".local/evidence/characters/rocketbox-integration/services-uuid/result.json",
+      "sha256": "6a691a5e8d9e8b3adb56ed3f3f2da58766258b72c98a6d1a7e029c78f170e0b2"
+    },
+    "save_load": {
+      "passed": true,
+      "personId": "rocketbox-child-01"
+    },
+    "fleet": [
+      {
+        "id": "Drone1",
+        "linkLost": false,
+        "ekfHealthy": true,
+        "armed": false
+      },
+      {
+        "id": "Drone2",
+        "linkLost": false,
+        "ekfHealthy": true,
+        "armed": false
+      },
+      {
+        "id": "Drone3",
+        "linkLost": false,
+        "ekfHealthy": true,
+        "armed": false
+      },
+      {
+        "id": "Drone4",
+        "linkLost": false,
+        "ekfHealthy": true,
+        "armed": false
+      }
+    ],
+    "stream_summary": {
+      "seconds": 59.978944091796876,
+      "decodedFps": 60.00439078240164,
+      "bitrateMbps": 35.005762368650245,
+      "droppedFrames": 0,
+      "freezes": 0,
+      "freezeDurationSeconds": 0,
+      "maxVideoCallbackGapMs": 33.400000000001455,
+      "width": 3840,
+      "height": 2160
+    },
+    "screenshots": [
+      "services-uuid/studio-person.png",
+      "services-uuid/studio-navigation.png",
+      "services-uuid/studio-briefing.png",
+      "services-uuid/mission-1920.png",
+      "services-uuid/mission-1440.png"
+    ],
+    "limits": "One-minute navigation screening; not the five-minute four-drone realism gate"
+  },
+  "next_phase": "SM6 and realism measurements are authorized; character source-asset blocker removed"
 }
