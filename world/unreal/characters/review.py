@@ -31,7 +31,10 @@ def main():
     assert args.name.startswith("character-") and args.name.replace("-", "").isalnum()
     selected = json.loads(args.selection.read_text())
     roster = json.loads((HERE / "roster.json").read_text())["characters"]
-    assert {item["id"] for item in selected} == {item["id"] for item in roster}
+    selected_ids = {item["id"] for item in selected}
+    assert selected and len(selected_ids) == len(selected)
+    assert selected_ids <= {item["id"] for item in roster}
+    roster = [item for item in roster if item["id"] in selected_ids]
     destination = ROOT / ".local/dist" / args.name
     destination.mkdir(exist_ok=False)
     lock = json.loads((HERE / "viewer.lock.json").read_text())
@@ -77,10 +80,13 @@ def main():
                 f'alt="{title}, full-body reference" loading="lazy"></a>'
                 f'<div class="text"><h3>{title}</h3><p>{note}</p>{model_button}</div></article>'
             )
-        sections.append(f'<h2>{group.title()}</h2><div class="grid">{"".join(cards)}</div>')
+        if cards:
+            sections.append(f'<h2>{group.title()}</h2><div class="grid">{"".join(cards)}</div>')
     document = (
         (HERE / "review.html").read_text().replace("<!-- CHARACTERS -->", "\n".join(sections))
     )
+    count = "One fictional person" if len(selected) == 1 else f"{len(selected)} fictional people"
+    document = document.replace("Twelve fictional people", count)
     (destination / "index.html").write_text(document)
     origin = dotenv_values(ROOT / ".local/runtime.env")["SNR_ORIGIN"]
     print(f"{origin}/{args.name}/index.html")

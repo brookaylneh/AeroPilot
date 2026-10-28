@@ -62,6 +62,28 @@ and normal maps; unlit omits lighting. Inspect all modes before attributing defe
 Pass the actual number of model buttons to `capture-review.mjs`; each source has three modes.
 These previews do not establish physical skin shading, correct anatomy or a usable facial rig.
 
+## SAM body reconstruction
+
+Select `--mesh-model sam3d` to send the accepted reference image directly to
+`fal-ai/sam-3/3d-body`. Other generated meshes are not inputs. The recipe exports the single-person
+GLB, PLY and complete MHR parameters, with visualization keypoint spheres disabled. This model
+estimates body shape and pose; it does not generate skin, clothing or hair textures. MHR means
+Momentum Human Rig, not MetaHuman DNA. The GLB itself must be inspected for skinning separately
+from the returned pose parameters. Hosted inference exposes no quality or GPU selector.
+
+```sh
+.venv-cosys/bin/python -m world.unreal.characters.generate mesh adult-01 \
+  .local/evidence/characters/<sam-run>/adult-01 \
+  --image-run .local/evidence/characters/<image-run>/adult-01 --mesh-model sam3d
+.venv-cosys/bin/python -m world.unreal.characters.inspect_body \
+  .local/evidence/characters/<sam-run>/adult-01/model.glb \
+  .local/evidence/characters/<sam-run>/adult-01/geometry-audit.json
+```
+
+Use the glTF validator as well. `inspect_body` checks finite geometry, indices, triangle areas and
+edge incidence; it does not establish anatomical accuracy. SAM's single-image scale is inferred.
+A review selection may contain one character or the full roster.
+
 ## Review
 
 Reject cropped bodies, fused fingers, extra limbs, implausible proportions and severe skin or fabric
@@ -126,3 +148,5 @@ Sources:
 - [Meshy fal schema](https://fal.ai/models/fal-ai/meshy/v7.1/image-to-3d/api)
 - [Meshy native API controls](https://docs.meshy.ai/en/api/image-to-3d)
 - [TRELLIS 2 fal schema](https://fal.ai/models/fal-ai/trellis-2/api)
+
+- [SAM 3D Body fal schema](https://fal.ai/models/fal-ai/sam-3/3d-body/api)

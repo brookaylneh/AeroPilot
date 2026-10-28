@@ -67,6 +67,14 @@
         "tex_slat_rescale_t": 3,
         "remesh": true
       }
+    },
+    "sam3d": {
+      "endpoint": "fal-ai/sam-3/3d-body",
+      "arguments": {
+        "export_meshes": true,
+        "include_3d_keypoints": false,
+        "include_mhr_params": true
+      }
     }
   },
   "prompt": "Full-body photographic scanning reference, exact front view. The person stands in an A-POSE: both arms extended diagonally outwards and downwards at 40 degrees from the torso, straight elbows, a large clear triangular gap between each arm and the body. BOTH OPEN HANDS held well away from the hips, all ten fingers gently spread and clearly visible, palms facing the camera. Feet separated shoulder-width, legs straight. Entire body, hair, all fingertips and both complete shoes visible with generous margins. Subject: {description}. Clothing: {clothing}. Neutral closed-mouth expression, eyes open, face unobstructed. Real ordinary human, realistic age and build. Exceptionally realistic unretouched photograph with authentic skin pores, natural age detail, fine hairs and subtle asymmetry, natural fabric texture. Soft even neutral light from a large studio light tent, plain light grey seamless background. Frontal camera at mid-body height, 70mm lens, sharp detail across the entire body. One person only. No jewelry, glasses, hats, props, makeup, beauty retouching, branding, text or watermarks.",

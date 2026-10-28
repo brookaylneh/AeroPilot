@@ -96,11 +96,12 @@ def main():
     parser.add_argument("character")
     parser.add_argument("output", type=Path)
     parser.add_argument("--image-run", type=Path)
-    parser.add_argument("--mesh-model", choices=("hunyuan", "meshy", "trellis"))
+    parser.add_argument("--mesh-model", choices=("hunyuan", "meshy", "trellis", "sam3d"))
     args = parser.parse_args()
     output = args.output.resolve()
     assert output.is_relative_to(ROOT / ".local"), "Generation output must live in .local"
     recipe = json.loads(RECIPE.read_text())
+    recipe_sha256 = digest(RECIPE)
     character = next(item for item in recipe["characters"] if item["id"] == args.character)
     assert 8 <= character["age"] <= 100
     assert (args.stage == "mesh") == (args.image_run is not None)
@@ -125,9 +126,12 @@ def main():
         if args.mesh_model == "hunyuan":
             assert all(128 <= size <= 5000 for size in source["image_size"])
         image_response = json.loads((image_run / "response.json").read_text())
-        image_key = {"hunyuan": "input_image_url", "meshy": "image_url", "trellis": "image_url"}[
-            args.mesh_model
-        ]
+        image_key = {
+            "hunyuan": "input_image_url",
+            "meshy": "image_url",
+            "trellis": "image_url",
+            "sam3d": "image_url",
+        }[args.mesh_model]
         arguments[image_key] = image_response["images"][0]["url"]
     output.mkdir(parents=True, exist_ok=False)
     result, request_id, seconds = infer(model["endpoint"], arguments, output)
@@ -136,7 +140,7 @@ def main():
         "stage": args.stage,
         "character": character,
         "endpoint": model["endpoint"],
-        "recipe_sha256": digest(RECIPE),
+        "recipe_sha256": recipe_sha256,
         "request_id": request_id,
         "inference_elapsed_seconds": seconds,
         "provider_gpu": "not exposed by hosted endpoint",
@@ -172,6 +176,12 @@ def main():
                     if file is not None:
                         target = output / f"texture-{index}-{channel}.png"
                         record["files"].append(download(file["url"], target))
+        if args.mesh_model == "sam3d":
+            assert result["metadata"]["num_people"] == 1
+            assert len(result["metadata"]["people"]) == 1
+            assert len(result["meshes"]) == 1
+            record["files"].append(download(result["meshes"][0]["url"], output / "body.ply"))
+            record["body_metadata"] = result["metadata"]
         record["source_image_sha256"] = source["files"][0]["sha256"]
     write_json(output / "result.json", record)
     print(
