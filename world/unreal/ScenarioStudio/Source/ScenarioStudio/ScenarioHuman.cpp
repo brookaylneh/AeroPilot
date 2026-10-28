@@ -80,7 +80,9 @@ bool AScenarioHuman::ApplyAppearance_Implementation(const FScenarioAppearance &S
     for (const auto &Pair : Selection.Options)
     {
         if (Pair.Key != TEXT("backpackColor") && Pair.Key.ToString().EndsWith(TEXT("Color")) &&
-            !Applied.Contains(Pair.Key))
+            !Applied.Contains(Pair.Key) &&
+            !(TintBindings.IsEmpty() && Pair.Value == TEXT("original") &&
+              (Pair.Key == TEXT("topColor") || Pair.Key == TEXT("bottomColor"))))
             return false;
     }
     if (const FName *Pack = Selection.Options.Find(TEXT("backpackId")))
@@ -104,7 +106,8 @@ bool AScenarioHuman::ApplyAppearance_Implementation(const FScenarioAppearance &S
         for (auto *Mesh : Meshes)
             if (Mesh->GetFName() == BodyComponentName)
                 Body = Cast<USkeletalMeshComponent>(Mesh);
-        if (!Body || !StandingPose || !Body->DoesSocketExist(TEXT("spine_03")))
+        if (!Body || !StandingPose ||
+            (Backpack->GetStaticMesh() && !Body->DoesSocketExist(TEXT("spine_03"))))
             return false;
         // The assembled body can be hidden beneath its visible clothing. It
         // must still tick, because the clothing and face follow its bone pose.
@@ -115,7 +118,8 @@ bool AScenarioHuman::ApplyAppearance_Implementation(const FScenarioAppearance &S
         Body->PlayAnimation(StandingPose, true);
         Body->TickAnimation(0, false);
         Body->RefreshBoneTransforms();
-        Backpack->AttachToComponent(Body, FAttachmentTransformRules::KeepWorldTransform, TEXT("spine_03"));
+        if (Backpack->GetStaticMesh())
+            Backpack->AttachToComponent(Body, FAttachmentTransformRules::KeepWorldTransform, TEXT("spine_03"));
         PlayingAnimation = StandingPose;
     }
     return true;
