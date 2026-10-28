@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { createInterface } from 'node:readline';
 import { readFile } from 'node:fs/promises';
 import { launchBrowser, observeScenario, waitForCreator, assertScenarioProtocol } from './browser.mjs';
+import { withScenarioBackup } from './calibration-authoring.mjs';
 
 const url = process.env.SNR_NATIVE_URL;
 assert(url, 'SNR_NATIVE_URL is required');
@@ -11,7 +12,6 @@ assert(status.ok);
 assert.equal((await status.json()).state, 'ready', 'Editing session occupied; release it first');
 const browser = await launchBrowser();
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
-let backup;
 async function command(command) {
   const requestId = randomUUID();
   await page.evaluate(
@@ -40,33 +40,30 @@ try {
   await observeScenario(page);
   await page.goto(url);
   await waitForCreator(page);
-  backup = await command({ type: 'save', name: 'Before calibration', summary: 'Private evaluation' });
-  const loaded = await command({ type: 'load', id: process.argv[2] });
-  assert(loaded.authoring.position);
-  assert.equal(loaded.authoring.appearance.topColor, 'rust', 'Calibration baseline colour changed');
-  const [, person, color, situation, pack] = JSON.parse(process.argv[3]);
-  const presets = JSON.parse(await readFile('world/unreal/creator-people.json', 'utf8'));
-  const preset = presets.find((p) => p.id === person);
-  assert(preset.supportedSituations.includes(situation));
-  const appearance = {
-    ...loaded.authoring.appearance,
-    personId: person,
-    topColor: color,
-    topId: preset.topId,
-    bottomId: preset.bottomId,
-    backpackId: pack,
-  };
-  await command({ type: 'appearance', appearance });
-  await command({ type: 'situation', situationId: situation });
-  const configured = await command({ type: 'creator-stage', stage: 'briefing' });
-  process.stdout.write(JSON.stringify(configured) + '\n');
-  for await (const line of createInterface({ input: process.stdin })) {
-    process.stdout.write(JSON.stringify(await command(JSON.parse(line))) + '\n');
-  }
+  await withScenarioBackup(command, async () => {
+    const loaded = await command({ type: 'load', id: process.argv[2] });
+    assert(loaded.authoring.position);
+    assert.equal(loaded.authoring.appearance.topColor, 'rust', 'Calibration baseline colour changed');
+    const [, person, color, situation, pack] = JSON.parse(process.argv[3]);
+    const presets = JSON.parse(await readFile('world/unreal/creator-people.json', 'utf8'));
+    const preset = presets.find((p) => p.id === person);
+    assert(preset.supportedSituations.includes(situation));
+    const appearance = {
+      ...loaded.authoring.appearance,
+      personId: person,
+      topColor: color,
+      topId: preset.topId,
+      bottomId: preset.bottomId,
+      backpackId: pack,
+    };
+    await command({ type: 'appearance', appearance });
+    await command({ type: 'situation', situationId: situation });
+    const configured = await command({ type: 'creator-stage', stage: 'briefing' });
+    process.stdout.write(JSON.stringify(configured) + '\n');
+    for await (const line of createInterface({ input: process.stdin })) {
+      process.stdout.write(JSON.stringify(await command(JSON.parse(line))) + '\n');
+    }
+  });
 } finally {
-  try {
-    if (backup) await command({ type: 'load', id: backup.lastSavedId });
-  } finally {
-    await browser.close();
-  }
+  await browser.close();
 }

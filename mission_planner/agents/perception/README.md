@@ -10,9 +10,11 @@ provenance. It is not a claim about other terrain, illumination or search altitu
 `mission_planner/agents/perception/calibration-scenario.mjs` reuses `mission_planner/agents/perception/browser.mjs`. The existing
 Pixel Streaming command protocol is the only implemented native appearance and
 situation interface; Cosys does not implement those authoring operations. The script
-checks `/api/unreal/status` before opening a browser, saves the current authoring
-state, loads the fixed calibration placement, applies a condition, and restores the
-backup when its input closes. It never evicts another player. A new browser visit
+checks `/api/unreal/status` before opening a browser and queries the current
+authoring snapshot. A placed person uses a saved backup; an unplaced state uses
+the existing reset and authoring commands and verifies exact restoration. It loads
+the fixed calibration placement, applies a condition, and restores the original
+state when its input closes. It never evicts another player. A new browser visit
 opens the person stage, as documented by the creator; backups preserve the resulting
 authoring snapshot. The configured `SNR_NATIVE_URL` must reach the same isolated
 world as `SNR_COSYS_PORT`; calibration never changes those runtime values.
@@ -23,6 +25,8 @@ aircraft's MAVLink home frame and calls the same `Fleet.execute` path as mission
 including its fence, separation, health and unforced arming checks. Commands are
 issued once; bounded telemetry waits establish arrival. A capture point requires
 position error below 0.6 m and speed below 0.15 m/s for one second.
+The initial takeoff target is above the fleet's minimum route altitude, so arrival
+tolerance cannot release a subsequent move below that guard.
 
 Load the assigned slot environment, start its world and authoring channel, and use
 a fresh output directory. The runner creates one subdirectory per selected condition.
@@ -48,6 +52,8 @@ frame fails the condition without a retry. FOV and per-drone NED origin remain i
 every record. The completion marker requires every geometry check, landing and
 scenario restoration; it reports the measured maximum round-trip and altitude
 errors. Original calibration directories and their manifest are never modified.
+Scenario stderr is saved beside the condition directory; setup EOF and cleanup
+errors retain the native diagnostic and any original capture failure.
 
 Kelvin and Noah (the catalog's shortest preset, 128 cm) each have six shirt-colour
 conditions. Baseline rust is asserted against the saved calibration fixture. Other garments

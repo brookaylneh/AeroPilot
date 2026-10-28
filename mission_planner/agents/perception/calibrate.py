@@ -8,6 +8,7 @@ import math
 import os
 import shutil
 import signal
+import sys
 import time
 from pathlib import Path
 
@@ -42,6 +43,36 @@ assert len(CONDITIONS) == len({c[0] for c in CONDITIONS}) == 26
 OFFSETS, ALONG = list(range(0, 25, 4)), list(range(-36, 37, 12))
 
 
+async def scenario_response(process, log):
+    line = await asyncio.wait_for(process.stdout.readline(), 90)
+    if not line:
+        code = await asyncio.wait_for(process.wait(), 30)
+        raise RuntimeError(
+            f"Scenario setup exited {code} before configuration: {log.read_text().strip()}"
+        )
+    return json.loads(line)
+
+
+async def close_scenario(process, log, original_error):
+    process.stdin.close()
+    try:
+        code = await asyncio.wait_for(process.wait(), 30)
+    except asyncio.TimeoutError as error:
+        detail = "Scenario restoration exceeded 30 s"
+        if original_error is not None:
+            raise TimeoutError(
+                f"{type(original_error).__name__}: {original_error}; {detail}"
+            ) from original_error
+        raise TimeoutError(detail) from error
+    if code != 0:
+        detail = f"Scenario process exited {code}: {log.read_text().strip()}"
+        if original_error is not None:
+            raise RuntimeError(
+                f"{type(original_error).__name__}: {original_error}; {detail}"
+            ) from original_error
+        raise RuntimeError(detail)
+
+
 async def condition_flight(fleet, condition, scenario_id, directory):
     from mission_planner.agents.perception.geometry import Camera
     from mission_planner.gcs.fleet import MAV
@@ -62,18 +93,21 @@ async def condition_flight(fleet, condition, scenario_id, directory):
     presets = json.loads((ROOT / "world/unreal/creator-people.json").read_text())
     preset = next(p for p in presets if p["id"] == person)
     assert situation in preset["supportedSituations"]
-    process = await asyncio.create_subprocess_exec(
-        "node",
-        "mission_planner/agents/perception/calibration-scenario.mjs",
-        scenario_id,
-        json.dumps(condition),
-        cwd=ROOT,
-        stdin=asyncio.subprocess.PIPE,
-        stdout=asyncio.subprocess.PIPE,
-    )
+    scenario_log = directory.parent / f"{label}-scenario.log"
+    with scenario_log.open("x") as log:
+        process = await asyncio.create_subprocess_exec(
+            "node",
+            "mission_planner/agents/perception/calibration-scenario.mjs",
+            scenario_id,
+            json.dumps(condition),
+            cwd=ROOT,
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=log,
+        )
     frames = []
     try:
-        configured = json.loads(await asyncio.wait_for(process.stdout.readline(), 90))
+        configured = await scenario_response(process, scenario_log)
 
         def scene_actor():
             rpc = sim.connect()
@@ -118,7 +152,7 @@ async def condition_flight(fleet, condition, scenario_id, directory):
         await asyncio.to_thread(sim.configure_capture, height)
         capture = FrameCapture(directory, fleet)
         try:
-            await flight.takeoff(fleet, name, 10)
+            await flight.takeoff(fleet, name, 12)
             await flight.move(fleet, name, {**sim.home(name), "z": 65}, 5)
             await flight.move(fleet, name, {**target, "z": 65}, 5)
             for offset in OFFSETS:
@@ -170,8 +204,7 @@ async def condition_flight(fleet, condition, scenario_id, directory):
                 await capture.close()
                 await asyncio.to_thread(sim.configure_capture, runtime["vehicles"][0]["height"])
     finally:
-        process.stdin.close()
-        assert await asyncio.wait_for(process.wait(), 30) == 0, "Scenario restore failed"
+        await close_scenario(process, scenario_log, sys.exc_info()[1])
     assert len(frames) == len(OFFSETS) * len(ALONG)
     result = {
         "condition": condition,
