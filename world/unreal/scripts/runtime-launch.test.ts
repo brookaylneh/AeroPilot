@@ -131,6 +131,8 @@ test('runtime selects its manifest and H264 explicitly; missing maps and unsuppo
     assert.equal(run().status, 2);
     env.SNR_STREAM_CODEC = 'H264';
     env.SNR_PIXEL_STREAMING = '0';
+    env.SNR_STREAM_HEIGHT = '180';
+    env.SNR_STREAM_FPS = '10';
     delete env.SNR_STREAMER_PORT;
     delete env.SNR_WEBRTC_MIN_PORT;
     delete env.SNR_WEBRTC_MAX_PORT;
@@ -138,6 +140,9 @@ test('runtime selects its manifest and H264 explicitly; missing maps and unsuppo
     const sensorOnly: string[] = JSON.parse(readFileSync(output, 'utf8'));
     assert(sensorOnly.includes('-PixelStreamingInitializeDefaultStreamer=false'));
     assert(sensorOnly.includes('-PixelStreamingAutoStartStream=false'));
+    assert(sensorOnly.includes('-ResX=320'));
+    assert(sensorOnly.includes('-ResY=180'));
+    assert(sensorOnly.includes('-ExecCmds=t.MaxFPS 10'));
     assert(!sensorOnly.some((arg) => arg.startsWith('-PixelStreamingConnectionURL=')));
     assert(!sensorOnly.some((arg) => arg.startsWith('-PixelStreamingWebRTCMinPort=')));
     rmSync(path.join(directory, 'scenario-map.txt'));

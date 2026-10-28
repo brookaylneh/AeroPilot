@@ -11,7 +11,11 @@ read -r world_map < "$package_root/scenario-map.txt"
 pixel_streaming="${SNR_PIXEL_STREAMING:?}"
 [[ "$pixel_streaming" = 0 || "$pixel_streaming" = 1 ]] || exit 2
 stream_fps="${SNR_STREAM_FPS:-60}"
-[[ "$stream_fps" = 30 || "$stream_fps" = 60 ]] || { echo 'SNR_STREAM_FPS must be 30 or 60' >&2; exit 2; }
+if [[ "$pixel_streaming" = 1 ]]; then
+  [[ "$stream_fps" = 30 || "$stream_fps" = 60 ]] || { echo 'SNR_STREAM_FPS must be 30 or 60 for streaming' >&2; exit 2; }
+else
+  [[ "$stream_fps" =~ ^[0-9]+$ ]] && ((stream_fps >= 1 && stream_fps <= 60)) || exit 2
+fi
 max_bitrate="${SNR_STREAM_MAX_BITRATE:-10000000}"
 case "$max_bitrate" in
   10000000|20000000|25000000|40000000) ;;
@@ -32,6 +36,7 @@ case "$stream_codec" in
 esac
 stream_height="${SNR_STREAM_HEIGHT:-720}"
 case "$stream_height" in
+  180) [[ "$pixel_streaming" = 0 ]] || exit 2; stream_width=320 ;;
   2160) stream_width=3840 ;;
   1080) stream_width=1920 ;;
   720) stream_width=1280 ;;

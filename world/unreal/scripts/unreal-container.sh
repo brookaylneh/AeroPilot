@@ -18,7 +18,8 @@ container_flags=(--rm --init "--cpus=$cpu_limit" "--memory=$memory_limit" --shm-
 # Cooked releases contain the engine runtime. Only editor/build modes need the SDK.
 if [[ "$mode" != run-packaged ]]; then
   [[ -f "$engine_root/Engine/Build/Build.version" ]] || { echo "Missing Unreal SDK: $engine_root" >&2; exit 2; }
-  container_flags+=(--mount "type=bind,src=$engine_root,dst=$engine_root" -e "UE_ROOT=$engine_root")
+  engine_root=$(realpath "$engine_root")
+  container_flags+=(--mount "type=bind,src=$engine_root,dst=$engine_root,readonly" -e "UE_ROOT=$engine_root")
 fi
 gpu_flags=(--runtime=nvidia --gpus all -e "NVIDIA_DRIVER_CAPABILITIES=graphics,utility,compute,video,display")
 # This host's NVIDIA container runtime mounts the libraries but omits the Vulkan ICD manifest.
