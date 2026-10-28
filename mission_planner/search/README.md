@@ -29,8 +29,8 @@ kilometres at the 25th, 50th, 75th and 95th percentiles.
 | Dementia / dry flat | 15 | 0.5, 1.6, 3.6, 11.8 |
 | Dementia / urban | 336 | 0.3, 1.1, 3.2, 12.6 |
 
-Sources: [Koester et al. (2020), Table 3, printed p. 73 / PDF p. 9](https://journalofsar.com/wp-content/uploads/2020/04/v4-8-Koester-ASD-vTD.pdf.pdf);
-[SARBayes, Table 2.8, printed p. 32 / PDF p. 40](https://sarbayes.org/wp-content/uploads/2012/07/natsar.pdf)
+Sources: [Koester (2020), Table 3, printed p. 73 / PDF p. 9](https://journalofsar.com/wp-content/uploads/2020/04/v4-8-Koester-ASD-vTD.pdf.pdf);
+[Twardy, Koester and Gatt (2006), Table 2.8, printed p. 32 / PDF p. 40](https://sarbayes.org/wp-content/uploads/2012/07/natsar.pdf)
 (hikers: 131 cases, 72 distances); [Koester, *Lost Person Behavior*, printed p. 164 / PDF p. 4](https://www.dbs-sar.com/LPB/Dementia.pdf).
 The hiker source is Australian, not Yosemite-local. Non-dementia elderly and unknown
 categories fail explicitly: no verified table is substituted. The operator chooses
@@ -100,6 +100,8 @@ including a reserve of at least 300 s or the routed return duration, whichever i
 larger. It is not measured aircraft endurance. [DJI's M350 specification](https://enterprise.dji.com/matrice-350-rtk/specs)
 provides context only: its 55 minute figure is windless, no payload, to zero battery.
 Climb and turn allowances are timing assumptions; acceptance records actual times.
+The pinned built-in quad defaults to constant simulated battery voltage with zero
+model capacity. Its percentage gauge is not a validated physical endurance model.
 
 `terrain.py` writes ordinary altitudes above each drone's home, samples search and
 connecting legs every metre, and asserts 30 ± 2 m AGL plus the existing flight band.
