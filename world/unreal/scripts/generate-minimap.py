@@ -1,36 +1,52 @@
-"""Lightweight north-up map from the exact packaged heightfield and trail mask."""
-from pathlib import Path
+"""North-up map from the exact rectangular heightfield and trail mask."""
+
 import hashlib
 import json
+
 import numpy as np
 from PIL import Image
 
-root = Path(__file__).resolve().parents[3]
-source = root / '.local/vendor/open-meadow/height.r16'
-height = (np.fromfile(source, dtype='<u2').reshape(2017, 2017).astype(float) - 32768) / 128
-world = json.loads((root / 'world/cosys/world.json').read_text())
-assert hashlib.sha256(source.read_bytes()).hexdigest() == world['heightfieldSha256']
-width = world['widthMetres']
-resolution = 2048
-# Input rows are Y, columns X. Display rows are -X (north up), columns +Y.
-height = np.flipud(height.T)
-height = np.asarray(Image.fromarray(height.astype('float32')).resize((resolution, resolution)))
-dy, dx = np.gradient(height, width / (resolution - 1))
-shade = np.clip((1 + .9 * dx - .8 * dy) / np.sqrt(1 + dx * dx + dy * dy), .6, 1.3)
-base = np.array([114, 133, 82]) + (height[..., None] / 46) * np.array([32, 23, 14])
-rgb = base * shade[..., None]
-contour = np.abs((height + .18) % 5 - .18) < .12
-rgb[contour] *= .79
-trail = np.asarray(Image.open(root / '.local/vendor/open-meadow/ground-mask.png'))[:, :, 0]
-trail = np.asarray(Image.fromarray(np.flipud(trail.T)).resize((resolution, resolution))).astype(float) / 255
-rgb = rgb * (1 - trail[..., None] * .85) + np.array([227, 213, 162]) * trail[..., None] * .85
-out = root / 'web/public/maps/open-meadow-topographic.png'
-out.parent.mkdir(parents=True, exist_ok=True)
-Image.fromarray(np.clip(rgb, 0, 255).astype('uint8')).save(out, optimize=True)
-(root / '.local/evidence/navigation-minimap.json').write_text(json.dumps({
-    'source': 'Actual Open Meadow heightfield and trail mask',
-    'heightfieldSha256': hashlib.sha256(source.read_bytes()).hexdigest(),
-    'north': 'Unreal +X', 'east': 'Unreal +Y', 'widthMetres': width, 'resolution': resolution,
-    'output': str(out.relative_to(root)), 'containsPrivateTarget': False
-}, indent=2) + '\n')
-print(f'Generated {out.name} ({out.stat().st_size} bytes)')
+from mission_planner.environment import load_env
+from world.cosys.terrain import BOUNDS, COLUMNS, FIELD, ROOT, ROWS, WORLD
+
+
+def generate():
+    load_env()
+    source = ROOT / FIELD["path"]
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == WORLD["heightfieldSha256"]
+    height = np.fromfile(source, dtype="<u2").reshape(ROWS, COLUMNS).astype(float)
+    height = (height - FIELD["zeroSample"]) / FIELD["samplesPerMetre"]
+    north_m, east_m = [(BOUNDS["max"][a] - BOUNDS["min"][a]) / 100 for a in "xy"]
+    image_height = 2048
+    image_width = round(image_height * east_m / north_m)
+    # Input rows are +Y, columns +X; display rows are -X, columns +Y.
+    height = np.flipud(height.T)
+    height = np.asarray(Image.fromarray(height.astype("float32")).resize((image_width, image_height)))
+    dy, dx = np.gradient(height, north_m / (image_height - 1), east_m / (image_width - 1))
+    shade = np.clip((1 + .9 * dx - .8 * dy) / np.sqrt(1 + dx * dx + dy * dy), .6, 1.3)
+    base = np.array([114, 133, 82]) + (height[..., None] / 46) * np.array([32, 23, 14])
+    rgb = base * shade[..., None]
+    contour = np.abs((height + .18) % 5 - .18) < .12
+    rgb[contour] *= .79
+    trail = np.asarray(Image.open(source.parent / "ground-mask.png"))[:, :, 0]
+    trail = np.asarray(Image.fromarray(np.flipud(trail.T)).resize((image_width, image_height))).astype(float) / 255
+    rgb = rgb * (1 - trail[..., None] * .85) + np.array([227, 213, 162]) * trail[..., None] * .85
+    out = ROOT / "web/public/maps/open-meadow-topographic.png"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    Image.fromarray(np.clip(rgb, 0, 255).astype("uint8")).save(out, optimize=True)
+    report = {
+        "source": "Actual Open Meadow heightfield and trail mask",
+        "heightfieldSha256": WORLD["heightfieldSha256"],
+        "north": "Unreal +X", "east": "Unreal +Y", "widthMetres": east_m, "heightMetres": north_m,
+        "resolution": [image_width, image_height], "output": str(out.relative_to(ROOT)),
+        "outputSha256": hashlib.sha256(out.read_bytes()).hexdigest(),
+        "bytes": out.stat().st_size, "containsPrivateTarget": False,
+    }
+    evidence = ROOT / ".local/evidence/world/navigation-minimap.json"
+    assert not evidence.exists()
+    evidence.write_text(json.dumps(report, indent=2) + "\n")
+    print(json.dumps(report, indent=2))
+
+
+if __name__ == "__main__":
+    generate()
