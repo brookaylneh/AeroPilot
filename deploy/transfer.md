@@ -121,3 +121,23 @@ The browser/runtime acceptance belongs to the service deployment phase. This res
 cooking and staging, and does not establish rendering or browser parity.
 
 Accepted measurements and raw-log references are in mission_planner/measurements/aws-transfer.json.
+
+## Approved temporary cooked content
+
+The user approved these five files from the working GCP release for a recovery test.
+Source directory: `/srv/snr/.local/unreal/releases/20261027T-creator-activities/ScenarioStudio/Content/Paks/`.
+Target directory: `~/snr/.local/unreal/releases/cooked-content-recovery/ScenarioStudio/Content/Paks/`.
+All files use rsync over SSH; sizes and SHA-256 match on both hosts. Full hashes and authorization
+are recorded in `mission_planner/measurements/aws-transfer.json`.
+
+| File | Bytes | Verification |
+| --- | ---: | --- |
+| `ScenarioStudio-Linux.pak` | 11,315,480 | Size and SHA-256 identical |
+| `ScenarioStudio-Linux.ucas` | 1,717,792,752 | Size and SHA-256 identical |
+| `ScenarioStudio-Linux.utoc` | 1,031,471 | Size and SHA-256 identical |
+| `global.ucas` | 3,294,272 | Size and SHA-256 identical |
+| `global.utoc` | 806 | Size and SHA-256 identical |
+
+Additional source bytes transferred: **1,733,434,781**. The executable is the AWS build;
+no GCP executable was copied. Replace this temporary content with a verified rebuild before removing
+the isolated recovery release.
