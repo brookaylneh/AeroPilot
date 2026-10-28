@@ -3,6 +3,7 @@
 import argparse
 import asyncio
 import json
+import os
 import time
 from pathlib import Path
 
@@ -210,7 +211,7 @@ async def run(args):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--case", required=True)
-    parser.add_argument("--port", type=int, default=8765)
+    parser.add_argument("--port", type=int, default=int(os.environ["SNR_MISSION_PORT"]))
     parser.add_argument("--part", choices=("inspection", "flight"), default="flight")
     parser.add_argument("--output", type=Path, required=True)
     asyncio.run(run(parser.parse_args()))

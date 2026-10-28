@@ -48,7 +48,7 @@ async def run():
     def health(connection, request):
         if request.path != "/health":
             return None
-        healthy = mission is None or mission.fleet_error is None
+        healthy = mission is None or (mission.fleet_error is None and mission.sensor_error is None)
         state = "idle" if mission is None else "ready" if mission.fleet_ready else "starting"
         return connection.respond(
             HTTPStatus.OK if healthy else HTTPStatus.SERVICE_UNAVAILABLE,

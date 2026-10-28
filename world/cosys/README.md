@@ -25,7 +25,7 @@ The fetcher requires the shared `.env`, verifies release archive hashes, and app
 `airsim-ue58.patch`, `airsim-geodesy.patch` and `airsim-sensor.patch`. The first avoids resetting an unchanged
 CustomDepth value during startup, which would invalidate Landscape PSO precaching in
 UE 5.8. The geodesy patch uses the global NED transform and WGS84 conversion for each
-spawn home. Coupled flight requires a game binary built with both patches; the recovery
+spawn home. Coupled flight requires a game binary built with these patches; the recovery
 package does not contain the geodesy correction.
 
 ## Camera acquisition
@@ -167,7 +167,7 @@ unbounded receive/resend loop with one bounded receive and a nonzero exit on fai
 Requested SIGTERM exits successfully; missing sensor input exits with an error.
 The measurement file records both isolated termination tests and complete flight shutdowns. No Cosys flight API is used for control.
 
-The coupled controller runs at `SCHED_LOOP_RATE=100`, with readback at startup.
+The coupled controller runs at `SCHED_LOOP_RATE=184`, with readback at startup.
 The pinned ArduPilot prearm checks require gyro input at least `1.8 ×` the configured
 loop rate and a filtered main-loop rate at least `0.90 ×` it. The stock Cosys physics
 period remains 3 ms. `FPS avg` in the SITL log describes sensor timestamps; DataFlash
@@ -217,3 +217,45 @@ Primary references:
 - [AirSimSettings.hpp](https://github.com/Cosys-Lab/Cosys-AirSim/blob/5.8-v3.5.0/AirLib/include/common/AirSimSettings.hpp): canonical `ControlPortLocal` field and `SteppableClock` selection.
 - [GpsSimpleParams.hpp](https://github.com/Cosys-Lab/Cosys-AirSim/blob/5.8-v3.5.0/AirLib/include/sensors/gps/GpsSimpleParams.hpp): GPS frequency and latency settings.
 - [EarthUtils.hpp](https://github.com/Cosys-Lab/Cosys-AirSim/blob/5.8-v3.5.0/AirLib/include/common/EarthUtils.hpp) and [GeodeticConverter.hpp](https://github.com/Cosys-Lab/Cosys-AirSim/blob/5.8-v3.5.0/AirLib/include/common/GeodeticConverter.hpp): spherical spawn conversion versus WGS84 flight conversion.
+
+## Installed cutover after merge
+
+Do this in the agreed deployment window after the coupling revision is merged and
+its acceptance record is complete. These steps are a plan; development does not
+modify the installed services or release.
+
+1. Land and disarm every installed aircraft and release the authoring player. Record
+   `ss -lntup`, the installed runtime environment and the current `Live` symlink.
+   Stop `snr-mission`; the current installed fleet uses its separate built-in physics.
+   Stop `snr-unreal`, then confirm its container and listener ports are gone.
+2. Stage the accepted coupling-owned game release into a new installed release
+   directory. Copy the new executable/debug/symbol files; hardlink unchanged cooked
+   content. Verify every file against the accepted release receipt. Never overwrite
+   `releases/cooked-content-recovery`. Install the accepted patched SITL binary at
+   the `SNR_SITL_BINARY` path recorded in the new runtime environment.
+3. From the merged installed checkout, regenerate that release's settings:
+   `.venv-cosys/bin/python -m world.cosys.configure-drones --rpc-port 41451
+   --instance-base 0 --output .local/unreal/releases/<accepted-release>/cosys-settings.json`.
+   Set `SNR_SITL_MODEL=airsim-copter`, `SNR_SITL_INSTANCE_BASE=0`,
+   `SNR_COSYS_PORT=41451`, `SNR_MAVLINK_BASE_PORT=14600` and
+   `SNR_SITL_RC_BASE_PORT=5501` in `.local/runtime.env`. Preserve installed web,
+   signalling and TURN ports. Set `SNR_SIGNALLING_LOG_DIR` explicitly and point
+   `SNR_COSYS_SETTINGS`/`SNR_WORLD_CONFIG` at the new release. Atomically switch
+   `.local/unreal/Live` to that directory and build the merged browser with `npm run build`.
+4. Reload systemd's environment configuration if its generated drop-ins changed.
+   Check `ss -lntup`: RPC 41451, motor 9002/9012/9022/9032, sensor
+   9003/9013/9023/9033, MAVLink 14600–14603 and RC 5501/5511/5521/5531 must be free.
+   Start `snr-unreal`, then `snr-mission` and connect the intended saved case promptly
+   so all four controllers answer the world's motor exchange. Verify the unchanged
+   fleet startup checks, 184 Hz readback, camera frames and persisted search coverage.
+5. With the editor and development worlds stopped by their owners, repeat the
+   recorded flight/capture, feed and pan measurements. Record isolated process CPU,
+   GPU and frame times before accepting installed performance. Development resource
+   coexistence measurements are not an isolated performance result.
+
+For subsequent coupled shutdowns, land first. Send `docker kill --signal=TERM
+snr-unreal-live`, wait for its new `UWorld::CleanupWorld for OpenMeadow,` log marker,
+then immediately stop `snr-mission`; wait for Unreal's orderly exit and verify all
+ports are released. The marker follows world `EndPlay`, when AirSim physics stops.
+Waiting for the renderer's complete cache flush before stopping SITL can exceed its
+sensor timeout. Reversing the order can leave physics waiting for motor data.

@@ -1,11 +1,11 @@
 # Mission control
 
-Four ArduCopter autopilots select their physics through required `SNR_SITL_MODEL`.
-`airsim-copter` couples to Cosys; `quad` is retained for the named `bench_sitl.py`
-built-in-physics benchmark. See the [coupling gate](../../world/cosys/README.md)
+The mission service requires `SNR_SITL_MODEL=airsim-copter`: four ArduCopter
+autopilots fly the Cosys vehicles. `quad` is retained only for the named
+`bench_sitl.py` built-in-physics benchmark. See the [coupling gate](../../world/cosys/README.md)
 and its recorded acceptance measurements. One Python process owns their
 MAVLink connections, Wonder, approvals and the event log. The browser receives actual
-telemetry, mission and fence readback; video has no source yet.
+telemetry, mission and fence readback, and each aircraft's accepted sensor captures.
 
 ## Start and stop
 
@@ -30,7 +30,8 @@ instances, the configured RPC port and the authored spawns. Every launch checks
 `ss -lntup` before creating listeners. The coupling slot uses `.local/slot.env`.
 The pinned release, prerequisites and parameter baseline are recorded in
 [the fleet measurements](../measurements/gcs-sitl.json). Build with at most four jobs.
-Instances 0–3 use system IDs 1–4 and UDP ports 14600–14603, without MAVProxy or a router.
+The deployment slot uses instances 0–3, system IDs 1–4 and UDP ports 14600–14603,
+without MAVProxy or a router. Development slots use their documented instance/port bases.
 Do not run the standalone fleet check alongside the service.
 
 The service sends SIGTERM to its four child autopilots on shutdown. In coupled mode,
@@ -54,7 +55,7 @@ fixed meridional and prime-vertical radii at the origin; latitude offset is nort
 longitude offset is east/(N cos(latitude)), in radians. Round trips are asserted below
 1 μm before MAVLink's integer-coordinate encoding. `world/cosys/settings.json` spawn
 X/Y/Z are **NED metres**; home elevation adds the world's `40−Z` metre spawn height.
-No simulator settings are modified.
+The settings generator asserts spawn/home consistency.
 
 The ±804.672 m square has the authorized southern launch corridor: east ±25 m, extending
 south to north −844.672 m. One eight-vertex inclusion polygon contains all four homes.
@@ -72,7 +73,7 @@ values and reasons are in the fleet measurements. Additional changes are:
 | `FENCE_TYPE`   | 5     | Maximum altitude plus inclusion polygon |
 | `FENCE_ENABLE` | 1     | Enforce the downloaded fence            |
 
-Coupled launches additionally set and verify `SCHED_LOOP_RATE=100`. Arming and failsafe
+Coupled launches additionally set and verify `SCHED_LOOP_RATE=184`. Arming and failsafe
 checks remain enabled. Startup verifies firmware identity, GPS/EKF,
 homes, safety parameters, fence readback and position updates of at least 5 Hz. Links
 older than 2 s are shown as lost at their last known position.
@@ -90,10 +91,30 @@ is not arrival; inspect telemetry. Uploaded missions are read back before AUTO. 
 requires a nonempty mission and uses [Plan v1/Mission v2](https://docs.qgroundcontrol.com/master/en/qgc-dev-guide/file_formats/plan.html),
 ArduPilot firmware type 3, and the read-back inclusion fence.
 
+## Sensor and coverage
+
+`world/cosys/sensor.py` triggers 3840×2160 nadir captures every 12 m of AUTO ground
+track. The shared writer persists each image and metadata record in
+`.local/data/missions/<mission-id>/captures/` before calling
+`Search.consume_capture(record, "unprocessed")`. Unprocessed frames add measured
+footprints to live coverage; they do not reduce belief or imply a negative detection.
+The search/perception ingestion is one path. See [capture validation](../../world/cosys/README.md)
+for image-time pose checks and explicit rejection limits. Failures surface in mission alerts.
+
+The feed retains the latest accepted 960×540 JPEG per drone. Standalone
+`sensor_frame` WebSocket messages carry previews only when a capture arrives; a new
+connection receives the latest frames. Regular state, history and model context
+contain no image bytes. The overlay shows UTC and the image-response camera pose.
+`open_feed` selects the aircraft's feed without flight commands or inference.
+
+`accept_browser.mjs feed URL NEW_DIRECTORY SECONDS` checks all four streams and
+view-tool focus, captures both viewport sizes, and records main WebSocket application
+bytes, renderer thread CPU, heap, long tasks and frame receipt-to-render latency.
+The served build must be clean and committed. No higher-rate preview is enabled.
+
 ## Acceptance and diagnostics
 
-[Tool contracts and Wonder context](../agents/README.md) describe the seventeen registered
-tools. Each operator request starts a bounded conversation; continuations contain compact
+[Tool contracts and Wonder context](../agents/README.md) describe the registered tools. Each operator request starts a bounded conversation; continuations contain compact
 results and omit the briefing. Events log actual input/output token counts and request
 sizes. HTTP failures retain the failed body and safe response headers without credentials.
 
