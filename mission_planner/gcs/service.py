@@ -422,8 +422,12 @@ class Mission:
         context = {
             "autonomy": self.autonomy,
             "search": self.search.summary(),
-            "operator_events": [
+            "telemetry_at_utc_ms": time.time() * 1000,
+            "current_vehicles": [compact_vehicle(v) for v in self.vehicles()],
+            "historical_operator_events": [
                 {
+                    "sequence": event["sequence"],
+                    "timestamp_ms": event["timestamp_ms"],
                     "kind": event["kind"],
                     "text": event["text"],
                     "name": event["name"],

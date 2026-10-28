@@ -66,11 +66,52 @@ class AgentContext(unittest.TestCase):
             }
         }
         mission.events = []
+        mission.vehicles = lambda: []
         mission.context_index = 0
         mission.event_sequence = 0
         self.assertIn("Briefing text", mission.instructions(True))
         self.assertNotIn("Briefing text", mission.instructions(False))
         self.assertNotIn("Phase 3A", mission.instructions(False))
+
+    def test_current_telemetry_is_distinct_from_historical_acknowledgements(self):
+        from mission_planner.search.state import Search
+
+        mission = object.__new__(Mission)
+        mission.search = Search(mission)
+        mission.autonomy = "Supervised"
+        mission.context_index = 0
+        mission.event_sequence = 2
+        vehicle = {
+            "id": "Drone1",
+            "mode": "GUIDED",
+            "armed": True,
+            "landed_state": 2,
+            "north_m": -814,
+            "east_m": -2.5,
+            "altitude_above_home_m": 30,
+            "mission_current": 0,
+            "mission_total": 4,
+        }
+        mission.vehicles = lambda: [vehicle]
+        mission.events = [
+            {
+                "sequence": 1,
+                "timestamp_ms": 1000,
+                "source": "operator",
+                "kind": "tool_result",
+                "text": "fly_route",
+                "name": "fly_route",
+                "arguments": {"drone_id": "Drone1"},
+                "result": {"ok": True, "state": {"mode": "AUTO"}},
+            }
+        ]
+        context = json.loads(mission.instructions(False).split("Current mission context: ")[1])
+        self.assertEqual(context["current_vehicles"][0]["mode"], "GUIDED")
+        historical = context["historical_operator_events"][0]
+        self.assertEqual(historical["result"]["state"]["mode"], "AUTO")
+        self.assertEqual(historical["timestamp_ms"], 1000)
+        self.assertEqual(historical["sequence"], 1)
+        self.assertGreater(context["telemetry_at_utc_ms"], historical["timestamp_ms"])
 
     def test_http_error_does_not_expose_exception_class(self):
         request = httpx.Request("POST", "https://api.meta.ai/v1/responses")
