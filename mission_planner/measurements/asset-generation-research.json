@@ -1,0 +1,1256 @@
+{
+  "researchDateUtc": "2026-10-29",
+  "compiledAtUtc": "2026-10-29T03:03:31.131837+00:00",
+  "status": "Research and image-reference production complete; designs and proposed 3D workflow await user approval. No 3D conversion or Unreal import performed.",
+  "scope": "Quality-first original asset reference imagery for the Sierra valley, and a proposed image-to-3D workflow. This report contains capabilities, published prices and attributed observations, not a universal-best claim. Actual 3D generation and Unreal import have not been run.",
+  "imageModels": [
+    {
+      "name": "GPT Image 2.5 Sunburst",
+      "endpoint": "openai/gpt-image-2.5/sunburst/text-to-image",
+      "editEndpoint": "openai/gpt-image-2.5/sunburst/edit",
+      "sourceIds": ["sunburst-schema", "sunburst-edit-schema", "sunburst-pricing"],
+      "qualityControls": {
+        "qualityOptions": ["auto", "low", "medium", "high", "xhigh", "max"],
+        "selectedQuality": "max",
+        "maxEdgePixels": 3840,
+        "maxTotalPixels": 8294400,
+        "sizeMultiple": 16,
+        "maxAspectRatio": 3,
+        "referenceImagesMaximum": 16,
+        "supportsMasks": true,
+        "backgrounds": ["auto", "transparent", "opaque"]
+      },
+      "fit": "Primary master-image model based on general human preference evidence and configurable highest quality; asset-level structural inspection overrides rank.",
+      "publishedPricing": {
+        "unit": "USD_per_million_tokens",
+        "textInput": 5,
+        "textCachedInput": 1.25,
+        "textOutput": 10,
+        "imageInput": 8,
+        "imageCachedInput": 2,
+        "imageOutput": 30,
+        "note": "Token pricing is not a flat per-image price. No task aggregate cost asserted here."
+      }
+    },
+    {
+      "name": "Nano Banana 2.1",
+      "endpoint": "google/nano-banana-2.1",
+      "editEndpoint": "google/nano-banana-2.1/edit",
+      "sourceIds": [
+        "banana21-schema",
+        "banana21-edit-schema",
+        "banana21-pricing",
+        "google-image-documentation"
+      ],
+      "qualityControls": {
+        "resolutionOptions": ["1K", "2K", "4K"],
+        "selectedResolution": "4K",
+        "thinkingLevels": ["minimal", "medium", "high"],
+        "selectedThinking": "high",
+        "systemPrompt": true,
+        "webGrounding": "Optional; disabled for these original designs",
+        "extremeAspectRatios": ["4:1", "1:4", "8:1", "1:8"]
+      },
+      "fit": "Strong reference-conditioned editing candidate; selected for the lookout master after complete stair access was visible in its pilot.",
+      "publishedPricing": {
+        "unit": "USD_per_million_tokens",
+        "input": 1.764,
+        "textAndThinkingOutput": 8.823,
+        "imageOutput": 35.294,
+        "note": "Higher thinking changes token use. Provider representative medium-thinking prices are not actual task bills."
+      }
+    },
+    {
+      "name": "Krea 3",
+      "endpoint": "krea/v3/text-to-image",
+      "sourceIds": ["krea3-schema"],
+      "qualityControls": {
+        "qualityVariant": "berry",
+        "speedVariant": "jam",
+        "reasoningLevels": ["low", "medium"],
+        "maxTotalPixels": 4220160,
+        "outputSizeMultiple": 16,
+        "negativePrompt": "Available for berry"
+      },
+      "fit": "Documented quality-oriented image candidate; no asset-specific generation or superiority established in this research.",
+      "publishedPricing": {
+        "usdPerMegapixel": 0.025,
+        "megapixelDefinitionPixels": 1048576,
+        "note": "Read model-specific billing rules for reference-image processing; do not assume generic units metadata means a flat image fee."
+      }
+    },
+    {
+      "name": "Qwen Image 3",
+      "endpoint": "alibaba/qwen-image-3/text-to-image",
+      "sourceIds": ["qwen3-schema"],
+      "qualityControls": {
+        "minTotalPixels": 262144,
+        "maxTotalPixels": 4194304,
+        "promptCharactersMaximum": 5000,
+        "negativePromptCharactersMaximum": 500,
+        "promptExpansion": true,
+        "seed": true
+      },
+      "fit": "Lower-resolution alternative for image generation; no demonstrated advantage for these coherent 3D-reference designs.",
+      "publishedPricing": {
+        "usdPer1kImage": 0.04,
+        "usdPer2kImage": 0.075,
+        "note": "Published endpoint prices; authenticated unit-price metadata is not itself the total generation price."
+      }
+    },
+    {
+      "name": "Seedream 5.0 Pro",
+      "endpoint": "bytedance/seedream/v5/pro/text-to-image",
+      "editEndpoint": "bytedance/seedream/v5/pro/edit",
+      "sourceIds": ["seedream5-pro-schema", "seedream5-pro-edit-schema", "seedream5-overview"],
+      "qualityControls": {
+        "enhancePromptQualityMode": "standard",
+        "enhancePromptSpeedMode": "fast",
+        "minTotalPixels": 921600,
+        "maxTotalPixels": 4624220,
+        "maxAspectRatio": 16,
+        "referenceImagesMaximum": 10,
+        "alphaPreservation": "Editing requires exactly one alpha-channel reference, transparent background and PNG output"
+      },
+      "fit": "Structured-layout and precise editing candidate. Marketing examples do not prove geometric turnaround consistency.",
+      "publishedPricing": {
+        "advertisedFromUsdPerImage": 0.0675,
+        "note": "Overview starting price, not maximum-settings or actual billed cost."
+      }
+    },
+    {
+      "name": "FLUX 3 Image",
+      "endpoint": "blackforestlabs/flux-3/edit-image",
+      "sourceIds": ["flux3-image-schema"],
+      "qualityControls": {
+        "resolutionOptions": ["768sq", "1k", "1.5k", "2k", "4k"],
+        "referenceImagesMaximum": 10,
+        "minimumReferenceEdgePixels": 256,
+        "referencePreprocessingMaxMegapixels": 4,
+        "promptExpansion": true,
+        "versionParameter": "Available; latest is the documented default and must be recorded/resolved if used"
+      },
+      "fit": "Reference-conditioned still-image candidate with 4K output. Distinct from FLUX 3 Max video; the fetched video leaderboard claims provide no still-image ranking.",
+      "publishedPricing": null
+    }
+  ],
+  "independentImageRanking": {
+    "sourceId": "artificialanalysis-t2i",
+    "name": "AA-Image-T2I v2.1",
+    "category": "Overall",
+    "method": "Pairwise human preference votes for text-to-image generation; Elo ranking.",
+    "snapshot": [
+      {
+        "rank": 1,
+        "model": "GPT Image 2.5 Sunburst (max)",
+        "elo": 1222,
+        "interval95": [1212, 1232]
+      },
+      {
+        "rank": 4,
+        "model": "Nano Banana 2.1",
+        "elo": 1176,
+        "interval95": [1164, 1188]
+      }
+    ],
+    "limits": [
+      "General preference ranking is not a benchmark for 3D reference accuracy, multi-view identity, physical dimensions or reconstructable geometry.",
+      "No leaderboard number is a measured reconstruction success rate.",
+      "FLUX 3 Max video comparisons are excluded from still-image model selection."
+    ]
+  },
+  "productionDecision": {
+    "masterModel": "openai/gpt-image-2.5/sunburst/text-to-image",
+    "masterSettings": {
+      "quality": "max",
+      "image_size": {
+        "width": 2880,
+        "height": 2880
+      },
+      "background": "opaque",
+      "output_format": "png"
+    },
+    "reason": "Highest-ranked observed general text-to-image model at max quality; retain a per-asset visual review for completeness and plausible connections.",
+    "assetException": {
+      "asset": "fire-lookout",
+      "selectedMasterModel": "google/nano-banana-2.1",
+      "settings": {
+        "thinking_level": "high",
+        "resolution": "4K",
+        "aspect_ratio": "1:1"
+      },
+      "observedBy": "Parent agent visual inspection of recorded pilot images",
+      "reason": "Nano Banana pilot shows the full staircase; Sunburst pilot omitted the lower flight.",
+      "evidence": [
+        {
+          "id": "pilot-lookout-sunburst",
+          "endpoint": "openai/gpt-image-2.5/sunburst/text-to-image",
+          "path": ".local/world/valley/generated-references/pilot/pilot-lookout-sunburst.png",
+          "bytes": 9467048,
+          "sha256": "a4f4730291bde4ad7633765228447ff29bc03ef0df6137555870514c45d5e7dd",
+          "width": 2880,
+          "height": 2880
+        },
+        {
+          "id": "pilot-lookout-banana",
+          "endpoint": "google/nano-banana-2.1",
+          "path": ".local/world/valley/generated-references/pilot/pilot-lookout-banana.png",
+          "bytes": 20339055,
+          "sha256": "586c1a93c3d780220abfb55a5bafda145a483e167931cecf5bcc77d9e90f8e73",
+          "width": 4096,
+          "height": 4096
+        }
+      ]
+    },
+    "alternateViewSelection": {
+      "status": "selected_after_qualitative_pilot_review",
+      "selectedEndpoint": "openai/gpt-image-2.5/sunburst/edit",
+      "settings": {
+        "quality": "max",
+        "image_size": {
+          "width": 2880,
+          "height": 2880
+        },
+        "background": "opaque",
+        "output_format": "png"
+      },
+      "comparisonScope": "Qualitative comparison on one lookout design, inspected by parent agent; not a quantitative benchmark or proof of perfect geometric consistency.",
+      "decision": "Sunburst preserves the projecting lower stair more clearly in the overhead panel. Nano Banana 4K sheet has strong detail, but the overhead stairs are not fully consistent with its elevations.",
+      "evidence": [
+        {
+          "id": "pilot-lookout-views-sunburst",
+          "endpoint": "openai/gpt-image-2.5/sunburst/edit",
+          "requestId": "01a1858e-cd05-7f21-beae-55f4f98b8ffd",
+          "utc": "2026-10-29T02:51:21.846870+00:00",
+          "path": ".local/world/valley/generated-references/pilot/pilot-lookout-views-sunburst.png",
+          "sha256": "c8aafd8eee1f1b64a8827313a955e3724216c317516ad2cb3921b41202e4ebe4",
+          "bytes": 9890971,
+          "width": 2880,
+          "height": 2880,
+          "elapsedSeconds": 192.46905022300007
+        },
+        {
+          "id": "pilot-lookout-views-banana",
+          "endpoint": "google/nano-banana-2.1/edit",
+          "requestId": "01a1858e-cd6c-74d0-aa2c-f9fe08214d4c",
+          "utc": "2026-10-29T02:49:08.517896+00:00",
+          "path": ".local/world/valley/generated-references/pilot/pilot-lookout-views-banana.png",
+          "sha256": "75aa4d852eedf0137a2bbfd86ab2b2a26783c0f2806a80426f5e35fb66e0b829",
+          "bytes": 19875944,
+          "width": 4096,
+          "height": 4096,
+          "elapsedSeconds": 59.12440436399993
+        }
+      ],
+      "receipt": {
+        "path": ".local/evidence/world/valley/generated-references/pilot-edits/results.json",
+        "sha256": "dcc8222448feab574dc229e174f297d6f5b1daab7a8bb383b7f5fb7af8ae8cbf"
+      },
+      "viewDelivery": {
+        "sheetLayout": "Four panels in a two-by-two sheet",
+        "sheetPixels": [2880, 2880],
+        "croppedViewPixels": [1440, 1440],
+        "views": ["front", "back", "left", "top"],
+        "generationAccounting": "The four view files are deterministic crops from one generated turnaround sheet, not four independent model generations. Final counts belong to the generation results.",
+        "limits": "Crops preserve source pixels but cannot establish 3D consistency; physical geometry remains unmeasured."
+      }
+    },
+    "referenceRequirements": [
+      "One object with complete silhouette on a simple neutral background",
+      "Consistent design, proportions and material across views; inspect before conversion",
+      "Neutral diffuse illumination; no baked cinematic shadows/highlights in material references",
+      "Separate view files for model input; all-assets review sheet is not a 3D input",
+      "Keep clean undecorated geometry reference and close material details separately; labels outside asset images"
+    ],
+    "presentation": "Compose one labelled image of the generated asset designs while retaining high-resolution individual images and inspected single-view derivatives. A contact sheet does not establish a valid 3D model."
+  },
+  "imageTo3dModels": [
+    {
+      "id": "fal-ai/hyper3d/rodin/v2.5",
+      "name": "Rodin Gen-2.5",
+      "role": "Primary fal candidate for detailed solid props, rocks, logs and cabin components",
+      "views": {
+        "maximum": 5,
+        "ordering": "First image drives material generation; fal does not expose provider image_label"
+      },
+      "qualityControls": {
+        "tier": "Gen-2.5-Extreme-High",
+        "quality_mesh_option": "2M Triangle",
+        "material": "PBR",
+        "texture_mode": "high",
+        "addons": {
+          "high_pack": true
+        },
+        "texture_delight": "Use for lighting-free reference material; needs output review",
+        "hd_texture": "Optional enhancement can add artifacts; not automatically better",
+        "is_micro": "Allowed at Extreme-High but provider advises default unless needed"
+      },
+      "outputs": ["glb", "fbx", "obj", "usdz", "stl"],
+      "falTexturePackPixels": 4096,
+      "publishedFalPrice": {
+        "baseUsd": 0.4,
+        "highPackAddonUsd": 0.8,
+        "quote": "Your request will cost **$0.4** per generation. If **HighPack** is added to the `addons`, it will cost an additional **$0.8** per generation.",
+        "basis": "Embedded pricingInfoOverride of fetched fal model page; no generation invoice obtained"
+      },
+      "directProviderCeiling": {
+        "additionalHighPolyMeshFacesUpTo": 10000000,
+        "texturePixelsUpTo": 12288,
+        "conditions": "Extreme-High tier; texture_mode extreme-high + HighPack for 12K maps. fal wrapper lacks extreme-high texture_mode, uhd_texture, image_label. Direct API credentials would be required for those controls.",
+        "pricingCredits": {
+          "base": 0.5,
+          "extremeHighTierAddon": 0.5,
+          "extremeHighTextureAddon": 2.0
+        },
+        "sourceId": "3d-hyper3d-live-spec"
+      },
+      "documentDiscrepancy": "fal HighPack help says Quad increases faces approximately 16x. Current Hyper3D Gen2.5 primary docs explicitly say HighPack does not change geometry. Prefer provider version-specific statement; verify actual output.",
+      "sourceId": "3d-rodin25"
+    },
+    {
+      "id": "meshy/v7.1/multi-image-to-3d",
+      "name": "Meshy 7.1",
+      "role": "Secondary detailed multi-view candidate, explicit material channels and high-resolution geometry",
+      "views": {
+        "minimum": 1,
+        "maximum": 4,
+        "ordering": "First image front; remaining order irrelevant in provider docs"
+      },
+      "qualityControls": {
+        "geometry_resolution": "2k",
+        "should_remesh": false,
+        "should_texture": true,
+        "enable_pbr": true,
+        "basis": "Provider explicitly recommends should_remesh=false for highest geometry quality; optimize a separate derivative later"
+      },
+      "outputs": ["glb", "fbx", "obj", "usdz", "blend", "stl"],
+      "publishedFalPrice": {
+        "untexturedUsd": 0.8,
+        "texturedUsd": 1.2,
+        "source": "Embedded model metadata; additional animation/rigging not relevant"
+      },
+      "directProviderCeiling": {
+        "textureResolution": "8k",
+        "texturePixels": 8192,
+        "note": "fal wrapper does not expose texture_resolution; direct provider supports it. Multi-view geometry capped 2K; separate fal single-image endpoint supports 4K geometry, which is not4K texture resolution.",
+        "sourceId": "3d-meshy-api"
+      },
+      "restrictions": "Meshy terms prohibit competitive AI training and competitive analysis; suitability for SAR inference is distinct. Paid-plan output ownership cannot automatically be equated with fal subscriber rights.",
+      "sourceId": "3d-meshy71"
+    },
+    {
+      "id": "fal-ai/hunyuan-3d/v3.1/pro/image-to-3d",
+      "name": "Hunyuan3D 3.1 Pro",
+      "role": "Strong view-controlled alternative for asymmetric structures with roof/bottom information",
+      "views": {
+        "maximum": 8,
+        "fields": [
+          "input_image_url",
+          "back_image_url",
+          "left_image_url",
+          "right_image_url",
+          "top_image_url",
+          "bottom_image_url",
+          "left_front_image_url",
+          "right_front_image_url"
+        ]
+      },
+      "qualityControls": {
+        "generate_type": "Normal",
+        "enable_pbr": true,
+        "face_countMaximum": 1500000
+      },
+      "inputRules": {
+        "imageMinPixels": 128,
+        "imageMaxPixels": 5000,
+        "maxMegabytes": 8,
+        "objectFrameFractionGreaterThan": 0.5,
+        "background": "Simple and single-object"
+      },
+      "outputs": ["glb", "fbx", "obj", "mtl", "texture", "usdz"],
+      "publishedFalPrice": {
+        "baseUsd": 0.375,
+        "pbrAddonUsd": 0.15,
+        "multiviewAddonUsd": 0.15,
+        "customFaceCountAddonUsd": 0.15,
+        "fullySelectedArithmeticUsd": 0.825,
+        "basis": "Price fields extracted from model pricingInfoOverride; not billed measurement"
+      },
+      "textureResolution": "No texture-size guarantee in inspected fal schema; do not invent one",
+      "rights": "Commercial label verified; partner synthetic-data rights not independently resolved.",
+      "sourceId": "3d-hunyuan31"
+    },
+    {
+      "id": "tripo3d/h3.1/multiview-to-3d",
+      "name": "Tripo H3.1",
+      "role": "Alternative with detailed geometry/textures and explicit ordered views",
+      "views": {
+        "minimum": 2,
+        "maximum": 4,
+        "ordering": ["front", "left", "back", "right"]
+      },
+      "qualityControls": {
+        "geometry_quality": "detailed",
+        "texture_quality": "detailed",
+        "texture": true,
+        "pbr": true,
+        "quad": "Optional; returned format may be FBX",
+        "auto_size": "Provider estimate only; enforce catalogue dimensions after import"
+      },
+      "outputs": ["glb", "fbx", "base_model", "pbr_model"],
+      "publishedFalPrice": {
+        "untexturedUsd": 0.2,
+        "standardTextureUsd": 0.3,
+        "detailedTextureUsd": 0.4,
+        "detailedGeometryAddonUsd": 0.2,
+        "quadAddonUsd": 0.05,
+        "basis": "Embedded model pricingInfoOverride, no paid calls"
+      },
+      "rights": "Commercial label verified; direct terms fetch returned403 and was not retried.",
+      "sourceId": "3d-tripo31"
+    },
+    {
+      "id": "fal-ai/trellis-2",
+      "name": "TRELLIS.2",
+      "role": "Open-weight primary alternative for irregular geometry, complex topology and material study",
+      "views": {
+        "maximum": 1,
+        "note": "Inspected fal endpoint accepts exactly one image_url; no multi-view field"
+      },
+      "qualityControls": {
+        "resolution": "1536",
+        "texture_size": "4096",
+        "remesh": true,
+        "decimation_target": "Explicit runtime-independent master target; retain detail before derivedLOD"
+      },
+      "outputs": ["glb"],
+      "publishedFalPrice": {
+        "512": 0.25,
+        "1024": 0.3,
+        "1536": 0.35,
+        "basis": "Published per-generationUSD, not actual paid measurement"
+      },
+      "rights": {
+        "source": "trellis-license",
+        "modelAndCode": "MIT per Microsoft README; dependency licences separately listed",
+        "hostedTerms": "fal service terms still apply to hosted access; do not label every generated image inputMIT"
+      },
+      "materialLimitation": "Official README: GLB exported OPAQUE by default even when texture alpha exists; opacity must be connected after import. Important for foliage.",
+      "sourceId": "3d-trellis2"
+    },
+    {
+      "id": "direct-hyper3d-rodin-agentic",
+      "name": "Rodin Agentic Pro",
+      "role": "Research watchlist only",
+      "views": {
+        "minimum": 1,
+        "maximum": 5
+      },
+      "outputs": ["glb", "usdz", "fbx", "stl"],
+      "publishedDirectPriceCredits": 2.0,
+      "providerPublishedTimeMinutes": 10,
+      "note": "Explicit beta; agent chooses mode/parameters and may return high-poly or n-gons. No verified fal endpoint, no controlled ceiling evidence. Not selected merely because newer.",
+      "sourceId": "3d-rodin-agentic"
+    }
+  ],
+  "proposed3dDecision": {
+    "status": "proposed_not_executed",
+    "firstFalCandidate": "fal-ai/hyper3d/rodin/v2.5",
+    "proposedSettings": {
+      "tier": "Gen-2.5-Extreme-High",
+      "quality_mesh_option": "2M Triangle",
+      "material": "PBR",
+      "geometry_file_format": "glb",
+      "texture_mode": "high",
+      "addons": {
+        "high_pack": true
+      },
+      "enable_safety_checker": true
+    },
+    "notAutomaticallyEnabled": ["hd_texture", "is_micro", "enable_creative_mode"],
+    "rationale": "Detailed mesh control, multi-view inputs, PBR outputs and broad transfer formats make Rodin the first candidate for solid assets. Additional enhancement controls can introduce artifacts and require a targeted reason. No actual superiority over alternatives was measured.",
+    "maximumProviderCapabilities": "Direct Rodin and Meshy texture ceilings are reported separately from the fal schemas; unavailable fal fields must not be silently submitted.",
+    "categoryStrategy": {
+      "solidProps": "AI-assisted3D suitable for rocks, logs, solid cabin modules, vehicle shells, signs and camp props after topology/scale review",
+      "bridgeAndTower": "Generate reference designs and substantial modules; author thin railings, stairs, supports and full spanning structures deterministically to guarantee connectivity and dimensions",
+      "foliage": "Generated images useful for art direction; prefer procedural/species-correct meshes or verified permissive source vegetation with instancing, wind, alpha masks and measured canopy envelopes. A pretty whole-tree mesh does not guarantee needle geometry or sensor occlusion.",
+      "water": "Use Unreal water geometry/materials with physical depth, roughness, reflection/refraction and correct sensor rendering; a generated opaque water-object mesh is not a water system.",
+      "groundAndTrails": "Use tileable PBR material pipeline and terrain paint; image-to-3D soil slabs would introduce seams and poor scale.",
+      "runtime": "Preserve detail in source master, then generate measured runtime meshes/collision/LODs/Nanite variants. High polygon/texture maxima are not target budgets for every repeated object."
+    },
+    "generationRun": false,
+    "unrealImportRun": false
+  },
+  "licensing": {
+    "falCompetitionClause": "Section14 restricts outputs used to develop/improve products or services competing with third-party models, including training/fine-tuning AI. It is not an explicit blanket ban on SAR detector inference or evaluation.",
+    "sarInference": "No explicit detector-inference prohibition found in inspected fal, Rodin or Meshy text. This supports continued image concept work; it is not a blanket statement that unrestricted synthetic-training rights exist.",
+    "meshCompetitiveAI": "Meshy specifically prohibits generated assets training/developing/improving AI competitive with Meshy and competitive analysis. Inference testing in the SAR simulation is a different use; provider comparisons require care.",
+    "rodinOutput": "Hyper3D \u00a75(b) says it will not limit Rodin output use subject to agreement/law/third-party restrictions. This is contractual permission, not CC0 or MIT.",
+    "apiPrivacy": "fal API supplemental terms exclude Pending Enterprise Ready models from no-training promise; Rodin metadata ready versus inspected Meshy/Hunyuan pending. Public original prop references contain no person/scenario truth.",
+    "unresolved": "Tripo direct terms 403; Hunyuan partner terms not resolved. No unconditional rights clearance asserted for either.",
+    "quotes": {
+      "fal-terms": [
+        "14. Third-Party Content\nOur Services may rely on or interoperate with third-party products and services, including data storage services, communications technologies, third-party apps, machine learning models hosted by third parties, and internet and mobile operators (collectively, \u201c\nThird-Party Materials\n\u201d). These Third-Party Materials are beyond our control, but their operation may impact, or be impacted by, the use and reliability of our Services. You acknowledge that (i) the use and availability of the Services may be dependent on third-party product vendors and service providers and (ii) these Third-Party Materials may not operate reliably 100% of the time, which may impact the way that our Services operate. Company is not responsible for, and will have no liability, with respect to your use or inability to use any Third-Party Materials.\nWe have no obligation to monitor Third-Party Materials, and we may block or disable access to any Third-Party Materials (in whole or part) through our Services at any time. Your access to and use of such Third-Party Materials may be subject to additional terms, conditions, and policies (including terms of service or privacy policies of the providers of such Third-Party Materials). You are responsible for obtaining and maintaining any computer hardware, equipment, network services and connectivity, telecommunications services, software applications, and other products and services necessary to access and use the Services.\nYou may not: 1. use or access any Third-Party Materials or any outputs derived from such materials to develop, modify, fine-tune, or improve any products or services that compete with those Third Party Materials, including to develop, fine-tune, or train any artificial intelligence or machine learning algorithms or models; 2. reproduce, redistribute, or make available any training data used in any AI incorporated into any Third-Party Materials, including but not limited to video, imagery, metadata (such as titles and keywords), or any other component used in training; 3. generate or use content in a way that replicates or closely mimics the original assets used to train any AI incorporated into Third Party Materials.\n\u200d"
+      ],
+      "hyper3d-legal": [
+        "(b) Rodin\nIf you use Rodin to generate Output, we will not limit your\n use of such Output, subject to any restrictions set forth in\n these Agreements, the Applicable Laws and any third-party\n terms and conditions applicable to such Output or Services.\nYou may set your Output generated through Rodin as\n \u201cprivate\u201d, by which other Users will have no access to such\n Output except as shared by you, and we will not use such\n Output apart from displaying it in your Account.\nPlease note that we make no representations, warranties or\n undertakings of any kind as to the copyrightability of any\n Output or the availability of Intellectual Property Rights\n (as defined below) in which it may be applied for,\n registered or credited to any person. We take no\n responsibility for any breach of any Applicable Laws and\n third-party terms and conditions applicable to such Output\n or Services and/or any infringement of third party rights\n resulting from your use of such Output."
+      ],
+      "meshy-legal": [
+        "2.6 Use Restrictions\nYour use of the Service is subject to the rights explicitly granted in this Agreement. You agree you may not use the Service in the following manner or for the following purposes: (i) violate any applicable federal, state, local, national, and international laws or regulations; (ii) reverse engineer, decompile, disassemble, modify, create derivative works of, or otherwise create, attempt to create or derive, or permit or assist any third party to create or derive, the source code underlying the Service; (iii) infringe upon or violate any third party rights, including intellectual property rights or rights of publicity or privacy; (iv) develop or offer competitive products or services or engage in competitive analysis; (v) resell or redistribute the Service or access to the Service; (vi) allow multiple users to use one user account; (vii) use the Service to attempt to or actually deceive or defraud; (viii) introduce any virus, Trojan horse, malware, or other malicious code through the Service; (ix) attempt to gain unauthorized access to or interfere with any parts of the Service; (x) to transmit or submit any sensitive personal data, including but not limited to social security numbers, dates of birth or financial information; (xi) use generated digital assets to train, develop, or improve AI models that are competitive with Meshy; or (xii) use the Service in violation of Meshy's acceptable use policy, which can be found at\nhttps://www.meshy.ai/acceptable-use-policy\n, (\"\nAUP\n\").\nYou are responsible for all content you, or an Authorized User, inputs, creates, or shares on the Service. We reserve the right to monitor your use of the Service to assess compliance with this Agreement, and reserve the right to suspend or terminate your user account and access to all or part of the Service in accordance with Section 5.",
+        "3.2 Ownership of User Content; Rights Granted to Meshy\nCustomers using Meshy's Services under the free plan, acknowledge and agree that Meshy owns all right, title, and interest, including all intellectual property rights, in and to the Customer Output and makes such rights available to free plan customers under the Creative Commons Attribution 4.0 International License (the \"\nCC BY 4.0 License\n\"), as long as the free plan customer provides appropriate credit to Meshy. For more information about the CC BY 4.0 License, please see\nhttps://creativecommons.org/licenses/by/4.0/\n.\nCustomers on a paid Meshy plan have the option to keep their User Content private and your User Content will not be used for any purpose other than as outlined here. As between Meshy and those Customers on a paid Meshy plan, and to the extent possible under applicable law, such customers on a paid Meshy plan own their Customer Output. By using our Service and providing or generating User Content, Customers grant Meshy a non-exclusive, royalty-free, worldwide license to reproduce, distribute, and otherwise use and display the User Content and Process the User Content as may be necessary for Meshy to provide the Service to you and as otherwise permitted under these Terms.\nNotwithstanding anything in this Agreement to the contrary, unless prohibited by applicable law, Meshy may delete User Content at any time if Meshy determines that User Content violates the terms of this Agreement or that deletion is necessary to comply with applicable law."
+      ]
+    },
+    "sourceIds": [
+      "3d-fal-terms",
+      "3d-fal-api-terms",
+      "3d-hyper3d-legal",
+      "3d-meshy-legal",
+      "3d-trellis-license"
+    ]
+  },
+  "unrealCompatibility": {
+    "primaryDoc": "3d-epic-gltf-overview",
+    "supportedTransfer": "Epic UE5.8 docs explicitly describe glTF import/export. Prefer GLB with PBR channels; FBX geometry is also a provider export option but material reconstruction requires verification.",
+    "sourceFrameProof": {
+      "path": ".local/toolchains/UnrealEngine-5.8.2/Engine/Plugins/Interchange/Runtime/Source/Parsers/GLTFCore/Private/GLTF/ConversionUtilities.h",
+      "sha256": "a38bf5792d5fe01f9ac4d649ca79a6b00d7e1bb6f75858bcb4a6c94df3254e7c",
+      "excerpts": [
+        {
+          "line": 18,
+          "text": "\t\t// glTF uses a right-handed coordinate system, with Y up."
+        },
+        {
+          "line": 19,
+          "text": "\t\t// Unreal uses a left-handed coordinate system, with Z up."
+        },
+        {
+          "line": 20,
+          "text": "\t\treturn {Vec.X, Vec.Z, Vec.Y};"
+        },
+        {
+          "line": 34,
+          "text": "\t\t// glTF uses a right-handed coordinate system, with Y up."
+        },
+        {
+          "line": 35,
+          "text": "\t\t// Unreal uses a left-handed coordinate system, with Z up."
+        }
+      ]
+    },
+    "requiredImportValidation": [
+      "World uses centimetres, +X north, +Y east, +Z up; enforce target dimensions rather than trusting generated scale",
+      "Inspect basecolor sRGB, normal-map handedness/channel conventions and packed metallic/roughness channels",
+      "Inspect triangle normals, holes, degeneracy, UV seams, connected parts and collision",
+      "Measure full footprint and tallest height above local ground; structures <= 15 m, trees <= 18 m",
+      "Check geometry in the actual nadir camera and close runtime view under approved Lumen/VSM profile",
+      "No Unreal import was performed in this research"
+    ]
+  },
+  "sources": [
+    {
+      "id": "sunburst-schema",
+      "url": "https://fal.ai/models/openai/gpt-image-2.5/sunburst/text-to-image/api",
+      "kind": "primary_model_documentation",
+      "path": ".local/evidence/world/valley/generation-research/images/gpt25.html",
+      "bytes": 355172,
+      "sha256": "c780bf151fddf2723ce9de2e13152ec371914ddabc1dd5b41e7e9c48d51b4a87",
+      "extractedText": {
+        "path": ".local/evidence/world/valley/generation-research/images/gpt25.txt",
+        "bytes": 9277,
+        "sha256": "a22aac5f57dede772d0d8a789e32380c9593cef3a781ba8b914b2ca947499492"
+      },
+      "httpStatuses": [200],
+      "serverDate": "Thu, 29 Oct 2026 02:40:55 GMT"
+    },
+    {
+      "id": "sunburst-edit-schema",
+      "url": "https://fal.ai/models/openai/gpt-image-2.5/sunburst/edit/api",
+      "kind": "primary_model_documentation",
+      "path": ".local/evidence/world/valley/generation-research/images/sunburst-edit.html",
+      "bytes": 358561,
+      "sha256": "11bc70bfb93618f0e66932e517540482592000289124d67de5c34c73b1cd9398",
+      "extractedText": {
+        "path": ".local/evidence/world/valley/generation-research/images/sunburst-edit.txt",
+        "bytes": 9855,
+        "sha256": "384e934a82d88b167f2957e8df2d1bca1140ac3d4225d5eb150b15d48620b2b0"
+      }
+    },
+    {
+      "id": "sunburst-pricing",
+      "url": "https://fal.ai/models/openai/gpt-image-2.5/sunburst/text-to-image",
+      "kind": "primary_model_documentation",
+      "path": ".local/evidence/world/valley/generation-research/images/gpt25-model.html",
+      "bytes": 349893,
+      "sha256": "0f7b0164a73a9cb10cd54b1422eb56dc1a4a0305b1785ac22cbc7f462609e9d6",
+      "extractedText": {
+        "path": ".local/evidence/world/valley/generation-research/images/gpt25-model.txt",
+        "bytes": 13182,
+        "sha256": "15cdb09b68ab89579e0701ff536af9ad882efb742e6106f8c462cb44eb9054a4"
+      }
+    },
+    {
+      "id": "banana21-schema",
+      "url": "https://fal.ai/models/google/nano-banana-2.1/api",
+      "kind": "primary_model_documentation",
+      "path": ".local/evidence/world/valley/generation-research/images/banana21.html",
+      "bytes": 353232,
+      "sha256": "b2248cfd8026d2578bf1b32919b4b6b3cf42cf674158d450239f218dc654d6e0",
+      "extractedText": {
+        "path": ".local/evidence/world/valley/generation-research/images/banana21.txt",
+        "bytes": 10176,
+        "sha256": "5bfe2a498aeb0611144575d64e13ddc446d9b0f073dc67e7fc2092a849350be9"
+      },
+      "httpStatuses": [200],
+      "serverDate": "Thu, 29 Oct 2026 02:40:55 GMT"
+    },
+    {
+      "id": "banana21-edit-schema",
+      "url": "https://fal.ai/models/google/nano-banana-2.1/edit/api",
+      "kind": "primary_model_documentation",
+      "path": ".local/evidence/world/valley/generation-research/images/banana21-edit.html",
+      "bytes": 356955,
+      "sha256": "080448f249f629e85bc231121fe5d0eae70ea5eb58994516ce6c456ceff0f6e6",
+      "extractedText": {
+        "path": ".local/evidence/world/valley/generation-research/images/banana21-edit.txt",
+        "bytes": 10234,
+        "sha256": "22f3df6563a04e507b588bd938b93a6245d4027813a0a36c236c1a62171941a3"
+      },
+      "httpStatuses": [200],
+      "serverDate": "Thu, 29 Oct 2026 02:43:57 GMT"
+    },
+    {
+      "id": "banana21-pricing",
+      "url": "https://fal.ai/models/google/nano-banana-2.1",
+      "kind": "primary_model_documentation",
+      "path": ".local/evidence/world/valley/generation-research/images/banana21-model.html",
+      "bytes": 411175,
+      "sha256": "000a096bf7f352c112e1ef456155c1005f69fb45f11ba32e73ed462fda37c21e",
+      "extractedText": {
+        "path": ".local/evidence/world/valley/generation-research/images/banana21-model.txt",
+        "bytes": 13852,
+        "sha256": "60697adcba0715e2d70a8ca5b50db40280e9a22d70186836126caff5c9e3f9cd"
+      }
+    },
+    {
+      "id": "krea3-schema",
+      "url": "https://fal.ai/models/krea/v3/text-to-image/api",
+      "kind": "primary_model_documentation",
+      "path": ".local/evidence/world/valley/generation-research/images/krea3.html",
+      "bytes": 352740,
+      "sha256": "8e76a2b5c12e2c5cccbbd775e6c8f604825e8c88498976f27b29ff9cde41d77f",
+      "extractedText": {
+        "path": ".local/evidence/world/valley/generation-research/images/krea3.txt",
+        "bytes": 9004,
+        "sha256": "1d40d2b4258263c05f374b3fd3e3e140f9853ab0bb1a44e162619d4cab3bb344"
+      },
+      "httpStatuses": [200],
+      "serverDate": "Thu, 29 Oct 2026 02:40:55 GMT"
+    },
+    {
+      "id": "qwen3-schema",
+      "url": "https://fal.ai/models/alibaba/qwen-image-3/text-to-image/api",
+      "kind": "primary_model_documentation",
+      "path": ".local/evidence/world/valley/generation-research/images/qwen3.html",
+      "bytes": 345233,
+      "sha256": "18ca129281c2224c3b3004d7f429fcf0ce6b740772fcc9ab5f7a8a5b689d1a04",
+      "extractedText": {
+        "path": ".local/evidence/world/valley/generation-research/images/qwen3.txt",
+        "bytes": 8994,
+        "sha256": "9d3b79c198891385267457bdea941fd8b68c3eeb8abf0734623a5ec17abb71f5"
+      },
+      "httpStatuses": [200],
+      "serverDate": "Thu, 29 Oct 2026 02:40:55 GMT"
+    },
+    {
+      "id": "seedream5-overview",
+      "url": "https://fal.ai/seedream-5.0",
+      "kind": "primary_model_documentation",
+      "path": ".local/evidence/world/valley/generation-research/images/seedream5.html",
+      "bytes": 295268,
+      "sha256": "3b7f5a0b8ea7b2295e3f25b617b42b06b577f37fbbe058685ba4b1c49ad04d2f",
+      "extractedText": {
+        "path": ".local/evidence/world/valley/generation-research/images/seedream5.txt",
+        "bytes": 10706,
+        "sha256": "66d01e1d4e188ce9168e52216adebfa13d06e6e69a6438fa6ce251af60a9d458"
+      },
+      "httpStatuses": [200],
+      "serverDate": "Thu, 29 Oct 2026 02:43:57 GMT"
+    },
+    {
+      "id": "flux3max-video-overview",
+      "url": "https://fal.ai/flux-3-max",
+      "kind": "primary_model_documentation",
+      "path": ".local/evidence/world/valley/generation-research/images/flux3.html",
+      "bytes": 330064,
+      "sha256": "a434b5ee12e007fbe09553bb06f6ff79403b91ec640409b8c958c31a6fa78f62",
+      "extractedText": {
+        "path": ".local/evidence/world/valley/generation-research/images/flux3.txt",
+        "bytes": 17252,
+        "sha256": "13d7838f233f5b6840ccc8fa1c87d8a1e846d48d8ad458e4102714f71f929b96"
+      },
+      "httpStatuses": [200],
+      "serverDate": "Thu, 29 Oct 2026 02:43:57 GMT"
+    },
+    {
+      "id": "google-image-documentation",
+      "url": "https://ai.google.dev/gemini-api/docs/image-generation",
+      "kind": "primary_provider_documentation",
+      "path": ".local/evidence/world/valley/generation-research/images/google-images.html",
+      "bytes": 1447063,
+      "sha256": "b34a4f934a03164fe6b80d52cb4e8f491e6e14c17ded18fc90fd8cbf661b2643",
+      "extractedText": {
+        "path": ".local/evidence/world/valley/generation-research/images/google-images.txt",
+        "bytes": 196235,
+        "sha256": "176feee3eadd731c879d2f631321e06e0d6205aa59d97d0ba25669deac7b29dc"
+      },
+      "httpStatuses": [200],
+      "serverDate": "Thu, 29 Oct 2026 02:40:55 GMT"
+    },
+    {
+      "id": "openai-image-documentation",
+      "url": "https://developers.openai.com/api/docs/guides/image-generation",
+      "kind": "primary_provider_documentation",
+      "path": ".local/evidence/world/valley/generation-research/images/openai-images.html",
+      "bytes": 1257981,
+      "sha256": "17a3fafd89cfbfe32fb30186969cbb3142c53c63140da338cf24195555c8693c",
+      "extractedText": {
+        "path": ".local/evidence/world/valley/generation-research/images/openai-images.txt",
+        "bytes": 102771,
+        "sha256": "e526ae58d8d3676a6d0c716c21e71a78289f3e4a0a30c157c041be77dca6eeaa"
+      },
+      "httpStatuses": [200],
+      "serverDate": "Thu, 29 Oct 2026 02:40:55 GMT"
+    },
+    {
+      "id": "artificialanalysis-t2i",
+      "url": "https://artificialanalysis.ai/image/leaderboard/text-to-image",
+      "kind": "independent_evaluator_original_leaderboard",
+      "path": ".local/evidence/world/valley/generation-research/images/artificialanalysis.html",
+      "bytes": 2381817,
+      "sha256": "dc758b0600021c97e43dab4ea5674e8bb0a147cd8d11075808fa62c393c7b7c2",
+      "extractedText": {
+        "path": ".local/evidence/world/valley/generation-research/images/artificialanalysis.txt",
+        "bytes": 12285,
+        "sha256": "9edeea3b5bcd6ba3d6d95607c11cc202e78b429dc5ba6ed406f77f5f5d39a247"
+      },
+      "httpStatuses": [200],
+      "serverDate": "Thu, 29 Oct 2026 02:43:57 GMT"
+    },
+    {
+      "id": "fal-gallery",
+      "url": "https://fal.ai/explore",
+      "kind": "primary_model_catalogue",
+      "path": ".local/evidence/world/valley/generation-research/images/explore.html",
+      "bytes": 1782352,
+      "sha256": "445210742000c2f7213f220690442b927a93cb4c71f98da68870b5cd3ffdb256",
+      "httpStatuses": [200],
+      "serverDate": "Thu, 29 Oct 2026 02:40:33 GMT"
+    },
+    {
+      "id": "flux3-image-schema",
+      "url": "https://fal.ai/models/blackforestlabs/flux-3/edit-image/api",
+      "kind": "primary_model_documentation",
+      "fetchedAtUtc": "2026-10-29T02:49:12.789458+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/image-supplement/flux3-image.html",
+      "bytes": 338718,
+      "sha256": "bc25b2078890a817daba2f50d967d281c35b18e249bf4d60c2fd88e825d1153b",
+      "extractedText": {
+        "path": ".local/evidence/world/valley/generation-research/3d/image-supplement/flux3-image.txt",
+        "bytes": 8730,
+        "sha256": "d3c5fdc851bc4b009dfb80c037914d2a2d00251aaaaa12394c608c05fd692560"
+      }
+    },
+    {
+      "id": "seedream5-pro-schema",
+      "url": "https://fal.ai/models/bytedance/seedream/v5/pro/text-to-image/api",
+      "kind": "primary_model_documentation",
+      "fetchedAtUtc": "2026-10-29T02:49:12.792576+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/image-supplement/seedream5-pro.html",
+      "bytes": 351570,
+      "sha256": "fff8bfe26810be30aadb716f5b91a23e23cc4e3fe5ff87a6a1226a6bd34328c0",
+      "extractedText": {
+        "path": ".local/evidence/world/valley/generation-research/3d/image-supplement/seedream5-pro.txt",
+        "bytes": 9416,
+        "sha256": "1045cd9086bedb779ae085cb78ef14cb00e38a0c5f601c8e5de00221d7fad5ee"
+      }
+    },
+    {
+      "id": "seedream5-pro-edit-schema",
+      "url": "https://fal.ai/models/bytedance/seedream/v5/pro/edit/api",
+      "kind": "primary_model_documentation",
+      "fetchedAtUtc": "2026-10-29T02:49:12.794067+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/image-supplement/seedream5-pro-edit.html",
+      "bytes": 358599,
+      "sha256": "5fa97c3b045c75d99019ed85b466fcbfe0e24794b677fa8119bc7739219f8f97",
+      "extractedText": {
+        "path": ".local/evidence/world/valley/generation-research/3d/image-supplement/seedream5-pro-edit.txt",
+        "bytes": 10469,
+        "sha256": "7c58359879b073744365976d744fedfbd77b5258ed357aa640bff6e491da10f1"
+      }
+    },
+    {
+      "id": "3d-rodin-agentic",
+      "url": "https://docs.hyper3d.ai/en/api-specification/rodin-agentic",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:43:20.863219+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/rodin-agentic.html",
+      "bytes": 139146,
+      "sha256": "444ee5a143033ed829397461f85e52b37cacfe9a3c2244094926e7dd9f637a23"
+    },
+    {
+      "id": "3d-rodin25",
+      "url": "https://fal.ai/models/fal-ai/hyper3d/rodin/v2.5/api",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:40:25.666693+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/rodin25.html",
+      "bytes": 370233,
+      "sha256": "01f508f296a5776db8f4eac3f03db689a0ed92171b142e684dc1599867ddfba8"
+    },
+    {
+      "id": "3d-hunyuan31",
+      "url": "https://fal.ai/models/fal-ai/hunyuan-3d/v3.1/pro/image-to-3d/api",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:40:25.666985+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/hunyuan31.html",
+      "bytes": 354660,
+      "sha256": "81ffd251cdd8463b6ca33887ea1687182bf354220f8555282d6b0724e67ea98a"
+    },
+    {
+      "id": "3d-meshy71",
+      "url": "https://fal.ai/models/meshy/v7.1/multi-image-to-3d/api",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:40:25.667387+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/meshy71.html",
+      "bytes": 377628,
+      "sha256": "7e2a76ef643ec6bada5b86577cedfac0f38f768889de3d842ccef918b5750315"
+    },
+    {
+      "id": "3d-tripo31",
+      "url": "https://fal.ai/models/tripo3d/h3.1/multiview-to-3d/api",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:40:25.667594+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/tripo31.html",
+      "bytes": 345608,
+      "sha256": "6d362cd7a6f941e74fa8d44b1dafa3024cf423d6446f62ca8323d8f99d046c43"
+    },
+    {
+      "id": "3d-trellis-github",
+      "url": "https://raw.githubusercontent.com/microsoft/TRELLIS.2/main/README.md",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:40:25.978115+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/trellis-github.html",
+      "bytes": 16212,
+      "sha256": "adc985d5a71fda0a5cb7287f58b6baa7de8db1568c4483ac210f3447b786552b"
+    },
+    {
+      "id": "3d-trellis-license",
+      "url": "https://raw.githubusercontent.com/microsoft/TRELLIS.2/main/LICENSE",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:40:26.044046+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/trellis-license.html",
+      "bytes": 1140,
+      "sha256": "d9a1b1e30d633d5732ea18e3cba9538d293ebc53e1a9e4e96ab739e0c5c4f1cb"
+    },
+    {
+      "id": "3d-fal-terms",
+      "url": "https://fal.ai/terms",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:40:26.134832+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/fal-terms.html",
+      "bytes": 217777,
+      "sha256": "7215cfc1d37eb05900d735f1bab3b13acd2be0efcd7374f0abee41a4622631da"
+    },
+    {
+      "id": "3d-epic-gltf",
+      "url": "https://dev.epicgames.com/documentation/en-us/unreal-engine/importing-gltf-files-into-unreal-engine",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:40:26.225883+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/epic-gltf.html",
+      "bytes": 34042,
+      "sha256": "178ae997eab341b9ba55228bc45ee752dcbd92aa2a3f534c0a9bfdb9c4e7ce80"
+    },
+    {
+      "id": "3d-fal-models",
+      "url": "https://fal.ai/models?categories=3d",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:40:01.597667+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/fal-models.html",
+      "bytes": 1783247,
+      "sha256": "0a2e2d5fa045f7ddbfdc50f9f8e5decfa75bfa54574089c94fe27c3366899af5"
+    },
+    {
+      "id": "3d-fal-llms",
+      "url": "https://fal.ai/llms.txt",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:40:01.597840+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/fal-llms.html",
+      "bytes": 11481,
+      "sha256": "75e70f1b7e4e2297abfed78bafbeed923bc00e05e76ae6faa2f8a9dc4e68e602"
+    },
+    {
+      "id": "3d-rodin",
+      "url": "https://fal.ai/models/fal-ai/rodin/api",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:40:01.598241+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/rodin.html",
+      "bytes": 170501,
+      "sha256": "1044ab703bd141e46cf17c48f97b79402f873fb7d58d762b6272338436fa97d0"
+    },
+    {
+      "id": "3d-rodin-v2",
+      "url": "https://fal.ai/models/fal-ai/rodin/v2/api",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:40:01.599723+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/rodin-v2.html",
+      "bytes": 170542,
+      "sha256": "55dbba22e93876d2407b9e52bb59b0590548e50bb7740b0889c16b295fb10a9a"
+    },
+    {
+      "id": "3d-hunyuan-v3",
+      "url": "https://fal.ai/models/fal-ai/hunyuan3d-v3/image-to-3d/api",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:40:01.719460+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/hunyuan-v3.html",
+      "bytes": 346797,
+      "sha256": "968d43095c61083e7156e7992a2158401ad180f4c1f99ad5a08ff811b6cd3b13"
+    },
+    {
+      "id": "3d-trellis2",
+      "url": "https://fal.ai/models/fal-ai/trellis-2/api",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:40:01.912653+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/trellis2.html",
+      "bytes": 364079,
+      "sha256": "68aaf078a7fc2214c244dadf16dc816ceb25a2581aad6fdcea761fc67588b157"
+    },
+    {
+      "id": "3d-tripo3",
+      "url": "https://fal.ai/models/tripo3d/tripo/v3.0/image-to-model/api",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:40:01.950050+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/tripo3.html",
+      "bytes": 170718,
+      "sha256": "7b0edb5e75aa12720cacc63df95669ef7cb15cbc60403cc427e9269afedef59b"
+    },
+    {
+      "id": "3d-meshy6",
+      "url": "https://fal.ai/models/fal-ai/meshy/v6/image-to-3d/api",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:40:02.047552+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/meshy6.html",
+      "bytes": 385018,
+      "sha256": "76ced408707afb6d82bec9cce4485a2091379ba86ddc6329842bcd49fd2d28b8"
+    },
+    {
+      "id": "3d-hyper3d-live-spec",
+      "url": "https://docs.hyper3d.ai/en/api-specification/rodin-gen2-5",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:42:26.132737+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/hyper3d-live-spec.html",
+      "bytes": 292695,
+      "sha256": "4d01b5a79cc2ee921d7aa31ee5f19f052b6c28bc40289415fb568666d235daa8"
+    },
+    {
+      "id": "3d-hyper3d-legal",
+      "url": "https://hyper3d.ai/legal/terms",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:42:26.132839+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/hyper3d-legal.html",
+      "bytes": 283453,
+      "sha256": "8f45bc0b74fcff8aa6ba072d0215f77df42f0296fdefef33ba37b3f4103af0ae"
+    },
+    {
+      "id": "3d-meshy-legal",
+      "url": "https://www.meshy.ai/terms-of-use",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:42:26.133450+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/meshy-legal.html",
+      "bytes": 773793,
+      "sha256": "5393116031380387cd6ade323a986c8bbaa59b6c5e8e4bb4bbe70390a09c5b89"
+    },
+    {
+      "id": "3d-meshy-api-pricing",
+      "url": "https://docs.meshy.ai/en/api/pricing",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:42:26.134170+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/meshy-api-pricing.html",
+      "bytes": 216440,
+      "sha256": "012e2f167db61e4b4d9d948d8be834771a3c4dba723a0ebad30f511b2d91feb0"
+    },
+    {
+      "id": "3d-hyper3d-spec",
+      "url": "https://developer.hyper3d.ai/en/api-specification/rodin-gen2-5",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:42:01.115351+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/hyper3d-spec.html",
+      "bytes": 77125,
+      "sha256": "15db37ea7a8a621a61c7811a263a09343f0830f93f17911b470a035a62566c49"
+    },
+    {
+      "id": "3d-hyper3d-home",
+      "url": "https://hyper3d.ai/",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:42:01.115855+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/hyper3d-home.html",
+      "bytes": 398605,
+      "sha256": "c9c52eb174bcf1140c62686cf587b509e71b1cbab58836dbcbe591b3d4965d2d"
+    },
+    {
+      "id": "3d-meshy-home",
+      "url": "https://www.meshy.ai/",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:42:01.116372+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/meshy-home.html",
+      "bytes": 1003894,
+      "sha256": "834f6d749ec2eda0649199694cd0a2e8c0ed980659a2de37a21075b72344ef95"
+    },
+    {
+      "id": "3d-tripo-developer",
+      "url": "https://platform.tripo3d.ai/docs",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:42:01.116935+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/tripo-developer.html",
+      "bytes": 689,
+      "sha256": "915ccc4550c075499665e309e04120a005421e6130b3a4c8a615430e47b64757"
+    },
+    {
+      "id": "3d-meshy71-single",
+      "url": "https://fal.ai/models/meshy/v7.1/image-to-3d/api",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:42:01.259016+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/meshy71-single.html",
+      "bytes": 389634,
+      "sha256": "ff5c8a51a00a65ccf42171d05cb19dc3d6f420809d060cbe25499a29c0c6ee89"
+    },
+    {
+      "id": "3d-fal-api-terms",
+      "url": "https://fal.ai/legal/api-services",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:41:17.510666+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/fal-api-terms.html",
+      "bytes": 164497,
+      "sha256": "f30875c2c4d2d87a94e2ff3b9a2c9bed2115e3aef2d8c75ad5706ba5bee4a2b4"
+    },
+    {
+      "id": "3d-hyper3d-gen25",
+      "url": "https://developer.hyper3d.ai/api-specification/rodin-gen2.5",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:41:17.510825+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/hyper3d-gen25.html",
+      "bytes": 77125,
+      "sha256": "15db37ea7a8a621a61c7811a263a09343f0830f93f17911b470a035a62566c49"
+    },
+    {
+      "id": "3d-meshy-api",
+      "url": "https://docs.meshy.ai/en/api/multi-image-to-3d",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:41:17.593500+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/meshy-api.html",
+      "bytes": 583737,
+      "sha256": "9ab992b53a3b5a810f79e372824b5dda06e7dd53481916fc9338d286955a55de"
+    },
+    {
+      "id": "3d-hunyuan-home",
+      "url": "https://3d.hunyuan.tencent.com/",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:41:17.689415+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/hunyuan-home.html",
+      "bytes": 8268,
+      "sha256": "d15ed234b9e5072098beeef37fedae540795b808d32c204901a3e626fe5163a7"
+    },
+    {
+      "id": "3d-epic-gltf-overview",
+      "url": "https://dev.epicgames.com/documentation/en-us/unreal-engine/the-gl-transmission-format-gltf-in-unreal-engine",
+      "kind": "primary_source",
+      "fetchedAtUtc": "2026-10-29T02:41:17.764676+00:00",
+      "httpStatuses": [200],
+      "path": ".local/evidence/world/valley/generation-research/3d/epic-gltf-overview.html",
+      "bytes": 57583,
+      "sha256": "032ca958057b98ababbf2159edb72693c6b682bebccff0ad0aa9e5b078d1498e"
+    },
+    {
+      "id": "account-pricing-endpoint",
+      "url": "https://api.fal.ai/v1/models/pricing?endpoint_id=openai%2Fgpt-image-2.5%2Fsunburst%2Ftext-to-image&endpoint_id=google%2Fnano-banana-2.1&endpoint_id=krea%2Fv3%2Ftext-to-image&endpoint_id=alibaba%2Fqwen-image-3%2Ftext-to-image",
+      "kind": "authenticated_read_only_pricing_metadata",
+      "fetchedAtUtc": "2026-10-29T02:41:30.054210+00:00",
+      "path": ".local/evidence/world/valley/generation-research/images/account-pricing.json",
+      "bytes": 445,
+      "sha256": "b81e95498135e25e0c02ac148c27f4220ba2acfcec0434bf8834fabfebb2aaf8"
+    }
+  ],
+  "failedSources": [
+    {
+      "url": "https://hyper3d.ai/terms",
+      "fetchedAtUtc": "2026-10-29T02:41:17.511753+00:00",
+      "httpStatus": 404,
+      "exitCode": 22,
+      "stderr": {
+        "path": ".local/evidence/world/valley/generation-research/3d/hyper3d-terms.stderr",
+        "bytes": 49,
+        "sha256": "0fb219efe96c7b0a4962325763ebbe3324456de8ca7b7d1e71142d92a6d8eab2"
+      },
+      "retried": false
+    },
+    {
+      "url": "https://www.meshy.ai/terms",
+      "fetchedAtUtc": "2026-10-29T02:41:17.511958+00:00",
+      "httpStatus": 404,
+      "exitCode": 22,
+      "stderr": {
+        "path": ".local/evidence/world/valley/generation-research/3d/meshy-terms.stderr",
+        "bytes": 49,
+        "sha256": "0fb219efe96c7b0a4962325763ebbe3324456de8ca7b7d1e71142d92a6d8eab2"
+      },
+      "retried": false
+    },
+    {
+      "url": "https://www.tripo3d.ai/terms-of-service",
+      "fetchedAtUtc": "2026-10-29T02:41:17.673676+00:00",
+      "httpStatus": 403,
+      "exitCode": 22,
+      "stderr": {
+        "path": ".local/evidence/world/valley/generation-research/3d/tripo-terms.stderr",
+        "bytes": 49,
+        "sha256": "e85a8cbf6458f846675a9fd218c04399e808ed1f6629e19c4dd964125cd967c9"
+      },
+      "retried": false
+    },
+    {
+      "url": "https://arena.ai/leaderboard/text-to-image",
+      "archive": {
+        "path": ".local/evidence/world/valley/generation-research/images/arena.html",
+        "bytes": 5480,
+        "sha256": "4ef7c1ded1fa2f411c85dfc005ea3d3ff9741008b6ecb0bb07b9e64240185102"
+      },
+      "headers": {
+        "path": ".local/evidence/world/valley/generation-research/images/arena.headers",
+        "bytes": 862,
+        "sha256": "463356c5259863d9fc79c09e7bdee8aa860bb6ecd266e5d448a1402378735ba5"
+      },
+      "httpStatus": 403,
+      "retried": false
+    }
+  ],
+  "sourceCaveats": [
+    "Some nonexistent/old fal endpoints returnHTTP200 generic Loading model shells; only pages with actualInput/Output schemas counted as available",
+    "Original developer.hyper3d.ai link redirects to generic homepage; canonical docs.hyper3d.ai route was fetched instead",
+    "fal pricing is a published quote, not actual billed cost; direct-provider credit prices must not be converted toUSD without account pricing",
+    "Vendor maximum resolution, face counts and timings are capabilities/claims, not measured quality or performance",
+    "Some parent image source requests were redirect-only; successful canonical-page archives provide model evidence. Failed/request-URL metadata is preserved and unresolved fields remain explicit.",
+    "Original generated concepts and partner API output are not automatically CC0, MIT or Fab Standard licensed.",
+    "All included file hashes were recomputed before writing this report; the mutable final generation manifest and cost totals are intentionally outside this research report at this point."
+  ],
+  "redirectedSources": [
+    {
+      "requestedUrl": "https://fal.ai/models?categories=text-to-image",
+      "httpStatus": 308,
+      "location": "/explore?categories=text-to-image",
+      "headers": {
+        "path": ".local/evidence/world/valley/generation-research/images/directory-redirect.headers",
+        "bytes": 367,
+        "sha256": "90dbd8a52fd2cdc435d89c737725893af59a20d8b75c5e0fbe4df662212812c8"
+      },
+      "body": {
+        "path": ".local/evidence/world/valley/generation-research/images/directory-redirect.body",
+        "bytes": 15,
+        "sha256": "7c040f8633b8823d72ed63da9b3b2dfe9846e912c66a64c9433ec9c4815d76c2"
+      },
+      "handling": "Followed canonical redirect; no request retry"
+    },
+    {
+      "requestedUrl": "https://fal.ai/models/fal-ai/gpt-image-2",
+      "httpStatus": 308,
+      "location": "/models/openai/gpt-image-2",
+      "headers": {
+        "path": ".local/evidence/world/valley/generation-research/images/gpt-image-2.headers",
+        "bytes": 353,
+        "sha256": "e21ccceaa8e153faa993922409c1825c534753a3d375fe184bbdcf50d45dcebe"
+      },
+      "body": {
+        "path": ".local/evidence/world/valley/generation-research/images/gpt-image-2.html",
+        "bytes": 15,
+        "sha256": "7c040f8633b8823d72ed63da9b3b2dfe9846e912c66a64c9433ec9c4815d76c2"
+      },
+      "handling": "Followed canonical redirect; no request retry"
+    },
+    {
+      "requestedUrl": "https://docs.fal.ai/llms.txt",
+      "httpStatus": 308,
+      "location": "https://fal.ai/docs/llms.txt",
+      "headers": {
+        "path": ".local/evidence/world/valley/generation-research/images/docs.headers",
+        "bytes": 357,
+        "sha256": "da068e86d480d932db16f1b70a8d4315bc54a1b13b4b0c30fb27e198d6a24212"
+      },
+      "body": {
+        "path": ".local/evidence/world/valley/generation-research/images/docs-llms.txt",
+        "bytes": 15,
+        "sha256": "7c040f8633b8823d72ed63da9b3b2dfe9846e912c66a64c9433ec9c4815d76c2"
+      },
+      "handling": "Followed canonical redirect; no request retry"
+    }
+  ],
+  "completedAtUtc": "2026-10-29T03:23:55.390997+00:00",
+  "generationResults": {
+    "summary": {
+      "path": ".local/evidence/world/valley/generated-references/generation-summary.json",
+      "bytes": 1016,
+      "sha256": "fb29c7dfdaa6b0cb2972da74eeed4a22753c9a63100d4de5f503b9ece498f822"
+    },
+    "billing": {
+      "path": ".local/evidence/world/valley/generated-references/billing-summary.json",
+      "bytes": 3609,
+      "sha256": "aad47a0bafa4e802c50d9bdfd6c6dbff1ca5bb30daf39b8d2d5a0b7679eb6b4e"
+    },
+    "selectedAssetLock": {
+      "path": "world/unreal/valley-generated-assets.lock.json",
+      "bytes": 134174,
+      "sha256": "28be35d15d08289ebc2241a4cca20ebaed35f07d8bffc8b2a2d951e99391a981"
+    },
+    "visualReview": {
+      "path": ".local/evidence/world/valley/generated-references/visual-review.json",
+      "bytes": 61265,
+      "sha256": "2a2e4a98ca2df627888d568669f604f26e538cac88e7681272d36683e7e74d03"
+    },
+    "overview": {
+      "path": ".local/world/valley/generated-references/review/all-assets.png",
+      "sha256": "39a76ad87d4dcd5dbee03884632d83ad84d18ea947241bd2e9a45f87859dc2ae",
+      "width": 5000,
+      "height": 7000,
+      "bytes": 40772923
+    }
+  }
+}
