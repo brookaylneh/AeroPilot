@@ -1,8 +1,7 @@
 # Search commander
 
-The mission service owns profiles, search plans, camera evidence and posterior.
-Use `/mission?case=<uuid>` in the assigned slot. [Agents](../agents/README.md) documents
-tools; [deployment](../../deploy/README.md) defines ports, receiving routes and ownership.
+The mission service owns profiles, plans, camera evidence and posterior. Use
+`/mission?case=<uuid>` in the assigned [slot](../../deploy/README.md).
 
 ## Places and directions
 
@@ -75,6 +74,10 @@ unsupported priors, stale plans and infeasible routes fail.
 an authored structure or forest footprint. Planning and camera evidence share this
 conservative boundary rule. This mass stays in belief; aerial expected POS excludes
 it without renormalizing it away. No canopy/interior detection calibration is assumed.
+
+`baselines.py` partitions an LKP-centred expanding square across the four safety sectors, preserving pattern order.
+This fleet adaptation and same-polygon parallel tracks share terrain, timing, capture spacing and aerial credit.
+Curves include 5, 10, 20 and 30 minutes; places.json records sources and measurement status.
 
 Terrain paths use the fewest deterministic links over samples at most 1 m apart,
 all within **30 ±1 m above ground**, leaving ±1 m for tracking. Quarter-metre heights
@@ -192,8 +195,5 @@ unfinished work ≤`ceil(offered_rate × 10 s)` and rate within 2% of offered. A
 and backlog remain visible. `bench_prompt_equivalence.py` compares decisions, IoU and
 scores. commander.json records cost/cadence; planner POS excludes processing delay.
 
-`evaluate_commander.py` scores the live pipeline offline with private labels.
-The Drone1 corpus and replay lanes do not prove cross-drone performance.
-`accept_browser.mjs commander` exercises camera/flight/operator/delivery;
-`report_flight.py` reduces flight logs. Run the six `AGENTS.md` checks, including
-truth isolation. places.json links sources, benchmarks, UI artifacts and dependencies.
+`evaluate_commander.py` scores the live pipeline offline; the Drone1 corpus does not prove cross-drone performance.
+`accept_browser.mjs commander` checks the operator flow; `report_flight.py` reduces flight logs. Run all six `AGENTS.md` checks, including truth isolation.

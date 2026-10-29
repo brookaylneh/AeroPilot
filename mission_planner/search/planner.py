@@ -33,6 +33,7 @@ RESERVE_SECONDS = 300.0
 SPACINGS_M = (12.0, 16.0, 20.0, 24.0, 32.0, 40.0)
 # The launch-column order keeps rear pads above the forward pads during ingress.
 SECTOR_DRONES = ("Drone1", "Drone3", "Drone2", "Drone4")
+SECTOR_INSET_M = 2.0
 TRANSIT_HEIGHTS_M = (70, 78, 86, 94)
 
 
@@ -132,7 +133,7 @@ def candidate(
     cumulative = np.zeros(len(centers))
     timeline = []
     for sector, name in enumerate(SECTOR_DRONES):
-        low, high = bounds[sector] + 2, bounds[sector + 1] - 2
+        low, high = bounds[sector] + SECTOR_INSET_M, bounds[sector + 1] - SECTOR_INSET_M
         offsets = (
             np.arange(low + spacing / 2, high, spacing)
             if axis == 0
@@ -344,6 +345,7 @@ def curve(result, grid, probability, vertices, model):
             600.0,
             900.0,
             1200.0,
+            1800.0,
             result["duration_s"],
             *[leg["ends_s"] for leg in result["timeline"]],
         }

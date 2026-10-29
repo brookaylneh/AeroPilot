@@ -90,7 +90,7 @@ class Planner(unittest.TestCase):
         for name in ("planned", "uniform_lawnmower"):
             curve = first["comparison"][name]
             self.assertTrue(all(a["pos"] <= b["pos"] for a, b in zip(curve, curve[1:])))
-            self.assertTrue({300, 600, 900, 1200}.issubset({p["seconds"] for p in curve}))
+            self.assertTrue({300, 600, 900, 1200, 1800}.issubset({p["seconds"] for p in curve}))
 
     def test_batch_collision_is_refused(self):
         p = {"north_m": -600.0, "east_m": 0.0, "altitude_above_home_m": 30.0}
@@ -175,6 +175,7 @@ class Planner(unittest.TestCase):
             "mission_planner.search." + name
             for name in (
                 "belief",
+                "baselines",
                 "behavior",
                 "commander",
                 "coverage",
@@ -194,7 +195,10 @@ class Planner(unittest.TestCase):
                 "tools",
             )
         )
-        pending, checked = ["mission_planner.gcs.service"], set()
+        pending, checked = (
+            ["mission_planner.gcs.service", "mission_planner.search.baselines"],
+            set(),
+        )
         while pending:
             module = pending.pop()
             if module in checked:

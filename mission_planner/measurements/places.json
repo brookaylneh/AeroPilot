@@ -301,9 +301,9 @@
         "woods": 17,
         "field": 14
       },
-      "linear_classes": "Map Linear to authored trail polylines, Road to road polylines, Drainage to creek polylines. The Linear\u2192trail and Drainage\u2192creek crosswalks are declared ontology assumptions.",
+      "linear_classes": "Map Linear to authored trail polylines, Road to road polylines, Drainage to creek polylines. The Linear→trail and Drainage→creek crosswalks are declared ontology assumptions.",
       "linear_exposure": "e_ki=g(d_ki)/g(0), using horizontal exact distance to the nearest polyline of that type and derivativeg of a monotone interpolated CDF through printed track-offset knots.",
-      "areal_classes": "Structure, Woods and Water require authored polygon geometry; use polygon-cell overlap exposure, with Structure\u2192structure, Woods\u2192forest, Water\u2192pond declared crosswalks. No point is assigned an invented physical footprint.",
+      "areal_classes": "Structure, Woods and Water require authored polygon geometry; use polygon-cell overlap exposure, with Structure→structure, Woods→forest, Water→pond declared crosswalks. No point is assigned an invented physical footprint.",
       "unresolved": "Brush 6% and Field 14% remain a 20% unresolved radial component when no authored classification exists. They are not re-labelled as all unmarked land or discarded.",
       "effective_area": "A_k=sum_i a_i e_ki. For a linear class this is effective kernel exposure area, not a measured corridor width.",
       "normalization": "Z_k=sum_i r_i e_ki/A_k; q_i=w_unresolved*r_i+sum_k w_k*(r_i*e_ki/A_k)/Z_k. Each component sums to one, class weights sum to one, so q sums to one. A_k cancels algebraically after per-component normalization; calculate each component with one normalization and report A_k separately.",
@@ -350,9 +350,9 @@
           "support": "Investigation, IPP, destination/route and determining direction of travel are planning inputs."
         }
       ],
-      "meaning": "A confirmed personally attributable cap is evidence of passage near c at an unknown deposition time \u03c4; it is not a detection of the current position.",
-      "formula": "p_t(x|C,D)=[integral_{t0}^{tfound} w(\u03c4) integral K\u03a3(c-y) p(X\u03c4=y,Xt=x|D)dy d\u03c4] / [integral_x integral_{t0}^{tfound} w(\u03c4) integral K\u03a3(c-y) p(X\u03c4=y,Xt=x|D)dy d\u03c4 dx].",
-      "terms": "D is prior search evidence; K\u03a3 is measured clue-localization error; w is a documented deposition-time likelihood; the joint path prior represents subject movement and barriers. Normalize over all states including outside-world mass.",
+      "meaning": "A confirmed personally attributable cap is evidence of passage near c at an unknown deposition time τ; it is not a detection of the current position.",
+      "formula": "p_t(x|C,D)=[integral_{t0}^{tfound} w(τ) integral KΣ(c-y) p(Xτ=y,Xt=x|D)dy dτ] / [integral_x integral_{t0}^{tfound} w(τ) integral KΣ(c-y) p(Xτ=y,Xt=x|D)dy dτ dx].",
+      "terms": "D is prior search evidence; KΣ is measured clue-localization error; w is a documented deposition-time likelihood; the joint path prior represents subject movement and barriers. Normalize over all states including outside-world mass.",
       "limits": [
         "No published clue-deposition-time distribution, subject-specific transition kernel or false-attribution rate was identified in these sources. Do not invent w or a speed from the mobility percentiles.",
         "Do not reset the current location to the clue point or grant camera detection credit.",
@@ -1559,7 +1559,7 @@
       "method": [
         "Exact 128-phase calibration retained. Periodic interior positions are reused per model/spacing; edge phases remain explicit. Sparse POD values replace full-grid candidate arrays.",
         "Candidate evaluation uses a proven cruise-time lower bound and evaluates terrain paths only while their gain/cost upper bound can improve the best exact result. Budget and safety checks remain asserted.",
-        "Terrain simplification still checks all samples at spacing\u22641metre and tolerance\u00b11metre. An implicit forward visibility graph uses breadth-first levels for minimum links and descending successors for the existing farthest-first tie-break.",
+        "Terrain simplification still checks all samples at spacing≤1metre and tolerance±1metre. An implicit forward visibility graph uses breadth-first levels for minimum links and descending successors for the existing farthest-first tie-break.",
         "Only appended timing segments are recomputed, with duplicate-position handling independent of metadata. Completed portions of curves are evaluated once.",
         "Twelve independent candidates run in four spawned processes; results are collected in their original order, preserving deterministic ties. Materialization, validation and final curves stay in the parent process."
       ],
@@ -1784,5 +1784,127 @@
       "readme_lines": 199,
       "real_landmarks_present": false
     }
+  },
+  "fair_baselines": {
+    "recorded_utc": "2026-10-29T02:41:02.763291+00:00",
+    "status": "Stopped at user request pending authored valley obstacle retag; no hero valley POS comparison has run.",
+    "implementation": {
+      "obstacle_commit": "a95d20c",
+      "fixed_pattern_commit": "518b8a1",
+      "obstacle": "Height clearance and directions only; excluded from behavior prior, aerial occlusion and hasty structure checks. Structure means roofed and enterable.",
+      "square": "LKP-centred S,S,2S,2S clockwise geometry clipped into the same four separated sectors; each drone preserves its assigned segment direction/order and stops at the first unaffordable leg. Fleet partition is an explicit adaptation.",
+      "clock": "Existing terrain, launch, transit, search, return, landing and reserves. Connectors earn no detection credit. Exact curve samples at 300,600,1200,1800 seconds.",
+      "truth_isolation": "Import-closure isolation includes the offline baselines module; full suite passes."
+    },
+    "primary_source": {
+      "title": "National Search and Rescue Manual, 2026 Edition Version 1 – February 2026",
+      "issuer": "Australian National Search and Rescue Council",
+      "publication_page": "https://www.amsa.gov.au/national-search-and-rescue-council/manuals-and-publications/national-search-and-rescue-manual",
+      "volume2": {
+        "url": "https://www.amsa.gov.au/sites/default/files/2026-03/NATSAR-Manual-February-2026-Volume-2.pdf",
+        "path": ".local/evidence/search/fair-baselines/sources-01/amsa-natsar-volume-2-2026.pdf",
+        "sha256": "216197f144b936913905db380fdb3770c6df4ff0c90290d82a4da52a28f69dab",
+        "quotes": [
+          {
+            "section": "4.5.6",
+            "printed_page": 225,
+            "pdf_page_1based": 152,
+            "quote": "The choice of search pattern is the prerogative of the SMC, who may elect to use only one pattern or several patterns simultaneously but in different areas."
+          },
+          {
+            "section": "4.5.11",
+            "printed_page": 225,
+            "pdf_page_1based": 152,
+            "quote": "Parallel track search patterns can be used for searches involving one or a group of search assets and are the simplest patterns available. The pilot/coxswain of a search vessel steers straight courses or search legs, each leg being one track spacing from the other."
+          },
+          {
+            "section": "4.5.24",
+            "printed_page": 228,
+            "pdf_page_1based": 155,
+            "quote": "This procedure is referred to as an expanding square search as it begins at the reported position or most probable location and expands outwards in concentric squares."
+          },
+          {
+            "section": "4.5.28",
+            "printed_page": 229,
+            "pdf_page_1based": 156,
+            "quote": "The first two legs are held to a distance equal to the track spacing and every succeeding two legs are increased by another track spacing. Turns may be to the left or right, depending upon the observer positions."
+          },
+          {
+            "section": "4.5.30",
+            "printed_page": 229,
+            "pdf_page_1based": 156,
+            "quote": "Scanning should start at a distance of \"S\" before reaching the most probable position to avoid leaving an area not scanned near the start point. Observers should be briefed to pay particular attention to the areas outwards of each turn to avoid leaving areas not scanned."
+          },
+          {
+            "section": "4.5.31",
+            "printed_page": 229,
+            "pdf_page_1based": 156,
+            "quote": "To minimise navigational errors, the first leg is usually oriented directly into the wind."
+          }
+        ],
+        "geometry_figure": "Figure 4-8, printed page 229 / PDF page 156"
+      },
+      "preliminaries": {
+        "url": "https://www.amsa.gov.au/sites/default/files/2026-03/NATSAR-Manual-February-2026-Preliminaries.pdf",
+        "path": ".local/evidence/search/fair-baselines/sources-01/amsa-natsar-preliminaries-2026.pdf",
+        "sha256": "22cd1b7d761a9f2163ba4df049a3c1928021cacd3e0d45ed970a255edc8188ee",
+        "printed_page": 2,
+        "pdf_page_1based": 4,
+        "quote": "It has been developed with due regard to the International Aviation and Maritime Search and Rescue Manual (IAMSAR)."
+      },
+      "source_scope": "Primary national SAR procedure source explicitly developed with due regard to IAMSAR. Original ICAO/IMO IAMSAR text was not retrieved; do not attribute these verbatim quotes to that book.",
+      "fleet_scope": "The S,S,2S,2S,... right-angle leg construction follows the source; clipping that geometry to four fixed separated sectors and concurrently assigning those pieces to four drones is an implementation adaptation, not a sourced IAMSAR fleet algorithm.",
+      "notes": [
+        "Coordinate first leg with wind when wind is modelled; otherwise state chosen orientation.",
+        "Source recommends scanning S before datum. If omitted because requested pattern starts at LKP and ingress receives no camera credit, state that modelling difference.",
+        "Source identifies parallel-track as aligned to major axis and creeping-line as aligned to minor axis (4.5.8). If optimizing either axis call the baseline parallel/creeping-track lawnmower, or report which orientation won."
+      ]
+    },
+    "blocked_input": {
+      "path": "/home/brook_avionuas/snr-valley/world/unreal/landmarks.json",
+      "observed_valley_commit": "f061e8fa7a985147422fdf9dd6440b5496453fa5",
+      "observed_sha256": "f6810dfcb4e9dcffbae55f577f934c5181cdefae9bb5193fb49c60976b493d00",
+      "ids_requiring_authored_obstacle_kind": [
+        "trail-fork-sign",
+        "ranger-fence",
+        "fire-ring"
+      ],
+      "observed_kind": "structure",
+      "source_modified_by_search": false
+    },
+    "checks": {
+      "npm_test": {
+        "exit_code": 0,
+        "tests": 17
+      },
+      "typecheck": {
+        "exit_code": 0
+      },
+      "format_check": {
+        "exit_code": 0
+      },
+      "ruff_check": {
+        "exit_code": 0
+      },
+      "ruff_format": {
+        "exit_code": 0,
+        "files": 101,
+        "initial_failure": "New truth-isolation root list needed wrapping; initial log retained, formatted and checked again in ruff-format-fixed.log."
+      },
+      "unittest": {
+        "exit_code": 0,
+        "tests": 245,
+        "seconds": 11.96
+      }
+    },
+    "evidence_directory": ".local/evidence/search/fair-baselines",
+    "prepared_scripts": ".local/staging/fair-baselines/",
+    "usage": {
+      "fal_runners_started": 0,
+      "model_calls": 0,
+      "flights": 0,
+      "inference_cost_usd": 0
+    },
+    "readme_lines": 199
   }
 }
