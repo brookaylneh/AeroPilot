@@ -160,9 +160,9 @@ exists. The bundled cache contains graphics, compute and ray-tracing shader entr
 UE 5.8.2 reconstructs partial ray-tracing pipelines from those entries; this does not
 prove coverage of every complete runtime ray-tracing pipeline.
 
-`review-render-quality.py NAME VARIANT...` publishes measured person, meadow and port
-images to `.local/dist/NAME/index.html`. Names start with `render-quality-`; the destination
-must be new. It verifies recorded screenshot hashes and publishes only those images and
+`review-render-quality.py NAME VARIANT...` groups measured person, meadow, elevated,
+port and moving-view images by pose for comparison at `.local/dist/NAME/index.html`.
+Names start with `render-quality-`; the destination must be new. It verifies recorded screenshot hashes and publishes only those images and
 summary measurements, leaving private authoring state in evidence.
 
 For a capacity run, append `STREAMER_ID` after the explicit four-drone capture cadence.

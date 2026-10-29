@@ -25,7 +25,8 @@ def main():
     assert all("screenshot_files" in entry for entry in variants), "Missing image hash manifest"
     output = Path(".local/dist") / args.name
     output.mkdir()
-    rows, cards, artifacts = [], [], []
+    rows, artifacts = [], []
+    cards = {pose: [] for pose in ("person", "meadow", "elevated", "port", "moving-view")}
     for entry in variants:
         name = entry["name"]
         assert name.replace("-", "").isalnum(), name
@@ -34,7 +35,7 @@ def main():
         gpu = summary["gpuMs"]
         rows.append(
             f"<tr><th>{label}</th><td>{profile['width']} × {profile['height']}"
-            f" / {profile['internalRenderPercentage']}%</td>"
+            f" @ {profile['fps']} FPS / {profile['internalRenderPercentage']}%</td>"
             f"<td>{gpu['mean']:.2f} / {gpu['p95']:.2f} / {gpu['p99']:.2f}</td>"
             f"<td>{summary['decodedFps']:.2f} / {summary['presentedFps']:.2f}</td>"
             f"<td>{summary['freezes']} / {summary['gapsOver100Ms']}</td>"
@@ -42,7 +43,7 @@ def main():
             f"<td>{summary['graphicsMHz']['mean']:.0f}</td>"
             f"<td>{summary['seconds']:.1f}</td></tr>"
         )
-        cards.append(f"<h2>{label}</h2><p>{html.escape(entry['workload'])}</p><div class=poses>")
+        rows.append(f"<tr><td colspan=9>{html.escape(entry['workload'])}</td></tr>")
         poses = [
             Path(item["path"]).stem
             for item in entry["screenshot_files"]
@@ -62,13 +63,12 @@ def main():
             with Image.open(source) as image:
                 image.thumbnail((1280, 720))
                 image.convert("RGB").save(thumbnail, quality=92)
-            cards.append(
+            cards[pose].append(
                 f'<figure><a href="{original.name}"><img loading=lazy src="{thumbnail.name}" '
-                f'alt="{label}: {pose}"></a><figcaption>{pose} · '
+                f'alt="{label}: {pose}"></a><figcaption>{label} · '
                 f'<a href="{original.name}">Full resolution</a></figcaption></figure>'
             )
             artifacts.append({"source": str(source), "published": str(original), "sha256": digest})
-        cards.append("</div>")
     document = """<!doctype html>
 <html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width">
 <title>Render quality comparisons</title>
@@ -89,7 +89,11 @@ for each variant; compare equivalent workloads. Screenshots contain no evaluator
 <div class="table"><table><thead><tr><th>Variant</th><th>Output / internal</th><th>GPU ms</th>
 <th>Decoded / presented FPS</th><th>Freezes / gaps &gt;100 ms</th><th>Mbps</th><th>Watts</th><th>MHz</th><th>Seconds</th></tr></thead><tbody>
 """
-    document += "\n".join(rows) + "</tbody></table></div>\n" + "\n".join(cards) + "</html>\n"
+    document += "\n".join(rows) + "</tbody></table></div>\n"
+    for pose, figures in cards.items():
+        if figures:
+            document += f"<h2>{pose}</h2><div class=poses>" + "\n".join(figures) + "</div>\n"
+    document += "</html>\n"
     (output / "index.html").write_text(document)
     manifest = {"page": f"/{args.name}/index.html", "variants": args.variants, "images": artifacts}
     (output / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
