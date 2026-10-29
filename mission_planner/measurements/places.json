@@ -1,15 +1,19 @@
 {
   "schema_version": 1,
-  "stage": 1,
-  "status": "implemented_for_review; valley_integration_pending",
-  "recorded_at_unix_s": 1793234159.0059516,
+  "stage": 2,
+  "status": "implemented_for_review",
+  "recorded_at_unix_s": 1793236728.50283,
   "accepted_base": "fba7c24",
+  "accepted_stage_1": {
+    "path": ".local/evidence/search/places-stage2/accepted-stage1.json",
+    "sha256": "cabac73e28ca8d9d7974aaae13432c64e096970518e405455af9edd191a589bc"
+  },
   "implementation_commits": [
-    "6b8f9ff0a9aadd0336ba2a1639b4db2420d1de1a Show landmark approvals and lead-region evidence on mission maps",
-    "ca6182cbf78fe339f2f169a3635099ddef897584 Resolve quoted last-known places with operator approval",
-    "3920115102cdaca09a0eec7987055e0a6e74b3b8 Define public landmark schema and exact place directions"
+    "905b1447a0760bb3d72f4b9addc7b861cf774afa Add sourced Sierra dementia feature priors and readable probability maps",
+    "25f7c23c436ece9c640b56c809abc207d5be2b25 Keep map and evidence-card lead probabilities identical",
+    "ff29e7f5cbef93ff86e5fe1959a731eabd613379 Enforce landmark height clearance across routes and re-looks"
   ],
-  "stage_2": "not_started; stop_after_stage_1",
+  "source_snapshot": ".local/evidence/search/places-stage2/final-01/sources.json",
   "world": {
     "path": "world/cosys/world.json",
     "sha256": "3fa47f8023eecb10b72b88276063ae5775e950932c1c696a4d80f4ab264ec188",
@@ -29,7 +33,7 @@
       "x": 1609.344,
       "y": 1609.344
     },
-    "extent_policy": "All new landmark bounds come from world.json. No resize data or invented valley landmarks committed."
+    "extent_policy": "World size is read only from world.json. This run uses the current checkout, not the deferred resized valley."
   },
   "places": {
     "schema": "world/cosys/README.md#public-landmarks",
@@ -42,7 +46,7 @@
       "polyline"
     ],
     "line_prior": {
-      "assumption": "Unknown position uniform along approved arclength; no behaviour weighting in Stage 1.",
+      "assumption": "Unknown initial location is uniform along approved arclength; dementia feature conditioning follows the radial initialization.",
       "formula": "m_i = A_i * sum_j(w_j * mean_q rho(||x_iq - s_j||^2)); w_j = segment_length/(sample_count * total_length); M = sum_i m_i; p_i = m_i/M.",
       "normalization": "Weights sum to one. Average unconditioned radial cell masses before world conditioning; retained mass is M. Existing single-point prior is the one-support case.",
       "quadrature": "Midpoints of segments divided so each interval is no longer than the shortest grid-cell side. The line midpoint is a map anchor only."
@@ -55,7 +59,9 @@
       "evidence card",
       "ground-team delivery/page"
     ],
-    "hero_profile": "Age 74 in the exact father-comma-age-comma quotation is supported; time, duration and separate quotation fragments do not supply age."
+    "hero_profile": "Age 74 in the exact father-comma-age-comma quotation is supported; time, duration and separate quotation fragments do not supply age.",
+    "height_contract": "Required finite heightM; positive-height landmarks require authored polygon footprints. Trail, road, creek and pond heights are zero. No invented widths or footprints.",
+    "missing_catalogue": "Missing public data is visible and blocks place lookup, dementia feature planning and flight-clearance checks. A new mission reloads integrated authored data."
   },
   "headline": {
     "record_id": "2c3b414ab3f3d2420a218522-0-0",
@@ -81,87 +87,440 @@
     },
     "evidence": ".local/evidence/search/places-stage1/headline-01/result.json"
   },
-  "wonder": {
-    "cases": 52,
-    "exact_passes": 51,
-    "misses": [
-      32
-    ],
-    "http_200": 52,
-    "place_cases": [
-      {
-        "case": 47,
-        "request": "Resolve the named place 'FOOTBRIDGE' using the landmark catalogue.",
-        "actual": [
-          {
-            "name": "find_place",
-            "arguments": {
-              "name": "FOOTBRIDGE"
-            }
-          }
+  "behavior": {
+    "source_tables": {
+      "find_location": {
+        "source": "dementia",
+        "printed_page": 165,
+        "pdf_page": 5,
+        "verbatim_header": "Find Location (%)",
+        "verbatim_column": "Temp",
+        "n": 207,
+        "percent": {
+          "structure": 20,
+          "road": 18,
+          "linear": 9,
+          "drainage": 9,
+          "water": 7,
+          "brush": 6,
+          "woods": 17,
+          "field": 14
+        },
+        "verbatim_rows": [
+          "Structure 20%",
+          "Road 18%",
+          "Linear 9%",
+          "Drainage 9%",
+          "Water 7%",
+          "Brush 6%",
+          "Woods 17%",
+          "Field 14%"
         ],
-        "passed": true
+        "percent_sum": 100,
+        "scope": "Temperate pooled; mountain/flat not separated. Blank Scrub/Rock cells are not interpreted as measured zero."
       },
-      {
-        "case": 48,
-        "request": "Look up the exact alias 'crossing'. It may name more than one place; show all matching candidates.",
-        "actual": [
-          {
-            "name": "find_place",
-            "arguments": {
-              "name": "crossing"
-            }
-          }
+      "track_offset": {
+        "source": "dementia",
+        "printed_page": 165,
+        "pdf_page": 5,
+        "verbatim_header": "Track Offset (meters)",
+        "n": 110,
+        "percentiles": [
+          25,
+          50,
+          75,
+          95
         ],
-        "passed": true
-      },
-      {
-        "case": 49,
-        "request": "Look up 'Unlisted Saddle' exactly. If unknown, show the known names.",
-        "actual": [
-          {
-            "name": "find_place",
-            "arguments": {
-              "name": "Unlisted Saddle"
-            }
-          }
+        "metres": [
+          4,
+          15,
+          71,
+          307
         ],
-        "passed": true
-      },
-      {
-        "case": 50,
-        "request": "Give landmark directions for the point 38 metres north and 12 metres west of mission origin.",
-        "actual": [
-          {
-            "name": "describe_location",
-            "arguments": {
-              "north_m": 38.0,
-              "east_m": -12.0
-            }
-          }
+        "verbatim_rows": [
+          "n 110",
+          "25% 4",
+          "50% 15",
+          "75% 71",
+          "95% 307"
         ],
-        "passed": true
+        "scope": "No domain, mountain/flat, age, severity or feature-type stratification is printed."
+      },
+      "radial": {
+        "source": "dementia",
+        "printed_page": 164,
+        "pdf_page": 4,
+        "verbatim_header": "Distance (horizontal) from the IPP (kilometers)",
+        "verbatim_column": [
+          "Temperate",
+          "Mtn"
+        ],
+        "n": 95,
+        "percentiles": [
+          25,
+          50,
+          75,
+          95
+        ],
+        "kilometres": [
+          0.3,
+          0.8,
+          1.9,
+          8.3
+        ]
+      },
+      "mobility": {
+        "source": "dementia",
+        "printed_page": 164,
+        "pdf_page": 4,
+        "verbatim_header": "Mobility (hours)",
+        "verbatim_column": "Temperate",
+        "n": 42,
+        "percentiles": [
+          25,
+          50,
+          75,
+          95
+        ],
+        "hours": [
+          0,
+          0.25,
+          3.8,
+          18
+        ],
+        "scope": "Temperate pooled; no mountain-specific mobility or age/severity split. Zero 25th percentile does not justify a purely continuous movement-time model."
+      },
+      "dispersion": {
+        "source": "dementia",
+        "printed_page": 164,
+        "pdf_page": 4,
+        "verbatim_header": "Dispersion Angle (degrees)",
+        "verbatim_column": "Temperate",
+        "n": 11,
+        "percentiles": [
+          25,
+          50,
+          75,
+          95
+        ],
+        "degrees": [
+          11,
+          23,
+          66,
+          70
+        ],
+        "scope": "Temperate pooled; no mountain-specific dispersion or transition kernel."
+      },
+      "elevation": {
+        "source": "dementia",
+        "printed_page": 164,
+        "pdf_page": 4,
+        "verbatim_header": "Elevation (vertical) Change from the IPP (feet)",
+        "verbatim_column": "Temperate",
+        "percent": {
+          "uphill": 19,
+          "down": 42,
+          "same": 39
+        },
+        "median_feet": {
+          "uphill": 75,
+          "down": 60
+        },
+        "n": null,
+        "scope": "Sample size and mountain/flat split are not printed."
+      }
+    },
+    "verbatim_source_passages": [
+      {
+        "source": "dementia",
+        "printed_page": 162,
+        "pdf_page": 2,
+        "quote": "In an urban environment, the subject is typically found in structures or walk- ing along roads. In both urban and wilderness environments, the subject is highly likely to cross or depart from a road (66%).47 If the subject leaves the road or travel feature, he does not travel far. He may often go unnoticed unless his dress is highly unusual. Track offset statistics for dementia are the shortest of all subject categories. In the wilderness, the subject is typically walking or gets stuck in brush/briars or drainages. Structures are common. Subjects are also attracted to water features and will walk into water (perhaps without even realizing it is water). They are generally mobile for only a short period of time. In temperate domains, half of the subjects are mobile for less than an hour. In dry domains, subjects remain mobile longer."
       },
       {
-        "case": 51,
-        "request": "The find_place result for 'crossing' returned two candidates: bridge-a, North Bridge; bridge-b, South Bridge. Ask me which one I mean before proposing a last known location. No new lookup is needed.",
-        "actual": [],
-        "passed": true
+        "source": "limitations",
+        "printed_page": 31,
+        "pdf_page": 1,
+        "quote": "Currently, the ISRID database provides no guidance (or weight) to local history, decision points or terrain analysis.",
+        "verification": "Visually transcribed from limitations-page-1.png. The sorted PDF extractor inserted the preceding paragraph drop-cap T between no and guidance; the original extracts.json is preserved."
       },
       {
-        "case": 52,
-        "request": "The find_place result for 'Unlisted Saddle' has no matches and known_names ['North Bridge', 'Creek Loop']. Present those names and ask me to choose or mark the map; keep this response to that clarification.",
-        "actual": [],
-        "passed": true
+        "source": "categories",
+        "printed_page": 91,
+        "pdf_page": 1,
+        "quote": "This is the first time results are presented by temperate or dry domain (Chapter 2). If the searcher is in a polar domain it is suggested to use the dry domain result. If in a tropical domain the temperate domain result will be the best fit. In addition, separate results for urban searches are presented. Chapter 7 describes in detail how all the data was obtained and organized. All data and results are derived from ISRID unless otherwise cited in the specific result table."
+      },
+      {
+        "source": "notes",
+        "printed_page": 373,
+        "pdf_page": 3,
+        "quote": "Bailey, Robert. 1995. Description of the Ecoregions of the United States. 2nd ed., revised. Misc. Publication No. 1391. Washington, DC: United States Department of Agriculture."
+      },
+      {
+        "source": "dementia",
+        "printed_page": 163,
+        "pdf_page": 3,
+        "quote": "not leave many verifiable clues.",
+        "context": "Sentence begins on preceding printed page 162: They will ..."
       }
     ],
-    "usage": {
-      "input_tokens": 290206,
-      "output_tokens": 8126,
-      "cached_input_tokens": 274600,
-      "uncached_input_tokens": 15606
+    "ecoregion": {
+      "selection": "temperate_mountainous",
+      "origin_context": "Tuolumne Meadows, about 2600 m, from user brief. No numeric location lookup was needed or invented.",
+      "classification": "Bailey M261 Sierran province; M260 Mediterranean Division Mountain Provinces; 200 Humid Temperate Domain.",
+      "primary_sources": [
+        {
+          "url": "https://www.fs.usda.gov/land/ecosysmgmt/colorimagemap/ecoreg1_provinces.html",
+          "section": "Ecosystem Provinces hierarchy",
+          "quotes": [
+            "200 HUMID TEMPERATE DOMAIN",
+            "M260 Mediterranean Division - Mountain Provinces",
+            "M261 Sierran Steppe--Mixed Forest--Coniferous Forest--Alpine Meadow Province"
+          ],
+          "evidence_file": ".local/evidence/search/places-stage2/sources-01/usfs-provinces.body"
+        },
+        {
+          "url": "https://www.fs.usda.gov/land/ecosysmgmt/colorimagemap/images/m261.html",
+          "section": "Land-surface form",
+          "quote": "This province covers the southernmost portion of the Cascade Mountains, the northern Coast Range, the Klamath Mountains, and the Sierra Nevada.",
+          "evidence_file": ".local/evidence/search/places-stage2/sources-01/usfs-sierran-province.body"
+        }
+      ],
+      "rationale": "Sierra Nevada is within the named humid-temperate mountain province. A summer-dry Mediterranean climate is not by itself the Bailey Dry Domain. Category-specific tables must consistently use that ecoregion; unavailable category/domain statistics must fail explicitly rather than switch domains."
     },
-    "list_price_cost_usd": 0.279864,
+    "model": {
+      "status": "Supportable only as an explicitly provisional marginal mixture, not a source-validated terrain behavior model.",
+      "base": "r_i is the existing in-world radial cell probability. Its retained unconditioned in-world massR is preserved separately.",
+      "class_weights": {
+        "structure": 20,
+        "road": 18,
+        "linear": 9,
+        "drainage": 9,
+        "water": 7,
+        "brush": 6,
+        "woods": 17,
+        "field": 14
+      },
+      "linear_classes": "Map Linear to authored trail polylines, Road to road polylines, Drainage to creek polylines. The Linear\u2192trail and Drainage\u2192creek crosswalks are declared ontology assumptions.",
+      "linear_exposure": "e_ki=g(d_ki)/g(0), using horizontal exact distance to the nearest polyline of that type and derivativeg of a monotone interpolated CDF through printed track-offset knots.",
+      "areal_classes": "Structure, Woods and Water require authored polygon geometry; use polygon-cell overlap exposure, with Structure\u2192structure, Woods\u2192forest, Water\u2192pond declared crosswalks. No point is assigned an invented physical footprint.",
+      "unresolved": "Brush 6% and Field 14% remain a 20% unresolved radial component when no authored classification exists. They are not re-labelled as all unmarked land or discarded.",
+      "effective_area": "A_k=sum_i a_i e_ki. For a linear class this is effective kernel exposure area, not a measured corridor width.",
+      "normalization": "Z_k=sum_i r_i e_ki/A_k; q_i=w_unresolved*r_i+sum_k w_k*(r_i*e_ki/A_k)/Z_k. Each component sums to one, class weights sum to one, so q sums to one. A_k cancels algebraically after per-component normalization; calculate each component with one normalization and report A_k separately.",
+      "out_of_world": "Use R*q_i for unconditional in-world mass, leaving outside mass 1-R unchanged.",
+      "unknowns": [
+        "Joint dependence of radius, track offset and find class is unmeasured.",
+        "Track-offset endpointF(0)=0 and upper 5% tail shape are interpolation assumptions.",
+        "Separate creek, trail and road offset likelihoods are unavailable.",
+        "The briefing tendency to follow water supplies no calibrated numerical multiplier.",
+        "Dementia mobility/dispersion marginals do not identify dynamic transition probabilities.",
+        "If a supported polygon or linear class is missing, fail that feature prior explicitly rather than inventing geometry or silently redistributing its weight."
+      ],
+      "input_constraints": "All six mapped source classes must be present. Areal classes require polygons. Overlapping or touching polygons within one class and partially fence-clipped probability cells fail explicitly.",
+      "offset_interpolation": "Cubic Hermite CDF in distance with PCHIP slopes and the final secant slope; exact published percentile knots and a derivative-matched exponential 5% tail. F(0)=0 and tail shape are modeling assumptions.",
+      "quadrature": "Line exposure averages the offset density at four quarter-cell sample points; each sample uses exact horizontal segment projection with endpoint caps.",
+      "domain_policy": {
+        "dementia": "temperate_mountainous",
+        "child_td_1_16": "temperate",
+        "unsupported": [
+          "hiker",
+          "elderly_non_dementia",
+          "unknown"
+        ],
+        "rule": "Unsupported local category/domain tables fail explicitly; no Australian or dry-domain substitution."
+      }
+    },
+    "clue_design_only": {
+      "source_basis": [
+        {
+          "source": "dementia",
+          "printed_pages": [
+            162,
+            163,
+            166
+          ],
+          "support": "Qualitative travel-corridor/track investigation and scarcity of verifiable clues; no deposition-time or clue-association likelihood."
+        },
+        {
+          "source": "poa",
+          "printed_pages": [
+            296,
+            297
+          ],
+          "support": "Investigation, IPP, destination/route and determining direction of travel are planning inputs."
+        }
+      ],
+      "meaning": "A confirmed personally attributable cap is evidence of passage near c at an unknown deposition time \u03c4; it is not a detection of the current position.",
+      "formula": "p_t(x|C,D)=[integral_{t0}^{tfound} w(\u03c4) integral K\u03a3(c-y) p(X\u03c4=y,Xt=x|D)dy d\u03c4] / [integral_x integral_{t0}^{tfound} w(\u03c4) integral K\u03a3(c-y) p(X\u03c4=y,Xt=x|D)dy d\u03c4 dx].",
+      "terms": "D is prior search evidence; K\u03a3 is measured clue-localization error; w is a documented deposition-time likelihood; the joint path prior represents subject movement and barriers. Normalize over all states including outside-world mass.",
+      "limits": [
+        "No published clue-deposition-time distribution, subject-specific transition kernel or false-attribution rate was identified in these sources. Do not invent w or a speed from the mobility percentiles.",
+        "Do not reset the current location to the clue point or grant camera detection credit.",
+        "Repeated photographs of the same confirmed clue are one passage observation.",
+        "Implement only after justified time/path/attribution inputs exist; otherwise retain it as an operator-visible investigation lead."
+      ],
+      "implemented": false
+    },
+    "fixture": {
+      "scope": "Explicit fictional geometry fixture on current checked-out heightfield; not real valley or flight acceptance",
+      "evidence": ".local/evidence/search/places-stage2/fixture-05/report.json",
+      "search_state": ".local/evidence/search/places-stage2/fixture-05/search.json",
+      "geometry": ".local/evidence/search/places-stage2/fixture-05/landmarks-fixture.json",
+      "prior_seconds": 0.5457108480040915,
+      "retained_radial_mass": 0.497104318527604,
+      "outside_mass_unchanged": 0.5028956814723959,
+      "probability_sum": 1.0,
+      "probability_min": 1.878472777284467e-08,
+      "probability_max": 0.005618464060228553,
+      "within_track_median_15m": {
+        "radial_mass": 0.09428769705852923,
+        "behavior_mass": 0.14872010121579582
+      },
+      "components": [
+        {
+          "source_class": "Structure",
+          "weight": 0.2,
+          "area_m2": 582.7473248256138,
+          "area_kind": "authored polygon area clipped to probability cells",
+          "radial_normalizer": 0.0002779930141064745
+        },
+        {
+          "source_class": "Road",
+          "weight": 0.18,
+          "area_m2": 36804.417402981126,
+          "area_kind": "effective corridor area; pooled offset density relative to its value at zero",
+          "radial_normalizer": 0.012511732491653545
+        },
+        {
+          "source_class": "Linear",
+          "weight": 0.09,
+          "area_m2": 61386.583215858394,
+          "area_kind": "effective corridor area; pooled offset density relative to its value at zero",
+          "radial_normalizer": 0.046451668064842196
+        },
+        {
+          "source_class": "Drainage",
+          "weight": 0.09,
+          "area_m2": 40554.45121583253,
+          "area_kind": "effective corridor area; pooled offset density relative to its value at zero",
+          "radial_normalizer": 0.03433697997142165
+        },
+        {
+          "source_class": "Water",
+          "weight": 0.07,
+          "area_m2": 6733.969086873616,
+          "area_kind": "authored polygon area clipped to probability cells",
+          "radial_normalizer": 0.0006569526378183623
+        },
+        {
+          "source_class": "Brush",
+          "weight": 0.06,
+          "area_m2": 2589988.1103359787,
+          "area_kind": "unmapped source class; unresolved radial background",
+          "radial_normalizer": 1.0000000000000002
+        },
+        {
+          "source_class": "Woods",
+          "weight": 0.17,
+          "area_m2": 62159.71464806401,
+          "area_kind": "authored polygon area clipped to probability cells",
+          "radial_normalizer": 0.028920523426861872
+        },
+        {
+          "source_class": "Field",
+          "weight": 0.14,
+          "area_m2": 2589988.1103359787,
+          "area_kind": "unmapped source class; unresolved radial background",
+          "radial_normalizer": 1.0000000000000002
+        }
+      ],
+      "expected_pos": {
+        "scope": "Conservative phase-averaged maximum-look expectation; stationary target, conditional on in-world presence",
+        "evaluation_seconds": 1200,
+        "planned": 0.646534311551941,
+        "uniform_lawnmower": 0.24552074514272043,
+        "absolute_difference": 0.40101356640922053,
+        "ratio": 2.6333184642956042,
+        "full_curves": ".local/evidence/search/places-stage2/fixture-04/plan.json#comparison",
+        "selected_plan_id": "b0fc033d9cb6e4955c5ae947",
+        "plan_compute_seconds": 262.81289247900713,
+        "route_duration_s": 1677.6427250336212,
+        "final_planned_pos": 0.6900671386427506,
+        "route_spacing_m": 20.0,
+        "capture_spacing_m": 16.0,
+        "max_sampled_agl_error_m": 0.999961551307738,
+        "flight_measured": false,
+        "limitation": "Production planner calculation on fictional landmark geometry and the checked-out terrain, using the existing provisional detection model. This is not measured rescue performance or real-valley acceptance."
+      }
+    }
+  },
+  "height_clearance": {
+    "clearance_m": 10,
+    "implementation": [
+      "mission_planner/gcs/validation.py",
+      "world/cosys/terrain.py"
+    ],
+    "rule": "At least 10 m above terrain plus heightM inside each footprint, including zero-height polygons; exact segment/polygon intervals, tangencies, heightfield-cell splits and quadratic minima check continuous clearance.",
+    "ground_contact": "Takeoff, landing and RTL ground columns reject raised footprints; zero-height surfaces remain allowed during ground contact.",
+    "coverage": "Planning, flight execution and re-look/resume share the checks. Missing catalogue data blocks clearance validation.",
+    "verification": "Inline geometry tests; no new flight measurement."
+  },
+  "pipeline_capacity_reference": {
+    "source": ".local/evidence/search/places-stage2/fixture-05/search.json#summary.pipeline_capacity",
+    "applies_to_profile": false,
+    "arrival_to_belief_p95_s": 2.53796584765223,
+    "capture_spacing_m": 16.0,
+    "completed_rate_fps": 1.255736367381822,
+    "evidence": ".local/evidence/search/commander-stage3/gate-two-490-01/throughput.json",
+    "per_drone_interval_s": 3.2,
+    "required_rate_fps": 1.25,
+    "sam_runners": 2,
+    "speed_limit_mps": 5.0,
+    "sustains_required_rate": true,
+    "scope": "Accepted Phase 5 Stage 3 capacity displayed without a new inference run. applies_to_profile is false for this hero prompt set; hero-prompt throughput remains unmeasured."
+  },
+  "wonder": {
+    "model": "muse-wonder-1.0",
+    "effort": "low",
+    "cases": 52,
+    "exact_passes": 50,
+    "accuracy": 0.9615384615384616,
+    "misses": [
+      32,
+      35
+    ],
+    "http_200": 52,
+    "place_cases": {
+      "cases": [
+        47,
+        48,
+        49,
+        50,
+        51,
+        52
+      ],
+      "passed": true
+    },
+    "miss_detail": [
+      {
+        "case": 32,
+        "issue": "String \"null\" emitted instead of JSON null for drone_id; service schema rejects it.",
+        "executed": false
+      },
+      {
+        "case": 35,
+        "issue": "Unnecessary review_detection call instead of zero calls; no resolve_detection call was emitted.",
+        "executed": false
+      }
+    ],
+    "scoring": "Exact unordered list of tool names and JSON arguments; no-call cases require zero calls. No-tool prose correctness is not scored.",
+    "fresh_conversation_each_case": true,
+    "usage": {
+      "input_tokens": 291826,
+      "cached_input_tokens": 274600,
+      "output_tokens": 8160
+    },
+    "list_price_cost_usd": 0.287024,
     "price_source": {
       "source": "https://dev.meta.ai/models/muse-wonder/",
       "saved_source": ".local/evidence/search/commander-stage3/wonder-pricing-02",
@@ -172,199 +531,337 @@
       }
     },
     "metered_invoice_available": false,
+    "cost_basis": "Returned token usage at saved list prices, not an invoice.",
     "no_retry": true,
-    "raw": ".local/evidence/search/places-stage1/wonder-02",
-    "miss_detail": "Case 32 returned drone_id string \"null\" instead of JSON null. Runtime validation rejects it. The request was not repeated.",
-    "manual_prose_review": {
-      "51": "Returned both candidates and asked which to use before proposing.",
-      "52": "Returned known names and asked for selection or map marking."
-    },
-    "initial_startup_failure": {
-      "log": ".local/evidence/search/places-stage1/wonder-01.log",
-      "requests_sent": 0,
-      "cause": "Benchmark helper parameter name collided with find_place name argument; fixed before any network request."
-    }
+    "flight_execution": false,
+    "raw": ".local/evidence/search/places-stage2/wonder-01",
+    "prompt_sha256": "7dc9df785f80c5d86f5adff1b8240facd4b6006c2c595e726ed6534a5d757c37",
+    "tools_sha256": "5857f983b08518617320f6cc2efab9ccf06f3fc701f2023fc1df262430bd0ffa"
   },
   "checks": {
     "all_six_passed": true,
-    "python_tests": 181,
-    "javascript_tests": 14,
-    "readme_lines": 198,
-    "runs": [
-      {
-        "command": "npm test",
-        "exit_code": 0,
-        "log": ".local/evidence/search/places-stage1/checks-03/npm-test.log",
-        "sha256": "faf9426b31d51287e6ccd0049fa2ef48d09e26f6693692c7ac3477fb3a1cdbcf"
-      },
-      {
-        "command": "npm run typecheck",
-        "exit_code": 0,
-        "log": ".local/evidence/search/places-stage1/checks-03/typecheck.log",
-        "sha256": "581605940d2fbc4c851259433e6b11692463ba2b77780d5355b65da1897a4a65"
-      },
-      {
-        "command": "npm run format:check",
-        "exit_code": 0,
-        "log": ".local/evidence/search/places-stage1/checks-03/format.log",
-        "sha256": "a0453ca8153222f6117f4ada2fb05dea2cc5eaddf9ebd48a8c1e3330d572a587"
-      },
-      {
-        "command": ".venv-cosys/bin/ruff check",
-        "exit_code": 0,
-        "log": ".local/evidence/search/places-stage1/checks-03/ruff.log",
-        "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
-      },
-      {
-        "command": ".venv-cosys/bin/ruff format --check",
-        "exit_code": 0,
-        "log": ".local/evidence/search/places-stage1/checks-03/ruff-format.log",
-        "sha256": "7f3da2bcc8322b1f7a5cd484d184d90cc4d8cf31a2e46927ad3b83962a3c2a51"
-      },
-      {
-        "command": ".venv-cosys/bin/python -m unittest",
-        "exit_code": 0,
-        "log": ".local/evidence/search/places-stage1/checks-03/unittest.log",
-        "sha256": "1e20759b8f4dcbeb32d3b69a6bb0bb73c74f6be09a79a55d99847081a30f2809"
-      }
+    "all_six_exit_codes": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
     ],
-    "truth_isolation": "Static import graph and guarded live execution cover landmark loader, directions, quoted proposals and line prior; subject/clue extras are rejected at every schema level.",
-    "preserved_failed_check": {
-      "path": ".local/evidence/search/places-stage1/checks-01/unittest.log",
-      "cause": "Static runtime import allowlist required the two new public modules; tests rerun after updating it."
-    }
+    "python_tests": 209,
+    "javascript_tests": 15,
+    "readme_lines": 190,
+    "evidence": ".local/evidence/search/places-stage2/checks-01",
+    "commands": [
+      "npm test",
+      "npm run typecheck",
+      "npm run format:check",
+      ".venv-cosys/bin/ruff check",
+      ".venv-cosys/bin/ruff format --check",
+      ".venv-cosys/bin/python -m unittest"
+    ],
+    "truth_isolation": "Runtime file/import guards exercise public landmarks, quoted line support, behavior priors and live perception with private placements and evaluators denied; private landmark extras are rejected.",
+    "failure_fixture_note": "The printed ReadTimeout and 1/2 tool score in unittest.log are deliberate mocked failure-path tests; the suite completed OK."
   },
   "ui": {
     "passed": true,
-    "evidence": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/results.json",
-    "scope": "Component fixtures, not valley acceptance or a live mission. All mission/team WebSockets intercepted. All displayed photo evidence and telemetry are archived. Landmark geometry is fictional and directions are computed by the production loader.",
+    "browser_errors": [],
+    "scope": {
+      "hero": "Production behavior prior computed from explicit fictional landmark geometry on the checked-out heightfield. No mission service, flights, telemetry, detections, ground-team deliveries or new inference. Displays only the hero prior; archived lead evidence remains separate.",
+      "archived_evidence": "Component fixtures, not valley acceptance or a live mission. All mission/team WebSockets intercepted. All displayed photo evidence and telemetry are archived. Landmark geometry is fictional and directions are computed by the production loader."
+    },
+    "evidence": [
+      ".local/evidence/search/places-stage2/ui-04/hero-results.json",
+      ".local/evidence/search/places-stage2/ui-04/archive-results.json"
+    ],
     "screenshots": [
       {
+        "name": "hero-behavior",
+        "width": 1920,
+        "height": 1080,
+        "path": ".local/evidence/search/places-stage2/ui-04/hero-behavior-1920.png"
+      },
+      {
+        "name": "hero-behavior",
+        "width": 2560,
+        "height": 1440,
+        "path": ".local/evidence/search/places-stage2/ui-04/hero-behavior-2560.png"
+      },
+      {
+        "name": "hero-briefing",
+        "width": 2560,
+        "height": 1440,
+        "path": ".local/evidence/search/places-stage2/ui-04/hero-briefing-2560.png"
+      },
+      {
         "name": "labelled-map",
         "width": 1920,
         "height": 1080,
         "full_page": false,
-        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/labelled-map-1920.png"
+        "path": ".local/evidence/search/places-stage2/ui-04/labelled-map-1920.png"
       },
       {
         "name": "labelled-map",
         "width": 2560,
         "height": 1440,
         "full_page": false,
-        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/labelled-map-2560.png"
+        "path": ".local/evidence/search/places-stage2/ui-04/labelled-map-2560.png"
       },
       {
         "name": "place-approval",
         "width": 1920,
         "height": 1080,
         "full_page": false,
-        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/place-approval-1920.png"
+        "path": ".local/evidence/search/places-stage2/ui-04/place-approval-1920.png"
       },
       {
         "name": "place-approval",
         "width": 2560,
         "height": 1440,
         "full_page": false,
-        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/place-approval-2560.png"
+        "path": ".local/evidence/search/places-stage2/ui-04/place-approval-2560.png"
       },
       {
         "name": "line-approval",
         "width": 1920,
         "height": 1080,
         "full_page": false,
-        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/line-approval-1920.png"
+        "path": ".local/evidence/search/places-stage2/ui-04/line-approval-1920.png"
       },
       {
         "name": "line-approval",
         "width": 2560,
         "height": 1440,
         "full_page": false,
-        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/line-approval-2560.png"
+        "path": ".local/evidence/search/places-stage2/ui-04/line-approval-2560.png"
       },
       {
         "name": "evidence-headline",
         "width": 1920,
         "height": 1080,
         "full_page": false,
-        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/evidence-headline-1920.png"
+        "path": ".local/evidence/search/places-stage2/ui-04/evidence-headline-1920.png"
       },
       {
         "name": "evidence-directions",
         "width": 1920,
         "height": 1080,
         "full_page": false,
-        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/evidence-directions-1920.png"
+        "path": ".local/evidence/search/places-stage2/ui-04/evidence-directions-1920.png"
       },
       {
         "name": "evidence-headline",
         "width": 2560,
         "height": 1440,
         "full_page": false,
-        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/evidence-headline-2560.png"
+        "path": ".local/evidence/search/places-stage2/ui-04/evidence-headline-2560.png"
       },
       {
         "name": "evidence-directions",
         "width": 2560,
         "height": 1440,
         "full_page": false,
-        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/evidence-directions-2560.png"
+        "path": ".local/evidence/search/places-stage2/ui-04/evidence-directions-2560.png"
       },
       {
         "name": "ground-team",
         "width": 1920,
         "height": 1080,
         "full_page": true,
-        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/ground-team-1920.png"
+        "path": ".local/evidence/search/places-stage2/ui-04/ground-team-1920.png"
       },
       {
         "name": "ground-team",
         "width": 2560,
         "height": 1440,
         "full_page": true,
-        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/ground-team-2560.png"
+        "path": ".local/evidence/search/places-stage2/ui-04/ground-team-2560.png"
       },
       {
         "name": "ground-team",
         "width": 390,
         "height": 844,
         "full_page": true,
-        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/ground-team-390.png"
+        "path": ".local/evidence/search/places-stage2/ui-04/ground-team-390.png"
       }
     ],
-    "browser_errors": [],
-    "provenance": ".local/evidence/search/places-stage1/ui-fixture-01/provenance.json",
-    "preserved_runs": "ui-fixture-01/capture-check-01 through capture-check-04; overlay collision and inset resize failures preserved. Final rendering wait verifies whole-world labels at both widths."
+    "heat_layer": {
+      "method": "log1p with probability-labelled ticks; semi-transparent Viridis",
+      "contrast_evidence": ".local/evidence/search/places-stage2/ui-04/contrast.json",
+      "probability_grid_identical": true,
+      "probability_grid_sha256": "cf2ae7a7f850e911a72995d2afb87fc39abce1d7af0e66eb63ac3e6eadc0b272",
+      "maximum_probability_change": 0.0,
+      "scale": {
+        "colours": [
+          "#440154",
+          "#472c7b",
+          "#3a528b",
+          "#2c728e",
+          "#20908c",
+          "#28ae7f",
+          "#5ec961",
+          "#addc30",
+          "#fde724"
+        ],
+        "maximum": 0.005618464060228553,
+        "method": "log1p",
+        "midpoint": 1.0254562863879178e-05,
+        "scale_probability": 1.878472777284467e-08
+      }
+    },
+    "visual_review": [
+      "hero-behavior-1920.png",
+      "hero-behavior-2560.png",
+      "evidence-headline-1920.png",
+      "ground-team-390.png"
+    ],
+    "archived_timestamps": {
+      "first_positive_card_posterior": 0.10303088770514023,
+      "later_frozen_delivery_posterior": 0.05545635148882866,
+      "delivery_sent_at_ms": 1793226972961.3767,
+      "delivery_acknowledged_at_ms": 1793226973251.507,
+      "scope": "The card shows the audited first positive. The team page preserves a later acknowledged delivery snapshot; their timestamps and probability states differ. No new delivery or acknowledgement occurred.",
+      "provenance": [
+        ".local/evidence/search/places-stage2/ui-01/provenance.json",
+        ".local/evidence/search/places-stage2/ui-04/archive-provenance.json"
+      ]
+    }
   },
   "integration": {
-    "valley_acceptance_completed": false,
+    "real_valley_deferred_by_user": true,
+    "real_valley_acceptance_completed": false,
     "missing_required_files": [
-      ".local/staging/prompts/phase6-world-valley.md",
       "world/unreal/landmarks.json"
     ],
-    "dependency_evidence": ".local/evidence/search/places-stage1/dependencies-01.json",
-    "blocked_acceptance": [
-      "Read valley design brief",
-      "Validate authored landmark data and actual valley label density",
-      "Real mission place approval and ground-team page with authored landmark directions"
-    ],
-    "behaviour_prior_screenshots": "Stage 2; not started",
-    "fixture_limit": "UI images use inline labelled fictional landmarks and archived real photo/telemetry/evidence. They establish component rendering and interaction, not valley integration, a new search flight or a new delivered lead."
+    "fixture_limit": "Only explicit fictional geometry fixtures were used; no invented landmark data is committed. The real valley, resized world, capture calibration and integration acceptance remain separate work.",
+    "no_merge": true
   },
   "sources": {
-    "dementia_url": "https://www.dbs-sar.com/LPB/Dementia.pdf",
-    "read": "Existing archived primary PDF extraction, printed pages 161\u2013169",
-    "archived_sha256": {
-      "/home/brook_avionuas/snr/.local/evidence/search/stage1/dementia.download": "00e038920042023b26837ff263b848d0994ba00afb41efacc71d4342844450b3",
-      "/home/brook_avionuas/snr/.local/evidence/search/stage1/dementia.txt": "7d5499feee6572ad31437c16991c25349e00e4311e6923ec8f45fdcb64dcab98"
-    },
-    "fresh_http": {
-      "url": "https://www.dbs-sar.com/LPB/Dementia.pdf",
-      "retrieved_unix_s": 1793233614.3244615,
-      "status_code": 403,
-      "sha256": "32cbc376cd769a26d108ae31678f975b863b7066e110c59d9a212c7281bd8c81"
-    },
-    "fresh_http_note": "HTTP 403 preserved; not retried. Stage 2 source derivation remains pending."
+    "verified_extracts": ".local/evidence/search/places-stage2/sources-01/extracts-verified.json",
+    "primary_archives": [
+      {
+        "id": "dementia",
+        "url": "https://www.dbs-sar.com/LPB/Dementia.pdf",
+        "evidence_file": ".local/evidence/search/places-stage2/sources-01/dementia.download",
+        "sha256": "00e038920042023b26837ff263b848d0994ba00afb41efacc71d4342844450b3",
+        "pdf_pages": 9,
+        "retrieval": "Preserved user-referred local PDF archive; no repeated fetch. Original book-page links verified from preserved author book webpage."
+      },
+      {
+        "id": "categories",
+        "url": "https://www.dbs-sar.com/LPB/8SubjectCategories.pdf",
+        "evidence_file": ".local/evidence/search/places-stage2/sources-01/categories.download",
+        "sha256": "f180b2ba661af7e360a19cfadd201122f2adb6b0e2b0ec75a0212681a9ce3e79",
+        "pdf_pages": 2,
+        "retrieval": "Preserved user-referred local PDF archive; no repeated fetch. Original book-page links verified from preserved author book webpage."
+      },
+      {
+        "id": "limitations",
+        "url": "https://www.dbs-sar.com/LPB/3Limitations.pdf",
+        "evidence_file": ".local/evidence/search/places-stage2/sources-01/limitations.download",
+        "sha256": "9c1ba4fd7a926c8da3a370739cc018cb94121b388243c851b8957312e23d6e8b",
+        "pdf_pages": 1,
+        "retrieval": "Preserved user-referred local PDF archive; no repeated fetch. Original book-page links verified from preserved author book webpage."
+      },
+      {
+        "id": "notes",
+        "url": "https://www.dbs-sar.com/LPB/Notes.pdf",
+        "evidence_file": ".local/evidence/search/places-stage2/sources-01/notes.download",
+        "sha256": "98afbd1b20d8e46186da517a6dfc038be7f72055d2632eb3ad4aea932121cecb",
+        "pdf_pages": 13,
+        "retrieval": "Preserved user-referred local PDF archive; no repeated fetch. Original book-page links verified from preserved author book webpage."
+      },
+      {
+        "id": "poa",
+        "url": "https://www.dbs-sar.com/LPB/9POA.pdf",
+        "evidence_file": ".local/evidence/search/places-stage2/sources-01/poa.download",
+        "sha256": "fdeec900063c8b638f032b2b01664e0a1a4e95fe1a530e344e05837d9158d609",
+        "pdf_pages": 3,
+        "retrieval": "Preserved user-referred local PDF archive; no repeated fetch. Original book-page links verified from preserved author book webpage."
+      }
+    ],
+    "fetch_outcomes": [
+      {
+        "url": "https://www.fs.usda.gov/land/ecosysmgmt/colorimagemap/images/m261.html",
+        "final_url": "https://www.fs.usda.gov/land/ecosysmgmt/colorimagemap/images/m261.html",
+        "status": 200,
+        "content_type": "text/html; charset=UTF-8",
+        "bytes": 5649,
+        "sha256": "8582ee4ed2182a93f361fe8f16bb6f63bacb2e134cef5cc23cceb8d540074aa6"
+      },
+      {
+        "url": "https://www.fs.usda.gov/land/ecosysmgmt/colorimagemap/ecoreg1_provinces.html",
+        "final_url": "https://www.fs.usda.gov/land/ecosysmgmt/colorimagemap/ecoreg1_provinces.html",
+        "status": 200,
+        "content_type": "text/html; charset=UTF-8",
+        "bytes": 9549,
+        "sha256": "eaf976831c00d43d3b8eed86e88a8e39f8d47ee6be0ecf6355dfb3be1ecb3c28"
+      },
+      {
+        "url": "https://www.nps.gov/yose/planyourvisit/tuolumne.htm",
+        "final_url": "https://www.nps.gov/yose/planyourvisit/tuolumne.htm",
+        "status": 404,
+        "content_type": "text/html",
+        "bytes": 18909,
+        "sha256": "84558944d36a4e9fb35822f1caa66561e9a96e2289598f5980cb966df4c25d06"
+      },
+      {
+        "url": "https://www.dbs-sar.com/LPB/2ISRID.pdf",
+        "final_url": "https://www.dbs-sar.com/LPB/2ISRID.pdf",
+        "status": 403,
+        "content_type": "text/html",
+        "bytes": 150,
+        "sha256": "32cbc376cd769a26d108ae31678f975b863b7066e110c59d9a212c7281bd8c81"
+      },
+      {
+        "url": "https://www.dbs-sar.com/LPB/4Findings.pdf",
+        "final_url": "https://www.dbs-sar.com/LPB/4Findings.pdf",
+        "status": 403,
+        "content_type": "text/html",
+        "bytes": 150,
+        "sha256": "32cbc376cd769a26d108ae31678f975b863b7066e110c59d9a212c7281bd8c81"
+      }
+    ],
+    "no_repeated_requests": true
   },
+  "preserved_attempts": [
+    {
+      "path": ".local/evidence/search/places-stage2/fixture-01",
+      "outcome": "Failed import: local script lacked repository PYTHONPATH."
+    },
+    {
+      "path": ".local/evidence/search/places-stage2/fixture-02",
+      "outcome": "Failed schema validation: NumPy scalar fixture coordinates were not JSON numeric primitives."
+    },
+    {
+      "path": ".local/evidence/search/places-stage2/fixture-03",
+      "outcome": "Failed fixture export: mocked mission lacked ground_team."
+    },
+    {
+      "path": ".local/evidence/search/places-stage2/fixture-04",
+      "outcome": "Successful prior and plan; linear heat display retained for contrast evidence."
+    },
+    {
+      "path": ".local/evidence/search/places-stage2/ui-01",
+      "outcome": "Browser harness failed because SVG text was read with innerText."
+    },
+    {
+      "path": ".local/evidence/search/places-stage2/ui-02",
+      "outcome": "Successful earlier archived component screenshots retained."
+    },
+    {
+      "path": ".local/evidence/search/places-stage2/ui-03",
+      "outcome": "Automated checks passed; linear colour scaling visually flattened corridor gradients and was superseded by labelled log1p display."
+    },
+    {
+      "path": ".local/evidence/search/places-stage2/ui-04/contrast-failure-01.json",
+      "outcome": "Local contrast reduction used an interpreter without NumPy; no output or requests were made."
+    },
+    {
+      "path": ".local/evidence/search/places-stage2/report-build-failure-01.json",
+      "outcome": "Earlier aggregation stub lacked mission.directory; no measurements were written. Final aggregation reads the saved production capacity export."
+    }
+  ],
   "operations": {
     "fal_runner_starts": 0,
     "fal_inference_requests": 0,
