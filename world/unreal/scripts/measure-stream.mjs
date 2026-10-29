@@ -22,10 +22,11 @@ const [origin, output, durationText, view, captureHzText, streamerId] = process.
 const duration = Number(durationText);
 assert(
   origin && output && Number.isInteger(duration) && duration >= 60 && duration <= 1800,
-  'Usage: measure-stream.mjs ORIGIN NEW_OUTPUT_DIRECTORY SECONDS (60–1800) VIEW',
+  'Usage: measure-stream.mjs ORIGIN NEW_OUTPUT_DIRECTORY SECONDS (60–1800) VIEW [CAPTURE_HZ [STREAMER_ID]]',
 );
 assert.equal(new URL(origin).origin, origin);
 assert(['person', 'navigation', 'four-drones'].includes(view));
+if (streamerId) assert.equal(view, 'four-drones');
 const captureHz = Number(captureHzText);
 assert(view === 'four-drones' ? captureHz >= 0.1 && captureHz <= 5 : captureHzText === undefined);
 const navigating = view !== 'person';
@@ -73,6 +74,7 @@ for (const source of [
   'world/unreal/scripts/stream-statistics.mjs',
   'world/unreal/scripts/capacity-browser.mjs',
   'world/cosys/render_workload.py',
+  'world/cosys/client.py',
   'mission_planner/agents/perception/browser.mjs',
 ]) {
   const bytes = await readFile(source);
@@ -335,6 +337,15 @@ try {
   result.summary = summarizeBrowser(result.samples, observation.frames);
   profiling = false;
   await engineProfile('stop');
+  if (navigating) {
+    try {
+      await page.keyboard.down('d');
+      await delay(2000);
+      await photograph('moving-view');
+    } finally {
+      await page.keyboard.up('d');
+    }
+  }
   if (workload) await stopWorkload();
   result.engine = JSON.parse(await readFile(`${output}/engine-profile.json`, 'utf8'));
   result.summary.gpuMs = result.engine.summary.milliseconds.GPUTime;

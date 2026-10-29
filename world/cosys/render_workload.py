@@ -14,7 +14,7 @@ from mission_planner.environment import load_env
 from world.cosys.client import (
     DATA,
     NAMES,
-    capture,
+    capture_frame,
     concurrent,
     configure_capture,
     connect,
@@ -33,12 +33,17 @@ from world.cosys.client import (
 def run(output, hz):
     output.mkdir()
     period = 1 / hz
+    image_interval = 60
+    sensor_directory = output / "sensors"
+    sensor_directory.mkdir()
     stop = threading.Event()
     report = {
         "controller": "Cosys SimpleFlight",
         "clock": {"unixSeconds": time.time(), "monotonicSeconds": time.monotonic()},
         "captureHzPerDrone": hz,
         "captureResolution": [3840, 2160],
+        "retainedImageIntervalSeconds": image_interval,
+        "allFramesEncodedAndHashed": True,
         "capturePhaseSeconds": {n: i * period / 4 for i, n in enumerate(NAMES)},
         "status": "preparing",
         "flight": {n: [] for n in NAMES},
@@ -92,12 +97,20 @@ def run(output, hz):
 
     def images(name, index, start):
         number = 0
+        next_image = start + index * period / 4
         while not stop.is_set():
             scheduled = start + index * period / 4 + number * period
             if stop.wait(max(0, scheduled - time.monotonic())):
                 break
             began = time.monotonic()
-            info = capture(name, output / "sensors", f"{number:05d}", jpeg_quality=95)
+            encoded, info = capture_frame(name, jpeg_quality=95)
+            info["file"] = None
+            if scheduled >= next_image:
+                path = sensor_directory / f"{number:05d}-{name}.jpg"
+                path.write_bytes(encoded)
+                info["file"] = path.name
+                write_json(path.with_suffix(".json"), info)
+                next_image += image_interval
             assert [info["width"], info["height"]] == [3840, 2160], info
             report["captures"][name].append(
                 {

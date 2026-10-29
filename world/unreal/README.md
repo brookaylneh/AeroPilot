@@ -72,15 +72,21 @@ and NVIDIA power, clocks, temperature, utilization and memory. Local Cosys RPC s
 Unreal CSV profiling; `profile-engine.py` preserves the CSV, its hash, metadata and per-frame GPU,
 game-thread, render-thread and frame-time distributions. `GPUTime` is the engine
 `RHIGetGPUFrameCycles()` measurement, not a sum of overlapping render passes.
-The tool selects Adult 2, photographs fixed character, meadow and launch-pad views, then allows
+The tool selects Adult 2, photographs fixed character, meadow, elevated and launch-pad views, then allows
 30 seconds of settling before profiling a repeating keyboard routine. It preserves the prior
-authoring state in the private evidence directory. Use `person` for a close character view
+authoring state in the private evidence directory. The first 30 seconds of presentation callbacks
+are retained separately from the warmed measurement. After timing stops, a moving-view capture
+allows inspection of compression during travel; sensor capture continues through that image.
+Use `person` for a close character view
 with small alternating zoom movements.
 The `navigation` and `person` modes do not start flights. For the complete workload, use
 `four-drones CAPTURE_HZ` in place of `navigation`. The explicit cadence is per drone; captures
 are staggered across the period. The tool starts `world.cosys.render_workload`, which owns the
 local controller lock, verifies four parked SimpleFlight vehicles, flies separated paths,
-records 4K RGB JPEGs at quality 95 with poses and capture timings, and lands before exiting.
+encodes every 4K RGB frame as JPEG quality 95, records every frame hash, pose and timing, and
+retains one image per minute per aircraft. This bounds persistent evidence storage during
+long runs. All captures still perform full-resolution readback and JPEG encoding. The worker
+lands before exiting.
 Sensor capture warms for 30 seconds before the timed window. Each sample records active
 containers; the profiler records container CPU quota and cgroup throttling counters.
 Concurrent builds invalidate isolated capacity claims.

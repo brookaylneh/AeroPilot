@@ -1,6 +1,7 @@
 """Stock Cosys interfaces with explicit world/vehicle frames. No target knowledge."""
 
 import hashlib
+import io
 import json
 import math
 import os
@@ -149,10 +150,8 @@ def set_view(c, name, pitch=-90, yaw=0):
     )
 
 
-def capture(name, directory, tag, freeze=False, observe=None, jpeg_quality=None):
+def capture_frame(name, freeze=False, observe=None, jpeg_quality=None):
     c = connect()
-    directory = Path(directory)
-    directory.mkdir(parents=True, exist_ok=True)
     if freeze:
         c.simPause(True)
     try:
@@ -171,19 +170,18 @@ def capture(name, directory, tag, freeze=False, observe=None, jpeg_quality=None)
         assert data.size == r.width * r.height * 3, (r.width, r.height, data.size)
         # Pinned Cosys 3.5 RenderRequest explicitly writes R,G,B, with no flip.
         image = Image.fromarray(data.reshape(r.height, r.width, 3), "RGB")
-        suffix = "png" if jpeg_quality is None else "jpg"
-        path = directory / f"{tag}-{name}.{suffix}"
+        buffer = io.BytesIO()
         if jpeg_quality is None:
-            image.save(path)
+            image.save(buffer, format="PNG")
         else:
             assert 1 <= jpeg_quality <= 100
-            image.save(path, quality=jpeg_quality, subsampling=0)
+            image.save(buffer, format="JPEG", quality=jpeg_quality, subsampling=0)
+        encoded = buffer.getvalue()
         info = {
             "schemaVersion": 1,
             "vehicleId": name,
             "cameraId": "front_center",
             "imageType": "RGB",
-            "file": path.name,
             "width": r.width,
             "height": r.height,
             "timestampNs": r.time_stamp,
@@ -203,18 +201,29 @@ def capture(name, directory, tag, freeze=False, observe=None, jpeg_quality=None)
             else "Bracketing samples; camera pose and timestamp are supplied by Cosys at capture",
             "captureLatencySeconds": latency,
             "transportBytes": len(r.image_data_uint8),
-            "pngBytes" if jpeg_quality is None else "jpegBytes": path.stat().st_size,
-            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+            "pngBytes" if jpeg_quality is None else "jpegBytes": len(encoded),
+            "sha256": hashlib.sha256(encoded).hexdigest(),
         }
         if observe is not None:
             assert freeze, "Observations must share the frozen image state"
             info["observation"] = observe(c)
             assert info["observation"] == observation, "Observed actor moved during frozen capture"
-        path.with_suffix(".json").write_text(json.dumps(info, indent=2) + "\n")
-        return info
+        return encoded, info
     finally:
         if freeze:
             c.simPause(False)
+
+
+def capture(name, directory, tag, freeze=False, observe=None, jpeg_quality=None):
+    directory = Path(directory)
+    directory.mkdir(parents=True, exist_ok=True)
+    encoded, info = capture_frame(name, freeze=freeze, observe=observe, jpeg_quality=jpeg_quality)
+    suffix = "png" if jpeg_quality is None else "jpg"
+    path = directory / f"{tag}-{name}.{suffix}"
+    info["file"] = path.name
+    path.write_bytes(encoded)
+    path.with_suffix(".json").write_text(json.dumps(info, indent=2) + "\n")
+    return info
 
 
 def takeoff(name):
