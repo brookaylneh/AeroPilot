@@ -141,15 +141,18 @@ def box(
         bm.free()
 
 
+def placed(parts, material, size, centre, rng, **kwargs):
+    """Axis-aligned `box` centred on `centre`."""
+    box(parts, material, size, Matrix.Translation(centre), rng, **kwargs)
+
+
 def beam(parts, material, start, end, width, depth, up, rng, **kwargs):
     """Timber from `start` to `end`; `depth` is measured along `up`, grain along the length."""
-    start, end, up = Vector(start), Vector(end), Vector(up)
+    start, end = Vector(start), Vector(end)
     axis = end - start
-    side = up.cross(axis).normalized()
-    up = axis.normalized().cross(side)
-    matrix = frame((start + end) / 2, axis, side)
-    if up.dot(matrix.col[2].xyz) < 0:
-        matrix = frame((start + end) / 2, axis, -side)
+    side = Vector(up).cross(axis)
+    assert axis.length > 1e-6 and side.length > 1e-6, (start, end, up)
+    matrix = frame((start + end) / 2, axis, side.normalized())
     box(parts, material, (axis.length, width, depth), matrix, rng, grain=0, **kwargs)
 
 
@@ -197,15 +200,8 @@ def matched(path, target, name, output):
     values[..., :3] = np.clip(
         np.array(target[0]) / 255 + detail * target[1] / 255 / gray.std(), 0, 1
     )
-    derived = bpy.data.images.new(name, source.size[0], source.size[1])
-    derived.pixels.foreach_set(values.ravel())
-    derived.filepath_raw = str(output / f"{name}.png")
-    derived.file_format = "PNG"
-    derived.save()
     bpy.data.images.remove(source)
-    derived.source = "FILE"
-    derived.reload()
-    return derived, {
+    return saved(name, values, output, colour=True), {
         "source": str(path.relative_to(ROOT)),
         "sourceMeanSrgb": (mean * 255).round(1).tolist(),
         "targetMeanSrgb": list(target[0]),

@@ -31,8 +31,10 @@ from world.unreal.blender.common import (  # noqa: E402
     main,
     matched,
     pixels,
+    placed,
     plank_bands,
     principled,
+    saved,
 )
 from world.unreal.blender.spec import load  # noqa: E402
 
@@ -174,6 +176,7 @@ def walls(k):
 
 
 def siding(parts, k, rng, bands):
+    board = partial(box, parts, "siding", rng=rng, bevel=0.003, tile=PLANK_TILE)
     for name, (origin, along, out, (a0, a1)) in walls(k).items():
         lo, hi = a0 + 0.13, a1 - 0.13
         holes = [(c - w / 2, c + w / 2, z, z + h) for _, c, w, z, h in k.openings[name]]
@@ -193,16 +196,8 @@ def siding(parts, k, rng, bands):
                         if p1 - p0 > 0.015:
                             centre = origin + along * ((h0 + h1) / 2) + out * (BOARD_T / 2)
                             centre.z = (p0 + p1) / 2
-                            box(
-                                parts,
-                                "siding",
-                                (h1 - h0, BOARD_T, p1 - p0),
-                                frame(centre, along, out),
-                                rng,
-                                bevel=0.003,
-                                tile=PLANK_TILE,
-                                band=rng.choice(bands),
-                            )
+                            size = (h1 - h0, BOARD_T, p1 - p0)
+                            board(size, frame(centre, along, out), band=rng.choice(bands))
                     spans = [
                         s
                         for a, b in spans
@@ -231,17 +226,8 @@ def siding(parts, k, rng, bands):
                             (apex, Vector((s * math.sin(k.pitch), 0, math.cos(k.pitch))))
                             for s in (-1, 1)
                         )
-                    box(
-                        parts,
-                        "siding",
-                        (s1 - s0, BOARD_T, height),
-                        matrix,
-                        rng,
-                        bevel=0.003,
-                        tile=PLANK_TILE,
-                        clip=clip,
-                        band=rng.choice(bands),
-                    )
+                    size = (s1 - s0, BOARD_T, height)
+                    board(size, matrix, clip=clip, band=rng.choice(bands))
         sheathing(parts, k, name, origin, along, out, a0, a1, holes, rng)
 
 
@@ -368,7 +354,7 @@ def door(parts, at, along, out, c, w, z, h, rng):
     add(parts, "iron", bm)
 
 
-def stone_plinth(parts, k, rng):
+def stone_plinth(parts, k):
     """One continuous ring, displaced outward from the scanned stone height map."""
     disp = image(TEXTURES / "stone_wall/stone_wall_disp_4k.png")
     # Flip so row 0 is the image top, as the plinth's UV lookup expects.
@@ -420,8 +406,7 @@ def stone_plinth(parts, k, rng):
                 loop[uv].uv = (u, v)
     bm.normal_update()
     bm.faces.ensure_lookup_table()
-    if bm.faces[0].normal.dot(normals[0]) < 0:
-        bmesh.ops.reverse_faces(bm, faces=bm.faces[:])
+    assert bm.faces[0].normal.dot(normals[0]) > 0
     add(parts, "stone", bm)
     cap = bmesh.new()
     cap_uv = cap.loops.layers.uv.new("UVMap")
@@ -438,15 +423,12 @@ def stone_plinth(parts, k, rng):
             loop[cap_uv].uv = (loop.vert.co.x / tile, loop.vert.co.y / tile)
     cap.normal_update()
     cap.faces.ensure_lookup_table()
-    if cap.faces[0].normal.z < 0:
-        bmesh.ops.reverse_faces(cap, faces=cap.faces[:])
+    assert cap.faces[0].normal.z > 0
     add(parts, "stone", cap)
 
 
 def frame_timbers(parts, k, rng):
-    def timber(size, centre, **kwargs):
-        box(parts, "timber", size, Matrix.Translation(centre), rng, **kwargs)
-
+    timber = partial(placed, parts, "timber", rng=rng)
     # Corner posts, sill beam and frieze of the body.
     for sx in (-1, 1):
         for y in (0.055, k.l - 0.055):
@@ -556,10 +538,9 @@ def hip_roof(parts, k, rng, bands):
             size = (2 * half - 0.08 * (turn % 2), 0.04, FASCIA / 2 - 0.003)
             matrix, band = frame(fascia, v, u), rng.choice(bands)
             box(parts, "siding", size, matrix, rng, bevel=0.003, tile=PLANK_TILE, band=band)
-    soffit = Matrix.Translation(centre + z * (k.plate + 0.01))
     size = (2 * half - 0.08, 2 * half - 0.08, 0.02)
-    box(parts, "deck", size, soffit, rng, bevel=0, tile=2.25, grain=1)
-    box(parts, "roof0", (0.26, 0.26, 0.10), Matrix.Translation(apex + z * 0.07), rng, bevel=0.03)
+    placed(parts, "deck", size, centre + z * (k.plate + 0.01), rng, bevel=0, tile=2.25, grain=1)
+    placed(parts, "roof0", (0.26, 0.26, 0.10), apex + z * 0.07, rng, bevel=0.03)
 
 
 def railing(parts, rng, p0, p1):
@@ -575,13 +556,13 @@ def railing(parts, rng, p0, p1):
     count = int(length / 0.135)
     for i in range(count):
         p = p0 + d * (length * (i + 0.5) / count)
-        centre = Matrix.Translation((p.x, p.y, p.z + 0.495))
-        box(parts, "timber", (0.04, 0.04, 0.74), centre, rng, bevel=0.004, grain=2)
+        centre = (p.x, p.y, p.z + 0.495)
+        placed(parts, "timber", (0.04, 0.04, 0.74), centre, rng, bevel=0.004, grain=2)
 
 
 def porch(parts, k, rng):
     def timber(size, centre, material="timber", **kwargs):
-        box(parts, material, size, Matrix.Translation(centre), rng, **kwargs)
+        placed(parts, material, size, centre, rng, **kwargs)
 
     # Deck boards run across the porch; rim boards close the edge above the stone.
     deck = (k.w + 0.08, -DECK_Y + 0.02, 0.04)
@@ -642,7 +623,7 @@ def porch(parts, k, rng):
 def kit(parts, k, rng, bands):
     """Stone ring, siding, openings, frame, porch, roof and interior planes of a kit."""
     if k.stone:
-        stone_plinth(parts, k, rng)
+        stone_plinth(parts, k)
     siding(parts, k, rng, bands)
     openings(parts, k, rng)
     frame_timbers(parts, k, rng)
@@ -653,56 +634,37 @@ def kit(parts, k, rng, bands):
     else:
         roof(parts, k, rng)
     for z in (k.floor - 0.01, k.ceiling):
-        centre = Matrix.Translation((0, k.l / 2, z))
-        box(parts, "interior", (k.w - 0.3, k.l - 0.3, 0.02), centre, rng, bevel=0)
+        placed(parts, "interior", (k.w - 0.3, k.l - 0.3, 0.02), (0, k.l / 2, z), rng, bevel=0)
+
+
+def maps(asset, resolution):
+    """Albedo path and roughness and OpenGL normal images of a Poly Haven scan."""
+    diff, rough, normal = (
+        TEXTURES / asset / f"{asset}_{kind}_{resolution}.jpg"
+        for kind in ("diff", "rough", "nor_gl")
+    )
+    return diff, image(rough), image(normal)
 
 
 def cabin_materials(output, targets, roofs):
-    planks = TEXTURES / "plank_flooring_03/plank_flooring_03_diff_4k.jpg"
-    derived = {}
-    albedo = {}
-    for name, path in (
-        ("timber", TEXTURES / "rough_wood/rough_wood_diff_4k.jpg"),
-        ("stone", TEXTURES / "stone_wall/stone_wall_diff_4k.jpg"),
-        ("deck", planks),
-        ("siding", planks),
+    wood, planks = maps("rough_wood", "4k"), maps("plank_flooring_03", "4k")
+    mats, albedo, derived = {}, {}, {}
+    for key, label, (diff, rough, normal), strength in (
+        ("timber", "Weathered timber", wood, 1.2),
+        ("stone", "Granite plinth", maps("stone_wall", "4k"), 1.0),
+        ("deck", "Porch decking", planks, 1.0),
+        ("siding", "Weathered siding", planks, 1.3),
     ):
-        albedo[name], derived[name] = matched(path, targets[name], f"{name}_albedo", output)
-    plank_rough = image(TEXTURES / "plank_flooring_03/plank_flooring_03_rough_4k.jpg")
-    plank_normal = image(TEXTURES / "plank_flooring_03/plank_flooring_03_nor_gl_4k.jpg")
-    wood_normal = image(TEXTURES / "rough_wood/rough_wood_nor_gl_4k.jpg")
-    mats = {
-        "timber": principled(
-            "Weathered timber",
-            base_image=albedo["timber"],
-            rough_image=image(TEXTURES / "rough_wood/rough_wood_rough_4k.jpg"),
-            normal_image=wood_normal,
-            strength=1.2,
-        ),
-        "stone": principled(
-            "Granite plinth",
-            base_image=albedo["stone"],
-            rough_image=image(TEXTURES / "stone_wall/stone_wall_rough_4k.jpg"),
-            normal_image=image(TEXTURES / "stone_wall/stone_wall_nor_gl_4k.jpg"),
-        ),
-        "deck": principled(
-            "Porch decking",
-            base_image=albedo["deck"],
-            rough_image=plank_rough,
-            normal_image=plank_normal,
-        ),
-        "siding": principled(
-            "Weathered siding",
-            base_image=albedo["siding"],
-            rough_image=plank_rough,
-            normal_image=plank_normal,
-            strength=1.3,
-        ),
+        albedo[key], derived[key] = matched(diff, targets[key], f"{key}_albedo", output)
+        mats[key] = principled(
+            label, base_image=albedo[key], rough_image=rough, normal_image=normal, strength=strength
+        )
+    mats |= {
         "paint": principled(
             "Dark green paint",
             base=lin((44, 50, 41)),
             rough=0.55,
-            normal_image=wood_normal,
+            normal_image=wood[2],
             strength=0.35,
         ),
         "glass": principled("Window glass", base=(0.9, 0.93, 0.92), rough=0.03, transmission=1.0),
@@ -719,12 +681,8 @@ def cabin_materials(output, targets, roofs):
 
 def scan(name, asset, target, output):
     """Material from a 2K Poly Haven scan whose albedo is matched to `target`."""
-
-    def path(kind):
-        return TEXTURES / asset / f"{asset}_{kind}_2k.jpg"
-
-    albedo, derived = matched(path("diff"), target, f"{name}_albedo", output)
-    rough, normal = image(path("rough")), image(path("nor_gl"))
+    diff, rough, normal = maps(asset, "2k")
+    albedo, derived = matched(diff, target, f"{name}_albedo", output)
     return principled(name, base_image=albedo, rough_image=rough, normal_image=normal), derived
 
 
@@ -736,7 +694,7 @@ def collision(render, name, hulls, rng, material):
     render.name = render.data.name = name
     parts = {}
     for i, (size, centre) in enumerate(hulls.values()):
-        box(parts, f"UCX_{name}_{i:02d}", size, Matrix.Translation(centre), rng, bevel=0)
+        placed(parts, f"UCX_{name}_{i:02d}", size, centre, rng, bevel=0)
     objects = emit(parts, dict.fromkeys(parts, material))
     for obj in objects:
         assert len(obj.data.vertices) == 8, obj.name
@@ -782,8 +740,8 @@ def hut(rng, output):
     door_x = HUT.openings["front"][0][1]
     for i in range(2):
         top = HUT.floor * (2 - i) / 3
-        centre = Matrix.Translation((door_x, -0.23 - 0.34 * i, top / 2))
-        box(parts, "stone", (1.2, 0.34, top), centre, rng, bevel=0.03, segments=2, tile=3.2)
+        centre = (door_x, -0.23 - 0.34 * i, top / 2)
+        placed(parts, "stone", (1.2, 0.34, top), centre, rng, bevel=0.03, segments=2, tile=3.2)
     render = emit(parts, mats)
     for obj in render:
         obj.data.transform(TURN)
@@ -825,7 +783,7 @@ def footbridge(rng, output):
     parts = {}
 
     def piece(material, size, centre, grain=0, **kwargs):
-        box(parts, material, size, Matrix.Translation(centre), rng, grain=grain, **kwargs)
+        placed(parts, material, size, centre, rng, grain=grain, **kwargs)
 
     depth, flange, web, flange_t = CHANNEL
     # Outer channels show their webs; flanges point inward.
@@ -859,17 +817,8 @@ def footbridge(rng, output):
         y = -SPAN / 2 + width / 2 + i * (width + GAP)
         centre = (rng.uniform(-0.004, 0.004), y, DECK_TOP - DECK_T / 2 + rng.uniform(-0.002, 0))
         matrix = Matrix.Translation(centre) @ Matrix.Rotation(rng.uniform(-0.004, 0.004), 4, "Z")
-        size = (2 * EDGE - rng.uniform(0.01, 0.02), DECK_T, width)
-        box(
-            parts,
-            "deck",
-            size,
-            matrix @ flat,
-            rng,
-            bevel=0.005,
-            tile=PLANK_TILE,
-            band=rng.choice(bands),
-        )
+        size, band = (2 * EDGE - rng.uniform(0.01, 0.02), DECK_T, width), rng.choice(bands)
+        box(parts, "deck", size, matrix @ flat, rng, bevel=0.005, tile=PLANK_TILE, band=band)
         for dy in (-0.05, 0.05):
             spike = (flanges[1] + rng.uniform(-0.01, 0.01), y + dy, DECK_TOP + 0.001)
             piece("iron", (0.014, 0.014, 0.004), spike, bevel=0.001)
@@ -979,19 +928,19 @@ def landing(parts, rng, x, y, z, edges, posts, grounded):
     ]
     centre = ((x[0] + x[1]) / 2, (y[0] + y[1]) / 2)
     size = (x[1] - x[0], y[1] - y[0], 0.05)
-    box(parts, "deck", size, Matrix.Translation((*centre, z - 0.025)), rng, bevel=0.004, tile=2.25)
+    placed(parts, "deck", size, (*centre, z - 0.025), rng, bevel=0.004, tile=2.25)
     for yr in (y[0] + 0.03, y[1] - 0.03):
-        rim = Matrix.Translation((centre[0], yr, z - 0.17))
-        box(parts, "timber", (x[1] - x[0], 0.06, 0.24), rim, rng, bevel=0.006)
+        rim = (centre[0], yr, z - 0.17)
+        placed(parts, "timber", (x[1] - x[0], 0.06, 0.24), rim, rng, bevel=0.006)
     for i in posts:
         px, py = corners[i]
         # Grounded posts stand on pads 0.05 m above grade: only the tower sets the ground contact.
         foot = 0.05 if i in grounded else z - 0.29
-        post = Matrix.Translation((px, py, (z + 1.0 + foot) / 2))
-        box(parts, "timber", (0.14, 0.14, z + 1.0 - foot), post, rng, bevel=0.01, grain=2)
+        post = (px, py, (z + 1.0 + foot) / 2)
+        placed(parts, "timber", (0.14, 0.14, z + 1.0 - foot), post, rng, bevel=0.01, grain=2)
         if i in grounded:
-            pad = Matrix.Translation((px, py, -0.05))
-            box(parts, "concrete", (0.36, 0.36, 0.20), pad, rng, bevel=0.01, tile=2.71)
+            pad = (px, py, -0.05)
+            placed(parts, "concrete", (0.36, 0.36, 0.20), pad, rng, bevel=0.01, tile=2.71)
     for a, b in edges:
         railing(parts, rng, (*corners[a], z), (*corners[b], z))
 
@@ -1002,8 +951,8 @@ def guard(parts, rng, start, end, posts):
     d = (end - start).normalized()
     side, centre = Vector((-d.y, d.x, 0)), (start + end) / 2
     for p in posts:
-        post = Matrix.Translation((*p, DECK + (RAIL_M - 0.05) / 2))
-        box(parts, "timber", (0.10, 0.10, RAIL_M - 0.05), post, rng, bevel=0.008, grain=2)
+        post = (*p, DECK + (RAIL_M - 0.05) / 2)
+        placed(parts, "timber", (0.10, 0.10, RAIL_M - 0.05), post, rng, bevel=0.008, grain=2)
     for z, t, h in ((RAIL_M - 0.025, 0.14, 0.05), (0.62, 0.09, 0.045), (0.22, 0.09, 0.045)):
         rail = frame(centre + Vector((0, 0, z)), d, side)
         box(parts, "timber", ((end - start).length, t, h), rail, rng, bevel=0.006, segments=2)
@@ -1021,10 +970,10 @@ def tower(parts, rng):
                 normal = u + z * ((PIER[0] - PIER[1]) / 2 / PIER[2])
                 taper.append((foot + u * (PIER[0] / 2), normal.normalized()))
             size = (PIER[0], PIER[0], PIER[2] + PIER[3])
-            pier = Matrix.Translation(foot + z * ((PIER[2] - PIER[3]) / 2))
-            box(parts, "concrete", size, pier, rng, bevel=0.01, tile=2.71, clip=taper)
-            plate = Matrix.Translation(foot + z * (PIER[2] + 0.006))
-            box(parts, "galv", (0.40, 0.40, 0.012), plate, rng, bevel=0.002)
+            pier = foot + z * ((PIER[2] - PIER[3]) / 2)
+            placed(parts, "concrete", size, pier, rng, bevel=0.01, tile=2.71, clip=taper)
+            plate = foot + z * (PIER[2] + 0.006)
+            placed(parts, "galv", (0.40, 0.40, 0.012), plate, rng, bevel=0.002)
             start, end = foot + z * (PIER[2] + 0.012), corner * SPREAD[1] + z * CAP
             beam(parts, "timber", start, end, LEG, LEG, (1, 0, 0), rng, bevel=0.012, segments=2)
             for u in (Vector((sx, 0, 0)), Vector((0, sy, 0))):
@@ -1054,29 +1003,27 @@ def tower(parts, rng):
                         bolt(parts, gusset + u * 0.004 + v * dv + z * dz, u)
         # Caps under the catwalk: along x over the legs, along y lapped below them.
         top = spread(CAP)
-        if i % 2:
-            size, centre = (2 * CATWALK, 0.15, 0.30), u * top + z * (CAP + 0.15)
-        else:
-            size, centre = (0.15, 2 * (top + LEG / 2), 0.25), u * top + z * (CAP - 0.125)
-        box(parts, "timber", size, Matrix.Translation(centre), rng, bevel=0.01, segments=2)
+        size = ((0.15, 2 * (top + LEG / 2), 0.25), (2 * CATWALK, 0.15, 0.30))[i % 2]
+        centre = u * top + z * (CAP + (-0.125, 0.15)[i % 2])
+        placed(parts, "timber", size, centre, rng, bevel=0.01, segments=2)
 
 
 def catwalk(parts, rng):
     joists = 14
     for i in range(joists):
         x = -CATWALK + 0.03 + (2 * CATWALK - 0.06) * i / (joists - 1)
-        joist = Matrix.Translation((x, 0, CAP + 0.42))
-        box(parts, "timber", (0.06, 2 * CATWALK - 0.12, 0.24), joist, rng, bevel=0.004)
+        joist = (x, 0, CAP + 0.42)
+        placed(parts, "timber", (0.06, 2 * CATWALK - 0.12, 0.24), joist, rng, bevel=0.004)
     for sy in (-1, 1):
-        rim = Matrix.Translation((0, sy * (CATWALK - 0.03), CAP + 0.42))
-        box(parts, "timber", (2 * CATWALK, 0.06, 0.24), rim, rng, bevel=0.004)
+        rim = (0, sy * (CATWALK - 0.03), CAP + 0.42)
+        placed(parts, "timber", (2 * CATWALK, 0.06, 0.24), rim, rng, bevel=0.004)
     # Decking around the cab, boards running out from the walls.
     width = CATWALK - CAB.w / 2
     for sx in (-1, 1):
-        strip = Matrix.Translation((sx * (CATWALK - width / 2), 0, DECK - 0.025))
-        box(parts, "deck", (width, 2 * CATWALK, 0.05), strip, rng, bevel=0.004, tile=2.25, grain=0)
-        strip = Matrix.Translation((0, sx * (CATWALK - width / 2), DECK - 0.025))
-        box(parts, "deck", (CAB.w, width, 0.05), strip, rng, bevel=0.004, tile=2.25, grain=1)
+        strip = (sx * (CATWALK - width / 2), 0, DECK - 0.025)
+        placed(parts, "deck", (width, 2 * CATWALK, 0.05), strip, rng, bevel=0.004, tile=2.25)
+        strip = (0, sx * (CATWALK - width / 2), DECK - 0.025)
+        placed(parts, "deck", (CAB.w, width, 0.05), strip, rng, bevel=0.004, tile=2.25, grain=1)
     c = CATWALK - 0.05
     count = 7
     line = [-c + 2 * c * i / count for i in range(count + 1)]
@@ -1104,16 +1051,16 @@ def stairs(parts, rng):
     landing(parts, rng, wide, second, two.z, ((3, 0), (0, 1), (1, 2)), range(4), (0, 1, 3))
     # Its corner over the first flight sits on a joist knee-braced to the outer post.
     x = BANDS[3] - 0.07
-    joist = Matrix.Translation((x, sum(second) / 2, two.z - 0.17))
-    box(parts, "timber", (0.06, second[1] - second[0] - 0.12, 0.24), joist, rng, bevel=0.006)
+    joist = (x, sum(second) / 2, two.z - 0.17)
+    placed(parts, "timber", (0.06, second[1] - second[0] - 0.12, 0.24), joist, rng, bevel=0.006)
     start, end = (x, second[0] + 0.14, two.z - 1.0), (x, second[1] - 0.15, two.z - 0.29)
     beam(parts, "timber", start, end, 0.10, 0.14, (0, 0, 1), rng, bevel=0.006)
     three = flight(parts, rng, (outer, second[1], two.z), (0, 1, 0), 12)
     assert math.isclose(three.y, head[0], abs_tol=1e-5)
     assert math.isclose(three.z, DECK, abs_tol=1e-5)
     landing(parts, rng, (CATWALK, BANDS[3]), head, DECK, ((1, 2), (2, 3)), (1, 2, 3), (1, 2))
-    pad = Matrix.Translation((outer, first[0] - 12 * GOING - 0.05, -0.025))
-    box(parts, "concrete", (1.2, 0.5, 0.15), pad, rng, bevel=0.01, tile=2.71)
+    pad = (outer, first[0] - 12 * GOING - 0.05, -0.025)
+    placed(parts, "concrete", (1.2, 0.5, 0.15), pad, rng, bevel=0.01, tile=2.71)
 
 
 def lookout(rng, output):
@@ -1129,8 +1076,7 @@ def lookout(rng, output):
     cab = {}
     kit(cab, CAB, rng, bands)
     # The Osborne fire finder stand at the centre of the cab.
-    stand = Matrix.Translation((0, CAB.l / 2, DECK + 0.525))
-    box(cab, "timber", (0.7, 0.7, 1.05), stand, rng, bevel=0.01)
+    placed(cab, "timber", (0.7, 0.7, 1.05), (0, CAB.l / 2, DECK + 0.525), rng, bevel=0.01)
     render = emit(cab, mats)
     for obj in render:
         obj.data.transform(TURN @ Matrix.Translation((0, -CAB.l / 2, 0)))
@@ -1206,8 +1152,7 @@ def kiosk(rng, output):
     def under(x):
         return K_RIDGE - abs(x) * tan
 
-    def timber(size, centre, **kwargs):
-        box(parts, "timber", size, Matrix.Translation(centre), rng, clip=clip, **kwargs)
+    timber = partial(placed, parts, "timber", rng=rng, clip=clip)
 
     plate = under(0.55)  # outer top edge of the eave plates
     cross = plate - 0.14  # top of the crossbeams through the posts
@@ -1215,8 +1160,7 @@ def kiosk(rng, output):
         centre = (0, y, (K_RIDGE + 0.012) / 2)
         timber((K_POST, K_POST, K_RIDGE - 0.012), centre, bevel=0.012, segments=2, grain=2)
         timber((1.24, 0.12, 0.16), (0, y, cross - 0.08), bevel=0.008, segments=2)
-        base = Matrix.Translation((0, y, 0.006))
-        box(parts, "iron", (0.32, 0.32, 0.012), base, rng, bevel=0.002)
+        placed(parts, "iron", (0.32, 0.32, 0.012), (0, y, 0.006), rng, bevel=0.002)
         for s in (-1, 1):
             start, end = Vector((s * K_POST / 2, y, 1.85)), Vector((s * 0.45, y, cross - 0.12))
             beam(parts, "timber", start, end, 0.08, 0.10, (0, 0, 1), rng, bevel=0.006)
@@ -1229,8 +1173,8 @@ def kiosk(rng, output):
                 beam(parts, "iron", p0, p1, 0.006, 0.07, (0, 0, 1), rng, bevel=0.002)
                 for along in (0.06, 0.15):
                     bolt(parts, start + d * along + side * 1.07, (0, sy, 0))
-            strap = Matrix.Translation((s * (K_POST / 2 + 0.004), y, 0.132))
-            box(parts, "iron", (0.008, 0.16, 0.24), strap, rng, bevel=0.002)
+            strap = (s * (K_POST / 2 + 0.004), y, 0.132)
+            placed(parts, "iron", (0.008, 0.16, 0.24), strap, rng, bevel=0.002)
             bolt(parts, (s * (K_POST / 2 + 0.008), y, 0.13), (s, 0, 0))
     timber((0.10, 2 * K_HALF[1], 0.14), (0, 0, K_RIDGE - 0.07), bevel=0.006)
     for s in (-1, 1):
@@ -1258,8 +1202,7 @@ def kiosk(rng, output):
     height, middle = K_BOARD[1] - K_BOARD[0], sum(K_BOARD) / 2
     for sy in (-1, 1):
         timber((0.06, 0.06, height), (0, sy * (rail_y - 0.03), middle), bevel=0.004, grain=2)
-    board = Matrix.Translation((0, 0, middle))
-    box(parts, "board", (0.03, 2 * (rail_y - 0.06), height), board, rng, bevel=0.003)
+    placed(parts, "board", (0.03, 2 * (rail_y - 0.06), height), (0, 0, middle), rng, bevel=0.003)
     roof = (cross - 0.16, K_RIDGE + 0.06)
     hulls = {
         "posts": ((K_POST + 0.07, 2 * (K_POST_Y + K_POST / 2), cross), (0, 0, cross / 2)),
@@ -1281,19 +1224,6 @@ VT_RAKE, VT_OVERHANG, VT_ROOF_T = 0.3048, 0.08, 0.10
 VT_DOOR = (0.914, 2.032, 0.30)  # width, height and centre y
 VT_VENT = (0.152, 3.734, 0.55)  # radius, top and centre y
 VT_STAIN, WALL_TILE = (138, 120, 100), 1.8  # wall stain sRGB, scan tile width (m)
-
-
-def saved(name, values, output, colour):
-    """An 8-bit PNG image written from float RGBA rows (bottom row first)."""
-    img = bpy.data.images.new(name, values.shape[1], values.shape[0])
-    img.colorspace_settings.name = "sRGB" if colour else "Non-Color"
-    img.pixels.foreach_set(values.astype(np.float32).ravel())
-    img.filepath_raw = str(output / f"{name}.png")
-    img.file_format = "PNG"
-    img.save()
-    img.source = "FILE"
-    img.reload()
-    return img
 
 
 def blur(a, sigma):
@@ -1335,9 +1265,9 @@ def weathered_walls(output, rng, eave, top):
     albedo[..., :3] = np.clip(albedo[..., :3] + 0.8 * grain[..., None], 0, 1)
     material = principled(
         "Board-formed concrete",
-        base_image=saved("wall_albedo", albedo, output, True),
-        rough_image=saved("wall_rough", maps["rough"][rows], output, False),
-        normal_image=saved("wall_normal", maps["nor_gl"][rows], output, False),
+        base_image=saved("wall_albedo", albedo, output, colour=True),
+        rough_image=saved("wall_rough", maps["rough"][rows], output),
+        normal_image=saved("wall_normal", maps["nor_gl"][rows], output),
     )
     return material, {"source": "wood_textured_concrete 2k", "stainSrgb": list(VT_STAIN)}
 
@@ -1375,8 +1305,7 @@ def toilet(rng, output):
     )
     clip = tuple(planes)
 
-    def piece(material, size, centre, **kwargs):
-        box(parts, material, size, Matrix.Translation(centre), rng, **kwargs)
+    piece = partial(placed, parts, rng=rng)
 
     def wall(size, centre):
         piece("wall", size, centre, bevel=0.006, tile=1.8, grain=2, clip=clip)
