@@ -2,7 +2,8 @@
 
 A family module calls `main(Path(__file__), BUILDERS)`. Every asset is built in metres with
 +Z up and its front facing +X; `finish` moves the origin to the ground-contact centre at grade,
-`buriedM` above the lowest vertex.
+`buriedM` above the lowest vertex. The GLB holds meshes and material slots; textures ship as
+the PNGs listed in build.json.
 """
 
 import argparse
@@ -21,6 +22,9 @@ from mathutils import Matrix, Vector
 from world.unreal.blender.spec import LOCK, ROOT, TEXTURES, digest, load, output_dir
 
 GROUND_M = 0.01
+# GPU bakes are not bit-exact: a repeat may move texels by up to 2 of 255 levels, in at most
+# 1e-5 of the channel values of each texture.
+TEXTURE_TOLERANCE = (2, 1e-5)
 
 
 def add(parts, material, bm):
@@ -265,6 +269,43 @@ def principled(
     return mat
 
 
+def geometry(objects):
+    """sha256 over each object's vertex positions, face sizes, face corners and UVs."""
+    sha = hashlib.sha256()
+    for obj in sorted(objects, key=lambda o: o.name):
+        mesh = obj.data
+        for items, key, width, kind in (
+            (mesh.vertices, "co", 3, np.float32),
+            (mesh.polygons, "loop_total", 1, np.int32),
+            (mesh.loops, "vertex_index", 1, np.int32),
+            (mesh.uv_layers.active.data, "uv", 2, np.float32),
+        ):
+            values = np.empty(len(items) * width, kind)
+            items.foreach_get(key, values)
+            sha.update(values.tobytes())
+    return sha.hexdigest()
+
+
+def repeated(report, previous, output):
+    """Assert that this build repeats `previous`: identical geometry and GLB, and every texture
+    within TEXTURE_TOLERANCE. Returns the measured texture differences."""
+    before = json.loads((previous / "build.json").read_text())
+    for key in ("geometrySha256", "glb"):
+        assert report[key] == before[key], key
+    assert report["textures"].keys() == before["textures"].keys()
+    levels, fraction = TEXTURE_TOLERANCE
+    differences = {}
+    for name, entry in report["textures"].items():
+        if entry == before["textures"][name]:
+            differences[name] = {"maxLevels": 0, "fraction": 0.0}
+            continue
+        a, b = (np.round(pixels(image(d / f"{name}.png")) * 255) for d in (previous, output))
+        diff = np.abs(a - b)
+        differences[name] = {"maxLevels": int(diff.max()), "fraction": float((diff > 0).mean())}
+        assert diff.max() <= levels and (diff > 0).mean() <= fraction, (name, differences[name])
+    return {"build": str(previous.relative_to(ROOT)), "textures": differences}
+
+
 def finish(script, asset, spec, objects, output):
     """Move the origin to the ground-contact centre, assert dimensions, export and report."""
     vertices = []
@@ -295,8 +336,7 @@ def finish(script, asset, spec, objects, output):
     assert bpy.ops.export_scene.gltf(
         filepath=str(glb),
         export_format="GLB",
-        export_image_format="JPEG",
-        export_image_quality=92,
+        export_image_format="NONE",
         export_cameras=False,
         export_lights=False,
         export_yup=True,
@@ -313,6 +353,7 @@ def finish(script, asset, spec, objects, output):
         "extentsM": extents.tolist(),
         "triangles": sum(triangles.values()),
         "objectTriangles": triangles,
+        "geometrySha256": geometry(objects),
         "textures": textures,
         "polyhavenLockSha256": digest(LOCK),
         "glb": {"bytes": glb.stat().st_size, "sha256": digest(glb)},
@@ -320,10 +361,12 @@ def finish(script, asset, spec, objects, output):
 
 
 def main(script, builders):
-    """Parse `<asset> --output <dir>`, build the asset with its seed and write build.json."""
+    """Parse `<asset> --output <dir> [--repeat-of <dir>]`, build the asset with its seed and
+    write build.json; with --repeat-of, assert it repeats that earlier build."""
     parser = argparse.ArgumentParser(prog=script.name)
     parser.add_argument("asset", choices=sorted(builders))
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--repeat-of", type=Path)
     args = parser.parse_args(sys.argv[sys.argv.index("--") + 1 :])
     assets = load(script.stem)
     assert sorted(assets) == sorted(builders), script
@@ -335,5 +378,7 @@ def main(script, builders):
         assert hashlib.md5(path.read_bytes()).hexdigest() == entry["md5"], path
     objects, details = builders[args.asset](random.Random(spec["seed"]), output)
     report = finish(script, args.asset, spec, objects, output) | {"details": details}
+    if args.repeat_of:
+        report["repeatOf"] = repeated(report, (ROOT / args.repeat_of).resolve(), output)
     (output / "build.json").write_text(json.dumps(report, indent=2) + "\n")
     print("BUILD " + json.dumps({k: report[k] for k in ("extentsM", "triangles")}), flush=True)

@@ -248,8 +248,10 @@ has a builder `<family>.py` and a spec `<family>.json` (reference id, seed, boun
 with tolerance, depth buried below grade, texture budget, collision flag, turnaround panel cells, master
 correspondences and colour regions; schema in `spec.py`). `common.py` holds the shared parts, materials,
 export and `build.json`. Assets use metres, +Z up and front +X, with the origin at the ground-contact
-centre at grade; the GLB is glTF +Y up.
-Builds fail when the extents leave the spec tolerance, and two builds produce byte-identical `build.json`.
+centre at grade; the GLB (glTF +Y up) holds meshes and material slots, and textures ship as PNGs.
+Builds fail when the extents leave the spec tolerance. A build with `--repeat-of <earlier build>`
+asserts the same `geometrySha256` and GLB sha256, and textures within 2 levels in at most 1e-5 of
+channel values, since OptiX bakes are not bit-exact; it records the measured differences.
 
 ```sh
 B=".local/toolchains/blender-5.2.3-linux-x64/blender -b --factory-startup --python"
@@ -257,6 +259,7 @@ export LD_LIBRARY_PATH=$PWD/.local/toolchains/runtime-libs/usr/lib/x86_64-linux-
 P=world/unreal/blender O=.local/evidence/world/valley-art/NEW
 .venv-cosys/bin/python -m world.unreal.blender.fetch_polyhaven
 $B $P/structures.py -- ranger-cabin --output $O/build
+$B $P/structures.py -- ranger-cabin --output $O/build-repeat --repeat-of $O/build
 .venv-cosys/bin/python -m world.unreal.blender.reference_match fit structures ranger-cabin --input $O/build --output $O/cameras
 $B $P/studio.py -- --build $O/build --cameras $O/cameras/cameras.json --output $O/render
 .venv-cosys/bin/python -m world.unreal.blender.reference_match compare structures ranger-cabin --input $O/render --output $O/compare
@@ -267,7 +270,11 @@ panel's silhouette box, and derives the 30 m nadir (70° HFOV, 3840×2160 drone 
 asset) and a 1.7 m eye-level view. `studio.py` renders the above-grade part through every view with OptiX
 under one fixed studio light.
 `compare` reports silhouette IoU per referenced view, master colour regions and a 1600 px contact sheet.
-Masks count floor shadows and sky occlusion as foreground, so plan-view IoU also measures shadow shape.
+Masks are the textured pixels (luminance deviation in 7 px windows, closed and hole-filled), so smooth
+backdrops and soft floor shadows are background while pale surfaces near the backdrop colour count.
+An asset without an approved reference has `reference` null and no panels, correspondences or colour
+regions; it gets the nadir and eye views over the median reference backdrop. Masters larger than the
+2880 px turnaround (the 4096 px fire lookout) are compared at 2880 px.
 
 ## MCP toolchain
 

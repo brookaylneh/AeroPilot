@@ -63,6 +63,82 @@
         "curb": [[1950, 1770, 2050, 1880]],
         "stringer": [[1850, 2000, 2050, 2050]]
       }
+    },
+    "fire-lookout": {
+      "reference": "fire-lookout",
+      "seed": 12,
+      "dimensionsM": [9.555, 8.1, 12.264],
+      "toleranceM": 0.005,
+      "buriedM": 0.25,
+      "textureSize": 4096,
+      "collision": true,
+      "panels": { "front": [0, 0], "back": [1, 0], "left": [0, 1] },
+      "correspondences": [
+        { "name": "roof apex cap", "modelM": [0.0, 0.0, 12.014], "pixel": [1490, 152] },
+        { "name": "+X-Y eave, fascia foot", "modelM": [3.85, -3.85, 9.82], "pixel": [466, 632] },
+        { "name": "+X+Y eave, fascia foot", "modelM": [3.85, 3.85, 9.82], "pixel": [1729, 533] },
+        { "name": "-X+Y eave, fascia foot", "modelM": [-3.85, 3.85, 9.82], "pixel": [2480, 672] },
+        { "name": "+X-Y pier top", "modelM": [2.85, -2.85, 0.35], "pixel": [690, 2548] },
+        { "name": "+X+Y pier top", "modelM": [2.85, 2.85, 0.35], "pixel": [1668, 2627] },
+        { "name": "-X+Y pier top", "modelM": [-2.85, 2.85, 0.35], "pixel": [2236, 2507] },
+        { "name": "+X-Y catwalk corner, deck", "modelM": [4.0, -4.0, 7.0], "pixel": [423, 1192] }
+      ],
+      "colourRegions": {
+        "roof": [[1000, 380, 1250, 460]],
+        "leg": [[1640, 2060, 1712, 2240]],
+        "siding": [[800, 1000, 960, 1040], [1960, 1000, 2120, 1040]],
+        "pier": [[1630, 2650, 1750, 2695]],
+        "tread": [[1020, 2625, 1150, 2645]]
+      }
+    },
+    "trailhead-kiosk": {
+      "reference": "trailhead-kiosk",
+      "seed": 19,
+      "dimensionsM": [1.641, 2.4, 3.007],
+      "toleranceM": 0.005,
+      "buriedM": 0,
+      "textureSize": 4096,
+      "collision": true,
+      "panels": { "front": [0, 0], "back": [1, 0], "left": [0, 1] },
+      "correspondences": [
+        { "name": "ridge flashing, -Y gable end", "modelM": [0.0, -1.2, 2.985], "pixel": [733, 118] },
+        { "name": "+X-Y eave corner, shake butt", "modelM": [0.8, -1.18, 2.36], "pixel": [1121, 452] },
+        { "name": "+X+Y eave corner, shake butt", "modelM": [0.8, 1.18, 2.36], "pixel": [2541, 668] },
+        { "name": "-X-Y eave corner, shake butt", "modelM": [-0.8, -1.18, 2.36], "pixel": [398, 547] },
+        { "name": "board top, +Y edge", "modelM": [0.015, 0.645, 2.08], "pixel": [1950, 948] },
+        { "name": "board foot, +Y edge", "modelM": [0.015, 0.645, 0.94], "pixel": [1942, 1847] },
+        { "name": "-Y base plate, front outer corner", "modelM": [0.16, -0.99, 0.0], "pixel": [985, 2703] }
+      ],
+      "colourRegions": {
+        "post": [[850, 1200, 970, 1600]],
+        "shake": [[1300, 330, 1800, 420]],
+        "board": [[1300, 1100, 1800, 1500]],
+        "rail": [[1200, 1880, 1900, 1960]]
+      }
+    },
+    "snow-survey-hut": {
+      "reference": null,
+      "seed": 47,
+      "dimensionsM": [5.25, 4.44, 4.794],
+      "toleranceM": 0.005,
+      "buriedM": 0,
+      "textureSize": 4096,
+      "collision": true,
+      "panels": {},
+      "correspondences": [],
+      "colourRegions": {}
+    },
+    "vault-toilet": {
+      "reference": null,
+      "seed": 53,
+      "dimensionsM": [3.145, 2.658, 3.834],
+      "toleranceM": 0.005,
+      "buriedM": 0.1,
+      "textureSize": 4096,
+      "collision": true,
+      "panels": {},
+      "correspondences": [],
+      "colourRegions": {}
     }
   }
 }

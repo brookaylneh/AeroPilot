@@ -3,7 +3,7 @@
 A family spec `<family>.json` maps each asset to its approved reference id, seed, bounding
 dimensions in metres (x front, y left, z up) with tolerance, depth buried below grade, texture
 budget, collision flag, turnaround panel cells, master-camera correspondences and master colour
-regions.
+regions. An asset without an approved reference has reference null and none of the last three.
 """
 
 import hashlib
@@ -47,7 +47,7 @@ def check(family):
     assert family["assets"]
     for name, asset in family["assets"].items():
         assert set(asset) == KEYS, (name, set(asset) ^ KEYS)
-        assert isinstance(asset["reference"], str) and isinstance(asset["seed"], int), name
+        assert isinstance(asset["seed"], int), name
         assert len(asset["dimensionsM"]) == 3 and all(0 < d < 100 for d in asset["dimensionsM"])
         assert 0 < asset["toleranceM"] <= 0.1, name
         assert 0 <= asset["buriedM"] < asset["dimensionsM"][2], name
@@ -56,7 +56,11 @@ def check(family):
         panels = asset["panels"]
         assert set(panels) <= set(VIEWS) and all(cell in CELLS for cell in panels.values())
         assert len({tuple(cell) for cell in panels.values()}) == len(panels), name
-        assert len(asset["correspondences"]) >= 4, name
+        if asset["reference"] is None:
+            assert not (panels or asset["correspondences"] or asset["colourRegions"]), name
+        else:
+            assert isinstance(asset["reference"], str), name
+            assert len(asset["correspondences"]) >= 4, name
         for point in asset["correspondences"]:
             assert set(point) == {"name", "modelM", "pixel"} and len(point["modelM"]) == 3
             assert len(point["pixel"]) == 2 and all(0 <= p < SIZE for p in point["pixel"])

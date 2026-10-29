@@ -6,7 +6,18 @@ from world.unreal.blender.spec import check, load
 
 class SpecTests(unittest.TestCase):
     def test_tracked_families_pass(self):
-        self.assertEqual(sorted(load("structures")), ["ranger-cabin", "timber-footbridge"])
+        structures = sorted(load("structures"))
+        self.assertEqual(
+            structures,
+            [
+                "fire-lookout",
+                "ranger-cabin",
+                "snow-survey-hut",
+                "timber-footbridge",
+                "trailhead-kiosk",
+                "vault-toilet",
+            ],
+        )
 
     def test_schema_failures_are_loud(self):
         family = {"schemaVersion": 1, "assets": load("structures")}
@@ -25,6 +36,17 @@ class SpecTests(unittest.TestCase):
             broken = copy.deepcopy(family)
             mutate(broken["assets"]["ranger-cabin"])
             with self.assertRaises((AssertionError, KeyError)):
+                check(broken)
+        for mutate in (
+            lambda a: a["panels"].update(front=[0, 0]),
+            lambda a: a["correspondences"].append(
+                family["assets"]["ranger-cabin"]["correspondences"][0]
+            ),
+            lambda a: a.update(reference="vault-toilet"),
+        ):
+            broken = copy.deepcopy(family)
+            mutate(broken["assets"]["vault-toilet"])
+            with self.assertRaises(AssertionError):
                 check(broken)
 
 

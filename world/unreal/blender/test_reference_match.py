@@ -79,9 +79,16 @@ class CompareTests(unittest.TestCase):
         colour = np.array([208.0, 209.0, 208.0])
         image = composite(rgba, colour)
         self.assertEqual(tuple(image[0, 0]), (208, 209, 208))
-        mask = foreground(image, colour)
+        mask = foreground(image)
         self.assertEqual(mask.sum(), mask[50:150, 50:150].sum())
         self.assertGreater(mask.sum(), 0.99 * 100 * 100)
+        y, x = np.mgrid[:200, :200]
+        shadow = colour - 60 * np.exp(-((x - 100) ** 2 + (y - 100) ** 2) / 2000)[..., None]
+        self.assertFalse(foreground(shadow.round().astype(np.uint8)).any())
+        inside = (abs(x - 100) < 50) & (abs(y - 100) < 50)
+        mask = foreground((colour + np.where((x + y) % 2, 8, -8)[..., None] * inside[..., None]))
+        self.assertGreater(mask[inside].mean(), 0.95)
+        self.assertFalse(mask[~inside].any())
         square = np.zeros((10, 10), bool)
         square[:, :6] = True
         self.assertAlmostEqual(iou(square, square[:, ::-1]), 2 / 10)

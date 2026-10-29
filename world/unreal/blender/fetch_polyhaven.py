@@ -24,11 +24,8 @@ def main():
         data = target.read_bytes()
         assert len(data) == entry["bytes"], target
         assert hashlib.md5(data).hexdigest() == entry["md5"], target
-        print(
-            json.dumps(
-                {"path": str(target.relative_to(ROOT)), "sha256": hashlib.sha256(data).hexdigest()}
-            )
-        )
+        assert hashlib.sha256(data).hexdigest() == entry["sha256"], target
+        print(json.dumps({"path": str(target.relative_to(ROOT)), "sha256": entry["sha256"]}))
 
 
 if __name__ == "__main__":

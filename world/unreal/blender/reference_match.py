@@ -26,6 +26,8 @@ PANEL = SIZE // 2
 DRONE = {"resolution": [3840, 2160], "hfovDegrees": 70, "altitudeM": 30}
 EYE = {"resolution": [1920, 1080], "heightM": 1.7, "bearingDegrees": 35}
 TILE = 400
+# Median border sRGB of the 60 approved reference sheets, behind assets without a reference.
+STUDIO = np.array([202.0, 203.5, 201.5])
 
 
 def references(spec):
@@ -36,8 +38,10 @@ def references(spec):
     for kind in ("master", "turnaround"):
         path = REFERENCES / files[kind]["file"]
         assert digest(path) == files[kind]["sha256"], path
-        sheets[kind] = np.asarray(Image.open(path).convert("RGB"))
-        assert sheets[kind].shape == (SIZE, SIZE, 3), path
+        sheet = Image.open(path).convert("RGB")
+        assert sheet.size == tuple(files[kind]["size"]) and sheet.width == sheet.height, path
+        # Larger masters (the 4096 px fire-lookout) are compared at the turnaround resolution.
+        sheets[kind] = np.asarray(sheet.resize((SIZE, SIZE), Image.Resampling.LANCZOS))
     views = {"master": sheets["master"]}
     for view, (column, row) in spec["panels"].items():
         cell = np.s_[row * PANEL : (row + 1) * PANEL, column * PANEL : (column + 1) * PANEL]
@@ -182,14 +186,16 @@ def fit(spec, build, output):
     assert np.isclose(bounds[0, 2], -spec["buriedM"], rtol=0, atol=1e-9), bounds
     # References show the asset above grade.
     bounds[0, 2] = 0
-    views = references(spec)
-    cameras = {"master": fit_master(spec["correspondences"], SIZE)}
-    for view in spec["panels"]:
-        cameras[view] = fit_panel(foreground(views[view], background(views[view])), view, bounds)
+    cameras = {}
+    if spec["reference"]:
+        views = references(spec)
+        cameras["master"] = fit_master(spec["correspondences"], SIZE)
+        for view in spec["panels"]:
+            cameras[view] = fit_panel(foreground(views[view]), view, bounds)
     cameras["nadir"], cameras["eye"] = nadir(bounds), eye(bounds)
     record = {"build": source(build / "build.json"), "views": cameras}
     (output / "cameras.json").write_text(json.dumps(record, indent=2) + "\n")
-    print(json.dumps({"masterRmsPixels": cameras["master"]["rmsPixels"]}))
+    print(json.dumps({v: c["rmsPixels"] for v, c in cameras.items() if "rmsPixels" in c}))
 
 
 def to_linear(c):
@@ -206,9 +212,15 @@ def background(rgb):
     return np.median(np.concatenate([b.reshape(-1, 3) for b in border]), axis=0)
 
 
-def foreground(rgb, colour):
-    distance = np.linalg.norm(rgb.astype(float) - colour, axis=2)
-    return ndimage.binary_fill_holes(ndimage.binary_opening(distance > 30, iterations=2))
+def foreground(rgb):
+    """Textured pixels: luminance deviation above 4 sRGB levels in 7 px windows, closed and
+    hole-filled, then eroded by the window half-width. Smooth backgrounds and soft floor shadows
+    stay background, while pale surfaces near the background colour stay foreground."""
+    lum = rgb.astype(float).mean(axis=2)
+    mean = ndimage.uniform_filter(lum, 7)
+    deviation = np.sqrt(np.maximum(ndimage.uniform_filter(lum**2, 7) - mean**2, 0))
+    mask = ndimage.binary_fill_holes(ndimage.binary_closing(deviation > 4, iterations=4))
+    return ndimage.binary_erosion(mask, np.ones((3, 3)), iterations=3)
 
 
 def iou(a, b):
@@ -247,14 +259,14 @@ def source(path):
 
 def compare(spec, render, output):
     record = json.loads((render / "render.json").read_text())
-    views = references(spec)
+    views = references(spec) if spec["reference"] else {}
     font = ImageFont.truetype(str(ROOT / "web/public/fonts/dm-sans.ttf"), 22)
     report, tiles = {}, []
     for view, entry in record["images"].items():
         path = render / f"{view}.png"
         assert digest(path) == entry["sha256"], path
         if view not in views:
-            colour = background(views["master"])
+            colour = background(views["master"]) if views else STUDIO
             report[view] = {"backgroundSrgb": colour.tolist()}
             tiles.append(tile(composite(np.asarray(Image.open(path)), colour), view, font))
             continue
@@ -262,29 +274,31 @@ def compare(spec, render, output):
         colour = background(reference)
         image = composite(np.asarray(Image.open(path)), colour)
         assert image.shape == reference.shape, view
-        target, mask = foreground(reference, colour), foreground(image, colour)
+        target, mask = foreground(reference), foreground(image)
         score = iou(target, mask)
         report[view] = {"backgroundSrgb": colour.tolist(), "silhouetteIoU": score}
         outlines = ((target, (40, 200, 255)), (mask, (255, 60, 40)))
         tiles.append(tile(reference, f"{view} reference", font))
         tiles.append(tile(image, f"{view} render, IoU {score:.3f}", font, outlines))
     regions = {}
-    master = composite(np.asarray(Image.open(render / "master.png")), background(views["master"]))
-    for name, boxes in spec["colourRegions"].items():
-        r, m = region_mean(views["master"], boxes), region_mean(master, boxes)
-        regions[name] = {
-            "referenceSrgb": r.round(1).tolist(),
-            "renderSrgb": m.round(1).tolist(),
-            "differenceSrgb": (m - r).round(1).tolist(),
-        }
+    if views:
+        image = np.asarray(Image.open(render / "master.png"))
+        master = composite(image, background(views["master"]))
+        for name, boxes in spec["colourRegions"].items():
+            r, m = region_mean(views["master"], boxes), region_mean(master, boxes)
+            regions[name] = {
+                "referenceSrgb": r.round(1).tolist(),
+                "renderSrgb": m.round(1).tolist(),
+                "differenceSrgb": (m - r).round(1).tolist(),
+            }
     sheet = Image.new("RGB", (4 * TILE, -(-len(tiles) // 4) * TILE), "#eeeae1")
     for i, image in enumerate(tiles):
         sheet.paste(image, (i % 4 * TILE, i // 4 * TILE))
     sheet.save(output / "contact.png")
     result = {
         "render": source(render / "render.json"),
-        "maskMethod": "sRGB distance from the reference border median above 30, opened twice and "
-        "hole-filled; floor shadows count as foreground. Outlines: reference cyan, render red.",
+        "maskMethod": "luminance deviation above 4 sRGB levels in 7 px windows, closed, hole-filled "
+        "and eroded 3 px; soft floor shadows are background. Outlines: reference cyan, render red.",
         "views": report,
         "masterRegions": regions,
         "contactSheet": source(output / "contact.png"),
