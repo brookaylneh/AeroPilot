@@ -1,8 +1,9 @@
 """Asset family specs and the paths shared by the Blender and analysis programs.
 
 A family spec `<family>.json` maps each asset to its approved reference id, seed, bounding
-dimensions in metres (x front, y left, z up) with tolerance, texture budget, collision flag,
-turnaround panel cells, master-camera correspondences and master colour regions.
+dimensions in metres (x front, y left, z up) with tolerance, depth buried below grade, texture
+budget, collision flag, turnaround panel cells, master-camera correspondences and master colour
+regions.
 """
 
 import hashlib
@@ -21,6 +22,7 @@ KEYS = {
     "seed",
     "dimensionsM",
     "toleranceM",
+    "buriedM",
     "textureSize",
     "collision",
     "panels",
@@ -48,6 +50,7 @@ def check(family):
         assert isinstance(asset["reference"], str) and isinstance(asset["seed"], int), name
         assert len(asset["dimensionsM"]) == 3 and all(0 < d < 100 for d in asset["dimensionsM"])
         assert 0 < asset["toleranceM"] <= 0.1, name
+        assert 0 <= asset["buriedM"] < asset["dimensionsM"][2], name
         assert asset["textureSize"] in (512, 1024, 2048, 4096, 8192), name
         assert isinstance(asset["collision"], bool), name
         panels = asset["panels"]

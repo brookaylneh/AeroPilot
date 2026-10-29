@@ -6,6 +6,7 @@
       "seed": 24,
       "dimensionsM": [9.655, 6.66, 5.783],
       "toleranceM": 0.005,
+      "buriedM": 0,
       "textureSize": 4096,
       "collision": true,
       "panels": { "front": [0, 0], "back": [1, 0], "left": [0, 1], "top": [1, 1] },

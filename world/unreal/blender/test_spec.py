@@ -15,6 +15,7 @@ class SpecTests(unittest.TestCase):
             lambda a: a.update(extra=1),
             lambda a: a.update(dimensionsM=[9.6, 6.6]),
             lambda a: a.update(toleranceM=0),
+            lambda a: a.update(buriedM=-0.1),
             lambda a: a.update(textureSize=3000),
             lambda a: a["panels"].update(side=[0, 0]),
             lambda a: a["panels"].update(top=[0, 0]),

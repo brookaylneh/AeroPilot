@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "assets": {
+    "granite-hero-boulder": {
+      "reference": "granite-hero-boulder",
+      "seed": 31,
+      "dimensionsM": [3.1, 3.6, 3.1],
+      "toleranceM": 0.005,
+      "buriedM": 0.3,
+      "textureSize": 4096,
+      "collision": true,
+      "panels": { "front": [0, 0], "back": [1, 0], "left": [0, 1], "top": [1, 1] },
+      "correspondences": [
+        { "name": "joint at grade", "modelM": [0.92, 0.91, 0.02], "pixel": [2200, 2270] },
+        { "name": "-Y silhouette extreme", "modelM": [0.3, -1.72, 1.08], "pixel": [107, 1600] },
+        { "name": "+Y silhouette extreme", "modelM": [0.21, 1.88, 1.06], "pixel": [2785, 1550] },
+        { "name": "lowest front contact", "modelM": [0.97, -0.37, 0.01], "pixel": [1200, 2490] },
+        { "name": "top silhouette", "modelM": [-0.58, 0.03, 2.74], "pixel": [1146, 505] }
+      ],
+      "colourRegions": {
+        "front": [[600, 1300, 1500, 2000]],
+        "top": [[1150, 700, 1900, 950]],
+        "side": [[2250, 1300, 2650, 1900]],
+        "base": [[900, 2330, 1900, 2480]]
+      }
+    }
+  }
+}

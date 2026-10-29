@@ -1,7 +1,8 @@
 """Shared Blender asset harness: seeded parts, PBR materials, GLB export and build.json.
 
 A family module calls `main(Path(__file__), BUILDERS)`. Every asset is built in metres with
-+Z up and its front facing +X; `finish` moves the origin to the ground-contact centre.
++Z up and its front facing +X; `finish` moves the origin to the ground-contact centre at grade,
+`buriedM` above the lowest vertex.
 """
 
 import argparse
@@ -148,6 +149,20 @@ def beam(parts, material, start, end, width, depth, up, rng, **kwargs):
     box(parts, material, (axis.length, width, depth), matrix, rng, grain=0, **kwargs)
 
 
+def gpu(scene):
+    """Select Cycles on every OptiX device and return their names."""
+    preferences = bpy.context.preferences.addons["cycles"].preferences
+    preferences.compute_device_type = "OPTIX"
+    preferences.refresh_devices()
+    devices = [d.name for d in preferences.devices if d.type == "OPTIX"]
+    assert devices, "OptiX device required"
+    for device in preferences.devices:
+        device.use = device.type == "OPTIX"
+    scene.render.engine = "CYCLES"
+    scene.cycles.device = "GPU"
+    return devices
+
+
 def lin(srgb):
     """sRGB bytes to linear RGB."""
     return tuple(((c / 255 + 0.055) / 1.055) ** 2.4 for c in srgb)
@@ -259,9 +274,9 @@ def finish(script, asset, spec, objects, output):
         obj.data.vertices.foreach_get("co", co)
         vertices.append(co.reshape(-1, 3))
     co = np.concatenate(vertices)
-    low = co[:, 2].min()
-    ground = co[co[:, 2] <= low + GROUND_M, :2]
-    shift = -np.array([*(ground.min(axis=0) + ground.max(axis=0)) / 2, low])
+    grade = co[:, 2].min() + spec["buriedM"]
+    ground = co[np.abs(co[:, 2] - grade) <= GROUND_M, :2]
+    shift = -np.array([*(ground.min(axis=0) + ground.max(axis=0)) / 2, grade])
     for obj in objects:
         obj.data.transform(Matrix.Translation(shift))
     bounds = np.array([co.min(axis=0), co.max(axis=0)]) + shift

@@ -13,10 +13,12 @@ import sys
 import time
 from pathlib import Path
 
+import bmesh
 import bpy
 from mathutils import Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from world.unreal.blender.common import gpu  # noqa: E402
 from world.unreal.blender.spec import ROOT, digest, output_dir  # noqa: E402
 
 SAMPLES = 1024
@@ -38,15 +40,17 @@ def main():
     output = output_dir(args.output)
     bpy.ops.wm.open_mainfile(filepath=str(blend))
     scene = bpy.context.scene
-    preferences = bpy.context.preferences.addons["cycles"].preferences
-    preferences.compute_device_type = "OPTIX"
-    preferences.refresh_devices()
-    devices = [d for d in preferences.devices if d.type == "OPTIX"]
-    assert devices, "OptiX device required"
-    for device in preferences.devices:
-        device.use = device.type == "OPTIX"
-    scene.render.engine = "CYCLES"
-    scene.cycles.device = "GPU"
+    # References show the asset above grade; level views see the floor plane edge-on.
+    for obj in scene.objects:
+        bm = bmesh.new()
+        bm.from_mesh(obj.data)
+        geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
+        bmesh.ops.bisect_plane(
+            bm, geom=geom, plane_co=(0, 0, 0), plane_no=(0, 0, 1), clear_inner=True
+        )
+        bm.to_mesh(obj.data)
+        bm.free()
+    devices = gpu(scene)
     scene.cycles.samples = SAMPLES
     scene.cycles.use_adaptive_sampling = True
     scene.cycles.adaptive_threshold = 0.004
@@ -116,7 +120,7 @@ def main():
         "cameras": {"path": str(args.cameras), "sha256": digest(ROOT / args.cameras)},
         "script": {"path": str(Path(__file__).relative_to(ROOT)), "sha256": digest(__file__)},
         "blenderVersion": bpy.app.version_string,
-        "device": [d.name for d in devices],
+        "device": devices,
         "samples": SAMPLES,
         "adaptiveThreshold": scene.cycles.adaptive_threshold,
         "viewTransform": "Standard",

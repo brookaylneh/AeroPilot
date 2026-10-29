@@ -178,7 +178,10 @@ def fit(spec, build, output):
     report = json.loads((build / "build.json").read_text())
     assert report["spec"] == spec, "build.json was made from a different spec"
     bounds = np.array(report["boundsM"])
-    assert bounds.shape == (2, 3) and (bounds[1] > bounds[0]).all() and bounds[0, 2] == 0
+    assert bounds.shape == (2, 3) and (bounds[1] > bounds[0]).all()
+    assert np.isclose(bounds[0, 2], -spec["buriedM"], rtol=0, atol=1e-9), bounds
+    # References show the asset above grade.
+    bounds[0, 2] = 0
     views = references(spec)
     cameras = {"master": fit_master(spec["correspondences"], SIZE)}
     for view in spec["panels"]:
