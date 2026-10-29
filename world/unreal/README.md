@@ -305,6 +305,21 @@ The check creates only temporary Vulkan instances and uses the NVIDIA ICD. It do
 renderer or listener. Both profile results must pass; it does not bypass the engine's profile checks.
 A supported device still needs SM6 shaders and the project's uncooked assets for a complete rebuild.
 
+## Measure packaged performance
+
+`measure_performance.py` launches the release in `SNR_PACKAGE_ROOT` at 3840×2160, 60 FPS cap, no
+Pixel Streaming, under the 56G scope, with the slot's four coupled autopilots. After a warm-up capture
+it flies the pinned lanes at 5 m/s with a 4K capture every 16 m per drone (1.25 Hz fleet-wide), then
+runs 40 back-to-back captures per hovering drone. Frame and GPU times come from the CSV profiler
+(`FrameTime`, `GPUTime` = `RHIGetGPUFrameCycles`), anchored to host time by the timestamped
+`CsvProfile STOP` event. VRAM is sampled per process with `nvidia-smi`; RAM is the reset `VmHWM`.
+Any GPU process other than a ScenarioStudio world fails the run.
+
+```sh
+set -a; . .local/slot.env; set +a   # SNR_PACKAGE_ROOT, SNR_COSYS_SETTINGS, SNR_WORLD_CONFIG: the release
+.venv-cosys/bin/python -m world.unreal.measure_performance --output .local/evidence/world/<new>.json
+```
+
 ## Characters
 
 [Character authoring](characters/README.md) manages the character roster separately
