@@ -45,12 +45,14 @@
   edit/build/restart in `~/snr`, touch installed `snr-*` services, or stop a
   process owned by another task. Tests and acceptance use the assigned slot.
 
-| Worktree      | Branch         | Mission | Dev  | MAVLink base | RC base | Cosys RPC | SITL instance base |
-| ------------- | -------------- | ------- | ---- | ------------ | ------- | --------- | ------------------ |
-| `~/snr-world` | `world-resize` | 8768    | 5177 | 14630        | 5801    | 41453     | 30                 |
+| Worktree       | Branch         | Mission | Dev  | MAVLink base | RC base | Cosys RPC | SITL instance base |
+| -------------- | -------------- | ------- | ---- | ------------ | ------- | --------- | ------------------ |
+| `~/snr-valley` | `world-valley` | 8768    | 5177 | 14630        | 5801    | 41453     | 30                 |
 
-World resize writes shared evidence only under `.local/evidence/world/` and
-generated terrain only under its own `.local/world/`. Its Unreal Content is
+The valley worktree exclusively reuses the accepted resize's slot; `~/snr-world`
+stays stopped. It has no Pixel Streaming endpoints. World work writes shared
+evidence only under `.local/evidence/world/` and generated valley terrain only
+under its own `.local/world/valley/`. Its Unreal Content is
 copied, never hardlinked. Keep at least 40 GiB free and four CPU cores available;
 editor rebuilds use `-MaxParallelActions=6`.
 

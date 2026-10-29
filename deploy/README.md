@@ -117,19 +117,21 @@ The build CPU limit is a packaging setting; it does not select the live simulati
 
 ### Parallel development slots
 
-|                          | Installed services (`~/snr`) | Search (`~/snr-search`) | Coupling (`~/snr-coupling`) | World (`~/snr-world`) |
-| ------------------------ | ---------------------------- | ----------------------- | --------------------------- | --------------------- |
-| Branch                   | `aws-migration`              | `search-planning`       | `cosys-coupling`            | `world-resize`        |
-| Mission WebSocket        | 8765                         | 8766                    | 8767                        | 8768                  |
-| Dev server               | 5174                         | 5175                    | 5176                        | 5177                  |
-| `SNR_MAVLINK_BASE_PORT`  | 14600                        | 14610                   | 14620                       | 14630                 |
-| `SNR_SITL_RC_BASE_PORT`  | 5501                         | 5601                    | 5701                        | 5801                  |
-| Cosys RPC                | 41451                        | —                       | 41452                       | 41453                 |
-| `SNR_SITL_INSTANCE_BASE` | 0                            | —                       | 20                          | 30                    |
-| AirSim sensor UDP        | 9003–9033, step 10           | —                       | 9203–9233, step 10          | 9303–9333, step 10    |
-| AirSim control UDP       | 9002–9032, step 10           | —                       | 9202–9232, step 10          | 9302–9332, step 10    |
+|                          | Installed services (`~/snr`) | Search (`~/snr-search`) | Coupling (`~/snr-coupling`) | World (`~/snr-valley`) |
+| ------------------------ | ---------------------------- | ----------------------- | --------------------------- | ---------------------- |
+| Branch                   | `aws-migration`              | `search-planning`       | `cosys-coupling`            | `world-valley`         |
+| Mission WebSocket        | 8765                         | 8766                    | 8767                        | 8768                   |
+| Dev server               | 5174                         | 5175                    | 5176                        | 5177                   |
+| `SNR_MAVLINK_BASE_PORT`  | 14600                        | 14610                   | 14620                       | 14630                  |
+| `SNR_SITL_RC_BASE_PORT`  | 5501                         | 5601                    | 5701                        | 5801                   |
+| Cosys RPC                | 41451                        | —                       | 41452                       | 41453                  |
+| `SNR_SITL_INSTANCE_BASE` | 0                            | —                       | 20                          | 30                     |
+| AirSim sensor UDP        | 9003–9033, step 10           | —                       | 9203–9233, step 10          | 9303–9333, step 10     |
+| AirSim control UDP       | 9002–9032, step 10           | —                       | 9202–9232, step 10          | 9302–9332, step 10     |
 
 Each development worktree keeps its ports in one ignored `.local/slot.env`;
+the valley worktree exclusively reuses the stopped resize worktree's slot.
+The world slot has no Pixel Streaming endpoints.
 `.local/runtime.env` may link to it for existing commands. MAVLink uses four
 consecutive ports; RC input uses four ports at increments of ten. Before every
 start, inspect `ss -lntup` and fail if any assigned port is occupied. No other
