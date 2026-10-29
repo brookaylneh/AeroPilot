@@ -165,3 +165,14 @@ Set the package, container, Cosys port and data directories for that particular 
 The harness verifies its native readiness, selects it through the existing public signalling
 route, and records the selection. The reserved second-instance values are in
 `deploy/runtime.env.example`; no new listener ports may be chosen.
+
+`measure-capacity.mjs ORIGIN NEW_OUTPUT_DIRECTORY SECONDS` tests two independent
+instances through that public signalling route. Start the main instance with the
+chosen lighting package at 1080p60 and 100% internal resolution, then load its
+runtime environment before invoking the tool. The duration must be at least 360
+seconds; the tool verifies at least 300 seconds of overlapping measurements. It
+copies the package into the new evidence directory, gives the second instance its
+own scenario and sensor directories and the reserved Cosys port, and runs four
+drones capturing native 4K at 1 Hz in each instance. Both browser workers finish
+and land their drones before the test container stops. The main service stays up.
+Other active workloads remain in the measurement record and qualify capacity claims.
