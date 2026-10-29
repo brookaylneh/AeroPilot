@@ -1,44 +1,30 @@
 # Streaming image quality
 
-The live profile is native **3840×2160 at a 60 FPS target**, configured in
-`deploy/runtime.env.example`. Changes take effect when `snr-unreal` starts; the
-application does not switch quality profiles while running.
+The live profile is **3840×2160 output at a 60 FPS target**, with TSR
+at 55% internal resolution (2112×1188). Its startup values are defined in
+`deploy/runtime.env.example`; it does not switch quality at runtime. A 301.02-second
+four-drone run passed the defined gate: 59.98 decoded FPS, no browser-reported freezes
+or callback gaps over 100 ms, and GPU mean/p95/p99 of 8.50/9.15/14.63 ms. Browser
+presentation averaged 58.03 FPS. The test used 34.45 Mbps and the whole GPU averaged
+236.41 W. Bundled-cache validation, the 30-minute stability run, recording mode and
+concurrent-session capacity remain pending.
 
-- H.264 through NVENC, `HighQuality` preset and `LowLatency` mode.
-- 100% internal render resolution with TSR antialiasing; motion blur is disabled.
-- Adaptive bitrate from 10 to 40 Mbps; the encoder starts at the ceiling.
-- No fixed encoder bitrate and no periodic keyframes. The browser can request a keyframe.
-- Browser media uses TURN. Its configured 6,250,000 bytes/s limit allows 50 Mbps.
-- Epic scalability level 3, a 4096 MB texture streaming pool and six container CPUs.
+The package uses Vulkan SM6, Lumen GI and reflections with hardware ray tracing,
+volumetric clouds and fog, and scalability level 3. Virtual shadow maps and Nanite
+are off. The current grass is temporary and will be replaced separately; the new
+assets will require another performance measurement.
 
-The current package uses `SF_VULKAN_SM5`, screen-space GI and screen-space reflections.
-Hardware ray tracing and virtual shadow maps are off; Nanite assets use fallback meshes
-on this platform. Both UE 5.8.2 SM6 device profiles pass on the RTX PRO 6000. The live Rocketbox release
-is now cooked from complete uncooked assets; the character blocker is resolved.
-SM6 lighting variants still require their own cook and performance acceptance.
+H.264 uses NVENC's HighQuality preset and LowLatency mode, with adaptive bitrate
+from 10 to 40 Mbps through TURN. The renderer has twelve container CPUs, a 24 GiB
+memory limit and a 4096 MB texture streaming pool.
 
-The five-minute navigation run delivered 59.99 decoded FPS at 35.04 Mbps with no dropped
-frames or browser-reported freezes. The largest video callback gap was 99.9 ms. Sampled
-GPU time averaged 8.62 ms, with p95 9.33 ms and p99 10.22 ms. These are camera telemetry
-samples at a target 10 Hz, not an exhaustive per-frame trace.
+Drone RGB sensors capture native 3840×2160 at fixed EV100 13 and white balance
+6500 K, with world GI and reflections, no bloom and no motion blur. The current
+experiment explicitly selects 1 Hz per drone; production mission cadence is not
+established by this test.
 
-A 61-second close-character run delivered 60.01 decoded FPS at 34.77 Mbps, with no dropped
-frames or browser-reported freezes and a largest video callback gap of 50 ms. Sampled GPU
-time averaged 10.25 ms, with p95 10.55 ms and p99 10.70 ms. GPU power averaged 296.28 W;
-the highest sampled temperature was 45 °C.
-
-These measurements used a browser on AWS through the public HTTP origin and TURN. They do
-not establish performance on a user's device or network, or across every character.
-Four-drone flight/capture load and the complete realism gate remain unmeasured.
-Drone-camera capture resolution is independent of the browser stream.
-
-Run reproducible measurements with `scripts/measure-stream.mjs`, as documented in
-[README.md](README.md). It records browser statistics, native timing samples, NVIDIA
-power/clocks/temperature and native-resolution screenshots. Committed results are in
-`mission_planner/measurements/render-quality.json`; raw evidence remains under `.local/evidence/`.
-
-## References
-
-- [Epic: temporal super resolution](https://dev.epicgames.com/documentation/en-us/unreal-engine/temporal-super-resolution-in-unreal-engine)
-- [Epic: Pixel Streaming 2 settings](https://github.com/EpicGames/PixelStreamingInfrastructure/blob/master/Docs/pixel-streaming-2-migration-guide.md)
-- The installed UE 5.8.2 `VulkanPC/DataDrivenPlatformInfo.ini` defines SM5/SM6 feature support.
+Measurements use a browser on AWS through the public HTTP origin and TURN. They
+record other active workloads and do not establish performance on a user's device
+or network. Run `scripts/measure-stream.mjs` as documented in [README.md](README.md).
+Committed results are in `mission_planner/measurements/render-quality.json`; raw
+evidence remains under `.local/evidence/`.

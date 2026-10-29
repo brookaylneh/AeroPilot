@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "recorded_at": "2026-10-28T23:26:48.774975+00:00",
-  "status": "Hardware Lumen active in Vulkan SM6; 4K navigation screening measured; full quality gate pending",
+  "recorded_at": "2026-10-29T01:00:33.196747+00:00",
+  "status": "Five-minute gate passed; waiting for occupied Studio before character PSO coverage",
   "vulkan_profile_check": {
     "engine": "5.8.2",
     "implementation": "Engine generated vulkan_profiles_ue.h and vpGetPhysicalDeviceProfileSupport",
@@ -23,17 +23,22 @@
     "fps": 60,
     "shader_platform": "SF_VULKAN_SM6",
     "scalability": 3,
-    "screen_percentage": 100,
+    "screen_percentage": 55,
     "codec": "H264",
     "min_bitrate_bps": 10000000,
     "max_bitrate_bps": 40000000,
     "parity_measurement": "mission_planner/measurements/aws-services.json",
     "configuration": "deploy/runtime.env.example",
-    "release": "/home/brook_avionuas/snr/.local/unreal/releases/20261028T230559Z",
+    "release": "/home/brook_avionuas/snr/.local/unreal/releases/20261029T005249Z",
     "hardware_ray_tracing": true,
     "global_illumination": "Lumen",
     "reflections": "Lumen",
-    "acceptance": "Experimental; five-minute flight/capture gate pending"
+    "acceptance": "Five-minute four-drone gate passed at 4K output / TSR55; bundled PSO, thirty-minute soak, recording and capacity pending",
+    "cpu_limit": 12,
+    "volumetric_clouds": true,
+    "volumetric_fog": true,
+    "virtual_shadow_maps": false,
+    "nanite": false
   },
   "requested_changes": [
     "3840x2160 browser stream",
@@ -111,7 +116,8 @@
         ".local/evidence/render-quality/1080p-baseline/person.png",
         ".local/evidence/render-quality/1080p-baseline/navigation-start.png",
         ".local/evidence/render-quality/1080p-baseline/navigation-end.png"
-      ]
+      ],
+      "timing_source": "Native camera telemetry at target 10 Hz; not a per-frame timing distribution"
     },
     {
       "name": "4k-navigation",
@@ -181,7 +187,8 @@
         ".local/evidence/render-quality/4k-navigation/person.png",
         ".local/evidence/render-quality/4k-navigation/navigation-start.png",
         ".local/evidence/render-quality/4k-navigation/navigation-end.png"
-      ]
+      ],
+      "timing_source": "Native camera telemetry at target 10 Hz; not a per-frame timing distribution"
     },
     {
       "name": "4k-person",
@@ -251,7 +258,8 @@
         ".local/evidence/render-quality/4k-person/person.png",
         ".local/evidence/render-quality/4k-person/person-start.png",
         ".local/evidence/render-quality/4k-person/person-end.png"
-      ]
+      ],
+      "timing_source": "Native camera telemetry at target 10 Hz; not a per-frame timing distribution"
     },
     {
       "name": "rocketbox-sm5-4k-frames",
@@ -343,6 +351,33 @@
         ".local/evidence/render-quality/rocketbox-sm5-4k-frames/port.png",
         ".local/evidence/render-quality/rocketbox-sm5-4k-frames/navigation-start.png",
         ".local/evidence/render-quality/rocketbox-sm5-4k-frames/navigation-end.png"
+      ],
+      "screenshot_files": [
+        {
+          "path": ".local/evidence/render-quality/rocketbox-sm5-4k-frames/person.png",
+          "bytes": 8669869,
+          "sha256": "ca22c81c08028b67797dc6de98a61d20bceef47eacdeeedb0547da2d4ab406c3"
+        },
+        {
+          "path": ".local/evidence/render-quality/rocketbox-sm5-4k-frames/meadow.png",
+          "bytes": 9182516,
+          "sha256": "805a72b980bfa39f5c939650e005a958ad650aed9408d816920bf66e9e5a4ce1"
+        },
+        {
+          "path": ".local/evidence/render-quality/rocketbox-sm5-4k-frames/port.png",
+          "bytes": 17546092,
+          "sha256": "d645b8e7005573dbf569ce2abf840d62f54d2b77cab24de901f9a29a1292990d"
+        },
+        {
+          "path": ".local/evidence/render-quality/rocketbox-sm5-4k-frames/navigation-start.png",
+          "bytes": 9256598,
+          "sha256": "2d015403050cebd17713299b396afddfa62cfa9f7827c94551a5f5a19959b7c5"
+        },
+        {
+          "path": ".local/evidence/render-quality/rocketbox-sm5-4k-frames/navigation-end.png",
+          "bytes": 9059161,
+          "sha256": "3d6420d04b5c771da9b35ea04202cabba874c0988f98a687d90a2306c1cfcbbe"
+        }
       ]
     },
     {
@@ -1255,6 +1290,3744 @@
           "snr-turn"
         ]
       }
+    },
+    {
+      "name": "rocketbox-lumen-async-4k-cpu6",
+      "recorded_at": "2026-10-28T23:35:07.315Z",
+      "profile": {
+        "width": 3840,
+        "height": 2160,
+        "fps": 60,
+        "codec": "H264",
+        "minBitrateBps": 10000000,
+        "maxBitrateBps": 40000000
+      },
+      "workload": "Four SimpleFlight drones flying at separated altitudes; staggered 4K RGB at 1 Hz each",
+      "summary": {
+        "seconds": 60.0757041015625,
+        "decodedFps": 42.01365656460702,
+        "bitrateMbps": 30.990349324121823,
+        "droppedFrames": 0,
+        "freezes": 0,
+        "freezeDurationSeconds": 0,
+        "videoCallbackGapMs": {
+          "samples": 2219,
+          "mean": 27.083190626408296,
+          "p95": 50,
+          "p99": 66.69799999997485,
+          "max": 99.99600000001374
+        },
+        "gpuMs": {
+          "samples": 2548,
+          "mean": 11.88262009419151,
+          "p95": 18.141,
+          "p99": 18.699,
+          "max": 19.09
+        },
+        "frameMs": {
+          "samples": 2548,
+          "mean": 23.7631894819466,
+          "p95": 47.3592,
+          "p99": 55.7487,
+          "max": 105.1535
+        },
+        "powerW": {
+          "samples": 58,
+          "mean": 261.97155172413784,
+          "p95": 279.44,
+          "p99": 282.59,
+          "max": 282.59
+        },
+        "graphicsMHz": {
+          "samples": 58,
+          "mean": 2298.6206896551726,
+          "p95": 2302,
+          "p99": 2310,
+          "max": 2310
+        },
+        "temperatureC": {
+          "samples": 58,
+          "mean": 41.293103448275865,
+          "p95": 43,
+          "p99": 43,
+          "max": 43
+        },
+        "gameMs": {
+          "samples": 2548,
+          "mean": 5.82030337519622,
+          "p95": 13.586,
+          "p99": 34.449,
+          "max": 44.382
+        },
+        "renderMs": {
+          "samples": 2548,
+          "mean": 20.555178178963914,
+          "p95": 50.662,
+          "p99": 62.968,
+          "max": 105.082
+        },
+        "gapsOver100Ms": 0
+      },
+      "timing_source": "Unreal CSV per-frame GPUTime, FrameTime, GameThreadTime and RenderThreadTime",
+      "render_settings": [
+        "[2026.10.28-23.37.33:879][ 79]r.DynamicGlobalIlluminationMethod = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.28-23.37.33:888][ 79]r.ReflectionMethod = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.28-23.37.33:889][ 79]r.Lumen.HardwareRayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.28-23.37.33:892][ 79]r.Shadow.Virtual.Enable = \"0\"      LastSetBy: ProjectSetting",
+        "[2026.10.28-23.37.33:894][ 79]r.Nanite = \"0\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.28-23.37.33:896][ 80]r.RayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.28-23.37.33:900][ 80]r.RayTracing.Enable = \"1\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.28-23.37.33:903][ 80]r.AntiAliasingMethod = \"4\"      LastSetBy: Constructor",
+        "[2026.10.28-23.37.33:903][ 80]r.ScreenPercentage = \"100\"      LastSetBy: DeviceProfile"
+      ],
+      "engine_metadata": {
+        "[HasHeaderRowAtEnd]": "1",
+        "[EventTimestamps]": "1",
+        "[platform]": "Linux",
+        "[config]": "Development",
+        "[buildversion]": "++UE5+Release-5.8-CL-56702186",
+        "[engineversion]": "5.8.2-56702186+++UE5+Release-5.8",
+        "[enginereleaseversion]": "5.8.2",
+        "[os]": "Ubuntu 24.04.4 LTS 6.8.0-1066-aws",
+        "[cpu]": "GenuineIntel|Intel(R) Xeon(R) Platinum 8559C",
+        "[pgoenabled]": "0",
+        "[pgoprofilingenabled]": "0",
+        "[ltoenabled]": "0",
+        "[asan]": "0",
+        "[mergedmodules]": "0",
+        "[compacttset]": "0",
+        "[loginid]": "-000003ea",
+        "[llm]": "0",
+        "[zenstreaming]": "0",
+        "[systemresolution.resx]": "3840",
+        "[systemresolution.resy]": "2160",
+        "[extradevelopmentmemorymb]": "0",
+        "[verbatimrhiname]": "Vulkan",
+        "[rhiname]": "Vulkan",
+        "[rhifeaturelevel]": "SM6",
+        "[shaderplatform]": "VULKAN_SM6",
+        "[gpu]": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+        "[gpudriver]": "580.178",
+        "[deviceprofile]": "Linux",
+        "[largeworldcoordinates]": "1",
+        "[raytracing]": "1",
+        "[streamingpoolsizemb]": "4096",
+        "[csvid]": "01A184E049EA725DA5F5A853B80C9DD4",
+        "[targetframerate]": "60",
+        "[starttimestamp]": "1793230653",
+        "[namedevents]": "0",
+        "[hasgtstalls]": "0",
+        "[vsyncenabled]": "0",
+        "[csvbench_timingstat_ns]": "114.407500",
+        "[csvbench_customstat_ns]": "57.535000",
+        "[csvbench_duration_ms]": "6.878000",
+        "[endtimestamp]": "1793230714",
+        "[captureduration]": "60.51584",
+        "[csvmaxfilebytesreached]": "0",
+        "[commandline]": " ScenarioStudio /Game/OpenMeadow/OpenMeadow -RenderOffscreen -unattended -nosound -NoSplash -vulkan -sm6 -savevulkanpsocacheonexit -logPSO -dpcvars=r.pso.PrecompileThreadPoolSizeMax=2,r.Streaming.PoolSize=4096,r.ScreenPercentage=100 -ResX=3840 -ResY=2160 -ForceRes -settings=/home/brook_avionuas/snr/.local/unreal/Live/cosys-settings.json -ScenarioSaveDir=/home/brook_avionuas/snr/.local/data/unreal-scenarios -PixelStreamingConnectionURL=ws://127.0.0.1:8888 -PixelStreamingEncoderCodec=H264 -PixelStreamingWebRTCFps=60 -PixelStreamingWebRTCStartBitrate=40000000 -PixelStreamingWebRTCMinBitrate=10000000 -PixelStreamingWebRTCMaxBitrate=40000000 -PixelStreamingWebRTCDisableTransmitAudio=true -PixelStreamingWebRTCMinPort=49160 -PixelStreamingWebRTCMaxPort=49200 -PixelStreamingEncoderQualityPreset=HighQuality -PixelStreamingEncoderLatencyMode=LowLatency -DroneFoundationDir=/home/brook_avionuas/snr/.local/data/four-drones -PixelStreamingUseMediaCapture=true -ExecCmds=t.MaxFPS 60\" -stdout -FullStdOutLogOutput\""
+      },
+      "release": "/home/brook_avionuas/snr/.local/unreal/releases/20261028T233449Z",
+      "evidence": ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu6/result.json",
+      "sha256": "f166ae215f11be512615f91ad1828a76eda23d77d1c17c05518fd846c461dbdb",
+      "engine_csv": {
+        "path": ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu6/engine.csv",
+        "bytes": 5633931,
+        "sha256": "fbc395755d0f3e7c96255e7644993d927729f0a508cfa89e0b5858a98466a58d"
+      },
+      "screenshots": [
+        ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu6/person.png",
+        ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu6/meadow.png",
+        ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu6/port.png",
+        ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu6/four-drones-start.png",
+        ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu6/four-drones-end.png"
+      ],
+      "screenshot_files": [
+        {
+          "path": ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu6/person.png",
+          "bytes": 9870660,
+          "sha256": "38f57488fc30d17cdbe029f358866e08e65ef933d9390dd572dca919099e40b4"
+        },
+        {
+          "path": ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu6/meadow.png",
+          "bytes": 9224888,
+          "sha256": "4a0efd0ed4322e012f6f9cfb8e26cc49e367376e6c3f8ffbd485d41c2fbe609d"
+        },
+        {
+          "path": ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu6/port.png",
+          "bytes": 17509801,
+          "sha256": "b302b0c942cb23d6a9ce6f7f0e0abde257a28fb1864d4a1fd01d4e558ae64418"
+        },
+        {
+          "path": ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu6/four-drones-start.png",
+          "bytes": 9259217,
+          "sha256": "bb62c1406533cb6f349b98a603d444ce16185d6bc5521d8f52c2573cbf6b2fed"
+        },
+        {
+          "path": ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu6/four-drones-end.png",
+          "bytes": 9526942,
+          "sha256": "e45beb3dc5a854448b33bdeeb7efe4b9b5b4570818b2c3fe5338e595569ae1ec"
+        }
+      ],
+      "drone_workload": {
+        "path": ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu6/drones/result.json",
+        "bytes": 2016267,
+        "sha256": "96b5c9520ad017156191f3a237f67f0ae4dfcde178f4f77abed1cc58965e58a0"
+      },
+      "qualification": "Gate failed; a concurrent six-CPU Unreal package build occupied the host. Not an isolated capacity measurement."
+    },
+    {
+      "name": "rocketbox-lumen-async-4k-cpu12",
+      "recorded_at": "2026-10-28T23:43:35.885Z",
+      "profile": {
+        "width": 3840,
+        "height": 2160,
+        "fps": 60,
+        "codec": "H264",
+        "minBitrateBps": 10000000,
+        "maxBitrateBps": 40000000
+      },
+      "workload": "Four SimpleFlight drones flying at separated altitudes; staggered 4K RGB at 1 Hz each",
+      "summary": {
+        "seconds": 60.89706298828125,
+        "decodedFps": 58.77130725809759,
+        "bitrateMbps": 32.813602199247846,
+        "droppedFrames": 0,
+        "freezes": 0,
+        "freezeDurationSeconds": 0,
+        "videoCallbackGapMs": {
+          "samples": 2688,
+          "mean": 22.66772172619048,
+          "p95": 33.39999999999418,
+          "p99": 50,
+          "max": 50.10000000000582
+        },
+        "gpuMs": {
+          "samples": 3632,
+          "mean": 11.540093887665194,
+          "p95": 17.589,
+          "p99": 18.436,
+          "max": 18.868
+        },
+        "frameMs": {
+          "samples": 3632,
+          "mean": 16.90289457599119,
+          "p95": 17.9577,
+          "p99": 19.9679,
+          "max": 32.9148
+        },
+        "powerW": {
+          "samples": 59,
+          "mean": 305.0111864406779,
+          "p95": 313.47,
+          "p99": 316.19,
+          "max": 316.19
+        },
+        "graphicsMHz": {
+          "samples": 59,
+          "mean": 2360.813559322034,
+          "p95": 2385,
+          "p99": 2392,
+          "max": 2392
+        },
+        "temperatureC": {
+          "samples": 59,
+          "mean": 44.45762711864407,
+          "p95": 46,
+          "p99": 46,
+          "max": 46
+        },
+        "gameMs": {
+          "samples": 3632,
+          "mean": 3.3436040748898606,
+          "p95": 5.723,
+          "p99": 7.877,
+          "max": 21.088
+        },
+        "renderMs": {
+          "samples": 3632,
+          "mean": 11.227772577092495,
+          "p95": 24.08,
+          "p99": 29.712,
+          "max": 38.812
+        },
+        "gapsOver100Ms": 0
+      },
+      "timing_source": "Unreal CSV per-frame GPUTime, FrameTime, GameThreadTime and RenderThreadTime",
+      "render_settings": [
+        "[2026.10.28-23.45.53:838][410]r.DynamicGlobalIlluminationMethod = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.28-23.45.53:839][410]r.ReflectionMethod = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.28-23.45.53:839][410]r.Lumen.HardwareRayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.28-23.45.53:839][410]r.Shadow.Virtual.Enable = \"0\"      LastSetBy: ProjectSetting",
+        "[2026.10.28-23.45.53:840][410]r.Nanite = \"0\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.28-23.45.53:840][410]r.RayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.28-23.45.53:840][410]r.RayTracing.Enable = \"1\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.28-23.45.53:840][410]r.AntiAliasingMethod = \"4\"      LastSetBy: Constructor",
+        "[2026.10.28-23.45.53:840][410]r.ScreenPercentage = \"100\"      LastSetBy: DeviceProfile"
+      ],
+      "engine_metadata": {
+        "[HasHeaderRowAtEnd]": "1",
+        "[EventTimestamps]": "1",
+        "[platform]": "Linux",
+        "[config]": "Development",
+        "[buildversion]": "++UE5+Release-5.8-CL-56702186",
+        "[engineversion]": "5.8.2-56702186+++UE5+Release-5.8",
+        "[enginereleaseversion]": "5.8.2",
+        "[os]": "Ubuntu 24.04.4 LTS 6.8.0-1066-aws",
+        "[cpu]": "GenuineIntel|Intel(R) Xeon(R) Platinum 8559C",
+        "[pgoenabled]": "0",
+        "[pgoprofilingenabled]": "0",
+        "[ltoenabled]": "0",
+        "[asan]": "0",
+        "[mergedmodules]": "0",
+        "[compacttset]": "0",
+        "[loginid]": "-000003ea",
+        "[llm]": "0",
+        "[zenstreaming]": "0",
+        "[systemresolution.resx]": "3840",
+        "[systemresolution.resy]": "2160",
+        "[extradevelopmentmemorymb]": "0",
+        "[verbatimrhiname]": "Vulkan",
+        "[rhiname]": "Vulkan",
+        "[rhifeaturelevel]": "SM6",
+        "[shaderplatform]": "VULKAN_SM6",
+        "[gpu]": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+        "[gpudriver]": "580.178",
+        "[deviceprofile]": "Linux",
+        "[largeworldcoordinates]": "1",
+        "[raytracing]": "1",
+        "[streamingpoolsizemb]": "4096",
+        "[csvid]": "01A184E7EAC3734EAF232311F9EE18CE",
+        "[targetframerate]": "60",
+        "[starttimestamp]": "1793231153",
+        "[namedevents]": "0",
+        "[hasgtstalls]": "0",
+        "[vsyncenabled]": "0",
+        "[csvbench_timingstat_ns]": "157.052500",
+        "[csvbench_customstat_ns]": "85.792500",
+        "[csvbench_duration_ms]": "9.714000",
+        "[endtimestamp]": "1793231215",
+        "[captureduration]": "61.407768",
+        "[csvmaxfilebytesreached]": "0",
+        "[commandline]": " ScenarioStudio /Game/OpenMeadow/OpenMeadow -RenderOffscreen -unattended -nosound -NoSplash -vulkan -sm6 -savevulkanpsocacheonexit -logPSO -dpcvars=r.pso.PrecompileThreadPoolSizeMax=2,r.Streaming.PoolSize=4096,r.ScreenPercentage=100,r.Vulkan.EnablePSOFileCacheWhenPrecachingActive=1,r.ShaderPipelineCache.Enabled=1 -ResX=3840 -ResY=2160 -ForceRes -settings=/home/brook_avionuas/snr/.local/unreal/Live/cosys-settings.json -ScenarioSaveDir=/home/brook_avionuas/snr/.local/data/unreal-scenarios -PixelStreamingConnectionURL=ws://127.0.0.1:8888 -PixelStreamingEncoderCodec=H264 -PixelStreamingWebRTCFps=60 -PixelStreamingWebRTCStartBitrate=40000000 -PixelStreamingWebRTCMinBitrate=10000000 -PixelStreamingWebRTCMaxBitrate=40000000 -PixelStreamingWebRTCDisableTransmitAudio=true -PixelStreamingWebRTCMinPort=49160 -PixelStreamingWebRTCMaxPort=49200 -PixelStreamingEncoderQualityPreset=HighQuality -PixelStreamingEncoderLatencyMode=LowLatency -DroneFoundationDir=/home/brook_avionuas/snr/.local/data/four-drones -PixelStreamingUseMediaCapture=true -ExecCmds=t.MaxFPS 60\" -stdout -FullStdOutLogOutput\""
+      },
+      "release": "/home/brook_avionuas/snr/.local/unreal/releases/20261028T233449Z",
+      "evidence": ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu12-devices/result.json",
+      "sha256": "bb71cfdfb6e42bf82d361c67b5fa6d11c6f383c9448b414b71f6e8f321e6d1d6",
+      "engine_csv": {
+        "path": ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu12-devices/engine.csv",
+        "bytes": 8037868,
+        "sha256": "a014df60935b3168e8c7a13dfccac896600d2c0640749a0919038c7324a578f2"
+      },
+      "screenshots": [
+        ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu12-devices/person.png",
+        ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu12-devices/meadow.png",
+        ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu12-devices/port.png",
+        ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu12-devices/four-drones-start.png",
+        ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu12-devices/four-drones-end.png"
+      ],
+      "screenshot_files": [
+        {
+          "path": ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu12-devices/person.png",
+          "bytes": 9649922,
+          "sha256": "50e06c248bab73d3ee3ef141d19c3e47429f3109198be7eeb21c932fb16c20a8"
+        },
+        {
+          "path": ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu12-devices/meadow.png",
+          "bytes": 9229066,
+          "sha256": "c9e8a2a905b5f4bf801a35fb9743514664d6cb2fe13d1775f65b41d191a36aea"
+        },
+        {
+          "path": ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu12-devices/port.png",
+          "bytes": 17506111,
+          "sha256": "de073ed00aba19b0111d66793387559407418d6f11b90d9de567cc25c59ef76e"
+        },
+        {
+          "path": ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu12-devices/four-drones-start.png",
+          "bytes": 9269872,
+          "sha256": "7da920c3104076372e9d64159affa20423d56af52ab940c859f286e77357cf23"
+        },
+        {
+          "path": ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu12-devices/four-drones-end.png",
+          "bytes": 9472058,
+          "sha256": "ef187549a56a9c9069f8290c2efa9694fc843221569b53989dd796fbef368b71"
+        }
+      ],
+      "drone_workload": {
+        "path": ".local/evidence/render-quality/rocketbox-lumen-async-4k-cpu12-devices/drones/result.json",
+        "bytes": 2127620,
+        "sha256": "7d1458539fb1905afa72fa6d1478ed1276a52c513fbdbbd55325a494dde39557"
+      }
+    },
+    {
+      "name": "rocketbox-lumen-1080-cpu12",
+      "recorded_at": "2026-10-28T23:57:16.794Z",
+      "profile": {
+        "width": 1920,
+        "internalRenderPercentage": 100,
+        "height": 1080,
+        "fps": 60,
+        "codec": "H264",
+        "minBitrateBps": 10000000,
+        "maxBitrateBps": 40000000
+      },
+      "workload": "Four SimpleFlight drones flying at separated altitudes; staggered 4K RGB at 1 Hz each",
+      "summary": {
+        "seconds": 60.04353686523437,
+        "decodedFps": 59.77329430235573,
+        "presentedFps": 55.30748765487594,
+        "memoryCurrentMiB": {
+          "samples": 59,
+          "mean": 1562.482190148305,
+          "p95": 1616.36328125,
+          "p99": 1628.5390625,
+          "max": 1628.5390625
+        },
+        "memoryAnonymousMiB": {
+          "samples": 59,
+          "mean": 1537.306408898305,
+          "p95": 1590.3359375,
+          "p99": 1593.17578125,
+          "max": 1593.17578125
+        },
+        "bitrateMbps": 34.120080644120186,
+        "droppedFrames": 0,
+        "freezes": 0,
+        "freezeDurationSeconds": 0,
+        "videoCallbackGapMs": {
+          "samples": 2891,
+          "mean": 20.77627118644068,
+          "p95": 33.39999999999418,
+          "p99": 50,
+          "max": 66.69999999998254
+        },
+        "gpuMs": {
+          "samples": 3621,
+          "mean": 6.687983982325328,
+          "p95": 13.069,
+          "p99": 13.503,
+          "max": 18.717
+        },
+        "frameMs": {
+          "samples": 3621,
+          "mean": 16.73317235570287,
+          "p95": 16.7594,
+          "p99": 18.2286,
+          "max": 43.5639
+        },
+        "powerW": {
+          "samples": 59,
+          "mean": 175.8583050847457,
+          "p95": 182.88,
+          "p99": 185.5,
+          "max": 185.5
+        },
+        "graphicsMHz": {
+          "samples": 59,
+          "mean": 2310,
+          "p95": 2310,
+          "p99": 2310,
+          "max": 2310
+        },
+        "temperatureC": {
+          "samples": 59,
+          "mean": 35.559322033898304,
+          "p95": 37,
+          "p99": 37,
+          "max": 37
+        },
+        "gameMs": {
+          "samples": 3621,
+          "mean": 1.9968795912731316,
+          "p95": 3.399,
+          "p99": 5.599,
+          "max": 19.43
+        },
+        "renderMs": {
+          "samples": 3621,
+          "mean": 7.649342999171493,
+          "p95": 17.832,
+          "p99": 24.35,
+          "max": 43.436
+        },
+        "gapsOver100Ms": 0
+      },
+      "timing_source": "Unreal CSV per-frame GPUTime, FrameTime, GameThreadTime and RenderThreadTime",
+      "render_settings": [
+        "[2026.10.28-23.59.32:957][344]r.DynamicGlobalIlluminationMethod = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.28-23.59.32:959][344]r.ReflectionMethod = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.28-23.59.32:960][344]r.Lumen.HardwareRayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.28-23.59.32:961][344]r.Shadow.Virtual.Enable = \"0\"      LastSetBy: ProjectSetting",
+        "[2026.10.28-23.59.32:975][345]r.Nanite = \"0\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.28-23.59.32:977][345]r.RayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.28-23.59.32:977][345]r.RayTracing.Enable = \"1\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.28-23.59.32:980][345]r.AntiAliasingMethod = \"4\"      LastSetBy: Constructor",
+        "[2026.10.28-23.59.32:980][345]r.ScreenPercentage = \"100\"      LastSetBy: DeviceProfile"
+      ],
+      "engine_metadata": {
+        "[HasHeaderRowAtEnd]": "1",
+        "[EventTimestamps]": "1",
+        "[platform]": "Linux",
+        "[config]": "Development",
+        "[buildversion]": "++UE5+Release-5.8-CL-56702186",
+        "[engineversion]": "5.8.2-56702186+++UE5+Release-5.8",
+        "[enginereleaseversion]": "5.8.2",
+        "[os]": "Ubuntu 24.04.4 LTS 6.8.0-1066-aws",
+        "[cpu]": "GenuineIntel|Intel(R) Xeon(R) Platinum 8559C",
+        "[pgoenabled]": "0",
+        "[pgoprofilingenabled]": "0",
+        "[ltoenabled]": "0",
+        "[asan]": "0",
+        "[mergedmodules]": "0",
+        "[compacttset]": "0",
+        "[loginid]": "-000003ea",
+        "[llm]": "0",
+        "[zenstreaming]": "0",
+        "[systemresolution.resx]": "1920",
+        "[systemresolution.resy]": "1080",
+        "[extradevelopmentmemorymb]": "0",
+        "[verbatimrhiname]": "Vulkan",
+        "[rhiname]": "Vulkan",
+        "[rhifeaturelevel]": "SM6",
+        "[shaderplatform]": "VULKAN_SM6",
+        "[gpu]": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+        "[gpudriver]": "580.178",
+        "[deviceprofile]": "Linux",
+        "[largeworldcoordinates]": "1",
+        "[raytracing]": "1",
+        "[streamingpoolsizemb]": "4096",
+        "[csvid]": "01A184F46A9A7C8E88706D3AF472C667",
+        "[targetframerate]": "60",
+        "[starttimestamp]": "1793231973",
+        "[namedevents]": "0",
+        "[hasgtstalls]": "0",
+        "[vsyncenabled]": "0",
+        "[csvbench_timingstat_ns]": "239.100000",
+        "[csvbench_customstat_ns]": "134.985000",
+        "[csvbench_duration_ms]": "14.963600",
+        "[endtimestamp]": "1793232033",
+        "[captureduration]": "60.569119",
+        "[csvmaxfilebytesreached]": "0",
+        "[commandline]": " ScenarioStudio /Game/OpenMeadow/OpenMeadow -RenderOffscreen -unattended -nosound -NoSplash -vulkan -sm6 -savevulkanpsocacheonexit -logPSO -dpcvars=r.pso.PrecompileThreadPoolSizeMax=2,r.Streaming.PoolSize=4096,r.ScreenPercentage=100,r.Vulkan.EnablePSOFileCacheWhenPrecachingActive=1,r.ShaderPipelineCache.Enabled=1 -ResX=1920 -ResY=1080 -ForceRes -settings=/home/brook_avionuas/snr/.local/unreal/Live/cosys-settings.json -ScenarioSaveDir=/home/brook_avionuas/snr/.local/data/unreal-scenarios -PixelStreamingConnectionURL=ws://127.0.0.1:8888 -PixelStreamingEncoderCodec=H264 -PixelStreamingWebRTCFps=60 -PixelStreamingWebRTCStartBitrate=40000000 -PixelStreamingWebRTCMinBitrate=10000000 -PixelStreamingWebRTCMaxBitrate=40000000 -PixelStreamingWebRTCDisableTransmitAudio=true -PixelStreamingWebRTCMinPort=49160 -PixelStreamingWebRTCMaxPort=49200 -PixelStreamingEncoderQualityPreset=HighQuality -PixelStreamingEncoderLatencyMode=LowLatency -DroneFoundationDir=/home/brook_avionuas/snr/.local/data/four-drones -PixelStreamingUseMediaCapture=true -ExecCmds=t.MaxFPS 60\" -stdout -FullStdOutLogOutput\""
+      },
+      "release": "/home/brook_avionuas/snr/.local/unreal/releases/20261028T233449Z",
+      "evidence": ".local/evidence/render-quality/rocketbox-lumen-1080-cpu12/result.json",
+      "sha256": "9c1e773035b24b15040b7f932041d68b4d97b88a661f509ca61ce27e7afe892a",
+      "engine_csv": {
+        "path": ".local/evidence/render-quality/rocketbox-lumen-1080-cpu12/engine.csv",
+        "bytes": 8011073,
+        "sha256": "29a90ca96d5432b4c82e352a4e5dbf6d1680be4b8900856ee7e1b23a5c91e898"
+      },
+      "screenshots": [
+        ".local/evidence/render-quality/rocketbox-lumen-1080-cpu12/person.png",
+        ".local/evidence/render-quality/rocketbox-lumen-1080-cpu12/meadow.png",
+        ".local/evidence/render-quality/rocketbox-lumen-1080-cpu12/port.png",
+        ".local/evidence/render-quality/rocketbox-lumen-1080-cpu12/four-drones-start.png",
+        ".local/evidence/render-quality/rocketbox-lumen-1080-cpu12/four-drones-end.png"
+      ],
+      "screenshot_files": [
+        {
+          "path": ".local/evidence/render-quality/rocketbox-lumen-1080-cpu12/person.png",
+          "bytes": 2935961,
+          "sha256": "ff98e7f8e5f306b72a23c2cc98645ccb6dedac6b6cc0a658372f811ebe2a632d"
+        },
+        {
+          "path": ".local/evidence/render-quality/rocketbox-lumen-1080-cpu12/meadow.png",
+          "bytes": 2904370,
+          "sha256": "1dac60a3852039cce78ef2a2723647bb023f9945683cc3313d162fcbd4e5f5df"
+        },
+        {
+          "path": ".local/evidence/render-quality/rocketbox-lumen-1080-cpu12/port.png",
+          "bytes": 4392971,
+          "sha256": "8b1721dc841398520b2db06d4a9aea6e47b44230c628152590519c0ef9fd797e"
+        },
+        {
+          "path": ".local/evidence/render-quality/rocketbox-lumen-1080-cpu12/four-drones-start.png",
+          "bytes": 2912127,
+          "sha256": "dd575115e5dfc55f09681405a7295beae4b2d7d0a63f5b0b4f079e095f3aa797"
+        },
+        {
+          "path": ".local/evidence/render-quality/rocketbox-lumen-1080-cpu12/four-drones-end.png",
+          "bytes": 2928650,
+          "sha256": "f0be8dc80afafbb42b3cfd70b4c9e57649675f246a6fb37ebaaaa9c2a13fb9c8"
+        }
+      ],
+      "drone_workload": {
+        "path": ".local/evidence/render-quality/rocketbox-lumen-1080-cpu12/drones/result.json",
+        "bytes": 2107977,
+        "sha256": "2b8921d4e99ffed23ce7995dcffa21cb0e85f741d5bfc552021f29f6452bbacd"
+      },
+      "gate": {
+        "atLeastFiveMinutes": false,
+        "atLeast1080p60": true,
+        "fourDronesFlyingAndCapturing": true,
+        "scheduledCaptureCadence": true,
+        "decodedFps": true,
+        "noFreezeOver100Ms": true,
+        "gpuP95": true,
+        "gpuP99": true
+      },
+      "gate_passed": false,
+      "concurrent_containers": [
+        "elated_swirles",
+        "snr-turn",
+        "snr-unreal-live",
+        "snr-unreal-world"
+      ],
+      "measurement_tools": [
+        {
+          "source": "world/unreal/scripts/measure-stream.mjs",
+          "snapshot": ".local/evidence/render-quality/rocketbox-lumen-1080-cpu12/tools/measure-stream.mjs",
+          "sha256": "f995daa8db314aa049402789fd515a9dadc41a777b64551bfbcec2ccc1cc8f6f"
+        },
+        {
+          "source": "world/unreal/scripts/profile-engine.py",
+          "snapshot": ".local/evidence/render-quality/rocketbox-lumen-1080-cpu12/tools/profile-engine.py",
+          "sha256": "1585ccae5f265063aec1bd6e86bf115b22130a406a25ed48ced354bf4d2c476e"
+        },
+        {
+          "source": "world/cosys/render_workload.py",
+          "snapshot": ".local/evidence/render-quality/rocketbox-lumen-1080-cpu12/tools/render_workload.py",
+          "sha256": "5ee5853dabf2430f8e7dc00d6ffefd42b0b04df9843c5d75511bafb32961e5f3"
+        },
+        {
+          "source": "mission_planner/agents/perception/browser.mjs",
+          "snapshot": ".local/evidence/render-quality/rocketbox-lumen-1080-cpu12/tools/browser.mjs",
+          "sha256": "899f757050a11487331ec3e8d035992184f81955c1cf12f985e636e94c363935"
+        }
+      ],
+      "first_video_frame": {
+        "navigationToFirstFrameMs": 899.5,
+        "presentedAtEpochMs": 1793231837869.2,
+        "width": 1920,
+        "height": 1080
+      },
+      "capture_summary": {
+        "Drone1": {
+          "count": 60,
+          "latencyMs": {
+            "samples": 60,
+            "mean": 247.00983055105704,
+            "p95": 289.5998470048653,
+            "p99": 325.35576200461946,
+            "max": 325.35576200461946
+          },
+          "latenessMs": {
+            "samples": 60,
+            "mean": 0.1320554038102273,
+            "p95": 0.38027499977033585,
+            "p99": 1.4550909982062876,
+            "max": 1.4550909982062876
+          }
+        },
+        "Drone2": {
+          "count": 59,
+          "latencyMs": {
+            "samples": 59,
+            "mean": 258.76282986551445,
+            "p95": 301.0570160113275,
+            "p99": 355.2534909977112,
+            "max": 355.2534909977112
+          },
+          "latenessMs": {
+            "samples": 59,
+            "mean": 0.09814159840077036,
+            "p95": 0.20517100347205997,
+            "p99": 0.25888900563586503,
+            "max": 0.25888900563586503
+          }
+        },
+        "Drone3": {
+          "count": 60,
+          "latencyMs": {
+            "samples": 60,
+            "mean": 252.8873887672186,
+            "p95": 292.10360899742227,
+            "p99": 329.6348290023161,
+            "max": 329.6348290023161
+          },
+          "latenessMs": {
+            "samples": 60,
+            "mean": 0.09455818847830717,
+            "p95": 0.138814008096233,
+            "p99": 0.27150999812874943,
+            "max": 0.27150999812874943
+          }
+        },
+        "Drone4": {
+          "count": 60,
+          "latencyMs": {
+            "samples": 60,
+            "mean": 237.76996468392704,
+            "p95": 276.3198329921579,
+            "p99": 309.5557449996704,
+            "max": 309.5557449996704
+          },
+          "latenessMs": {
+            "samples": 60,
+            "mean": 0.09996895508569044,
+            "p95": 0.14863800606690347,
+            "p99": 0.45942500582896173,
+            "max": 0.45942500582896173
+          }
+        }
+      }
+    },
+    {
+      "name": "lumen-1080-visual",
+      "recorded_at": "2026-10-29T00:03:48.489Z",
+      "profile": {
+        "width": 1920,
+        "internalRenderPercentage": 100,
+        "height": 1080,
+        "fps": 60,
+        "codec": "H264",
+        "minBitrateBps": 10000000,
+        "maxBitrateBps": 40000000
+      },
+      "workload": "Browser navigation view; no flight or sensor capture experiment",
+      "summary": {
+        "seconds": 61.02902319335937,
+        "decodedFps": 59.987851819302215,
+        "presentedFps": 59.23246777924111,
+        "memoryCurrentMiB": {
+          "samples": 60,
+          "mean": 1722.8115234375,
+          "p95": 1735.94921875,
+          "p99": 1736.625,
+          "max": 1736.625
+        },
+        "memoryAnonymousMiB": {
+          "samples": 60,
+          "mean": 1682.0387369791667,
+          "p95": 1691.5390625,
+          "p99": 1692.078125,
+          "max": 1692.078125
+        },
+        "bitrateMbps": 36.16406484185957,
+        "droppedFrames": 0,
+        "freezes": 0,
+        "freezeDurationSeconds": 0,
+        "videoCallbackGapMs": {
+          "samples": 3126,
+          "mean": 19.528982725527833,
+          "p95": 33.39999999999418,
+          "p99": 33.40000000000873,
+          "max": 50.10000000000582
+        },
+        "gpuMs": {
+          "samples": 3687,
+          "mean": 5.935077298616748,
+          "p95": 6.04,
+          "p99": 6.086,
+          "max": 6.19
+        },
+        "frameMs": {
+          "samples": 3687,
+          "mean": 16.669038866286932,
+          "p95": 16.6689,
+          "p99": 16.678,
+          "max": 18.9231
+        },
+        "powerW": {
+          "samples": 60,
+          "mean": 165.2345,
+          "p95": 167.91,
+          "p99": 168.46,
+          "max": 168.46
+        },
+        "graphicsMHz": {
+          "samples": 60,
+          "mean": 2310,
+          "p95": 2310,
+          "p99": 2310,
+          "max": 2310
+        },
+        "temperatureC": {
+          "samples": 60,
+          "mean": 35.05,
+          "p95": 35,
+          "p99": 36,
+          "max": 36
+        },
+        "gameMs": {
+          "samples": 3687,
+          "mean": 1.235378356387306,
+          "p95": 1.563,
+          "p99": 2.025,
+          "max": 8.531
+        },
+        "renderMs": {
+          "samples": 3687,
+          "mean": 4.558289666395446,
+          "p95": 5.703,
+          "p99": 7.277,
+          "max": 17.302
+        },
+        "gapsOver100Ms": 0
+      },
+      "gate": {
+        "atLeastFiveMinutes": false,
+        "atLeast1080p60": true,
+        "fourDronesFlyingAndCapturing": false,
+        "scheduledCaptureCadence": false,
+        "decodedFps": true,
+        "noFreezeOver100Ms": true,
+        "gpuP95": true,
+        "gpuP99": true
+      },
+      "gate_passed": false,
+      "concurrent_containers": [
+        "flamboyant_cerf",
+        "snr-turn",
+        "snr-unreal-live"
+      ],
+      "measurement_tools": [
+        {
+          "source": "world/unreal/scripts/measure-stream.mjs",
+          "snapshot": ".local/evidence/render-quality/lumen-1080-visual/tools/measure-stream.mjs",
+          "sha256": "97ef820ceee609ee1eeea2589f4d2503e315815c4fe4d7996863ba2ba84b07c0"
+        },
+        {
+          "source": "world/unreal/scripts/profile-engine.py",
+          "snapshot": ".local/evidence/render-quality/lumen-1080-visual/tools/profile-engine.py",
+          "sha256": "1585ccae5f265063aec1bd6e86bf115b22130a406a25ed48ced354bf4d2c476e"
+        },
+        {
+          "source": "world/cosys/render_workload.py",
+          "snapshot": ".local/evidence/render-quality/lumen-1080-visual/tools/render_workload.py",
+          "sha256": "5ee5853dabf2430f8e7dc00d6ffefd42b0b04df9843c5d75511bafb32961e5f3"
+        },
+        {
+          "source": "mission_planner/agents/perception/browser.mjs",
+          "snapshot": ".local/evidence/render-quality/lumen-1080-visual/tools/browser.mjs",
+          "sha256": "899f757050a11487331ec3e8d035992184f81955c1cf12f985e636e94c363935"
+        }
+      ],
+      "first_video_frame": {
+        "navigationToFirstFrameMs": 587.7,
+        "presentedAtEpochMs": 1793232229236.9,
+        "width": 1920,
+        "height": 1080
+      },
+      "timing_source": "Unreal CSV per-frame GPUTime, FrameTime, GameThreadTime and RenderThreadTime",
+      "render_settings": [
+        "[2026.10.29-00.05.01:496][ 19]r.DynamicGlobalIlluminationMethod = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.05.01:496][ 19]r.ReflectionMethod = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.05.01:497][ 19]r.Lumen.HardwareRayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.05.01:512][ 20]r.Shadow.Virtual.Enable = \"0\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.05.01:512][ 20]r.Nanite = \"0\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.29-00.05.01:513][ 21]r.RayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.05.01:529][ 21]r.RayTracing.Enable = \"1\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.29-00.05.01:529][ 21]r.AntiAliasingMethod = \"4\"      LastSetBy: Constructor",
+        "[2026.10.29-00.05.01:529][ 21]r.ScreenPercentage = \"100\"      LastSetBy: DeviceProfile"
+      ],
+      "engine_metadata": {
+        "[HasHeaderRowAtEnd]": "1",
+        "[EventTimestamps]": "1",
+        "[platform]": "Linux",
+        "[config]": "Development",
+        "[buildversion]": "++UE5+Release-5.8-CL-56702186",
+        "[engineversion]": "5.8.2-56702186+++UE5+Release-5.8",
+        "[enginereleaseversion]": "5.8.2",
+        "[os]": "Ubuntu 24.04.4 LTS 6.8.0-1066-aws",
+        "[cpu]": "GenuineIntel|Intel(R) Xeon(R) Platinum 8559C",
+        "[pgoenabled]": "0",
+        "[pgoprofilingenabled]": "0",
+        "[ltoenabled]": "0",
+        "[asan]": "0",
+        "[mergedmodules]": "0",
+        "[compacttset]": "0",
+        "[loginid]": "-000003ea",
+        "[llm]": "0",
+        "[zenstreaming]": "0",
+        "[systemresolution.resx]": "1920",
+        "[systemresolution.resy]": "1080",
+        "[extradevelopmentmemorymb]": "0",
+        "[verbatimrhiname]": "Vulkan",
+        "[rhiname]": "Vulkan",
+        "[rhifeaturelevel]": "SM6",
+        "[shaderplatform]": "VULKAN_SM6",
+        "[gpu]": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+        "[gpudriver]": "580.178",
+        "[deviceprofile]": "Linux",
+        "[largeworldcoordinates]": "1",
+        "[raytracing]": "1",
+        "[streamingpoolsizemb]": "4096",
+        "[csvid]": "01A184F96DFB7CB6A7AD9C82EEE0D281",
+        "[targetframerate]": "60",
+        "[starttimestamp]": "1793232301",
+        "[namedevents]": "0",
+        "[hasgtstalls]": "0",
+        "[vsyncenabled]": "0",
+        "[csvbench_timingstat_ns]": "119.587500",
+        "[csvbench_customstat_ns]": "61.720000",
+        "[csvbench_duration_ms]": "7.252600",
+        "[endtimestamp]": "1793232363",
+        "[captureduration]": "61.457841",
+        "[csvmaxfilebytesreached]": "0",
+        "[commandline]": " ScenarioStudio /Game/OpenMeadow/OpenMeadow -RenderOffscreen -unattended -nosound -NoSplash -vulkan -sm6 -savevulkanpsocacheonexit -logPSO -dpcvars=r.pso.PrecompileThreadPoolSizeMax=2,r.Streaming.PoolSize=4096,r.ScreenPercentage=100,r.Vulkan.EnablePSOFileCacheWhenPrecachingActive=1,r.ShaderPipelineCache.Enabled=1 -ResX=1920 -ResY=1080 -ForceRes -settings=/home/brook_avionuas/snr/.local/unreal/Live/cosys-settings.json -ScenarioSaveDir=/home/brook_avionuas/snr/.local/data/unreal-scenarios -PixelStreamingConnectionURL=ws://127.0.0.1:8888 -PixelStreamingEncoderCodec=H264 -PixelStreamingWebRTCFps=60 -PixelStreamingWebRTCStartBitrate=40000000 -PixelStreamingWebRTCMinBitrate=10000000 -PixelStreamingWebRTCMaxBitrate=40000000 -PixelStreamingWebRTCDisableTransmitAudio=true -PixelStreamingWebRTCMinPort=49160 -PixelStreamingWebRTCMaxPort=49200 -PixelStreamingEncoderQualityPreset=HighQuality -PixelStreamingEncoderLatencyMode=LowLatency -DroneFoundationDir=/home/brook_avionuas/snr/.local/data/four-drones -PixelStreamingUseMediaCapture=true -ExecCmds=t.MaxFPS 60\" -stdout -FullStdOutLogOutput\""
+      },
+      "release": "/home/brook_avionuas/snr/.local/unreal/releases/20261028T233449Z",
+      "evidence": ".local/evidence/render-quality/lumen-1080-visual/result.json",
+      "sha256": "bdc5dee02edff389a81e8ee85a84abb595d641e2855f323a59e468277cd15cf5",
+      "engine_csv": {
+        "path": ".local/evidence/render-quality/lumen-1080-visual/engine.csv",
+        "bytes": 8043821,
+        "sha256": "e4a625fbb31c85abc18bd3ed29d4f6e43c9f276043795c0b3ea40840b3551f7e"
+      },
+      "screenshots": [
+        ".local/evidence/render-quality/lumen-1080-visual/person.png",
+        ".local/evidence/render-quality/lumen-1080-visual/meadow.png",
+        ".local/evidence/render-quality/lumen-1080-visual/port.png",
+        ".local/evidence/render-quality/lumen-1080-visual/navigation-start.png",
+        ".local/evidence/render-quality/lumen-1080-visual/navigation-end.png"
+      ],
+      "screenshot_files": [
+        {
+          "path": ".local/evidence/render-quality/lumen-1080-visual/person.png",
+          "bytes": 2891020,
+          "sha256": "1b7f990804b2acd7bd3e868db0751da0eda2e2b566baa48228de86e431057ce9"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-1080-visual/meadow.png",
+          "bytes": 2905777,
+          "sha256": "72dd4eb7c57989e65671d1d88df0805b371d8d56880d2a5de1025523812ab106"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-1080-visual/port.png",
+          "bytes": 4395844,
+          "sha256": "a49e61318454196fc9e01266e5bae2ff7b15b07455f2c789dae9d3d3d2e47452"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-1080-visual/navigation-start.png",
+          "bytes": 2910390,
+          "sha256": "f993865efc7bbcd110673cfa913de9a278b2d26493649c20e1f46c6d9f7fa35f"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-1080-visual/navigation-end.png",
+          "bytes": 2882864,
+          "sha256": "f757007948a8724537e4ace29d1dfe6892f92b848b066b7e4b5ea49afc79a10e"
+        }
+      ]
+    },
+    {
+      "name": "base-1080-visual",
+      "recorded_at": "2026-10-29T00:06:20.453Z",
+      "profile": {
+        "width": 1920,
+        "internalRenderPercentage": 100,
+        "height": 1080,
+        "fps": 60,
+        "codec": "H264",
+        "minBitrateBps": 10000000,
+        "maxBitrateBps": 40000000
+      },
+      "workload": "Browser navigation view; no flight or sensor capture experiment",
+      "summary": {
+        "seconds": 60.0272939453125,
+        "decodedFps": 59.97271846503289,
+        "presentedFps": 58.75338897807739,
+        "memoryCurrentMiB": {
+          "samples": 59,
+          "mean": 1500.420749470339,
+          "p95": 1670,
+          "p99": 1670.87890625,
+          "max": 1670.87890625
+        },
+        "memoryAnonymousMiB": {
+          "samples": 59,
+          "mean": 1477.8116393008474,
+          "p95": 1643.625,
+          "p99": 1644.203125,
+          "max": 1644.203125
+        },
+        "bitrateMbps": 36.075850595112584,
+        "droppedFrames": 0,
+        "freezes": 0,
+        "freezeDurationSeconds": 0,
+        "videoCallbackGapMs": {
+          "samples": 3135,
+          "mean": 19.153939393939396,
+          "p95": 33.39999999999418,
+          "p99": 33.40000000000873,
+          "max": 50.10000000000582
+        },
+        "gpuMs": {
+          "samples": 3627,
+          "mean": 4.11699917287014,
+          "p95": 4.216,
+          "p99": 4.458,
+          "max": 4.601
+        },
+        "frameMs": {
+          "samples": 3627,
+          "mean": 16.675146650124077,
+          "p95": 16.6691,
+          "p99": 16.7758,
+          "max": 20.3104
+        },
+        "powerW": {
+          "samples": 59,
+          "mean": 153.2859322033899,
+          "p95": 155.59,
+          "p99": 160.06,
+          "max": 160.06
+        },
+        "graphicsMHz": {
+          "samples": 59,
+          "mean": 2324.186440677966,
+          "p95": 2325,
+          "p99": 2325,
+          "max": 2325
+        },
+        "temperatureC": {
+          "samples": 59,
+          "mean": 34.05084745762712,
+          "p95": 35,
+          "p99": 35,
+          "max": 35
+        },
+        "gameMs": {
+          "samples": 3627,
+          "mean": 1.278873449131516,
+          "p95": 1.909,
+          "p99": 2.618,
+          "max": 9.391
+        },
+        "renderMs": {
+          "samples": 3627,
+          "mean": 3.580416597739173,
+          "p95": 5.273,
+          "p99": 7.49,
+          "max": 10.654
+        },
+        "gapsOver100Ms": 0
+      },
+      "gate": {
+        "atLeastFiveMinutes": false,
+        "atLeast1080p60": true,
+        "fourDronesFlyingAndCapturing": false,
+        "scheduledCaptureCadence": false,
+        "decodedFps": true,
+        "noFreezeOver100Ms": true,
+        "gpuP95": true,
+        "gpuP99": true
+      },
+      "gate_passed": false,
+      "concurrent_containers": [
+        "hungry_yonath",
+        "snr-turn",
+        "snr-unreal-live"
+      ],
+      "measurement_tools": [
+        {
+          "source": "world/unreal/scripts/measure-stream.mjs",
+          "snapshot": ".local/evidence/render-quality/base-1080-visual/tools/measure-stream.mjs",
+          "sha256": "97ef820ceee609ee1eeea2589f4d2503e315815c4fe4d7996863ba2ba84b07c0"
+        },
+        {
+          "source": "world/unreal/scripts/profile-engine.py",
+          "snapshot": ".local/evidence/render-quality/base-1080-visual/tools/profile-engine.py",
+          "sha256": "1585ccae5f265063aec1bd6e86bf115b22130a406a25ed48ced354bf4d2c476e"
+        },
+        {
+          "source": "world/cosys/render_workload.py",
+          "snapshot": ".local/evidence/render-quality/base-1080-visual/tools/render_workload.py",
+          "sha256": "5ee5853dabf2430f8e7dc00d6ffefd42b0b04df9843c5d75511bafb32961e5f3"
+        },
+        {
+          "source": "mission_planner/agents/perception/browser.mjs",
+          "snapshot": ".local/evidence/render-quality/base-1080-visual/tools/browser.mjs",
+          "sha256": "899f757050a11487331ec3e8d035992184f81955c1cf12f985e636e94c363935"
+        }
+      ],
+      "first_video_frame": {
+        "navigationToFirstFrameMs": 897.1,
+        "presentedAtEpochMs": 1793232381514.1,
+        "width": 1920,
+        "height": 1080
+      },
+      "timing_source": "Unreal CSV per-frame GPUTime, FrameTime, GameThreadTime and RenderThreadTime",
+      "render_settings": [
+        "[2026.10.29-00.07.34:043][577]r.DynamicGlobalIlluminationMethod = \"2\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.07.34:043][577]r.ReflectionMethod = \"2\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.07.34:044][577]r.Lumen.HardwareRayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.07.34:044][577]r.Shadow.Virtual.Enable = \"0\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.07.34:059][578]r.Nanite = \"0\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.29-00.07.34:060][578]r.RayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.07.34:060][579]r.RayTracing.Enable = \"0\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.29-00.07.34:076][579]r.AntiAliasingMethod = \"4\"      LastSetBy: Constructor",
+        "[2026.10.29-00.07.34:076][579]r.ScreenPercentage = \"100\"      LastSetBy: DeviceProfile"
+      ],
+      "engine_metadata": {
+        "[HasHeaderRowAtEnd]": "1",
+        "[EventTimestamps]": "1",
+        "[platform]": "Linux",
+        "[config]": "Development",
+        "[buildversion]": "++UE5+Release-5.8-CL-56702186",
+        "[engineversion]": "5.8.2-56702186+++UE5+Release-5.8",
+        "[enginereleaseversion]": "5.8.2",
+        "[os]": "Ubuntu 24.04.4 LTS 6.8.0-1066-aws",
+        "[cpu]": "GenuineIntel|Intel(R) Xeon(R) Platinum 8559C",
+        "[pgoenabled]": "0",
+        "[pgoprofilingenabled]": "0",
+        "[ltoenabled]": "0",
+        "[asan]": "0",
+        "[mergedmodules]": "0",
+        "[compacttset]": "0",
+        "[loginid]": "-000003ea",
+        "[llm]": "0",
+        "[zenstreaming]": "0",
+        "[systemresolution.resx]": "1920",
+        "[systemresolution.resy]": "1080",
+        "[extradevelopmentmemorymb]": "0",
+        "[verbatimrhiname]": "Vulkan",
+        "[rhiname]": "Vulkan",
+        "[rhifeaturelevel]": "SM6",
+        "[shaderplatform]": "VULKAN_SM6",
+        "[gpu]": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+        "[gpudriver]": "580.178",
+        "[deviceprofile]": "Linux",
+        "[largeworldcoordinates]": "1",
+        "[raytracing]": "0",
+        "[streamingpoolsizemb]": "4096",
+        "[csvid]": "01A184FBC1DF7177A53B4704F49A018B",
+        "[targetframerate]": "60",
+        "[starttimestamp]": "1793232454",
+        "[namedevents]": "0",
+        "[hasgtstalls]": "0",
+        "[vsyncenabled]": "0",
+        "[csvbench_timingstat_ns]": "112.862500",
+        "[csvbench_customstat_ns]": "77.382500",
+        "[csvbench_duration_ms]": "7.610100",
+        "[endtimestamp]": "1793232514",
+        "[captureduration]": "60.479643",
+        "[csvmaxfilebytesreached]": "0",
+        "[commandline]": " ScenarioStudio /Game/OpenMeadow/OpenMeadow -RenderOffscreen -unattended -nosound -NoSplash -vulkan -sm6 -savevulkanpsocacheonexit -logPSO -dpcvars=r.pso.PrecompileThreadPoolSizeMax=2,r.Streaming.PoolSize=4096,r.ScreenPercentage=100,r.Vulkan.EnablePSOFileCacheWhenPrecachingActive=1,r.ShaderPipelineCache.Enabled=1 -ResX=1920 -ResY=1080 -ForceRes -settings=/home/brook_avionuas/snr/.local/unreal/Live/cosys-settings.json -ScenarioSaveDir=/home/brook_avionuas/snr/.local/data/unreal-scenarios -PixelStreamingConnectionURL=ws://127.0.0.1:8888 -PixelStreamingEncoderCodec=H264 -PixelStreamingWebRTCFps=60 -PixelStreamingWebRTCStartBitrate=40000000 -PixelStreamingWebRTCMinBitrate=10000000 -PixelStreamingWebRTCMaxBitrate=40000000 -PixelStreamingWebRTCDisableTransmitAudio=true -PixelStreamingWebRTCMinPort=49160 -PixelStreamingWebRTCMaxPort=49200 -PixelStreamingEncoderQualityPreset=HighQuality -PixelStreamingEncoderLatencyMode=LowLatency -DroneFoundationDir=/home/brook_avionuas/snr/.local/data/four-drones -PixelStreamingUseMediaCapture=true -ExecCmds=t.MaxFPS 60\" -stdout -FullStdOutLogOutput\""
+      },
+      "release": "/home/brook_avionuas/snr/.local/unreal/releases/20261029T000603Z",
+      "evidence": ".local/evidence/render-quality/base-1080-visual/result.json",
+      "sha256": "473ac5bec97326cfef7b6884840831c47d0ca11be844c458bc63359d1030a61c",
+      "engine_csv": {
+        "path": ".local/evidence/render-quality/base-1080-visual/engine.csv",
+        "bytes": 7656906,
+        "sha256": "a3370aef5ba9b1fbee0bd5e9bbbb5b38f39c01be2a37acdf24aa2d67e53f47f7"
+      },
+      "screenshots": [
+        ".local/evidence/render-quality/base-1080-visual/person.png",
+        ".local/evidence/render-quality/base-1080-visual/meadow.png",
+        ".local/evidence/render-quality/base-1080-visual/port.png",
+        ".local/evidence/render-quality/base-1080-visual/navigation-start.png",
+        ".local/evidence/render-quality/base-1080-visual/navigation-end.png"
+      ],
+      "screenshot_files": [
+        {
+          "path": ".local/evidence/render-quality/base-1080-visual/person.png",
+          "bytes": 2931282,
+          "sha256": "d7de9e2fe84bf9ffd5c97b2b2c925d27270badc0a2112dbb3e7f5b959caf9597"
+        },
+        {
+          "path": ".local/evidence/render-quality/base-1080-visual/meadow.png",
+          "bytes": 2901540,
+          "sha256": "67a9c7be7bf6346afc6cc94f2bfc9550f9dc59022b2c76a44ee3299a59b1dacf"
+        },
+        {
+          "path": ".local/evidence/render-quality/base-1080-visual/port.png",
+          "bytes": 4379057,
+          "sha256": "1ed749e8f4b81b09a6b47a06fc217021242d7d04945e11dd5c6d29edb776e131"
+        },
+        {
+          "path": ".local/evidence/render-quality/base-1080-visual/navigation-start.png",
+          "bytes": 2904284,
+          "sha256": "a06f81ac3e80c8f9379ecd94126527c7e796a90a1ba9ebd91ee2db2c7e9d2634"
+        },
+        {
+          "path": ".local/evidence/render-quality/base-1080-visual/navigation-end.png",
+          "bytes": 2855818,
+          "sha256": "60d7722f89877ceb07330238ed844196e6e3e907958cf9198d380b1a4a5e6342"
+        }
+      ]
+    },
+    {
+      "name": "vsm-1080-visual",
+      "recorded_at": "2026-10-29T00:09:31.042Z",
+      "profile": {
+        "width": 1920,
+        "internalRenderPercentage": 100,
+        "height": 1080,
+        "fps": 60,
+        "codec": "H264",
+        "minBitrateBps": 10000000,
+        "maxBitrateBps": 40000000
+      },
+      "workload": "Browser navigation view; no flight or sensor capture experiment",
+      "summary": {
+        "seconds": 60.82123901367188,
+        "decodedFps": 60.01193101606372,
+        "presentedFps": 52.91727217133427,
+        "memoryCurrentMiB": {
+          "samples": 60,
+          "mean": 1599.717578125,
+          "p95": 1718.7109375,
+          "p99": 1719.59375,
+          "max": 1719.59375
+        },
+        "memoryAnonymousMiB": {
+          "samples": 60,
+          "mean": 1576.8516927083333,
+          "p95": 1692.4453125,
+          "p99": 1692.4453125,
+          "max": 1692.4453125
+        },
+        "bitrateMbps": 34.70185392845352,
+        "droppedFrames": 0,
+        "freezes": 0,
+        "freezeDurationSeconds": 0,
+        "videoCallbackGapMs": {
+          "samples": 3069,
+          "mean": 19.821049201694358,
+          "p95": 33.39999999999418,
+          "p99": 33.40000000000873,
+          "max": 50.10000000000582
+        },
+        "gpuMs": {
+          "samples": 3675,
+          "mean": 5.751478639455771,
+          "p95": 10.526,
+          "p99": 11.139,
+          "max": 11.651
+        },
+        "frameMs": {
+          "samples": 3675,
+          "mean": 16.66696084353741,
+          "p95": 16.6687,
+          "p99": 16.6761,
+          "max": 16.7325
+        },
+        "powerW": {
+          "samples": 60,
+          "mean": 171.15899999999996,
+          "p95": 173.27,
+          "p99": 174.51,
+          "max": 174.51
+        },
+        "graphicsMHz": {
+          "samples": 60,
+          "mean": 2311.05,
+          "p95": 2317,
+          "p99": 2317,
+          "max": 2317
+        },
+        "temperatureC": {
+          "samples": 60,
+          "mean": 36,
+          "p95": 36,
+          "p99": 36,
+          "max": 36
+        },
+        "gameMs": {
+          "samples": 3675,
+          "mean": 1.157083537414965,
+          "p95": 1.46,
+          "p99": 1.921,
+          "max": 8.763
+        },
+        "renderMs": {
+          "samples": 3675,
+          "mean": 3.0729273469387812,
+          "p95": 3.743,
+          "p99": 4.436,
+          "max": 10.69
+        },
+        "gapsOver100Ms": 0
+      },
+      "gate": {
+        "atLeastFiveMinutes": false,
+        "atLeast1080p60": true,
+        "fourDronesFlyingAndCapturing": false,
+        "scheduledCaptureCadence": false,
+        "decodedFps": true,
+        "noFreezeOver100Ms": true,
+        "gpuP95": true,
+        "gpuP99": true
+      },
+      "gate_passed": false,
+      "concurrent_containers": [
+        "snr-turn",
+        "snr-unreal-live",
+        "snr-unreal-world"
+      ],
+      "measurement_tools": [
+        {
+          "source": "world/unreal/scripts/measure-stream.mjs",
+          "snapshot": ".local/evidence/render-quality/vsm-1080-visual/tools/measure-stream.mjs",
+          "sha256": "97ef820ceee609ee1eeea2589f4d2503e315815c4fe4d7996863ba2ba84b07c0"
+        },
+        {
+          "source": "world/unreal/scripts/profile-engine.py",
+          "snapshot": ".local/evidence/render-quality/vsm-1080-visual/tools/profile-engine.py",
+          "sha256": "1585ccae5f265063aec1bd6e86bf115b22130a406a25ed48ced354bf4d2c476e"
+        },
+        {
+          "source": "world/cosys/render_workload.py",
+          "snapshot": ".local/evidence/render-quality/vsm-1080-visual/tools/render_workload.py",
+          "sha256": "5ee5853dabf2430f8e7dc00d6ffefd42b0b04df9843c5d75511bafb32961e5f3"
+        },
+        {
+          "source": "mission_planner/agents/perception/browser.mjs",
+          "snapshot": ".local/evidence/render-quality/vsm-1080-visual/tools/browser.mjs",
+          "sha256": "899f757050a11487331ec3e8d035992184f81955c1cf12f985e636e94c363935"
+        }
+      ],
+      "first_video_frame": {
+        "navigationToFirstFrameMs": 890.4,
+        "presentedAtEpochMs": 1793232572089.7998,
+        "width": 1920,
+        "height": 1080
+      },
+      "timing_source": "Unreal CSV per-frame GPUTime, FrameTime, GameThreadTime and RenderThreadTime",
+      "render_settings": [
+        "[2026.10.29-00.10.44:293][561]r.DynamicGlobalIlluminationMethod = \"2\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.10.44:294][561]r.ReflectionMethod = \"2\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.10.44:294][562]r.Lumen.HardwareRayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.10.44:310][562]r.Shadow.Virtual.Enable = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.10.44:310][562]r.Nanite = \"0\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.29-00.10.44:311][562]r.RayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.10.44:326][563]r.RayTracing.Enable = \"0\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.29-00.10.44:327][563]r.AntiAliasingMethod = \"4\"      LastSetBy: Constructor",
+        "[2026.10.29-00.10.44:327][563]r.ScreenPercentage = \"100\"      LastSetBy: DeviceProfile"
+      ],
+      "engine_metadata": {
+        "[HasHeaderRowAtEnd]": "1",
+        "[EventTimestamps]": "1",
+        "[platform]": "Linux",
+        "[config]": "Development",
+        "[buildversion]": "++UE5+Release-5.8-CL-56702186",
+        "[engineversion]": "5.8.2-56702186+++UE5+Release-5.8",
+        "[enginereleaseversion]": "5.8.2",
+        "[os]": "Ubuntu 24.04.4 LTS 6.8.0-1066-aws",
+        "[cpu]": "GenuineIntel|Intel(R) Xeon(R) Platinum 8559C",
+        "[pgoenabled]": "0",
+        "[pgoprofilingenabled]": "0",
+        "[ltoenabled]": "0",
+        "[asan]": "0",
+        "[mergedmodules]": "0",
+        "[compacttset]": "0",
+        "[loginid]": "-000003ea",
+        "[llm]": "0",
+        "[zenstreaming]": "0",
+        "[systemresolution.resx]": "1920",
+        "[systemresolution.resy]": "1080",
+        "[extradevelopmentmemorymb]": "0",
+        "[verbatimrhiname]": "Vulkan",
+        "[rhiname]": "Vulkan",
+        "[rhifeaturelevel]": "SM6",
+        "[shaderplatform]": "VULKAN_SM6",
+        "[gpu]": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+        "[gpudriver]": "580.178",
+        "[deviceprofile]": "Linux",
+        "[largeworldcoordinates]": "1",
+        "[raytracing]": "0",
+        "[streamingpoolsizemb]": "4096",
+        "[csvid]": "01A184FEA909761AABE1AA691D0789DE",
+        "[targetframerate]": "60",
+        "[starttimestamp]": "1793232644",
+        "[namedevents]": "0",
+        "[hasgtstalls]": "0",
+        "[vsyncenabled]": "0",
+        "[csvbench_timingstat_ns]": "125.320000",
+        "[csvbench_customstat_ns]": "57.787500",
+        "[csvbench_duration_ms]": "7.324700",
+        "[endtimestamp]": "1793232705",
+        "[captureduration]": "61.250198",
+        "[csvmaxfilebytesreached]": "0",
+        "[commandline]": " ScenarioStudio /Game/OpenMeadow/OpenMeadow -RenderOffscreen -unattended -nosound -NoSplash -vulkan -sm6 -savevulkanpsocacheonexit -logPSO -dpcvars=r.pso.PrecompileThreadPoolSizeMax=2,r.Streaming.PoolSize=4096,r.ScreenPercentage=100,r.Vulkan.EnablePSOFileCacheWhenPrecachingActive=1,r.ShaderPipelineCache.Enabled=1 -ResX=1920 -ResY=1080 -ForceRes -settings=/home/brook_avionuas/snr/.local/unreal/Live/cosys-settings.json -ScenarioSaveDir=/home/brook_avionuas/snr/.local/data/unreal-scenarios -PixelStreamingConnectionURL=ws://127.0.0.1:8888 -PixelStreamingEncoderCodec=H264 -PixelStreamingWebRTCFps=60 -PixelStreamingWebRTCStartBitrate=40000000 -PixelStreamingWebRTCMinBitrate=10000000 -PixelStreamingWebRTCMaxBitrate=40000000 -PixelStreamingWebRTCDisableTransmitAudio=true -PixelStreamingWebRTCMinPort=49160 -PixelStreamingWebRTCMaxPort=49200 -PixelStreamingEncoderQualityPreset=HighQuality -PixelStreamingEncoderLatencyMode=LowLatency -DroneFoundationDir=/home/brook_avionuas/snr/.local/data/four-drones -PixelStreamingUseMediaCapture=true -ExecCmds=t.MaxFPS 60\" -stdout -FullStdOutLogOutput\""
+      },
+      "release": "/home/brook_avionuas/snr/.local/unreal/releases/20261029T000835Z",
+      "evidence": ".local/evidence/render-quality/vsm-1080-visual/result.json",
+      "sha256": "0c760833f7bb1b050a30fca387eee460d221745c4b58237fcbc1f5c35ae458ec",
+      "engine_csv": {
+        "path": ".local/evidence/render-quality/vsm-1080-visual/engine.csv",
+        "bytes": 7737582,
+        "sha256": "eb724fbc3c076f434f38de008c3d6a7188de2df6ac518c1fa5d689a51b8dd4bf"
+      },
+      "screenshots": [
+        ".local/evidence/render-quality/vsm-1080-visual/person.png",
+        ".local/evidence/render-quality/vsm-1080-visual/meadow.png",
+        ".local/evidence/render-quality/vsm-1080-visual/port.png",
+        ".local/evidence/render-quality/vsm-1080-visual/navigation-start.png",
+        ".local/evidence/render-quality/vsm-1080-visual/navigation-end.png"
+      ],
+      "screenshot_files": [
+        {
+          "path": ".local/evidence/render-quality/vsm-1080-visual/person.png",
+          "bytes": 2965183,
+          "sha256": "1b5b9a16ec7fe6c6810b6616f4f5b8ae230cb97f0f45a77ad78e627b4b18b222"
+        },
+        {
+          "path": ".local/evidence/render-quality/vsm-1080-visual/meadow.png",
+          "bytes": 2904196,
+          "sha256": "6e1433dee0a5362e78364119800afd7df2f59093a97a84aa11e646a2f6fd6c0b"
+        },
+        {
+          "path": ".local/evidence/render-quality/vsm-1080-visual/port.png",
+          "bytes": 4384254,
+          "sha256": "63b6c67c4ac848b008844e691055ac176da45204698e978ad362bd59881b9c82"
+        },
+        {
+          "path": ".local/evidence/render-quality/vsm-1080-visual/navigation-start.png",
+          "bytes": 2900348,
+          "sha256": "e0a88c8582822922bf1dc680595abdb67f09fe0fe0ed7fe0cc70669c1725d4ed"
+        },
+        {
+          "path": ".local/evidence/render-quality/vsm-1080-visual/navigation-end.png",
+          "bytes": 2825506,
+          "sha256": "83d0bfde54b00364dbf7555a98a473e85ae31f57cdc7093f8028ef6897afc4af"
+        }
+      ]
+    },
+    {
+      "name": "nanite-1080-visual",
+      "recorded_at": "2026-10-29T00:12:29.124Z",
+      "profile": {
+        "width": 1920,
+        "internalRenderPercentage": 100,
+        "height": 1080,
+        "fps": 60,
+        "codec": "H264",
+        "minBitrateBps": 10000000,
+        "maxBitrateBps": 40000000
+      },
+      "workload": "Browser navigation view; no flight or sensor capture experiment",
+      "summary": {
+        "seconds": 60.92786083984375,
+        "decodedFps": 59.95615059590475,
+        "presentedFps": 55.70358800018376,
+        "memoryCurrentMiB": {
+          "samples": 60,
+          "mean": 1624.041015625,
+          "p95": 1764.58984375,
+          "p99": 1765.34375,
+          "max": 1765.34375
+        },
+        "memoryAnonymousMiB": {
+          "samples": 60,
+          "mean": 1601.0908854166667,
+          "p95": 1738.05078125,
+          "p99": 1738.05078125,
+          "max": 1738.05078125
+        },
+        "bitrateMbps": 34.595437734810275,
+        "droppedFrames": 0,
+        "freezes": 0,
+        "freezeDurationSeconds": 0,
+        "videoCallbackGapMs": {
+          "samples": 3164,
+          "mean": 19.262831858407083,
+          "p95": 33.39999999999418,
+          "p99": 33.40000000000873,
+          "max": 50.10000000000582
+        },
+        "gpuMs": {
+          "samples": 3684,
+          "mean": 5.971480184581971,
+          "p95": 8.975,
+          "p99": 12.641,
+          "max": 21.928
+        },
+        "frameMs": {
+          "samples": 3684,
+          "mean": 16.67647079261672,
+          "p95": 16.6694,
+          "p99": 16.8164,
+          "max": 19.4694
+        },
+        "powerW": {
+          "samples": 60,
+          "mean": 163.81399999999996,
+          "p95": 172.05,
+          "p99": 177.41,
+          "max": 177.41
+        },
+        "graphicsMHz": {
+          "samples": 60,
+          "mean": 2319.5666666666666,
+          "p95": 2325,
+          "p99": 2325,
+          "max": 2325
+        },
+        "temperatureC": {
+          "samples": 60,
+          "mean": 34.45,
+          "p95": 35,
+          "p99": 35,
+          "max": 35
+        },
+        "gameMs": {
+          "samples": 3684,
+          "mean": 1.2518428338762229,
+          "p95": 1.901,
+          "p99": 3.317,
+          "max": 8.12
+        },
+        "renderMs": {
+          "samples": 3684,
+          "mean": 4.20771281216069,
+          "p95": 7.295,
+          "p99": 10.96,
+          "max": 19.59
+        },
+        "gapsOver100Ms": 0
+      },
+      "gate": {
+        "atLeastFiveMinutes": false,
+        "atLeast1080p60": true,
+        "fourDronesFlyingAndCapturing": false,
+        "scheduledCaptureCadence": false,
+        "decodedFps": true,
+        "noFreezeOver100Ms": true,
+        "gpuP95": true,
+        "gpuP99": true
+      },
+      "gate_passed": false,
+      "concurrent_containers": [
+        "snr-turn",
+        "snr-unreal-live",
+        "snr-unreal-world"
+      ],
+      "measurement_tools": [
+        {
+          "source": "world/unreal/scripts/measure-stream.mjs",
+          "snapshot": ".local/evidence/render-quality/nanite-1080-visual/tools/measure-stream.mjs",
+          "sha256": "97ef820ceee609ee1eeea2589f4d2503e315815c4fe4d7996863ba2ba84b07c0"
+        },
+        {
+          "source": "world/unreal/scripts/profile-engine.py",
+          "snapshot": ".local/evidence/render-quality/nanite-1080-visual/tools/profile-engine.py",
+          "sha256": "1585ccae5f265063aec1bd6e86bf115b22130a406a25ed48ced354bf4d2c476e"
+        },
+        {
+          "source": "world/cosys/render_workload.py",
+          "snapshot": ".local/evidence/render-quality/nanite-1080-visual/tools/render_workload.py",
+          "sha256": "5ee5853dabf2430f8e7dc00d6ffefd42b0b04df9843c5d75511bafb32961e5f3"
+        },
+        {
+          "source": "mission_planner/agents/perception/browser.mjs",
+          "snapshot": ".local/evidence/render-quality/nanite-1080-visual/tools/browser.mjs",
+          "sha256": "899f757050a11487331ec3e8d035992184f81955c1cf12f985e636e94c363935"
+        }
+      ],
+      "first_video_frame": {
+        "navigationToFirstFrameMs": 915,
+        "presentedAtEpochMs": 1793232750216,
+        "width": 1920,
+        "height": 1080
+      },
+      "timing_source": "Unreal CSV per-frame GPUTime, FrameTime, GameThreadTime and RenderThreadTime",
+      "render_settings": [
+        "[2026.10.29-00.13.42:444][540]r.DynamicGlobalIlluminationMethod = \"2\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.13.42:444][540]r.ReflectionMethod = \"2\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.13.42:444][540]r.Lumen.HardwareRayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.13.42:460][541]r.Shadow.Virtual.Enable = \"0\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.13.42:461][542]r.Nanite = \"1\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.29-00.13.42:477][542]r.RayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.13.42:477][542]r.RayTracing.Enable = \"0\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.29-00.13.42:478][542]r.AntiAliasingMethod = \"4\"      LastSetBy: Constructor",
+        "[2026.10.29-00.13.42:494][543]r.ScreenPercentage = \"100\"      LastSetBy: DeviceProfile"
+      ],
+      "engine_metadata": {
+        "[HasHeaderRowAtEnd]": "1",
+        "[EventTimestamps]": "1",
+        "[platform]": "Linux",
+        "[config]": "Development",
+        "[buildversion]": "++UE5+Release-5.8-CL-56702186",
+        "[engineversion]": "5.8.2-56702186+++UE5+Release-5.8",
+        "[enginereleaseversion]": "5.8.2",
+        "[os]": "Ubuntu 24.04.4 LTS 6.8.0-1066-aws",
+        "[cpu]": "GenuineIntel|Intel(R) Xeon(R) Platinum 8559C",
+        "[pgoenabled]": "0",
+        "[pgoprofilingenabled]": "0",
+        "[ltoenabled]": "0",
+        "[asan]": "0",
+        "[mergedmodules]": "0",
+        "[compacttset]": "0",
+        "[loginid]": "-000003ea",
+        "[llm]": "0",
+        "[zenstreaming]": "0",
+        "[systemresolution.resx]": "1920",
+        "[systemresolution.resy]": "1080",
+        "[extradevelopmentmemorymb]": "0",
+        "[verbatimrhiname]": "Vulkan",
+        "[rhiname]": "Vulkan",
+        "[rhifeaturelevel]": "SM6",
+        "[shaderplatform]": "VULKAN_SM6",
+        "[gpu]": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+        "[gpudriver]": "580.178",
+        "[deviceprofile]": "Linux",
+        "[largeworldcoordinates]": "1",
+        "[raytracing]": "0",
+        "[streamingpoolsizemb]": "4096",
+        "[csvid]": "01A18501610079CF8750F291281DD4EE",
+        "[targetframerate]": "60",
+        "[starttimestamp]": "1793232822",
+        "[namedevents]": "0",
+        "[hasgtstalls]": "0",
+        "[vsyncenabled]": "0",
+        "[csvbench_timingstat_ns]": "104.120000",
+        "[csvbench_customstat_ns]": "52.140000",
+        "[csvbench_duration_ms]": "6.250600",
+        "[endtimestamp]": "1793232883",
+        "[captureduration]": "61.435102",
+        "[csvmaxfilebytesreached]": "0",
+        "[commandline]": " ScenarioStudio /Game/OpenMeadow/OpenMeadow -RenderOffscreen -unattended -nosound -NoSplash -vulkan -sm6 -savevulkanpsocacheonexit -logPSO -dpcvars=r.pso.PrecompileThreadPoolSizeMax=2,r.Streaming.PoolSize=4096,r.ScreenPercentage=100,r.Vulkan.EnablePSOFileCacheWhenPrecachingActive=1,r.ShaderPipelineCache.Enabled=1 -ResX=1920 -ResY=1080 -ForceRes -settings=/home/brook_avionuas/snr/.local/unreal/Live/cosys-settings.json -ScenarioSaveDir=/home/brook_avionuas/snr/.local/data/unreal-scenarios -PixelStreamingConnectionURL=ws://127.0.0.1:8888 -PixelStreamingEncoderCodec=H264 -PixelStreamingWebRTCFps=60 -PixelStreamingWebRTCStartBitrate=40000000 -PixelStreamingWebRTCMinBitrate=10000000 -PixelStreamingWebRTCMaxBitrate=40000000 -PixelStreamingWebRTCDisableTransmitAudio=true -PixelStreamingWebRTCMinPort=49160 -PixelStreamingWebRTCMaxPort=49200 -PixelStreamingEncoderQualityPreset=HighQuality -PixelStreamingEncoderLatencyMode=LowLatency -DroneFoundationDir=/home/brook_avionuas/snr/.local/data/four-drones -PixelStreamingUseMediaCapture=true -ExecCmds=t.MaxFPS 60\" -stdout -FullStdOutLogOutput\""
+      },
+      "release": "/home/brook_avionuas/snr/.local/unreal/releases/20261029T001146Z",
+      "evidence": ".local/evidence/render-quality/nanite-1080-visual/result.json",
+      "sha256": "cc486cf44c65497f20826777f317fe5d2b9266e379b7b777ae1da39762424e85",
+      "engine_csv": {
+        "path": ".local/evidence/render-quality/nanite-1080-visual/engine.csv",
+        "bytes": 8066233,
+        "sha256": "c1817ca94bc939c89bd37992e208855e767e496ad05059e29669aee1577241bf"
+      },
+      "screenshots": [
+        ".local/evidence/render-quality/nanite-1080-visual/person.png",
+        ".local/evidence/render-quality/nanite-1080-visual/meadow.png",
+        ".local/evidence/render-quality/nanite-1080-visual/port.png",
+        ".local/evidence/render-quality/nanite-1080-visual/navigation-start.png",
+        ".local/evidence/render-quality/nanite-1080-visual/navigation-end.png"
+      ],
+      "screenshot_files": [
+        {
+          "path": ".local/evidence/render-quality/nanite-1080-visual/person.png",
+          "bytes": 2931428,
+          "sha256": "cef90e450b209cad1e8de884a0e17a7c52adbd234725aaa921e601a2ebb1d118"
+        },
+        {
+          "path": ".local/evidence/render-quality/nanite-1080-visual/meadow.png",
+          "bytes": 2909911,
+          "sha256": "b653a9f3272ccde95c997e50940aaf16982b13afbd81a3c496723a3a71fa80f2"
+        },
+        {
+          "path": ".local/evidence/render-quality/nanite-1080-visual/port.png",
+          "bytes": 4377128,
+          "sha256": "3d52effae01a0002ee91686dd935a213e835192419def5d9055a4b6aba75e93d"
+        },
+        {
+          "path": ".local/evidence/render-quality/nanite-1080-visual/navigation-start.png",
+          "bytes": 2875708,
+          "sha256": "1761088658901a694c44f51476335d96feb27f98df06442a4231d587552b858e"
+        },
+        {
+          "path": ".local/evidence/render-quality/nanite-1080-visual/navigation-end.png",
+          "bytes": 2841726,
+          "sha256": "477976f42ee81969588510043d8183c3085c51da49bc8a24b4f65e3ab99e77d0"
+        }
+      ]
+    },
+    {
+      "name": "macro-1080-visual",
+      "recorded_at": "2026-10-29T00:15:31.633Z",
+      "profile": {
+        "width": 1920,
+        "internalRenderPercentage": 100,
+        "height": 1080,
+        "fps": 60,
+        "codec": "H264",
+        "minBitrateBps": 10000000,
+        "maxBitrateBps": 40000000
+      },
+      "workload": "Browser navigation view; no flight or sensor capture experiment",
+      "summary": {
+        "seconds": 60.85330688476562,
+        "decodedFps": 59.99673948555807,
+        "presentedFps": 58.60578368600311,
+        "memoryCurrentMiB": {
+          "samples": 60,
+          "mean": 1536.4656901041667,
+          "p95": 1686.21875,
+          "p99": 1694.625,
+          "max": 1694.625
+        },
+        "memoryAnonymousMiB": {
+          "samples": 60,
+          "mean": 1513.7125,
+          "p95": 1659.8046875,
+          "p99": 1667.80859375,
+          "max": 1667.80859375
+        },
+        "bitrateMbps": 35.81782630362956,
+        "droppedFrames": 0,
+        "freezes": 0,
+        "freezeDurationSeconds": 0,
+        "videoCallbackGapMs": {
+          "samples": 3318,
+          "mean": 18.343670886075955,
+          "p95": 33.30000000000291,
+          "p99": 33.40000000000873,
+          "max": 50
+        },
+        "gpuMs": {
+          "samples": 3680,
+          "mean": 4.425752445652172,
+          "p95": 5.996,
+          "p99": 10.146,
+          "max": 12.984
+        },
+        "frameMs": {
+          "samples": 3680,
+          "mean": 16.66749896739129,
+          "p95": 16.6688,
+          "p99": 16.6732,
+          "max": 17.5579
+        },
+        "powerW": {
+          "samples": 60,
+          "mean": 156.55250000000004,
+          "p95": 160.8,
+          "p99": 162.58,
+          "max": 162.58
+        },
+        "graphicsMHz": {
+          "samples": 60,
+          "mean": 2324.0666666666666,
+          "p95": 2325,
+          "p99": 2325,
+          "max": 2325
+        },
+        "temperatureC": {
+          "samples": 60,
+          "mean": 33.166666666666664,
+          "p95": 34,
+          "p99": 34,
+          "max": 34
+        },
+        "gameMs": {
+          "samples": 3680,
+          "mean": 1.17801141304348,
+          "p95": 1.512,
+          "p99": 2.074,
+          "max": 7.183
+        },
+        "renderMs": {
+          "samples": 3680,
+          "mean": 3.105646467391306,
+          "p95": 3.678,
+          "p99": 6.641,
+          "max": 11.98
+        },
+        "gapsOver100Ms": 0
+      },
+      "gate": {
+        "atLeastFiveMinutes": false,
+        "atLeast1080p60": true,
+        "fourDronesFlyingAndCapturing": false,
+        "scheduledCaptureCadence": false,
+        "decodedFps": true,
+        "noFreezeOver100Ms": true,
+        "gpuP95": true,
+        "gpuP99": true
+      },
+      "gate_passed": false,
+      "concurrent_containers": [
+        "snr-turn",
+        "snr-unreal-live",
+        "snr-unreal-world"
+      ],
+      "measurement_tools": [
+        {
+          "source": "world/unreal/scripts/measure-stream.mjs",
+          "snapshot": ".local/evidence/render-quality/macro-1080-visual/tools/measure-stream.mjs",
+          "sha256": "97ef820ceee609ee1eeea2589f4d2503e315815c4fe4d7996863ba2ba84b07c0"
+        },
+        {
+          "source": "world/unreal/scripts/profile-engine.py",
+          "snapshot": ".local/evidence/render-quality/macro-1080-visual/tools/profile-engine.py",
+          "sha256": "1585ccae5f265063aec1bd6e86bf115b22130a406a25ed48ced354bf4d2c476e"
+        },
+        {
+          "source": "world/cosys/render_workload.py",
+          "snapshot": ".local/evidence/render-quality/macro-1080-visual/tools/render_workload.py",
+          "sha256": "5ee5853dabf2430f8e7dc00d6ffefd42b0b04df9843c5d75511bafb32961e5f3"
+        },
+        {
+          "source": "mission_planner/agents/perception/browser.mjs",
+          "snapshot": ".local/evidence/render-quality/macro-1080-visual/tools/browser.mjs",
+          "sha256": "899f757050a11487331ec3e8d035992184f81955c1cf12f985e636e94c363935"
+        }
+      ],
+      "first_video_frame": {
+        "navigationToFirstFrameMs": 918.7,
+        "presentedAtEpochMs": 1793232932725.4,
+        "width": 1920,
+        "height": 1080
+      },
+      "timing_source": "Unreal CSV per-frame GPUTime, FrameTime, GameThreadTime and RenderThreadTime",
+      "render_settings": [
+        "[2026.10.29-00.16.44:983][552]r.DynamicGlobalIlluminationMethod = \"2\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.16.44:984][553]r.ReflectionMethod = \"2\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.16.45:000][553]r.Lumen.HardwareRayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.16.45:000][553]r.Shadow.Virtual.Enable = \"0\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.16.45:001][554]r.Nanite = \"0\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.29-00.16.45:016][554]r.RayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.16.45:017][554]r.RayTracing.Enable = \"0\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.29-00.16.45:017][554]r.AntiAliasingMethod = \"4\"      LastSetBy: Constructor",
+        "[2026.10.29-00.16.45:017][555]r.ScreenPercentage = \"100\"      LastSetBy: DeviceProfile"
+      ],
+      "engine_metadata": {
+        "[HasHeaderRowAtEnd]": "1",
+        "[EventTimestamps]": "1",
+        "[platform]": "Linux",
+        "[config]": "Development",
+        "[buildversion]": "++UE5+Release-5.8-CL-56702186",
+        "[engineversion]": "5.8.2-56702186+++UE5+Release-5.8",
+        "[enginereleaseversion]": "5.8.2",
+        "[os]": "Ubuntu 24.04.4 LTS 6.8.0-1066-aws",
+        "[cpu]": "GenuineIntel|Intel(R) Xeon(R) Platinum 8559C",
+        "[pgoenabled]": "0",
+        "[pgoprofilingenabled]": "0",
+        "[ltoenabled]": "0",
+        "[asan]": "0",
+        "[mergedmodules]": "0",
+        "[compacttset]": "0",
+        "[loginid]": "-000003ea",
+        "[llm]": "0",
+        "[zenstreaming]": "0",
+        "[systemresolution.resx]": "1920",
+        "[systemresolution.resy]": "1080",
+        "[extradevelopmentmemorymb]": "0",
+        "[verbatimrhiname]": "Vulkan",
+        "[rhiname]": "Vulkan",
+        "[rhifeaturelevel]": "SM6",
+        "[shaderplatform]": "VULKAN_SM6",
+        "[gpu]": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+        "[gpudriver]": "580.178",
+        "[deviceprofile]": "Linux",
+        "[largeworldcoordinates]": "1",
+        "[raytracing]": "0",
+        "[streamingpoolsizemb]": "4096",
+        "[csvid]": "01A1850429FB71F6BEA380EC8F9BEE1B",
+        "[targetframerate]": "60",
+        "[starttimestamp]": "1793233005",
+        "[namedevents]": "0",
+        "[hasgtstalls]": "0",
+        "[vsyncenabled]": "0",
+        "[csvbench_timingstat_ns]": "103.240000",
+        "[csvbench_customstat_ns]": "46.295000",
+        "[csvbench_duration_ms]": "5.981700",
+        "[endtimestamp]": "1793233066",
+        "[captureduration]": "61.335527",
+        "[csvmaxfilebytesreached]": "0",
+        "[commandline]": " ScenarioStudio /Game/OpenMeadow/OpenMeadow -RenderOffscreen -unattended -nosound -NoSplash -vulkan -sm6 -savevulkanpsocacheonexit -logPSO -dpcvars=r.pso.PrecompileThreadPoolSizeMax=2,r.Streaming.PoolSize=4096,r.ScreenPercentage=100,r.Vulkan.EnablePSOFileCacheWhenPrecachingActive=1,r.ShaderPipelineCache.Enabled=1 -ResX=1920 -ResY=1080 -ForceRes -settings=/home/brook_avionuas/snr/.local/unreal/Live/cosys-settings.json -ScenarioSaveDir=/home/brook_avionuas/snr/.local/data/unreal-scenarios -PixelStreamingConnectionURL=ws://127.0.0.1:8888 -PixelStreamingEncoderCodec=H264 -PixelStreamingWebRTCFps=60 -PixelStreamingWebRTCStartBitrate=40000000 -PixelStreamingWebRTCMinBitrate=10000000 -PixelStreamingWebRTCMaxBitrate=40000000 -PixelStreamingWebRTCDisableTransmitAudio=true -PixelStreamingWebRTCMinPort=49160 -PixelStreamingWebRTCMaxPort=49200 -PixelStreamingEncoderQualityPreset=HighQuality -PixelStreamingEncoderLatencyMode=LowLatency -DroneFoundationDir=/home/brook_avionuas/snr/.local/data/four-drones -PixelStreamingUseMediaCapture=true -ExecCmds=t.MaxFPS 60\" -stdout -FullStdOutLogOutput\""
+      },
+      "release": "/home/brook_avionuas/snr/.local/unreal/releases/20261029T001444Z",
+      "evidence": ".local/evidence/render-quality/macro-1080-visual/result.json",
+      "sha256": "d5822c7e9c597adfe514eccd2f98edaf180d343dd03dd5c7fa32b2f4d6ae4e48",
+      "engine_csv": {
+        "path": ".local/evidence/render-quality/macro-1080-visual/engine.csv",
+        "bytes": 7765781,
+        "sha256": "af205adb0a272162b6ded6e5930bb17e9f82a8a00147b33cd0f48592b64c1485"
+      },
+      "screenshots": [
+        ".local/evidence/render-quality/macro-1080-visual/person.png",
+        ".local/evidence/render-quality/macro-1080-visual/meadow.png",
+        ".local/evidence/render-quality/macro-1080-visual/port.png",
+        ".local/evidence/render-quality/macro-1080-visual/navigation-start.png",
+        ".local/evidence/render-quality/macro-1080-visual/navigation-end.png"
+      ],
+      "screenshot_files": [
+        {
+          "path": ".local/evidence/render-quality/macro-1080-visual/person.png",
+          "bytes": 2957723,
+          "sha256": "4696122c69698b8d0adaf7b22cbdb04ca31206c6fec7138c618c02f74b3aaee5"
+        },
+        {
+          "path": ".local/evidence/render-quality/macro-1080-visual/meadow.png",
+          "bytes": 2899647,
+          "sha256": "2f8917e82cfe241bbe8b8c73f303e473b5a112d3267ad624385cc6b7be2d1ee7"
+        },
+        {
+          "path": ".local/evidence/render-quality/macro-1080-visual/port.png",
+          "bytes": 4377905,
+          "sha256": "42d1d7e569d7d755e8eee763a9d96939f744aa46a063167b86fb692816f68c68"
+        },
+        {
+          "path": ".local/evidence/render-quality/macro-1080-visual/navigation-start.png",
+          "bytes": 2909877,
+          "sha256": "f6aabeb1350f27f2fabd027321e7e5ffbdba144c8b8581957f90fc97ca1fa0d7"
+        },
+        {
+          "path": ".local/evidence/render-quality/macro-1080-visual/navigation-end.png",
+          "bytes": 2847624,
+          "sha256": "c3b24492a6bf2a5987ece508bbcfa696e32ce8d380f436fb787b38c05dc4dc0a"
+        }
+      ]
+    },
+    {
+      "name": "atmosphere-1080-visual",
+      "recorded_at": "2026-10-29T00:18:31.080Z",
+      "profile": {
+        "width": 1920,
+        "internalRenderPercentage": 100,
+        "height": 1080,
+        "fps": 60,
+        "codec": "H264",
+        "minBitrateBps": 10000000,
+        "maxBitrateBps": 40000000
+      },
+      "workload": "Browser navigation view; no flight or sensor capture experiment",
+      "summary": {
+        "seconds": 60.68699096679688,
+        "decodedFps": 59.99638377180486,
+        "presentedFps": 59.93662204710814,
+        "memoryCurrentMiB": {
+          "samples": 60,
+          "mean": 1600.6606770833334,
+          "p95": 1728.0859375,
+          "p99": 1729.30078125,
+          "max": 1729.30078125
+        },
+        "memoryAnonymousMiB": {
+          "samples": 60,
+          "mean": 1577.6717447916667,
+          "p95": 1701.5859375,
+          "p99": 1702.54296875,
+          "max": 1702.54296875
+        },
+        "bitrateMbps": 36.16439142947078,
+        "droppedFrames": 0,
+        "freezes": 0,
+        "freezeDurationSeconds": 0,
+        "videoCallbackGapMs": {
+          "samples": 3213,
+          "mean": 18.891206971677562,
+          "p95": 33.30000000001746,
+          "p99": 33.40000000000873,
+          "max": 33.5
+        },
+        "gpuMs": {
+          "samples": 3669,
+          "mean": 4.853295175797221,
+          "p95": 5.55,
+          "p99": 5.619,
+          "max": 5.949
+        },
+        "frameMs": {
+          "samples": 3669,
+          "mean": 16.6669659035159,
+          "p95": 16.6688,
+          "p99": 16.6704,
+          "max": 16.8817
+        },
+        "powerW": {
+          "samples": 60,
+          "mean": 160.55383333333336,
+          "p95": 162.18,
+          "p99": 163.06,
+          "max": 163.06
+        },
+        "graphicsMHz": {
+          "samples": 60,
+          "mean": 2321.8,
+          "p95": 2325,
+          "p99": 2325,
+          "max": 2325
+        },
+        "temperatureC": {
+          "samples": 60,
+          "mean": 32.983333333333334,
+          "p95": 33,
+          "p99": 33,
+          "max": 33
+        },
+        "gameMs": {
+          "samples": 3669,
+          "mean": 1.1120351594439883,
+          "p95": 1.421,
+          "p99": 1.769,
+          "max": 7.584
+        },
+        "renderMs": {
+          "samples": 3669,
+          "mean": 2.921045789043339,
+          "p95": 3.462,
+          "p99": 3.84,
+          "max": 6.358
+        },
+        "gapsOver100Ms": 0
+      },
+      "gate": {
+        "atLeastFiveMinutes": false,
+        "atLeast1080p60": true,
+        "fourDronesFlyingAndCapturing": false,
+        "scheduledCaptureCadence": false,
+        "decodedFps": true,
+        "noFreezeOver100Ms": true,
+        "gpuP95": true,
+        "gpuP99": true
+      },
+      "gate_passed": false,
+      "concurrent_containers": [
+        "snr-turn",
+        "snr-unreal-live"
+      ],
+      "measurement_tools": [
+        {
+          "source": "world/unreal/scripts/measure-stream.mjs",
+          "snapshot": ".local/evidence/render-quality/atmosphere-1080-visual/tools/measure-stream.mjs",
+          "sha256": "97ef820ceee609ee1eeea2589f4d2503e315815c4fe4d7996863ba2ba84b07c0"
+        },
+        {
+          "source": "world/unreal/scripts/profile-engine.py",
+          "snapshot": ".local/evidence/render-quality/atmosphere-1080-visual/tools/profile-engine.py",
+          "sha256": "1585ccae5f265063aec1bd6e86bf115b22130a406a25ed48ced354bf4d2c476e"
+        },
+        {
+          "source": "world/cosys/render_workload.py",
+          "snapshot": ".local/evidence/render-quality/atmosphere-1080-visual/tools/render_workload.py",
+          "sha256": "5ee5853dabf2430f8e7dc00d6ffefd42b0b04df9843c5d75511bafb32961e5f3"
+        },
+        {
+          "source": "mission_planner/agents/perception/browser.mjs",
+          "snapshot": ".local/evidence/render-quality/atmosphere-1080-visual/tools/browser.mjs",
+          "sha256": "899f757050a11487331ec3e8d035992184f81955c1cf12f985e636e94c363935"
+        }
+      ],
+      "first_video_frame": {
+        "navigationToFirstFrameMs": 943.9,
+        "presentedAtEpochMs": 1793233112201.5999,
+        "width": 1920,
+        "height": 1080
+      },
+      "timing_source": "Unreal CSV per-frame GPUTime, FrameTime, GameThreadTime and RenderThreadTime",
+      "render_settings": [
+        "[2026.10.29-00.19.44:452][561]r.DynamicGlobalIlluminationMethod = \"2\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.19.44:452][561]r.ReflectionMethod = \"2\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.19.44:453][562]r.Lumen.HardwareRayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.19.44:468][562]r.Shadow.Virtual.Enable = \"0\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.19.44:469][562]r.Nanite = \"0\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.29-00.19.44:469][562]r.RayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.19.44:485][563]r.RayTracing.Enable = \"0\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.29-00.19.44:485][563]r.AntiAliasingMethod = \"4\"      LastSetBy: Constructor",
+        "[2026.10.29-00.19.44:486][564]r.ScreenPercentage = \"100\"      LastSetBy: DeviceProfile"
+      ],
+      "engine_metadata": {
+        "[HasHeaderRowAtEnd]": "1",
+        "[EventTimestamps]": "1",
+        "[platform]": "Linux",
+        "[config]": "Development",
+        "[buildversion]": "++UE5+Release-5.8-CL-56702186",
+        "[engineversion]": "5.8.2-56702186+++UE5+Release-5.8",
+        "[enginereleaseversion]": "5.8.2",
+        "[os]": "Ubuntu 24.04.4 LTS 6.8.0-1066-aws",
+        "[cpu]": "GenuineIntel|Intel(R) Xeon(R) Platinum 8559C",
+        "[pgoenabled]": "0",
+        "[pgoprofilingenabled]": "0",
+        "[ltoenabled]": "0",
+        "[asan]": "0",
+        "[mergedmodules]": "0",
+        "[compacttset]": "0",
+        "[loginid]": "-000003ea",
+        "[llm]": "0",
+        "[zenstreaming]": "0",
+        "[systemresolution.resx]": "1920",
+        "[systemresolution.resy]": "1080",
+        "[extradevelopmentmemorymb]": "0",
+        "[verbatimrhiname]": "Vulkan",
+        "[rhiname]": "Vulkan",
+        "[rhifeaturelevel]": "SM6",
+        "[shaderplatform]": "VULKAN_SM6",
+        "[gpu]": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+        "[gpudriver]": "580.178",
+        "[deviceprofile]": "Linux",
+        "[largeworldcoordinates]": "1",
+        "[raytracing]": "0",
+        "[streamingpoolsizemb]": "4096",
+        "[csvid]": "01A18506E70777D6AA9211BE00FD440B",
+        "[targetframerate]": "60",
+        "[starttimestamp]": "1793233184",
+        "[namedevents]": "0",
+        "[hasgtstalls]": "0",
+        "[vsyncenabled]": "0",
+        "[csvbench_timingstat_ns]": "95.437500",
+        "[csvbench_customstat_ns]": "59.040000",
+        "[csvbench_duration_ms]": "6.179100",
+        "[endtimestamp]": "1793233245",
+        "[captureduration]": "61.15024",
+        "[csvmaxfilebytesreached]": "0",
+        "[commandline]": " ScenarioStudio /Game/OpenMeadow/OpenMeadow -RenderOffscreen -unattended -nosound -NoSplash -vulkan -sm6 -savevulkanpsocacheonexit -logPSO -dpcvars=r.pso.PrecompileThreadPoolSizeMax=2,r.Streaming.PoolSize=4096,r.ScreenPercentage=100,r.Vulkan.EnablePSOFileCacheWhenPrecachingActive=1,r.ShaderPipelineCache.Enabled=1 -ResX=1920 -ResY=1080 -ForceRes -settings=/home/brook_avionuas/snr/.local/unreal/Live/cosys-settings.json -ScenarioSaveDir=/home/brook_avionuas/snr/.local/data/unreal-scenarios -PixelStreamingConnectionURL=ws://127.0.0.1:8888 -PixelStreamingEncoderCodec=H264 -PixelStreamingWebRTCFps=60 -PixelStreamingWebRTCStartBitrate=40000000 -PixelStreamingWebRTCMinBitrate=10000000 -PixelStreamingWebRTCMaxBitrate=40000000 -PixelStreamingWebRTCDisableTransmitAudio=true -PixelStreamingWebRTCMinPort=49160 -PixelStreamingWebRTCMaxPort=49200 -PixelStreamingEncoderQualityPreset=HighQuality -PixelStreamingEncoderLatencyMode=LowLatency -DroneFoundationDir=/home/brook_avionuas/snr/.local/data/four-drones -PixelStreamingUseMediaCapture=true -ExecCmds=t.MaxFPS 60\" -stdout -FullStdOutLogOutput\""
+      },
+      "release": "/home/brook_avionuas/snr/.local/unreal/releases/20261029T001747Z",
+      "evidence": ".local/evidence/render-quality/atmosphere-1080-visual/result.json",
+      "sha256": "9afffc332444dceb658941be58c3adf0c1ef60b03dc54b024e0994b48be667e3",
+      "engine_csv": {
+        "path": ".local/evidence/render-quality/atmosphere-1080-visual/engine.csv",
+        "bytes": 7857236,
+        "sha256": "5918f4e0775c02bb6a7676947bae000b01dce276eca82421cae0dcc13495088d"
+      },
+      "screenshots": [
+        ".local/evidence/render-quality/atmosphere-1080-visual/person.png",
+        ".local/evidence/render-quality/atmosphere-1080-visual/meadow.png",
+        ".local/evidence/render-quality/atmosphere-1080-visual/port.png",
+        ".local/evidence/render-quality/atmosphere-1080-visual/navigation-start.png",
+        ".local/evidence/render-quality/atmosphere-1080-visual/navigation-end.png"
+      ],
+      "screenshot_files": [
+        {
+          "path": ".local/evidence/render-quality/atmosphere-1080-visual/person.png",
+          "bytes": 3116503,
+          "sha256": "087f80e2d7f0aaad47bf2c31a79d5b4d40390addee21bee1414a05759a8d093f"
+        },
+        {
+          "path": ".local/evidence/render-quality/atmosphere-1080-visual/meadow.png",
+          "bytes": 3071487,
+          "sha256": "6d4c551d9521617fcfeb54f0dd02924add4686caddc2eb346c2db5980c2e8b2e"
+        },
+        {
+          "path": ".local/evidence/render-quality/atmosphere-1080-visual/port.png",
+          "bytes": 4389568,
+          "sha256": "6e0927fe8b842a0ba632cf6f5cbf2375c0cd32f579490b6214d4100e9846bc0d"
+        },
+        {
+          "path": ".local/evidence/render-quality/atmosphere-1080-visual/navigation-start.png",
+          "bytes": 3038448,
+          "sha256": "12e4f86054daf0e26417222ed98fd541f97d7b8f226486d753eead883a35481c"
+        },
+        {
+          "path": ".local/evidence/render-quality/atmosphere-1080-visual/navigation-end.png",
+          "bytes": 2922740,
+          "sha256": "66071e37e4f30da04d600b096653062d39c08689d2c0e11f4750db6940487fcc"
+        }
+      ]
+    },
+    {
+      "name": "foliage-1080-visual",
+      "recorded_at": "2026-10-29T00:21:24.102Z",
+      "profile": {
+        "width": 1920,
+        "internalRenderPercentage": 100,
+        "height": 1080,
+        "fps": 60,
+        "codec": "H264",
+        "minBitrateBps": 10000000,
+        "maxBitrateBps": 40000000
+      },
+      "workload": "Browser navigation view; no flight or sensor capture experiment",
+      "summary": {
+        "seconds": 60.68210498046875,
+        "decodedFps": 59.9847352225434,
+        "presentedFps": 59.63997292411131,
+        "memoryCurrentMiB": {
+          "samples": 60,
+          "mean": 1794.4621744791666,
+          "p95": 1916.09765625,
+          "p99": 1916.484375,
+          "max": 1916.484375
+        },
+        "memoryAnonymousMiB": {
+          "samples": 60,
+          "mean": 1771.2085286458334,
+          "p95": 1891.140625,
+          "p99": 1891.140625,
+          "max": 1891.140625
+        },
+        "bitrateMbps": 36.17651524624224,
+        "droppedFrames": 0,
+        "freezes": 0,
+        "freezeDurationSeconds": 0,
+        "videoCallbackGapMs": {
+          "samples": 3296,
+          "mean": 18.415517597087376,
+          "p95": 33.30000000000291,
+          "p99": 33.40000000000873,
+          "max": 33.5
+        },
+        "gpuMs": {
+          "samples": 3667,
+          "mean": 5.43359285519498,
+          "p95": 5.569,
+          "p99": 5.818,
+          "max": 5.921
+        },
+        "frameMs": {
+          "samples": 3667,
+          "mean": 16.668115434960434,
+          "p95": 16.6688,
+          "p99": 16.6743,
+          "max": 18.3419
+        },
+        "powerW": {
+          "samples": 60,
+          "mean": 165.63166666666666,
+          "p95": 167.82,
+          "p99": 168.28,
+          "max": 168.28
+        },
+        "graphicsMHz": {
+          "samples": 60,
+          "mean": 2321.6666666666665,
+          "p95": 2325,
+          "p99": 2325,
+          "max": 2325
+        },
+        "temperatureC": {
+          "samples": 60,
+          "mean": 33.166666666666664,
+          "p95": 34,
+          "p99": 34,
+          "max": 34
+        },
+        "gameMs": {
+          "samples": 3667,
+          "mean": 1.135992364330518,
+          "p95": 1.465,
+          "p99": 1.778,
+          "max": 6.918
+        },
+        "renderMs": {
+          "samples": 3667,
+          "mean": 3.059955822197984,
+          "p95": 3.733,
+          "p99": 4.497,
+          "max": 9.95
+        },
+        "gapsOver100Ms": 0
+      },
+      "gate": {
+        "atLeastFiveMinutes": false,
+        "atLeast1080p60": true,
+        "fourDronesFlyingAndCapturing": false,
+        "scheduledCaptureCadence": false,
+        "decodedFps": true,
+        "noFreezeOver100Ms": true,
+        "gpuP95": true,
+        "gpuP99": true
+      },
+      "gate_passed": false,
+      "concurrent_containers": [
+        "snr-turn",
+        "snr-unreal-live"
+      ],
+      "measurement_tools": [
+        {
+          "source": "world/unreal/scripts/measure-stream.mjs",
+          "snapshot": ".local/evidence/render-quality/foliage-1080-visual/tools/measure-stream.mjs",
+          "sha256": "97ef820ceee609ee1eeea2589f4d2503e315815c4fe4d7996863ba2ba84b07c0"
+        },
+        {
+          "source": "world/unreal/scripts/profile-engine.py",
+          "snapshot": ".local/evidence/render-quality/foliage-1080-visual/tools/profile-engine.py",
+          "sha256": "1585ccae5f265063aec1bd6e86bf115b22130a406a25ed48ced354bf4d2c476e"
+        },
+        {
+          "source": "world/cosys/render_workload.py",
+          "snapshot": ".local/evidence/render-quality/foliage-1080-visual/tools/render_workload.py",
+          "sha256": "5ee5853dabf2430f8e7dc00d6ffefd42b0b04df9843c5d75511bafb32961e5f3"
+        },
+        {
+          "source": "mission_planner/agents/perception/browser.mjs",
+          "snapshot": ".local/evidence/render-quality/foliage-1080-visual/tools/browser.mjs",
+          "sha256": "899f757050a11487331ec3e8d035992184f81955c1cf12f985e636e94c363935"
+        }
+      ],
+      "first_video_frame": {
+        "navigationToFirstFrameMs": 893.5,
+        "presentedAtEpochMs": 1793233285161.3,
+        "width": 1920,
+        "height": 1080
+      },
+      "timing_source": "Unreal CSV per-frame GPUTime, FrameTime, GameThreadTime and RenderThreadTime",
+      "render_settings": [
+        "[2026.10.29-00.22.37:383][536]r.DynamicGlobalIlluminationMethod = \"2\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.22.37:383][536]r.ReflectionMethod = \"2\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.22.37:384][536]r.Lumen.HardwareRayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.22.37:399][537]r.Shadow.Virtual.Enable = \"0\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.22.37:400][537]r.Nanite = \"0\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.29-00.22.37:400][537]r.RayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.22.37:416][538]r.RayTracing.Enable = \"0\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.29-00.22.37:416][538]r.AntiAliasingMethod = \"4\"      LastSetBy: Constructor",
+        "[2026.10.29-00.22.37:417][538]r.ScreenPercentage = \"100\"      LastSetBy: DeviceProfile"
+      ],
+      "engine_metadata": {
+        "[HasHeaderRowAtEnd]": "1",
+        "[EventTimestamps]": "1",
+        "[platform]": "Linux",
+        "[config]": "Development",
+        "[buildversion]": "++UE5+Release-5.8-CL-56702186",
+        "[engineversion]": "5.8.2-56702186+++UE5+Release-5.8",
+        "[enginereleaseversion]": "5.8.2",
+        "[os]": "Ubuntu 24.04.4 LTS 6.8.0-1066-aws",
+        "[cpu]": "GenuineIntel|Intel(R) Xeon(R) Platinum 8559C",
+        "[pgoenabled]": "0",
+        "[pgoprofilingenabled]": "0",
+        "[ltoenabled]": "0",
+        "[asan]": "0",
+        "[mergedmodules]": "0",
+        "[compacttset]": "0",
+        "[loginid]": "-000003ea",
+        "[llm]": "0",
+        "[zenstreaming]": "0",
+        "[systemresolution.resx]": "1920",
+        "[systemresolution.resy]": "1080",
+        "[extradevelopmentmemorymb]": "0",
+        "[verbatimrhiname]": "Vulkan",
+        "[rhiname]": "Vulkan",
+        "[rhifeaturelevel]": "SM6",
+        "[shaderplatform]": "VULKAN_SM6",
+        "[gpu]": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+        "[gpudriver]": "580.178",
+        "[deviceprofile]": "Linux",
+        "[largeworldcoordinates]": "1",
+        "[raytracing]": "0",
+        "[streamingpoolsizemb]": "4096",
+        "[csvid]": "01A185098A8B72029FEFBADF9C6CBBFE",
+        "[targetframerate]": "60",
+        "[starttimestamp]": "1793233357",
+        "[namedevents]": "0",
+        "[hasgtstalls]": "0",
+        "[vsyncenabled]": "0",
+        "[csvbench_timingstat_ns]": "90.467500",
+        "[csvbench_customstat_ns]": "46.417500",
+        "[csvbench_duration_ms]": "5.475700",
+        "[endtimestamp]": "1793233418",
+        "[captureduration]": "61.12094",
+        "[csvmaxfilebytesreached]": "0",
+        "[commandline]": " ScenarioStudio /Game/OpenMeadow/OpenMeadow -RenderOffscreen -unattended -nosound -NoSplash -vulkan -sm6 -savevulkanpsocacheonexit -logPSO -dpcvars=r.pso.PrecompileThreadPoolSizeMax=2,r.Streaming.PoolSize=4096,r.ScreenPercentage=100,r.Vulkan.EnablePSOFileCacheWhenPrecachingActive=1,r.ShaderPipelineCache.Enabled=1 -ResX=1920 -ResY=1080 -ForceRes -settings=/home/brook_avionuas/snr/.local/unreal/Live/cosys-settings.json -ScenarioSaveDir=/home/brook_avionuas/snr/.local/data/unreal-scenarios -PixelStreamingConnectionURL=ws://127.0.0.1:8888 -PixelStreamingEncoderCodec=H264 -PixelStreamingWebRTCFps=60 -PixelStreamingWebRTCStartBitrate=40000000 -PixelStreamingWebRTCMinBitrate=10000000 -PixelStreamingWebRTCMaxBitrate=40000000 -PixelStreamingWebRTCDisableTransmitAudio=true -PixelStreamingWebRTCMinPort=49160 -PixelStreamingWebRTCMaxPort=49200 -PixelStreamingEncoderQualityPreset=HighQuality -PixelStreamingEncoderLatencyMode=LowLatency -DroneFoundationDir=/home/brook_avionuas/snr/.local/data/four-drones -PixelStreamingUseMediaCapture=true -ExecCmds=t.MaxFPS 60\" -stdout -FullStdOutLogOutput\""
+      },
+      "release": "/home/brook_avionuas/snr/.local/unreal/releases/20261029T002046Z",
+      "evidence": ".local/evidence/render-quality/foliage-1080-visual/result.json",
+      "sha256": "0350b1d456ff444b7b2c680cddc23abeb0932cfdd098bee6ec81635d9bc836cd",
+      "engine_csv": {
+        "path": ".local/evidence/render-quality/foliage-1080-visual/engine.csv",
+        "bytes": 7726945,
+        "sha256": "24b071ebc4f0840bad16fd628eaa1865316a67b58ce6ce1c97950553b47fbe9f"
+      },
+      "screenshots": [
+        ".local/evidence/render-quality/foliage-1080-visual/person.png",
+        ".local/evidence/render-quality/foliage-1080-visual/meadow.png",
+        ".local/evidence/render-quality/foliage-1080-visual/port.png",
+        ".local/evidence/render-quality/foliage-1080-visual/navigation-start.png",
+        ".local/evidence/render-quality/foliage-1080-visual/navigation-end.png"
+      ],
+      "screenshot_files": [
+        {
+          "path": ".local/evidence/render-quality/foliage-1080-visual/person.png",
+          "bytes": 2966813,
+          "sha256": "1ff9fbf5516476974088970a7db014244bf5662bf154410a5b760b1403152dfb"
+        },
+        {
+          "path": ".local/evidence/render-quality/foliage-1080-visual/meadow.png",
+          "bytes": 2896098,
+          "sha256": "b7184bd6a18d2b25215e4f5cfb8109fa1392fbffe00a93fac2927a3dadf92b8e"
+        },
+        {
+          "path": ".local/evidence/render-quality/foliage-1080-visual/port.png",
+          "bytes": 4377386,
+          "sha256": "56b7a60e4776603dc495700190cb26767618d3f6cc19bd01689274951209c61f"
+        },
+        {
+          "path": ".local/evidence/render-quality/foliage-1080-visual/navigation-start.png",
+          "bytes": 2899297,
+          "sha256": "dcfa4e96637a216117cd9f330de4305554861d59e89025153052740707b93f6a"
+        },
+        {
+          "path": ".local/evidence/render-quality/foliage-1080-visual/navigation-end.png",
+          "bytes": 2858770,
+          "sha256": "1774ce87387708805d60ca87c686ea0aff3c6a0bb094df73e06161778ddd003c"
+        }
+      ]
+    },
+    {
+      "name": "lumen-atmosphere-4k-tsr60",
+      "recorded_at": "2026-10-29T00:28:01.711Z",
+      "profile": {
+        "width": 3840,
+        "internalRenderPercentage": 60,
+        "height": 2160,
+        "fps": 60,
+        "codec": "H264",
+        "minBitrateBps": 10000000,
+        "maxBitrateBps": 40000000
+      },
+      "workload": "Four SimpleFlight drones flying at separated altitudes; staggered 4K RGB at 1 Hz each",
+      "summary": {
+        "seconds": 60.25050512695312,
+        "decodedFps": 59.750536404873,
+        "presentedFps": 56.35284144729094,
+        "memoryCurrentMiB": {
+          "samples": 59,
+          "mean": 1842.4907309322034,
+          "p95": 1891.15625,
+          "p99": 1899.38671875,
+          "max": 1899.38671875
+        },
+        "memoryAnonymousMiB": {
+          "samples": 59,
+          "mean": 1816.8895656779662,
+          "p95": 1864.8125,
+          "p99": 1874.14453125,
+          "max": 1874.14453125
+        },
+        "memoryGrowthMiB": {
+          "current": 26.7890625,
+          "anonymous": 18.0546875
+        },
+        "bitrateMbps": 33.045257758500135,
+        "droppedFrames": 0,
+        "freezes": 0,
+        "freezeDurationSeconds": 0,
+        "videoCallbackGapMs": {
+          "samples": 2825,
+          "mean": 21.33837168141593,
+          "p95": 33.39999999999418,
+          "p99": 33.40000000002328,
+          "max": 66.70000000001164
+        },
+        "gapsOver100Ms": 0,
+        "powerW": {
+          "samples": 59,
+          "mean": 245.8181355932203,
+          "p95": 250.07,
+          "p99": 251.57,
+          "max": 251.57
+        },
+        "graphicsMHz": {
+          "samples": 59,
+          "mean": 2294.9830508474574,
+          "p95": 2295,
+          "p99": 2302,
+          "max": 2302
+        },
+        "temperatureC": {
+          "samples": 59,
+          "mean": 39.23728813559322,
+          "p95": 40,
+          "p99": 40,
+          "max": 40
+        },
+        "gpuMs": {
+          "samples": 3648,
+          "mean": 9.079770285087713,
+          "p95": 14.941,
+          "p99": 15.41,
+          "max": 16.33
+        },
+        "frameMs": {
+          "samples": 3648,
+          "mean": 16.73564257127191,
+          "p95": 16.7954,
+          "p99": 18.1808,
+          "max": 38.9819
+        },
+        "gameMs": {
+          "samples": 3648,
+          "mean": 2.212882949561408,
+          "p95": 3.666,
+          "p99": 5.242,
+          "max": 13.085
+        },
+        "renderMs": {
+          "samples": 3648,
+          "mean": 8.904488212719306,
+          "p95": 20.248,
+          "p99": 24.541,
+          "max": 47.711
+        }
+      },
+      "gate": {
+        "atLeastFiveMinutes": false,
+        "atLeast1080p60": true,
+        "fourDronesFlyingAndCapturing": true,
+        "scheduledCaptureCadence": true,
+        "decodedFps": true,
+        "noFreezeOver100Ms": true,
+        "gpuP95": false,
+        "gpuP99": true
+      },
+      "gate_passed": false,
+      "concurrent_containers": [
+        "snr-turn",
+        "snr-unreal-live"
+      ],
+      "measurement_tools": [
+        {
+          "source": "world/unreal/scripts/measure-stream.mjs",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60/tools/measure-stream.mjs",
+          "sha256": "89908f819eb589d6ef9ac1d487dec7cd9ee39c76d36cd65d2c89d7ba3e81ebc2"
+        },
+        {
+          "source": "world/unreal/scripts/profile-engine.py",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60/tools/profile-engine.py",
+          "sha256": "1585ccae5f265063aec1bd6e86bf115b22130a406a25ed48ced354bf4d2c476e"
+        },
+        {
+          "source": "world/unreal/scripts/stream-statistics.mjs",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60/tools/stream-statistics.mjs",
+          "sha256": "c09c6769764c0e05c41f87d9daf4460e2044f214bacd0e77ea604dc53d07f223"
+        },
+        {
+          "source": "world/unreal/scripts/capacity-browser.mjs",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60/tools/capacity-browser.mjs",
+          "sha256": "46c08e559b08be507e86880db1fb5879a050c7ee7ffb043c6dfdb96961fd451b"
+        },
+        {
+          "source": "world/cosys/render_workload.py",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60/tools/render_workload.py",
+          "sha256": "5ee5853dabf2430f8e7dc00d6ffefd42b0b04df9843c5d75511bafb32961e5f3"
+        },
+        {
+          "source": "mission_planner/agents/perception/browser.mjs",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60/tools/browser.mjs",
+          "sha256": "bfe150e8df2f1052adeaac8b0944856cd128b519aaac85a0c95998ed6580b012"
+        }
+      ],
+      "first_video_frame": {
+        "navigationToFirstFrameMs": 944.4,
+        "presentedAtEpochMs": 1793233682828.7998,
+        "width": 3840,
+        "height": 2160
+      },
+      "timing_source": "Unreal CSV per-frame GPUTime, FrameTime, GameThreadTime and RenderThreadTime",
+      "render_settings": [
+        "[2026.10.29-00.30.25:186][761]r.DynamicGlobalIlluminationMethod = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.30.25:188][761]r.ReflectionMethod = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.30.25:188][761]r.Lumen.HardwareRayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.30.25:188][761]r.Shadow.Virtual.Enable = \"0\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.30.25:192][762]r.Nanite = \"0\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.29-00.30.25:203][762]r.RayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.30.25:203][762]r.RayTracing.Enable = \"1\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.29-00.30.25:204][762]r.AntiAliasingMethod = \"4\"      LastSetBy: Constructor",
+        "[2026.10.29-00.30.25:204][762]r.ScreenPercentage = \"60\"      LastSetBy: DeviceProfile"
+      ],
+      "engine_metadata": {
+        "[HasHeaderRowAtEnd]": "1",
+        "[EventTimestamps]": "1",
+        "[platform]": "Linux",
+        "[config]": "Development",
+        "[buildversion]": "++UE5+Release-5.8-CL-56702186",
+        "[engineversion]": "5.8.2-56702186+++UE5+Release-5.8",
+        "[enginereleaseversion]": "5.8.2",
+        "[os]": "Ubuntu 24.04.4 LTS 6.8.0-1066-aws",
+        "[cpu]": "GenuineIntel|Intel(R) Xeon(R) Platinum 8559C",
+        "[pgoenabled]": "0",
+        "[pgoprofilingenabled]": "0",
+        "[ltoenabled]": "0",
+        "[asan]": "0",
+        "[mergedmodules]": "0",
+        "[compacttset]": "0",
+        "[loginid]": "-000003ea",
+        "[llm]": "0",
+        "[zenstreaming]": "0",
+        "[systemresolution.resx]": "3840",
+        "[systemresolution.resy]": "2160",
+        "[extradevelopmentmemorymb]": "0",
+        "[verbatimrhiname]": "Vulkan",
+        "[rhiname]": "Vulkan",
+        "[rhifeaturelevel]": "SM6",
+        "[shaderplatform]": "VULKAN_SM6",
+        "[gpu]": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+        "[gpudriver]": "580.178",
+        "[deviceprofile]": "Linux",
+        "[largeworldcoordinates]": "1",
+        "[raytracing]": "1",
+        "[streamingpoolsizemb]": "4096",
+        "[csvid]": "01A18510ADC67DA699CEDC5134B51C4C",
+        "[targetframerate]": "60",
+        "[starttimestamp]": "1793233825",
+        "[namedevents]": "0",
+        "[hasgtstalls]": "0",
+        "[vsyncenabled]": "0",
+        "[csvbench_timingstat_ns]": "183.237500",
+        "[csvbench_customstat_ns]": "68.025000",
+        "[csvbench_duration_ms]": "10.050600",
+        "[endtimestamp]": "1793233886",
+        "[captureduration]": "61.049149",
+        "[csvmaxfilebytesreached]": "0",
+        "[commandline]": " ScenarioStudio /Game/OpenMeadow/OpenMeadow -RenderOffscreen -unattended -nosound -NoSplash -vulkan -sm6 -savevulkanpsocacheonexit -logPSO -dpcvars=r.pso.PrecompileThreadPoolSizeMax=2,r.Streaming.PoolSize=4096,r.ScreenPercentage=60,PixelStreaming2.ID=DefaultStreamer,r.Vulkan.EnablePSOFileCacheWhenPrecachingActive=1,r.ShaderPipelineCache.Enabled=1 -ResX=3840 -ResY=2160 -ForceRes -settings=/home/brook_avionuas/snr/.local/unreal/Live/cosys-settings.json -ScenarioSaveDir=/home/brook_avionuas/snr/.local/data/unreal-scenarios -PixelStreamingConnectionURL=ws://127.0.0.1:8888 -PixelStreamingEncoderCodec=H264 -PixelStreamingWebRTCFps=60 -PixelStreamingWebRTCStartBitrate=40000000 -PixelStreamingWebRTCMinBitrate=10000000 -PixelStreamingWebRTCMaxBitrate=40000000 -PixelStreamingWebRTCDisableTransmitAudio=true -PixelStreamingWebRTCMinPort=49160 -PixelStreamingWebRTCMaxPort=49200 -PixelStreamingEncoderQualityPreset=HighQuality -PixelStreamingEncoderLatencyMode=LowLatency -DroneFoundationDir=/home/brook_avionuas/snr/.local/data/four-drones -PixelStreamingUseMediaCapture=true -ExecCmds=t.MaxFPS 60\" -stdout -FullStdOutLogOutput\""
+      },
+      "release": "/home/brook_avionuas/snr/.local/unreal/releases/20261029T002749Z",
+      "evidence": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60/result.json",
+      "sha256": "65ef93863a46b72d48aa236a34d7f1e2d427c62c575653b5da3b22cb17a6f6f8",
+      "engine_csv": {
+        "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60/engine.csv",
+        "bytes": 8213184,
+        "sha256": "8f29fa7cb264d9e049e45f6042e91353fedadd6a26182a843ec07f11aa7190cf"
+      },
+      "screenshots": [
+        ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60/person.png",
+        ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60/meadow.png",
+        ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60/elevated.png",
+        ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60/port.png",
+        ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60/four-drones-start.png",
+        ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60/four-drones-end.png"
+      ],
+      "screenshot_files": [
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60/person.png",
+          "bytes": 9592284,
+          "sha256": "924c378f73ca34dca8e848ce76748ce03b6006b87c698929090e0dcbc826dfb1"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60/meadow.png",
+          "bytes": 9617170,
+          "sha256": "0ca7b5cf59a8588570121f67470b585e4761111b0fe16a70864a5ccf83e201b4"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60/elevated.png",
+          "bytes": 14790826,
+          "sha256": "e927649fe27c0f5749316966e149ad88a4872ce1bcaeaaf9bcb932a576a57ba4"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60/port.png",
+          "bytes": 17434232,
+          "sha256": "5aeb59dcee3e87c1f5fa6e6c23954817b3966100eebf947d08d7617928d97640"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60/four-drones-start.png",
+          "bytes": 9547012,
+          "sha256": "4729738f91f3349760b2dce4fd893b1ed5c969d8ea42a610f4d0bdbaf6510af8"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60/four-drones-end.png",
+          "bytes": 9709171,
+          "sha256": "1057ed5762e2fc94bd1ffc433679c163e42846fe22d096bac14459e9e5121130"
+        }
+      ],
+      "drone_workload": {
+        "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60/drones/result.json",
+        "bytes": 2118876,
+        "sha256": "49a8c1ad1d8a407d1b87aaaf5111a7e7d548f92574e05727eada29b4c04461a8"
+      },
+      "capture_summary": {
+        "Drone1": {
+          "count": 60,
+          "latencyMs": {
+            "samples": 60,
+            "mean": 281.5398241002792,
+            "p95": 336.0231959959492,
+            "p99": 362.8362570016179,
+            "max": 362.8362570016179
+          },
+          "latenessMs": {
+            "samples": 60,
+            "mean": 0.23264897633149909,
+            "p95": 0.8857959910528734,
+            "p99": 1.6162669926416129,
+            "max": 1.6162669926416129
+          }
+        },
+        "Drone2": {
+          "count": 60,
+          "latencyMs": {
+            "samples": 60,
+            "mean": 279.1904983661273,
+            "p95": 315.88405701040756,
+            "p99": 346.0444450029172,
+            "max": 346.0444450029172
+          },
+          "latenessMs": {
+            "samples": 60,
+            "mean": 0.1663843766436912,
+            "p95": 0.4613239871105179,
+            "p99": 1.411307996022515,
+            "max": 1.411307996022515
+          }
+        },
+        "Drone3": {
+          "count": 60,
+          "latencyMs": {
+            "samples": 60,
+            "mean": 280.8357718177528,
+            "p95": 320.23776198911946,
+            "p99": 328.3031070022844,
+            "max": 328.3031070022844
+          },
+          "latenessMs": {
+            "samples": 60,
+            "mean": 0.22998829275214425,
+            "p95": 0.9217639890266582,
+            "p99": 2.459771989379078,
+            "max": 2.459771989379078
+          }
+        },
+        "Drone4": {
+          "count": 60,
+          "latencyMs": {
+            "samples": 60,
+            "mean": 262.1825449825944,
+            "p95": 294.2574320040876,
+            "p99": 318.2536640088074,
+            "max": 318.2536640088074
+          },
+          "latenessMs": {
+            "samples": 60,
+            "mean": 0.15379389393880652,
+            "p95": 0.42548798955976963,
+            "p99": 1.1969519982812926,
+            "max": 1.1969519982812926
+          }
+        }
+      }
+    },
+    {
+      "name": "lumen-atmosphere-4k-tsr60-clock2430",
+      "recorded_at": "2026-10-29T00:34:07.882Z",
+      "profile": {
+        "width": 3840,
+        "internalRenderPercentage": 60,
+        "height": 2160,
+        "fps": 60,
+        "codec": "H264",
+        "minBitrateBps": 10000000,
+        "maxBitrateBps": 40000000
+      },
+      "workload": "Four SimpleFlight drones flying at separated altitudes; staggered 4K RGB at 1 Hz each",
+      "summary": {
+        "seconds": 300.5659392089844,
+        "decodedFps": 59.99016404670854,
+        "presentedFps": 56.55230555944629,
+        "memoryCurrentMiB": {
+          "samples": 292,
+          "mean": 2373.228274828767,
+          "p95": 2504.44921875,
+          "p99": 2538.51953125,
+          "max": 2555.07421875
+        },
+        "memoryAnonymousMiB": {
+          "samples": 292,
+          "mean": 2319.842425620719,
+          "p95": 2430.0390625,
+          "p99": 2467.9375,
+          "max": 2479.65625
+        },
+        "memoryGrowthMiB": {
+          "current": 284.15625,
+          "anonymous": 238.21484375
+        },
+        "bitrateMbps": 34.044322104259685,
+        "droppedFrames": 0,
+        "freezes": 0,
+        "freezeDurationSeconds": 0,
+        "videoCallbackGapMs": {
+          "samples": 15204,
+          "mean": 19.76922520389371,
+          "p95": 33.39999999999418,
+          "p99": 33.40000000002328,
+          "max": 50.100000000034925
+        },
+        "gapsOver100Ms": 0,
+        "powerW": {
+          "samples": 292,
+          "mean": 245.2239726027398,
+          "p95": 249.05,
+          "p99": 250.99,
+          "max": 251.5
+        },
+        "graphicsMHz": {
+          "samples": 292,
+          "mean": 2294.972602739726,
+          "p95": 2295,
+          "p99": 2295,
+          "max": 2295
+        },
+        "temperatureC": {
+          "samples": 292,
+          "mean": 39.428082191780824,
+          "p95": 41,
+          "p99": 41,
+          "max": 41
+        },
+        "gpuMs": {
+          "samples": 18116,
+          "mean": 9.000361558842927,
+          "p95": 14.859,
+          "p99": 15.364,
+          "max": 16.305
+        },
+        "frameMs": {
+          "samples": 18116,
+          "mean": 16.668406922057702,
+          "p95": 16.6692,
+          "p99": 16.68,
+          "max": 19.9633
+        },
+        "gameMs": {
+          "samples": 18116,
+          "mean": 1.715318834179735,
+          "p95": 2.272,
+          "p99": 2.996,
+          "max": 9.27
+        },
+        "renderMs": {
+          "samples": 18116,
+          "mean": 7.050811161404249,
+          "p95": 16.677,
+          "p99": 19.306,
+          "max": 28.275
+        }
+      },
+      "gate": {
+        "atLeastFiveMinutes": true,
+        "atLeast1080p60": true,
+        "fourDronesFlyingAndCapturing": true,
+        "scheduledCaptureCadence": true,
+        "decodedFps": true,
+        "noFreezeOver100Ms": true,
+        "gpuP95": false,
+        "gpuP99": true
+      },
+      "gate_passed": false,
+      "concurrent_containers": [
+        "snr-turn",
+        "snr-unreal-live"
+      ],
+      "measurement_tools": [
+        {
+          "source": "world/unreal/scripts/measure-stream.mjs",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60-clock2430/tools/measure-stream.mjs",
+          "sha256": "89908f819eb589d6ef9ac1d487dec7cd9ee39c76d36cd65d2c89d7ba3e81ebc2"
+        },
+        {
+          "source": "world/unreal/scripts/profile-engine.py",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60-clock2430/tools/profile-engine.py",
+          "sha256": "1585ccae5f265063aec1bd6e86bf115b22130a406a25ed48ced354bf4d2c476e"
+        },
+        {
+          "source": "world/unreal/scripts/stream-statistics.mjs",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60-clock2430/tools/stream-statistics.mjs",
+          "sha256": "c09c6769764c0e05c41f87d9daf4460e2044f214bacd0e77ea604dc53d07f223"
+        },
+        {
+          "source": "world/unreal/scripts/capacity-browser.mjs",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60-clock2430/tools/capacity-browser.mjs",
+          "sha256": "46c08e559b08be507e86880db1fb5879a050c7ee7ffb043c6dfdb96961fd451b"
+        },
+        {
+          "source": "world/cosys/render_workload.py",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60-clock2430/tools/render_workload.py",
+          "sha256": "5ee5853dabf2430f8e7dc00d6ffefd42b0b04df9843c5d75511bafb32961e5f3"
+        },
+        {
+          "source": "mission_planner/agents/perception/browser.mjs",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60-clock2430/tools/browser.mjs",
+          "sha256": "bfe150e8df2f1052adeaac8b0944856cd128b519aaac85a0c95998ed6580b012"
+        }
+      ],
+      "first_video_frame": {
+        "navigationToFirstFrameMs": 617.1,
+        "presentedAtEpochMs": 1793234048664.1,
+        "width": 3840,
+        "height": 2160
+      },
+      "timing_source": "Unreal CSV per-frame GPUTime, FrameTime, GameThreadTime and RenderThreadTime",
+      "render_settings": [
+        "[2026.10.29-00.36.31:166][691]r.DynamicGlobalIlluminationMethod = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.36.31:166][691]r.ReflectionMethod = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.36.31:166][691]r.Lumen.HardwareRayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.36.31:167][691]r.Shadow.Virtual.Enable = \"0\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.36.31:167][692]r.Nanite = \"0\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.29-00.36.31:182][692]r.RayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.36.31:183][692]r.RayTracing.Enable = \"1\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.29-00.36.31:183][692]r.AntiAliasingMethod = \"4\"      LastSetBy: Constructor",
+        "[2026.10.29-00.36.31:184][693]r.ScreenPercentage = \"60\"      LastSetBy: DeviceProfile"
+      ],
+      "engine_metadata": {
+        "[HasHeaderRowAtEnd]": "1",
+        "[EventTimestamps]": "1",
+        "[platform]": "Linux",
+        "[config]": "Development",
+        "[buildversion]": "++UE5+Release-5.8-CL-56702186",
+        "[engineversion]": "5.8.2-56702186+++UE5+Release-5.8",
+        "[enginereleaseversion]": "5.8.2",
+        "[os]": "Ubuntu 24.04.4 LTS 6.8.0-1066-aws",
+        "[cpu]": "GenuineIntel|Intel(R) Xeon(R) Platinum 8559C",
+        "[pgoenabled]": "0",
+        "[pgoprofilingenabled]": "0",
+        "[ltoenabled]": "0",
+        "[asan]": "0",
+        "[mergedmodules]": "0",
+        "[compacttset]": "0",
+        "[loginid]": "-000003ea",
+        "[llm]": "0",
+        "[zenstreaming]": "0",
+        "[systemresolution.resx]": "3840",
+        "[systemresolution.resy]": "2160",
+        "[extradevelopmentmemorymb]": "0",
+        "[verbatimrhiname]": "Vulkan",
+        "[rhiname]": "Vulkan",
+        "[rhifeaturelevel]": "SM6",
+        "[shaderplatform]": "VULKAN_SM6",
+        "[gpu]": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+        "[gpudriver]": "580.178",
+        "[deviceprofile]": "Linux",
+        "[largeworldcoordinates]": "1",
+        "[raytracing]": "1",
+        "[streamingpoolsizemb]": "4096",
+        "[csvid]": "01A1851643717C018CB77ED8FB3DECDF",
+        "[targetframerate]": "60",
+        "[starttimestamp]": "1793234191",
+        "[namedevents]": "0",
+        "[hasgtstalls]": "0",
+        "[vsyncenabled]": "0",
+        "[csvbench_timingstat_ns]": "95.475000",
+        "[csvbench_customstat_ns]": "52.687500",
+        "[csvbench_duration_ms]": "5.926700",
+        "[endtimestamp]": "1793234493",
+        "[captureduration]": "301.964909",
+        "[csvmaxfilebytesreached]": "0",
+        "[commandline]": " ScenarioStudio /Game/OpenMeadow/OpenMeadow -RenderOffscreen -unattended -nosound -NoSplash -vulkan -sm6 -savevulkanpsocacheonexit -logPSO -dpcvars=r.pso.PrecompileThreadPoolSizeMax=2,r.Streaming.PoolSize=4096,r.ScreenPercentage=60,PixelStreaming2.ID=DefaultStreamer,r.Vulkan.EnablePSOFileCacheWhenPrecachingActive=1,r.ShaderPipelineCache.Enabled=1 -ResX=3840 -ResY=2160 -ForceRes -settings=/home/brook_avionuas/snr/.local/unreal/Live/cosys-settings.json -ScenarioSaveDir=/home/brook_avionuas/snr/.local/data/unreal-scenarios -PixelStreamingConnectionURL=ws://127.0.0.1:8888 -PixelStreamingEncoderCodec=H264 -PixelStreamingWebRTCFps=60 -PixelStreamingWebRTCStartBitrate=40000000 -PixelStreamingWebRTCMinBitrate=10000000 -PixelStreamingWebRTCMaxBitrate=40000000 -PixelStreamingWebRTCDisableTransmitAudio=true -PixelStreamingWebRTCMinPort=49160 -PixelStreamingWebRTCMaxPort=49200 -PixelStreamingEncoderQualityPreset=HighQuality -PixelStreamingEncoderLatencyMode=LowLatency -DroneFoundationDir=/home/brook_avionuas/snr/.local/data/four-drones -PixelStreamingUseMediaCapture=true -ExecCmds=t.MaxFPS 60\" -stdout -FullStdOutLogOutput\""
+      },
+      "release": "/home/brook_avionuas/snr/.local/unreal/releases/20261029T002749Z",
+      "evidence": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60-clock2430/result.json",
+      "sha256": "66fe03916be9a75fe63b0a789c65b97922b333b149b4a829cb6af3ccdb6154b1",
+      "engine_csv": {
+        "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60-clock2430/engine.csv",
+        "bytes": 40766215,
+        "sha256": "70abd6f3907c45a32205306f5d156fd523bca30c604014ecbb433047c641b590"
+      },
+      "screenshots": [
+        ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60-clock2430/person.png",
+        ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60-clock2430/meadow.png",
+        ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60-clock2430/elevated.png",
+        ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60-clock2430/port.png",
+        ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60-clock2430/four-drones-start.png",
+        ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60-clock2430/four-drones-end.png"
+      ],
+      "screenshot_files": [
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60-clock2430/person.png",
+          "bytes": 9316173,
+          "sha256": "603f7aa1cae25542aa344da3cf518b2729082422a49c9972fdcbc587d8942387"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60-clock2430/meadow.png",
+          "bytes": 9652117,
+          "sha256": "1cf03375a1d602ac9e2f779db44dea4534c8dd0edeb29614c7b429ec357b5f0b"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60-clock2430/elevated.png",
+          "bytes": 14864634,
+          "sha256": "115e236ae49d08a2ed8448220c826171054a97a494dd46f30bb0f5a79d5a6200"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60-clock2430/port.png",
+          "bytes": 17416292,
+          "sha256": "b9a4f8acc7e6bdb572db887d1436c1e06115f76044b596050f7ec1f7ff6c2e13"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60-clock2430/four-drones-start.png",
+          "bytes": 9825046,
+          "sha256": "43afe1f0a53343fdf3514dd6e11919c2678eb42065d6f0af7a7dea3b114c5d98"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60-clock2430/four-drones-end.png",
+          "bytes": 9910209,
+          "sha256": "827e113719617511e173953995ce1b3ce32123c469b051cfccb57afa70f9eb5f"
+        }
+      ],
+      "drone_workload": {
+        "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr60-clock2430/drones/result.json",
+        "bytes": 7675218,
+        "sha256": "053179b4ac15a8907b9817ab1d2fd9f92bf91785d54075ea08bd278d2d44da61"
+      },
+      "capture_summary": {
+        "Drone1": {
+          "count": 300,
+          "latencyMs": {
+            "samples": 300,
+            "mean": 267.0214391966874,
+            "p95": 292.57955100911204,
+            "p99": 305.51197699969634,
+            "max": 316.6045770049095
+          },
+          "latenessMs": {
+            "samples": 300,
+            "mean": 0.16261922704870813,
+            "p95": 0.5177590064704418,
+            "p99": 1.8003669974859804,
+            "max": 2.046488007181324
+          }
+        },
+        "Drone2": {
+          "count": 300,
+          "latencyMs": {
+            "samples": 300,
+            "mean": 263.1790542501646,
+            "p95": 292.5487189932028,
+            "p99": 306.3413549971301,
+            "max": 315.9876169956988
+          },
+          "latenessMs": {
+            "samples": 300,
+            "mean": 0.10761813323673171,
+            "p95": 0.1699450076557696,
+            "p99": 0.7137689972296357,
+            "max": 1.4674499980174005
+          }
+        },
+        "Drone3": {
+          "count": 301,
+          "latencyMs": {
+            "samples": 301,
+            "mean": 261.8420192235721,
+            "p95": 292.79996700643096,
+            "p99": 300.7992659986485,
+            "max": 304.9115290050395
+          },
+          "latenessMs": {
+            "samples": 301,
+            "mean": 0.10478978693691017,
+            "p95": 0.19648300076369196,
+            "p99": 0.3644980024546385,
+            "max": 1.1683580087265
+          }
+        },
+        "Drone4": {
+          "count": 300,
+          "latencyMs": {
+            "samples": 300,
+            "mean": 250.2752725200844,
+            "p95": 277.46284200111404,
+            "p99": 286.83692099002656,
+            "max": 292.0562530052848
+          },
+          "latenessMs": {
+            "samples": 300,
+            "mean": 0.11158447659302813,
+            "p95": 0.1914910099003464,
+            "p99": 0.7396930013783276,
+            "max": 1.1688090016832575
+          }
+        }
+      }
+    },
+    {
+      "name": "lumen-atmosphere-vsm-1080-load",
+      "recorded_at": "2026-10-29T00:48:04.303Z",
+      "profile": {
+        "width": 1920,
+        "internalRenderPercentage": 100,
+        "height": 1080,
+        "fps": 60,
+        "codec": "H264",
+        "minBitrateBps": 10000000,
+        "maxBitrateBps": 40000000
+      },
+      "workload": "Four SimpleFlight drones flying at separated altitudes; staggered 4K RGB at 1 Hz each",
+      "summary": {
+        "seconds": 60.912470947265625,
+        "decodedFps": 59.97129886854449,
+        "presentedFps": 56.85128563668022,
+        "memoryCurrentMiB": {
+          "samples": 60,
+          "mean": 1852.5624348958333,
+          "p95": 1887.65625,
+          "p99": 1919.37890625,
+          "max": 1919.37890625
+        },
+        "memoryAnonymousMiB": {
+          "samples": 60,
+          "mean": 1827.1453125,
+          "p95": 1860.671875,
+          "p99": 1891.48046875,
+          "max": 1891.48046875
+        },
+        "memoryGrowthMiB": {
+          "current": 6.1796875,
+          "anonymous": -6.51171875
+        },
+        "bitrateMbps": 34.943166922955825,
+        "droppedFrames": 0,
+        "freezes": 0,
+        "freezeDurationSeconds": 0,
+        "videoCallbackGapMs": {
+          "samples": 3041,
+          "mean": 20.036468267017437,
+          "p95": 33.39999999999418,
+          "p99": 33.40000000002328,
+          "max": 50.10000000000582
+        },
+        "gapsOver100Ms": 0,
+        "powerW": {
+          "samples": 60,
+          "mean": 192.24583333333337,
+          "p95": 195.09,
+          "p99": 195.48,
+          "max": 195.48
+        },
+        "graphicsMHz": {
+          "samples": 60,
+          "mean": 2301.766666666667,
+          "p95": 2302,
+          "p99": 2302,
+          "max": 2302
+        },
+        "temperatureC": {
+          "samples": 60,
+          "mean": 35.3,
+          "p95": 36,
+          "p99": 36,
+          "max": 36
+        },
+        "gpuMs": {
+          "samples": 3692,
+          "mean": 8.094424972914403,
+          "p95": 14.841,
+          "p99": 15.264,
+          "max": 15.977
+        },
+        "frameMs": {
+          "samples": 3692,
+          "mean": 16.67191939328278,
+          "p95": 16.669,
+          "p99": 16.6801,
+          "max": 27.9658
+        },
+        "gameMs": {
+          "samples": 3692,
+          "mean": 1.6848832611050912,
+          "p95": 2.149,
+          "p99": 2.923,
+          "max": 16.594
+        },
+        "renderMs": {
+          "samples": 3692,
+          "mean": 6.980584236186352,
+          "p95": 16.887,
+          "p99": 19.552,
+          "max": 42.543
+        }
+      },
+      "gate": {
+        "atLeastFiveMinutes": false,
+        "atLeast1080p60": true,
+        "fourDronesFlyingAndCapturing": true,
+        "scheduledCaptureCadence": true,
+        "decodedFps": true,
+        "noFreezeOver100Ms": true,
+        "gpuP95": false,
+        "gpuP99": true
+      },
+      "gate_passed": false,
+      "concurrent_containers": [
+        "snr-turn",
+        "snr-unreal-live"
+      ],
+      "measurement_tools": [
+        {
+          "source": "world/unreal/scripts/measure-stream.mjs",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/tools/measure-stream.mjs",
+          "sha256": "30431f35f9f067b8171c0c9e2aee156a791df4e47716119449331cf03118d922"
+        },
+        {
+          "source": "world/unreal/scripts/profile-engine.py",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/tools/profile-engine.py",
+          "sha256": "1585ccae5f265063aec1bd6e86bf115b22130a406a25ed48ced354bf4d2c476e"
+        },
+        {
+          "source": "world/unreal/scripts/stream-statistics.mjs",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/tools/stream-statistics.mjs",
+          "sha256": "c09c6769764c0e05c41f87d9daf4460e2044f214bacd0e77ea604dc53d07f223"
+        },
+        {
+          "source": "world/unreal/scripts/capacity-browser.mjs",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/tools/capacity-browser.mjs",
+          "sha256": "46c08e559b08be507e86880db1fb5879a050c7ee7ffb043c6dfdb96961fd451b"
+        },
+        {
+          "source": "world/cosys/render_workload.py",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/tools/render_workload.py",
+          "sha256": "e59d2a95a58c141b8dccd1ecb820ff7bf1625829668e42f43f61e2ba29d58646"
+        },
+        {
+          "source": "world/cosys/client.py",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/tools/client.py",
+          "sha256": "10022f2c7d000ee977e07dcd1f62cfc98000bb411a2a2b2ebe3a3a312e3ce2f1"
+        },
+        {
+          "source": "mission_planner/agents/perception/browser.mjs",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/tools/browser.mjs",
+          "sha256": "bfe150e8df2f1052adeaac8b0944856cd128b519aaac85a0c95998ed6580b012"
+        }
+      ],
+      "first_video_frame": {
+        "navigationToFirstFrameMs": 911.8,
+        "presentedAtEpochMs": 1793234885380.7,
+        "width": 1920,
+        "height": 1080
+      },
+      "startup_first_thirty_seconds": {
+        "observedSeconds": 29.9988,
+        "callbackGapMs": {
+          "samples": 1555,
+          "mean": 19.29183279742765,
+          "p95": 33.399999999999636,
+          "p99": 33.400000000001455,
+          "max": 133.30000000000018
+        }
+      },
+      "cpu_usage": {
+        "usage_usec": 546816194,
+        "user_usec": 455746022,
+        "system_usec": 91070173,
+        "core_sched.force_idle_usec": 0,
+        "nr_periods": 618,
+        "nr_throttled": 0,
+        "throttled_usec": 0,
+        "nr_bursts": 0,
+        "burst_usec": 0
+      },
+      "timing_source": "Unreal CSV per-frame GPUTime, FrameTime, GameThreadTime and RenderThreadTime",
+      "render_settings": [
+        "[2026.10.29-00.50.25:499][605]r.DynamicGlobalIlluminationMethod = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.50.25:500][605]r.ReflectionMethod = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.50.25:500][605]r.Lumen.HardwareRayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.50.25:502][606]r.Shadow.Virtual.Enable = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.50.25:516][606]r.Nanite = \"0\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.29-00.50.25:516][606]r.RayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.50.25:516][606]r.RayTracing.Enable = \"1\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.29-00.50.25:517][606]r.AntiAliasingMethod = \"4\"      LastSetBy: Constructor",
+        "[2026.10.29-00.50.25:517][606]r.ScreenPercentage = \"100\"      LastSetBy: DeviceProfile"
+      ],
+      "engine_metadata": {
+        "[HasHeaderRowAtEnd]": "1",
+        "[EventTimestamps]": "1",
+        "[platform]": "Linux",
+        "[config]": "Development",
+        "[buildversion]": "++UE5+Release-5.8-CL-56702186",
+        "[engineversion]": "5.8.2-56702186+++UE5+Release-5.8",
+        "[enginereleaseversion]": "5.8.2",
+        "[os]": "Ubuntu 24.04.4 LTS 6.8.0-1066-aws",
+        "[cpu]": "GenuineIntel|Intel(R) Xeon(R) Platinum 8559C",
+        "[pgoenabled]": "0",
+        "[pgoprofilingenabled]": "0",
+        "[ltoenabled]": "0",
+        "[asan]": "0",
+        "[mergedmodules]": "0",
+        "[compacttset]": "0",
+        "[loginid]": "-000003ea",
+        "[llm]": "0",
+        "[zenstreaming]": "0",
+        "[systemresolution.resx]": "1920",
+        "[systemresolution.resy]": "1080",
+        "[extradevelopmentmemorymb]": "0",
+        "[verbatimrhiname]": "Vulkan",
+        "[rhiname]": "Vulkan",
+        "[rhifeaturelevel]": "SM6",
+        "[shaderplatform]": "VULKAN_SM6",
+        "[gpu]": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+        "[gpudriver]": "580.178",
+        "[deviceprofile]": "Linux",
+        "[largeworldcoordinates]": "1",
+        "[raytracing]": "1",
+        "[streamingpoolsizemb]": "4096",
+        "[csvid]": "01A18522FE8E73EAAEFA3C4FA24D290D",
+        "[targetframerate]": "60",
+        "[starttimestamp]": "1793235025",
+        "[namedevents]": "0",
+        "[hasgtstalls]": "0",
+        "[vsyncenabled]": "0",
+        "[csvbench_timingstat_ns]": "147.305000",
+        "[csvbench_customstat_ns]": "60.337500",
+        "[csvbench_duration_ms]": "8.305900",
+        "[endtimestamp]": "1793235087",
+        "[captureduration]": "61.585384",
+        "[csvmaxfilebytesreached]": "0",
+        "[commandline]": " ScenarioStudio /Game/OpenMeadow/OpenMeadow -RenderOffscreen -unattended -nosound -NoSplash -vulkan -sm6 -savevulkanpsocacheonexit -logPSO -dpcvars=r.pso.PrecompileThreadPoolSizeMax=2,r.Streaming.PoolSize=4096,r.ScreenPercentage=100,PixelStreaming2.ID=DefaultStreamer,r.Vulkan.EnablePSOFileCacheWhenPrecachingActive=1,r.ShaderPipelineCache.Enabled=1 -ResX=1920 -ResY=1080 -ForceRes -settings=/home/brook_avionuas/snr/.local/unreal/Live/cosys-settings.json -ScenarioSaveDir=/home/brook_avionuas/snr/.local/data/unreal-scenarios -PixelStreamingConnectionURL=ws://127.0.0.1:8888 -PixelStreamingEncoderCodec=H264 -PixelStreamingWebRTCFps=60 -PixelStreamingWebRTCStartBitrate=40000000 -PixelStreamingWebRTCMinBitrate=10000000 -PixelStreamingWebRTCMaxBitrate=40000000 -PixelStreamingWebRTCDisableTransmitAudio=true -PixelStreamingWebRTCMinPort=49160 -PixelStreamingWebRTCMaxPort=49200 -PixelStreamingEncoderQualityPreset=HighQuality -PixelStreamingEncoderLatencyMode=LowLatency -DroneFoundationDir=/home/brook_avionuas/snr/.local/data/four-drones -PixelStreamingUseMediaCapture=true -ExecCmds=t.MaxFPS 60\" -stdout -FullStdOutLogOutput\""
+      },
+      "release": "/home/brook_avionuas/snr/.local/unreal/releases/20261029T004746Z",
+      "evidence": ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/result.json",
+      "sha256": "a09ff07ad7897c7a9f454dcca0fa4d987bc6b1453a46eb3138dfd67b9f78972f",
+      "engine_csv": {
+        "path": ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/engine.csv",
+        "bytes": 8283932,
+        "sha256": "7c4bee614ec49c92524bac41b3c2c8f7fad4fcb5bbf963b76abffbe79a7554e9"
+      },
+      "screenshots": [
+        ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/person.png",
+        ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/meadow.png",
+        ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/elevated.png",
+        ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/port.png",
+        ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/four-drones-start.png",
+        ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/moving-view.png",
+        ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/four-drones-end.png"
+      ],
+      "screenshot_files": [
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/person.png",
+          "bytes": 3136517,
+          "sha256": "994872e256e0048e55d3dbb164677461afb38396bf411ddb6bad340061944b09"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/meadow.png",
+          "bytes": 3086934,
+          "sha256": "fd5b6d4c2ff448f6f96d0aa396d56e828122366a849c8de3e24efaaf39650e22"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/elevated.png",
+          "bytes": 4005458,
+          "sha256": "57467bb9704bf6f8fbc83ca813941c31f0b3c738bae2cb8640bdf75eeec9202a"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/port.png",
+          "bytes": 4398444,
+          "sha256": "6df67e0369e76d43a597b5bcba3f9c33263b5879157d04c86989a41efcc5e7fa"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/four-drones-start.png",
+          "bytes": 3075467,
+          "sha256": "d1ff91722a9f5f984d72ba5c744e443e62f16b7c0b531e7951406f362982069a"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/moving-view.png",
+          "bytes": 2768705,
+          "sha256": "22decdefaaad448ac2efb93d94fe838461b8045fa1915f35c6cd8601b1ac11d9"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/four-drones-end.png",
+          "bytes": 3154540,
+          "sha256": "9b419f8137b43a9cdabecaf2890e2887451564e8dd75980d9c20beb1d0be729d"
+        }
+      ],
+      "drone_workload": {
+        "path": ".local/evidence/render-quality/lumen-atmosphere-vsm-1080-load/drones/result.json",
+        "bytes": 2179454,
+        "sha256": "c8da5da23fd601d1f958545bbfc7bf1175b5f470e05c584e2ec689e636909100"
+      },
+      "capture_summary": {
+        "Drone1": {
+          "count": 61,
+          "latencyMs": {
+            "samples": 61,
+            "mean": 237.0242722125888,
+            "p95": 261.155346990563,
+            "p99": 263.5806920006871,
+            "max": 263.5806920006871
+          },
+          "latenessMs": {
+            "samples": 61,
+            "mean": 0.08540973687529198,
+            "p95": 0.09318499360233545,
+            "p99": 0.12930699449498206,
+            "max": 0.12930699449498206
+          }
+        },
+        "Drone2": {
+          "count": 60,
+          "latencyMs": {
+            "samples": 60,
+            "mean": 239.60390581705724,
+            "p95": 263.64184099656995,
+            "p99": 278.25022500474006,
+            "max": 278.25022500474006
+          },
+          "latenessMs": {
+            "samples": 60,
+            "mean": 0.08931663251132704,
+            "p95": 0.09489699732512236,
+            "p99": 0.13216800289228559,
+            "max": 0.13216800289228559
+          }
+        },
+        "Drone3": {
+          "count": 61,
+          "latencyMs": {
+            "samples": 61,
+            "mean": 237.9901425404375,
+            "p95": 264.75452799058985,
+            "p99": 268.09824399242643,
+            "max": 268.09824399242643
+          },
+          "latenessMs": {
+            "samples": 61,
+            "mean": 0.2940742770824429,
+            "p95": 2.2005009959684685,
+            "p99": 5.448865995276719,
+            "max": 5.448865995276719
+          }
+        },
+        "Drone4": {
+          "count": 61,
+          "latencyMs": {
+            "samples": 61,
+            "mean": 225.07708180351298,
+            "p95": 243.75949800014496,
+            "p99": 263.44957199762575,
+            "max": 263.44957199762575
+          },
+          "latenessMs": {
+            "samples": 61,
+            "mean": 0.2564989167769424,
+            "p95": 0.10340100561734289,
+            "p99": 5.3378890006570145,
+            "max": 5.3378890006570145
+          }
+        }
+      },
+      "interpretation": "Fails GPU p95 at native 1080p with four 4K sensors at 1 Hz. Shared host with snr-unreal-world; not isolated capacity."
+    },
+    {
+      "name": "lumen-atmosphere-4k-tsr55-gate",
+      "recorded_at": "2026-10-29T00:53:07.108Z",
+      "profile": {
+        "width": 3840,
+        "internalRenderPercentage": 55,
+        "height": 2160,
+        "fps": 60,
+        "codec": "H264",
+        "minBitrateBps": 10000000,
+        "maxBitrateBps": 40000000
+      },
+      "workload": "Four SimpleFlight drones flying at separated altitudes; staggered 4K RGB at 1 Hz each",
+      "summary": {
+        "seconds": 301.0153010253906,
+        "decodedFps": 59.98033966544798,
+        "presentedFps": 58.03254074236475,
+        "memoryCurrentMiB": {
+          "samples": 292,
+          "mean": 1920.0840245077054,
+          "p95": 2045.96875,
+          "p99": 2079.75390625,
+          "max": 2091.0703125
+        },
+        "memoryAnonymousMiB": {
+          "samples": 292,
+          "mean": 1876.1586044520548,
+          "p95": 1985.97265625,
+          "p99": 2011.61328125,
+          "max": 2028.05078125
+        },
+        "memoryGrowthMiB": {
+          "current": 230.4453125,
+          "anonymous": 185.046875
+        },
+        "bitrateMbps": 34.451915622472775,
+        "droppedFrames": 0,
+        "freezes": 0,
+        "freezeDurationSeconds": 0,
+        "videoCallbackGapMs": {
+          "samples": 15642,
+          "mean": 19.245492903720752,
+          "p95": 33.399999999965075,
+          "p99": 33.40000000002328,
+          "max": 66.66599999999744
+        },
+        "gapsOver100Ms": 0,
+        "powerW": {
+          "samples": 292,
+          "mean": 236.40640410958915,
+          "p95": 240.45,
+          "p99": 242.3,
+          "max": 242.84
+        },
+        "graphicsMHz": {
+          "samples": 292,
+          "mean": 2295.263698630137,
+          "p95": 2295,
+          "p99": 2302,
+          "max": 2302
+        },
+        "temperatureC": {
+          "samples": 292,
+          "mean": 38.965753424657535,
+          "p95": 40,
+          "p99": 40,
+          "max": 41
+        },
+        "gpuMs": {
+          "samples": 18133,
+          "mean": 8.495496387801289,
+          "p95": 9.152,
+          "p99": 14.632,
+          "max": 15.69
+        },
+        "frameMs": {
+          "samples": 18133,
+          "mean": 16.673469861578134,
+          "p95": 16.6697,
+          "p99": 16.7299,
+          "max": 28.4756
+        },
+        "gameMs": {
+          "samples": 18133,
+          "mean": 1.7659663045276557,
+          "p95": 2.393,
+          "p99": 3.202,
+          "max": 23.683
+        },
+        "renderMs": {
+          "samples": 18133,
+          "mean": 6.362780069486546,
+          "p95": 16.775,
+          "p99": 19.599,
+          "max": 40.251
+        }
+      },
+      "gate": {
+        "atLeastFiveMinutes": true,
+        "atLeast1080p60": true,
+        "fourDronesFlyingAndCapturing": true,
+        "scheduledCaptureCadence": true,
+        "decodedFps": true,
+        "noFreezeOver100Ms": true,
+        "gpuP95": true,
+        "gpuP99": true
+      },
+      "gate_passed": true,
+      "concurrent_containers": [
+        "snr-turn",
+        "snr-unreal-live"
+      ],
+      "measurement_tools": [
+        {
+          "source": "world/unreal/scripts/measure-stream.mjs",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/tools/measure-stream.mjs",
+          "sha256": "30431f35f9f067b8171c0c9e2aee156a791df4e47716119449331cf03118d922"
+        },
+        {
+          "source": "world/unreal/scripts/profile-engine.py",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/tools/profile-engine.py",
+          "sha256": "1585ccae5f265063aec1bd6e86bf115b22130a406a25ed48ced354bf4d2c476e"
+        },
+        {
+          "source": "world/unreal/scripts/stream-statistics.mjs",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/tools/stream-statistics.mjs",
+          "sha256": "c09c6769764c0e05c41f87d9daf4460e2044f214bacd0e77ea604dc53d07f223"
+        },
+        {
+          "source": "world/unreal/scripts/capacity-browser.mjs",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/tools/capacity-browser.mjs",
+          "sha256": "46c08e559b08be507e86880db1fb5879a050c7ee7ffb043c6dfdb96961fd451b"
+        },
+        {
+          "source": "world/cosys/render_workload.py",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/tools/render_workload.py",
+          "sha256": "e59d2a95a58c141b8dccd1ecb820ff7bf1625829668e42f43f61e2ba29d58646"
+        },
+        {
+          "source": "world/cosys/client.py",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/tools/client.py",
+          "sha256": "10022f2c7d000ee977e07dcd1f62cfc98000bb411a2a2b2ebe3a3a312e3ce2f1"
+        },
+        {
+          "source": "mission_planner/agents/perception/browser.mjs",
+          "snapshot": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/tools/browser.mjs",
+          "sha256": "bfe150e8df2f1052adeaac8b0944856cd128b519aaac85a0c95998ed6580b012"
+        }
+      ],
+      "first_video_frame": {
+        "navigationToFirstFrameMs": 954.9,
+        "presentedAtEpochMs": 1793235188235.2,
+        "width": 3840,
+        "height": 2160
+      },
+      "startup_first_thirty_seconds": {
+        "observedSeconds": 29.998699999999996,
+        "callbackGapMs": {
+          "samples": 1542,
+          "mean": 19.454409857328145,
+          "p95": 33.39999999999782,
+          "p99": 49.99800000000005,
+          "max": 116.60000000000036
+        }
+      },
+      "cpu_usage": {
+        "usage_usec": 2383117846,
+        "user_usec": 1943055876,
+        "system_usec": 440061970,
+        "core_sched.force_idle_usec": 0,
+        "nr_periods": 3026,
+        "nr_throttled": 0,
+        "throttled_usec": 0,
+        "nr_bursts": 0,
+        "burst_usec": 0
+      },
+      "timing_source": "Unreal CSV per-frame GPUTime, FrameTime, GameThreadTime and RenderThreadTime",
+      "render_settings": [
+        "[2026.10.29-00.55.30:546][760]r.DynamicGlobalIlluminationMethod = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.55.30:547][760]r.ReflectionMethod = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.55.30:549][760]r.Lumen.HardwareRayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.55.30:563][761]r.Shadow.Virtual.Enable = \"0\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.55.30:565][762]r.Nanite = \"0\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.29-00.55.30:580][762]r.RayTracing = \"1\"      LastSetBy: ProjectSetting",
+        "[2026.10.29-00.55.30:580][762]r.RayTracing.Enable = \"1\"      LastSetBy: SystemSettingsIni",
+        "[2026.10.29-00.55.30:580][762]r.AntiAliasingMethod = \"4\"      LastSetBy: Constructor",
+        "[2026.10.29-00.55.30:581][762]r.ScreenPercentage = \"55\"      LastSetBy: DeviceProfile"
+      ],
+      "engine_metadata": {
+        "[HasHeaderRowAtEnd]": "1",
+        "[EventTimestamps]": "1",
+        "[platform]": "Linux",
+        "[config]": "Development",
+        "[buildversion]": "++UE5+Release-5.8-CL-56702186",
+        "[engineversion]": "5.8.2-56702186+++UE5+Release-5.8",
+        "[enginereleaseversion]": "5.8.2",
+        "[os]": "Ubuntu 24.04.4 LTS 6.8.0-1066-aws",
+        "[cpu]": "GenuineIntel|Intel(R) Xeon(R) Platinum 8559C",
+        "[pgoenabled]": "0",
+        "[pgoprofilingenabled]": "0",
+        "[ltoenabled]": "0",
+        "[asan]": "0",
+        "[mergedmodules]": "0",
+        "[compacttset]": "0",
+        "[loginid]": "-000003ea",
+        "[llm]": "0",
+        "[zenstreaming]": "0",
+        "[systemresolution.resx]": "3840",
+        "[systemresolution.resy]": "2160",
+        "[extradevelopmentmemorymb]": "0",
+        "[verbatimrhiname]": "Vulkan",
+        "[rhiname]": "Vulkan",
+        "[rhifeaturelevel]": "SM6",
+        "[shaderplatform]": "VULKAN_SM6",
+        "[gpu]": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+        "[gpudriver]": "580.178",
+        "[deviceprofile]": "Linux",
+        "[largeworldcoordinates]": "1",
+        "[raytracing]": "1",
+        "[streamingpoolsizemb]": "4096",
+        "[csvid]": "01A18527A6377C9B89328FD7065D4D40",
+        "[targetframerate]": "60",
+        "[starttimestamp]": "1793235330",
+        "[namedevents]": "0",
+        "[hasgtstalls]": "0",
+        "[vsyncenabled]": "0",
+        "[csvbench_timingstat_ns]": "93.025000",
+        "[csvbench_customstat_ns]": "51.075000",
+        "[csvbench_duration_ms]": "5.764300",
+        "[endtimestamp]": "1793235632",
+        "[captureduration]": "302.342167",
+        "[csvmaxfilebytesreached]": "0",
+        "[commandline]": " ScenarioStudio /Game/OpenMeadow/OpenMeadow -RenderOffscreen -unattended -nosound -NoSplash -vulkan -sm6 -savevulkanpsocacheonexit -logPSO -dpcvars=r.pso.PrecompileThreadPoolSizeMax=2,r.Streaming.PoolSize=4096,r.ScreenPercentage=55,PixelStreaming2.ID=DefaultStreamer,r.Vulkan.EnablePSOFileCacheWhenPrecachingActive=1,r.ShaderPipelineCache.Enabled=1 -ResX=3840 -ResY=2160 -ForceRes -settings=/home/brook_avionuas/snr/.local/unreal/Live/cosys-settings.json -ScenarioSaveDir=/home/brook_avionuas/snr/.local/data/unreal-scenarios -PixelStreamingConnectionURL=ws://127.0.0.1:8888 -PixelStreamingEncoderCodec=H264 -PixelStreamingWebRTCFps=60 -PixelStreamingWebRTCStartBitrate=40000000 -PixelStreamingWebRTCMinBitrate=10000000 -PixelStreamingWebRTCMaxBitrate=40000000 -PixelStreamingWebRTCDisableTransmitAudio=true -PixelStreamingWebRTCMinPort=49160 -PixelStreamingWebRTCMaxPort=49200 -PixelStreamingEncoderQualityPreset=HighQuality -PixelStreamingEncoderLatencyMode=LowLatency -DroneFoundationDir=/home/brook_avionuas/snr/.local/data/four-drones -PixelStreamingUseMediaCapture=true -ExecCmds=t.MaxFPS 60\" -stdout -FullStdOutLogOutput\""
+      },
+      "release": "/home/brook_avionuas/snr/.local/unreal/releases/20261029T005249Z",
+      "evidence": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/result.json",
+      "sha256": "cf50333e88a8530f8a37c42ea71dbdfac22f50f44cd9ba0777da9dd44cc8ae69",
+      "engine_csv": {
+        "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/engine.csv",
+        "bytes": 40830396,
+        "sha256": "7503e5fb7760386006cbb77606425ab97433deb14d5cba5520665e971a88729f"
+      },
+      "screenshots": [
+        ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/person.png",
+        ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/meadow.png",
+        ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/elevated.png",
+        ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/port.png",
+        ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/four-drones-start.png",
+        ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/moving-view.png",
+        ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/four-drones-end.png"
+      ],
+      "screenshot_files": [
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/person.png",
+          "bytes": 9557714,
+          "sha256": "25ccda5aa64a57d09182290bde8b126fb069b144fb6ca5a473c5205dac1455d2"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/meadow.png",
+          "bytes": 9590390,
+          "sha256": "9a9e3766edee15890fe022bda5fb665d84567df3456a8b5ca483870b4989c5d2"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/elevated.png",
+          "bytes": 14728730,
+          "sha256": "a8df4e90ee9d10ba26946af6b21a70b25cd39ce21f530842b72c27912c68ac1f"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/port.png",
+          "bytes": 17383893,
+          "sha256": "645b7a4e11e92d49d4ac37a8c8a9f9e7153bfae7bfb7295d4f0635790e282d5a"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/four-drones-start.png",
+          "bytes": 9518911,
+          "sha256": "88aac1b71f50d10a5a5d61d87c5a60dbdf29070277e37eff7afa74bb349b75e2"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/moving-view.png",
+          "bytes": 8431853,
+          "sha256": "b3b1172f46ad433b19d3b837b6849e5e30bb800194230e324a8ce14c44aa9671"
+        },
+        {
+          "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/four-drones-end.png",
+          "bytes": 9881967,
+          "sha256": "bda8b57f29f767cac7f66cc0ef641a99ac4c0418e34be10fdd29422cd08903e0"
+        }
+      ],
+      "drone_workload": {
+        "path": ".local/evidence/render-quality/lumen-atmosphere-4k-tsr55-gate/drones/result.json",
+        "bytes": 7707747,
+        "sha256": "89fa681a830f1898e57163af4ea214fc8afa4916ad28e32a9e9a591378167455"
+      },
+      "capture_summary": {
+        "Drone1": {
+          "count": 301,
+          "latencyMs": {
+            "samples": 301,
+            "mean": 244.5125521956038,
+            "p95": 276.7375659896061,
+            "p99": 318.5794500022894,
+            "max": 358.2771130022593
+          },
+          "latenessMs": {
+            "samples": 301,
+            "mean": 0.4060694680876405,
+            "p95": 1.162871005362831,
+            "p99": 8.363565997569822,
+            "max": 13.598245001048781
+          }
+        },
+        "Drone2": {
+          "count": 300,
+          "latencyMs": {
+            "samples": 300,
+            "mean": 248.96618191953166,
+            "p95": 287.5460689974716,
+            "p99": 312.78011700487696,
+            "max": 322.06883998878766
+          },
+          "latenessMs": {
+            "samples": 300,
+            "mean": 0.5841089695362219,
+            "p95": 5.4837640054756775,
+            "p99": 5.768764007370919,
+            "max": 6.988795998040587
+          }
+        },
+        "Drone3": {
+          "count": 301,
+          "latencyMs": {
+            "samples": 301,
+            "mean": 244.22429622883098,
+            "p95": 284.3245830008527,
+            "p99": 301.6390809934819,
+            "max": 324.0979889960727
+          },
+          "latenessMs": {
+            "samples": 301,
+            "mean": 0.9185356008019638,
+            "p95": 5.595591006567702,
+            "p99": 5.90282199846115,
+            "max": 8.916833001421764
+          }
+        },
+        "Drone4": {
+          "count": 301,
+          "latencyMs": {
+            "samples": 301,
+            "mean": 232.83758857479881,
+            "p95": 265.2225490019191,
+            "p99": 311.22524799138773,
+            "max": 348.6678709887201
+          },
+          "latenessMs": {
+            "samples": 301,
+            "mean": 0.8451226073107605,
+            "p95": 5.616217007627711,
+            "p99": 6.539787005749531,
+            "max": 11.872351009515114
+          }
+        }
+      }
     }
   ],
   "navigation_screening": {
@@ -1269,14 +5042,28 @@
   },
   "measurement_limits": [
     "Browser runs on AWS through the public HTTP origin and TURN; this does not measure the user device or network.",
-    "Engine timing distributions come from camera telemetry sent at a target 10 Hz, not every rendered frame.",
-    "Four-drone flight and sensor-capture load was not started.",
-    "Lumen, hardware ray tracing, virtual shadow maps and SM6 are not active in the temporary SM5 package.",
-    "Close-character screening lasted 61 seconds and used the selected character; it does not establish all-character performance."
+    "Initial 1080p-baseline, 4k-navigation and 4k-person engine distributions use camera telemetry at target 10 Hz. Later variants identify per-frame Unreal CSV timing.",
+    "The four-drone experiment explicitly selects 1 Hz per drone. Production mission capture cadence has not been established.",
+    "Other active containers are recorded per run. The shared host includes snr-unreal-world; these results do not establish isolated host capacity.",
+    "The current grass is temporary. Replacement assets require another performance gate.",
+    "The approved Rocketbox characters have mesh hair, not MetaHuman grooms. Their category labels do not establish exact ages."
   ],
-  "full_phase_e_gate": "not_run",
+  "full_phase_e_gate": {
+    "run": "lumen-atmosphere-4k-tsr55-gate",
+    "passed": true,
+    "gate": {
+      "atLeastFiveMinutes": true,
+      "atLeast1080p60": true,
+      "fourDronesFlyingAndCapturing": true,
+      "scheduledCaptureCadence": true,
+      "decodedFps": true,
+      "noFreezeOver100Ms": true,
+      "gpuP95": true,
+      "gpuP99": true
+    }
+  },
   "session_checkpoint": ".local/evidence/render-quality/checkpoint-id.json",
-  "user_session_released": true,
+  "user_session_released": false,
   "person_screening": {
     "passed": true,
     "criteria": {
@@ -1300,7 +5087,7 @@
     "runtime_matches_tracked_profile": true
   },
   "sensor_readback": {
-    "status": "GPU byte-equivalence test and package build passed; live performance test pending",
+    "status": "GPU byte-equivalence test passed after signal-lifetime fix; current load screens recorded in variants",
     "implementation": "FRHIGPUTextureReadback; frame-boundary fence polling; BGRA8 RGB path",
     "test": "SNR.Sensors.AsyncRgbReadback",
     "sizes": [
@@ -1338,6 +5125,205 @@
       "bytes": 471753
     },
     "build_seconds": 76.13,
-    "package": ".local/unreal/builds/rocketbox-lumen-async/Linux"
+    "package": ".local/unreal/builds/rocketbox-lumen-async/Linux",
+    "activation": {
+      "path": ".local/evidence/render-quality/activate-lumen-async-ready/readiness.json",
+      "sha256": "e104beccf852a546438b544576bc481a92fc2fe46490e84f3c13fdb5ba817dd8",
+      "bytes": 216
+    },
+    "lifetime_automation": {
+      "path": ".local/evidence/render-quality/async-readback/lifetime-automation/index.json",
+      "bytes": 1219,
+      "sha256": "94e081944a921cb5a616c753a75492b44890ad460e00a245c493e150a177c424"
+    },
+    "lifetime_patch_verification": {
+      "path": ".local/evidence/render-quality/async-readback/lifetime-verification/result.json",
+      "bytes": 660,
+      "sha256": "0e750a044281153257bf03a2cd9f68b5dce4573982c4cf0eb6133544ebd344fc"
+    },
+    "retention": {
+      "all_frames_encoded_and_hashed": true,
+      "retained_image_interval_seconds": 60,
+      "verification": ".local/evidence/render-quality/capture-retention-validation/tests.log",
+      "native_settings": ".local/evidence/render-quality/capture-retention-validation/native-sensor-settings.json"
+    }
+  },
+  "authored_variants": {
+    "nanite": {
+      "status": "Browser navigation screening measured; see nanite-1080-visual",
+      "authoring": {
+        "path": ".local/evidence/render-quality/nanite-grass-configured/result.json",
+        "sha256": "97470dc74e64f8715551af3efa44221c0fc232451c27619175b952921c64c99c",
+        "bytes": 5538
+      },
+      "package_log": {
+        "path": ".local/evidence/render-quality/package-sm6-nanite/package.log",
+        "sha256": "a4c278422895db0330a77bdb76646d0b0d99ad978cc332b1a39b036312707481",
+        "bytes": 471992
+      },
+      "package": ".local/unreal/builds/rocketbox-sm6-nanite/Linux",
+      "build_seconds": 83.07
+    },
+    "macro": {
+      "status": "Browser navigation screening measured; see macro-1080-visual",
+      "authoring": {
+        "path": ".local/evidence/render-quality/macro-authoring/result.json",
+        "sha256": "d32ceb0fefc92373df779b0079c1952476e25723f727f30b190f6af6ed51e7dc",
+        "bytes": 608
+      },
+      "package_log": {
+        "path": ".local/evidence/render-quality/package-sm6-macro/package.log",
+        "sha256": "dbca1969a12ac9fda26cc5a161cdacac0c9a2111a90f140d506ed7a3ff4435c0",
+        "bytes": 476543
+      },
+      "package": ".local/unreal/builds/rocketbox-sm6-macro/Linux",
+      "build_seconds": 93.89
+    },
+    "atmosphere": {
+      "status": "Browser navigation screening measured; see atmosphere-1080-visual",
+      "authoring": {
+        "path": ".local/evidence/render-quality/atmosphere-authoring/result.json",
+        "sha256": "dfd5c2eec0db6764dcdb51e71b23c80c48d18207d65a60c4c2bb8fc3046c120b",
+        "bytes": 650
+      },
+      "package": ".local/unreal/builds/rocketbox-sm6-atmosphere/Linux",
+      "build_seconds": 104.0
+    },
+    "foliage": {
+      "status": "Browser navigation screening measured; see foliage-1080-visual",
+      "authoring": {
+        "path": ".local/evidence/render-quality/foliage-authoring/result.json",
+        "bytes": 3909,
+        "sha256": "24e53af9941b361bc687844be5e3175e4812add03e6c31f683b22cb65ae19b20"
+      },
+      "package_log": {
+        "path": ".local/evidence/render-quality/foliage-package/package.log",
+        "bytes": 471917,
+        "sha256": "71e16acb0a9d3f71ab4f3354ebef46347a4292f12edd28b40a4dff779cc69890"
+      },
+      "package": ".local/unreal/builds/rocketbox-sm6-foliage/Linux",
+      "build_seconds": 72.59
+    },
+    "lumen-atmosphere": {
+      "status": "Packaged; load measurement pending",
+      "source": {
+        "path": ".local/evidence/render-quality/combined-atmosphere-source/result.json",
+        "bytes": 279,
+        "sha256": "7706d13e284e0965833a27a4378798c8094ff565f783370533a093201df3c5c3"
+      },
+      "package_log": {
+        "path": ".local/evidence/render-quality/package-lumen-atmosphere/package.log",
+        "bytes": 470232,
+        "sha256": "097ee742cd317169e916c8859544c69ec94e1b3a8b281cb32ba7fffffc2eb929"
+      },
+      "package": ".local/unreal/builds/rocketbox-lumen-atmosphere/Linux"
+    },
+    "lumen-atmosphere-vsm": {
+      "status": "Packaged; load measurement pending",
+      "source": {
+        "path": ".local/evidence/render-quality/combined-atmosphere-source/result.json",
+        "bytes": 279,
+        "sha256": "7706d13e284e0965833a27a4378798c8094ff565f783370533a093201df3c5c3"
+      },
+      "package_log": {
+        "path": ".local/evidence/render-quality/package-lumen-atmosphere-vsm/package.log",
+        "bytes": 471250,
+        "sha256": "5314f335796feca73b75d65a8bcaf702dbeceb29e5b4b62af275cb5733ea2f1d"
+      },
+      "package": ".local/unreal/builds/rocketbox-lumen-atmosphere-vsm/Linux"
+    }
+  },
+  "gpu_cgroup_update": {
+    "trigger": {
+      "path": ".local/evidence/render-quality/cpu12/change.json",
+      "sha256": "8eee237f8693ecfe12eccd0b05634677d7ea4376ef97cc98fccd2fb85aa283cf",
+      "bytes": 4346
+    },
+    "failure": {
+      "path": ".local/evidence/render-quality/async-readback/crash/engine.log",
+      "sha256": "09af9502b2a4aab4284c7ccef77ea34455505169c2a9a26e4ea1fba36ec3c3ba",
+      "bytes": 720558
+    },
+    "reproduction": {
+      "path": ".local/evidence/render-quality/cpu12/gpu-access-reproduction.json",
+      "sha256": "25a3f2a60237730e40a036bcc42fde11f23447c6f0a6804cf8bded5ae4a7a03b",
+      "bytes": 279
+    },
+    "mitigation_verification": {
+      "path": ".local/evidence/render-quality/cpu12/gpu-device-binding-verification.json",
+      "sha256": "7b2b4260075a970068bae351a0f355d1cafc6c060d30a8da2c8c6433ccf5eccb",
+      "bytes": 433
+    },
+    "launcher_checks": {
+      "path": ".local/evidence/render-quality/cpu12/launcher-tests.log",
+      "sha256": "dff1390582a5b86e4466d0ca2f433cf5090e548f0a1ba663c8c0f322cd03f0b8",
+      "bytes": 636
+    },
+    "diagnosis": "A CPU quota update removed NVIDIA device access with the legacy runtime hook. A disposable container reproduced NVML exit 255 immediately after the update; explicitly requested device nodes retained access.",
+    "reference": "https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/troubleshooting.html#containers-losing-access-to-gpus-with-error-failed-to-initialize-nvml-unknown-error",
+    "status": "Device nodes declared by tracked launcher; recreated renderer is ready at 12 CPUs",
+    "activation": {
+      "path": ".local/evidence/render-quality/activate-lumen-async-cpu12/readiness.json",
+      "sha256": "ffbf113c4016a8bee3ada46ed115564cb1f90807e6a262dbe0e9a94af1de0efd",
+      "bytes": 158
+    }
+  },
+  "measurement_failures": [
+    {
+      "variant": "rocketbox-lumen-tsr75-4k",
+      "evidence": ".local/evidence/render-quality/rocketbox-lumen-tsr75-4k/result.json",
+      "sha256": "a9c6fdf3b6abb385d64ea00cf6631bbaadcc88a05b2f0ef0e0c0c37d496b1d65",
+      "failure": "CSV parser rejected a final row containing FrameTime but no completed CPU/GPU timing. The failed run and raw CSV are preserved. Independent analysis excludes only that final incomplete row and records it explicitly.",
+      "analysis": ".local/evidence/render-quality/rocketbox-lumen-tsr75-4k/csv-analysis.json",
+      "status": "This run also missed the browser FPS and GPU p95 gates."
+    }
+  ],
+  "user_deferred_grass": {
+    "instruction": "Grass will be replaced later",
+    "effect": "No further tuning or combination of the current grass assets. Existing comparisons are retained. Final performance must be checked with the replacement assets."
+  },
+  "current_checks": {
+    "path": ".local/evidence/render-quality/five-minute-gate-checks/result.json",
+    "bytes": 447,
+    "sha256": "1b54ab7ec10a0d5d544afae497e4590625c1dd25e51d41ff09c9b81f9494d411"
+  },
+  "statistics_validation": {
+    "path": ".local/evidence/render-quality/statistics-validation/result.json",
+    "bytes": 263,
+    "sha256": "ff94a9be08dcab3854973b2a5b7a6dbaac2f5477c628edc9dce424bfdcc9870a"
+  },
+  "comparison_gallery": {
+    "url": "http://35.81.229.78/render-quality-variants/index.html",
+    "manifest": {
+      "path": ".local/dist/render-quality-variants/manifest.json",
+      "bytes": 5774,
+      "sha256": "7a3862f76edfdfd838b6b2d4b7476371ec06b1af6806746cea1d8b68424b6cc4"
+    }
+  },
+  "matched_pose_comparison": {
+    "path": ".local/evidence/render-quality/baseline-pose-verification.json",
+    "bytes": 870,
+    "sha256": "ee1099feb19521331c776774dc3d3ce78f095d1d7e89ae2707d5e882d88bf9fb"
+  },
+  "evidence_verification": {
+    "path": ".local/evidence/render-quality/gate-record-verification.json",
+    "bytes": 75553,
+    "sha256": "5ff5b2c52694ce6cfbd87e7c7acba21ec66ad83c62347eae49080f62bcfff1ef"
+  },
+  "gate_gallery": {
+    "url": "http://35.81.229.78/render-quality-4k-gate/index.html",
+    "manifest": {
+      "path": ".local/dist/render-quality-4k-gate/manifest.json",
+      "bytes": 5887,
+      "sha256": "08a14c14a51c6287c7cde63658347ca2d5479974229dd234d2864ca964831373"
+    }
+  },
+  "session_wait": {
+    "reason": "Public readiness reports occupied, one DefaultStreamer player; character coverage preflight stopped without opening a browser",
+    "log": {
+      "path": ".local/evidence/render-quality/final-character-pso-coverage.log",
+      "bytes": 532,
+      "sha256": "0adfce3a496723bd3af4d2c0f8340cb2d3bc2dc9f7a7d283f227b6395cbc0ccf"
+    }
   }
 }
