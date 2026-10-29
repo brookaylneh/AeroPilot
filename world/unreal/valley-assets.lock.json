@@ -3118,6 +3118,11 @@
     {
       "path": ".local/evidence/world/valley/assets/sources/renderer-daba1525af24f54492a57430658c6595cffd24da0e31f84accc947957d464d44.py",
       "sha256": "daba1525af24f54492a57430658c6595cffd24da0e31f84accc947957d464d44"
+    },
+    {
+      "path": ".local/evidence/world/valley/assets/sources/renderer-e0b02c6321247c96c5ace4479ea213f6ff0d1c398dd928732198f15e0871d071.py",
+      "sha256": "e0b02c6321247c96c5ace4479ea213f6ff0d1c398dd928732198f15e0871d071",
+      "scope": "Current provenance-correct renderer source; no new render measurements from this revision"
     }
   ],
   "previewLimitations": [

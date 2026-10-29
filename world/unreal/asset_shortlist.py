@@ -199,7 +199,7 @@ def render(lock, candidate, evidence):
     measured["rendererSource"] = str(source_receipt.relative_to(ROOT))
     candidate["preview"] = measured
     if candidate["previewInput"]["kind"] == "procedural":
-        measured["generatedAsset"]["license"] = candidate["license"]["id"]
+        assert measured["generatedAsset"]["license"] == candidate["license"]["id"]
         candidate["version"]["sha256"] = measured["generatorSha256"]
     return candidate
 

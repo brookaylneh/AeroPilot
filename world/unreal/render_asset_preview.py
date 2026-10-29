@@ -309,7 +309,7 @@ def main():
         generated = {
             "path": str(generated_path.relative_to(ROOT)),
             "sha256": digest(generated_path),
-            "license": "CC0-1.0",
+            "license": candidate["license"]["id"],
             "scope": "Original preliminary Stage 1 concept geometry only",
         }
     if spec["instances"] > 1:
