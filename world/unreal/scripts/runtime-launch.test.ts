@@ -25,6 +25,7 @@ test('packaged container needs no editor, accepts bounded host resources and sel
       SNR_MEMORY_LIMIT: '24g',
       SNR_UNREAL_IMAGE: 'snr-unreal-runtime:test',
       SNR_STREAM_CODEC: 'H264',
+      SNR_PROFILE: '0',
       SNR_RENDER_PERCENTAGE: '100',
       SNR_STREAMER_PORT: '8888',
       SNR_STREAMER_ID: 'DefaultStreamer',
@@ -87,6 +88,7 @@ test('runtime selects its manifest and H264 explicitly; missing maps and unsuppo
       SNR_SCENARIO_DATA_DIR: path.join(directory, 'scenarios'),
       SNR_DRONE_DATA_DIR: '',
       SNR_STREAM_CODEC: 'H264',
+      SNR_PROFILE: '0',
       SNR_RENDER_PERCENTAGE: '100',
       SNR_STREAMER_PORT: '8888',
       SNR_STREAMER_ID: 'DefaultStreamer',
@@ -105,6 +107,13 @@ test('runtime selects its manifest and H264 explicitly; missing maps and unsuppo
     assert(args.includes('-PixelStreamingEncoderCodec=H264'));
     assert(args.includes('-ResX=1920'));
     assert(args.includes('-sm5'));
+    assert(!args.includes('-logPSO'));
+    env.SNR_PROFILE = '1';
+    assert.equal(run().status, 0);
+    assert(JSON.parse(readFileSync(output, 'utf8')).includes('-logPSO'));
+    env.SNR_PROFILE = 'invalid';
+    assert.equal(run().status, 2);
+    env.SNR_PROFILE = '0';
     writeFileSync(path.join(directory, 'shader-platform.txt'), 'SF_VULKAN_SM6\n');
     assert.equal(run().status, 0);
     const sm6: string[] = JSON.parse(readFileSync(output, 'utf8'));

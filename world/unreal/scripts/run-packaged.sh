@@ -82,7 +82,11 @@ if [ -n "${SNR_DRONE_DATA_DIR:-}" ]; then
 fi
 if [ "${SNR_RHI_THREAD:-1}" = 0 ]; then extra_flags+=(-norhithread); fi
 runtime_commands="t.MaxFPS $stream_fps"
-if [ "${SNR_PROFILE:-0}" = 1 ]; then runtime_commands+=',PixelStreaming2.LogStats 1'; fi
+case "${SNR_PROFILE:?}" in
+  0) ;;
+  1) runtime_commands+=',PixelStreaming2.LogStats 1'; extra_flags+=(-logPSO) ;;
+  *) echo 'SNR_PROFILE must be 0 or 1' >&2; exit 2 ;;
+esac
 if [ "${1:-}" = diagnostics ]; then
   extra_flags+=(-ScenarioDiagnostics)
   runtime_commands+=',PixelStreaming2.LogStats 1'
@@ -99,7 +103,7 @@ install -D -m 644 world/cosys/materials.csv "$HOME/Documents/AirSim/materials.cs
 # and flushes its device-specific pipeline cache during graceful shutdown.
 exec "$runtime_binary" ScenarioStudio "$world_map" \
   -RenderOffscreen -unattended -nosound -NoSplash -vulkan "$rhi_flag" \
-  -savevulkanpsocacheonexit -logPSO \
+  -savevulkanpsocacheonexit \
   "-dpcvars=${device_profile%,}" \
   "-ResX=$stream_width" "-ResY=$stream_height" -ForceRes \
   -settings="$cosys_settings" \

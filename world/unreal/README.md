@@ -143,9 +143,12 @@ TSR reconstructs the configured output resolution. Drone capture uses independen
 render targets: UE's scene-capture path renders at a resolution fraction of 1.0 unless
 explicitly configured to inherit the main view. Sensor resolution remains 3840×2160.
 
-The launcher enables Vulkan's pipeline file cache alongside PSO precaching and records
-PSOs with `-logPSO`. This is required because UE 5.8 disables that file cache by default
-when Vulkan precaching is active. After exercising the final profile, use
+The launcher enables Vulkan's pipeline file cache alongside PSO precaching. Set
+`SNR_PROFILE=1` before starting an instance to collect PSOs with `-logPSO`; this also
+enables Pixel Streaming diagnostics. Keep `SNR_PROFILE=0` for normal serving, because
+`-logPSO` clears Unreal's writable PSO cache at startup. UE 5.8 disables the file cache
+by default when Vulkan precaching is active, so the launcher explicitly enables it.
+After exercising the final profile, use
 `bundle-pso-cache.py RECORDINGS_DIRECTORY SHADER_KEYS_DIRECTORY NEW_EVIDENCE_DIRECTORY`
 with `UE_ROOT` set. It expands the recorded caches, records input/output hashes and
 installs `Build/Linux/PipelineCaches/ScenarioStudio_SF_VULKAN_SM6.spc`. Package again
