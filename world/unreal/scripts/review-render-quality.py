@@ -33,9 +33,11 @@ def main():
         label = html.escape(name)
         gpu = summary["gpuMs"]
         rows.append(
-            f"<tr><th>{label}</th><td>{profile['width']} × {profile['height']}</td>"
+            f"<tr><th>{label}</th><td>{profile['width']} × {profile['height']}"
+            f" / {profile['internalRenderPercentage']}%</td>"
             f"<td>{gpu['mean']:.2f} / {gpu['p95']:.2f} / {gpu['p99']:.2f}</td>"
-            f"<td>{summary['decodedFps']:.2f}</td><td>{summary['freezes']}</td>"
+            f"<td>{summary['decodedFps']:.2f} / {summary['presentedFps']:.2f}</td>"
+            f"<td>{summary['freezes']} / {summary['gapsOver100Ms']}</td>"
             f"<td>{summary['bitrateMbps']:.2f}</td><td>{summary['powerW']['mean']:.1f}</td>"
             f"<td>{summary['graphicsMHz']['mean']:.0f}</td>"
             f"<td>{summary['seconds']:.1f}</td></tr>"
@@ -77,13 +79,15 @@ th,td{padding:8px;text-align:left;border-bottom:1px solid #48515d}
 .poses{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:18px}
 figure{margin:0}img{width:100%;height:auto}h2{margin-top:40px}.table{overflow:auto}
 </style><h1>Render quality comparisons</h1>
-<p>Actual browser stream frames at fixed person, meadow and port poses, with elevated and moving views where captured. Open images at full
-resolution to inspect detail. These are individual measured runs, not final acceptance.</p>
-<p>GPU timings are mean / p95 / p99 in milliseconds. FPS is decoded browser video.
+<p>Actual browser stream frames at fixed person, meadow, elevated and port poses. Moving-view
+frames record navigation near the end of each run; their camera positions vary. Open images
+at full resolution to inspect detail. These are individual measured runs.</p>
+<p>GPU timings are mean / p95 / p99 in milliseconds. FPS is decoded / presented browser video.
+Internal percentage specifies the scene render resolution before TSR reconstruction.
 Power is the whole GPU, including other active workloads. Workload and duration are shown
 for each variant; compare equivalent workloads. Screenshots contain no evaluator truth.</p>
-<div class="table"><table><thead><tr><th>Variant</th><th>Output</th><th>GPU ms</th>
-<th>FPS</th><th>Freezes</th><th>Mbps</th><th>Watts</th><th>MHz</th><th>Seconds</th></tr></thead><tbody>
+<div class="table"><table><thead><tr><th>Variant</th><th>Output / internal</th><th>GPU ms</th>
+<th>Decoded / presented FPS</th><th>Freezes / gaps &gt;100 ms</th><th>Mbps</th><th>Watts</th><th>MHz</th><th>Seconds</th></tr></thead><tbody>
 """
     document += "\n".join(rows) + "</tbody></table></div>\n" + "\n".join(cards) + "</html>\n"
     (output / "index.html").write_text(document)

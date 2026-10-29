@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { distribution, flawlessGate, summarizeCaptures } from './stream-statistics.mjs';
+import { distribution, flawlessGate, summarizeCaptures, summarizeBrowser } from './stream-statistics.mjs';
 
 function passing() {
   return {
@@ -62,4 +62,31 @@ test('capture counts include only images wholly inside the timed window', () => 
   assert.equal(result.Drone1.count, 1);
   assert(Math.abs(result.Drone1.latencyMs.mean - 200) < 1e-8);
   assert.equal(result.Drone1.latenessMs.max, 1);
+});
+
+test('coarsened callback timestamps may coincide but cannot run backwards', () => {
+  const samples = [0, 1].map((i) => ({
+    stream: {
+      timestamp: i * 1000,
+      framesDecoded: i * 60,
+      bytesReceived: i * 1000000,
+      framesDropped: 0,
+      freezeCount: 0,
+      totalFreezesDuration: 0,
+    },
+    memoryBytes: { current: 100, anonymous: 80 },
+    gpu: { powerW: 200, graphicsMHz: 2300, temperatureC: 40 },
+  }));
+  const frames = [
+    { at: 0, presentedFrames: 0 },
+    { at: 16, presentedFrames: 1 },
+    { at: 16, presentedFrames: 2 },
+    { at: 1000, presentedFrames: 60 },
+  ];
+  const result = summarizeBrowser(samples, frames);
+  assert.equal(result.decodedFps, 60);
+  assert.equal(result.videoCallbackGapMs.samples, 3);
+  assert.equal(result.gapsOver100Ms, 1);
+  frames[2].at = 15;
+  assert.throws(() => summarizeBrowser(samples, frames), /moved backwards/);
 });

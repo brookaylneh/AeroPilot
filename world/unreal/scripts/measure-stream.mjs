@@ -148,6 +148,7 @@ async function startWorkload() {
     assert.equal(JSON.parse(first.value).status, 'ready');
   } finally {
     lines.close();
+    workload.stdout.resume();
   }
 }
 async function stopWorkload() {

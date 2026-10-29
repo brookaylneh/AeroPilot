@@ -19,7 +19,10 @@ export function summarizeBrowser(samples, frames) {
   const seconds = (last.timestamp - first.timestamp) / 1000;
   assert(seconds > 0);
   const gaps = frames.slice(1).map((frame, i) => frame.at - frames[i].at);
-  assert(gaps.every((gap) => gap > 0));
+  assert(
+    gaps.every((gap) => gap >= 0),
+    'Video callback timestamps moved backwards',
+  );
   const firstPresented = frames[0],
     lastPresented = frames.at(-1);
   return {
