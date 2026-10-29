@@ -1,0 +1,61 @@
+{
+  "purpose": "Authored reference repair: preserve the approved five-plank construction using sharp existing overhead wood pixels. No physical dimensions or true orthographic projection are inferred.",
+  "sourceImage": ".local/world/valley/reconstruction/reference-revisions/picnic-table-reconstruction-views-v2.png",
+  "sourceSha256": "fed7bdc383cf51a8263fb028931ae00a1c298dd22cbcc6b2258218e42b404b0d",
+  "targetBoundsPx": [1545, 1855, 2774, 2383],
+  "targetPolygonPx": [
+    [1546, 1857],
+    [2770, 1858],
+    [2772, 2380],
+    [1547, 2380]
+  ],
+  "strips": [
+    {
+      "kind": "plank",
+      "sourceBoundsPx": [1545, 1857, 2774, 1980],
+      "targetHeightPx": 101
+    },
+    {
+      "kind": "gap",
+      "sourceBoundsPx": [1545, 1983, 2774, 1989],
+      "targetHeightPx": 6
+    },
+    {
+      "kind": "plank",
+      "sourceBoundsPx": [1545, 1993, 2774, 2103],
+      "targetHeightPx": 101
+    },
+    {
+      "kind": "gap",
+      "sourceBoundsPx": [1545, 2105, 2774, 2111],
+      "targetHeightPx": 6
+    },
+    {
+      "kind": "plank",
+      "sourceBoundsPx": [1545, 2116, 2774, 2220],
+      "targetHeightPx": 101
+    },
+    {
+      "kind": "gap",
+      "sourceBoundsPx": [1545, 2225, 2774, 2231],
+      "targetHeightPx": 6
+    },
+    {
+      "kind": "plank",
+      "sourceBoundsPx": [1545, 2236, 2774, 2302],
+      "targetHeightPx": 101
+    },
+    {
+      "kind": "gap",
+      "sourceBoundsPx": [1545, 1983, 2774, 1989],
+      "targetHeightPx": 6
+    },
+    {
+      "kind": "plank",
+      "sourceBoundsPx": [1545, 2303, 2774, 2380],
+      "targetHeightPx": 100
+    }
+  ],
+  "outputImage": ".local/world/valley/reconstruction/reference-revisions/picnic-table-reconstruction-views-authored-v3.png",
+  "receipt": ".local/evidence/world/valley/reconstruction-reference-review/picnic-table-authored-v3-receipt.json"
+}
