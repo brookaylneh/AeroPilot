@@ -9,10 +9,11 @@ import numpy as np
 from matplotlib import colormaps
 from PIL import Image
 
+from mission_planner.search.behavior import DOMAIN, condition, domain_for
 from mission_planner.search.commander import Commander
 from mission_planner.search.grid import make_grid, polygon_areas, validate_area
 from mission_planner.search.planner import encode, plan
-from mission_planner.search.prior import TABLES, initialize
+from mission_planner.search.prior import initialize
 from mission_planner.search.subject import explicit_point, validate_profile
 from world.cosys.landmarks import LANDMARKS_PATH, directions, find, load
 
@@ -93,9 +94,20 @@ class Search:
         assert self.vertices is not None, "Define the search area and statistical domain"
         assert self.mission.fleet_ready, "MAVLink fleet unavailable"
         if self.grid is None:
-            self.grid = make_grid(self.mission.vehicles()[0]["fence"])
-            self.probability, self.retained, self.prior_fit = initialize(
-                self.grid, self.point, self.profile["category"]["value"], self.domain
+            category = self.profile["category"]["value"]
+            assert self.domain == domain_for(category), (
+                "Statistical domain differs from Sierra source"
+            )
+            grid = make_grid(self.mission.vehicles()[0]["fence"])
+            probability, retained, fit = initialize(grid, self.point, category, self.domain)
+            fit["behavior"] = None
+            if category == "dementia":
+                probability, fit["behavior"] = condition(grid, probability, self.landmarks)
+            self.grid, self.probability, self.retained, self.prior_fit = (
+                grid,
+                probability,
+                retained,
+                fit,
             )
             self.pod = np.zeros_like(self.probability)
             self.model = self.commander.model
@@ -104,13 +116,18 @@ class Search:
 
     def render_heatmap(self):
         maximum = float(self.probability.max())
-        ratio = self.probability / maximum
+        scale = float(self.probability[self.probability > 0].min())
+        span = np.log1p(maximum / scale)
+        ratio = np.log1p(self.probability / scale) / span
         assert np.isfinite(ratio).all() and ((ratio >= 0) & (ratio <= 1)).all()
         colourmap = colormaps["viridis"]
         rgba = colourmap(ratio, bytes=True)
         rgba[:, 3] = np.where(self.grid["areas"] > 0, 110, 0)
         self.heatmap_scale = {
+            "method": "log1p",
             "maximum": maximum,
+            "midpoint": float(scale * np.expm1(span / 2)),
+            "scale_probability": scale,
             "colours": [
                 "#" + "".join(f"{channel:02x}" for channel in colour[:3])
                 for colour in colourmap(np.linspace(0, 1, 9), bytes=True)
@@ -145,6 +162,12 @@ class Search:
             "coverage": self.coverage_summary(),
             "paused_drones": self.paused,
             "pipeline_capacity": self.commander.capacity_view(),
+            "behavior_prior": None
+            if self.prior_fit is None or self.prior_fit["behavior"] is None
+            else {
+                key: self.prior_fit["behavior"][key]
+                for key in ("method", "unresolved_weight", "limitations")
+            },
         }
         if self.probability is not None:
             top = np.argsort(-self.probability, kind="stable")[:3]
@@ -214,11 +237,10 @@ class Search:
             "point": self.point,
             "vertices": self.vertices,
             "domain": self.domain,
-            "domains": [
-                d
-                for c, d in TABLES
-                if self.profile is not None and c == self.profile["category"]["value"]
-            ],
+            "domains": [DOMAIN[self.profile["category"]["value"]]]
+            if self.profile is not None and self.profile["category"]["value"] in DOMAIN
+            else [],
+            "prior_fit": self.prior_fit,
             "heatmap": self.heatmap,
             "heatmap_scale": self.heatmap_scale,
             "grid": grid,
@@ -256,6 +278,12 @@ class Search:
             self.editable()
             assert self.commander.source is None, "Camera source selection locks search inputs"
             assert self.mission.fleet_ready
+            assert self.profile is not None, (
+                "Record subject profile before defining the search area"
+            )
+            assert arguments["domain"] == domain_for(self.profile["category"]["value"]), (
+                "Statistical domain differs from Sierra source"
+            )
             validate_area(arguments["vertices"], self.mission.vehicles()[0]["fence"])
             self.vertices = arguments["vertices"]
             self.domain = arguments["domain"]

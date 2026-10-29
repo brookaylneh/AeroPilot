@@ -44,10 +44,21 @@ export const searchSchema = z.object({
     .nullable(),
   vertices: z.array(searchPoint).nullable(),
   domain: z.string().nullable(),
-  domains: z.array(z.string()),
+  domains: z.array(z.enum(['temperate_mountainous', 'temperate'])).max(1),
   heatmap: z.string().nullable(),
   heatmap_scale: z
-    .object({ maximum: number.positive().max(1), colours: z.array(z.string()).length(9) })
+    .object({
+      maximum: number.positive().max(1),
+      midpoint: number.positive().max(1),
+      method: z.enum(['linear', 'log1p']),
+      scale_probability: number.positive().max(1).nullable(),
+      colours: z.array(z.string()).length(9),
+    })
+    .refine(
+      (scale) =>
+        scale.midpoint < scale.maximum && (scale.method === 'linear') === (scale.scale_probability === null),
+      'Heatmap scale requires a valid midpoint and method-specific probability scale',
+    )
     .nullable(),
   grid: z
     .object({
@@ -91,6 +102,13 @@ export const searchSchema = z.object({
   summary: z.object({
     status: z.string(),
     retained_in_world_mass: number.nullable(),
+    behavior_prior: z
+      .object({
+        method: z.string(),
+        unresolved_weight: number.min(0).max(1),
+        limitations: z.string(),
+      })
+      .nullable(),
     pipeline_capacity: z
       .object({
         sam_runners: number.int().positive(),

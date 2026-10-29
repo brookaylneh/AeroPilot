@@ -363,3 +363,16 @@
   color: #e0c697;
   overflow-wrap: anywhere;
 }
+
+.gcs-source-domain {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.gcs-source-domain > span {
+  color: #b6c5bb;
+}
+.gcs-source-domain > p {
+  margin: 0;
+  color: #e0c697;
+}

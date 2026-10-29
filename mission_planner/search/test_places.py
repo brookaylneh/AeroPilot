@@ -1,13 +1,16 @@
 """Quoted geometry approval, line support and plan invalidation boundaries."""
 
 import asyncio
+import base64
+import io
 import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 import numpy as np
+from PIL import Image
 
 from mission_planner.environment import ROOT
 from mission_planner.gcs.service import Mission
@@ -77,6 +80,25 @@ class Places(unittest.IsolatedAsyncioTestCase):
             )
         with self.assertRaisesRegex(AssertionError, "Unknown landmark"):
             proposal(self.landmarks, "unknown", self.evidence, self.briefing, self.fence)
+
+    def test_log_heat_legend_uses_actual_probabilities_and_preserves_transparency(self):
+        search = self.mission.search
+        probability = np.array([1, 10, 100, 0], dtype=float) / 111
+        search.probability = probability.copy()
+        search.grid = {"shape": [2, 2], "areas": np.array([4, 4, 4, 0])}
+        search.render_heatmap()
+        scale = search.heatmap_scale
+        self.assertEqual(scale["method"], "log1p")
+        self.assertEqual(scale["maximum"], probability.max())
+        self.assertEqual(scale["scale_probability"], probability[0])
+        self.assertAlmostEqual(
+            np.log1p(scale["midpoint"] / scale["scale_probability"])
+            / np.log1p(scale["maximum"] / scale["scale_probability"]),
+            0.5,
+        )
+        np.testing.assert_array_equal(search.probability, probability)
+        image = np.asarray(Image.open(io.BytesIO(base64.b64decode(search.heatmap.split(",")[1]))))
+        np.testing.assert_array_equal(image[::-1, :, 3].ravel(), [110, 110, 110, 0])
 
     async def test_place_requires_approval_even_in_autonomous_mode(self):
         search = self.mission.search
@@ -163,6 +185,114 @@ class Places(unittest.IsolatedAsyncioTestCase):
             await task
         self.assertFalse(self.mission.approvals)
         self.assertIsNone(self.mission.search.point)
+
+    def prepare_behavior(self):
+        search = self.mission.search
+        search.profile = {
+            "category": {"value": "dementia"},
+            "person_prompts": [],
+            "clue_prompts": [],
+        }
+        search.point = {"north_m": 2, "east_m": 2, "source": "operator", "evidence": []}
+        search.vertices = self.fence
+        search.domain = "temperate_mountainous"
+        search.render_heatmap = Mock()
+        search.landmarks = [
+            {
+                "id": kind,
+                "name": kind,
+                "aliases": [],
+                "kind": kind,
+                "heightM": 0,
+                "geometry": {
+                    "type": geometry,
+                    "points": [{"x": n * 100, "y": e * 100, "z": 0} for n, e in vertices],
+                },
+            }
+            for kind, geometry, vertices in (
+                ("structure", "polygon", [(0, 0), (2, 0), (2, 2), (0, 2)]),
+                ("forest", "polygon", [(4, 0), (8, 0), (8, 4), (4, 4)]),
+                ("pond", "polygon", [(0, 4), (4, 4), (4, 8), (0, 8)]),
+                ("road", "polyline", [(0, 0), (8, 0)]),
+                ("trail", "polyline", [(0, 4), (8, 4)]),
+                ("creek", "polyline", [(0, 8), (8, 8)]),
+            )
+        ]
+        low = np.array([[0, 0], [0, 4], [4, 0], [4, 4]], dtype=float)
+        return {"low": low, "high": low + 4, "centers": low + 2, "areas": np.full(4, 16.0)}
+
+    def test_behavior_initialization_retains_radial_outside_world_mass(self):
+        grid = self.prepare_behavior()
+        search = self.mission.search
+        radial, retained, _ = initialize(grid, search.point, "dementia", "temperate_mountainous")
+        with patch("mission_planner.search.state.make_grid", return_value=grid):
+            search.initialize()
+        self.assertEqual(search.retained, retained)
+        self.assertEqual(1 - search.retained, 1 - retained)
+        self.assertTrue(0 < search.retained < 1)
+        self.assertAlmostEqual(search.probability.sum(), 1)
+        self.assertFalse(np.allclose(search.probability, radial))
+        np.testing.assert_array_equal(search.commander.evidence.prior, search.probability)
+        self.assertIsNotNone(search.prior_fit["behavior"])
+        search.render_heatmap.assert_called_once()
+
+    def test_missing_landmarks_leave_initialization_state_unchanged(self):
+        grid = self.prepare_behavior()
+        search = self.mission.search
+        search.landmarks = None
+        fields = (
+            "grid",
+            "probability",
+            "retained",
+            "prior_fit",
+            "pod",
+            "model",
+            "heatmap",
+            "heatmap_scale",
+            "revision",
+            "status",
+        )
+        before = {key: getattr(search, key) for key in fields}
+        with patch("mission_planner.search.state.make_grid", return_value=grid):
+            with self.assertRaisesRegex(AssertionError, "requires the public landmark catalogue"):
+                search.initialize()
+        self.assertEqual({key: getattr(search, key) for key in fields}, before)
+        self.assertIsNone(search.commander.evidence)
+        search.render_heatmap.assert_not_called()
+        search.changed.assert_not_called()
+
+    async def test_unsupported_or_mismatched_domain_rejects_area_before_mutation(self):
+        search = self.mission.search
+        search.vertices = self.fence
+        search.domain = "temperate_mountainous"
+        search.plan = {"plan_id": "existing"}
+        search.status = "planned"
+        for category, domain, error in (
+            ("hiker", "australian_mixed", "No sourced Sierra"),
+            ("dementia", "dry_mountainous", "Statistical domain differs"),
+        ):
+            search.profile = {"category": {"value": category}}
+            fields = (
+                "vertices",
+                "domain",
+                "plan",
+                "status",
+                "grid",
+                "probability",
+                "retained",
+                "prior_fit",
+                "revision",
+            )
+            before = {key: getattr(search, key) for key in fields}
+            with (
+                self.subTest(category=category, domain=domain),
+                self.assertRaisesRegex(AssertionError, error),
+            ):
+                await search.execute(
+                    "define_search_area", {"vertices": self.fence[:3], "domain": domain}
+                )
+            self.assertEqual({key: getattr(search, key) for key in fields}, before)
+            search.changed.assert_not_called()
 
     def test_line_preserves_geometry_and_weights_by_arclength(self):
         location = proposal(

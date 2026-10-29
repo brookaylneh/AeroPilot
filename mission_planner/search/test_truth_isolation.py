@@ -45,6 +45,7 @@ from mission_planner.agents.models import Detection
 from mission_planner.agents.perception.configuration import load_configuration, read_capture
 from mission_planner.agents.perception.pipeline import Processor
 from mission_planner.search.belief import Evidence
+from mission_planner.search.behavior import condition, domain_for
 from mission_planner.search.detections import Detections
 from mission_planner.search.places import location_support, proposal
 from mission_planner.search.prior import initialize
@@ -96,6 +97,16 @@ assert len(positions) > 1 and abs(float(weights.sum()) - 1) < 1e-12
 prior, retained, fit = initialize(grid, location, 'dementia', 'temperate_mountainous')
 assert abs(float(prior.sum()) - 1) < 1e-9 and 0 < retained <= 1
 assert fit['location_support']['method'] == 'uniform arclength midpoint quadrature'
+features = []
+for kind, east in (('road', -6), ('trail', 0), ('creek', 6)):
+    features.append({'id': kind, 'name': kind, 'aliases': [], 'kind': kind, 'heightM': 0, 'geometry': {'type': 'polyline', 'points': [{'x': (point[0]+n)*100, 'y': (point[1]+east)*100, 'z': 0} for n in (-10, 10)]}})
+for kind, north, east in (('structure', -8, -8), ('pond', 4, 4), ('forest', 0, -8)):
+    features.append({'id': kind, 'name': kind, 'aliases': [], 'kind': kind, 'heightM': 0 if kind == 'pond' else 5, 'geometry': {'type': 'polygon', 'points': [{'x': (point[0]+north+n)*100, 'y': (point[1]+east+e)*100, 'z': 0} for n, e in ((0,0),(0,4),(4,4),(4,0))]}})
+landmark_path.write_text(json.dumps({**document, 'landmarks': features}))
+behavior, details = condition(grid, prior, load(landmark_path))
+assert domain_for('dementia') == 'temperate_mountainous'
+assert np.isfinite(behavior).all() and abs(float(behavior.sum())-1) < 1e-9
+assert details['unresolved_weight'] == .2
 for level in ('document', 'landmark', 'geometry', 'point'):
     for field in ('subject', 'clue'):
         poison = copy.deepcopy(document)

@@ -41,12 +41,8 @@ CATEGORIES = ("child_td_1_16", "hiker", "dementia", "elderly_non_dementia", "unk
 QUANTILES = np.array([0, 0.25, 0.5, 0.75, 0.95])
 
 
-def table(category, domain):
-    assert (category, domain) in TABLES, (
-        f"Unsupported prior: {category}/{domain}; no verified distance table"
-    )
-    source, n, radii = TABLES[(category, domain)]
-    q = (np.array([0, *radii]) * 1000) ** 2
+def quantile_curve(q):
+    assert q.shape == QUANTILES.shape and np.isfinite(q).all() and q[0] == 0
     assert np.all(np.diff(q) > 0)
     derivatives = PchipInterpolator(q, QUANTILES).derivative()(q)
     derivatives[-1] = (QUANTILES[-1] - QUANTILES[-2]) / (q[-1] - q[-2])
@@ -60,6 +56,16 @@ def table(category, domain):
                 assert (3 * cubic * minimum + 2 * quadratic) * minimum + linear >= 0
     assert np.allclose(interpolant(q), QUANTILES, rtol=0, atol=1e-15)
     assert abs(interpolant.derivative().integrate(q[0], q[-1]) + 0.05 - 1) < 1e-15
+    return interpolant
+
+
+def table(category, domain):
+    assert (category, domain) in TABLES, (
+        f"Unsupported prior: {category}/{domain}; no verified distance table"
+    )
+    source, n, radii = TABLES[(category, domain)]
+    q = (np.array([0, *radii]) * 1000) ** 2
+    interpolant = quantile_curve(q)
     return (
         q,
         interpolant,

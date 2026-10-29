@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Crosshair, Search, ChevronDown, RectangleHorizontal } from 'lucide-react';
 import type { SearchPoint, SearchState } from './searchState';
 import CapturePanel from './CapturePanel';
+import { formatProbability } from './display';
 import './search.css';
 
 export default function SearchPanel({
@@ -27,17 +28,14 @@ export default function SearchPanel({
   enabled: boolean;
   review: () => void;
 }) {
-  const [open, setOpen] = useState(true),
-    [domain, setDomain] = useState('');
+  const [open, setOpen] = useState(true);
   const [areaOpen, setAreaOpen] = useState(true);
   useEffect(() => {
     if (search?.plan) setAreaOpen(false);
   }, [search?.plan?.plan_id]);
-  useEffect(() => {
-    if (search?.domain) setDomain(search.domain);
-  }, [search?.domain]);
   if (!search) return null;
   const capacity = search.summary.pipeline_capacity;
+  const domain = search.domains.length === 1 ? search.domains[0] : null;
   const editable = enabled && !['starting', 'running'].includes(search.summary.status);
   const area = draft ?? search.vertices;
   const areaM2 = area
@@ -155,6 +153,7 @@ export default function SearchPanel({
               onSubmit={(e) => {
                 e.preventDefault();
                 if (!area || areaM2 <= 0) throw new Error('Draw a search area first');
+                if (domain === null) throw new Error('No sourced Sierra prior for this subject category');
                 tool('define_search_area', { domain, vertices: area });
               }}
             >
@@ -193,27 +192,45 @@ export default function SearchPanel({
                   </table>
                 </div>
               )}
-              <label>
-                Published statistical domain
-                <select
-                  aria-label="Published statistical domain"
-                  required
-                  value={domain}
-                  onChange={(e) => setDomain(e.target.value)}
-                >
-                  <option value="">Choose source population</option>
-                  {search.domains.map((d) => (
-                    <option key={d} value={d}>
-                      {d.replaceAll('_', ' ')}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <button disabled={!editable || !search.profile || !area || areaM2 <= 0 || drawing}>
+              <button
+                disabled={!editable || !search.profile || domain === null || !area || areaM2 <= 0 || drawing}
+              >
                 Set search area
               </button>
             </form>
           </details>
+          <div className="gcs-source-domain" aria-label="Published statistical domain">
+            <span>Source population</span>
+            {domain === null ? (
+              <p>
+                {search.profile === null
+                  ? 'Record the subject profile to identify the sourced Sierra domain.'
+                  : 'Source unavailable: no sourced Sierra prior for this subject category.'}
+              </p>
+            ) : (
+              <>
+                <strong>
+                  {domain === 'temperate_mountainous'
+                    ? 'Sierra: temperate mountainous'
+                    : 'Sierra: temperate (terrain pooled)'}
+                </strong>
+                <small>The statistical domain is fixed by the mission location and source population.</small>
+              </>
+            )}
+          </div>
+          {search.summary.behavior_prior !== null && (
+            <section className="gcs-search-throughput" aria-label="Behaviour prior assumptions">
+              <strong>
+                Provisional behaviour prior ·{' '}
+                {formatProbability(search.summary.behavior_prior.unresolved_weight)} unresolved background
+              </strong>
+              <details>
+                <summary>Model assumptions</summary>
+                <p>{search.summary.behavior_prior.method}</p>
+                <p>{search.summary.behavior_prior.limitations}</p>
+              </details>
+            </section>
+          )}
           {search.summary.retained_in_world_mass !== null && (
             <p>
               Prior mass inside world:{' '}
@@ -269,44 +286,47 @@ export default function SearchPanel({
             </div>
           )}
           <p className="gcs-search-camera">{search.summary.coverage.message}</p>
-          <section
-            className={`gcs-search-throughput ${capacity?.applies_to_profile && !capacity.sustains_required_rate ? 'limited' : ''}`}
-            aria-label="Perception throughput"
-          >
-            <strong>
-              {capacity?.applies_to_profile
-                ? capacity.sustains_required_rate
-                  ? 'Perception keeps up at 5 m/s'
-                  : 'Perception cannot keep up at 5 m/s'
-                : 'Current prompt throughput unmeasured'}
-            </strong>
-            {capacity !== null && (
-              <>
-                {!capacity.applies_to_profile && <p>This measurement uses a different prompt load.</p>}
+          {capacity !== null && (
+            <section
+              className={`gcs-search-throughput ${capacity.applies_to_profile && !capacity.sustains_required_rate ? 'limited' : ''}`}
+              aria-label="Perception throughput"
+            >
+              <strong>
+                {capacity.applies_to_profile
+                  ? capacity.sustains_required_rate
+                    ? 'Perception keeps up at 5 m/s'
+                    : 'Perception cannot keep up at 5 m/s'
+                  : 'Measured perception capacity'}
+              </strong>
+              <p>
+                {capacity.sam_runners} SAM runners · {capacity.completed_rate_fps.toFixed(3)} frames/s
+                measured
+              </p>
+              <p>
+                {capacity.capture_spacing_m} m capture spacing · arrival to belief p95:{' '}
+                {capacity.arrival_to_belief_p95_s === null
+                  ? 'unmeasured'
+                  : `${capacity.arrival_to_belief_p95_s.toFixed(2)} s`}
+              </p>
+              {capacity.applies_to_profile ? (
                 <p>
-                  {capacity.sam_runners} SAM runners · {capacity.completed_rate_fps.toFixed(2)} frames/s
-                  measured
-                  {capacity.applies_to_profile && ` · ${capacity.required_rate_fps.toFixed(2)} required`}
+                  Four drones at 5 m/s require {capacity.required_rate_fps.toFixed(2)} frames/s ·{' '}
+                  {capacity.per_drone_interval_s.toFixed(2)} s between each drone’s frames.
                 </p>
-                {capacity.applies_to_profile && (
-                  <p>
-                    At {capacity.capture_spacing_m} m capture spacing, the measured rate corresponds to{' '}
-                    {capacity.speed_limit_mps.toFixed(2)} m/s. At 5 m/s: at least{' '}
-                    {capacity.per_drone_interval_s.toFixed(2)} s between each drone’s frames.
-                  </p>
-                )}
+              ) : (
+                <p>Measured with the acceptance prompts; the current prompt load differs.</p>
+              )}
+              <details>
+                <summary>Measurement details</summary>
                 <p>
-                  Arrival to belief p95:{' '}
-                  {capacity.arrival_to_belief_p95_s === null
-                    ? 'unmeasured'
-                    : `${capacity.arrival_to_belief_p95_s.toFixed(2)} s`}
-                  . Required: at most 10 s with a bounded queue.
+                  Demonstrated speed: {capacity.speed_limit_mps.toFixed(2)} m/s. The gate requires arrival to
+                  belief p95 at most 10 s and a bounded queue.
                 </p>
                 <small>Evidence: {capacity.evidence}</small>
-              </>
-            )}
-            <small>POS curve uses capture time; processing delay is excluded.</small>
-          </section>
+              </details>
+              <small>POS curve uses capture time; processing delay is excluded.</small>
+            </section>
+          )}
           <CapturePanel
             commander={search.commander}
             send={send}
@@ -321,7 +341,7 @@ export default function SearchPanel({
           />
           <div className="gcs-search-actions">
             <button
-              disabled={!editable || !search.point || !search.vertices}
+              disabled={!editable || domain === null || !search.point || !search.vertices}
               onClick={() => tool('plan_search', {})}
             >
               Plan coverage

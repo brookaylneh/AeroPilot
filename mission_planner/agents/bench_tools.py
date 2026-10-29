@@ -139,11 +139,11 @@ CASES += [
         [call("start_search", plan_id="0123456789abcdef01234567")],
     ),
     (
-        "Define a hiker search area using Australian mixed statistics with vertices in this order: north -700 east -100, north -400 east -100, north -400 east 100, north -700 east 100.",
+        "The recorded category is dementia. Define a search area using the sourced Sierra temperate mountainous statistics with vertices in this order: north -700 east -100, north -400 east -100, north -400 east 100, north -700 east 100.",
         [
             call(
                 "define_search_area",
-                domain="australian_mixed",
+                domain="temperate_mountainous",
                 vertices=[
                     {"north_m": n, "east_m": e}
                     for n, e in ((-700, -100), (-400, -100), (-400, 100), (-700, 100))

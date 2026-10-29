@@ -175,6 +175,7 @@ class Planner(unittest.TestCase):
             "mission_planner.search." + name
             for name in (
                 "belief",
+                "behavior",
                 "commander",
                 "coverage",
                 "detection",

@@ -414,18 +414,11 @@
   border-top: 2px dashed #d7d8a4;
 }
 .gcs-map-waiting {
-  position: absolute;
-  bottom: 76px;
-  left: 24px;
-  padding: 10px 12px;
-  background: #1d2a23;
-  border: 1px solid #52645a;
-  border-radius: 4px;
   display: flex;
   gap: 8px;
   align-items: center;
   color: #d4dfd7;
-  font-size: 12px;
+  font-size: 11px;
 }
 .gcs-aircraft {
   cursor: pointer;

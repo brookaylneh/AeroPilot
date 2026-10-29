@@ -18,7 +18,7 @@ import {
   type Vehicle,
   type RouteArguments,
 } from './missionState';
-import { formatValue } from './display';
+import { formatValue, formatProbability } from './display';
 import { groupPadLabels, placeLabels } from './mapLabels';
 
 import SearchLayers from './SearchLayers';
@@ -151,7 +151,14 @@ export default function MissionMap({
         return { x: box.x - rect.x, y: box.y - rect.y, width: box.width, height: box.height };
       }),
     );
-  }, [size.width, size.height, inset, Boolean(search?.heatmap_scale), pendingRoute?.drone_id]);
+  }, [
+    size.width,
+    size.height,
+    inset,
+    search?.heatmap_scale?.method,
+    pendingRoute?.drone_id,
+    vehicles.length,
+  ]);
   useEffect(() => {
     for (const v of vehicles) {
       if (!trails.current[v.id]) trails.current[v.id] = [];
@@ -554,6 +561,12 @@ export default function MissionMap({
             <span className="gcs-eyebrow">SEARCH AREA</span>
             <strong>Open Meadow</strong>
             <span>Local terrain · north up</span>
+            {!vehicles.length && (
+              <span className="gcs-map-waiting">
+                <i className="gcs-status-dot" />
+                Awaiting autopilot positions and fence
+              </span>
+            )}
           </div>
           <div className="gcs-map-tools">
             <button
@@ -588,7 +601,10 @@ export default function MissionMap({
           </div>
           {search?.heatmap_scale && search.grid && (
             <div className="gcs-probability-legend" aria-label="Probability colour scale">
-              <strong>Probability per {search.grid.cell_m} m cell</strong>
+              <strong>
+                {search.heatmap_scale.method === 'log1p' ? 'Log probability' : 'Probability'} per{' '}
+                {search.grid.cell_m} m cell
+              </strong>
               <div
                 style={{
                   background: `linear-gradient(to right, ${search.heatmap_scale.colours.join(', ')})`,
@@ -596,8 +612,14 @@ export default function MissionMap({
               />
               <span>
                 <b>0%</b>
-                <b>{(search.heatmap_scale.maximum * 100).toPrecision(3)}%</b>
+                <b>{formatProbability(search.heatmap_scale.midpoint)}</b>
+                <b>{formatProbability(search.heatmap_scale.maximum)}</b>
               </span>
+              <small>
+                {search.heatmap_scale.method === 'log1p'
+                  ? 'Log colour spacing; labels are probabilities.'
+                  : 'Linear colour spacing.'}
+              </small>
               <small>Conditional on presence in the world</small>
             </div>
           )}
@@ -607,12 +629,6 @@ export default function MissionMap({
               <path d="M12 2L21 26L12 20L3 26Z" />
             </svg>
           </div>
-          {!vehicles.length && (
-            <div className="gcs-map-waiting">
-              <span className="gcs-status-dot" />
-              Awaiting autopilot positions and fence
-            </div>
-          )}
           <div className="gcs-map-bottom">
             <div className="gcs-scale" style={{ width: (scale / visibleWidth) * size.width }}>
               {formatValue(scale, 'm', 0)}
