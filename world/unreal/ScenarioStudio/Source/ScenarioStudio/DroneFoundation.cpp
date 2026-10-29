@@ -120,7 +120,7 @@ void ADroneFoundation::Poll()
         // embedded-camera map. Resolve through the same registry as RPC.
         APIPCamera *Camera =
             Mode->getCamera(msr::airlib::CameraDetails("front_center", TCHAR_TO_UTF8(*Name)));
-        if (Camera)
+        checkf(Camera, TEXT("Missing front_center camera for %s"), *Name);
         {
             // SceneCapture cameras are not player views. Register each sensor
             // with texture/landscape-grass streaming so distant drone imagery
@@ -133,7 +133,8 @@ void ADroneFoundation::Poll()
                 Camera->GetActorLocation(), Width, Width / FMath::Tan(FMath::DegreesToRadians(Fov * .5f)),
                 1.f, false, .7f, nullptr, GetWorld());
             auto *Target = Camera->getRenderTarget(APIPCamera::ImageType::Scene, false);
-            if (Target && Target->SizeY != CaptureHeight)
+            checkf(Target, TEXT("Missing RGB render target for %s"), *Name);
+            if (Target->SizeY != CaptureHeight)
                 Target->ResizeTarget(CaptureHeight * 16 / 9, CaptureHeight);
             Camera->setCameraTypeUpdate(APIPCamera::ImageType::Scene,
                                         true); // request-driven, preserve temporal history
@@ -150,11 +151,8 @@ void ADroneFoundation::Poll()
                        Capture->ShowFlags.GlobalIllumination && Capture->ShowFlags.LumenGlobalIllumination &&
                        Capture->ShowFlags.LumenReflections && Capture->ShowFlags.DynamicShadows,
                    TEXT("RGB capture rendering prerequisites disabled: %s"), *Name);
-            if (Target)
-            {
-                Item->SetNumberField(TEXT("width"), Target->SizeX);
-                Item->SetNumberField(TEXT("height"), Target->SizeY);
-            }
+            Item->SetNumberField(TEXT("width"), Target->SizeX);
+            Item->SetNumberField(TEXT("height"), Target->SizeY);
             Item->SetObjectField(TEXT("cameraPositionUeCm"), V(Camera->GetActorLocation()));
         }
         Vehicles.Add(MakeShared<FJsonValueObject>(Item));
