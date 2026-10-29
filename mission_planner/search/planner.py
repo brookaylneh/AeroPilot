@@ -3,6 +3,8 @@
 import hashlib
 import json
 import math
+from concurrent.futures import ProcessPoolExecutor
+from multiprocessing import get_context
 
 import numpy as np
 
@@ -12,11 +14,18 @@ from mission_planner.gcs.validation import (
     validate_route,
     validate_separation,
 )
-from mission_planner.search.detection import AGL_M, CAPTURE_SPACING_M, track_probability
+from mission_planner.search.detection import AGL_M, CAPTURE_SPACING_M, track_detection
 from mission_planner.search.grid import inside
 from mission_planner.search.occlusion import aerial_visibility
 from mission_planner.search.terrain import terrain_leg
-from mission_planner.search.timing import SPEED_MPS, landing_seconds, launch_seconds, travel_seconds
+from mission_planner.search.timing import (
+    PARAMETERS,
+    SPEED_MPS,
+    extension_seconds,
+    landing_seconds,
+    launch_seconds,
+    travel_seconds,
+)
 from world.cosys.terrain import WORLD
 
 AIRBORNE_SECONDS = 1800.0
@@ -66,20 +75,27 @@ def line_segments(vertices, axis, offset, west, east):
     return result
 
 
-def track_pod(centers, a, b, model, mask):
+def track_pod(centers, a, b, model, mask, detect):
     start = np.array([a["north_m"], a["east_m"]])
     end = np.array([b["north_m"], b["east_m"]])
     direction = end - start
     length = float(np.linalg.norm(direction))
     assert length > 0
     unit = direction / length
-    delta = centers - start
+    radius = model["width_m"] / 2
+    low, high = np.minimum(start, end) - radius, np.maximum(start, end) + radius
+    ids = np.flatnonzero(
+        mask
+        & (centers[:, 0] >= low[0])
+        & (centers[:, 0] <= high[0])
+        & (centers[:, 1] >= low[1])
+        & (centers[:, 1] <= high[1])
+    )
+    delta = centers[ids] - start
     along = delta[:, 0] * unit[0] + delta[:, 1] * unit[1]
     lateral = delta[:, 0] * unit[1] - delta[:, 1] * unit[0]
-    result = np.zeros(len(centers))
-    ids = np.flatnonzero(mask)
-    result[ids] = track_probability(lateral[ids], along[ids], length, model, CAPTURE_SPACING_M)
-    return result
+    eligible = (abs(lateral) <= radius) & (along >= 0) & (along <= length)
+    return ids[eligible], detect(lateral[eligible], along[eligible], length)
 
 
 def transit(home, first, last, sector):
@@ -101,9 +117,12 @@ def transit(home, first, last, sector):
     return ingress, egress
 
 
-def candidate(grid, probability, vertices, homes, model, spacing, axis, prioritized):
+def candidate(
+    grid, probability, vertices, homes, model, spacing, axis, prioritized, path=terrain_leg
+):
     centers = grid["centers"]
     area_mask = inside(centers, vertices)
+    detect = track_detection(model, CAPTURE_SPACING_M)
     west = min(p["east_m"] for p in vertices)
     east = max(p["east_m"] for p in vertices)
     north_min = min(p["north_m"] for p in vertices)
@@ -134,73 +153,99 @@ def candidate(grid, probability, vertices, homes, model, spacing, axis, prioriti
             for a, b in legs
         ]
         pods = [
-            (track_pod(centers, a, b, model, area_mask), track_pod(centers, b, a, model, area_mask))
+            (
+                track_pod(centers, a, b, model, area_mask, detect),
+                track_pod(centers, b, a, model, area_mask, detect),
+            )
             for a, b in legs
         ]
-        paths = [(terrain_leg(a, b, z)[0], terrain_leg(b, a, z)[0]) for a, b in legs]
         chosen = []
         prefix = []
         now = 0.0
         current = None
         first = None
         while legs:
-            options = []
+            ranked = []
             for i, (a, b) in enumerate(legs):
                 reverse = current is not None and distance(current, b) < distance(current, a)
                 if reverse:
                     a, b = b, a
-                path = paths[i][int(reverse)]
-                duration = travel_seconds(path)
+                ids, pod = pods[i][int(reverse)]
+                gain = float(probability[ids] @ np.maximum(pod - cumulative[ids], 0))
+                lower = (
+                    math.hypot(b["north_m"] - a["north_m"], b["east_m"] - a["east_m"]) / SPEED_MPS
+                )
+                if current is not None:
+                    lower += (
+                        math.hypot(
+                            current["north_m"] - a["north_m"], current["east_m"] - a["east_m"]
+                        )
+                        / SPEED_MPS
+                    )
+                else:
+                    ingress, _ = transit(homes[name], a, b, sector)
+                    lower += launch_seconds(max(TRANSIT_HEIGHTS_M)) + travel_seconds(ingress)
+                    lower += abs(
+                        ingress[-1]["altitude_above_home_m"] - a["altitude_above_home_m"]
+                    ) / max(PARAMETERS["WP_SPD_UP"], PARAMETERS["WP_SPD_DN"])
+                # Each incoming blend removes at most that segment's acceleration ramp.
+                ranked.append(
+                    (gain / lower if prioritized else -i, -i, i, a, b, reverse, gain, lower)
+                )
+            best = None
+            for upper, tie, i, a, b, reverse, gain, lower in sorted(
+                ranked, key=lambda v: v[:2], reverse=True
+            ):
+                if best is not None and (upper, tie) <= best[:2]:
+                    break
+                if now + lower + RESERVE_SECONDS > AIRBORNE_SECONDS:
+                    continue
+                leg_path = path(a, b, z)[0]
+                duration = travel_seconds(leg_path)
                 if current is None:
                     ingress, _ = transit(homes[name], a, b, sector)
-                    waypoints = [*ingress, *path]
+                    waypoints = [*ingress, *leg_path]
                     cost = launch_seconds(max(TRANSIT_HEIGHTS_M)) + travel_seconds(waypoints)
                 else:
-                    connector = (
-                        terrain_leg(current, a, z)[0] if distance(current, a) > 1e-8 else [current]
-                    )
-                    waypoints = [*prefix, *connector[1:], *path[1:]]
-                    cost = travel_seconds(waypoints) - travel_seconds(prefix)
+                    connector = path(current, a, z)[0] if distance(current, a) > 1e-8 else [current]
+                    extension = [*connector[1:], *leg_path[1:]]
+                    waypoints = [*prefix, *extension]
+                    cost = extension_seconds(prefix, extension)
+                assert cost >= lower - 1e-8, "Cruise lower bound exceeds terrain travel time"
                 _, egress = transit(homes[name], first if first is not None else a, b, sector)
-                candidate_return_time = (
-                    travel_seconds([*waypoints, *egress])
-                    - travel_seconds(waypoints)
-                    + landing_seconds(egress[-1]["altitude_above_home_m"])
+                candidate_return_time = extension_seconds(waypoints, egress) + landing_seconds(
+                    egress[-1]["altitude_above_home_m"]
                 )
-                candidate_pod = pods[i][int(reverse)]
-                gain = float(probability @ np.maximum(candidate_pod - cumulative, 0))
                 if now + cost + max(RESERVE_SECONDS, candidate_return_time) <= AIRBORNE_SECONDS:
-                    options.append(
-                        (
-                            gain / cost if prioritized else -i,
-                            -i,
-                            i,
-                            a,
-                            b,
-                            cost,
-                            candidate_return_time,
-                            duration,
-                            waypoints,
-                            candidate_pod,
-                        )
+                    option = (
+                        gain / cost if prioritized else -i,
+                        -i,
+                        i,
+                        a,
+                        b,
+                        cost,
+                        candidate_return_time,
+                        duration,
+                        waypoints,
+                        pods[i][int(reverse)],
                     )
-            if not options:
+                    if best is None or option[:2] > best[:2]:
+                        best = option
+            if best is None:
                 break
-            _, _, i, a, b, cost, return_time, duration, prefix, selected_pod = max(
-                options, key=lambda v: v[:2]
-            )
+            _, _, i, a, b, cost, return_time, duration, prefix, selected_pod = best
             if first is None:
                 first = a
             start_time = now + cost - duration
             assert start_time >= now - 1e-8, "Terrain connector produced overlapping search legs"
             now += cost
-            cumulative = np.maximum(cumulative, selected_pod)
+            ids, pod = selected_pod
+            cumulative[ids] = np.maximum(cumulative[ids], pod)
             chosen.append({"start": a, "end": b, "starts_s": start_time, "ends_s": now})
             timeline.append({"drone_id": name, **chosen[-1]})
             current = b
             legs.pop(i)
             pods.pop(i)
-            paths.pop(i)
         if not chosen:
             return None
         ingress, egress = transit(homes[name], chosen[0]["start"], chosen[-1]["end"], sector)
@@ -250,7 +295,7 @@ def validate_batch(routes, states, readbacks, landmarks):
         validate_separation(name, route, [(other, [state]) for other, state in states.items()])
 
 
-def materialize(result, states, readbacks, landmarks):
+def materialize(result, states, readbacks, landmarks, path=terrain_leg):
     routes = {}
     max_error = 0.0
     for name, spec in result["routes"].items():
@@ -260,10 +305,10 @@ def materialize(result, states, readbacks, landmarks):
         route.append(first)
         for leg in spec["legs"]:
             if distance(route[-1], leg["start"]) > 1e-8:
-                points, error = terrain_leg(route[-1], leg["start"], z)
+                points, error = path(route[-1], leg["start"], z)
                 route.extend(points[1:])
                 max_error = max(max_error, error)
-            points, error = terrain_leg(leg["start"], leg["end"], z)
+            points, error = path(leg["start"], leg["end"], z)
             assert math.isclose(
                 leg["ends_s"] - leg["starts_s"], travel_seconds(points), rel_tol=0, abs_tol=1e-8
             ), "Planned search-leg timing differs from materialized geometry"
@@ -291,6 +336,7 @@ def materialize(result, states, readbacks, landmarks):
 
 def curve(result, grid, probability, vertices, model):
     mask = inside(grid["centers"], vertices)
+    detect = track_detection(model, CAPTURE_SPACING_M)
     times = sorted(
         {
             0.0,
@@ -303,17 +349,32 @@ def curve(result, grid, probability, vertices, model):
         }
     )
     values = []
+    completed = np.zeros(len(probability))
+    finished = set()
     for time in times:
-        pod = np.zeros(len(probability))
-        for leg in result["timeline"]:
+        active = []
+        for index, leg in enumerate(result["timeline"]):
+            if index in finished:
+                continue
             if time <= leg["starts_s"]:
                 continue
+            if time >= leg["ends_s"]:
+                ids, probabilities = track_pod(
+                    grid["centers"], leg["start"], leg["end"], model, mask, detect
+                )
+                completed[ids] = np.maximum(completed[ids], probabilities)
+                finished.add(index)
+            else:
+                active.append(leg)
+        pod = completed.copy()
+        for leg in active:
             fraction = min(1.0, (time - leg["starts_s"]) / (leg["ends_s"] - leg["starts_s"]))
             end = {
                 k: leg["start"][k] + fraction * (leg["end"][k] - leg["start"][k])
                 for k in leg["start"]
             }
-            pod = np.maximum(pod, track_pod(grid["centers"], leg["start"], end, model, mask))
+            ids, probabilities = track_pod(grid["centers"], leg["start"], end, model, mask, detect)
+            pod[ids] = np.maximum(pod[ids], probabilities)
         values.append({"seconds": time, "pos": float(probability @ pod)})
     return values
 
@@ -328,40 +389,58 @@ def plan(grid, probability, vertices, states, readbacks, model, inputs, landmark
     ), "Planning requires healthy landed fleet"
     homes = {n: s["home"] for n, s in states.items()}
     probability = probability * aerial_visibility(grid, landmarks)
+    paths = {}
+
+    def cached_path(a, b, home_z):
+        key = (a["north_m"], a["east_m"], b["north_m"], b["east_m"], home_z)
+        if key not in paths:
+            paths[key] = terrain_leg(a, b, home_z)
+        return paths[key]
+
     candidates = []
     alternatives = []
-    for spacing in SPACINGS_M:
-        for axis in (0, 1):
-            value = candidate(grid, probability, vertices, homes, model, spacing, axis, True)
-            if value is None:
-                alternatives.append(
-                    {
-                        "spacing_m": spacing,
-                        "axis": axis,
-                        "status": "no four-drone allocation within endurance",
-                    }
-                )
-            else:
-                alternatives.append(
-                    {
-                        k: value[k]
-                        for k in ("spacing_m", "axis", "pos", "duration_s", "pos_per_minute")
-                    }
-                )
-                candidates.append(value)
+    choices = [(spacing, axis) for spacing in SPACINGS_M for axis in (0, 1)]
+    with ProcessPoolExecutor(max_workers=4, mp_context=get_context("spawn")) as pool:
+        pending = [
+            pool.submit(candidate, grid, probability, vertices, homes, model, spacing, axis, True)
+            for spacing, axis in choices
+        ]
+        values = [future.result() for future in pending]
+    for (spacing, axis), value in zip(choices, values):
+        if value is None:
+            alternatives.append(
+                {
+                    "spacing_m": spacing,
+                    "axis": axis,
+                    "status": "no four-drone allocation within endurance",
+                }
+            )
+        else:
+            alternatives.append(
+                {k: value[k] for k in ("spacing_m", "axis", "pos", "duration_s", "pos_per_minute")}
+            )
+            candidates.append(value)
     assert candidates, "No feasible four-drone candidate"
     selected = max(
         candidates,
         key=lambda c: (c["pos_per_minute"], -c["duration_s"], -c["spacing_m"], -c["axis"]),
     )
-    selected = materialize(selected, states, readbacks, landmarks)
+    selected = materialize(selected, states, readbacks, landmarks, cached_path)
     baseline = candidate(
-        grid, probability, vertices, homes, model, selected["spacing_m"], selected["axis"], False
+        grid,
+        probability,
+        vertices,
+        homes,
+        model,
+        selected["spacing_m"],
+        selected["axis"],
+        False,
+        cached_path,
     )
     assert baseline is not None
-    baseline = materialize(baseline, states, readbacks, landmarks)
+    baseline = materialize(baseline, states, readbacks, landmarks, cached_path)
     selected["comparison"] = {
-        "label": "Conservative phase-averaged maximum-look expectation; stationary target, conditional on in-world presence",
+        "label": "Conservative phase-averaged maximum-look expectation; no aerial credit in structure or forest footprints; stationary target, conditional on in-world presence",
         "planned": curve(selected, grid, probability, vertices, model),
         "uniform_lawnmower": curve(baseline, grid, probability, vertices, model),
     }

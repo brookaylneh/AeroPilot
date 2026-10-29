@@ -10,8 +10,8 @@ SAM_THRESHOLD = 0.3
 
 
 def positional_probability(lateral, along, model):
-    lateral, along = np.broadcast_arrays(np.abs(lateral), along)
-    assert np.isfinite([lateral, along]).all()
+    lateral, along = np.abs(np.asarray(lateral)), np.asarray(along)
+    assert np.isfinite(lateral).all() and np.isfinite(along).all()
     position = model["position"]
     x, y = np.asarray(position["lateral_m"]), np.asarray(position["along_m"])
     values = np.asarray(position["p"])
@@ -34,6 +34,19 @@ def negative_model(model):
 
 
 def track_probability(lateral, along, length, model, spacing, phases=128):
+    return track_detection(model, spacing, phases)(lateral, along, length)
+
+
+def track_detection(model, spacing, phases=128):
+    periodic = {}
+
+    def detect(lateral, along, length):
+        return track_values(lateral, along, length, model, spacing, phases, periodic)
+
+    return detect
+
+
+def track_values(lateral, along, length, model, spacing, phases, periodic):
     assert np.isfinite([length, spacing]).all()
     assert length > 0 and spacing > 0 and type(phases) is int and phases >= 16
     lateral, along = np.broadcast_arrays(lateral, along)
@@ -41,6 +54,31 @@ def track_probability(lateral, along, length, model, spacing, phases=128):
     result = np.zeros_like(along, dtype=float)
     eligible = (abs(lateral) <= model["width_m"] / 2) & (along >= 0) & (along <= length)
     side, distance = lateral[eligible], along[eligible]
+    values = np.zeros_like(distance, dtype=float)
+    margin = model["length_m"] / 2
+    interior = (distance >= margin) & (distance <= length - margin)
+    if interior.any():
+        packed = np.empty(int(interior.sum()), dtype=complex)
+        packed.real = abs(side[interior])
+        packed.imag = np.remainder(distance[interior], spacing)
+        positions, inverse = np.unique(packed, return_inverse=True)
+        missing = np.array([p for p in positions if p not in periodic], dtype=complex)
+        if len(missing):
+            shift = np.ceil(margin / spacing) * spacing
+            averaged = phase_average(
+                missing.real, missing.imag + shift, 2 * shift + spacing, model, spacing, phases
+            )
+            periodic.update(zip(missing, averaged))
+        values[interior] = np.array([periodic[p] for p in positions])[inverse]
+    edge = ~interior
+    if edge.any():
+        values[edge] = phase_average(side[edge], distance[edge], length, model, spacing, phases)
+    result[eligible] = values
+    assert np.isfinite(result).all() and ((result >= 0) & (result <= 1)).all()
+    return result
+
+
+def phase_average(side, distance, length, model, spacing, phases):
     radius = int(np.ceil(model["length_m"] / (2 * spacing)))
     phase = (np.arange(phases)[:, None] + 0.5) * spacing / phases
     before = np.floor((distance - phase) / spacing)
@@ -49,6 +87,4 @@ def track_probability(lateral, along, length, model, spacing, phases=128):
         capture = phase + (before + offset) * spacing
         probability = positional_probability(side, capture - distance, model)
         maximum = np.maximum(maximum, probability * (capture >= 0) * (capture <= length))
-    result[eligible] = maximum.mean(axis=0)
-    assert np.isfinite(result).all() and ((result >= 0) & (result <= 1)).all()
-    return result
+    return maximum.mean(axis=0)

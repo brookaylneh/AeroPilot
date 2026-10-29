@@ -84,6 +84,18 @@ def travel_seconds(route):
     return total
 
 
+def extension_seconds(prefix, extension):
+    assert prefix
+    tail = [prefix[-1]]
+    for previous in reversed(prefix[:-1]):
+        if any(
+            previous[key] != tail[-1][key] for key in ("north_m", "east_m", "altitude_above_home_m")
+        ):
+            tail.insert(0, previous)
+            break
+    return travel_seconds([*tail, *extension]) - travel_seconds(tail)
+
+
 def launch_seconds(height):
     return motion_seconds(
         height, PARAMETERS["PILOT_SPD_UP"], PARAMETERS["PILOT_ACC_Z"], PARAMETERS["WP_JERK"]

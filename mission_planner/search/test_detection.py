@@ -8,6 +8,7 @@ from mission_planner.agents.perception.reduce_detection import reduce_calibratio
 from mission_planner.environment import ROOT
 from mission_planner.search.detection import (
     negative_model,
+    phase_average,
     positional_probability,
     track_probability,
 )
@@ -62,6 +63,18 @@ class CaptureSpacing(unittest.TestCase):
             self.assertAlmostEqual(float(value[0]), 0.8 * (1 - spacing / 40), places=5)
         start = track_probability(np.array([0]), np.array([0]), 100, model, 10)
         self.assertAlmostEqual(float(start[0]), 0.4, places=12)
+
+    def test_periodic_reduction_matches_all_original_capture_phases(self):
+        rng = np.random.default_rng(730)
+        for length in (5.0, 30.0, 317.3, 2412.016):
+            along = np.r_[np.linspace(0, length, 257), rng.uniform(0, length, 200)]
+            side = rng.uniform(-self.model["width_m"] / 2, self.model["width_m"] / 2, len(along))
+            for spacing in (12.0, 16.0, 40.0):
+                for distance in (along, length - along):
+                    with self.subTest(length=length, spacing=spacing):
+                        expected = phase_average(side, distance, length, self.model, spacing, 128)
+                        actual = track_probability(side, distance, length, self.model, spacing)
+                        np.testing.assert_allclose(actual, expected, rtol=0, atol=2e-13)
 
     def test_extending_same_capture_lattice_does_not_lose_coverage(self):
         along = np.arange(0, 101, dtype=float)
