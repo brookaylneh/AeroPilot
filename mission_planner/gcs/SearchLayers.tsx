@@ -119,6 +119,8 @@ export default function SearchLayers({
             />
             <g
               className={`gcs-detection-pin ${cluster.status}`}
+              data-cluster-id={cluster.id}
+              data-region-posterior={cluster.posterior_mass}
               role="button"
               tabIndex={0}
               aria-label={`Review evidence cluster ${index + 1}`}
@@ -137,9 +139,12 @@ export default function SearchLayers({
               <circle r="8" />
               <text x="13" y="4">
                 {index + 1} · {cluster.calibrated ? 'Person' : 'Uncalibrated'} ·{' '}
-                {formatProbability(cluster.posterior_mass)}
+                {formatProbability(cluster.posterior_mass)} region
               </text>
-              <title>{cluster.member_ids.length} member detections · 95% location ellipse</title>
+              <title>
+                {cluster.member_ids.length} member detections · posterior mass in cells intersecting the 95%
+                location ellipse
+              </title>
             </g>
           </g>
         );

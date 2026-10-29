@@ -98,53 +98,62 @@ export const deliverySchema = z
     (delivery) => (delivery.status === 'acknowledged') === (delivery.acknowledged_at_ms !== null),
     'Delivery acknowledgement state and time disagree',
   );
-export const commanderSchema = z.object({
-  source: source.nullable(),
-  inference_ready: z.boolean(),
-  manifests: z.array(z.object({ id: z.string(), label: z.string(), frames: number.nonnegative().int() })),
-  replay_status: z.enum(['not_started', 'running', 'complete', 'failed']),
-  lanes: z.array(
-    z.object({
-      lane: z.string(),
-      queued: number.nonnegative().int(),
-      oldest_age_s: number.nonnegative(),
-      active: z.array(z.object({ frame_id: z.string(), stage: z.string() })),
-      completed: number.nonnegative().int(),
-      failed: number.nonnegative().int(),
-    }),
-  ),
-  failed_frames: z.array(
-    z.object({
-      id: z.string(),
-      drone_id: drone,
-      replay_lane: z.string().nullable(),
-      error: z.string(),
-      belief_committed: z.boolean(),
-      failure_stage: z.string().nullable(),
-    }),
-  ),
-  clusters: z.array(clusterSchema),
-  review: clusterSchema
-    .extend({
-      selected_id: z.string(),
-      thresholds: z.object({ sam: probability, glimmer: probability }),
-      members: z.array(detectionSchema),
-      model_review: z.record(z.string(), z.unknown()).nullable(),
-      likelihood: z.array(
-        z.object({
-          frame_id: z.string(),
-          active_region_cells: z.array(number.nonnegative().int()),
-          false_alarm_rate: probability.positive(),
-          footprint_area_m2: number.positive(),
-          detection_probability_range: z.array(probability).length(2),
-          retained_kernel_mass: z.record(z.string(), probability),
-          outside_grid_kernel_mass: z.record(z.string(), probability),
-        }),
+export const commanderSchema = z
+  .object({
+    source: source.nullable(),
+    inference_ready: z.boolean(),
+    manifests: z.array(z.object({ id: z.string(), label: z.string(), frames: number.nonnegative().int() })),
+    replay_status: z.enum(['not_started', 'running', 'complete', 'failed']),
+    lanes: z.array(
+      z.object({
+        lane: z.string(),
+        queued: number.nonnegative().int(),
+        oldest_age_s: number.nonnegative(),
+        active: z.array(z.object({ frame_id: z.string(), stage: z.string() })),
+        completed: number.nonnegative().int(),
+        failed: number.nonnegative().int(),
+      }),
+    ),
+    failed_frames: z.array(
+      z.object({
+        id: z.string(),
+        drone_id: drone,
+        replay_lane: z.string().nullable(),
+        error: z.string(),
+        belief_committed: z.boolean(),
+        failure_stage: z.string().nullable(),
+      }),
+    ),
+    clusters: z.array(clusterSchema),
+    review: clusterSchema
+      .extend({
+        selected_id: z.string(),
+        thresholds: z.object({ sam: probability, glimmer: probability }),
+        members: z.array(detectionSchema),
+        model_review: z.record(z.string(), z.unknown()).nullable(),
+        likelihood: z.array(
+          z.object({
+            frame_id: z.string(),
+            active_region_cells: z.array(number.nonnegative().int()),
+            false_alarm_rate: probability.positive(),
+            footprint_area_m2: number.positive(),
+            detection_probability_range: z.array(probability).length(2),
+            retained_kernel_mass: z.record(z.string(), probability),
+            outside_grid_kernel_mass: z.record(z.string(), probability),
+          }),
+        ),
+      })
+      .nullable(),
+    deliveries: z.array(deliverySchema),
+  })
+  .refine(
+    ({ review, clusters }) =>
+      review === null ||
+      clusters.some(
+        (cluster) => cluster.id === review.id && cluster.posterior_mass === review.posterior_mass,
       ),
-    })
-    .nullable(),
-  deliveries: z.array(deliverySchema),
-});
+    'Map and evidence card must share the reviewed lead-region posterior',
+  );
 export type CommanderState = z.infer<typeof commanderSchema>;
 export type Detection = z.infer<typeof detectionSchema>;
 export type Cluster = z.infer<typeof clusterSchema>;

@@ -87,7 +87,12 @@ export default function EvidenceCard({
     review.member_ids.includes(delivery.detection_id),
   );
   return (
-    <article className="gcs-evidence-card" data-cluster-id={review.id} data-detection-id={selected.id}>
+    <article
+      className="gcs-evidence-card"
+      data-cluster-id={review.id}
+      data-detection-id={selected.id}
+      data-region-posterior={review.posterior_mass}
+    >
       <button className="gcs-evidence-back" onClick={() => setShowList(true)}>
         <ArrowLeft size={14} /> All evidence
       </button>
