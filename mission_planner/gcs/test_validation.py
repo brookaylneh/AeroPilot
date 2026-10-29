@@ -225,7 +225,7 @@ def footprint(vertices, height):
         "id": "obstacle",
         "name": "Obstacle",
         "aliases": [],
-        "kind": "structure",
+        "kind": "obstacle",
         "heightM": height,
         "geometry": {
             "type": "polygon",

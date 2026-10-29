@@ -218,9 +218,13 @@ class StructureChecks(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(AssertionError, "Unknown structure"):
             self.send()
         self.arguments["place_id"] = "cabin"
-        self.mission.search.landmarks[0]["kind"] = "pond"
-        with self.assertRaisesRegex(AssertionError, "structure polygon"):
-            self.send()
+        for kind in ("pond", "obstacle"):
+            self.mission.search.landmarks[0]["kind"] = kind
+            with (
+                self.subTest(kind=kind),
+                self.assertRaisesRegex(AssertionError, "structure polygon"),
+            ):
+                self.send()
         self.assertFalse(self.team.deliveries)
 
     async def test_negative_report_waits_for_operator_and_cannot_be_confirmed_twice(self):

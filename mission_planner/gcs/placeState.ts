@@ -25,6 +25,7 @@ export const landmarkSchema = z
       'pond',
       'bridge',
       'structure',
+      'obstacle',
       'forest',
       'ridge',
       'outcrop',

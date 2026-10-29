@@ -93,6 +93,15 @@ class Occlusion(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "whole in-world cells"):
             footprint_fraction(self.grid, geometry(0, 2))
 
+    def test_raised_obstacle_does_not_occlude_aerial_evidence(self):
+        obstacle = landmark("obstacle", geometry(0, 12))
+        obstacle["heightM"] = 2
+        visible = aerial_visibility(self.grid, [obstacle])
+        np.testing.assert_array_equal(visible, [True, True, True])
+        result = self.apply("empty", [], np.array([0.8, 0.6, 0.4]) * visible)
+        self.assertEqual(result["kind"], "negative")
+        np.testing.assert_array_equal(self.evidence.maximum_pod, [0.8, 0.6, 0.4])
+
     def test_negative_frame_earns_no_pod_in_protected_cells(self):
         visible = aerial_visibility(
             self.grid, [landmark("structure", geometry(0, 4)), landmark("forest", geometry(4, 8))]

@@ -15,6 +15,7 @@ KINDS = (
     "pond",
     "bridge",
     "structure",
+    "obstacle",
     "forest",
     "ridge",
     "outcrop",

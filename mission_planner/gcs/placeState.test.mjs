@@ -51,7 +51,10 @@ test('landmark height is required and raised objects need an area footprint', ()
     heightM: 10,
     geometry: { type: 'polygon', points: line.geometry.points },
   };
-  assert.equal(landmarkSchema.parse(raised).heightM, 10);
+  for (const kind of ['structure', 'obstacle']) {
+    const place = { ...raised, kind };
+    assert.equal(landmarkSchema.parse(place).heightM, 10);
+    assert.throws(() => landmarkSchema.parse({ ...place, geometry: line.geometry }));
+  }
   assert.throws(() => landmarkSchema.parse({ ...raised, kind: 'pond' }));
-  assert.throws(() => landmarkSchema.parse({ ...raised, geometry: line.geometry }));
 });

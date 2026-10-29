@@ -253,6 +253,17 @@ class Behavior(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "No in-world support"):
             condition(self.grid, self.radial, self.landmarks)
 
+    def test_obstacles_leave_prior_unchanged_and_cannot_supply_structure_weight(self):
+        obstacle = feature("sign", "obstacle", "polygon", [(0, 0), (8, 0), (8, 8), (0, 8)])
+        obstacle["heightM"] = 2
+        expected, metadata = condition(self.grid, self.radial, self.landmarks)
+        actual, same_metadata = condition(self.grid, self.radial, [*self.landmarks, obstacle])
+        np.testing.assert_array_equal(actual, expected)
+        self.assertEqual(same_metadata, metadata)
+        without_structure = [item for item in self.landmarks if item["kind"] != "structure"]
+        with self.assertRaisesRegex(AssertionError, "lacks authored structure"):
+            condition(self.grid, self.radial, [*without_structure, obstacle])
+
     def test_partial_fence_cells_fail_instead_of_double_discounting_area(self):
         self.grid["areas"][0] = 2
         with self.assertRaisesRegex(AssertionError, "partial fence clipping is unsupported"):

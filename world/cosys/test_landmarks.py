@@ -168,6 +168,23 @@ class LandmarkTests(unittest.TestCase):
             with self.subTest(kind=kind), self.assertRaisesRegex(AssertionError, "must be zero"):
                 validate(self.document, self.world)
 
+    def test_raised_obstacle_requires_footprint_and_supplies_directions(self):
+        item = feature("sign", "Sign", "obstacle", "polygon", [(0, 0), (1, 0), (1, 1), (0, 1)])
+        item["heightM"] = 2
+        self.document["landmarks"] = [item]
+        landmarks = validate(self.document, self.world)
+        result = directions(landmarks, 2, 0.5)
+        self.assertEqual(result["nearest"]["kind"], "obstacle")
+        self.assertEqual(result["text"], "1.0 m north of Sign")
+        points = item["geometry"]["points"]
+        for kind, count in (("point", 1), ("polyline", 2)):
+            item["geometry"] = {"type": kind, "points": points[:count]}
+            with (
+                self.subTest(kind=kind),
+                self.assertRaisesRegex(AssertionError, "polygon footprint"),
+            ):
+                validate(self.document, self.world)
+
     def test_projection_uses_segment_interior_and_true_horizontal_metres(self):
         result = directions(validate(self.document, self.world), 7, 38)
         self.assertEqual(result["nearest"]["id"], "creek")

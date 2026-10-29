@@ -36,8 +36,10 @@ Each item has exactly these fields:
 - `name`: display name; `aliases`: array of alternate names. Names are nonempty,
   trimmed strings. An item's names must be distinct ignoring case; names shared
   across different items are allowed and produce an ambiguous lookup.
-- `kind`: `trail`, `road`, `creek`, `pond`, `bridge`, `structure`, `forest`,
+- `kind`: `trail`, `road`, `creek`, `pond`, `bridge`, `structure`, `obstacle`, `forest`,
   `ridge`, `outcrop`, `campsite`, `parking` or `command_post`.
+  `structure` means roofed and enterable. `obstacle` supplies height clearance and
+  directions only; it has no behavior-prior weight, aerial occlusion or structure-check task.
 - `heightM`: required finite nonnegative height in metres above terrain. Trails,
   roads, creeks and ponds have exactly zero height. Any positive height requires
   a polygon footprint; the full footprint is reserved up to terrain plus `heightM`.
