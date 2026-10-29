@@ -19,7 +19,7 @@ def main():
     parser.add_argument("shader_keys", type=Path)
     parser.add_argument("output", type=Path)
     args = parser.parse_args()
-    inputs = sorted(args.recordings.glob("*.rec.upipelinecache"))
+    inputs = sorted(path.resolve() for path in args.recordings.glob("*.rec.upipelinecache"))
     assert inputs, args.recordings
     keys = [
         args.shader_keys / f"ShaderStableInfo-{name}-SF_VULKAN_SM6.shk"

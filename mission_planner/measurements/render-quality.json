@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "recorded_at": "2026-10-29T01:00:33.196747+00:00",
-  "status": "Five-minute gate passed; waiting for occupied Studio before character PSO coverage",
+  "status": "Final package cache verified; 30-minute four-drone load test running",
   "vulkan_profile_check": {
     "engine": "5.8.2",
     "implementation": "Engine generated vulkan_profiles_ue.h and vpGetPhysicalDeviceProfileSupport",
@@ -5063,7 +5063,7 @@
     }
   },
   "session_checkpoint": ".local/evidence/render-quality/checkpoint-id.json",
-  "user_session_released": false,
+  "user_session_released": true,
   "person_screening": {
     "passed": true,
     "criteria": {
@@ -5324,6 +5324,33 @@
       "path": ".local/evidence/render-quality/final-character-pso-coverage.log",
       "bytes": 532,
       "sha256": "0adfce3a496723bd3af4d2c0f8340cb2d3bc2dc9f7a7d283f227b6395cbc0ccf"
+    }
+  },
+  "bundled_pso_cache": {
+    "stablePermutations": 2441,
+    "binaryEntries": 131,
+    "graphics": 108,
+    "compute": 5,
+    "rayTracingShaderEntries": 18,
+    "allCharacterPoses": {
+      "path": ".local/evidence/render-quality/character-pso-coverage-after-release/result.json",
+      "bytes": 1936,
+      "sha256": "158c6697fb69de2f9f69ee1fbe8b300abdfaf4b9db1f7f01895ea7357cebeb4a"
+    },
+    "expansion": {
+      "path": ".local/evidence/render-quality/bundled-pso-lumen-atmosphere/result.json",
+      "bytes": 2212,
+      "sha256": "2ea7f0c802d68ebe06b7a0a042c3eecb1eb396b34417110d8e52f2152738c633"
+    },
+    "verification": {
+      "path": ".local/evidence/render-quality/bundled-pso-lumen-atmosphere/package-verification.json",
+      "bytes": 1995,
+      "sha256": "531fa2a6042efa438572c0168110dd032156dfbd977081f1cab2160dd15f9561"
+    },
+    "startup": {
+      "path": ".local/evidence/render-quality/activate-lumen-atmosphere-pso/readiness.json",
+      "bytes": 229,
+      "sha256": "d4ae1470798d05cbc6872cd3946f9665e72b0863a4b0fbcb272c08d2bc565ffc"
     }
   }
 }

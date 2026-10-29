@@ -153,7 +153,9 @@ After exercising the final profile, use
 with `UE_ROOT` set. It expands the recorded caches, records input/output hashes and
 installs `Build/Linux/PipelineCaches/ScenarioStudio_SF_VULKAN_SM6.spc`. Package again
 and verify the cook picked up the stable cache. The tool fails if that output already
-exists. Ray-tracing PSOs are not supported by Epic's bundled-cache workflow.
+exists. The bundled cache contains graphics, compute and ray-tracing shader entries.
+UE 5.8.2 reconstructs partial ray-tracing pipelines from those entries; this does not
+prove coverage of every complete runtime ray-tracing pipeline.
 
 `review-render-quality.py NAME VARIANT...` publishes measured person, meadow and port
 images to `.local/dist/NAME/index.html`. Names start with `render-quality-`; the destination

@@ -34,6 +34,8 @@ done
 python3 - "$package_path" "$evidence_path" <<'PY'
 import sys
 import shutil
+import hashlib
+import json
 from pathlib import Path
 package, evidence = map(Path, sys.argv[1:])
 log = (evidence / 'package.log').read_text(errors='replace')
@@ -53,6 +55,21 @@ for library in ('Global', 'ScenarioStudio'):
     source = keys / f'ShaderStableInfo-{library}-{platforms[0]}.shk'
     assert source.is_file(), source
     shutil.copy2(source, key_output / source.name)
+
+cache_directory = Path('world/unreal/ScenarioStudio/Build/Linux/PipelineCaches')
+source_cache = cache_directory / f'ScenarioStudio_{platforms[0]}.spc'
+assert source_cache.is_file(), source_cache
+cooked_cache = keys / f'ScenarioStudio_{platforms[0]}.stable.upipelinecache'
+assert cooked_cache.is_file() and cooked_cache.stat().st_size > 0, cooked_cache
+cache_copy = evidence / cooked_cache.name
+shutil.copy2(cooked_cache, cache_copy)
+(evidence / 'pipeline-cache.json').write_text(json.dumps({
+    'source': str(source_cache),
+    'sourceSha256': hashlib.sha256(source_cache.read_bytes()).hexdigest(),
+    'cooked': str(cache_copy),
+    'cookedBytes': cache_copy.stat().st_size,
+    'cookedSha256': hashlib.sha256(cache_copy.read_bytes()).hexdigest(),
+}, indent=2) + '\n')
 
 PY
 
