@@ -6,7 +6,7 @@ from world.unreal.blender.spec import check, load
 
 class SpecTests(unittest.TestCase):
     def test_tracked_families_pass(self):
-        self.assertEqual(sorted(load("structures")), ["ranger-cabin"])
+        self.assertEqual(sorted(load("structures")), ["ranger-cabin", "timber-footbridge"])
 
     def test_schema_failures_are_loud(self):
         family = {"schemaVersion": 1, "assets": load("structures")}

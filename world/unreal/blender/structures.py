@@ -2,6 +2,8 @@
 
 blender -b --factory-startup --python world/unreal/blender/structures.py -- <asset> --output <dir>
 Writes <asset>.blend, <asset>.glb, derived albedo PNGs and build.json into a new .local directory.
+The footbridge spans along y with its downstream elevation facing +X; UCX_SM_TimberFootbridge_##
+are the convex hulls that Unreal Interchange imports as collision for SM_TimberFootbridge.
 """
 
 import math
@@ -28,6 +30,7 @@ from world.unreal.blender.common import (  # noqa: E402
     plank_bands,
     principled,
 )
+from world.unreal.blender.spec import load  # noqa: E402
 
 # Cabin build frame: -Y is the porch side, y = 0 the front wall, x = 0 the ridge line. Body
 # outside the siding and the opening layout come from the camera/proportion fit of the approved
@@ -486,7 +489,7 @@ def porch(parts, rng):
         timber((width - 0.08, 0.025, top - bottom), ((x0 + x1) / 2, y + 0.0125, (top + bottom) / 2))
 
 
-def cabin_materials(output):
+def cabin_materials(output, targets):
     planks = TEXTURES / "plank_flooring_03/plank_flooring_03_diff_4k.jpg"
     derived = {}
     albedo = {}
@@ -496,7 +499,7 @@ def cabin_materials(output):
         ("deck", planks),
         ("siding", planks),
     ):
-        albedo[name], derived[name] = matched(path, TARGETS[name], f"{name}_albedo", output)
+        albedo[name], derived[name] = matched(path, targets[name], f"{name}_albedo", output)
     plank_rough = image(TEXTURES / "plank_flooring_03/plank_flooring_03_rough_4k.jpg")
     plank_normal = image(TEXTURES / "plank_flooring_03/plank_flooring_03_nor_gl_4k.jpg")
     wood_normal = image(TEXTURES / "rough_wood/rough_wood_nor_gl_4k.jpg")
@@ -549,7 +552,7 @@ def cabin_materials(output):
 
 
 def cabin(rng, output):
-    mats, bands, derived = cabin_materials(output)
+    mats, bands, derived = cabin_materials(output, TARGETS)
     disp = image(TEXTURES / "stone_wall/stone_wall_disp_4k.png")
     # Flip so row 0 is the image top, as the plinth's UV lookup expects.
     height = pixels(disp)[::-1, :, 0].copy()
@@ -576,5 +579,159 @@ def cabin(rng, output):
     return objects, {"derivedAlbedo": derived, "sidingPlanks": len(bands)}
 
 
+# Footbridge build frame: z = 0 at grade on the sill timbers, y along the span, x across the deck.
+# T3 terrain at the footbridge: creek bank tops 3.35 m either side of the centreline.
+BANK_TOP_M = 3.35
+WIDTH, SPAN, SILL_Y = 2.4, 8.6, 4.1
+SILL = (0.30, 0.30, 0.05)  # along the span, height, height above grade
+FOOT = (0.02, 0.05)  # base plate and bearing block
+CHANNEL = (0.305, 0.075, 0.010, 0.013)  # C12x20.7: depth, flange, web, flange thickness
+DECK_T, BOARD_W, GAP = 0.076, 0.20, 0.012
+CURB, POST_SIZE, RAIL = 0.20, (0.15, 0.20), (0.09, 0.19)
+POSTS = 5
+RAIL_M = 1.07  # AASHTO pedestrian railing height, 42 in
+BOLT = (0.024, 0.45)  # head radius, height over radius
+BEARING = SILL[2] + sum(FOOT)
+DECK_TOP = BEARING + CHANNEL[0] + DECK_T
+EDGE = WIDTH / 2 - BOLT[0] * BOLT[1] - POST_SIZE[0]
+POST_Z = (BEARING + 0.02, DECK_TOP + RAIL_M + 0.04)
+# Cabin targets rescaled by the footbridge master's measured rail and deck regions over the
+# first studio render's.
+BRIDGE_TARGETS = {"timber": ((149, 140, 129), 24), "deck": ((162, 154, 145), 30)}
+
+
+def bolt(parts, centre, normal):
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=12, v_segments=6, radius=BOLT[0])
+    bmesh.ops.scale(bm, vec=(1, 1, BOLT[1]), verts=bm.verts)
+    bm.loops.layers.uv.new("UVMap")
+    rotation = Vector(normal).to_track_quat("Z", "Y").to_matrix().to_4x4()
+    bm.transform(Matrix.Translation(centre) @ rotation)
+    add(parts, "iron", bm)
+
+
+def footbridge(rng, output):
+    buried = load("structures")["timber-footbridge"]["buriedM"]
+    assert math.isclose(buried, SILL[1] - SILL[2]), buried
+    clear = 2 * SILL_Y - SILL[0]
+    assert clear > 2 * BANK_TOP_M and SILL_Y + SILL[0] / 2 < SPAN / 2
+    mats, bands, derived = cabin_materials(output, TARGETS | BRIDGE_TARGETS)
+    mats["steel"] = principled("Dark painted steel", base=lin((70, 72, 74)), rough=0.5)
+    parts = {}
+
+    def piece(material, size, centre, grain=0, **kwargs):
+        box(parts, material, size, Matrix.Translation(centre), rng, grain=grain, **kwargs)
+
+    depth, flange, web, flange_t = CHANNEL
+    # Outer channels show their webs; flanges point inward.
+    stringers = ((-EDGE, 1), (-web / 2, 1), (EDGE, -1))
+    flanges = [x + inward * flange / 2 for x, inward in stringers]
+    for (x, inward), cx in zip(stringers, flanges):
+        centre = (x + inward * web / 2, 0, BEARING + depth / 2)
+        piece("steel", (web, SPAN, depth), centre, 1, bevel=0.002)
+        for z in (BEARING + flange_t / 2, BEARING + depth - flange_t / 2):
+            piece("steel", (flange, SPAN, flange_t), (cx, 0, z), 1, bevel=0.002)
+    for sy in (-1, 1):
+        centre = (0, sy * SILL_Y, SILL[2] - SILL[1] / 2)
+        piece("timber", (WIDTH, SILL[0], SILL[1]), centre, 0, bevel=0.01, segments=2)
+        for cx in flanges:
+            plate = (cx, sy * SILL_Y, SILL[2] + FOOT[0] / 2)
+            piece("steel", (0.30, 0.24, FOOT[0]), plate, bevel=0.003)
+            block = (cx, sy * SILL_Y, SILL[2] + FOOT[0] + FOOT[1] / 2)
+            piece("steel", (0.14, 0.16, FOOT[1]), block, bevel=0.003)
+            for dx in (-0.11, 0.11):
+                bolt(parts, (cx + dx, sy * SILL_Y, SILL[2] + FOOT[0]), (0, 0, 1))
+        for sx in (-1, 1):
+            x, height = sx * (EDGE - 0.1), depth + DECK_T
+            corner = (x, sy * (SPAN / 2 + 0.006), BEARING + height / 2)
+            piece("steel", (0.2, 0.012, height), corner, bevel=0.002)
+            for z in (BEARING + 0.08, BEARING + depth - 0.08):
+                bolt(parts, (x, sy * (SPAN / 2 + 0.012), z), (0, sy, 0))
+    boards = round((SPAN + GAP) / (BOARD_W + GAP))
+    width = (SPAN - (boards - 1) * GAP) / boards
+    flat = frame((0, 0, 0), (1, 0, 0), (0, 0, 1))
+    for i in range(boards):
+        y = -SPAN / 2 + width / 2 + i * (width + GAP)
+        centre = (rng.uniform(-0.004, 0.004), y, DECK_TOP - DECK_T / 2 + rng.uniform(-0.002, 0))
+        matrix = Matrix.Translation(centre) @ Matrix.Rotation(rng.uniform(-0.004, 0.004), 4, "Z")
+        size = (2 * EDGE - rng.uniform(0.01, 0.02), DECK_T, width)
+        box(
+            parts,
+            "deck",
+            size,
+            matrix @ flat,
+            rng,
+            bevel=0.005,
+            tile=PLANK_TILE,
+            band=rng.choice(bands),
+        )
+        for dy in (-0.05, 0.05):
+            spike = (flanges[1] + rng.uniform(-0.01, 0.01), y + dy, DECK_TOP + 0.001)
+            piece("iron", (0.014, 0.014, 0.004), spike, bevel=0.001)
+    posts = [
+        -SPAN / 2 + POST_SIZE[1] / 2 + i * (SPAN - POST_SIZE[1]) / (POSTS - 1) for i in range(POSTS)
+    ]
+    rails = (DECK_TOP + RAIL_M - RAIL[1] / 2, DECK_TOP + 0.60)
+    assert (
+        math.isclose(rails[0] + RAIL[1] / 2 - DECK_TOP, RAIL_M)
+        and rails[1] - RAIL[1] / 2 > DECK_TOP + CURB
+    )
+    for sx in (-1, 1):
+        curb = (sx * (EDGE - CURB / 2), 0, DECK_TOP + CURB / 2)
+        piece("timber", (CURB, SPAN, CURB), curb, 1, bevel=0.012, segments=2)
+        for y0, y1 in ((-SPAN / 2, -0.002), (0.002, SPAN / 2)):
+            for z in rails:
+                rail = (sx * (EDGE - RAIL[0] / 2), (y0 + y1) / 2, z)
+                piece("timber", (RAIL[0], y1 - y0, RAIL[1]), rail, 1, bevel=0.01, segments=2)
+        for y in posts:
+            post = (sx * (EDGE + POST_SIZE[0] / 2), y, sum(POST_Z) / 2)
+            size = (*POST_SIZE, POST_Z[1] - POST_Z[0])
+            piece("timber", size, post, 2, bevel=0.012, segments=2)
+            for z in (*rails, DECK_TOP + CURB / 2, BEARING + depth / 2):
+                bolt(parts, (sx * (EDGE + POST_SIZE[0]), y, z), (sx, 0, 0))
+    render = emit(parts, mats)
+    with bpy.context.temp_override(active_object=render[0], selected_editable_objects=render):
+        assert bpy.ops.object.join() == {"FINISHED"}
+    render = render[0]
+    render.name = render.data.name = "SM_TimberFootbridge"
+    rail_x = (EDGE - CURB, EDGE + POST_SIZE[0])
+    hulls = {
+        "deck": ((2 * EDGE, SPAN, DECK_TOP - BEARING), (0, 0, (DECK_TOP + BEARING) / 2)),
+        **{
+            f"rail{sx:+d}": (
+                (rail_x[1] - rail_x[0], SPAN, POST_Z[1] - DECK_TOP),
+                (sx * sum(rail_x) / 2, 0, (POST_Z[1] + DECK_TOP) / 2),
+            )
+            for sx in (-1, 1)
+        },
+        **{
+            f"abutment{sy:+d}": ((WIDTH, SILL[0], BEARING), (0, sy * SILL_Y, BEARING / 2))
+            for sy in (-1, 1)
+        },
+    }
+    collision = {}
+    for i, (size, centre) in enumerate(hulls.values()):
+        name = f"UCX_SM_TimberFootbridge_{i:02d}"
+        box(collision, name, size, Matrix.Translation(centre), rng, bevel=0)
+    objects = emit(collision, dict.fromkeys(collision, mats["sheathing"]))
+    for obj in objects:
+        assert len(obj.data.vertices) == 8, obj.name
+        obj.hide_render = True
+    return [render, *objects], {
+        "derivedAlbedo": derived,
+        "stringerLengthM": SPAN,
+        "bearingSpanM": 2 * SILL_Y,
+        "clearSpanM": clear,
+        "widthM": WIDTH,
+        "clearWidthM": 2 * (EDGE - CURB),
+        "deckTopM": DECK_TOP,
+        "railHeightM": rails[0] + RAIL[1] / 2 - DECK_TOP,
+        "deckBoards": boards,
+        "boardWidthM": width,
+        "boardGapM": GAP,
+        "collisionHulls": dict(zip((o.name for o in objects), hulls)),
+    }
+
+
 if __name__ == "__main__":
-    main(Path(__file__).resolve(), {"ranger-cabin": cabin})
+    main(Path(__file__).resolve(), {"ranger-cabin": cabin, "timber-footbridge": footbridge})
