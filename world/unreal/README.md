@@ -109,6 +109,57 @@ authorize importing other proposed assets. Approve the shortlist before building
 tier 1. Stage results and outstanding checks are recorded in
 `mission_planner/measurements/world-valley.json`.
 
+`valley-reference-assets.json` specifies the proposed Sierra asset collection,
+its purpose, seasonal appearance and production route. `valley-reference-prompts.json`
+records the master-image requests; `valley-reference-edits.json` records the
+selected reference-conditioned views. `valley-generated-assets.lock.json` fixes
+the selected images, provider terms, review findings and image hashes. The model comparison, primary documentation,
+licensing and reconstruction options are in
+`mission_planner/measurements/asset-generation-research.json`.
+
+The reference workflow uses fal's hosted Model APIs. Sunburst runs at its maximum
+quality setting; alternate views are conditioned on the selected master image.
+Generated designs and camera views need visual review, and their dimensions are
+design targets. Image generation does not establish matching geometry between
+views, physically valid construction or a usable PBR material set. Trees and
+groundcover require foliage authoring; water requires an Unreal shader and
+shoreline geometry. Thin stairs, rails and structural members require explicit
+modelling and collision review after reconstruction.
+
+Run an explicit request plan into fresh directories:
+
+```sh
+.venv-cosys/bin/python -m world.unreal.generate_asset_images \
+  --plan world/unreal/valley-reference-prompts.json \
+  --output .local/world/valley/<new-reference-run> \
+  --evidence .local/evidence/world/valley/<new-reference-run> --workers 3
+```
+
+Requests, endpoint IDs, image hashes, native dimensions and elapsed times are
+recorded beside the outputs. Reference edits require the recorded input hash.
+Existing outputs fail; requests disable fal retries and model fallback. Image
+generation is nondeterministic, so preserve selected PNGs and their receipts.
+`review_asset_images.py` verifies selected image hashes, assembles the collection
+board and exports separate crops from each turnaround sheet:
+
+```sh
+.venv-cosys/bin/python -m world.unreal.review_asset_images \
+  --selection .local/evidence/world/valley/generated-references/selection.json \
+  --output .local/world/valley/<new-review>
+```
+
+Each sheet supplies four view crops, not independent image generations. The board
+is for approval; individual object views require geometric consistency checks
+before reconstruction. Provider
+outputs retain their provider terms and are not automatically CC0 or MIT.
+
+The standalone source-asset review can be reconstructed with
+`python -m world.unreal.asset_shortlist <action> --evidence-dir <new-world-evidence-dir>`.
+Its setup order is `dependencies`, `download-toolchain`, `install-toolchain`,
+`verify-toolchain`, then `acquire --candidate <id>`, `render --candidate <id>` and
+`contact`. Originals need no acquisition. Each action requires its own absent
+output files; this workflow never imports assets into Unreal.
+
 ## Rendering and packaging
 
 The project requests Vulkan SM6, Lumen GI/reflections with hardware ray tracing,
@@ -189,5 +240,5 @@ A supported device still needs SM6 shaders and the project's uncooked assets for
 
 ## Characters
 
-[Character authoring](characters/README.md) creates MetaHumans from Epic presets and explicit
-appearance settings, then renders fixed views for review before live integration.
+[Character authoring](characters/README.md) manages the character roster separately
+from terrain and scenery. Valley work preserves the accepted character assets.

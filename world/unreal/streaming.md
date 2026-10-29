@@ -1,5 +1,13 @@
 # Streaming image quality
 
+The valley branch prepares Vulkan SM6, Lumen hardware tracing, virtual shadow maps
+and Nanite, with explicit Lumen settings for drone scene captures. That combined
+profile has not been packaged or measured in the world slot. The slot has no
+Pixel Streaming endpoints. Its pending checks, source-level capture review and
+separately attributed installed-profile measurements are recorded in
+`mission_planner/measurements/world-valley.json`. The measurements below describe
+the earlier SM5 baseline, not the prepared valley profile.
+
 The live profile is native **3840×2160 at a 60 FPS target**, configured in
 `deploy/runtime.env.example`. Changes take effect when `snr-unreal` starts; the
 application does not switch quality profiles while running.
@@ -11,7 +19,7 @@ application does not switch quality profiles while running.
 - Browser media uses TURN. Its configured 6,250,000 bytes/s limit allows 50 Mbps.
 - Epic scalability level 3, a 4096 MB texture streaming pool and six container CPUs.
 
-The current package uses `SF_VULKAN_SM5`, screen-space GI and screen-space reflections.
+The recorded baseline package uses `SF_VULKAN_SM5`, screen-space GI and screen-space reflections.
 Hardware ray tracing and virtual shadow maps are off; Nanite assets use fallback meshes
 on this platform. Both UE 5.8.2 SM6 device profiles pass on the RTX PRO 6000, but enabling
 Lumen and hardware ray tracing requires an SM6 cook with the complete uncooked assets.
