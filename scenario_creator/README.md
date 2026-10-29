@@ -119,13 +119,17 @@ or a successful compile alone is not acceptance.
 ## Map component acceptance
 
 `node --env-file=.local/slot.env scenario_creator/accept_world_map.mjs ORIGIN NEW_DIRECTORY`
-bundles the actual `WorldMap` component with the public world bounds and existing
-Studio styles. It uses Playwright route fulfillment at the assigned origin; it
+bundles the actual Studio `WorldMap` and Mission Control `MissionMap` inset with
+the public world bounds and existing application styles. It uses Playwright route fulfillment at the assigned origin; it
 starts no server and adds no application route. The existing web server supplies
 the minimap and fonts. Run from a clean committed worktree and put its output
 under `.local/evidence/world/`.
 
 The screenshots and JSON explicitly identify isolated component evidence. They
-check the rectangle, zoom, drag and fit controls, without a Pixel Streaming
-session or native camera travel. End-to-end Studio acceptance still requires its
-live editing session.
+check expanded and compact Studio maps and the Mission inset at both acceptance
+viewports. Measurements verify equal physical scale on both axes, the Studio
+scale bar, asymmetric coordinates, zoom, drag, Studio edge focus and fit controls.
+The inset check includes its expand bar and requires the whole fitted map to stay
+unobscured. The Studio camera marker is synthetic. No Pixel Streaming session or
+native camera travel is performed; end-to-end Studio acceptance still requires
+its live editing session.

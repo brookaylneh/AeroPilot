@@ -55,7 +55,7 @@ test('scale bar uses readable ground distances at every map zoom', () => {
   for (const width of widths) assert(mapScale(width) / width <= 1 / 3);
 });
 
-test('the first mission view contains the rectangle at both acceptance sizes without stretching', () => {
+test('mission and compact views contain the rectangle without stretching', () => {
   const region = {
     minX: world.searchBoundsCm.min.x / 100,
     maxX: world.searchBoundsCm.max.x / 100,
@@ -73,6 +73,8 @@ test('the first mission view contains the rectangle at both acceptance sizes wit
   for (const [width, height, expectedWidth, expectedHeight] of [
     [1500, 1008, 1500, 1000],
     [2140, 1368, 2052, 1368],
+    [230, 122, 183, 122],
+    [210, 140, 210, 140],
   ]) {
     const bounds = fitMapBounds(padded, { width, height }),
       view = fitMapView(bounds, region);

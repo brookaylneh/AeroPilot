@@ -249,6 +249,18 @@
 .gcs-inset-swap kbd {
   margin-left: auto;
 }
+.gcs-inset-map {
+  display: flex;
+  flex-direction: column;
+}
+.gcs-inset-map .gcs-map {
+  flex: 1;
+  min-height: 0;
+}
+.gcs-inset-map .gcs-inset-swap {
+  position: static;
+  flex-shrink: 0;
+}
 .gcs-stage-key {
   position: absolute;
   top: 16px;
