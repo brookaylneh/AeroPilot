@@ -62,6 +62,7 @@ def main():
         assert result["droneWorkload"]["status"] == "measured"
         entry["drone_workload"] = artifact(args.run / "drones/result.json")
         entry["capture_summary"] = result["captureSummary"]
+        entry["capture_worker_memory"] = result["droneWorkload"]["memorySamples"]
     if "capacitySelection" in result:
         entry["capacity_selection"] = result["capacitySelection"]
     record["variants"].append(entry)

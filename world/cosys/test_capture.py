@@ -4,7 +4,9 @@ import hashlib
 import io
 import json
 import tempfile
+import threading
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import Mock, call, patch
@@ -60,6 +62,31 @@ class CaptureTests(unittest.TestCase):
         with self.assertRaisesRegex(TimeoutError, "Sensor RPC timed out"):
             client.capture_frame("Drone1", freeze=True)
         self.assertEqual(self.connection.simPause.call_args_list, [call(True), call(False)])
+
+
+class ConnectionTests(unittest.TestCase):
+    def test_connections_are_thread_bound_and_reused(self):
+        barrier = threading.Barrier(2)
+
+        def connect_twice():
+            first = client.connect()
+            barrier.wait(timeout=5)
+            return first, client.connect()
+
+        with (
+            patch.object(client, "_connections", threading.local()),
+            patch.object(
+                client.airsim, "MultirotorClient", side_effect=lambda **_: object()
+            ) as make,
+            ThreadPoolExecutor(max_workers=2) as pool,
+        ):
+            first = pool.submit(connect_twice)
+            second = pool.submit(connect_twice)
+            a, b = first.result(), second.result()
+            self.assertIs(a[0], a[1])
+            self.assertIs(b[0], b[1])
+            self.assertIsNot(a[0], b[0])
+            self.assertEqual(make.call_count, 2)
 
 
 if __name__ == "__main__":

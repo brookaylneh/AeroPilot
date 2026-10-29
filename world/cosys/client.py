@@ -5,6 +5,7 @@ import io
 import json
 import math
 import os
+import threading
 import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor
@@ -33,8 +34,14 @@ PORT = int(os.environ.get("SNR_COSYS_PORT", "41452"))
 assert 1 <= PORT <= 65535, "Invalid Cosys RPC port"
 
 
+# MessagePack sockets and their event loops belong to the calling thread.
+_connections = threading.local()
+
+
 def connect():
-    return airsim.MultirotorClient(ip="127.0.0.1", port=PORT, timeout_value=120)
+    if not hasattr(_connections, "client"):
+        _connections.client = airsim.MultirotorClient(ip="127.0.0.1", port=PORT, timeout_value=120)
+    return _connections.client
 
 
 def xyz(v):

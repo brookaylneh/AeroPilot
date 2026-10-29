@@ -24,6 +24,10 @@ The fetcher requires the shared `.env`, verifies release archive hashes, and app
 `airsim-ue58.patch`. The patch avoids resetting an unchanged CustomDepth value during
 startup, which would invalidate Landscape PSO precaching in UE 5.8.
 
+MessagePack connections are reused within their owning thread. Creating a new connection
+for every image leaves an active read loop and its large decode buffer per capture.
+A connection failure raises; the bridge does not replace failed connections automatically.
+
 ## Sensor rendering
 
 The native `DroneFoundation` keeps RGB captures at 3840×2160 and registers each camera with

@@ -62,6 +62,7 @@ def run(output, hz):
         "status": "preparing",
         "flight": {n: [] for n in NAMES},
         "captures": {n: [] for n in NAMES},
+        "memorySamples": [],
     }
     before = concurrent(lambda name: state(connect(), name))
     assert all(s["landed"] and not s["apiControl"] for s in before.values()), before
@@ -125,6 +126,22 @@ def run(output, hz):
                 info["file"] = path.name
                 write_json(path.with_suffix(".json"), info)
                 next_image += image_interval
+                if index == 0:
+                    memory = dict(
+                        line.split(":", 1)
+                        for line in Path("/proc/self/status").read_text().splitlines()
+                    )
+                    rss, unit = memory["VmRSS"].split()
+                    peak, peak_unit = memory["VmHWM"].split()
+                    assert unit == peak_unit == "kB"
+                    report["memorySamples"].append(
+                        {
+                            "elapsedSeconds": time.monotonic() - start,
+                            "residentMiB": int(rss) / 1024,
+                            "peakResidentMiB": int(peak) / 1024,
+                        }
+                    )
+                    print(json.dumps({"memory": report["memorySamples"][-1]}), flush=True)
             assert [info["width"], info["height"]] == [3840, 2160], info
             report["captures"][name].append(
                 {
