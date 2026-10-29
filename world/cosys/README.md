@@ -27,6 +27,9 @@ CustomDepth value during startup, which would invalidate Landscape PSO precachin
 UE 5.8. The geodesy patch uses the global NED transform and WGS84 conversion for each
 spawn home. Coupled flight requires a game binary built with these patches; the recovery
 package does not contain the geodesy correction.
+Editor and package builds run `verify-plugin.sh` before compilation. It checks
+every tracked AirSim patch in reverse without writing; a missing patch fails the
+build before a release can use inconsistent GPS or camera frames.
 
 ## Camera acquisition
 
