@@ -311,6 +311,7 @@ try {
   result.samples.push(await sample());
   const start = Date.now();
   result.measurementStartedAt = new Date(start).toISOString();
+  let nextProgress = start + 60000;
   while (Date.now() - start < duration * 1000) {
     const key = ['d', 'w', 'a', 's'][Math.floor((Date.now() - start) / 5000) % 4];
     if (navigating) await page.keyboard.down(key);
@@ -318,6 +319,18 @@ try {
     await delay(1000);
     if (navigating) await page.keyboard.up(key);
     result.samples.push(await sample());
+    if (Date.now() >= nextProgress) {
+      const latest = result.samples.at(-1);
+      console.log(
+        JSON.stringify({
+          phase: 'measuring',
+          elapsedSeconds: (Date.now() - start) / 1000,
+          rendererMemoryMiB: latest.memoryBytes.current / 1048576,
+          gpu: latest.gpu,
+        }),
+      );
+      nextProgress += 60000;
+    }
   }
   result.measurementEndedAt = new Date().toISOString();
   const observation = await page.evaluate(() => ({

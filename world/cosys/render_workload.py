@@ -20,6 +20,7 @@ from world.cosys.client import (
     connect,
     home,
     land,
+    native,
     set_view,
     state,
     takeoff,
@@ -28,6 +29,19 @@ from world.cosys.client import (
     validate_waypoint,
     write_json,
 )
+
+
+def sensor_settings():
+    expected = {
+        "exposureEv100": 13,
+        "whiteBalanceKelvin": 6500,
+        "lighting": "world",
+        "width": 3840,
+        "height": 2160,
+    }
+    settings = {v["id"]: {key: v[key] for key in expected} for v in native()["vehicles"]}
+    assert settings == {name: expected for name in NAMES}, settings
+    return settings
 
 
 def run(output, hz):
@@ -126,6 +140,7 @@ def run(output, hz):
     with ThreadPoolExecutor(max_workers=8) as pool:
         try:
             configure_capture(2160)
+            report["sensorSettings"] = sensor_settings()
             report["positioned"] = concurrent(position)
             flights = [pool.submit(flight, n) for n in NAMES]
             report["status"] = "ready"
@@ -152,6 +167,7 @@ def run(output, hz):
             pool.shutdown(wait=True)
             try:
                 report["landed"] = concurrent(land, names=controlled)
+                report["sensorSettingsAfter"] = sensor_settings()
             finally:
                 write_json(output / "result.json", report)
     print(
