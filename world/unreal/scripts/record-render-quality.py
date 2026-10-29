@@ -41,6 +41,8 @@ def main():
         "concurrent_containers": result["concurrentContainers"],
         "measurement_tools": result["tools"],
         "first_video_frame": result["firstVideoFrame"],
+        "startup_first_thirty_seconds": result["startupFirstThirtySeconds"],
+        "cpu_usage": engine["cpu_delta"],
         "timing_source": "Unreal CSV per-frame GPUTime, FrameTime, GameThreadTime and RenderThreadTime",
         "render_settings": engine["render_settings"],
         "engine_metadata": engine["summary"]["metadata"],
@@ -57,6 +59,8 @@ def main():
         assert result["droneWorkload"]["status"] == "measured"
         entry["drone_workload"] = artifact(args.run / "drones/result.json")
         entry["capture_summary"] = result["captureSummary"]
+    if "capacitySelection" in result:
+        entry["capacity_selection"] = result["capacitySelection"]
     record["variants"].append(entry)
     record["recorded_at"] = engine["completed_at"]
     target.write_text(json.dumps(record, indent=2) + "\n")
