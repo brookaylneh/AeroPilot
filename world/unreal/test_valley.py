@@ -18,6 +18,7 @@ from world.unreal.valley import (
     drainage,
     lookup,
     points,
+    triangle_slopes,
 )
 
 
@@ -46,6 +47,23 @@ class Drainage(unittest.TestCase):
         self.assertEqual(receiver[3, 5], 3 * elevation.shape[1] + 6)
         self.assertGreater(accumulation[3, 6], accumulation[3, 5])
         np.testing.assert_array_equal(filled, elevation)
+
+
+class TriangleSlopes(unittest.TestCase):
+    def test_asymmetric_quad_includes_both_diagonals(self):
+        elevation = np.array([[0.0, 0.0], [1.0, 2.0]])
+        np.testing.assert_allclose(
+            triangle_slopes(elevation, 2), [[np.degrees(np.arctan(np.sqrt(5) / 2))]]
+        )
+
+    def test_central_differences_underestimate_a_vertex_peak(self):
+        elevation = np.zeros((3, 3))
+        elevation[1, 1] = 1
+        dy, dx = np.gradient(elevation)
+        central = np.degrees(np.arctan(np.hypot(dx, dy))).max()
+        triangles = triangle_slopes(elevation, 1)
+        np.testing.assert_allclose(triangles, np.degrees(np.arctan(np.sqrt(2))))
+        self.assertGreater(triangles.min(), central)
 
 
 class Valley(unittest.TestCase):

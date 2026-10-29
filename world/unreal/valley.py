@@ -215,6 +215,18 @@ def blend(distance, radius):
     return np.cos(np.minimum(distance / radius, 1) * np.pi / 2) ** 2
 
 
+def triangle_slopes(elevation, spacing_m):
+    """Maximum slope per cell across all four right triangles, covering both diagonals."""
+    assert elevation.ndim == 2 and min(elevation.shape) >= 2
+    assert np.isfinite(elevation).all() and spacing_m > 0
+    north = np.diff(elevation, axis=1) / spacing_m
+    east = np.diff(elevation, axis=0) / spacing_m
+    squared_gradient = np.maximum(north[:-1] ** 2, north[1:] ** 2) + np.maximum(
+        east[:, :-1] ** 2, east[:, 1:] ** 2
+    )
+    return np.degrees(np.arctan(np.sqrt(squared_gradient)))
+
+
 def creek_profile(elevation, item, receiver, accumulation):
     vertices = points(item)
     spacing = FIELD["sampleSpacingMetres"] * DRAINAGE_STRIDE
@@ -322,7 +334,8 @@ def build(document):
         report["sampledFinalBedMaximumDownstreamRiseM"] = float(rise.max())
         report["sampledFinalBedRisingSegments"] = int(np.count_nonzero(rise > 1e-8))
     dy, dx = np.gradient(quantized, FIELD["sampleSpacingMetres"])
-    slope = np.degrees(np.arctan(np.hypot(dx, dy)))
+    central_slope = float(np.degrees(np.arctan(np.hypot(dx, dy))).max())
+    slope = triangle_slopes(quantized, FIELD["sampleSpacingMetres"])
     maximum_slope = float(slope.max())
     row, column = np.unravel_index(np.argmax(slope), slope.shape)
     relief = float(np.ptp(quantized))
@@ -345,6 +358,8 @@ def build(document):
         "maxElevationM": float(quantized.max()),
         "reliefM": relief,
         "maxSlopeDegrees": maximum_slope,
+        "slopeMethod": "Maximum quantized grid-cell triangle gradient across both diagonals",
+        "maxCentralDifferenceSlopeDegrees": central_slope,
         "changedSamples": int(np.count_nonzero(raw != original)),
         "maximumCutM": float((baseline - quantized).max()),
         "maximumFillM": float((quantized - baseline).max()),
