@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "worldId": "open-meadow-unreal",
-  "environmentAssetVersion": "open-meadow-unreal-0.4.0",
+  "environmentAssetVersion": "open-meadow-unreal-0.5.0",
   "infrastructureVersion": "four-drone-port-2-south",
   "coordinateSystem": "UE_LH_Z_UP_CENTIMETERS",
   "north": "+X",
@@ -35,7 +35,7 @@
     "nearestBoundaryGapMetres": 5,
     "searchable": false
   },
-  "heightfieldSha256": "ef7cf15ea67088cff77cda0f24cb41bae61f2fbd4c1ebec8a36199e775e6f63f",
+  "heightfieldSha256": "20e3f06d68798038032ebaf3193b57f2c3f338c73129ac7c36a8eb11b70306a5",
   "vehicles": {
     "Drone1": {
       "spawnUeCm": {
@@ -71,7 +71,7 @@
     }
   },
   "heightfield": {
-    "path": ".local/world/open-meadow/height.r16",
+    "path": ".local/world/valley/terrain/height.r16",
     "rows": 3025,
     "columns": 2017,
     "sampleSpacingMetres": 0.7982857142857143,

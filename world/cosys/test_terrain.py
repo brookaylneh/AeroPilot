@@ -10,6 +10,7 @@ import numpy as np
 
 from mission_planner.gcs.geodesy import fence_vertices
 from mission_planner.search.grid import CELL_M, make_grid
+from world.cosys.landmarks import validate
 from world.cosys.terrain import (
     BOUNDS,
     COLUMNS,
@@ -72,7 +73,13 @@ class Terrain(unittest.TestCase):
             )
             for a in "xy"
         ]
-        raw = np.array(heights()).reshape(ROWS, COLUMNS)
+        north, east = np.meshgrid(
+            np.linspace(NORTH_MIN_M, NORTH_MAX_M, COLUMNS),
+            np.linspace(EAST_MIN_M, EAST_MAX_M, ROWS),
+        )
+        raw = np.rint(
+            FIELD["zeroSample"] + generator.height(north, east) * FIELD["samplesPerMetre"]
+        ).astype("<u2")
         central = raw[
             first[1] : first[1] + generator.ORIGINAL_SAMPLES,
             first[0] : first[0] + generator.ORIGINAL_SAMPLES,
@@ -114,7 +121,15 @@ class Terrain(unittest.TestCase):
             path = ROOT / name
             if path.suffix not in {".py", ".ts", ".tsx", ".mjs", ".cpp", ".h", ".json", ".md"}:
                 continue
-            self.assertIsNone(pattern.search(path.read_text()), name)
+            text = path.read_text()
+            if name == "world/unreal/landmarks.json":
+                # Authored coordinates can meet a boundary without defining the world's extent.
+                document = json.loads(text)
+                validate(document, WORLD)
+                for landmark in document["landmarks"]:
+                    del landmark["geometry"]["points"]
+                text = json.dumps(document)
+            self.assertIsNone(pattern.search(text), name)
         self.assertNotIn("widthMetres", WORLD)
         self.assertNotIn("depthMetres", WORLD)
         self.assertEqual(json.loads((ROOT / "world/cosys/world.json").read_text()), WORLD)
