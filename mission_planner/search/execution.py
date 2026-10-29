@@ -10,8 +10,10 @@ from mission_planner.search.timing import PARAMETERS
 
 
 def flight_label(name, arguments):
-    if name == "notify_ground_team":
+    if name in ("notify_ground_team", "hasty_check_structure"):
         return "Ground team " + arguments["team_id"]
+    if name == "set_last_known_place":
+        return "Last known place " + arguments["place_id"]
     return "Fleet search" if name == "start_search" else arguments["drone_id"]
 
 

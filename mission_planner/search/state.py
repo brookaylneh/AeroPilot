@@ -12,6 +12,7 @@ from PIL import Image
 from mission_planner.search.behavior import DOMAIN, condition, domain_for
 from mission_planner.search.commander import Commander
 from mission_planner.search.grid import make_grid, polygon_areas, validate_area
+from mission_planner.search.occlusion import aerial_visibility
 from mission_planner.search.planner import encode, plan
 from mission_planner.search.prior import initialize
 from mission_planner.search.subject import explicit_point, validate_profile
@@ -42,6 +43,7 @@ class Search:
         self.heatmap = None
         self.heatmap_scale = None
         self.pod = None
+        self.aerial_visible = None
         self.captures = {}
         self.footprints = []
         self.negative_count = 0
@@ -57,7 +59,17 @@ class Search:
         assert not self.mission.approvals, "Resolve pending approval before changing search inputs"
         assert self.status not in ("starting", "running"), "Search is already executing"
 
+    def edit_hypothesis(self):
+        self.editable()
+        assert self.commander.source is None, "Camera source selection locks search inputs"
+        assert self.commander.evidence is None or not self.commander.evidence.ground_checks, (
+            "Confirmed ground evidence locks search inputs"
+        )
+
     def invalidate(self):
+        assert self.commander.evidence is None or not self.commander.evidence.ground_checks, (
+            "A new search hypothesis cannot silently discard confirmed ground evidence"
+        )
         self.plan = None
         self.status = "unplanned"
         self.grid = None
@@ -67,12 +79,12 @@ class Search:
         self.heatmap = None
         self.heatmap_scale = None
         self.pod = None
+        self.aerial_visible = None
         assert not self.captures, "A new search hypothesis cannot silently discard camera evidence"
         self.commander.evidence = None
 
     def mark_point(self, north, east):
-        self.editable()
-        assert self.commander.source is None, "Camera source selection locks search inputs"
+        self.edit_hypothesis()
         assert np.isfinite([north, east]).all()
         from mission_planner.gcs.geodesy import point_in_polygon
 
@@ -103,6 +115,7 @@ class Search:
             fit["behavior"] = None
             if category == "dementia":
                 probability, fit["behavior"] = condition(grid, probability, self.landmarks)
+            visible = None if self.landmarks is None else aerial_visibility(grid, self.landmarks)
             self.grid, self.probability, self.retained, self.prior_fit = (
                 grid,
                 probability,
@@ -110,6 +123,7 @@ class Search:
                 fit,
             )
             self.pod = np.zeros_like(self.probability)
+            self.aerial_visible = visible
             self.model = self.commander.model
             self.commander.initialize_evidence()
             self.render_heatmap()
@@ -198,12 +212,35 @@ class Search:
                     n: {k: r[k] for k in ("length_m", "airborne_seconds", "reserve_seconds")}
                     for n, r in self.plan["routes"].items()
                 },
-                expectation="Conditional on target inside world; stationary, provisional detection model",
+                expectation="Conditional on target inside world; stationary, provisional detection model; zero aerial detection in structure and forest footprints",
             )
         return result
 
     def directions(self, north_m, east_m):
         return None if self.landmarks is None else directions(self.landmarks, north_m, east_m)
+
+    def structure_mass(self, place_id, geometry):
+        self.initialize()
+        return self.commander.evidence.structure_mass(place_id, geometry)
+
+    def confirm_structure_negative(self, delivery_id, place_id, geometry):
+        self.initialize()
+        result = self.commander.evidence.ground_negative(delivery_id, place_id, geometry)
+        self.probability = self.commander.evidence.probability
+        if self.status == "planned":
+            self.plan, self.status = None, "unplanned"
+        self.mission.directory.joinpath("ground-evidence.json").write_text(
+            encode(self.commander.evidence.ground_checks) + "\n"
+        )
+        self.render_heatmap()
+        self.changed()
+        self.mission.event(
+            "ground_evidence",
+            "Operator confirmed structure checked negative",
+            result={"delivery_id": delivery_id, "place_id": place_id, **result},
+            source="operator",
+        )
+        return result
 
     def coverage_summary(self):
         ingestion = self.commander.ingestion
@@ -259,8 +296,7 @@ class Search:
         if name in ("list_detections", "review_detection", "resolve_detection"):
             return await self.commander.execute(name, arguments, source)
         if name == "record_subject_profile":
-            self.editable()
-            assert self.commander.source is None, "Camera source selection locks search inputs"
+            self.edit_hypothesis()
             validate_profile(arguments, self.mission.case["report"])
             self.profile = arguments
             p = explicit_point(arguments)
@@ -275,8 +311,7 @@ class Search:
             self.changed()
             return self.summary()
         if name == "define_search_area":
-            self.editable()
-            assert self.commander.source is None, "Camera source selection locks search inputs"
+            self.edit_hypothesis()
             assert self.mission.fleet_ready
             assert self.profile is not None, (
                 "Record subject profile before defining the search area"

@@ -290,10 +290,26 @@ class Mission:
 
     async def execute(self, name, arguments, source, call_id):
         validate_arguments(name, arguments)
+        if name == "confirm_structure_negative":
+            assert source == "operator", "Only an operator may confirm a structure negative"
+            return self.ground_team.confirm_negative(**arguments)
+        if name == "hasty_check_structure":
+            place = self.ground_team.structure(arguments["place_id"])
+            assert arguments["message"].strip(), "A structure-check message is required"
+            await self.approve(
+                name,
+                arguments,
+                source,
+                call_id,
+                f"Check {place['name']} with ground team {arguments['team_id']} awaiting operator approval",
+            )
+            assert place == self.ground_team.structure(arguments["place_id"]), (
+                "Structure changed during approval"
+            )
+            return self.ground_team.send_structure(**arguments)
         if name == "set_last_known_place":
             search = self.search
-            search.editable()
-            assert search.commander.source is None, "Camera source selection locks search inputs"
+            search.edit_hypothesis()
             assert self.fleet_ready, "MAVLink fleet unavailable"
             location = proposal(
                 search.landmarks,
@@ -309,8 +325,7 @@ class Mission:
                 call_id,
                 "Last known place awaiting operator map approval",
             )
-            search.editable()
-            assert search.commander.source is None, "Camera source selection locks search inputs"
+            search.edit_hypothesis()
             assert location == proposal(
                 search.landmarks,
                 arguments["place_id"],

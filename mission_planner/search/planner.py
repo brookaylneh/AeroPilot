@@ -14,6 +14,7 @@ from mission_planner.gcs.validation import (
 )
 from mission_planner.search.detection import AGL_M, CAPTURE_SPACING_M, track_probability
 from mission_planner.search.grid import inside
+from mission_planner.search.occlusion import aerial_visibility
 from mission_planner.search.terrain import terrain_leg
 from mission_planner.search.timing import SPEED_MPS, landing_seconds, launch_seconds, travel_seconds
 from world.cosys.terrain import WORLD
@@ -326,6 +327,7 @@ def plan(grid, probability, vertices, states, readbacks, model, inputs, landmark
         for s in states.values()
     ), "Planning requires healthy landed fleet"
     homes = {n: s["home"] for n, s in states.items()}
+    probability = probability * aerial_visibility(grid, landmarks)
     candidates = []
     alternatives = []
     for spacing in SPACINGS_M:

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Check, Compass, ExternalLink, MapPin } from 'lucide-react';
 import { z } from 'zod';
-import { deliverySchema, sourceLabel, type Delivery } from './commanderState';
+import { deliverySchema, sourceLabel, type Delivery, type StructureCheck } from './commanderState';
 import { formatProbability } from './display';
 import './commander.css';
 
@@ -11,6 +11,61 @@ const messageSchema = z.discriminatedUnion('type', [
 ]);
 const utc = (ms: number) => new Date(ms).toISOString().replace('T', ' ').replace('Z', ' UTC');
 
+function StructureReport({
+  task,
+  disabled,
+  report,
+}: {
+  task: StructureCheck;
+  disabled: boolean;
+  report: (notes: string) => void;
+}) {
+  const [notes, setNotes] = useState('');
+  if (task.negative_confirmation !== null)
+    return (
+      <section className="team-report">
+        <strong>Negative result confirmed by operator</strong>
+        <p>{task.negative_confirmation.reason}</p>
+        <small>{utc(task.negative_confirmation.confirmed_at_ms)}</small>
+      </section>
+    );
+  if (task.negative_report !== null)
+    return (
+      <section className="team-report">
+        <strong>Negative result sent · awaiting operator confirmation</strong>
+        <p>{task.negative_report.notes}</p>
+        <p className="team-note">The probability map has not changed from this report.</p>
+      </section>
+    );
+  if (task.status !== 'acknowledged') return null;
+  return (
+    <form
+      className="team-report"
+      onSubmit={(event) => {
+        event.preventDefault();
+        report(notes.trim());
+      }}
+    >
+      <label>
+        Negative check report
+        <textarea
+          required
+          maxLength={1000}
+          value={notes}
+          onChange={(event) => setNotes(event.target.value)}
+        />
+      </label>
+      <p className="team-note">
+        Describe the completed check and its limits. The operator must confirm this report before the
+        probability map changes.
+      </p>
+      <button className="team-acknowledge" disabled={disabled || !notes.trim()}>
+        Send negative result
+      </button>
+    </form>
+  );
+}
+
 export default function Team() {
   const query = new URLSearchParams(location.search);
   const caseId = query.get('case'),
@@ -19,7 +74,7 @@ export default function Team() {
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
   const [connection, setConnection] = useState('connecting');
   const [error, setError] = useState('');
-  const [sending, setSending] = useState<string | null>(null);
+  const [sending, setSending] = useState<{ id: string; status: 'sent' | 'acknowledged' } | null>(null);
   useEffect(() => {
     if (!caseId || !z.string().uuid().safeParse(caseId).success || !teamId) {
       setError('A rescue case and ground team ID are required in the receiving-page link.');
@@ -48,17 +103,18 @@ export default function Team() {
         parsed.data.team_id !== teamId ||
         parsed.data.deliveries.some((delivery) => delivery.team_id !== teamId)
       ) {
-        setError('The received lead belongs to another ground team.');
+        setError('The received delivery belongs to another ground team.');
         ws.close(1002, 'Incorrect ground team');
         return;
       }
       setDeliveries(parsed.data.deliveries);
-      const acknowledged = new Set(
-        parsed.data.deliveries
-          .filter((delivery) => delivery.status === 'acknowledged')
-          .map((delivery) => delivery.id),
+      const received = parsed.data.deliveries;
+      setSending((pending) =>
+        pending !== null &&
+        received.some((delivery) => delivery.id === pending.id && delivery.status !== pending.status)
+          ? null
+          : pending,
       );
-      setSending((id) => (id !== null && acknowledged.has(id) ? null : id));
     };
     ws.onerror = () => setError('Connection to mission control failed.');
     ws.onclose = () => setConnection('closed');
@@ -68,13 +124,21 @@ export default function Team() {
       ws.close();
     };
   }, [caseId, teamId]);
-  function acknowledge(id: string) {
+  function send(delivery: Delivery, action: 'acknowledge' | 'report_negative', notes?: string) {
     if (!socket.current || socket.current.readyState !== WebSocket.OPEN) {
-      setError('Mission control is disconnected. Acknowledgement was not sent.');
+      setError('Mission control is disconnected. The action was not sent.');
       return;
     }
-    setSending(id);
-    socket.current.send(JSON.stringify({ type: 'acknowledge', delivery_id: id }));
+    if (delivery.status !== (action === 'acknowledge' ? 'sent' : 'acknowledged'))
+      throw new Error('Invalid receiving-page action state');
+    setSending({ id: delivery.id, status: delivery.status });
+    socket.current.send(
+      JSON.stringify({
+        type: action,
+        delivery_id: delivery.id,
+        ...(action === 'report_negative' ? { notes } : {}),
+      }),
+    );
   }
   return (
     <main className="team-page" data-connection={connection}>
@@ -100,19 +164,32 @@ export default function Team() {
       {deliveries.length === 0 && (
         <section className="team-empty">
           <MapPin size={34} />
-          <h2>Awaiting a confirmed lead</h2>
-          <p>Operator-approved leads will appear here. Open this page on the receiving team's phone.</p>
+          <h2>Awaiting an approved task or lead</h2>
+          <p>Operator-approved deliveries will appear here. Open this page on the receiving team's phone.</p>
         </section>
       )}
       {deliveries.map((delivery) => (
-        <article className="team-lead" key={delivery.id} data-delivery-id={delivery.id}>
+        <article
+          className="team-lead"
+          key={delivery.id}
+          data-delivery-id={delivery.id}
+          data-status={delivery.status}
+        >
           <header>
-            <span>OPERATOR-CONFIRMED LEAD</span>
-            <strong>{sourceLabel(delivery.source)}</strong>
+            <span>
+              {delivery.kind === 'lead' ? 'OPERATOR-CONFIRMED LEAD' : 'OPERATOR-APPROVED STRUCTURE CHECK'}
+            </span>
+            <strong>{delivery.kind === 'lead' ? sourceLabel(delivery.source) : delivery.place_name}</strong>
           </header>
-          <a href={delivery.frame_url} target="_blank" rel="noreferrer">
-            <img className="team-photo" src={delivery.crop_url} alt="Photo evidence of the confirmed lead" />
-          </a>
+          {delivery.kind === 'lead' && (
+            <a href={delivery.frame_url} target="_blank" rel="noreferrer">
+              <img
+                className="team-photo"
+                src={delivery.crop_url}
+                alt="Photo evidence of the confirmed lead"
+              />
+            </a>
+          )}
           <p>{delivery.message}</p>
           <p>{delivery.directions === null ? 'Landmark data unavailable' : delivery.directions.text}</p>
           <dl>
@@ -128,61 +205,78 @@ export default function Team() {
                 {delivery.north_m.toFixed(2)} m north · {delivery.east_m.toFixed(2)} m east
               </dd>
             </div>
-            <div>
-              <dt>Photo captured</dt>
-              <dd>
-                {utc(delivery.timestamp_ms)}
-                <br />
-                {delivery.drone_id}
-                {delivery.replay_lane === null ? '' : ` · replay lane ${delivery.replay_lane}`}
-              </dd>
-            </div>
-            <div>
-              <dt>SAM score / Glimmer P(yes)</dt>
-              <dd>
-                {delivery.sam_confidence.toFixed(4)} / {delivery.glimmer_yes.toFixed(4)}
-              </dd>
-            </div>
-            <div>
-              <dt>Glimmer outside-option mass</dt>
-              <dd>{delivery.glimmer_outside_mass.toFixed(6)}</dd>
-            </div>
-            <div>
-              <dt>Lead-region probability</dt>
-              <dd>
-                {formatProbability(delivery.posterior_mass)} ·{' '}
-                {delivery.calibrated ? 'calibrated person configuration' : 'uncalibrated evidence'}
-                <br />
-                {delivery.region_cell_count} {delivery.region_cell_count === 1 ? 'cell' : 'cells'}{' '}
-                intersecting the 95% ellipse · {delivery.region_area_m2.toFixed(1)} m²
-              </dd>
-            </div>
+            {delivery.kind === 'lead' && (
+              <>
+                <div>
+                  <dt>Photo captured</dt>
+                  <dd>
+                    {utc(delivery.timestamp_ms)}
+                    <br />
+                    {delivery.drone_id}
+                    {delivery.replay_lane === null ? '' : ` · replay lane ${delivery.replay_lane}`}
+                  </dd>
+                </div>
+                <div>
+                  <dt>SAM score / Glimmer P(yes)</dt>
+                  <dd>
+                    {delivery.sam_confidence.toFixed(4)} / {delivery.glimmer_yes.toFixed(4)}
+                  </dd>
+                </div>
+                <div>
+                  <dt>Glimmer outside-option mass</dt>
+                  <dd>{delivery.glimmer_outside_mass.toFixed(6)}</dd>
+                </div>
+                <div>
+                  <dt>Lead-region probability</dt>
+                  <dd>
+                    {formatProbability(delivery.posterior_mass)} ·{' '}
+                    {delivery.calibrated ? 'calibrated person configuration' : 'uncalibrated evidence'}
+                    <br />
+                    {delivery.region_cell_count} {delivery.region_cell_count === 1 ? 'cell' : 'cells'}{' '}
+                    intersecting the 95% ellipse · {delivery.region_area_m2.toFixed(1)} m²
+                  </dd>
+                </div>
+              </>
+            )}
             <div>
               <dt>Delivered</dt>
               <dd>{utc(delivery.sent_at_ms)}</dd>
             </div>
           </dl>
           <p className="team-note">
-            Model scores describe the photo evidence. Confirmation of the lead was made by the operator.
+            {delivery.kind === 'lead'
+              ? 'Model scores describe the photo evidence. Confirmation of the lead was made by the operator.'
+              : 'Coordinates identify the first mapped footprint vertex, not an entrance. Check the named structure.'}
           </p>
           <a className="team-navigation" href={delivery.navigation_url} target="_blank" rel="noreferrer">
             <ExternalLink size={17} /> Open walking navigation
           </a>
-          {delivery.status === 'acknowledged' ? (
+          {delivery.acknowledged_at_ms !== null ? (
             <p className="team-acknowledged">
               <Check size={19} /> Acknowledged by this receiving page
               <br />
-              <time>{utc(delivery.acknowledged_at_ms!)}</time>
+              <time>{utc(delivery.acknowledged_at_ms)}</time>
             </p>
           ) : (
             <button
               className="team-acknowledge"
-              disabled={connection !== 'connected' || sending === delivery.id}
-              onClick={() => acknowledge(delivery.id)}
+              disabled={connection !== 'connected' || sending?.id === delivery.id}
+              onClick={() => send(delivery, 'acknowledge')}
             >
               <Check size={18} />
-              {sending === delivery.id ? 'Sending acknowledgement…' : 'Acknowledge lead'}
+              {sending?.id === delivery.id
+                ? 'Sending acknowledgement…'
+                : delivery.kind === 'lead'
+                  ? 'Acknowledge lead'
+                  : 'Acknowledge task'}
             </button>
+          )}
+          {delivery.kind === 'structure_check' && (
+            <StructureReport
+              task={delivery}
+              disabled={connection !== 'connected' || sending?.id === delivery.id}
+              report={(notes) => send(delivery, 'report_negative', notes)}
+            />
           )}
         </article>
       ))}

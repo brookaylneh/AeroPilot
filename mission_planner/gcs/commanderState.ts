@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { placeGeometry } from './placeState';
 
 const number = z.number().finite();
 const probability = number.min(0).max(1);
@@ -65,9 +66,10 @@ const clusterSchema = z.object({
   ellipse_area_fraction: probability,
   directions: directions.nullable(),
 });
-export const deliverySchema = z
+const leadDeliverySchema = z
   .object({
     id: z.string(),
+    kind: z.literal('lead'),
     team_id: z.string(),
     detection_id: z.string(),
     message: z.string(),
@@ -94,10 +96,50 @@ export const deliverySchema = z
     replay_lane: z.string().nullable(),
     navigation_url: z.string().url(),
   })
+  .strict()
   .refine(
     (delivery) => (delivery.status === 'acknowledged') === (delivery.acknowledged_at_ms !== null),
     'Delivery acknowledgement state and time disagree',
   );
+const structureCheckSchema = z
+  .object({
+    id: z.string(),
+    kind: z.literal('structure_check'),
+    team_id: z.string(),
+    message: z.string(),
+    status: z.enum(['sent', 'acknowledged', 'negative_reported', 'negative_confirmed']),
+    sent_at_ms: number,
+    acknowledged_at_ms: number.nullable(),
+    place_id: z.string(),
+    place_name: z.string(),
+    geometry: placeGeometry.refine((geometry) => geometry.type === 'polygon', 'Structure must be a polygon'),
+    mass_at_dispatch: probability,
+    north_m: number,
+    east_m: number,
+    latitude_deg: number.min(-90).max(90),
+    longitude_deg: number.min(-180).max(180),
+    directions,
+    navigation_url: z.string().url(),
+    negative_report: z.object({ reported_at_ms: number, notes: z.string().min(1) }).nullable(),
+    negative_confirmation: z
+      .object({
+        confirmed_at_ms: number,
+        reason: z.string().min(1),
+        belief_update: z
+          .object({ removed_mass: probability, retained_mass: probability.positive() })
+          .refine(({ removed_mass, retained_mass }) => Math.abs(removed_mass + retained_mass - 1) < 1e-9),
+      })
+      .nullable(),
+  })
+  .strict()
+  .refine(
+    (task) =>
+      (task.status !== 'sent') === (task.acknowledged_at_ms !== null) &&
+      ['negative_reported', 'negative_confirmed'].includes(task.status) === (task.negative_report !== null) &&
+      (task.status === 'negative_confirmed') === (task.negative_confirmation !== null),
+    'Structure check status and report state disagree',
+  );
+export const deliverySchema = z.discriminatedUnion('kind', [leadDeliverySchema, structureCheckSchema]);
 export const commanderSchema = z
   .object({
     source: source.nullable(),
@@ -158,5 +200,6 @@ export type CommanderState = z.infer<typeof commanderSchema>;
 export type Detection = z.infer<typeof detectionSchema>;
 export type Cluster = z.infer<typeof clusterSchema>;
 export type Delivery = z.infer<typeof deliverySchema>;
+export type StructureCheck = z.infer<typeof structureCheckSchema>;
 export const sourceLabel = (value: 'live' | 'recorded') =>
   value === 'recorded' ? 'Recorded frames' : 'Live coupled captures';

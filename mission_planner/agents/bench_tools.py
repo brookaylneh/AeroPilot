@@ -283,8 +283,23 @@ CASES += [
         "The find_place result for 'Unlisted Saddle' has no matches and known_names ['North Bridge', 'Creek Loop']. Present those names and ask me to choose or mark the map; keep this response to that clarification.",
         [],
     ),
+    (
+        "The authored structure id is ranger-cabin and the probability map is initialized. Propose a hasty structure check for ground team alpha with message 'Check the cabin and report findings'. Present the operator approval.",
+        [
+            call(
+                "hasty_check_structure",
+                place_id="ranger-cabin",
+                team_id="alpha",
+                message="Check the cabin and report findings",
+            )
+        ],
+    ),
+    (
+        "Ground team alpha acknowledged structure task check-1 and reported it checked-negative. I have not confirmed that report. Explain the operator confirmation action; keep the current belief unchanged and make no tool calls.",
+        [],
+    ),
 ]
-assert len(CASES) == 52
+assert len(CASES) == 54
 
 
 def run(output, first_case):

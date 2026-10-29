@@ -135,7 +135,15 @@ export const searchSchema = z.object({
     z.object({
       id: z.string(),
       vertices: z.array(searchPoint),
-      outcome: z.enum(['unprocessed', 'negative', 'positive', 'uncalibrated', 'repeated', 'failed']),
+      outcome: z.enum([
+        'unprocessed',
+        'negative',
+        'positive',
+        'uncalibrated',
+        'no_detection_credit',
+        'repeated',
+        'failed',
+      ]),
     }),
   ),
 });

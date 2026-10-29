@@ -7,7 +7,7 @@ from mission_planner.agents.tools import TOOLS, validate_arguments
 
 class ToolContracts(unittest.TestCase):
     def test_registry_has_only_available_subsystems(self):
-        self.assertEqual(len(TOOLS), 25)
+        self.assertEqual(len(TOOLS), 27)
         self.assertNotIn("open_feed", [t["name"] for t in TOOLS])
 
     def test_all_drone_query_requires_json_null(self):
@@ -59,6 +59,18 @@ class ToolContracts(unittest.TestCase):
             validate_arguments("take_off", {"drone_id": "Drone1", "altitude_above_home_m": 121})
         with self.assertRaisesRegex(AssertionError, "Unrecognized arguments"):
             validate_arguments("hold", {"drone_id": "Drone1", "force": True})
+
+    def test_structure_check_requires_exact_place_team_message_and_operator_reason(self):
+        validate_arguments(
+            "hasty_check_structure", {"place_id": "cabin", "team_id": "alpha", "message": "Check"}
+        )
+        validate_arguments(
+            "confirm_structure_negative", {"delivery_id": "task", "reason": "Complete check"}
+        )
+        with self.assertRaises(AssertionError):
+            validate_arguments("hasty_check_structure", {"place_id": "cabin", "message": "Check"})
+        with self.assertRaises(AssertionError):
+            validate_arguments("confirm_structure_negative", {"delivery_id": "task"})
 
 
 if __name__ == "__main__":

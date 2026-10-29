@@ -184,6 +184,7 @@ class Planner(unittest.TestCase):
                 "grid",
                 "planner",
                 "places",
+                "occlusion",
                 "prior",
                 "relook",
                 "state",

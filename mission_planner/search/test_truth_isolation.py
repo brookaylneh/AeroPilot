@@ -47,6 +47,8 @@ from mission_planner.agents.perception.pipeline import Processor
 from mission_planner.search.belief import Evidence
 from mission_planner.search.behavior import condition, domain_for
 from mission_planner.search.detections import Detections
+from mission_planner.search.coverage import capture_pod
+from mission_planner.search.occlusion import aerial_visibility, footprint_fraction
 from mission_planner.search.places import location_support, proposal
 from mission_planner.search.prior import initialize
 from world.cosys.landmarks import directions, find, load, WORLD_PATH
@@ -107,6 +109,28 @@ behavior, details = condition(grid, prior, load(landmark_path))
 assert domain_for('dementia') == 'temperate_mountainous'
 assert np.isfinite(behavior).all() and abs(float(behavior.sum())-1) < 1e-9
 assert details['unresolved_weight'] == .2
+visible = aerial_visibility(grid, features)
+assert visible.any() and (~visible).any()
+pod, footprint = capture_pod(record, grid, model, visible)
+assert (pod[~visible] == 0).all() and (pod[visible] > 0).any()
+ground_evidence = Evidence(behavior, grid, model['false_alarm_rate'])
+ground_ledger = Detections()
+ground_ledger.add_frame('checked-camera', [])
+ground_evidence.apply('checked-camera', pod, footprint, ground_ledger, True)
+assert (ground_evidence.maximum_pod[~visible] == 0).all()
+structure = next(feature for feature in features if feature['kind'] == 'structure')
+fractions = footprint_fraction(grid, structure['geometry'])
+expected_removed = float(ground_evidence.probability @ fractions)
+camera_history = ground_evidence.maximum_pod.copy()
+effect = ground_evidence.ground_negative('operator-confirmed-task', structure['id'], structure['geometry'])
+assert abs(effect['removed_mass'] - expected_removed) < 1e-12
+assert abs(effect['removed_mass'] + effect['retained_mass'] - 1) < 1e-12
+assert ground_evidence.structure_mass(structure['id'], structure['geometry']) == 0
+np.testing.assert_array_equal(ground_evidence.prior, behavior)
+np.testing.assert_array_equal(ground_evidence.maximum_pod, camera_history)
+ground_evidence.recompute()
+assert abs(float(ground_evidence.probability.sum()) - 1) < 1e-9
+assert ground_evidence.structure_mass(structure['id'], structure['geometry']) == 0
 for level in ('document', 'landmark', 'geometry', 'point'):
     for field in ('subject', 'clue'):
         poison = copy.deepcopy(document)

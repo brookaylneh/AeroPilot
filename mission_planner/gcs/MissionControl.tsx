@@ -28,7 +28,8 @@ import MissionMap from './MissionMap';
 import SearchPanel from './SearchPanel';
 import SearchApproval from './SearchApproval';
 import PlaceApproval from './PlaceApproval';
-import { placeArguments } from './placeState';
+import { GroundCheckApproval } from './GroundChecks';
+import { placeArguments, structureCheckArguments } from './placeState';
 import EvidenceCard from './EvidenceCard';
 import type { SearchPoint } from './searchState';
 import RouteApproval from './RouteApproval';
@@ -178,7 +179,11 @@ export default function MissionControl() {
   const approval = state?.approvals[0];
   const pendingRoute = approval?.name === 'fly_route' ? routeArgumentsSchema.parse(approval.arguments) : null;
   const pendingPlaceId =
-    approval?.name === 'set_last_known_place' ? placeArguments.parse(approval.arguments).place_id : null;
+    approval?.name === 'set_last_known_place'
+      ? placeArguments.parse(approval.arguments).place_id
+      : approval?.name === 'hasty_check_structure'
+        ? structureCheckArguments.parse(approval.arguments).place_id
+        : null;
   const pendingPlace = search?.landmarks?.find((place) => place.id === pendingPlaceId) ?? null;
   const [selected, setSelected] = useState<DroneId>('Drone1');
   const [view, setView] = useState<'map' | 'video'>('map');
@@ -389,6 +394,7 @@ export default function MissionControl() {
               {view === 'map' && (
                 <SearchPanel
                   search={search}
+                  caseId={caseId!}
                   send={send}
                   marking={marking}
                   setMarking={(value) => {
@@ -774,14 +780,20 @@ export default function MissionControl() {
                     <strong>Awaiting approval</strong>
                     {approval.name === 'start_search' ? (
                       <span>All aircraft</span>
+                    ) : ['hasty_check_structure', 'notify_ground_team'].includes(approval.name) ? (
+                      <span>Ground team {String(approval.arguments.team_id)}</span>
                     ) : (
                       <DroneLabel value={approval.arguments.drone_id} />
                     )}
                   </header>
                   <p>{approvalSentence(approval.name, approval.arguments)}</p>
-                  {approval.name === 'set_last_known_place' ? (
+                  {['set_last_known_place', 'hasty_check_structure'].includes(approval.name) ? (
                     pendingPlace ? (
-                      <PlaceApproval place={pendingPlace} arguments={approval.arguments} />
+                      approval.name === 'set_last_known_place' ? (
+                        <PlaceApproval place={pendingPlace} arguments={approval.arguments} />
+                      ) : (
+                        <GroundCheckApproval place={pendingPlace} arguments={approval.arguments} />
+                      )
                     ) : (
                       <p role="alert">Landmark unavailable. Decline this request.</p>
                     )
@@ -801,7 +813,9 @@ export default function MissionControl() {
                     Requested by {approval.source === 'agent' ? 'Wonder' : 'operator controls'}.{' '}
                     {approval.name === 'set_last_known_place'
                       ? 'Check the highlighted place and briefing quote on the map.'
-                      : 'Safety checks run before execution.'}
+                      : approval.name === 'hasty_check_structure'
+                        ? 'Check the highlighted structure and receiving team before dispatch.'
+                        : 'Safety checks run before execution.'}
                   </small>
                   <div className="gcs-approval-buttons">
                     <button
@@ -812,7 +826,11 @@ export default function MissionControl() {
                     </button>
                     <button
                       className="gcs-primary"
-                      disabled={!enabled || (approval.name === 'set_last_known_place' && !pendingPlace)}
+                      disabled={
+                        !enabled ||
+                        (['set_last_known_place', 'hasty_check_structure'].includes(approval.name) &&
+                          !pendingPlace)
+                      }
                       onClick={() => send({ type: 'approval', id: approval.id, approved: true })}
                     >
                       <Check size={15} />
@@ -820,7 +838,9 @@ export default function MissionControl() {
                         ? 'Approve place'
                         : approval.name === 'notify_ground_team'
                           ? 'Approve delivery'
-                          : 'Approve flight'}
+                          : approval.name === 'hasty_check_structure'
+                            ? 'Approve ground check'
+                            : 'Approve flight'}
                     </button>
                   </div>
                 </section>

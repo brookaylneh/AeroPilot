@@ -1,5 +1,6 @@
 """Maximum-look negatives and one capped positive factor per reference frame."""
 
+import copy
 import math
 
 import numpy as np
@@ -11,7 +12,9 @@ from mission_planner.agents.perception.localization import (
     ellipse_weights,
     gaussian_cells,
 )
+from mission_planner.gcs.validation import footprint_intervals
 from mission_planner.search.grid import area
+from mission_planner.search.occlusion import footprint_fraction
 
 
 def validate_probability(probability):
@@ -35,9 +38,12 @@ def negative_update(probability, previous_pod, frame_pod):
         out=np.zeros_like(cumulative),
         where=previous_pod < 1,
     )
-    denominator = 1 - float(probability @ increment)
+    if not increment.any():
+        return probability.copy(), cumulative
+    weights = probability * (1 - increment)
+    denominator = float(weights.sum())
     assert denominator > 0, "Negative observation contradicts entire belief"
-    updated = probability * (1 - increment) / denominator
+    updated = weights / denominator
     validate_probability(updated)
     return updated, cumulative
 
@@ -83,13 +89,15 @@ class Evidence:
         self.prior, self.probability = prior.copy(), prior.copy()
         self.grid, self.clutter_rate = grid, clutter_rate
         self.maximum_pod = np.zeros_like(prior)
+        self.ground_pod = np.zeros_like(prior)
+        self.ground_checks = {}
         self.reserved = np.zeros(len(prior), dtype=bool)
         self.factors, self.frames, self.images = {}, set(), set()
 
     def recompute(self):
         values = np.full_like(self.prior, -np.inf)
         np.log(self.prior, out=values, where=self.prior > 0)
-        survival = 1 - self.maximum_pod
+        survival = (1 - self.maximum_pod) * (1 - self.ground_pod)
         logs = np.full_like(values, -np.inf)
         np.log(survival, out=logs, where=survival > 0)
         values += logs
@@ -174,7 +182,7 @@ class Evidence:
                     contains = ((self.grid["low"] <= point) & (point < self.grid["high"])).all(
                         axis=1
                     )
-                    if not (region & contains).any():
+                    if not (region & contains & (pod > 0)).any():
                         continue
                     kernel, retained = gaussian_cells(point, matrix, self.grid)
                     members[identity] = {
@@ -183,6 +191,8 @@ class Evidence:
                         "kernel": kernel,
                         "retained_mass": retained,
                     }
+                if not members:
+                    kind = "no_detection_credit"
                 if members:
                     region = np.logical_or.reduce([value["region"] for value in members.values()])
                     positive_pod = pod[pod > 0]
@@ -211,6 +221,47 @@ class Evidence:
             "credited_cluster_ids": credited,
             "probability_change": float(np.abs(self.probability - before).sum() / 2),
         }
+
+    def structure_mass(self, place_id, geometry):
+        if place_id in self.ground_checks:
+            assert self.ground_checks[place_id]["geometry"] == geometry
+            return 0.0
+        fraction = footprint_fraction(self.grid, geometry)
+        remaining = 1 - self.ground_pod
+        return float(
+            self.probability
+            @ np.divide(fraction, remaining, out=np.zeros_like(fraction), where=remaining > 0)
+        )
+
+    def ground_negative(self, delivery_id, place_id, geometry):
+        assert place_id not in self.ground_checks, "Structure already confirmed negative"
+        polygon = [{"north_m": p["x"] / 100, "east_m": p["y"] / 100} for p in geometry["points"]]
+        for previous in self.ground_checks.values():
+            other = [
+                {"north_m": p["x"] / 100, "east_m": p["y"] / 100}
+                for p in previous["geometry"]["points"]
+            ]
+            assert not any(
+                footprint_intervals(a, b, other) for a, b in zip(polygon, polygon[1:] + polygon[:1])
+            ) and not any(
+                footprint_intervals(a, b, polygon) for a, b in zip(other, other[1:] + other[:1])
+            ), "Confirmed structure footprints must be disjoint and non-touching"
+        fraction = footprint_fraction(self.grid, geometry)
+        assert fraction.any(), "Structure footprint has no in-world area"
+        cumulative = self.ground_pod + fraction
+        assert (cumulative <= 1 + 1e-9).all()
+        cumulative = np.minimum(cumulative, 1)
+        expected, cumulative = negative_update(self.probability, self.ground_pod, cumulative)
+        removed = self.structure_mass(place_id, geometry)
+        self.ground_pod = cumulative
+        self.ground_checks[place_id] = {
+            "delivery_id": delivery_id,
+            "geometry": copy.deepcopy(geometry),
+            "removed_mass": removed,
+        }
+        self.recompute()
+        assert np.allclose(self.probability, expected, rtol=1e-12, atol=1e-15)
+        return {"removed_mass": removed, "retained_mass": 1 - removed}
 
     def resolve(self, ledger):
         before = self.probability.copy()

@@ -351,7 +351,8 @@
   stroke: #efc67a;
   fill: #efc67a10;
 }
-.gcs-covered-footprint.uncalibrated {
+.gcs-covered-footprint.uncalibrated,
+.gcs-covered-footprint.no_detection_credit {
   stroke: #c59bc8;
 }
 .gcs-covered-footprint.repeated {
@@ -493,4 +494,25 @@
 }
 .team-acknowledged time {
   font-size: 11px;
+}
+.team-report {
+  margin-top: 20px;
+  border-top: 1px solid #35473f;
+  padding-top: 16px;
+}
+.team-report label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.team-report textarea {
+  min-height: 100px;
+  width: 100%;
+  resize: vertical;
+  padding: 10px;
+  color: inherit;
+  font: inherit;
+  border: 1px solid #6b8b7a;
+  border-radius: 5px;
+  background: #10191b;
 }

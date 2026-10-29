@@ -174,7 +174,7 @@ class LandmarkTests(unittest.TestCase):
         self.assertAlmostEqual(result["nearest"]["distance_m"], 2)
         self.assertEqual(result["nearest"]["point"], {"north_m": 7, "east_m": 40})
         self.assertEqual(result["linear"]["side"], "west")
-        self.assertIn("west bank of Creek", result["text"])
+        self.assertEqual(result["text"], "2.0 m from Creek, on its west bank")
         self.document["landmarks"][1]["geometry"]["points"].reverse()
         self.assertEqual(directions(validate(self.document, self.world), 7, 38), result)
 
@@ -191,11 +191,14 @@ class LandmarkTests(unittest.TestCase):
             feature("track", "Track", "trail", "polyline", [(-10, 0), (10, 0)])
         ]
         landmarks = validate(self.document, self.world)
-        self.assertEqual(directions(landmarks, 0, 0)["linear"]["side"], "on")
+        on_line = directions(landmarks, 0, 0)
+        self.assertEqual(on_line["linear"]["side"], "on")
+        self.assertEqual(on_line["text"], "On Track")
         result = directions(landmarks, 11, 0)
         self.assertEqual(result["linear"]["side"], "beyond endpoint")
         self.assertAlmostEqual(result["nearest"]["distance_m"], 1)
-        self.assertIn("east side of Track", directions(landmarks, 0, 1)["text"])
+        self.assertEqual(result["text"], "1.0 m north beyond an endpoint of Track")
+        self.assertEqual(directions(landmarks, 0, 1)["text"], "1.0 m from Track, on its east side")
 
     def test_internal_bends_and_closed_loops_are_not_line_endpoints(self):
         for coordinates in (

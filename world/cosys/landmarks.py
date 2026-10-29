@@ -210,12 +210,21 @@ def directions(landmarks, north_m, east_m):
     if line is not None:
         relation = "bank" if line["kind"] == "creek" else "side"
         side = line["side"]
-        suffix = (
-            f"on {line['name']}"
-            if side == "on"
-            else f"beyond an endpoint of {line['name']}"
-            if side == "beyond endpoint"
-            else f"{side} {relation} of {line['name']}"
-        )
-        text += "; " + suffix
+        if nearest["id"] == line["id"]:
+            text = (
+                f"On {line['name']}"
+                if side == "on"
+                else f"{line['distance_m']:.1f} m {line['compass']} beyond an endpoint of {line['name']}"
+                if side == "beyond endpoint"
+                else f"{line['distance_m']:.1f} m from {line['name']}, on its {side} {relation}"
+            )
+        else:
+            suffix = (
+                f"on {line['name']}"
+                if side == "on"
+                else f"beyond an endpoint of {line['name']}"
+                if side == "beyond endpoint"
+                else f"{side} {relation} of {line['name']}"
+            )
+            text += "; " + suffix
     return {"text": text, "nearest": nearest, "linear": line}

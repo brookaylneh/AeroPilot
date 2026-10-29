@@ -220,7 +220,10 @@ class Commander:
         positive = any(d["calibrated"] and d["qualified"] for d in result["detections"])
         if calibrated:
             pod, footprint = capture_pod(
-                result["record"], search.grid, self.model if positive else self.negative_model
+                result["record"],
+                search.grid,
+                self.model if positive else self.negative_model,
+                search.aerial_visible,
             )
         else:
             pod, footprint = np.zeros_like(search.probability), []

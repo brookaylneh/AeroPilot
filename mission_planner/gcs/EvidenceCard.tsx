@@ -83,8 +83,8 @@ export default function EvidenceCard({
   const [x1, y1, x2, y2] = selected.box_xyxy;
   const nativeScale = 1920 / selected.frame_size[0];
   const near = review.localization.ground;
-  const deliveries = commander.deliveries.filter((delivery) =>
-    review.member_ids.includes(delivery.detection_id),
+  const deliveries = commander.deliveries.filter(
+    (delivery) => delivery.kind === 'lead' && review.member_ids.includes(delivery.detection_id),
   );
   return (
     <article

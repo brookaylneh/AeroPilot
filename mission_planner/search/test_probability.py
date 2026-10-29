@@ -79,7 +79,9 @@ class Probability(unittest.TestCase):
         frame = json.loads(
             (ROOT / ".local/data/calibration/adult-kelvin/frame-00-+00-Drone1.json").read_text()
         )
-        pod, footprint = capture_pod(frame, self.grid, self.model)
+        pod, footprint = capture_pod(
+            frame, self.grid, self.model, np.ones(len(self.grid["areas"]), dtype=bool)
+        )
         self.assertEqual(len(footprint), 4)
         self.assertGreater(float(pod.sum()), 0)
         p, _, _ = initialize(self.grid, {"north_m": 0, "east_m": 0}, "hiker", "australian_mixed")
@@ -94,7 +96,10 @@ class Probability(unittest.TestCase):
             json.loads((ROOT / ".local/data/calibration/adult-kelvin" / name).read_text())
             for name in ("frame-00-+00-Drone1.json", "frame-04-+00-Drone1.json")
         ]
-        pods = [capture_pod(f, self.grid, self.model)[0] for f in frames]
+        pods = [
+            capture_pod(f, self.grid, self.model, np.ones(len(self.grid["areas"]), dtype=bool))[0]
+            for f in frames
+        ]
         p, _, _ = initialize(self.grid, {"north_m": 0, "east_m": 0}, "hiker", "australian_mixed")
         a, m = negative_update(p, np.zeros_like(p), pods[0])
         a, m = negative_update(a, m, pods[1])

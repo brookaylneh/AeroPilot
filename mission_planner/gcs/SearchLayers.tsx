@@ -24,7 +24,9 @@ const Geometry = memo(function Geometry({ search }: { search: SearchState }) {
       {search.footprints.map((f) => (
         <polygon key={f.id} points={points(f.vertices)} className={`gcs-covered-footprint ${f.outcome}`}>
           <title>
-            {f.outcome === 'unprocessed' ? 'Captured; unprocessed' : `Frame outcome: ${f.outcome}`}
+            {f.outcome === 'unprocessed'
+              ? 'Captured; unprocessed'
+              : `Frame outcome: ${f.outcome.replaceAll('_', ' ')}`}
           </title>
         </polygon>
       ))}

@@ -46,6 +46,8 @@ const titles: Record<string, string> = {
   resolve_detection: 'Resolve evidence',
   relook_detection: 'Re-look at evidence',
   notify_ground_team: 'Deliver ground-team lead',
+  hasty_check_structure: 'Request structure check',
+  confirm_structure_negative: 'Confirm negative structure check',
 };
 function waypointCount(count: number) {
   return `${count} ${count === 1 ? 'waypoint' : 'waypoints'}`;
@@ -62,6 +64,8 @@ export function actionTitle(name: string, args: Record<string, unknown>) {
 export function approvalSentence(name: string, args: Record<string, unknown>) {
   if (name === 'set_last_known_place') return 'Set the last known location from the highlighted place';
   if (name === 'notify_ground_team') return `Deliver the confirmed lead to ground team ${args.team_id}`;
+  if (name === 'hasty_check_structure')
+    return `Ask ground team ${args.team_id} to check the highlighted structure`;
   if (name === 'relook_detection')
     return `Fly ${args.drone_id} to the evidence location at ${args.altitude_agl_m} m above ground and hold for ${args.hold_seconds} s`;
   if (name === 'start_search') return 'Fly the approved search with all four aircraft';

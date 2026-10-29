@@ -315,6 +315,7 @@
   stroke-linejoin: round;
 }
 .gcs-landmark.is-proposed > polyline,
+.gcs-landmark.is-proposed > polygon,
 .gcs-landmark.is-proposed > circle {
   stroke: #f6d276;
   stroke-width: 3;
@@ -375,4 +376,48 @@
 .gcs-source-domain > p {
   margin: 0;
   color: #e0c697;
+}
+
+.gcs-ground-checks form,
+.gcs-ground-checks label,
+.gcs-ground-check {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.gcs-ground-checks form {
+  margin: 8px 0;
+}
+.gcs-ground-checks input,
+.gcs-ground-checks textarea,
+.gcs-ground-checks select {
+  width: 100%;
+  min-width: 0;
+  padding: 7px;
+  color: inherit;
+  background: #10181b;
+  border: 1px solid var(--gcs-line);
+  border-radius: 4px;
+}
+.gcs-ground-checks textarea {
+  min-height: 70px;
+  resize: vertical;
+}
+.gcs-ground-check {
+  border-top: 1px solid var(--gcs-line);
+  padding: 10px 0;
+}
+.gcs-ground-check > span {
+  color: var(--gcs-warn);
+  text-transform: uppercase;
+  font-size: 10px;
+}
+.gcs-ground-check a {
+  color: #b6d5cd;
+  text-decoration: underline;
+}
+.gcs-ground-check blockquote {
+  margin: 0;
+  padding-left: 8px;
+  border-left: 2px solid var(--gcs-line);
 }

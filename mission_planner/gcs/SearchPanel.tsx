@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Crosshair, Search, ChevronDown, RectangleHorizontal } from 'lucide-react';
 import type { SearchPoint, SearchState } from './searchState';
 import CapturePanel from './CapturePanel';
+import GroundChecks from './GroundChecks';
 import { formatProbability } from './display';
 import './search.css';
 
@@ -16,6 +17,7 @@ export default function SearchPanel({
   cancelDrawing,
   enabled,
   review,
+  caseId,
 }: {
   search: SearchState | null;
   send: (m: Record<string, unknown>) => void;
@@ -27,6 +29,7 @@ export default function SearchPanel({
   cancelDrawing: () => void;
   enabled: boolean;
   review: () => void;
+  caseId: string;
 }) {
   const [open, setOpen] = useState(true);
   const [areaOpen, setAreaOpen] = useState(true);
@@ -339,6 +342,7 @@ export default function SearchPanel({
             }
             review={review}
           />
+          <GroundChecks search={search} caseId={caseId} enabled={enabled} send={send} />
           <div className="gcs-search-actions">
             <button
               disabled={!editable || domain === null || !search.point || !search.vertices}

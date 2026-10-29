@@ -7,7 +7,8 @@ from mission_planner.search.detection import AGL_M, positional_probability
 from world.cosys.terrain import terrain_height
 
 
-def capture_pod(frame, grid, model):
+def capture_pod(frame, grid, model, visible):
+    assert visible is not None and visible.shape == grid["areas"].shape and visible.dtype == bool
     camera = Camera(frame)
     agl = camera.world["z"] - terrain_height(camera.world["x"], camera.world["y"])
     assert abs(agl - AGL_M) <= 2, "Capture outside nominal calibration flight band"
@@ -27,7 +28,8 @@ def capture_pod(frame, grid, model):
     north = [p["x"] for p in corners]
     east = [p["y"] for p in corners]
     ids = np.flatnonzero(
-        (points[:, 0] >= min(north))
+        visible
+        & (points[:, 0] >= min(north))
         & (points[:, 0] <= max(north))
         & (points[:, 1] >= min(east))
         & (points[:, 1] <= max(east))

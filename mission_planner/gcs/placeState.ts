@@ -47,6 +47,13 @@ export const placeArguments = z
     evidence: z.array(z.object({ field: z.string(), quote: z.string().min(1) }).strict()).min(1),
   })
   .strict();
+export const structureCheckArguments = z
+  .object({
+    place_id: z.string().min(1),
+    team_id: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
+    message: z.string().trim().min(1).max(1000),
+  })
+  .strict();
 export type Landmark = z.infer<typeof landmarkSchema>;
 
 export function placeAnchor(landmark: Landmark) {
