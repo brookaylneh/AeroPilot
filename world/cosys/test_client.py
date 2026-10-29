@@ -1,5 +1,6 @@
 """Offline geometry and telemetry checks. Never calls the simulator."""
 
+import copy
 import json
 import math
 import tempfile
@@ -69,6 +70,52 @@ class CoordinateTests(unittest.TestCase):
             path.write_text(json.dumps(report))
             with self.assertRaisesRegex(RuntimeError, "stale"):
                 client.native()
+
+
+class GroundContactTests(unittest.TestCase):
+    def sample(self):
+        p = client.home("Drone1")
+        p["x"] -= 1.2521
+        p["z"] = (
+            client.WORLD["port"]["centerUeCm"]["z"] / 100
+            + client.WORLD["port"]["dimensionsMetres"][2] / 2
+            + 0.043
+        )
+        return {
+            "positionWorldM": p,
+            "velocityLocalNedMps": dict(x=0, y=0, z=0),
+            "collision": {"timestampNs": 200, "normalLocalNed": dict(x=0, y=0, z=-1)},
+        }
+
+    def test_stationary_platform_contact_outside_home_radius(self):
+        self.assertTrue(client.on_platform(self.sample(), 100))
+
+    def test_contact_rejects_stale_hit_motion_height_and_platform_edges(self):
+        valid = self.sample()
+        cases = []
+        stale = copy.deepcopy(valid)
+        stale["collision"]["timestampNs"] = 99
+        cases.append(stale)
+        wall = copy.deepcopy(valid)
+        wall["collision"]["normalLocalNed"] = dict(x=1, y=0, z=0)
+        cases.append(wall)
+        moving = copy.deepcopy(valid)
+        moving["velocityLocalNedMps"]["z"] = 0.2
+        cases.append(moving)
+        airborne = copy.deepcopy(valid)
+        airborne["positionWorldM"]["z"] += 1
+        cases.append(airborne)
+        port = client.WORLD["port"]
+        for axis, dimension in zip("xy", port["dimensionsMetres"][:2]):
+            for direction in (-1, 1):
+                edge = copy.deepcopy(valid)
+                edge["positionWorldM"][axis] = port["centerUeCm"][axis] / 100 + direction * (
+                    dimension / 2 + 0.01
+                )
+                cases.append(edge)
+        for index, sample in enumerate(cases):
+            with self.subTest(case=index):
+                self.assertFalse(client.on_platform(sample, 100))
 
 
 if __name__ == "__main__":

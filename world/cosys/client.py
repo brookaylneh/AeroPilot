@@ -302,6 +302,22 @@ def entry_axis():
     return {"south": "x", "west": "y"}[WORLD["port"]["boundary"]]
 
 
+def on_platform(s, started):
+    # Collision reads clear has_collided; the timestamp and contact normal survive.
+    port = WORLD["port"]
+    center = {k: v / 100 for k, v in port["centerUeCm"].items()}
+    width, depth, thickness = port["dimensionsMetres"]
+    p = s["positionWorldM"]
+    return (
+        s["collision"]["timestampNs"] >= started
+        and s["collision"]["normalLocalNed"]["z"] < -0.9
+        and abs(p["x"] - center["x"]) < width / 2
+        and abs(p["y"] - center["y"]) < depth / 2
+        and abs(p["z"] - (center["z"] + thickness / 2)) < 0.3
+        and distance(s["velocityLocalNedMps"], dict(x=0, y=0, z=0)) < 0.1
+    )
+
+
 def land(name):
     c = connect()
     started = state(c, name)["timestampNs"]
@@ -320,25 +336,10 @@ def land(name):
     deadline = time.monotonic() + 8
     s = state(c, name)
 
-    def on_platform(s):
-        # Cosys simGetCollisionInfo resets has_collided on read. Timestamp and
-        # contact geometry survive other telemetry readers and identify the hit.
-        return (
-            s["collision"]["timestampNs"] >= started
-            and s["collision"]["normalLocalNed"]["z"] < -0.9
-            and abs(s["positionWorldM"]["z"] - home(name)["z"]) < 0.3
-            and math.hypot(
-                s["positionWorldM"]["x"] - home(name)["x"],
-                s["positionWorldM"]["y"] - home(name)["y"],
-            )
-            < 1.2
-            and distance(s["velocityLocalNedMps"], dict(x=0, y=0, z=0)) < 0.1
-        )
-
-    while not s["landed"] and not on_platform(s) and time.monotonic() < deadline:
+    while not s["landed"] and not on_platform(s, started) and time.monotonic() < deadline:
         time.sleep(0.2)
         s = state(c, name)
-    if not s["landed"] and not on_platform(s):
+    if not s["landed"] and not on_platform(s, started):
         raise RuntimeError(f"{name} has no verified ground contact")
     assert c.armDisarm(False, vehicle_name=name)
     time.sleep(0.3)

@@ -50,3 +50,8 @@ existing path. Capture timestamps are recorded when the copy is queued, before c
 `SNR.Sensors.AsyncRgbReadback` compares RGB bytes against Unreal's synchronous readback at
 13×7, 257×9 and 3840×2160 to check channel order and padded rows on the actual RHI.
 The fetcher applies this change from `airsim-ue58.patch` to the pinned source archive.
+
+Landing commands return to each aircraft's home point. Ground contact is verified against
+the launch platform footprint and top surface from `world.json`, together with a recent
+upward collision normal and near-zero speed. The aircraft must report landed after disarm
+before API control is released. Home-point distance is not a ground-contact measurement.
