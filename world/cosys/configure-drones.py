@@ -29,8 +29,8 @@ def generate(world, rpc_port, instance_base):
         "MotionBlurAmount": 0,
         "MotionBlurMax": 0,
         "BloomIntensity": 0,
-        "LumenGIEnable": False,
-        "LumenReflectionEnable": False,
+        "LumenGIEnable": True,
+        "LumenReflectionEnable": True,
     }
     settings = {
         "SettingsVersion": 2.0,

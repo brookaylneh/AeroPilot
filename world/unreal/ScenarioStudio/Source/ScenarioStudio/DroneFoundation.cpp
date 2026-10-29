@@ -126,8 +126,9 @@ void ADroneFoundation::Poll()
             // with texture/landscape-grass streaming so distant drone imagery
             // does not depend on where the browser camera is looking.
             auto *Capture = Camera->getCaptureComponent(APIPCamera::ImageType::Scene, false);
+            checkf(Capture, TEXT("Missing RGB capture component for %s"), *Name);
             const float Width = CaptureHeight * 16.f / 9.f;
-            const float Fov = Capture ? Capture->FOVAngle : 70.f;
+            const float Fov = Capture->FOVAngle;
             IStreamingManager::Get().AddViewInformation(
                 Camera->GetActorLocation(), Width, Width / FMath::Tan(FMath::DegreesToRadians(Fov * .5f)),
                 1.f, false, .7f, nullptr, GetWorld());
@@ -136,6 +137,19 @@ void ADroneFoundation::Poll()
                 Target->ResizeTarget(CaptureHeight * 16 / 9, CaptureHeight);
             Camera->setCameraTypeUpdate(APIPCamera::ImageType::Scene,
                                         true); // request-driven, preserve temporal history
+            const auto &Settings = Capture->PostProcessSettings;
+            // Independent scene captures disable Lumen before component post-process overrides.
+            checkf(Settings.bOverride_DynamicGlobalIlluminationMethod &&
+                       Settings.DynamicGlobalIlluminationMethod == EDynamicGlobalIlluminationMethod::Lumen &&
+                       Settings.bOverride_ReflectionMethod &&
+                       Settings.ReflectionMethod == EReflectionMethod::Lumen &&
+                       Capture->PostProcessBlendWeight == 1.f,
+                   TEXT("RGB capture must explicitly enable Lumen: %s"), *Name);
+            checkf(Capture->bAlwaysPersistRenderingState && Capture->bUseRayTracingIfEnabled &&
+                       Capture->CaptureSource == ESceneCaptureSource::SCS_FinalToneCurveHDR &&
+                       Capture->ShowFlags.GlobalIllumination && Capture->ShowFlags.LumenGlobalIllumination &&
+                       Capture->ShowFlags.LumenReflections && Capture->ShowFlags.DynamicShadows,
+                   TEXT("RGB capture rendering prerequisites disabled: %s"), *Name);
             if (Target)
             {
                 Item->SetNumberField(TEXT("width"), Target->SizeX);

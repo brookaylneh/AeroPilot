@@ -14,6 +14,26 @@ class SettingsTests(unittest.TestCase):
     def setUp(self):
         self.world = json.loads((configure.ROOT / "world/cosys/world.json").read_text())
 
+    def test_rgb_lumen_preserves_native_resolution_and_fixed_exposure(self):
+        settings = configure.generate(self.world, 41451, 0)
+        self.assertEqual(
+            settings, json.loads((configure.ROOT / "world/cosys/settings.json").read_text())
+        )
+        for vehicle in settings["Vehicles"].values():
+            captures = vehicle["Cameras"]["front_center"]["CaptureSettings"]
+            scene = next(capture for capture in captures if capture["ImageType"] == 0)
+            self.assertEqual((scene["Width"], scene["Height"]), (3840, 2160))
+            self.assertIs(scene["ForceUpdate"], False)
+            for capture in [*settings["CameraDefaults"]["CaptureSettings"], *captures]:
+                self.assertIs(capture["LumenGIEnable"], True)
+                self.assertIs(capture["LumenReflectionEnable"], True)
+                self.assertEqual(capture["AutoExposureMinBrightness"], 13)
+                self.assertEqual(capture["AutoExposureMaxBrightness"], 13)
+                self.assertEqual(capture["WhiteBalanceTemperature"], 6500)
+                self.assertEqual(capture["WhiteBalanceTint"], 0)
+                self.assertEqual(capture["MotionBlurAmount"], 0)
+                self.assertEqual(capture["BloomIntensity"], 0)
+
     def test_deployment_and_coupling_slots_do_not_share_udp_ports(self):
         slots = [
             configure.generate(self.world, 41451, 0),
