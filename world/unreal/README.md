@@ -52,196 +52,98 @@ docker build --build-arg SNR_UID="$(id -u)" --build-arg SNR_GID="$(id -g)" \
   -t snr-unreal:5.8.2-ubuntu24.04 - < world/unreal/docker/editor.Dockerfile
 python3 world/cosys/fetch-cosys.py
 bash world/unreal/scripts/unreal-container.sh build
-bash world/unreal/scripts/unreal-container.sh exec bash world/unreal/scripts/package-unreal.sh \
-  .local/unreal/Packaged .local/evidence/world/package
-bash world/unreal/scripts/stage-live-release.sh
 ```
+
+Package only after selecting the matching Content and explicit manifests described
+under [Rendering and packaging](#rendering-and-packaging).
 
 `metahuman-login` and `fab-authoring` modes of `unreal-container.sh` need Epic's licensed components and an
 authorized account; Fab also needs `docker build -t snr-unreal-fab:5.8.2 - < world/unreal/docker/fab.Dockerfile`.
 
-## Rectangular terrain authoring
+## Valley foundations
 
-`world/cosys/world.json` owns the search bounds, heightfield layout and version.
-Generate its terrain and masks using the [Cosys commands](../cosys/README.md#terrain-dimensions-and-sampling).
-`build-open-meadow` replaces only the landscape and updates cloned material masks
-with independent north/east UV scales. `resize-horizon` removes scenery overlapping
-the search bounds while preserving southern triangles. `build-drone-port` rebuilds
-the pad actors using their existing support mesh and materials. None changes the
-roster, homes, PlayerStart or launch corridor.
+`world/cosys/world.json` owns the rectangular search bounds, heightfield layout,
+version and hash. `landmarks.json` owns public names, aliases, kinds and geometry
+in Unreal centimetres; it contains no subject or clue placement. North is +X and
+east is +Y. `world.cosys.landmarks` is the shared search loader.
 
-Set `SNR_EVIDENCE_DIR` to a new directory before authoring. Each script refuses an
-existing report. With the editor module built, run these scripts in order:
+The catalogue includes the southern trailhead and command post, a creek loop and
+fork, a footbridge, pond, woodland patches, granite ridge and lookout. The cabin,
+fence, fire road, campsite and boulder field also have public geometry. Their
+presence in the catalogue is an authoring specification, not proof of built scenery.
+Every landmark has `heightM`, the tallest permitted part above local terrain.
+Raised features have polygon footprints; roads, trails, creeks and ponds have zero
+height. Heights are design envelopes until the selected meshes are placed and
+measured. Authoring must stay within them. Same-kind polygons may neither overlap
+nor touch, and the catalogue supplies every class required by the behavior prior.
+
+Generate the numeric terrain and its review map with new output paths:
 
 ```sh
-for script in build-open-meadow resize-horizon build-drone-port validate-landscape; do
-  ss -lntup
-  bash world/unreal/scripts/author-unreal.sh "$script"
-done
+.venv-cosys/bin/python -m world.unreal.valley \
+  --evidence-dir .local/evidence/world/valley/<new-terrain-run>
+.venv-cosys/bin/python -m world.unreal.plot_landmarks \
+  --output .local/evidence/world/valley/<new-landmark-map>.png
 ```
 
-`validate-landscape` compares exact asymmetric editor collision traces with public
-heightfield lookups, including the rectangle's corners and east/west edges. Its
-report contains every queried point and the maximum difference in centimetres.
-The editor API verifies the supplied north/east resolutions against the manifest.
+The generator reconstructs the analytic meadow and verifies its reference hash,
+computes priority-flood/D8 flow accumulation, and checks the catalogue's creek
+against that drainage. It carves the creek and pond and grades the road and trail
+beds. It checks quantized slope and relief, downstream continuity, bridge crossings
+and an unchanged southern terrain buffer. The raw file and receipt are written to
+`.local/world/valley/terrain/`; an existing destination is an error. The original
+square's regression checks the uncarved analytic meadow independently.
 
-## Integration procedure
+Stage 1 produces the numeric heightfield and public geometry. Paint masks, water,
+foliage, props and the regenerated Mission Control minimap belong to the subsequent
+asset-approved authoring stage. Existing landscape authoring scripts require those
+paint masks. Do not label unchanged cooked scenery with the valley manifest.
 
-These are operator steps after accepting `world-resize`; they have not been run
-in `~/snr`. Coordinate with the character and coupling agents first. The character
-agent must checkpoint its tracked edits and finish saving its Content before the
-installed checkout is made clean and the accepted world commits are integrated.
-A clean Git status does not establish that untracked character assets are saved.
-Keep those Content files in place: apply the terrain scripts to them, and never
-copy this worktree's Content over them. Record the final integrated commit.
+## Asset review
 
-Keep the installed release running while preparing assets. Load the installed
-runtime profile, then use a separate editor cache and new evidence/build names:
+`valley-assets.lock.json` records candidate sources, licences, AI-use evidence,
+versions and checksums. `asset_shortlist.py` creates candidate views and measures
+geometry. Its renders are asset previews, not Unreal valley screenshots. The
+shortlist includes replacements for the prohibited NoAI grass packs; it does not
+authorize importing other proposed assets. Approve the shortlist before building
+tier 1. Stage results and outstanding checks are recorded in
+`mission_planner/measurements/world-valley.json`.
 
-```sh
-cd /home/brook_avionuas/snr
-set -euo pipefail
-test -z "$(git status --porcelain)"
-export PATH="$PWD/.local/toolchains/bin:$PATH"
-set -a
-. .local/runtime.env
-set +a
-export UE_ROOT="$PWD/.local/toolchains/UnrealEngine-5.8.2"
-export SNR_CPU_LIMIT=6 SNR_MEMORY_LIMIT=32g
-export SNR_UNREAL_HOME="$PWD/.local/data/world-integration-editor"
-export SNR_EVIDENCE_DIR="$PWD/.local/evidence/world/integration-v04"
-export SNR_INTEGRATION_BUILD="$PWD/.local/unreal/builds/world-v04"
-export SNR_INTEGRATION_RELEASE="$PWD/.local/unreal/releases/world-v04"
-mkdir "$SNR_EVIDENCE_DIR"
-git rev-parse HEAD > "$SNR_EVIDENCE_DIR/installed-commit.txt"
-df -B1 .
-du -sb world/unreal/ScenarioStudio/Content/OpenMeadow
-test ! -e .local/world/open-meadow
-cp -a world/unreal/ScenarioStudio/Content/OpenMeadow "$SNR_EVIDENCE_DIR/Content-OpenMeadow-before"
-.venv-cosys/bin/python -m world.unreal.scripts.generate-open-meadow --evidence-dir "$SNR_EVIDENCE_DIR"
-.venv-cosys/bin/python -m world.unreal.scripts.generate-vegetation-mask --evidence-dir "$SNR_EVIDENCE_DIR"
-.venv-cosys/bin/python -m world.unreal.scripts.generate-minimap --evidence-dir "$SNR_EVIDENCE_DIR"
-git diff --exit-code -- world/cosys/world.json web/public/maps/open-meadow-topographic.png
-df -B1 .
-ss -lntup
-bash world/unreal/scripts/unreal-container.sh build
-for script in build-open-meadow resize-horizon build-drone-port validate-landscape; do
-  df -B1 .
-  ss -lntup
-  bash world/unreal/scripts/author-unreal.sh "$script"
-done
-```
+## Rendering and packaging
 
-Before each copy/build/package, compare `df` free space with the measured source
-size and accepted build footprint, retaining at least 40 GiB. Stop that operation
-if it would cross the reserve. The build script limits the editor rebuild to six
-parallel actions. The editor cache and `BuildCookRun` staging scratch belong to
-`SNR_UNREAL_HOME`; SDK, vendor and
-virtual-environment symlinks are mounted read-only. If an integration output
-already exists, explicitly archive it under a new name before starting a new run.
-Build and editor-command containers have no network; packaged simulation uses
-the assigned host slot. Compare `terrain.json`, `horizon-authoring.json` and
-`landscape-orientation.json` with the accepted world measurements, including the
-terrain hash, original-square equality and retained southern-geometry hash.
+The project requests Vulkan SM6, Lumen GI/reflections with hardware ray tracing,
+virtual shadow maps and Nanite. Cosys scene captures explicitly opt into Lumen;
+viewport settings alone do not establish the sensor lighting path. Startup checks
+the capture component settings. Actual rendered passes and performance still need
+measurement on the packaged profile; configuration checks are not that proof.
 
-Package the integrated Content into a fresh build so the release includes the
-character agent's current assets as well as the resized world. Matching roster
-names alone cannot establish matching cooked character content. Stage an
-independent copy and generate installed-slot settings without activating it:
+Packaging requires explicit manifests for the Content being cooked. Override any
+installed `Live` paths inherited from the runtime profile. Generate settings for
+the assigned slot, then supply both files:
 
 ```sh
-df -B1 .
-ss -lntup
-bash world/unreal/scripts/unreal-container.sh exec \
-  bash world/unreal/scripts/package-unreal.sh \
-  "$SNR_INTEGRATION_BUILD" "$SNR_EVIDENCE_DIR/package"
-df -B1 .
-du -sb "$SNR_INTEGRATION_BUILD/Linux"
-test ! -e "$SNR_INTEGRATION_RELEASE"
-cp -a "$SNR_INTEGRATION_BUILD/Linux" "$SNR_INTEGRATION_RELEASE"
+export SNR_WORLD_CONFIG="$PWD/world/cosys/world.json"
+export SNR_COSYS_SETTINGS="$PWD/.local/cosys-settings.json"
 .venv-cosys/bin/python -m world.cosys.configure-drones \
   --rpc-port "$SNR_COSYS_PORT" --instance-base "$SNR_SITL_INSTANCE_BASE" \
-  --output "$SNR_INTEGRATION_RELEASE/cosys-settings-installed.json"
-cmp world/cosys/world.json "$SNR_INTEGRATION_RELEASE/world.json"
-sha256sum "$SNR_INTEGRATION_RELEASE/world.json" \
-  "$SNR_INTEGRATION_RELEASE/cosys-settings-installed.json" \
-  > "$SNR_EVIDENCE_DIR/release-manifests.sha256"
-set -a
-. .local/runtime.env
-set +a
-npm ci
-npm run build
+  --output "$SNR_COSYS_SETTINGS"
+bash world/unreal/scripts/unreal-container.sh exec \
+  bash world/unreal/scripts/package-unreal.sh \
+  .local/unreal/<new-build> .local/evidence/world/valley/<new-package-run>
 ```
 
-The package contains `scenario-map.txt`, `world.json`, the executable and cooked
-content. Keep the generated heightfield at the manifest's repository-relative
-`heightfield.path`. Accept the integrated package with the corresponding character
-and coupling checks before activation; the world-slot package does not establish
-acceptance of subsequently changed assets. `stage-live-release.sh` changes the
-`Live` link, so it is not part of this preparation.
+Use these current source manifests only after authoring their corresponding
+Content. A rendering-only baseline instead uses explicit snapshots of the
+unchanged world's manifest and matching slot settings. The package retains both
+manifests and records its shader platform; the launcher requires that record.
 
-At the scheduled cutover, land and disarm the installed fleet and release Studio's
-authoring session. For an already coupled installation, run the final command block
-introduced by **“For subsequent coupled shutdowns”** in
-[Cosys cutover](../cosys/README.md#installed-cutover-after-merge): signal Unreal,
-observe new `UWorld::CleanupWorld for OpenMeadow,` output, then stop `snr-mission`
-while Unreal flushes its caches. It verifies the world exits and releases its
-ports. The earlier coupling-specific staging commands in that section are a
-separate migration and must not be reapplied to this world release. Complete that
-migration first if the installed fleet has not yet been coupled.
-
-With the old world and mission stopped, update only these values in
-`.local/runtime.env` to the staged release paths:
-
-```dotenv
-SNR_PACKAGE_ROOT=/home/brook_avionuas/snr/.local/unreal/releases/world-v04
-SNR_WORLD_CONFIG=/home/brook_avionuas/snr/.local/unreal/releases/world-v04/world.json
-SNR_COSYS_SETTINGS=/home/brook_avionuas/snr/.local/unreal/releases/world-v04/cosys-settings-installed.json
-```
-
-Retain the installed streaming, ports, fleet, scenario-data and drone-data settings.
-Start the coupled services with the edited runtime profile and a fresh port check:
-
-```sh
-set -a
-. .local/runtime.env
-set +a
-ss -lntup
-.venv-cosys/bin/python - <<'PYTHON'
-import os
-from mission_planner.environment import load_env
-from mission_planner.gcs.geodesy import NAMES
-from mission_planner.gcs.sitl import check_ports
-
-load_env()
-instances = range(int(os.environ["SNR_SITL_INSTANCE_BASE"]),
-                  int(os.environ["SNR_SITL_INSTANCE_BASE"]) + len(NAMES))
-ports = [int(os.environ["SNR_MISSION_PORT"]), int(os.environ["SNR_COSYS_PORT"])]
-ports += [9002 + 10 * instance for instance in instances]
-ports += [9003 + 10 * instance for instance in instances]
-ports += [int(os.environ["SNR_MAVLINK_BASE_PORT"]) + index for index in range(len(NAMES))]
-ports += [int(os.environ["SNR_SITL_RC_BASE_PORT"]) + index * int(os.environ["SNR_SITL_PORT_STEP"])
-          for index in range(len(NAMES))]
-check_ports(ports)
-PYTHON
-sudo systemctl start snr-unreal
-timeout 120 bash -c 'until ss -H -ltn "sport = :${SNR_COSYS_PORT}" | rg -q "127.0.0.1:${SNR_COSYS_PORT}"; do sleep 1; done'
-sudo systemctl start snr-mission
-sudo systemctl restart snr-web
-```
-
-Immediately reload the intended saved case so all controllers start. Recheck fence
-readback, homes and camera poses before accepting the installed session.
-
-Open a live Pixel Streaming Studio session at both 1920×1080 and 2560×1440.
-Capture the world map at each size and verify that its first view fits the whole
-rectangle; pan and zoom to both new east/west edges and check focus placement.
-Check Studio's collapsed map and scale bar too. In Mission Control's video view,
-verify the fitted inset remains fully visible above its expand bar.
-Record the corresponding Mission Control first views and pan performance as well.
-Save this cutover evidence separately from world-slot acceptance. Slot acceptance
-uses explicitly labelled Studio component screenshots because the slot has no
-Pixel Streaming endpoints; it does not establish a full live Studio session.
+Content must be a real worktree-owned copy, excluding unreferenced character
+folders. Preserve the installed character agent's assets. Check disk space before
+each copy, build and package, retaining the required reserve, and keep the editor
+at six parallel actions. Check slot ports before every process start. The world
+slot has no Pixel Streaming endpoints; it cannot establish a live browser stream
+quality gate. Integration and replay are deferred until the asset-approved world
+is built and accepted. Never activate a Stage 1 candidate on the installed services.
 
 ## Engine plugin overrides
 

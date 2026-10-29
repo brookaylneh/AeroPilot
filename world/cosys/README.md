@@ -6,6 +6,7 @@ Cosys-AirSim 3.5.0 (`5.8-v3.5.0`) provides the simulated aircraft and cameras in
 | --------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `settings.json`       | AirSim settings for the four drones. Positions are **metres in NED**, not Unreal centimetres.                      |
 | `world.json`          | Search geometry and drone identities, without target locations.                                                    |
+| `landmarks.py`        | Shared validation and directions for the public landmark catalogue.                                                |
 | `materials.csv`       | Empty segmentation material table that Cosys requires at startup.                                                  |
 | `client.py`           | Python bridge: explicit world/vehicle frames, telemetry, RGB capture with pose metadata.                           |
 | `coordinates.py`      | Checks live Cosys poses against native Unreal instrumentation.                                                     |
@@ -453,27 +454,32 @@ Rows increase east (+Y); columns increase north (+X). The planner, perception
 geometry, tool schemas, mission fence and browser maps derive their bounds from
 this file. The launch corridor and authored homes remain separate infrastructure.
 
-Generate a new terrain directory with these commands from the repository root:
+Generate the current numeric valley terrain from the repository root:
 
 ```sh
-.venv-cosys/bin/python -m world.unreal.scripts.generate-open-meadow --evidence-dir .local/evidence/world/<new-run>
-.venv-cosys/bin/python -m world.unreal.scripts.generate-vegetation-mask --evidence-dir .local/evidence/world/<new-run>
-.venv-cosys/bin/python -m world.unreal.scripts.generate-minimap --evidence-dir .local/evidence/world/<new-run>
+.venv-cosys/bin/python -m world.unreal.valley --evidence-dir .local/evidence/world/valley/<new-run>
 ```
 
-The generator refuses an existing destination. It verifies every sample in the
-original calibration square against the immutable vendor heightfield before
-writing under `.local/world/`. The original release dimensions and hash are
-explicit regression constants in the generator; current dimensions come only
-from the world file. Mask generation retains its deterministic noise, trail and
-coverage equations with per-axis texture dimensions, so physical patch scale is
-preserved. The minimap transposes raw axes and reverses north to put north at the
-top. Each command requires an explicit evidence directory and refuses an existing report.
-Use the same new directory under `.local/evidence/world/` for these three commands.
+The generator reconstructs and verifies the analytic meadow before carving and
+grading from `world/unreal/landmarks.json`. It refuses existing output and evidence
+destinations. Stage 1 produces the numeric field under `.local/world/valley/terrain/`;
+asset-approved landscape masks and the updated browser minimap follow in Stage 2.
+The minimap generator transposes raw axes and reverses north to put north at the
+top. Current dimensions come only from the world file.
 
-`test_terrain.py` checks asymmetric corners/edge samples, original-square bit
-identity and duplicated extent literals in tracked source. Historical measurement
-records and font licence text are excluded from the literal check.
+`test_terrain.py` checks asymmetric corners/edge samples, the uncarved analytic
+meadow's original-square bit identity, and duplicated extent literals in tracked
+source. Historical measurements, font licence text and validated absolute landmark
+coordinates are excluded from the literal check. Landmark metadata is still scanned.
+Valley authoring tests additionally check drainage, terrain limits, southern
+preservation, feature classes, height envelopes and disjoint same-kind footprints.
+
+The landmark loader uses the public six-field contract: `id`, `name`, `aliases`,
+`kind`, `geometry` and `heightM`. Heights describe the tallest part above local
+ground; positive heights require polygon footprints. The search agent's route
+contract reserves ten metres above terrain plus that height. Ground routes and
+water features have zero height. Subject and clue placements never enter this
+catalogue. Stage 1 heights are design envelopes that asset authoring must verify.
 
 Array orientation and resampling follow the primary
 [NumPy meshgrid documentation](https://numpy.org/doc/stable/reference/generated/numpy.meshgrid.html),
