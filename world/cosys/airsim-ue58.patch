@@ -40,12 +40,16 @@
          for (unsigned int i = 0; i < req_size_; ++i) {
              if (params_[i]->render_target != nullptr && params_[i]->render_component != nullptr) {
                  FRHICommandListImmediate& RHICmdList = GetImmediateCommandList_ForRenderCommand();
-@@ -156,15 +160,12 @@
+@@ -154,17 +158,14 @@
+                 if (rt_resource != nullptr) {
+                     const FTextureRHIRef& rhi_texture = rt_resource->GetRenderTargetTexture();
                      FIntPoint size;
-                     auto flags = setupRenderResource(rt_resource, params_[i].get(), results_[i].get(), size);
- 
+-                    auto flags = setupRenderResource(rt_resource, params_[i].get(), results_[i].get(), size);
+-
 -                    //should we be using ENQUEUE_UNIQUE_RENDER_COMMAND_ONEPARAMETER which was in original commit by @saihv
 -                    //https://github.com/Microsoft/AirSim/pull/162/commits/63e80c43812300a8570b04ed42714a3f6949e63f#diff-56b790f9394f7ca1949ddbb320d8456fR64
++                    setupRenderResource(rt_resource, params_[i].get(), results_[i].get(), size);
++
                      if (!params_[i]->pixels_as_float) {
 -                        //below is undocumented method that avoids flushing, but it seems to segfault every 2000 or so calls
 -                        RHICmdList.ReadSurfaceData(
@@ -61,7 +65,7 @@
                      }
                      else {
                          RHICmdList.ReadSurfaceFloatData(
-@@ -180,10 +181,53 @@
+@@ -180,10 +181,54 @@
              results_[i]->time_stamp = msr::airlib::ClockFactory::get()->nowNanos();
          }
  
@@ -119,8 +123,9 @@
 +    req_size_ = 0;
 +    params_ = nullptr;
 +    results_ = nullptr;
-+    // Signalling releases the caller, which owns this object's lifetime.
-+    wait_signal_->signal();
++    // Keep the signal alive if the caller destroys this request after waking.
++    const auto signal = wait_signal_;
++    signal->signal();
 +}
 --- a/Source/RenderRequest.h
 +++ b/Source/RenderRequest.h

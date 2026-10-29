@@ -127,6 +127,7 @@ void ADroneFoundation::Poll()
             // does not depend on where the browser camera is looking.
             auto *Capture = Camera->getCaptureComponent(APIPCamera::ImageType::Scene, false);
             checkf(Capture, TEXT("Missing RGB capture component for %s"), *Name);
+            check(!Capture->ShouldRenderWithMainViewResolution());
             auto &Settings = Capture->PostProcessSettings;
             // Cosys otherwise overrides both lighting methods to None. The world
             // supplies lighting; exposure and white balance remain sensor controls.
@@ -141,7 +142,7 @@ void ADroneFoundation::Poll()
             Item->SetNumberField(TEXT("whiteBalanceKelvin"), Settings.WhiteTemp);
             Item->SetStringField(TEXT("lighting"), TEXT("world"));
             const float Width = CaptureHeight * 16.f / 9.f;
-            const float Fov = Capture ? Capture->FOVAngle : 70.f;
+            const float Fov = Capture->FOVAngle;
             IStreamingManager::Get().AddViewInformation(
                 Camera->GetActorLocation(), Width, Width / FMath::Tan(FMath::DegreesToRadians(Fov * .5f)),
                 1.f, false, .7f, nullptr, GetWorld());
