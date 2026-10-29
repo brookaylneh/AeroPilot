@@ -7555,7 +7555,7 @@
   ],
   "full_phase_e_gate": {
     "run": "lumen-atmosphere-4k-final-gate",
-    "passed": true,
+    "passed": false,
     "gate": {
       "atLeastFiveMinutes": true,
       "atLeast1080p60": true,
@@ -7565,7 +7565,10 @@
       "noFreezeOver100Ms": true,
       "gpuP95": true,
       "gpuP99": true
-    }
+    },
+    "numerical_passed": true,
+    "visual_acceptance_passed": false,
+    "qualification": "All numerical checks passed. Full visual acceptance remains open because moving-grass detail softens; replacement is deferred by the user."
   },
   "session_checkpoint": ".local/evidence/render-quality/checkpoint-id.json",
   "user_session_released": true,
