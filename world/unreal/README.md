@@ -95,13 +95,21 @@ Generate the numeric terrain and its review map with new output paths:
 The generator reconstructs the analytic meadow and verifies its reference hash. It
 then shapes the landforms, each from design values in `valley.py`:
 
-- Granite Dome replaces the northern hill: a convex shell with a steep south
-  shoulder, broken sheeting steps, joint grooves on its gentler upper surface and a
-  south talus apron, at most 60 m above the meadow median.
-- Granite Lake holds a flat 15 m surface on a raised granite bench with a moraine
-  rim. Lookout Tarn lies in a cirque floor joined to its talus, opening west over a
-  threshold. Beaver Pond sits behind a low dam rim.
-- Structures stand on level pads; road and trail beds are graded.
+- Granite Dome replaces the northern hill as a roche moutonnée: a whaleback stoss
+  rising from the north to a rounded summit, and a lee face toward the meadow cut
+  by a plane across the ice flow. Each joint block plucks the face back and offsets
+  its ledges, which leave flat bases for cliff meshes. Exfoliation sheets step every
+  few metres, broken at the joints; joint grooves mark the gentler upper dome and a
+  talus apron runs from the face into the meadow, at most 60 m above its median.
+- Granite Lake holds a flat 15 m surface, deep under stepped north-shore slabs and
+  shallow off the southern beach and outlet moraine; its bench merges into the
+  terrain over noise-varied widths. Lookout Tarn's cirque floor reaches into the
+  ridge flank under a horseshoe headwall, with a talus fan down to the east shore
+  and a rock threshold on the open west side. Beaver Pond sits behind a low dam rim.
+  Pond polygons are the shorelines: the basin checks hold each waterline to its
+  polygon, so bays and points are authored in `landmarks.json`.
+- Structures stand on pads feathered over 15 m; road and trail beds are graded and
+  the meadow carries hummocks and swales.
 - Meadow Creek leaves the lake's south-east spillway, passes Aspen Bend, the
   footbridge reach and the pond, then follows priority-flood/D8 drainage to the east
   boundary within 12 m.
@@ -237,9 +245,10 @@ The patches preserve the project include path, VP8 thread budget and encoder dia
 
 `blender/` builds environment assets in Blender 5.2.3 from seeded, deterministic scripts. Each family
 has a builder `<family>.py` and a spec `<family>.json` (reference id, seed, bounding dimensions in metres
-with tolerance, texture budget, collision flag, turnaround panel cells, master correspondences and colour
-regions; schema in `spec.py`). `common.py` holds the shared parts, materials, export and `build.json`.
-Assets use metres, +Z up and front +X, with the origin at the ground-contact centre; the GLB is glTF +Y up.
+with tolerance, depth buried below grade, texture budget, collision flag, turnaround panel cells, master
+correspondences and colour regions; schema in `spec.py`). `common.py` holds the shared parts, materials,
+export and `build.json`. Assets use metres, +Z up and front +X, with the origin at the ground-contact
+centre at grade; the GLB is glTF +Y up.
 Builds fail when the extents leave the spec tolerance, and two builds produce byte-identical `build.json`.
 
 ```sh
@@ -255,7 +264,8 @@ $B $P/studio.py -- --build $O/build --cameras $O/cameras/cameras.json --output $
 
 `fit` solves the master camera from the correspondences, fits an orthographic camera to each turnaround
 panel's silhouette box, and derives the 30 m nadir (70° HFOV, 3840×2160 drone camera, cropped to the
-asset) and a 1.7 m eye-level view. `studio.py` renders every view with OptiX under one fixed studio light.
+asset) and a 1.7 m eye-level view. `studio.py` renders the above-grade part through every view with OptiX
+under one fixed studio light.
 `compare` reports silhouette IoU per referenced view, master colour regions and a 1600 px contact sheet.
 Masks count floor shadows and sky occlusion as foreground, so plan-view IoU also measures shadow shape.
 

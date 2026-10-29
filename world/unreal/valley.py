@@ -21,7 +21,6 @@ from scipy.ndimage import (
     gaussian_filter1d,
     map_coordinates,
 )
-from scipy.spatial import ConvexHull
 
 from mission_planner.environment import load_env
 from world.cosys.landmarks import LANDMARKS_PATH, _intersects, _nearest, validate
@@ -38,7 +37,7 @@ CHANNEL = {"bedM": 2.4, "bankM": 0.7, "bankDegrees": 35, "swaleDegrees": 12, "wa
 CREEK_HEAD_M = (76.64, 440.65)
 NATURAL_REACH_M = 12
 GRADE_BANK_M = {"trail": 7, "road": 15}
-PAD_BLEND_M = 6
+PAD_BLEND_M = 15
 # Nadir footprints require corner rays (38.8 degrees off nadir) to descend faster than the
 # steepest adjacent sample pair along each axis, at any yaw; that fails above 41.4 degrees.
 MAX_SLOPE_DEGREES = 37
@@ -49,6 +48,8 @@ TRAIL_SLOPE_DEGREES = 18
 # USFS Low-Volume Roads BMP Field Guide ch. 4: grades of 12% or less.
 ROAD_GRADE = 0.12
 MEADOW_M = ((-650, 0), (-450, 550))
+# Hummocks and swales (gaussian sigma m, standard deviation m), feathered outside the meadow.
+MEADOW_RELIEF = ((3, 0.15), (15, 0.25))
 # Per-bearing tuples are evenly spaced clockwise from north.
 DOME = {
     "id": "granite-dome",
@@ -56,55 +57,66 @@ DOME = {
     "capM": 3,
     "capSoftM": 1,
     "heightM": 49,
-    "exponents": (1.8, 2.4, 3, 2.4),
-    "sheetM": 1.4,
-    "sheetSpacing": 0.07,
-    "sheetStart": 0.25,
-    "sheetWarp": 0.06,
+    "exponents": (1.5, 2.4, 2.6, 2.4),
+    "toeExponent": 1.4,
+    "leeBearing": 195,
+    "leeDegrees": 27,
+    "leeBaseM": 95,
+    "crestM": 8,
+    "ledgeM": 7,
+    "pluckM": 8,
+    "sheetM": 1.3,
     "joints": ((35, 34), (125, 47)),
     "jointM": 0.6,
     "jointWidthM": 1.4,
-    "apronM": 10,
-    "apronInM": 8,
-    "apronOutM": 14,
-    "apronBearing": 200,
+    "apronM": 9,
+    "apronOutM": 40,
+    "apronHalfM": 55,
     "marginM": 60,
 }
-# Underwater shore slope at the waterline; above it the rim rises to a lip held for the bench
-# width, then falls; walls cut from the floor edge. Talus extends the floor to the convex hull
-# of water and talus (landmark, rise m).
+SLAB_M = 1.5
+# Underwater the shore slope approaches the depth. The floor extends beyond the water by bearing;
+# outside it the rim rises to a lip held for the bench width, then merges into the terrain over
+# the merge width. Walls cut from the floor edge and slabs terrace the shore. A talus fan falls
+# from the floor point farthest from the water down to it; the talus lies on the floor (id, rise m).
 BASINS = {
     "granite-lake": {
         "surfaceM": 15.0,
-        "depthM": 9.0,
-        "shoreDegrees": (25, 20, 12, 8, 6, 8, 10, 18),
-        "riseDegrees": (12, 10, 8, 4, 5, 6, 6, 10),
-        "lipM": (3.0, 2.8, 2.2, 1.5, 1.8, 2.4, 2.5, 3.0),
-        "benchM": (25, 20, 15, 10, 12, 12, 60, 20),
-        "fallDegrees": (7, 7, 10, 14, 12, 10, 8, 7),
+        "depthM": (11, 10, 6, 2.5, 1.5, 2, 4, 9),
+        "shoreDegrees": (34, 30, 14, 6, 4, 5, 10, 28),
+        "floorM": (0,),
+        "riseDegrees": (32, 26, 12, 8, 3, 4, 8, 28),
+        "lipM": (4, 3.5, 1.5, 2, 0.6, 0.8, 1.2, 3.5),
+        "benchM": (10, 10, 20, 4, 25, 20, 15, 10),
+        "mergeM": (35, 35, 30, 25, 45, 45, 40, 35),
         "wallDegrees": (SHAPED_SLOPE_DEGREES,),
+        "slabs": (0.7, 0.5, 0, 0, 0, 0, 0, 0.5),
         "talus": None,
     },
     "lookout-tarn": {
         "surfaceM": 16.0,
-        "depthM": 5.0,
-        "shoreDegrees": (30, 25, 30, 15),
+        "depthM": (4.5, 6.5, 4.5, 2.5),
+        "shoreDegrees": (30, 32, 30, 12),
+        "floorM": (10, 85, 90, 20, 8, 0, 0, 0),
         "riseDegrees": (6, 6, 6, 8),
         "lipM": (1.5,),
         "benchM": (12, 12, 12, 20),
-        "fallDegrees": (20, 20, 20, 12),
+        "mergeM": (20,),
         "wallDegrees": (SHAPED_SLOPE_DEGREES,) * 3 + (8,),
-        "talus": ("lookout-talus", 6.0),
+        "slabs": (0.5, 0.5, 0.5, 0),
+        "talus": ("lookout-talus", 7.0),
     },
     "beaver-pond": {
         "surfaceM": 5.3,
-        "depthM": 1.2,
+        "depthM": (1.2,),
         "shoreDegrees": (8,),
+        "floorM": (0,),
         "riseDegrees": (4,),
         "lipM": (0.35,),
         "benchM": (3,),
-        "fallDegrees": (6,),
+        "mergeM": (10,),
         "wallDegrees": (SHAPED_SLOPE_DEGREES,),
+        "slabs": (0,),
         "talus": None,
     },
 }
@@ -350,6 +362,13 @@ def smooth_min(a, b, width):
     return np.minimum(a, b) - h * h * width / 4
 
 
+def terrace(height, interval, phase):
+    """Positive heights cut into flat treads and steep risers every interval metres."""
+    assert np.all(interval > 0)
+    level = np.maximum(height, 0) / interval + phase
+    return np.maximum(np.floor(level) + smoothstep(0.6, 1, level % 1) - phase, 0) * interval
+
+
 def noise(shape, seed, sigma_m):
     field = gaussian_filter(
         np.random.default_rng(seed).standard_normal(shape), sigma_m / FIELD["sampleSpacingMetres"]
@@ -357,13 +376,26 @@ def noise(shape, seed, sigma_m):
     return field / field.std()
 
 
+def jitter(shape, seed, sigma_m, spread):
+    """Multiplicative noise clipped to 1 +- 2 spread."""
+    assert 0 < spread < 0.5
+    return np.clip(1 + spread * noise(shape, seed, sigma_m), 1 - 2 * spread, 1 + 2 * spread)
+
+
 def bearing(x, y, centre):
     return np.degrees(np.arctan2(y - centre[1], x - centre[0])) % 360
 
 
+def periodic(degrees, knots, values, sigma):
+    """Periodic linear interpolation in bearing, smoothed by a circular Gaussian (degrees)."""
+    fine = np.arange(720) / 2
+    curve = gaussian_filter1d(np.interp(fine, knots, values, period=360), 2 * sigma, mode="wrap")
+    return np.interp(degrees, fine, curve, period=360)
+
+
 def sector(degrees, values):
-    """Interpolate design values evenly spaced clockwise from north around a centre."""
-    return np.interp(degrees, np.arange(len(values)) * 360 / len(values), values, period=360)
+    """Design values evenly spaced clockwise from north around a centre, without radial creases."""
+    return periodic(degrees, np.arange(len(values)) * 360 / len(values), values, 90 / len(values))
 
 
 def triangle_slopes(elevation, spacing_m):
@@ -416,7 +448,8 @@ def limit_slope(terrain, window, surface):
 
 
 def dome(terrain, item):
-    """Exfoliation dome: convex shell, broken sheeting steps, joint grooves, south talus apron."""
+    """Roche moutonnee: whaleback stoss, ledged lee face plucked along joint blocks, exfoliation
+    sheets broken at the joints, joint grooves, and a talus apron below the lee face."""
     vertices = points(item)
     centre = np.array(DOME["summitM"])
     offsets = vertices - centre
@@ -425,75 +458,103 @@ def dome(terrain, item):
     assert np.all(turns > 0) or np.all(turns < 0), (
         "Dome footprint must be star-shaped at its summit"
     )
+    assert 0 < DOME["leeDegrees"] < SHAPED_SLOPE_DEGREES and DOME["crestM"] < DOME["apronM"]
+    assert DOME["leeBaseM"] < np.hypot(*offsets.T).min()
     window, x, y = region(vertices, DOME["marginM"])
     rays = bearing(x, y, centre)
-    radius = np.interp(rays, angles % 360, np.hypot(*offsets.T), period=360)
+    radius = periodic(rays, angles % 360, np.hypot(*offsets.T), 6)
     rho = np.hypot(x - centre[0], y - centre[1]) / radius
-    shell = DOME["heightM"] * np.maximum(0, 1 - rho ** sector(rays, DOME["exponents"]))
-    # Sheets parallel to the shell expose outward-facing steps where outer sheets spalled off.
-    warped = rho + DOME["sheetWarp"] * noise(x.shape, 1, 40)
-    phase = (warped - DOME["sheetStart"]) / DOME["sheetSpacing"]
-    sheets = (
-        DOME["sheetM"]
-        * np.clip(0.6 + 0.8 * noise(x.shape, 2, 20), 0, 1)
-        * (phase % 1 - 0.5)
-        * smoothstep(0, 1, phase)
-    )
+    exponent = sector(rays, DOME["exponents"])
+    whaleback = DOME["heightM"] * np.maximum(0, 1 - rho**exponent) ** DOME["toeExponent"]
     # Joint grooves stay on the gentler upper dome: on capped flanks they would trench the face.
-    gentle = 1 - smoothstep(0.35, 0.5, np.hypot(*np.gradient(shell, FIELD["sampleSpacingMetres"])))
-    joints = np.zeros(x.shape)
+    gentle = 1 - smoothstep(
+        0.35, 0.5, np.hypot(*np.gradient(whaleback, FIELD["sampleSpacingMetres"]))
+    )
+    blocks, joints = [], np.zeros(x.shape)
     for seed, (strike, spacing) in enumerate(DOME["joints"], 7):
         strike = np.radians(strike)
         across = (y - centre[1]) * np.cos(strike) - (x - centre[0]) * np.sin(strike)
         across = across / spacing + 0.15 * noise(x.shape, seed, 30)
+        blocks.append(np.floor(across).astype(int))
         gap = np.abs(across - np.rint(across)) * spacing
         opening = np.clip(0.3 + noise(x.shape, seed + 10, 15), 0, 1)
         joints += DOME["jointM"] * np.clip(1 - gap / DOME["jointWidthM"], 0, 1) * opening * gentle
-    rock = shell + (sheets - joints) * smoothstep(1, 0.92, rho)
+    first, second = (index - index.min() for index in blocks)
+    table = np.random.default_rng(3).random((2, first.max() + 1, second.max() + 1))
+    phase, scale = table[:, first, second]
+    # A plane across the ice flow cuts the lee face; each joint block plucks back and ledges apart.
+    lee = np.radians(DOME["leeBearing"])
+    along = (x - centre[0]) * np.cos(lee) + (y - centre[1]) * np.sin(lee)
+    lateral = (y - centre[1]) * np.cos(lee) - (x - centre[0]) * np.sin(lee)
+    inset = DOME["leeBaseM"] - along - DOME["pluckM"] * phase + 4 * noise(x.shape, 5, 10)
+    rise = np.tan(np.radians(DOME["leeDegrees"])) * inset
+    shell = smooth_min(
+        whaleback, DOME["apronM"] + terrace(rise, DOME["ledgeM"], phase), DOME["crestM"]
+    )
+    # Outer sheets spalled off between steps that follow the shell, offset at every joint.
+    interval = DOME["sheetM"] * (0.7 + 0.6 * scale)
+    sheets = terrace(shell, interval, phase + 0.5 * noise(x.shape, 1, 20)) - shell
+    strength = np.clip(0.4 + 0.9 * noise(x.shape, 2, 25), 0, 1) * smoothstep(
+        2, 0, whaleback - shell
+    )
+    rock = shell + (strength * sheets - joints) * smoothstep(1, 0.92, rho)
     assert rock.min() >= 0, "Dome surface dips below its floor"
-    beyond = (rho - 1) * radius
-    south = np.maximum(np.cos(np.radians(rays - DOME["apronBearing"])), 0) ** 2
-    reach = (DOME["apronOutM"] - beyond) / (DOME["apronOutM"] + DOME["apronInM"])
-    apron = DOME["apronM"] * south * np.clip(reach, 0, 1) ** 1.4
+    reach = 1 - (along - DOME["leeBaseM"]) / (DOME["apronOutM"] * jitter(x.shape, 4, 15, 0.2))
+    side = smoothstep(1.3, 0.7, np.abs(lateral) / DOME["apronHalfM"]) * smoothstep(0, 20, along)
+    apron = DOME["apronM"] * side * np.clip(reach, 0, 1) ** 2.4
     limit_slope(terrain, window, terrain[window] + np.maximum(rock, apron))
 
 
 def basin(terrain, item, extension):
-    """Designed floor below a flat surface; outside, a bench raises and walls cut the terrain."""
+    """Designed floor below a flat surface; outside, a rim merges into the terrain below walls."""
     spec = BASINS[item["id"]]
-    surface, depth = spec["surfaceM"], spec["depthM"]
+    surface = spec["surfaceM"]
+    assert 0 <= min(spec["slabs"]) and max(spec["slabs"]) < 1, "Slabs must keep shores dry"
+    assert min(spec["floorM"]) >= 0 and min(spec["mergeM"]) > 0
     vertices = points(item)
     window, x, y = region(vertices, BASIN_MARGIN_M)
     rays = bearing(x, y, vertices.mean(axis=0))
+    spacing = FIELD["sampleSpacingMetres"]
 
     def tangent(key):
         return np.tan(np.radians(sector(rays, spec[key])))
 
     water = inside(vertices, x, y)
+    shore = signed_distance(water)
     # Bearing-keyed values are singular at the centre; smooth them over the basin.
-    steepness = gaussian_filter(tangent("shoreDegrees"), 15 / FIELD["sampleSpacingMetres"])
-    level = surface - depth * (
-        1 - np.exp(np.minimum(signed_distance(water), 0) * steepness / depth)
-    )
-    lip = sector(rays, spec["lipM"]) * np.clip(1 + 0.25 * noise(x.shape, 6, 25), 0.6, 1.4)
-    floor = water.copy()
+    steepness = gaussian_filter(tangent("shoreDegrees"), 15 / spacing)
+    depth = gaussian_filter(sector(rays, spec["depthM"]), 25 / spacing)
+    assert depth.min() > 0
+    # Smoothing across the medial axis keeps bays and points from creasing the floor.
+    inward = np.minimum(np.maximum(shore, gaussian_filter(shore, 6 / spacing)), shore / 2)
+    level = surface - depth * (1 - np.exp(np.minimum(inward, 0) * steepness / depth))
+    lip = sector(rays, spec["lipM"]) * jitter(x.shape, 6, 25, 0.25)
+    floor = water | (shore < sector(rays, spec["floorM"]) * jitter(x.shape, 8, 10, 0.08))
+    cone = 0
     if extension:
-        assert not (inside(points(extension), x, y) & water).any()
-        hull = ConvexHull(np.vstack((vertices, points(extension))))
-        apron = inside(hull.points[hull.vertices], x, y) & ~water
-        reach = signed_distance(water)
-        ramp = np.clip(reach / reach[apron].max(), 0, 1) ** 1.5
-        toe = np.minimum(reach * tangent("riseDegrees"), lip)
-        level = np.where(apron, surface + np.maximum(toe, spec["talus"][1] * ramp), level)
-        floor |= apron
+        talus = points(extension)
+        assert not (inside(talus, x, y) & water).any() and np.all(floor[inside(talus, x, y)])
+        apex = np.unravel_index(np.argmax(np.where(floor, shore, -np.inf)), shore.shape)
+        reach = np.hypot(x - x[apex], y - y[apex])
+        cone = spec["talus"][1] * np.clip(1 - reach / reach[water].min(), 0, 1) ** 2
+    toe = np.minimum(shore * tangent("riseDegrees"), lip)
+    level = np.where(water, level, surface + np.maximum(toe, cone))
     delta = signed_distance(floor)
     edge = np.maximum(level[tuple(distance_transform_edt(~floor, return_indices=True)[1])], surface)
-    bench = sector(rays, spec["benchM"]) * np.clip(1 + 0.35 * noise(x.shape, 5, 40), 0.5, 1.5)
-    rise = np.minimum(delta * tangent("riseDegrees"), lip)
-    rim = surface + np.minimum(rise, lip - (delta - bench) * tangent("fallDegrees"))
+    rim = surface + np.minimum(delta * tangent("riseDegrees"), lip)
     cut = edge + delta * tangent("wallDegrees")
     assert np.all(rim[~floor] <= cut[~floor]), f"{item['id']} bench rises above its walls"
-    limit_slope(terrain, window, np.where(floor, level, np.clip(terrain[window], rim, cut)))
+    bench = sector(rays, spec["benchM"]) * jitter(x.shape, 5, 40, 0.35)
+    merge = sector(rays, spec["mergeM"]) * jitter(x.shape, 9, 40, 0.25)
+    fill = np.maximum(rim - terrain[window], 0) * smoothstep(bench + merge, bench, delta)
+    shaped = np.minimum(terrain[window] + fill, cut)
+    height = shaped - surface
+    steps = terrace(height, SLAB_M, 0.5 * noise(x.shape, 10, 15)) - np.maximum(height, 0)
+    slabs = sector(rays, spec["slabs"]) * smoothstep(25, 10, delta)
+    shaped += slabs * steps + 0.3 * noise(x.shape, 11, 4) * smoothstep(3, 12, delta) * np.minimum(
+        fill, 1
+    )
+    limit_slope(terrain, window, np.where(floor, level, shaped))
 
 
 def creek_profile(elevation, item, receiver, accumulation, named):
@@ -530,7 +591,7 @@ def creek_profile(elevation, item, receiver, accumulation, named):
     assert aspen.size and aspen[-1] < head < bridge < span[0], "Chain order: lake, aspens, bridge"
     lake_surface = BASINS["granite-lake"]["surfaceM"]
     pond_surface = BASINS["beaver-pond"]["surfaceM"]
-    pond_depth = BASINS["beaver-pond"]["depthM"]
+    (pond_depth,) = BASINS["beaver-pond"]["depthM"]
     length = np.r_[0, np.cumsum(np.linalg.norm(np.diff(vertices, axis=0), axis=1))]
     candidate = lookup(elevation, vertices) - CHANNEL_DEPTH_M
     candidate[0] = lake_surface - CHANNEL["waterM"]
@@ -677,6 +738,19 @@ def build(document):
     hill = importlib.import_module("world.unreal.scripts.generate-open-meadow").hill(x, y)
     reshaped = hill > DOME["capM"] - DOME["capSoftM"]
     terrain[reshaped] += (smooth_min(hill, DOME["capM"], DOME["capSoftM"]) - hill)[reshaped]
+    (creek,) = [item for item in landmarks if item["kind"] == "creek"]
+    assert all(sigma > 0 and 0 < std <= 0.5 for sigma, std in MEADOW_RELIEF)
+    (n0, n1), (e0, e1) = MEADOW_M
+    outside = np.hypot(
+        np.maximum(np.maximum(x - n1, n0 - x), 0), np.maximum(np.maximum(y - e1, e0 - y), 0)
+    )
+    stream = line_field(points(creek), np.zeros(len(points(creek))), CHANNEL_BANK_M + 20)[0]
+    relief = sum(
+        std * noise(x.shape, seed, sigma) for seed, (sigma, std) in enumerate(MEADOW_RELIEF, 12)
+    )
+    terrain += (
+        relief * (1 - smoothstep(0, 60, outside)) * smoothstep(20, CHANNEL_BANK_M + 20, stream)
+    )
     dome(terrain, named[DOME["id"]])
     for identifier, spec in BASINS.items():
         basin(terrain, named[identifier], spec["talus"] and named[spec["talus"][0]])
@@ -696,7 +770,6 @@ def build(document):
             local = terrain[window]
             level = np.median(local[beyond < 0])
             local += (level - local) * blend(np.maximum(beyond, 0), PAD_BLEND_M)
-    (creek,) = [item for item in landmarks if item["kind"] == "creek"]
     vertices, bed, water, creek_report = creek_profile(
         terrain, creek, receiver, accumulation, named
     )
