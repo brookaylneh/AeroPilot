@@ -1,31 +1,19 @@
-"""Download the CC0 Poly Haven texture maps pinned in a lock file and verify them."""
+"""Download the CC0 Poly Haven texture maps pinned in polyhaven.lock.json and verify them."""
 
-import argparse
 import hashlib
 import json
 import shutil
 import urllib.request
 from pathlib import Path
 
-from mission_planner.environment import load_env
-
-ROOT = Path(__file__).resolve().parents[2]
-VENDOR = ROOT / ".local/vendor/polyhaven"
-
-
-def path(entry):
-    return VENDOR / entry["asset"] / Path(entry["url"]).name
+from world.unreal.blender.spec import LOCK, ROOT, TEXTURES
 
 
 def main():
-    load_env()
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--lock", type=Path, required=True)
-    args = parser.parse_args()
-    lock = json.loads((ROOT / args.lock).read_text())
+    lock = json.loads(LOCK.read_text())
     assert lock["license"] == "CC0-1.0"
     for entry in lock["files"]:
-        target = path(entry)
+        target = TEXTURES / entry["asset"] / Path(entry["url"]).name
         if not target.exists():
             target.parent.mkdir(parents=True, exist_ok=True)
             # Poly Haven's CDN rejects urllib's default agent.

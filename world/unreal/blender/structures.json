@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "assets": {
+    "ranger-cabin": {
+      "reference": "ranger-cabin",
+      "seed": 24,
+      "dimensionsM": [9.655, 6.66, 5.783],
+      "toleranceM": 0.005,
+      "textureSize": 4096,
+      "collision": true,
+      "panels": { "front": [0, 0], "back": [1, 0], "left": [0, 1], "top": [1, 1] },
+      "correspondences": [
+        { "name": "front-right corner, plate", "modelM": [2.3022, 2.885, 3.2], "pixel": [1775, 1300] },
+        { "name": "front-right corner, sill", "modelM": [2.3022, 2.885, 0.68], "pixel": [1775, 2030] },
+        { "name": "front-right corner, grade", "modelM": [2.3022, 2.92, 0.0], "pixel": [1775, 2212] },
+        { "name": "rear-right corner, plate", "modelM": [-4.6478, 2.885, 3.2], "pixel": [2632, 1376] },
+        { "name": "rear-right corner, sill", "modelM": [-4.6478, 2.885, 0.68], "pixel": [2632, 1945] },
+        { "name": "rear-right corner, grade", "modelM": [-4.6828, 2.92, 0.0], "pixel": [2640, 2070] },
+        { "name": "left porch post, deck", "modelM": [3.6772, -2.735, 0.65], "pixel": [425, 2028] },
+        { "name": "left porch post, header", "modelM": [3.6772, -2.735, 2.87], "pixel": [425, 1380] },
+        { "name": "main ridge, front rake", "modelM": [2.5772, 0.0, 5.77], "pixel": [1045, 622] },
+        { "name": "main ridge, rear rake", "modelM": [-4.9228, 0.0, 5.77], "pixel": [2137, 893] },
+        { "name": "porch ridge, front rake", "modelM": [4.1022, 0.0, 4.89], "pixel": [793, 842] }
+      ],
+      "colourRegions": {
+        "siding": [
+          [1850, 1750, 2000, 1950],
+          [2200, 1450, 2330, 1950],
+          [1850, 1450, 1990, 1700]
+        ],
+        "plinth": [[1900, 2070, 2550, 2170]],
+        "roof": [[1500, 1000, 2300, 1200]],
+        "steps": [[700, 2140, 1200, 2280]],
+        "door": [[1140, 1660, 1250, 1950]],
+        "post": [[1290, 1450, 1335, 1950]]
+      }
+    }
+  }
+}

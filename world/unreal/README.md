@@ -204,6 +204,32 @@ The fetcher checks the engine changelist and original-file hashes, excludes buil
 `pixelstreaming2-ue58.patch` and `libvpxcodecs-ue58.patch` without fuzz. Existing destinations fail.
 The patches preserve the project include path, VP8 thread budget and encoder diagnostics.
 
+## Blender assets
+
+`blender/` builds environment assets in Blender 5.2.3 from seeded, deterministic scripts. Each family
+has a builder `<family>.py` and a spec `<family>.json` (reference id, seed, bounding dimensions in metres
+with tolerance, texture budget, collision flag, turnaround panel cells, master correspondences and colour
+regions; schema in `spec.py`). `common.py` holds the shared parts, materials, export and `build.json`.
+Assets use metres, +Z up and front +X, with the origin at the ground-contact centre; the GLB is glTF +Y up.
+Builds fail when the extents leave the spec tolerance, and two builds produce byte-identical `build.json`.
+
+```sh
+B=".local/toolchains/blender-5.2.3-linux-x64/blender -b --factory-startup --python"
+export LD_LIBRARY_PATH=$PWD/.local/toolchains/runtime-libs/usr/lib/x86_64-linux-gnu
+P=world/unreal/blender O=.local/evidence/world/valley-art/NEW
+.venv-cosys/bin/python -m world.unreal.blender.fetch_polyhaven
+$B $P/structures.py -- ranger-cabin --output $O/build
+.venv-cosys/bin/python -m world.unreal.blender.reference_match fit structures ranger-cabin --input $O/build --output $O/cameras
+$B $P/studio.py -- --build $O/build --cameras $O/cameras/cameras.json --output $O/render
+.venv-cosys/bin/python -m world.unreal.blender.reference_match compare structures ranger-cabin --input $O/render --output $O/compare
+```
+
+`fit` solves the master camera from the correspondences, fits an orthographic camera to each turnaround
+panel's silhouette box, and derives the 30 m nadir (70° HFOV, 3840×2160 drone camera, cropped to the
+asset) and a 1.7 m eye-level view. `studio.py` renders every view with OptiX under one fixed studio light.
+`compare` reports silhouette IoU per referenced view, master colour regions and a 1600 px contact sheet.
+Masks count floor shadows and sky occlusion as foreground, so plan-view IoU also measures shadow shape.
+
 ## MCP toolchain
 
 MCP is for inspection and iteration only; shipped content comes from tracked scripts.

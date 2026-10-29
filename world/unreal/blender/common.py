@@ -1,0 +1,324 @@
+"""Shared Blender asset harness: seeded parts, PBR materials, GLB export and build.json.
+
+A family module calls `main(Path(__file__), BUILDERS)`. Every asset is built in metres with
++Z up and its front facing +X; `finish` moves the origin to the ground-contact centre.
+"""
+
+import argparse
+import hashlib
+import json
+import math
+import random
+import sys
+from pathlib import Path
+
+import bmesh
+import bpy
+import numpy as np
+from mathutils import Matrix, Vector
+
+from world.unreal.blender.spec import LOCK, ROOT, TEXTURES, digest, load, output_dir
+
+GROUND_M = 0.01
+
+
+def add(parts, material, bm):
+    """Accumulate a bmesh into the per-material geometry of `parts` and free it."""
+    verts, faces, uvs = parts.setdefault(material, ([], [], []))
+    uv = bm.loops.layers.uv.active
+    bm.verts.index_update()
+    bm.verts.ensure_lookup_table()
+    order = {}
+    # bmesh operators order their output by pointer hash; coordinate order keeps exports identical.
+    for face in sorted(bm.faces, key=lambda f: [tuple(loop.vert.co) for loop in f.loops]):
+        faces.append(
+            [order.setdefault(loop.vert.index, len(verts) + len(order)) for loop in face.loops]
+        )
+        uvs.extend(tuple(loop[uv].uv) for loop in face.loops)
+    verts.extend(bm.verts[i].co.copy() for i in order)
+    bm.free()
+
+
+def emit(parts, materials):
+    """One smooth-shaded mesh object per material, sharp above 35 degrees."""
+    objects = []
+    for name, (verts, faces, uvs) in parts.items():
+        mesh = bpy.data.meshes.new(name)
+        mesh.from_pydata([tuple(v) for v in verts], [], faces)
+        mesh.uv_layers.new(name="UVMap").data.foreach_set(
+            "uv", np.array(uvs, dtype=np.float32).ravel()
+        )
+        assert not mesh.validate(), name
+        mesh.set_sharp_from_angle(angle=math.radians(35))
+        mesh.polygons.foreach_set("use_smooth", [True] * len(mesh.polygons))
+        mesh.materials.append(materials[name])
+        obj = bpy.data.objects.new(name, mesh)
+        bpy.context.scene.collection.objects.link(obj)
+        objects.append(obj)
+    return objects
+
+
+def frame(origin, x_axis, y_axis):
+    x, y = Vector(x_axis).normalized(), Vector(y_axis).normalized()
+    assert abs(x.dot(y)) < 1e-6, (x, y)
+    z = x.cross(y)
+    return Matrix(
+        (
+            (x.x, y.x, z.x, origin[0]),
+            (x.y, y.y, z.y, origin[1]),
+            (x.z, y.z, z.z, origin[2]),
+            (0, 0, 0, 1),
+        )
+    )
+
+
+def box(
+    parts,
+    material,
+    size,
+    matrix,
+    rng,
+    bevel=0.004,
+    segments=1,
+    tile=0.8,
+    grain=0,
+    clip=(),
+    band=None,
+):
+    """Bevelled box centred on `matrix`; texture grain (image V) follows local axis `grain`.
+
+    With `band`, the faces normal to local y show one scanned plank: image V spans the band
+    across the local z height and image U runs `tile` metres per texture along local x.
+    """
+    assert min(size) > 0, size
+    bm = bmesh.new()
+    bmesh.ops.create_cube(bm, size=1.0)
+    bmesh.ops.scale(bm, vec=Vector(size), verts=bm.verts)
+    if bevel:
+        bmesh.ops.bevel(
+            bm,
+            geom=list(bm.edges),
+            offset=min(bevel, 0.3 * min(size)),
+            segments=segments,
+            profile=0.5,
+            affect="EDGES",
+            clamp_overlap=True,
+        )
+    uv = bm.loops.layers.uv.new("UVMap")
+    offset = (rng.random(), rng.random())
+    flip = rng.choice((1, -1))
+    for face in bm.faces:
+        axis = max(range(3), key=lambda i: abs(face.normal[i]))
+        across = [i for i in range(3) if i != axis]
+        v_axis = grain if grain in across else across[1]
+        u_axis = across[0] if across[0] != v_axis else across[1]
+        for loop in face.loops:
+            co = loop.vert.co
+            if band and axis == 1:
+                v = band[0] + (co[2] / size[2] + 0.5) * (band[1] - band[0])
+                loop[uv].uv = (co[0] / tile + offset[0], v)
+            else:
+                loop[uv].uv = (co[u_axis] / tile + offset[0], flip * co[v_axis] / tile + offset[1])
+    bm.transform(matrix)
+    for point, normal in clip:
+        cut = bmesh.ops.bisect_plane(
+            bm,
+            geom=bm.verts[:] + bm.edges[:] + bm.faces[:],
+            plane_co=point,
+            plane_no=normal,
+            clear_outer=True,
+        )
+        edges = [e for e in cut["geom_cut"] if isinstance(e, bmesh.types.BMEdge)]
+        bmesh.ops.holes_fill(bm, edges=edges)
+    if bm.faces:
+        add(parts, material, bm)
+    else:
+        bm.free()
+
+
+def beam(parts, material, start, end, width, depth, up, rng, **kwargs):
+    """Timber from `start` to `end`; `depth` is measured along `up`, grain along the length."""
+    start, end, up = Vector(start), Vector(end), Vector(up)
+    axis = end - start
+    side = up.cross(axis).normalized()
+    up = axis.normalized().cross(side)
+    matrix = frame((start + end) / 2, axis, side)
+    if up.dot(matrix.col[2].xyz) < 0:
+        matrix = frame((start + end) / 2, axis, -side)
+    box(parts, material, (axis.length, width, depth), matrix, rng, grain=0, **kwargs)
+
+
+def lin(srgb):
+    """sRGB bytes to linear RGB."""
+    return tuple(((c / 255 + 0.055) / 1.055) ** 2.4 for c in srgb)
+
+
+def image(path, colour=False):
+    img = bpy.data.images.load(str(path))
+    img.colorspace_settings.name = "sRGB" if colour else "Non-Color"
+    return img
+
+
+def pixels(img):
+    values = np.empty(img.size[0] * img.size[1] * 4, dtype=np.float32)
+    img.pixels.foreach_get(values)
+    # Blender stores rows bottom-up, so row index maps directly to image V.
+    return values.reshape(img.size[1], img.size[0], 4)
+
+
+def matched(path, target, name, output):
+    """Match a CC0 albedo's sRGB mean and luminance spread to a reference region."""
+    source = bpy.data.images.load(str(path))
+    values = pixels(source)
+    # Byte images expose their stored sRGB values, not linear radiance.
+    srgb = values[..., :3]
+    mean = srgb.reshape(-1, 3).mean(axis=0)
+    gray = srgb.mean(axis=2, keepdims=True)
+    detail = (srgb - mean) * 0.6 + (gray - gray.mean()) * 0.4
+    values[..., :3] = np.clip(
+        np.array(target[0]) / 255 + detail * target[1] / 255 / gray.std(), 0, 1
+    )
+    derived = bpy.data.images.new(name, source.size[0], source.size[1])
+    derived.pixels.foreach_set(values.ravel())
+    derived.filepath_raw = str(output / f"{name}.png")
+    derived.file_format = "PNG"
+    derived.save()
+    bpy.data.images.remove(source)
+    derived.source = "FILE"
+    derived.reload()
+    return derived, {
+        "source": str(path.relative_to(ROOT)),
+        "sourceMeanSrgb": (mean * 255).round(1).tolist(),
+        "targetMeanSrgb": list(target[0]),
+        "targetLuminanceStd": target[1],
+    }
+
+
+def plank_bands(img):
+    """Image-V intervals of individual planks, found from the dark gaps between them."""
+    rows = pixels(img)[..., :3].mean(axis=(1, 2))
+    smooth = np.convolve(rows, np.ones(9) / 9, mode="same")
+    gaps = np.flatnonzero(smooth < smooth.mean() - 0.8 * smooth.std())
+    edges = [g for i, g in enumerate(gaps) if i == 0 or g - gaps[i - 1] > 20]
+    spans = [(a, b) for a, b in zip(edges, edges[1:]) if b - a > 60]
+    typical = np.median([b - a for a, b in spans])
+    bands = [
+        ((a + 0.12 * (b - a)) / len(rows), (b - 0.12 * (b - a)) / len(rows))
+        for a, b in spans
+        if 0.75 * typical < b - a < 1.3 * typical
+    ]
+    assert len(bands) >= 8, len(bands)
+    return bands
+
+
+def principled(
+    name,
+    base=None,
+    base_image=None,
+    rough=None,
+    rough_image=None,
+    normal_image=None,
+    strength=1.0,
+    metallic=0.0,
+    transmission=0.0,
+):
+    assert (base is None) != (base_image is None) and (rough is None) != (rough_image is None)
+    mat = bpy.data.materials.new(name)
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    bsdf = nodes["Principled BSDF"]
+
+    def texture(img, socket):
+        node = nodes.new("ShaderNodeTexImage")
+        node.image = img
+        links.new(node.outputs["Color"], socket)
+
+    if base_image:
+        texture(base_image, bsdf.inputs["Base Color"])
+    else:
+        bsdf.inputs["Base Color"].default_value = (*base, 1)
+    if rough_image:
+        texture(rough_image, bsdf.inputs["Roughness"])
+    else:
+        bsdf.inputs["Roughness"].default_value = rough
+    if normal_image:
+        normal = nodes.new("ShaderNodeNormalMap")
+        normal.inputs["Strength"].default_value = strength
+        texture(normal_image, normal.inputs["Color"])
+        links.new(normal.outputs["Normal"], bsdf.inputs["Normal"])
+    bsdf.inputs["Metallic"].default_value = metallic
+    bsdf.inputs["Transmission Weight"].default_value = transmission
+    return mat
+
+
+def finish(script, asset, spec, objects, output):
+    """Move the origin to the ground-contact centre, assert dimensions, export and report."""
+    vertices = []
+    for obj in objects:
+        assert obj.parent is None and obj.matrix_world == Matrix.Identity(4), obj.name
+        co = np.empty(len(obj.data.vertices) * 3)
+        obj.data.vertices.foreach_get("co", co)
+        vertices.append(co.reshape(-1, 3))
+    co = np.concatenate(vertices)
+    low = co[:, 2].min()
+    ground = co[co[:, 2] <= low + GROUND_M, :2]
+    shift = -np.array([*(ground.min(axis=0) + ground.max(axis=0)) / 2, low])
+    for obj in objects:
+        obj.data.transform(Matrix.Translation(shift))
+    bounds = np.array([co.min(axis=0), co.max(axis=0)]) + shift
+    extents = bounds[1] - bounds[0]
+    assert np.allclose(extents, spec["dimensionsM"], rtol=0, atol=spec["toleranceM"]), extents
+    textures = {}
+    for img in bpy.data.images:
+        assert max(img.size) <= spec["textureSize"], (img.name, tuple(img.size))
+        textures[img.name] = {"size": list(img.size), "sha256": digest(img.filepath_raw)}
+    triangles = {}
+    for obj in objects:
+        obj.data.calc_loop_triangles()
+        triangles[obj.name] = len(obj.data.loop_triangles)
+    bpy.ops.wm.save_as_mainfile(filepath=str(output / f"{asset}.blend"), compress=True)
+    glb = output / f"{asset}.glb"
+    assert bpy.ops.export_scene.gltf(
+        filepath=str(glb),
+        export_format="GLB",
+        export_image_format="JPEG",
+        export_image_quality=92,
+        export_cameras=False,
+        export_lights=False,
+        export_yup=True,
+    ) == {"FINISHED"}
+    return {
+        "asset": asset,
+        "scripts": {str(p.relative_to(ROOT)): digest(p) for p in (script, Path(__file__))},
+        "blenderVersion": bpy.app.version_string,
+        "blenderBuildHash": bpy.app.build_hash.decode(),
+        "spec": spec,
+        "frame": "metres, +Z up, front +X, origin at the ground-contact centre; GLB is glTF +Y up",
+        "originShiftM": shift.tolist(),
+        "boundsM": bounds.tolist(),
+        "extentsM": extents.tolist(),
+        "triangles": sum(triangles.values()),
+        "objectTriangles": triangles,
+        "textures": textures,
+        "polyhavenLockSha256": digest(LOCK),
+        "glb": {"bytes": glb.stat().st_size, "sha256": digest(glb)},
+    }
+
+
+def main(script, builders):
+    """Parse `<asset> --output <dir>`, build the asset with its seed and write build.json."""
+    parser = argparse.ArgumentParser(prog=script.name)
+    parser.add_argument("asset", choices=sorted(builders))
+    parser.add_argument("--output", type=Path, required=True)
+    args = parser.parse_args(sys.argv[sys.argv.index("--") + 1 :])
+    assets = load(script.stem)
+    assert sorted(assets) == sorted(builders), script
+    spec = assets[args.asset]
+    output = output_dir(args.output)
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    for entry in json.loads(LOCK.read_text())["files"]:
+        path = TEXTURES / entry["asset"] / Path(entry["url"]).name
+        assert hashlib.md5(path.read_bytes()).hexdigest() == entry["md5"], path
+    objects, details = builders[args.asset](random.Random(spec["seed"]), output)
+    report = finish(script, args.asset, spec, objects, output) | {"details": details}
+    (output / "build.json").write_text(json.dumps(report, indent=2) + "\n")
+    print("BUILD " + json.dumps({k: report[k] for k in ("extentsM", "triangles")}), flush=True)
