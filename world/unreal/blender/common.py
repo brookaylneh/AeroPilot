@@ -230,6 +230,46 @@ def plank_bands(img):
     return bands
 
 
+def stored(img, output):
+    img.filepath_raw = str(output / f"{img.name}.png")
+    img.file_format = "PNG"
+    img.save()
+    return img
+
+
+def saved(name, values, output, colour=False):
+    """An opaque PNG image from a (rows, columns, 3 or 4) array, rows along image V."""
+    rows, columns, channels = values.shape
+    assert channels in (3, 4), values.shape
+    if channels == 3:
+        values = np.concatenate([values, np.ones((rows, columns, 1))], axis=2)
+    img = bpy.data.images.new(name, columns, rows, alpha=False, is_data=not colour)
+    img.pixels.foreach_set(values.astype(np.float32).ravel())
+    return stored(img, output)
+
+
+def directx(name, gl, output):
+    """T_<name>_N for Unreal (green down) from an OpenGL tangent-space normal map array."""
+    dx = gl.copy()
+    dx[..., 1] = 1 - dx[..., 1]
+    return saved(f"T_{name}_N", dx, output)
+
+
+def pbr(name, bc, ao, rough, output, gl=None):
+    """MI_<name> from a base colour image, T_<name>_ORM (AO, roughness, metal) written from
+    2D arrays, and an optional OpenGL normal map image."""
+    assert ao.shape == rough.shape and ao.ndim == 2, (ao.shape, rough.shape)
+    orm = saved(f"T_{name}_ORM", np.stack([ao, rough, np.zeros_like(rough)], axis=2), output)
+    mat = principled(f"MI_{name}", base_image=bc, rough=0.5, normal_image=gl)
+    nodes, links = mat.node_tree.nodes, mat.node_tree.links
+    channels = nodes.new("ShaderNodeSeparateColor")
+    texture = nodes.new("ShaderNodeTexImage")
+    texture.image = orm
+    links.new(texture.outputs["Color"], channels.inputs["Color"])
+    links.new(channels.outputs["Green"], nodes["Principled BSDF"].inputs["Roughness"])
+    return mat
+
+
 def principled(
     name,
     base=None,
@@ -299,7 +339,9 @@ def repeated(report, previous, output):
         if entry == before["textures"][name]:
             differences[name] = {"maxLevels": 0, "fraction": 0.0}
             continue
-        a, b = (np.round(pixels(image(d / f"{name}.png")) * 255) for d in (previous, output))
+        a, b = (
+            np.round(pixels(image(d / f"{name}.png"))[..., :3] * 255) for d in (previous, output)
+        )
         diff = np.abs(a - b)
         differences[name] = {"maxLevels": int(diff.max()), "fraction": float((diff > 0).mean())}
         assert diff.max() <= levels and (diff > 0).mean() <= fraction, (name, differences[name])
