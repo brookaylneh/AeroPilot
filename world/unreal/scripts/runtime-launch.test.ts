@@ -1,11 +1,39 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const project = path.resolve(import.meta.dirname, '../../..');
+
+test('packaging rejects missing manifest inputs before creating a build', () => {
+  const directory = mkdtempSync(path.join(tmpdir(), 'snr-package-inputs-'));
+  try {
+    const manifest = path.join(directory, 'manifest.json');
+    const archive = path.join(directory, 'archive');
+    writeFileSync(manifest, '{}');
+    const env: NodeJS.ProcessEnv = {
+      ...process.env,
+      UE_ROOT: path.join(directory, 'engine'),
+      SNR_WORLD_CONFIG: manifest,
+      SNR_COSYS_SETTINGS: manifest,
+    };
+    for (const key of ['SNR_WORLD_CONFIG', 'SNR_COSYS_SETTINGS']) {
+      for (const value of [undefined, path.join(directory, 'missing.json')]) {
+        const run = spawnSync(
+          'bash',
+          ['world/unreal/scripts/package-unreal.sh', archive, path.join(directory, 'evidence')],
+          { cwd: project, env: { ...env, [key]: value }, encoding: 'utf8' },
+        );
+        assert.notEqual(run.status, 0, `${key} must identify an existing manifest`);
+        assert(!existsSync(archive));
+      }
+    }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 test('packaged container needs no editor, accepts bounded host resources and selects the runtime image', () => {
   const directory = mkdtempSync(path.join(tmpdir(), 'snr-launch-'));

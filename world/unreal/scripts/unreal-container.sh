@@ -35,6 +35,7 @@ if [[ "$mode" != run-packaged ]]; then
   [[ -f "$engine_root/Engine/Build/Build.version" ]] || { echo "Missing Unreal SDK: $engine_root" >&2; exit 2; }
   engine_root=$(realpath "$engine_root")
   container_flags+=(--mount "type=bind,src=$engine_root,dst=$engine_root,readonly" -e "UE_ROOT=$engine_root")
+  container_flags+=(-e SNR_WORLD_CONFIG -e SNR_COSYS_SETTINGS)
   mkdir -p "$cache_root/BuildCookRun"
   container_flags+=(--mount "type=bind,src=$cache_root/BuildCookRun,dst=$engine_root/Engine/Intermediate/Build/BuildCookRun")
 fi

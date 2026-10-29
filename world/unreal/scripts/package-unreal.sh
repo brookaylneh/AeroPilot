@@ -2,6 +2,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
 : "${UE_ROOT:?Set UE_ROOT to an installed Unreal Engine 5.8.2 directory}"
+world_config=$(realpath "${SNR_WORLD_CONFIG:?Set SNR_WORLD_CONFIG to the world manifest matching the authored Content}")
+cosys_settings=$(realpath "${SNR_COSYS_SETTINGS:?Set SNR_COSYS_SETTINGS to the release camera and vehicle settings}")
+[[ -f "$world_config" && -f "$cosys_settings" ]] || { echo 'Release manifest inputs must exist.' >&2; exit 2; }
 bash world/cosys/verify-plugin.sh
 archive_dir=$(realpath -m "${1:?Usage: package-unreal.sh NEW_BUILD_DIRECTORY NEW_EVIDENCE_DIRECTORY}")
 evidence_dir=$(realpath -m "${2:?Usage: package-unreal.sh NEW_BUILD_DIRECTORY NEW_EVIDENCE_DIRECTORY}")
@@ -35,11 +38,11 @@ done
   -UbtArgs="-MaxParallelActions=6 -NoUBA" \
   -ddc=InstalledNoZenLocalFallback -AdditionalCookerOptions="-SkipZenStore -notraceserver" \
   -archivedirectory="$archive_dir" | tee "$evidence_dir/package.log"
-python3 - "$archive_dir" "$evidence_dir" <<'PY'
+python3 - "$archive_dir" "$evidence_dir" "$world_config" "$cosys_settings" <<'PY'
 import shutil
 import sys
 from pathlib import Path
-archive, evidence = map(Path, sys.argv[1:])
+archive, evidence, world_config, cosys_settings = map(Path, sys.argv[1:])
 log = (evidence / 'package.log').read_text(errors='replace')
 failures = ['Failed to compile Material', "doesn't have a valid ShaderMap", 'LogCook: Error:']
 if any(message in log for message in failures):
@@ -50,6 +53,6 @@ platforms = [line.split('=', 1)[1] for line in config.read_text().splitlines() i
 assert len(platforms) == 1 and platforms[0] in ('SF_VULKAN_SM5', 'SF_VULKAN_SM6'), platforms
 (archive / 'Linux/shader-platform.txt').write_text(platforms[0] + '\n')
 shutil.copy2(config, archive / 'Linux/DefaultEngine.ini')
-shutil.copy2('world/cosys/world.json', archive / 'Linux/world.json')
-shutil.copy2('world/cosys/settings.json', archive / 'Linux/cosys-settings.json')
+shutil.copy2(world_config, archive / 'Linux/world.json')
+shutil.copy2(cosys_settings, archive / 'Linux/cosys-settings.json')
 PY
