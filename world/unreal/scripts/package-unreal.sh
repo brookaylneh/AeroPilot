@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
 : "${UE_ROOT:?Set UE_ROOT to an installed Unreal Engine 5.8.2 directory}"
-.venv-cosys/bin/python -m world.cosys.plugin
+bash world/cosys/verify-plugin.sh
 archive_dir=$(realpath -m "${1:?Usage: package-unreal.sh NEW_BUILD_DIRECTORY NEW_EVIDENCE_DIRECTORY}")
 evidence_dir=$(realpath -m "${2:?Usage: package-unreal.sh NEW_BUILD_DIRECTORY NEW_EVIDENCE_DIRECTORY}")
 [[ ! -e "$archive_dir" && ! -e "$evidence_dir" ]] || { echo 'Build and evidence destinations must be new.' >&2; exit 2; }

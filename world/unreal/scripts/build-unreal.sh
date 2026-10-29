@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
 engine_root="${UE_ROOT:-$HOME/UnrealEngine/5.8.2}"
-.venv-cosys/bin/python -m world.cosys.plugin
+bash world/cosys/verify-plugin.sh
 python3 - "$engine_root" <<'PY'
 import json, pathlib, sys
 v = json.loads((pathlib.Path(sys.argv[1]) / 'Engine/Build/Build.version').read_text())
