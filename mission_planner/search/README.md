@@ -1,10 +1,8 @@
 # Search commander
 
-The mission service owns the quoted subject profile, approved last known location,
-drawn search area, four-aircraft plan, camera evidence and posterior. Use
-`/mission?case=<uuid>` in the assigned development slot. The shared tool catalogue
-is in [agents](../agents/README.md); [deployment](../../deploy/README.md) defines
-ports, receiving routes and slot ownership.
+The mission service owns profiles, search plans, camera evidence and posterior.
+Use `/mission?case=<uuid>` in the assigned slot. [Agents](../agents/README.md) documents
+tools; [deployment](../../deploy/README.md) defines ports, receiving routes and ownership.
 
 ## Places and directions
 
@@ -27,10 +25,10 @@ invalidates the saved plan; declined or cancelled proposals leave it unchanged.
 
 Labels and lines sit beneath leads and aircraft. `describe_location` computes
 horizontal nearest-feature distance, eight-way compass bearing and polyline side
-using exact segment projection. Creek banks use compass directions; open endpoints
-are identified explicitly. These descriptions do not establish walking routes.
-Cards, Wonder and team deliveries share the computed text; delivery preserves the
-text that existed when sent.
+using exact segment projection. When the nearest feature is also that line, its
+name appears once with distance and bank/side. Creek banks use compass directions;
+open endpoints are identified explicitly. Cards, Wonder and team deliveries share
+this text, preserved at dispatch. These descriptions do not establish walking routes.
 
 ## Profile and prior
 
@@ -65,13 +63,18 @@ update proposal; clue movement updates are not implemented.
 
 ## Planning and flight
 
-Planning fits the map to the area and routes. Semi-transparent Viridis uses a labelled
-log1p scale with actual probability ticks; terrain and lower-mass regions stay readable.
-`planner.py` compares separated tracks using calibrated lateral/along-frame detection
-averaged over capture phase. Overlapping views earn only maximum-look credit.
+Planning fits the map to the area and routes. Semi-transparent Viridis uses a
+labelled log1p scale with actual probability ticks, preserving terrain visibility.
+`planner.py` scores tracks in four worker processes using calibrated lateral/along
+detection averaged over capture phase. Overlapping views earn only maximum-look credit.
 Capture spacing is 16 m: 3.2 s per drone at 5 m/s, applied by the coupling capture
 owner at integration. POA/POD/POS, duration and reserves refer to emitted waypoints;
 unsupported priors, stale plans and infeasible routes fail.
+
+`occlusion.py` assigns zero aerial POD to every cell with nonzero area overlap with
+an authored structure or forest footprint. Planning and camera evidence share this
+conservative boundary rule. This mass stays in belief; aerial expected POS excludes
+it without renormalizing it away. No canopy/interior detection calibration is assumed.
 
 Terrain paths use the fewest deterministic links over samples at most 1 m apart,
 all within **30 ±1 m above ground**, leaving ±1 m for tracking. Quarter-metre heights
@@ -89,34 +92,32 @@ clearance validation. Planning, execution and resumed routes share these checks.
 
 `start_search` is one fleet approval. Healthy links, GPS/EKF, read-back fences,
 altitude and separation remain required before takeoff and mission upload/readback.
-Completion follows measured telemetry through return and landing; acknowledgement
-does not establish arrival. No automatic repair flight is generated.
+Completion follows measured telemetry through return and landing, not acknowledgement.
+No automatic repair flight is generated.
 
 ## Camera source and queue
 
-Choose **Live coupled captures** or an explicit **Recorded frames** manifest.
-There is no default; selection locks search inputs and warms the owned session.
-`start_replay` releases the complete selected manifest once, without truncation,
-restart or mixing sources. The live adapter is
-`await search.consume_capture(metadata_path)` after source readiness. Metadata
-belongs under this mission's `captures/`; its JPEG must be adjacent.
-`configuration.py` checks truth-free fields, pose, hash and dimensions. Replay
-exports are prepared offline; the service reads only the selected public records.
+Choose **Live coupled captures** or an explicit **Recorded frames** manifest;
+there is no default. Selection locks inputs and warms the owned session. `start_replay`
+releases the complete manifest once, without truncation, restart or mixing sources.
+The live adapter is `await search.consume_capture(metadata_path)` after readiness.
+Metadata belongs under this mission's `captures/`, beside its JPEG. `configuration.py`
+checks truth-free fields, pose, hash and dimensions. Replay exports are prepared
+offline; the service reads only the selected public records.
 
-`ingestion.py` retains every frame and enforces increasing timestamps. Each drone
-or labelled replay lane has four SAM slots and an ordered belief-commit queue.
-SAM releases its slot before Glimmer verification. Backlog, oldest unfinished age,
-active stages and terminal errors are visible. Persistence errors retain whether
-belief was committed. Failed inference receives no negative evidence and no retry;
-subsequent frames proceed in order. No frame or candidate is silently dropped.
-Recorded frames retain their actual drone, pose and timestamp. Replay lanes describe
-load; those historical images cannot claim to photograph a current re-look flight.
+`ingestion.py` retains every frame, validates increasing timestamps and orders belief
+commits per drone/replay lane. Each lane has four SAM slots, released before Glimmer.
+Backlog, oldest unfinished age, stages and terminal errors are visible. Persistence
+errors retain whether belief committed. Failed inference earns no negative credit or
+retry; subsequent frames proceed in order. No frame or candidate is silently dropped.
+Recorded frames retain actual drone, pose and time. Replay lanes describe load;
+historical images cannot establish a current re-look observation.
 
 ## Perception and belief
 
-`configuration.py` reads calibrated configuration and observation-model numbers
-from commander.json; `commander.py` reads its measured `pipeline_capacity`.
-The live path never imports the labelled calibration reducer. `pipeline.py` uses:
+`configuration.py` reads calibrated configuration/model numbers from commander.json;
+`commander.py` reads its measured capacity. Live code never imports the labelled
+calibration reducer. `pipeline.py` uses:
 
 - Native 3840×2160 to 1920×1080, Pillow Lanczos, JPEG95, subsampling0.
 - Pinned SAM3.1, `person`, strict confidence >0.3, four 1008px tiles and pinned NMS.
@@ -146,11 +147,13 @@ A ground region receives at most one first-reference-frame positive factor, shar
 by new clusters in that frame. Repeated views earn no further credit. Dismissal
 removes the contribution while retaining the region reservation. Integrated spatial
 kernels include truncation mass; finite ranges and normalization are asserted.
+Qualified detections in zero-POD cells remain visible without a positive factor.
+When every new lead lacks credit, the frame outcome is `no_detection_credit`.
 
 ## Evidence and operator actions
 
 Cards show full frame/box, crop, every member, model numbers, configuration/source,
-location, uncertainty, landmark directions and likelihood details. Headlines sum
+location, uncertainty, directions and likelihood details. Headlines sum
 probability over cells intersecting the closed 95% ellipse, including tangency.
 Ellipse-only mass and area fractions remain in details, assuming uniform density
 inside cells. The provisional posterior does not establish missing-subject identity.
@@ -163,28 +166,34 @@ metres is calibrated; lower looks are visual confirmation. New live frames follo
 normal ingestion. The monitor excludes paused drones; explicit `resume` validates
 saved mission/progress and returns along the saved path before continuing AUTO.
 
-`notify_ground_team` requires a confirmed lead and explicit approval. It persists
+`notify_ground_team` requires a confirmed lead and explicit approval. It delivers
 photo, coordinates, time, directions, labelled confidence/posterior and navigation
-link at `/team?case=<uuid>&team=<id>`. Sending remains **awaiting acknowledgement**
-until that receiving page explicitly acknowledges. Its WebSocket cannot run tools.
+link to `/team?case=<uuid>&team=<id>`, awaiting that page's acknowledgement.
+
+`hasty_check_structure` also requires approval in every mode. It sends an authored
+structure footprint, name, directions and instructions to that page, without a
+photo or model score. Coordinates identify the first footprint vertex, not an entrance.
+The receiving team acknowledges before reporting a negative result. Only an operator
+can execute `confirm_structure_negative` with a reason for a complete check; the
+report alone changes no belief. Confirmation removes exact footprint area fractions,
+preserves accumulated evidence and renormalizes the remainder. It invalidates a ready
+plan and locks search inputs. Duplicate or overlapping confirmed footprints fail.
+The receiving WebSocket cannot execute tools or confirm its own negative report.
 
 ## Measurement and verification
 
-`hosting.inference_session` owns runner limits, metered usage and scale-to-zero
-cleanup on success and failure. SAM uses eight async fal slots per runner with a
-serialized model section; separate SAM/verification pools keep Glimmer off dispatch.
-Weights and precision stay pinned. Preserve new outputs and every failed request.
+`hosting.inference_session` owns runner limits, metered usage and scale-to-zero cleanup.
+SAM uses eight async slots per runner with serialized model calls; separate verification
+pools keep Glimmer off dispatch. Precision stays pinned; preserve every run and failure.
 
-`bench_commander.py` measures complete recorded-frame processing; `profile_pipeline.py`
-reduces request clocks and busy time. The gate requires every frame, zero failures,
-p95 ≤10 s, unfinished work ≤`ceil(offered_rate × 10 s)` and rate within 2% of offered.
-Record arrival lag and backlog; buffering alone does not establish capacity.
-`bench_prompt_equivalence.py` compares decisions, box IoU and scores. Cost/cadence
-measurements live in commander.json; planner POS excludes processing delay.
+`bench_commander.py` measures recorded-frame processing; `profile_pipeline.py` reduces
+request clocks and busy time. The gate requires every frame, zero failures, p95 ≤10 s,
+unfinished work ≤`ceil(offered_rate × 10 s)` and rate within 2% of offered. Arrival lag
+and backlog remain visible. `bench_prompt_equivalence.py` compares decisions, IoU and
+scores. commander.json records cost/cadence; planner POS excludes processing delay.
 
-`evaluate_commander.py` keeps labels private and scores the live pipeline offline.
-The corpus contains actual Drone1 captures; replay lanes do not prove cross-drone
-performance. `accept_browser.mjs commander` exercises camera/flight/operator/delivery;
-`report_flight.py` reduces telemetry/DataFlash logs. Run the six `AGENTS.md` checks.
-Truth-isolation tests cover live perception, landmarks, places and priors.
-places.json links source evidence, tool benchmarks, UI artifacts and dependencies.
+`evaluate_commander.py` scores the live pipeline offline with private labels.
+The Drone1 corpus and replay lanes do not prove cross-drone performance.
+`accept_browser.mjs commander` exercises camera/flight/operator/delivery;
+`report_flight.py` reduces flight logs. Run the six `AGENTS.md` checks, including
+truth isolation. places.json links sources, benchmarks, UI artifacts and dependencies.

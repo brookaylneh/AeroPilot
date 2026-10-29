@@ -871,5 +871,918 @@
     "slot_origin": "http://127.0.0.1:5175",
     "merge_performed": false,
     "commander_measurement_unchanged_sha256": "552a48e3fe320f2b0840c4f0ee36b4dc9d7ea62a2670ef398a561a7c959aeb45"
+  },
+  "corrections": {
+    "status": "Implemented and verified on fixtures; authored valley comparison remains for integration",
+    "recorded_at_utc": "2026-10-29T01:55:29.931214+00:00",
+    "preserved_measurement_sha256": "bd0b02395ecbb89a9f76624d9e93586d003a3601acce8d15732a57fa85682545",
+    "evidence_directory": ".local/evidence/search/places-corrections",
+    "artifact_manifest": {
+      "path": ".local/evidence/search/places-corrections/nonperformance-artifacts-01.json",
+      "sha256": "5eea2490b9f7ddf3a9a935312891ce9ace43d7b988ebd3a055aa7d201dd86674"
+    },
+    "wonder": {
+      "full_benchmark": {
+        "model": "muse-wonder-1.0",
+        "effort": "low",
+        "registered_tools": 27,
+        "cases": 54,
+        "exact_passes": 53,
+        "accuracy": 0.9814814814814815,
+        "misses": [
+          32
+        ],
+        "http_200": 54,
+        "fresh_conversation_each_case": true,
+        "scoring": "Exact unordered list of tool names and JSON arguments; no-call cases require zero calls. No-tool prose correctness is not scored.",
+        "miss_detail": {
+          "case": 32,
+          "expected": [
+            {
+              "name": "list_detections",
+              "arguments": {
+                "drone_id": null,
+                "status": "unresolved"
+              }
+            }
+          ],
+          "actual": [
+            {
+              "name": "list_detections",
+              "arguments": {
+                "drone_id": "null",
+                "status": "unresolved"
+              }
+            }
+          ],
+          "validation": "validate_arguments rejects the string-null drone id with AssertionError: Unknown drone: null; the benchmark executes no tools."
+        },
+        "new_cases": [
+          {
+            "case": 53,
+            "expected": [
+              {
+                "name": "hasty_check_structure",
+                "arguments": {
+                  "place_id": "ranger-cabin",
+                  "team_id": "alpha",
+                  "message": "Check the cabin and report findings"
+                }
+              }
+            ],
+            "actual": [
+              {
+                "name": "hasty_check_structure",
+                "arguments": {
+                  "place_id": "ranger-cabin",
+                  "team_id": "alpha",
+                  "message": "Check the cabin and report findings"
+                }
+              }
+            ],
+            "passed": true
+          },
+          {
+            "case": 54,
+            "expected": [],
+            "actual": [],
+            "passed": true
+          }
+        ],
+        "usage": {
+          "input_tokens": 324902,
+          "cached_input_tokens": 299676,
+          "output_tokens": 8164,
+          "reasoning_tokens": 3064,
+          "uncached_input_tokens": 25226
+        },
+        "list_price_returned_usage_cost_usd": 0.3241192,
+        "prompt_sha256": "32551f8227b8de2597c39bec6dfc1ac62b36151d52b4e9420be598c6b9d5d5dd",
+        "tools_sha256": "ea54803ba4c0ba61f6f33fa1745259efb6d0601fff9df8aa8475271403a3eb83",
+        "measurement": {
+          "path": ".local/evidence/search/places-corrections/wonder-full-01/measurement.json",
+          "sha256": "c25056be4e4249c90207fef28a5f794e4559bfedfb40c32f11f2dac618b7a4b4"
+        },
+        "scores": {
+          "path": ".local/evidence/search/places-corrections/wonder-full-01/scores.json",
+          "sha256": "8d6fb73bac7f4b20df99d7bbb7c777e6e9923f3475951f349fef93a4dfa4152c"
+        },
+        "miss_response": {
+          "path": ".local/evidence/search/places-corrections/wonder-full-01/32.response.json",
+          "sha256": "8f14bcb4809dd684d187e5642c890b25d332683c67bb59b4a85ebcc20ed76739"
+        },
+        "miss_http": {
+          "path": ".local/evidence/search/places-corrections/wonder-full-01/32.http.json",
+          "sha256": "9b0dc5092f6856f38c4c79e43fba62dfeb73b77146b9c4a1a6386b1656bcd49c"
+        }
+      },
+      "already_reviewed_case35": {
+        "archived_stage1_context": {
+          "samples": 8,
+          "no_call": 5,
+          "unnecessary_review": 3,
+          "resolve_calls": 0
+        },
+        "archived_stage2_context": {
+          "samples": 8,
+          "no_call": 8,
+          "unnecessary_review": 0,
+          "resolve_calls": 0
+        },
+        "inference": "Identical archived Stage 1 request bytes produced both routes; the historical Stage 2 miss is not uniquely attributable to its new context.",
+        "wording_only_check": {
+          "requests": 18,
+          "expected_routes": 18,
+          "http_200": 18,
+          "fixed_case35_no_call": 8,
+          "baseline_case35_no_call": 4,
+          "saved_frame_review": 2,
+          "model_review": 2,
+          "dismissal_no_call": 1,
+          "requested_reopening": 1
+        },
+        "wording": "Already reviewed confirmation or dismissal receives directions to the operator card with no tool call. Another review requires an operator request.",
+        "limits": "Predeclared fresh conversations test routing controls; this sample does not establish a population failure rate or deterministic model behavior.",
+        "ab_usage": {
+          "input_tokens": 89560,
+          "cached_input_tokens": 82380,
+          "output_tokens": 2913,
+          "reasoning_tokens": 1821,
+          "uncached_input_tokens": 7180
+        },
+        "ab_list_price_returned_usage_cost_usd": 0.103456,
+        "wording_usage": {
+          "input_tokens": 101644,
+          "cached_input_tokens": 89408,
+          "output_tokens": 2696,
+          "reasoning_tokens": 1536,
+          "uncached_input_tokens": 12236
+        },
+        "wording_list_price_returned_usage_cost_usd": 0.1207456,
+        "summary": {
+          "path": ".local/evidence/search/places-corrections/wonder35-summary.json",
+          "sha256": "f0056e18f8a8ade92c824f132e7d17d6664cb7b4bfa29e183dc596b0d42728c6"
+        },
+        "ab_manifest": {
+          "path": ".local/evidence/search/places-corrections/wonder35-ab-01/manifest.json",
+          "sha256": "a95d81ff05866f573f2dca8393bd003d593e5d192afb13515a2e46896ee4dae8"
+        },
+        "ab_outcomes": {
+          "path": ".local/evidence/search/places-corrections/wonder35-ab-01/outcomes.json",
+          "sha256": "0a6aeebd381f1f747573b1d8e6a083f4af6362e32425dd194a9b96d55cdd4616"
+        },
+        "wording_manifest": {
+          "path": ".local/evidence/search/places-corrections/wonder35-fix-01/manifest.json",
+          "sha256": "6689f8fe35ddfe773f1d7b36ba45979a81d42863ff65528b44e71f221a4f121f"
+        },
+        "wording_outcomes": {
+          "path": ".local/evidence/search/places-corrections/wonder35-fix-01/outcomes.json",
+          "sha256": "96487ced1144852f15a5fd18adee1426fb31a89d8035708ffb4daaeabef1c95f"
+        }
+      },
+      "total_requests": 88,
+      "total_usage": {
+        "input_tokens": 516106,
+        "cached_input_tokens": 471464,
+        "output_tokens": 13773,
+        "reasoning_tokens": 6421,
+        "uncached_input_tokens": 44642
+      },
+      "total_list_price_returned_usage_cost_usd": 0.5483208,
+      "cost_basis": "Returned API usage, including output reasoning tokens already included in output_tokens, at the saved primary-source list rates; not an invoice.",
+      "metered_invoice_available": false,
+      "cost_formula": "((input_tokens - cached_input_tokens) * 4 + cached_input_tokens * 0.2 + output_tokens * 20) / 1000000",
+      "price_source": {
+        "url": "https://dev.meta.ai/models/muse-wonder/",
+        "uncached_input_per_million_usd": 4,
+        "cached_input_per_million_usd": 0.2,
+        "output_per_million_usd": 20,
+        "source": {
+          "path": ".local/evidence/search/commander-stage3/wonder-pricing-02/source.json",
+          "sha256": "62268575dce965a7fe930420f087896bd99f6a93a829a0854c08112229508f96"
+        },
+        "text": {
+          "path": ".local/evidence/search/commander-stage3/wonder-pricing-02/text.txt",
+          "sha256": "caaf2dfafd27605f83a11926afe9cc59855f4461040ae731cc986117ca9680c8"
+        }
+      },
+      "failed_requests_retried": 0,
+      "tools_executed": 0,
+      "flight_execution": false
+    },
+    "directions": {
+      "rule": "When nearest named feature is also nearest line, name it once and retain distance and side/bank or endpoint relation. Different nearest feature and line still both appear. Structured numeric fields are unchanged.",
+      "examples": [
+        "2.0 m from Creek, on its west bank",
+        "1.0 m from Track, on its east side",
+        "On Track",
+        "1.0 m north beyond an endpoint of Track"
+      ],
+      "implementation": {
+        "path": "world/cosys/landmarks.py",
+        "sha256": "4ab1dfaf4b6b3787acfa2f97793752a4c00611b8601329edf8845fa02d334f31"
+      },
+      "tests": {
+        "path": "world/cosys/test_landmarks.py",
+        "sha256": "3953df045309f5c57daa2878a79ca901c481a856fcee7f31d243b35b5a493d02"
+      }
+    },
+    "aerial_occlusion_and_ground_checks": {
+      "aerial_rule": "Any positive-area structure or forest overlap protects the whole belief cell from aerial detection credit. Frame records and uncredited detections remain visible.",
+      "ground_rule": "Only an operator-confirmed checked-negative report removes the authored structure footprint fraction. The prior and camera maximum-look history remain unchanged; disjoint confirmed ground exclusions persist through recomputation.",
+      "structure_task": "hasty_check_structure requires an authored structure polygon, explicit team/message and operator approval. The receiving page acknowledges, then may report checked-negative; only confirm_structure_negative executed by the operator changes belief.",
+      "delivery_scope": "The task uses a discriminated structure_check delivery without invented photos or model scores. Its reference coordinate is the first polygon vertex, not a claimed entrance.",
+      "ui_scope": "Explicit fictional landmark fixture; real production Search, Evidence, GroundTeam and Mission approval execution. No network, drones, inference or receiving ground team. Browser replays these resulting states.",
+      "production_fixture": {
+        "path": ".local/evidence/search/places-corrections/ui-01/fixture-report.json",
+        "sha256": "f83dda1083ce61a63c70906f91ec6259d9640db9294e27e929e67a94e8653c4e"
+      },
+      "production_events": {
+        "path": ".local/evidence/search/places-corrections/ui-01/fixture-events.json",
+        "sha256": "c3f607d005142755d46f1d8d6517545f64e8d710d4ff86b7dd40baf561fab9b2"
+      },
+      "production_ground_evidence": {
+        "path": ".local/evidence/search/places-corrections/ui-01/mission-fixture/ground-evidence.json",
+        "sha256": "52dde20bd60a22aa3f5ea42b97d0fb0cd9fa2264a61d001d074db5e552ceb928"
+      },
+      "browser_flow": {
+        "path": ".local/evidence/search/places-corrections/ui-02/flow-results.json",
+        "sha256": "5ae5dc891dbdd1552d04a36c06b2de446d6ad702dc20fdfb900f9c2c5dd3fe1a"
+      },
+      "final_display": {
+        "path": ".local/evidence/search/places-corrections/ui-03/final-results.json",
+        "sha256": "93aa2d99cc5b0c95eeb8f4cc54cfa4b014a468b34c06e9e4e2cc99d26e5a5039"
+      },
+      "passed": true,
+      "browser_errors": [],
+      "no_delivery_before_approval": true,
+      "authored_polygon_highlighted": true,
+      "no_invented_photo_or_model_scores": true,
+      "team_report_changes_no_belief": true,
+      "receiver_cannot_confirm": true,
+      "removed_mass": 0.18718050130851593,
+      "retained_mass": 0.8128194986914841,
+      "before_sum": 1.0,
+      "after_sum": 1.0,
+      "displayed_probability_change": "Removed 18.7% of the pre-update probability; remaining probability renormalized.",
+      "screenshots": [
+        {
+          "path": ".local/evidence/search/places-corrections/ui-02/ground-check-approval-1920.png",
+          "sha256": "31e0ce7f3ad8ab81fe5bdc626fadda03af09e74a042c9b1df35c482158469880"
+        },
+        {
+          "path": ".local/evidence/search/places-corrections/ui-02/ground-check-approval-2560.png",
+          "sha256": "362c48baaee86b39e1e707b56945c7787d69f7116e8856f6c6ef9955e6a2ac5f"
+        },
+        {
+          "path": ".local/evidence/search/places-corrections/ui-02/ground-negative-awaiting-operator-390.png",
+          "sha256": "827338a17d184dc9378a79e9474f29db469d9f75e55038b1b499119926b9a4ab"
+        },
+        {
+          "path": ".local/evidence/search/places-corrections/ui-02/ground-negative-confirmed-390.png",
+          "sha256": "f6dca65c8d91542580be73b3afb1b28385303639f4fd4084e695c067619b34c3"
+        },
+        {
+          "path": ".local/evidence/search/places-corrections/ui-02/ground-task-received-1920.png",
+          "sha256": "30d39c2eee18d28ea9725ec791787b854fd6498bc85a6cab5e808ecd055c9840"
+        },
+        {
+          "path": ".local/evidence/search/places-corrections/ui-02/ground-task-received-2560.png",
+          "sha256": "2c054d70afdfc67245b55ba42f02560886bd50b12c44fc52c388b8afe9d00c09"
+        },
+        {
+          "path": ".local/evidence/search/places-corrections/ui-02/ground-task-received-390.png",
+          "sha256": "622d909a0c9e54b2308a8ffa144180d8a801d4d8a5ba9fc308babe65b5fa2824"
+        },
+        {
+          "path": ".local/evidence/search/places-corrections/ui-02/operator-negative-confirmed-1920.png",
+          "sha256": "4d79effc0437f38c5ebf2605b32d14872b36293e089ab3a9a614b38f5588e797"
+        },
+        {
+          "path": ".local/evidence/search/places-corrections/ui-02/operator-negative-review-1920.png",
+          "sha256": "fb0bb74e868460b59d744ed17944ed6a91b6789dd3a937f5522623779e9a832d"
+        },
+        {
+          "path": ".local/evidence/search/places-corrections/ui-02/operator-negative-review-2560.png",
+          "sha256": "4f61c6dfc22f357a05f873eb01dd17adb155dadbad02054541e60119337b7895"
+        },
+        {
+          "path": ".local/evidence/search/places-corrections/ui-03/operator-negative-confirmed-1920.png",
+          "sha256": "4608cdd003b12365f017d0b736a7f1b071c4827d139055e44fcc66599cb7cff2"
+        },
+        {
+          "path": ".local/evidence/search/places-corrections/ui-03/operator-negative-confirmed-2560.png",
+          "sha256": "22e578118c71b17fd8a5136a28c5c8b993dc75b306e5188e2b145f8f2f25bd85"
+        }
+      ],
+      "preserved_failed_browser_attempt": {
+        "result": {
+          "path": ".local/evidence/search/places-corrections/ui-01/flow-results.json",
+          "sha256": "5b61db2a540bb578e7e8bc6206f5e51598ea852f2724274591c0c6125b61a837"
+        },
+        "failure": "locator.selectOption: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel('Structure', { exact: true })\u001b[22m\n",
+        "scope": "Browser selector failure before actions; saved production fixture was unchanged. The corrected browser harness used a new output directory."
+      }
+    },
+    "truth_isolation_contract": {
+      "guarded_pass": {
+        "path": "mission_planner/search/test_truth_isolation.py",
+        "sha256": "10b13028980339b3df34407a2e53b471be9c84f31aaf448ced82d8929cdd6e72"
+      },
+      "occlusion_tests": {
+        "path": "mission_planner/search/test_occlusion.py",
+        "sha256": "e94f04ba117af2f09469ac993d6ecacd9439fa1feac14bbd63933cd84d5e3f8f"
+      },
+      "coverage": "Denied private file opens and imports cover live capture processing, landmark loading and lookup, behavior conditioning, real capture POD with occlusion, camera negatives, ground exclusion and normalized recomputation. Subject/clue fields at document, landmark, geometry and point levels are rejected.",
+      "test_results": "Final check results are recorded separately; this section identifies the exercised source contract."
+    },
+    "operations": {
+      "fal_runner_starts": 0,
+      "fal_inference_requests": 0,
+      "new_flight_runs": 0,
+      "real_ground_team_deliveries": 0,
+      "merge_performed": false
+    },
+    "implementation_commits": [
+      "c31841f33987fc5611163c5786e4ae345952d930",
+      "a1441e36d19215156defbe49425f0fcc3d797bb8"
+    ],
+    "checks": {
+      "code_commit": "a1441e36d19215156defbe49425f0fcc3d797bb8",
+      "all_six_passed": true,
+      "checks": [
+        {
+          "command": "npm test",
+          "exit_code": 0,
+          "reported_tests": 17,
+          "log": ".local/evidence/search/places-corrections/checks-01/js-0.log",
+          "sha256": "2a21b07dd9e1a00c34be9288c0a169b5a10d7b8b96c501aeb3a4f8d260356659"
+        },
+        {
+          "command": "npm run typecheck",
+          "exit_code": 0,
+          "reported_tests": null,
+          "log": ".local/evidence/search/places-corrections/checks-01/js-1.log",
+          "sha256": "581605940d2fbc4c851259433e6b11692463ba2b77780d5355b65da1897a4a65"
+        },
+        {
+          "command": "npm run format:check",
+          "exit_code": 0,
+          "reported_tests": null,
+          "log": ".local/evidence/search/places-corrections/checks-01/js-2.log",
+          "sha256": "a0453ca8153222f6117f4ada2fb05dea2cc5eaddf9ebd48a8c1e3330d572a587"
+        },
+        {
+          "command": ".venv-cosys/bin/ruff check",
+          "exit_code": 0,
+          "reported_tests": null,
+          "log": ".local/evidence/search/places-corrections/checks-02/ruff-check.log",
+          "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+        },
+        {
+          "command": ".venv-cosys/bin/ruff format --check",
+          "exit_code": 0,
+          "reported_tests": null,
+          "log": ".local/evidence/search/places-corrections/checks-02/ruff-format.log",
+          "sha256": "cbf904f92d0c089ca66e45970eb6a69574fe7b4ee91d4caa1a94cf9e781ef67c"
+        },
+        {
+          "command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 .venv-cosys/bin/python -m unittest",
+          "exit_code": 0,
+          "reported_tests": 237,
+          "log": ".local/evidence/search/places-corrections/checks-02/unittest.log",
+          "sha256": "ae7b7097384028c22ac4879d1c1bb5805a3e7bae1f06128f96ab6d252e9bbd8f"
+        }
+      ],
+      "truth_isolation": "AST/import closure and guarded live pipeline, including public occlusion and confirmed ground footprint exclusions.",
+      "preserved_failure": {
+        "log": ".local/evidence/search/places-corrections/checks-01/py-2.log",
+        "cause": "Normalization of a duplicate negative shifted values by at most 1.69406589e-21.",
+        "fix": "Zero incremental maximum-look POD now returns an exact copy; actual evidence still uses sum of surviving weights."
+      },
+      "no_model_calls": true
+    },
+    "planning": {
+      "evidence": {
+        "path": ".local/evidence/search/places-corrections/performance-summary-01.json",
+        "sha256": "f7bd198965dfea61c8ee3f85909ac61aef17dee2d469493bb10a005c1c235e6a"
+      },
+      "original_square_profile": {
+        "evidence": ".local/evidence/search/places-corrections/planning-baseline-01",
+        "unprofiled_seconds": 262.81289247900713,
+        "profiled_wall_seconds": 344.436930988988,
+        "profile": {
+          "path": ".local/evidence/search/places-corrections/planning-baseline-01/plan.pstats",
+          "profile_total_seconds": 344.4331262189999,
+          "function_calls": 326223904,
+          "hotspots": [
+            {
+              "module": "mission_planner/search/planner.py",
+              "function": "track_pod",
+              "line": 68,
+              "primitive_calls": 3732,
+              "total_calls": 3732,
+              "self_seconds": 7.796823789,
+              "cumulative_seconds": 166.19567873900002
+            },
+            {
+              "module": "mission_planner/search/detection.py",
+              "function": "track_probability",
+              "line": 36,
+              "primitive_calls": 3732,
+              "total_calls": 3732,
+              "self_seconds": 18.020182301000002,
+              "cumulative_seconds": 157.922588517
+            },
+            {
+              "module": "mission_planner/search/terrain.py",
+              "function": "terrain_leg",
+              "line": 27,
+              "primitive_calls": 14904,
+              "total_calls": 14904,
+              "self_seconds": 51.401584318000005,
+              "cumulative_seconds": 150.664172935
+            },
+            {
+              "module": "mission_planner/search/planner.py",
+              "function": "curve",
+              "line": 291,
+              "primitive_calls": 2,
+              "total_calls": 2,
+              "self_seconds": 0.189165765,
+              "cumulative_seconds": 58.70394593
+            }
+          ],
+          "interpretation": "Cumulative times include callees and overlap. Do not add overlapping cumulative subtrees."
+        }
+      },
+      "full_world": {
+        "accepted_code_commit": "383b753f34fbd6d53445cd4ff4690b741e3f2851",
+        "geometry_commit": "a2d911c3e8ffa4cc753af39204841b9ce1259cf7",
+        "geometry_overlays": [
+          "world/cosys/world.json",
+          "world/cosys/terrain.py",
+          "mission_planner/gcs/geodesy.py",
+          "mission_planner/search/grid.py"
+        ],
+        "source_manifest": ".local/evidence/search/places-corrections/full-world-01/manifest.json",
+        "source_manifest_sha256": "1b05a45f16e7b80be72e8d4cdbba2b2a8a3572e331f61af0c1316c25cdbacfaa",
+        "heightfield": {
+          "source": "/home/brook_avionuas/snr-world/.local/world/open-meadow/height.r16",
+          "copy": "original/.local/world/open-meadow/height.r16",
+          "sha256": "ef7cf15ea67088cff77cda0f24cb41bae61f2fbd4c1ebec8a36199e775e6f63f",
+          "bytes": 12202850,
+          "copy_mode": "0444"
+        },
+        "world_dimensions_north_east_m": [
+          1609.344,
+          2414.016
+        ],
+        "search_dimensions_north_east_m": [
+          1607.344,
+          2412.016
+        ],
+        "search_polygon": "Full world inset by 1 metre on each boundary to avoid quantized MAVLink fence edge roundoff.",
+        "grid_shape": [
+          403,
+          604
+        ],
+        "cells": 243412,
+        "fixture": "The same seven fixture-04 landmarks and footbridge LKP transformed by world-bound fractions. Fixture data are untracked benchmark data, not invented committed valley landmarks.",
+        "input_files_sha256": {
+          "inputs.npz": "a345cda494f87a4a1f7fba930e32008d20fa1b84ace13c091ff4b6a4d1708a71",
+          "call.json": "7588fd131cfe0516ae5a36c8968833a1ea40588289ec254e6bf2fffcbbfb90a0"
+        },
+        "probability_sum": 1.0000000000000002,
+        "retained_radial_mass": 0.552620889825557,
+        "out_of_world_mass": 0.447379110174443,
+        "aerial_visible_mass": 0.6237381901597953,
+        "aerial_obscured_mass": 0.37626180984020474,
+        "runs": [
+          {
+            "label": "baseline",
+            "evidence": ".local/evidence/search/places-corrections/full-world-01/baseline",
+            "plan_seconds": 1027.748434989,
+            "completed": true,
+            "input_files_sha256": {
+              "inputs.npz": "a345cda494f87a4a1f7fba930e32008d20fa1b84ace13c091ff4b6a4d1708a71",
+              "call.json": "7588fd131cfe0516ae5a36c8968833a1ea40588289ec254e6bf2fffcbbfb90a0"
+            },
+            "plan_sha256": "1a6fa532c726723e60e653d41aad78788832edb4d58d6b4d03e3b8bfbdf5280c",
+            "thread_environment": {
+              "OPENBLAS_NUM_THREADS": "1",
+              "OMP_NUM_THREADS": "1"
+            }
+          },
+          {
+            "label": "optimized-01",
+            "evidence": ".local/evidence/search/places-corrections/full-world-01/optimized-01",
+            "plan_seconds": 499.2670830309944,
+            "completed": true,
+            "peak_rss_kib": 1106728,
+            "input_files_sha256": {
+              "inputs.npz": "a345cda494f87a4a1f7fba930e32008d20fa1b84ace13c091ff4b6a4d1708a71",
+              "call.json": "7588fd131cfe0516ae5a36c8968833a1ea40588289ec254e6bf2fffcbbfb90a0"
+            },
+            "plan_sha256": "1a6fa532c726723e60e653d41aad78788832edb4d58d6b4d03e3b8bfbdf5280c",
+            "thread_environment": {
+              "OPENBLAS_NUM_THREADS": "1",
+              "OMP_NUM_THREADS": "1"
+            }
+          },
+          {
+            "label": "optimized-02",
+            "evidence": ".local/evidence/search/places-corrections/full-world-01/optimized-02",
+            "plan_seconds": 65.01797549599723,
+            "completed": true,
+            "peak_rss_kib": 89160,
+            "input_files_sha256": {
+              "inputs.npz": "a345cda494f87a4a1f7fba930e32008d20fa1b84ace13c091ff4b6a4d1708a71",
+              "call.json": "7588fd131cfe0516ae5a36c8968833a1ea40588289ec254e6bf2fffcbbfb90a0"
+            },
+            "plan_sha256": "47a45779d42aa355612448ea665606cfcd9222825e551819ebdc029b2df40dfc",
+            "thread_environment": {
+              "OPENBLAS_NUM_THREADS": "1",
+              "OMP_NUM_THREADS": "1"
+            }
+          },
+          {
+            "label": "optimized-03",
+            "evidence": ".local/evidence/search/places-corrections/full-world-01/optimized-03",
+            "plan_seconds": 40.89992582700506,
+            "completed": true,
+            "peak_rss_kib": 92440,
+            "input_files_sha256": {
+              "inputs.npz": "a345cda494f87a4a1f7fba930e32008d20fa1b84ace13c091ff4b6a4d1708a71",
+              "call.json": "7588fd131cfe0516ae5a36c8968833a1ea40588289ec254e6bf2fffcbbfb90a0"
+            },
+            "plan_sha256": "47a45779d42aa355612448ea665606cfcd9222825e551819ebdc029b2df40dfc",
+            "thread_environment": {
+              "OPENBLAS_NUM_THREADS": "1",
+              "OMP_NUM_THREADS": "1"
+            }
+          },
+          {
+            "label": "optimized-05",
+            "evidence": ".local/evidence/search/places-corrections/full-world-01/optimized-05",
+            "plan_seconds": 9.747591766004916,
+            "parent_cpu_seconds": 2.8211120139999997,
+            "children_cpu_seconds": 27.359648,
+            "maximum_child_peak_rss_kib": 92528,
+            "workers": 4,
+            "cpu_affinity_count": 16,
+            "completed": true,
+            "peak_rss_kib": 123800,
+            "input_files_sha256": {
+              "inputs.npz": "a345cda494f87a4a1f7fba930e32008d20fa1b84ace13c091ff4b6a4d1708a71",
+              "call.json": "7588fd131cfe0516ae5a36c8968833a1ea40588289ec254e6bf2fffcbbfb90a0"
+            },
+            "plan_sha256": "8c26777e7fb1cbd7767950ca727e63ca3d4d36fee866e19dafb679d3c2ef6e80",
+            "thread_environment": {
+              "OPENBLAS_NUM_THREADS": "1",
+              "OMP_NUM_THREADS": "1"
+            }
+          },
+          {
+            "label": "default-threads-01",
+            "evidence": ".local/evidence/search/places-corrections/full-world-01/default-threads-01",
+            "plan_seconds": 11.50522104800001,
+            "parent_cpu_seconds": 3.435138677,
+            "children_cpu_seconds": 33.944932,
+            "maximum_child_peak_rss_kib": 115596,
+            "workers": 4,
+            "cpu_affinity_count": 16,
+            "completed": true,
+            "peak_rss_kib": 123472,
+            "input_files_sha256": {
+              "inputs.npz": "a345cda494f87a4a1f7fba930e32008d20fa1b84ace13c091ff4b6a4d1708a71",
+              "call.json": "7588fd131cfe0516ae5a36c8968833a1ea40588289ec254e6bf2fffcbbfb90a0"
+            },
+            "plan_sha256": "8c26777e7fb1cbd7767950ca727e63ca3d4d36fee866e19dafb679d3c2ef6e80",
+            "thread_environment": {
+              "OPENBLAS_NUM_THREADS": "unset",
+              "OMP_NUM_THREADS": "unset"
+            }
+          }
+        ],
+        "gate": {
+          "maximum_seconds": 20,
+          "controlled_thread_seconds": 9.747591766004916,
+          "production_default_thread_seconds": 11.50522104800001,
+          "both_pass": true,
+          "workers": 4,
+          "cpu_affinity_count": 16,
+          "speedup_original_to_controlled": 105.43613844942814,
+          "speedup_original_to_production_default": 89.32887344808181,
+          "same_final_plan_bytes_across_thread_environments": true
+        },
+        "rss_units": "KiB as Linux getrusage returns. peak_rss_kib is parent peak; maximum_child_peak_rss_kib is the largest terminated child peak, not the aggregate simultaneous process-tree peak.",
+        "final_sources": [
+          {
+            "path": "mission_planner/search/planner.py",
+            "before_sha256": "186ccd5a41b78ae6101552ecb2f5ed3237d06a0d3400666b0f88e43568d8161b",
+            "after_sha256": "a71bde3102d9d5799aaf910140340be42ff93e04cd3760efb843315aceddc025"
+          },
+          {
+            "path": "mission_planner/search/detection.py",
+            "before_sha256": "6c5e14c41811bf66a638a90bd87d5c41dd6da86e532f1861196f54a4120ae4f2",
+            "after_sha256": "02e726572bdc061ca806640bcb9b4d263a4c5efd53b6e1680c892194f79574b7"
+          },
+          {
+            "path": "mission_planner/search/terrain.py",
+            "before_sha256": "62a3e8d90eb70da5df3238a407af2ea0f1cc3da18baf5c25700759566a6bf173",
+            "after_sha256": "c345a7f519958234fff59d6f20c5302e5fe7fe2997d30236f8a46fdab4796d33"
+          },
+          {
+            "path": "mission_planner/search/timing.py",
+            "before_sha256": "1847037bb7e8f9e80c39e67e1e7baa9d4b3c7a65e34db66896bb7ab409721859",
+            "after_sha256": "1eec3b4455e735a335bac53a10941002a1b01546a4593477c4b2b4e17c9d224f"
+          },
+          {
+            "path": "mission_planner/search/occlusion.py",
+            "before_sha256": "ce13218c714db103ab17121f1eb21ec7dfb51424a6c7951dc304261bf34673f9",
+            "after_sha256": "ce13218c714db103ab17121f1eb21ec7dfb51424a6c7951dc304261bf34673f9"
+          }
+        ],
+        "parity": {
+          "evidence": ".local/evidence/search/places-corrections/full-world-01/optimized-05/comparison.json",
+          "same_selected_spacing_and_axis": true,
+          "identical_materialized_waypoints": true,
+          "numeric_differences": 169,
+          "maximum_numeric_difference": 2.5011104298755527e-12,
+          "intentional_text_change": {
+            "path": "comparison.label",
+            "kind": "value",
+            "before": "Conservative phase-averaged maximum-look expectation; stationary target, conditional on in-world presence",
+            "after": "Conservative phase-averaged maximum-look expectation; no aerial credit in structure or forest footprints; stationary target, conditional on in-world presence"
+          },
+          "compact_all_candidates": {
+            "candidate_pairs": 24,
+            "combinations_per_ordering": 12,
+            "orderings": [
+              "prioritized",
+              "lawnmower"
+            ],
+            "all_structures_and_discrete_choices_equal": true,
+            "maximum_numeric_difference": 4.547473508864641e-13,
+            "different_numeric_values": 1646,
+            "original_seconds": 29.10237539402442,
+            "optimized_02_seconds": 12.2466706999694
+          },
+          "compact_all_candidates_evidence": ".local/evidence/search/places-corrections/full-world-01/candidate-parity-01/comparison.json",
+          "terrain": {
+            "cases": 80,
+            "maximum_coordinate_difference_m": 0.0,
+            "maximum_error_difference_m": 0.0,
+            "waypoint_counts": [
+              2,
+              3,
+              4,
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12,
+              13,
+              14
+            ],
+            "original_seconds": 4.111136723819072,
+            "current_seconds": 2.552551978005795,
+            "maximum_agl_error_m": 0.9999594737029334
+          },
+          "terrain_evidence": ".local/evidence/search/places-corrections/full-world-01/terrain-parity-01/report.json"
+        }
+      },
+      "method": [
+        "Exact 128-phase calibration retained. Periodic interior positions are reused per model/spacing; edge phases remain explicit. Sparse POD values replace full-grid candidate arrays.",
+        "Candidate evaluation uses a proven cruise-time lower bound and evaluates terrain paths only while their gain/cost upper bound can improve the best exact result. Budget and safety checks remain asserted.",
+        "Terrain simplification still checks all samples at spacing\u22641metre and tolerance\u00b11metre. An implicit forward visibility graph uses breadth-first levels for minimum links and descending successors for the existing farthest-first tie-break.",
+        "Only appended timing segments are recomputed, with duplicate-position handling independent of metadata. Completed portions of curves are evaluated once.",
+        "Twelve independent candidates run in four spawned processes; results are collected in their original order, preserving deterministic ties. Materialization, validation and final curves stay in the parent process."
+      ],
+      "runtime": {
+        "python": "3.10.12 (main, Aug 31 2026, 10:18:17) [GCC 11.4.0]",
+        "executable": "/usr/bin/python3.10",
+        "platform": "Linux-6.8.0-1066-aws-x86_64-with-glibc2.35",
+        "numpy": "1.23.5",
+        "scipy": "1.15.3",
+        "baseline_command": "OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 .venv-cosys/bin/python .local/evidence/search/places-corrections/full-world-01/run_original.py",
+        "physical_evidence_path": "/home/brook_avionuas/snr/.local/evidence/search/places-corrections/full-world-01",
+        "tracked_workspace": "/home/brook_avionuas/snr-search",
+        "services_started": 0,
+        "fal_runners_started": 0
+      },
+      "local_cost": {
+        "scope": "Only the local performance and parity experiments reported here",
+        "model_api_requests": 0,
+        "fal_runners_started": 0,
+        "services_started": 0,
+        "model_api_cost_usd": 0,
+        "fal_cost_usd": 0,
+        "local_cpu": "CPU seconds are logged; no local-host invoice or hourly cost is claimed."
+      },
+      "preserved_diagnostics": "All intermediate profiles, the external SIGTERM without a result, and the rejected chunked terrain experiment are preserved in the linked performance summary and evidence tree.",
+      "final_readonly_gate": {
+        "evidence": {
+          "path": ".local/evidence/search/places-corrections/final-readonly-summary-01.json",
+          "sha256": "d81f1ef90e818399172080f7176df97a47f641c5ec394560c45fcee4fbdfc854"
+        },
+        "readonly_assets": {
+          "geometry_commit": "a2d911c3e8ffa4cc753af39204841b9ce1259cf7",
+          "world": {
+            "path": "snapshot/world/cosys/world.json",
+            "mode_octal": "0o444",
+            "sha256": "3258618112784648dbdde1f62294588c71a884eeb72f17f11a947937c8b23dc5",
+            "matches_git_show": true
+          },
+          "heightfield": {
+            "path": "snapshot/.local/world/open-meadow/height.r16",
+            "mode_octal": "0o444",
+            "sha256": "ef7cf15ea67088cff77cda0f24cb41bae61f2fbd4c1ebec8a36199e775e6f63f",
+            "matches_world_json": true
+          }
+        },
+        "thread_environment": {
+          "OPENBLAS_NUM_THREADS": "unset",
+          "OMP_NUM_THREADS": "unset"
+        },
+        "timing": {
+          "plan_seconds": 12.343134833000022,
+          "parent_cpu_seconds": 3.1424884010000005,
+          "children_cpu_seconds": 37.87675,
+          "maximum_child_peak_rss_kib": 115852,
+          "workers": 4,
+          "cpu_affinity_count": 16,
+          "completed": true,
+          "peak_rss_kib": 123588,
+          "input_files_sha256": {
+            "inputs.npz": "a345cda494f87a4a1f7fba930e32008d20fa1b84ace13c091ff4b6a4d1708a71",
+            "call.json": "7588fd131cfe0516ae5a36c8968833a1ea40588289ec254e6bf2fffcbbfb90a0"
+          }
+        },
+        "gate": {
+          "maximum_seconds": 20,
+          "passed": true
+        },
+        "same_plan_bytes_as_optimized_05": true,
+        "plan_sha256": "8c26777e7fb1cbd7767950ca727e63ca3d4d36fee866e19dafb679d3c2ef6e80",
+        "original_full_world_seconds": 1027.748434989,
+        "speedup_vs_original": 83.26478231779988
+      }
+    },
+    "pos_comparison": {
+      "scope": "Provisional model expectation conditional on in-world presence; explicitly fictional landmark fixtures. No flight or new perception run. Real authored valley acceptance remains for integration.",
+      "supersedes": "The earlier Stage 2 fixture POS values credited structures and forest. They remain preserved above as historical measurements and must not be presented as corrected aerial results.",
+      "existing_square_fixture": {
+        "evidence": {
+          "path": ".local/evidence/search/places-corrections/hero-square-01/comparison.json",
+          "sha256": "55120452d9d4c51a145d07c0117e93a4f04e1bff2f7d087f2e91d4edffc04312"
+        },
+        "same_normalized_prior_grid_and_geometry": true,
+        "world_dimensions_m": {
+          "x": 1609.344,
+          "y": 1609.344
+        },
+        "probability_sum": 1.0,
+        "aerial_credit_mass": 0.6221581012609403,
+        "zero_aerial_credit_mass": 0.3778418987390599,
+        "prior_seconds": 0.8416858039999511,
+        "plan_seconds": 5.63814486900003,
+        "selected": {
+          "pos": 0.3930343548366665,
+          "duration_s": 1658.830455561828,
+          "spacing_m": 16.0,
+          "axis": 0,
+          "max_sampled_agl_error_m": 0.9999518817796336
+        },
+        "lawnmower": {
+          "pos": 0.16546077499094927,
+          "duration_s": 1651.431825173855,
+          "spacing_m": 16.0,
+          "axis": 0,
+          "max_sampled_agl_error_m": 0.999993107817911
+        },
+        "comparison_samples": {
+          "planned": [
+            {
+              "seconds": 300.0,
+              "pos": 0.036764326898976366
+            },
+            {
+              "seconds": 600.0,
+              "pos": 0.20629079452156812
+            },
+            {
+              "seconds": 900.0,
+              "pos": 0.28980595614560517
+            },
+            {
+              "seconds": 1200.0,
+              "pos": 0.3591304142865198
+            },
+            {
+              "seconds": 1658.830455561828,
+              "pos": 0.3930343548366665
+            }
+          ],
+          "uniform_lawnmower": [
+            {
+              "seconds": 300.0,
+              "pos": 0.024085743795419355
+            },
+            {
+              "seconds": 600.0,
+              "pos": 0.07491136009152335
+            },
+            {
+              "seconds": 900.0,
+              "pos": 0.11031046526452987
+            },
+            {
+              "seconds": 1200.0,
+              "pos": 0.1459881798132481
+            },
+            {
+              "seconds": 1651.431825173855,
+              "pos": 0.16546077499094927
+            }
+          ]
+        }
+      },
+      "full_resized_world_fixture": {
+        "evidence": {
+          "path": ".local/evidence/search/places-corrections/full-world-01/default-threads-01/plan.json",
+          "sha256": "8c26777e7fb1cbd7767950ca727e63ca3d4d36fee866e19dafb679d3c2ef6e80"
+        },
+        "selected_track_spacing_m": 40.0,
+        "capture_spacing_m": 16.0,
+        "max_sampled_agl_error_m": 0.9996556923905189,
+        "comparison_samples": {
+          "planned": {
+            "at_seconds": [
+              {
+                "pos": 0.007669117850792096,
+                "seconds": 300.0
+              },
+              {
+                "pos": 0.11461638635423477,
+                "seconds": 600.0
+              },
+              {
+                "pos": 0.24295540199179474,
+                "seconds": 900.0
+              },
+              {
+                "pos": 0.29941651872034514,
+                "seconds": 1200.0
+              }
+            ],
+            "end": {
+              "pos": 0.33155305271389035,
+              "seconds": 1775.2220568588523
+            }
+          },
+          "uniform_lawnmower": {
+            "at_seconds": [
+              {
+                "pos": 0.0009053215655694124,
+                "seconds": 300.0
+              },
+              {
+                "pos": 0.004551670861456213,
+                "seconds": 600.0
+              },
+              {
+                "pos": 0.009790621669243762,
+                "seconds": 900.0
+              },
+              {
+                "pos": 0.01680723331877848,
+                "seconds": 1200.0
+              }
+            ],
+            "end": {
+              "pos": 0.02472182240586645,
+              "seconds": 1657.0695765589116
+            }
+          }
+        }
+      },
+      "plot_png": {
+        "path": ".local/evidence/search/places-corrections/pos-curves-01/comparison.png",
+        "sha256": "3ff3c298e7bae311829d3c19c8c143ec0050b394392be1648497390293fc4a74"
+      },
+      "plot_svg": {
+        "path": ".local/evidence/search/places-corrections/pos-curves-01/comparison.svg",
+        "sha256": "516cf8bb12f49a5ad4e2e301a5737cdcde852bc9471b24869d41a5023af5abf1"
+      }
+    },
+    "documentation": {
+      "readme_lines": 199,
+      "real_landmarks_present": false
+    }
   }
 }
