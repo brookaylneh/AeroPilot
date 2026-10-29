@@ -192,3 +192,16 @@ test('runtime selects its map, shader platform and H264 explicitly; invalid mani
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test('editor MCP plugins are enabled only for the Editor target, never a packaged game', () => {
+  const uproject = JSON.parse(
+    readFileSync(path.join(project, 'world/unreal/ScenarioStudio/ScenarioStudio.uproject'), 'utf8'),
+  );
+  const editorOnly = uproject.Plugins.filter(
+    (plugin: { TargetAllowList?: string[] }) => plugin.TargetAllowList,
+  );
+  assert.deepEqual(editorOnly, [
+    { Name: 'ModelContextProtocol', Enabled: true, TargetAllowList: ['Editor'] },
+    { Name: 'EditorToolset', Enabled: true, TargetAllowList: ['Editor'] },
+  ]);
+});

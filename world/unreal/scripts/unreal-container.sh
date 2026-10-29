@@ -93,6 +93,18 @@ case "$mode" in
       --name snr-character-authoring --ulimit memlock=-1 snr-unreal-fab:5.8.2 \
       xvfb-run -a --server-args="-screen 0 2048x2048x24 -nolisten tcp" "$@" -ScriptErrorsAreFatal
     ;;
+  mcp-editor)
+    mcp_port="${SNR_UNREAL_MCP_PORT:?}"
+    [[ "$mcp_port" =~ ^[1-9][0-9]*$ ]] || exit 2
+    # The HTTP server listener binds localhost unless the engine ini overrides it.
+    exec docker run "${container_flags[@]}" "${gpu_flags[@]}" --pid=host \
+      --name "snr-unreal-mcp-$mcp_port" snr-unreal:5.8.2-ubuntu24.04 \
+      "$engine_root/Engine/Binaries/Linux/UnrealEditor" \
+      "$PWD/world/unreal/ScenarioStudio/ScenarioStudio.uproject" \
+      -ModelContextProtocolStartServer "-ModelContextProtocolPort=$mcp_port" \
+      -RenderOffscreen -vulkan -ddc=InstalledNoZenLocalFallback -unattended -nosound -NoSplash \
+      -nocrashreports -stdout -FullStdOutLogOutput
+    ;;
   metahuman-login)
     exec docker run "${container_flags[@]}" "${gpu_flags[@]}" \
       --name snr-metahuman-authoring -e "SNR_AUTH_DIR=$PWD/.secrets" \
@@ -121,7 +133,7 @@ case "$mode" in
     ;;
   *)
     echo 'Usage: unreal-container.sh build | run-packaged | exec command ... |' \
-      'character-authoring command ... | metahuman-login | fab-authoring' >&2
+      'character-authoring command ... | mcp-editor | metahuman-login | fab-authoring' >&2
     exit 2
     ;;
 esac

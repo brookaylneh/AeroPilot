@@ -204,6 +204,47 @@ The fetcher checks the engine changelist and original-file hashes, excludes buil
 `pixelstreaming2-ue58.patch` and `libvpxcodecs-ue58.patch` without fuzz. Existing destinations fail.
 The patches preserve the project include path, VP8 thread budget and encoder diagnostics.
 
+## MCP toolchain
+
+MCP is for inspection and iteration only; shipped content comes from tracked scripts.
+
+| Server  | Source, pin, licence                                                                                                   | Endpoint                          |
+| ------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| Unreal  | Epic `Engine/Plugins/Experimental/ModelContextProtocol` with `EditorToolset`, UE 5.8.2 CL 56702186, UE EULA (NoRedist) | HTTP `http://127.0.0.1:55570/mcp` |
+| Blender | `https://projects.blender.org/lab/blender_mcp` at `dbbf836ad4b1025f14a2b3b504c43903f39e0b04`, GPL-3.0-or-later         | add-on TCP `127.0.0.1:9879`       |
+
+Both plugins have `TargetAllowList: ["Editor"]` in the `.uproject`, so packaged games exclude them.
+The editor's HTTP listener binds `localhost` by default. Start it under the slot's memory cap:
+
+```sh
+UE_ROOT=... SNR_UNREAL_HOME=$PWD/.local/unreal/editor-home SNR_MEMORY_LIMIT=56g SNR_UNREAL_MCP_PORT=55570 \
+  systemd-run --user --scope -p MemoryMax=56G -p MemorySwapMax=0 \
+  bash world/unreal/scripts/unreal-container.sh mcp-editor
+docker stop snr-unreal-mcp-55570
+```
+
+The Blender Lab server has no telemetry. Clone it into `.local/vendor/mcp/blender-lab`, install `mcp/` into
+`.local/mcp/blender-venv`, then build the add-on into `.local/blender-user` and serve the scene headless:
+
+```sh
+export BLENDER_USER_RESOURCES=$PWD/.local/blender-user
+export LD_LIBRARY_PATH=$PWD/.local/toolchains/runtime-libs/usr/lib/x86_64-linux-gnu
+B=.local/toolchains/blender-5.2.3-linux-x64/blender
+$B -b --factory-startup -c extension build --source-dir .local/vendor/mcp/blender-lab/addon/blender_mcp_addon \
+  --output-dir .local/mcp
+$B -b -c extension install-file -r user_default -e .local/mcp/mcp-1.0.0.zip
+systemd-run --user --scope -p MemoryMax=16G -p MemorySwapMax=0 \
+  $B -b --online-mode -c blender_mcp --host 127.0.0.1 --port 9879
+```
+
+Register both privately for this worktree:
+
+```sh
+claude mcp add --scope local --transport http unreal http://127.0.0.1:55570/mcp
+claude mcp add --scope local -e BLENDER_MCP_HOST=127.0.0.1 -e BLENDER_MCP_PORT=9879 \
+  blender -- "$PWD/.local/mcp/blender-venv/bin/blender-mcp"
+```
+
 ## Measure browser streaming
 
 Use the installed public origin with Studio's editing session free. Load the installed runtime

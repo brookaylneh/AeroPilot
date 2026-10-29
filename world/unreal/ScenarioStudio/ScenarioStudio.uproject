@@ -38,6 +38,16 @@
     {
       "Name": "AndroidFileServer",
       "Enabled": false
+    },
+    {
+      "Name": "ModelContextProtocol",
+      "Enabled": true,
+      "TargetAllowList": ["Editor"]
+    },
+    {
+      "Name": "EditorToolset",
+      "Enabled": true,
+      "TargetAllowList": ["Editor"]
     }
   ]
 }
