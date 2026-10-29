@@ -1,0 +1,378 @@
+{
+  "schema_version": 1,
+  "stage": 1,
+  "status": "implemented_for_review; valley_integration_pending",
+  "recorded_at_unix_s": 1793234159.0059516,
+  "accepted_base": "fba7c24",
+  "implementation_commits": [
+    "6b8f9ff0a9aadd0336ba2a1639b4db2420d1de1a Show landmark approvals and lead-region evidence on mission maps",
+    "ca6182cbf78fe339f2f169a3635099ddef897584 Resolve quoted last-known places with operator approval",
+    "3920115102cdaca09a0eec7987055e0a6e74b3b8 Define public landmark schema and exact place directions"
+  ],
+  "stage_2": "not_started; stop_after_stage_1",
+  "world": {
+    "path": "world/cosys/world.json",
+    "sha256": "3fa47f8023eecb10b72b88276063ae5775e950932c1c696a4d80f4ab264ec188",
+    "bounds_cm": {
+      "min": {
+        "x": -80467.2,
+        "y": -80467.2,
+        "z": -10000.0
+      },
+      "max": {
+        "x": 80467.2,
+        "y": 80467.2,
+        "z": 30000.0
+      }
+    },
+    "dimensions_m": {
+      "x": 1609.344,
+      "y": 1609.344
+    },
+    "extent_policy": "All new landmark bounds come from world.json. No resize data or invented valley landmarks committed."
+  },
+  "places": {
+    "schema": "world/cosys/README.md#public-landmarks",
+    "loader": "world/cosys/landmarks.py",
+    "data_owner": "coupling agent; world/unreal/landmarks.json",
+    "lookup": "Exact casefold match on name or aliases; return all stable-ID-sorted matches; no match returns known display names.",
+    "approval": "set_last_known_place requires a quoted briefing span naming the place or alias and an explicit map approval in every autonomy mode. Decline/cancellation preserves the hypothesis; approval revalidates geometry and invalidates the saved plan.",
+    "supported_last_known_geometry": [
+      "point",
+      "polyline"
+    ],
+    "line_prior": {
+      "assumption": "Unknown position uniform along approved arclength; no behaviour weighting in Stage 1.",
+      "formula": "m_i = A_i * sum_j(w_j * mean_q rho(||x_iq - s_j||^2)); w_j = segment_length/(sample_count * total_length); M = sum_i m_i; p_i = m_i/M.",
+      "normalization": "Weights sum to one. Average unconditioned radial cell masses before world conditioning; retained mass is M. Existing single-point prior is the one-support case.",
+      "quadrature": "Midpoints of segments divided so each interval is no longer than the shortest grid-cell side. The line midpoint is a map anchor only."
+    },
+    "directions": "Horizontal exact nearest point/segment/polygon distance; compass direction of feature-to-location displacement and side of nearest polyline. Open endpoints identified separately. Creek banks are geometric compass sides, not downstream left/right. No walkable route is inferred.",
+    "consumers": [
+      "describe_location",
+      "list_detections",
+      "review_detection",
+      "evidence card",
+      "ground-team delivery/page"
+    ],
+    "hero_profile": "Age 74 in the exact father-comma-age-comma quotation is supported; time, duration and separate quotation fragments do not supply age."
+  },
+  "headline": {
+    "record_id": "2c3b414ab3f3d2420a218522-0-0",
+    "region_rule": "Sum the whole probability of every positive-area grid cell intersecting the closed 95% location ellipse; includes tangency.",
+    "region_cell_indices": [
+      11083
+    ],
+    "region_cell_count": 1,
+    "region_area_m2": 16.0,
+    "prior_mass": 4.085825243678886e-05,
+    "posterior_mass": 0.10303088770514023,
+    "headline_percent": 10.303088770514023,
+    "ellipse_prior_mass": 2.3497335603856163e-06,
+    "ellipse_posterior_mass": 0.005925244477150148,
+    "ellipse_area_fraction": 0.05750939945414579,
+    "measurement_scope": "Current intersection code applied to the accepted recorded localization and grid; probabilities are read from the preserved first-positive audit, not re-estimated or re-inferred.",
+    "source_sha256": {
+      ".local/evidence/search/commander-stage3/positive-audit-01/audit.json": "2a1f953bc8b134bc0cce7fa9e07fd383bf51540aa6e310b7b36c8d4c9ac271be",
+      ".local/data/missions/85514404-d489-4b14-9c23-b1be5b995393/evidence/2c3b414ab3f3d2420a218522-result.json": "51ec3bfdf12e289b355d561025e0f657428cbd92fe8f80aab2b5521c81c0234f",
+      ".local/data/missions/85514404-d489-4b14-9c23-b1be5b995393/search.json": "b73742ecd267242075450edfb8ca3f272334a3308228bf1c629b27c34c825e43",
+      "mission_planner/agents/perception/localization.py": "19afeff41ecc49be6abf5efc64a074e9748e2e56c68a5f98f5286e72e4fa8580",
+      "mission_planner/search/belief.py": "2f8e074744f8bc0d392b4fb2cf0f94cf5ffa8676b33fa3281133abae9dea18c3"
+    },
+    "evidence": ".local/evidence/search/places-stage1/headline-01/result.json"
+  },
+  "wonder": {
+    "cases": 52,
+    "exact_passes": 51,
+    "misses": [
+      32
+    ],
+    "http_200": 52,
+    "place_cases": [
+      {
+        "case": 47,
+        "request": "Resolve the named place 'FOOTBRIDGE' using the landmark catalogue.",
+        "actual": [
+          {
+            "name": "find_place",
+            "arguments": {
+              "name": "FOOTBRIDGE"
+            }
+          }
+        ],
+        "passed": true
+      },
+      {
+        "case": 48,
+        "request": "Look up the exact alias 'crossing'. It may name more than one place; show all matching candidates.",
+        "actual": [
+          {
+            "name": "find_place",
+            "arguments": {
+              "name": "crossing"
+            }
+          }
+        ],
+        "passed": true
+      },
+      {
+        "case": 49,
+        "request": "Look up 'Unlisted Saddle' exactly. If unknown, show the known names.",
+        "actual": [
+          {
+            "name": "find_place",
+            "arguments": {
+              "name": "Unlisted Saddle"
+            }
+          }
+        ],
+        "passed": true
+      },
+      {
+        "case": 50,
+        "request": "Give landmark directions for the point 38 metres north and 12 metres west of mission origin.",
+        "actual": [
+          {
+            "name": "describe_location",
+            "arguments": {
+              "north_m": 38.0,
+              "east_m": -12.0
+            }
+          }
+        ],
+        "passed": true
+      },
+      {
+        "case": 51,
+        "request": "The find_place result for 'crossing' returned two candidates: bridge-a, North Bridge; bridge-b, South Bridge. Ask me which one I mean before proposing a last known location. No new lookup is needed.",
+        "actual": [],
+        "passed": true
+      },
+      {
+        "case": 52,
+        "request": "The find_place result for 'Unlisted Saddle' has no matches and known_names ['North Bridge', 'Creek Loop']. Present those names and ask me to choose or mark the map; keep this response to that clarification.",
+        "actual": [],
+        "passed": true
+      }
+    ],
+    "usage": {
+      "input_tokens": 290206,
+      "output_tokens": 8126,
+      "cached_input_tokens": 274600,
+      "uncached_input_tokens": 15606
+    },
+    "list_price_cost_usd": 0.279864,
+    "price_source": {
+      "source": "https://dev.meta.ai/models/muse-wonder/",
+      "saved_source": ".local/evidence/search/commander-stage3/wonder-pricing-02",
+      "rates": {
+        "uncached_input_per_million_usd": 4,
+        "cached_input_per_million_usd": 0.2,
+        "output_per_million_usd": 20
+      }
+    },
+    "metered_invoice_available": false,
+    "no_retry": true,
+    "raw": ".local/evidence/search/places-stage1/wonder-02",
+    "miss_detail": "Case 32 returned drone_id string \"null\" instead of JSON null. Runtime validation rejects it. The request was not repeated.",
+    "manual_prose_review": {
+      "51": "Returned both candidates and asked which to use before proposing.",
+      "52": "Returned known names and asked for selection or map marking."
+    },
+    "initial_startup_failure": {
+      "log": ".local/evidence/search/places-stage1/wonder-01.log",
+      "requests_sent": 0,
+      "cause": "Benchmark helper parameter name collided with find_place name argument; fixed before any network request."
+    }
+  },
+  "checks": {
+    "all_six_passed": true,
+    "python_tests": 181,
+    "javascript_tests": 14,
+    "readme_lines": 198,
+    "runs": [
+      {
+        "command": "npm test",
+        "exit_code": 0,
+        "log": ".local/evidence/search/places-stage1/checks-03/npm-test.log",
+        "sha256": "faf9426b31d51287e6ccd0049fa2ef48d09e26f6693692c7ac3477fb3a1cdbcf"
+      },
+      {
+        "command": "npm run typecheck",
+        "exit_code": 0,
+        "log": ".local/evidence/search/places-stage1/checks-03/typecheck.log",
+        "sha256": "581605940d2fbc4c851259433e6b11692463ba2b77780d5355b65da1897a4a65"
+      },
+      {
+        "command": "npm run format:check",
+        "exit_code": 0,
+        "log": ".local/evidence/search/places-stage1/checks-03/format.log",
+        "sha256": "a0453ca8153222f6117f4ada2fb05dea2cc5eaddf9ebd48a8c1e3330d572a587"
+      },
+      {
+        "command": ".venv-cosys/bin/ruff check",
+        "exit_code": 0,
+        "log": ".local/evidence/search/places-stage1/checks-03/ruff.log",
+        "sha256": "82b3e6a6c090a57601d22943bd23fca9218d1031dbe5a7b754092f9a156b4f18"
+      },
+      {
+        "command": ".venv-cosys/bin/ruff format --check",
+        "exit_code": 0,
+        "log": ".local/evidence/search/places-stage1/checks-03/ruff-format.log",
+        "sha256": "7f3da2bcc8322b1f7a5cd484d184d90cc4d8cf31a2e46927ad3b83962a3c2a51"
+      },
+      {
+        "command": ".venv-cosys/bin/python -m unittest",
+        "exit_code": 0,
+        "log": ".local/evidence/search/places-stage1/checks-03/unittest.log",
+        "sha256": "1e20759b8f4dcbeb32d3b69a6bb0bb73c74f6be09a79a55d99847081a30f2809"
+      }
+    ],
+    "truth_isolation": "Static import graph and guarded live execution cover landmark loader, directions, quoted proposals and line prior; subject/clue extras are rejected at every schema level.",
+    "preserved_failed_check": {
+      "path": ".local/evidence/search/places-stage1/checks-01/unittest.log",
+      "cause": "Static runtime import allowlist required the two new public modules; tests rerun after updating it."
+    }
+  },
+  "ui": {
+    "passed": true,
+    "evidence": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/results.json",
+    "scope": "Component fixtures, not valley acceptance or a live mission. All mission/team WebSockets intercepted. All displayed photo evidence and telemetry are archived. Landmark geometry is fictional and directions are computed by the production loader.",
+    "screenshots": [
+      {
+        "name": "labelled-map",
+        "width": 1920,
+        "height": 1080,
+        "full_page": false,
+        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/labelled-map-1920.png"
+      },
+      {
+        "name": "labelled-map",
+        "width": 2560,
+        "height": 1440,
+        "full_page": false,
+        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/labelled-map-2560.png"
+      },
+      {
+        "name": "place-approval",
+        "width": 1920,
+        "height": 1080,
+        "full_page": false,
+        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/place-approval-1920.png"
+      },
+      {
+        "name": "place-approval",
+        "width": 2560,
+        "height": 1440,
+        "full_page": false,
+        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/place-approval-2560.png"
+      },
+      {
+        "name": "line-approval",
+        "width": 1920,
+        "height": 1080,
+        "full_page": false,
+        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/line-approval-1920.png"
+      },
+      {
+        "name": "line-approval",
+        "width": 2560,
+        "height": 1440,
+        "full_page": false,
+        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/line-approval-2560.png"
+      },
+      {
+        "name": "evidence-headline",
+        "width": 1920,
+        "height": 1080,
+        "full_page": false,
+        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/evidence-headline-1920.png"
+      },
+      {
+        "name": "evidence-directions",
+        "width": 1920,
+        "height": 1080,
+        "full_page": false,
+        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/evidence-directions-1920.png"
+      },
+      {
+        "name": "evidence-headline",
+        "width": 2560,
+        "height": 1440,
+        "full_page": false,
+        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/evidence-headline-2560.png"
+      },
+      {
+        "name": "evidence-directions",
+        "width": 2560,
+        "height": 1440,
+        "full_page": false,
+        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/evidence-directions-2560.png"
+      },
+      {
+        "name": "ground-team",
+        "width": 1920,
+        "height": 1080,
+        "full_page": true,
+        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/ground-team-1920.png"
+      },
+      {
+        "name": "ground-team",
+        "width": 2560,
+        "height": 1440,
+        "full_page": true,
+        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/ground-team-2560.png"
+      },
+      {
+        "name": "ground-team",
+        "width": 390,
+        "height": 844,
+        "full_page": true,
+        "path": ".local/evidence/search/places-stage1/ui-fixture-01/capture-check-04/ground-team-390.png"
+      }
+    ],
+    "browser_errors": [],
+    "provenance": ".local/evidence/search/places-stage1/ui-fixture-01/provenance.json",
+    "preserved_runs": "ui-fixture-01/capture-check-01 through capture-check-04; overlay collision and inset resize failures preserved. Final rendering wait verifies whole-world labels at both widths."
+  },
+  "integration": {
+    "valley_acceptance_completed": false,
+    "missing_required_files": [
+      ".local/staging/prompts/phase6-world-valley.md",
+      "world/unreal/landmarks.json"
+    ],
+    "dependency_evidence": ".local/evidence/search/places-stage1/dependencies-01.json",
+    "blocked_acceptance": [
+      "Read valley design brief",
+      "Validate authored landmark data and actual valley label density",
+      "Real mission place approval and ground-team page with authored landmark directions"
+    ],
+    "behaviour_prior_screenshots": "Stage 2; not started",
+    "fixture_limit": "UI images use inline labelled fictional landmarks and archived real photo/telemetry/evidence. They establish component rendering and interaction, not valley integration, a new search flight or a new delivered lead."
+  },
+  "sources": {
+    "dementia_url": "https://www.dbs-sar.com/LPB/Dementia.pdf",
+    "read": "Existing archived primary PDF extraction, printed pages 161\u2013169",
+    "archived_sha256": {
+      "/home/brook_avionuas/snr/.local/evidence/search/stage1/dementia.download": "00e038920042023b26837ff263b848d0994ba00afb41efacc71d4342844450b3",
+      "/home/brook_avionuas/snr/.local/evidence/search/stage1/dementia.txt": "7d5499feee6572ad31437c16991c25349e00e4311e6923ec8f45fdcb64dcab98"
+    },
+    "fresh_http": {
+      "url": "https://www.dbs-sar.com/LPB/Dementia.pdf",
+      "retrieved_unix_s": 1793233614.3244615,
+      "status_code": 403,
+      "sha256": "32cbc376cd769a26d108ae31678f975b863b7066e110c59d9a212c7281bd8c81"
+    },
+    "fresh_http_note": "HTTP 403 preserved; not retried. Stage 2 source derivation remains pending."
+  },
+  "operations": {
+    "fal_runner_starts": 0,
+    "fal_inference_requests": 0,
+    "new_flight_runs": 0,
+    "new_ground_team_deliveries": 0,
+    "services_started_or_restarted": 0,
+    "slot_origin": "http://127.0.0.1:5175",
+    "merge_performed": false,
+    "commander_measurement_unchanged_sha256": "552a48e3fe320f2b0840c4f0ee36b4dc9d7ea62a2670ef398a561a7c959aeb45"
+  }
+}
