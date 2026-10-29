@@ -236,6 +236,8 @@ readback, homes and camera poses before accepting the installed session.
 Open a live Pixel Streaming Studio session at both 1920×1080 and 2560×1440.
 Capture the world map at each size and verify that its first view fits the whole
 rectangle; pan and zoom to both new east/west edges and check focus placement.
+Check Studio's collapsed map and scale bar too. In Mission Control's video view,
+verify the fitted inset remains fully visible above its expand bar.
 Record the corresponding Mission Control first views and pan performance as well.
 Save this cutover evidence separately from world-slot acceptance. Slot acceptance
 uses explicitly labelled Studio component screenshots because the slot has no
