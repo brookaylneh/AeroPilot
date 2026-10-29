@@ -63,19 +63,25 @@ authorized account; Fab also needs `docker build -t snr-unreal-fab:5.8.2 - < wor
 ## Valley foundations
 
 `world/cosys/world.json` owns the rectangular search bounds, heightfield layout,
-version and hash. `landmarks.json` owns public names, aliases, kinds and geometry
-in Unreal centimetres; it contains no subject or clue placement. North is +X and
-east is +Y. `world.cosys.landmarks` is the shared search loader.
+version, hash and the fixed sun: apparent elevation and azimuth (clockwise from
+north, so UE yaw) for 2026-10-31 15:30 PDT at the OriginGeopoint, from NREL SPA.
+`landmarks.json` owns public names, aliases, kinds and geometry in Unreal
+centimetres; it contains no subject or clue placement. North is +X and east is +Y.
+`world.cosys.landmarks` is the shared search loader, byte-identical to
+`search-planning`.
 
-The catalogue includes the southern trailhead and command post, a creek loop and
-fork, a footbridge, pond, woodland patches, granite ridge and lookout. The cabin,
-fence, fire road, campsite and boulder field also have public geometry. Their
-presence in the catalogue is an authoring specification, not proof of built scenery.
-Every landmark has `heightM`, the tallest permitted part above local terrain.
-Raised features have polygon footprints; roads, trails, creeks and ponds have zero
-height. Heights are design envelopes until the selected meshes are placed and
-measured. Authoring must stay within them. Same-kind polygons may neither overlap
-nor touch, and the catalogue supplies every class required by the behavior prior.
+The catalogue includes the southern trailhead and command post, the meadow,
+creek-loop, lake and lookout trails with signpost obstacles at their junctions, a
+footbridge, Beaver Pond, Granite Lake and its Snow Survey Hut, Granite Dome, Lookout
+Tarn and its talus, Aspen Bend, lodgepole woodland, the granite ridge and lookout.
+The cabin, fence, fire road, campsite, fire ring and boulder field also have public
+geometry. Their presence in the catalogue is an authoring specification, not proof
+of built scenery. Every landmark has `heightM`, the tallest permitted part above
+local terrain. Raised features have polygon footprints; roads, trails, creeks and
+ponds have zero height. Heights are design envelopes until the selected meshes are
+placed and measured. Authoring must stay within them. Same-kind polygons may neither
+overlap nor touch, and the catalogue supplies every class required by the behavior
+prior.
 
 Generate the numeric terrain and its review map with new output paths:
 
@@ -86,18 +92,41 @@ Generate the numeric terrain and its review map with new output paths:
   --output .local/evidence/world/valley/<new-landmark-map>.png
 ```
 
-The generator reconstructs the analytic meadow and verifies its reference hash,
-computes priority-flood/D8 flow accumulation, and checks the catalogue's creek
-against that drainage. It carves the creek and pond and grades the road and trail
-beds. It checks quantized slope and relief, downstream continuity, bridge crossings
-and an unchanged southern terrain buffer. The raw file and receipt are written to
+The generator reconstructs the analytic meadow and verifies its reference hash. It
+then shapes the landforms, each from design values in `valley.py`:
+
+- Granite Dome replaces the northern hill: a convex shell with a steep south
+  shoulder, broken sheeting steps, joint grooves on its gentler upper surface and a
+  south talus apron, at most 60 m above the meadow median.
+- Granite Lake holds a flat 15 m surface on a raised granite bench with a moraine
+  rim. Lookout Tarn lies in a cirque floor joined to its talus, opening west over a
+  threshold. Beaver Pond sits behind a low dam rim.
+- Structures stand on level pads; road and trail beds are graded.
+- Meadow Creek leaves the lake's south-east spillway, passes Aspen Bend, the
+  footbridge reach and the pond, then follows priority-flood/D8 drainage to the east
+  boundary within 12 m.
+
+Shaping keeps every grid triangle, on either diagonal, within 36°, and the quantized
+field is asserted at 37°. Nadir footprints require corner rays to descend faster
+than the steepest axis gradient, which fails above 41.4° at any yaw, so steep looks
+come from shape and rock meshes. The generator also asserts the 18° walking limit
+under every trail tread (`build-scenario.py`), fire-road grades of at most 12%
+([USFS Low-Volume Roads BMP Field Guide, ch. 4](https://www.fs.usda.gov/t-d/programs/forest_mgmt/projects/lowvolroads/ch4.pdf)),
+a descending creek bed and water surface, dry banks, basin water held inside each
+footprint, pad clearance, bridge crossings and an unchanged southern buffer. It
+writes `height.r16`, the receipt and seven uint8 layer masks (`mask-<layer>.png`:
+cobble bed, granite, gravel road, trail tread, needle floor, wet meadow, dry
+meadow; 255 per sample in the `height.r16` row/column layout) to
 `.local/world/valley/terrain/`; an existing destination is an error. The original
 square's regression checks the uncarved analytic meadow independently.
 
-Stage 1 produces the numeric heightfield and public geometry. Paint masks, water,
-foliage, props and the regenerated Mission Control minimap belong to the subsequent
-asset-approved authoring stage. Existing landscape authoring scripts require those
-paint masks. Do not label unchanged cooked scenery with the valley manifest.
+`horizon.crests` builds four seeded, overlapping granite crest layers 3.5–17 km
+beyond the rectangle, in UE centimetres with upward normals. Import them without
+collision, each layer with its own aerial-perspective material.
+
+The Unreal import of masks and crests, water planes, foliage, props and the
+regenerated Mission Control minimap belong to the asset-approved authoring stage.
+Do not label unchanged cooked scenery with the valley manifest.
 
 ## Asset review
 

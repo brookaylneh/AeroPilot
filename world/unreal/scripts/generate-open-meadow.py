@@ -19,13 +19,19 @@ ORIGINAL_SHA256 = "a523142668a99568c9bdd22ef0b153a06b8791c085ed41caa6f0e6b16750a
 SEED = 74021
 
 
+def hill(x, y):
+    """Northern hill term in metres north/east; the valley reshapes it into Granite Dome."""
+    return 36 * np.exp(-((x * 2 - 1200) / 650)**2 - ((y * 2 - 600) / 450)**2)
+
+
 def height(x, y):
+    northern_hill = hill(x, y)
     x, y = x * 2, y * 2
     return (
         8 + 3 * np.sin(x / 470) * np.cos(y / 590)
         + 1.3 * np.sin(y / 95 + x / 180)
         + 24 * np.exp(-((x + 1100) / 500)**2 - ((y - 700) / 650)**2)
-        + 36 * np.exp(-((x - 1200) / 650)**2 - ((y - 600) / 450)**2)
+        + northern_hill
         + 26 * np.exp(-((x - 600) / 550)**2 - ((y + 1400) / 600)**2)
         + .06 * np.sin(x / 6) * np.sin(y / 7)
     )

@@ -35,7 +35,13 @@
     "nearestBoundaryGapMetres": 5,
     "searchable": false
   },
-  "heightfieldSha256": "20e3f06d68798038032ebaf3193b57f2c3f338c73129ac7c36a8eb11b70306a5",
+  "heightfieldSha256": "26812860e2210f487139aea3978f3b7e6da067c01143b8f02468924768bb79c8",
+  "sun": {
+    "localTime": "2026-10-31T15:30:00-07:00",
+    "apparentElevationDegrees": 24.504808170777153,
+    "azimuthDegreesClockwiseFromNorth": 225.65853338327818,
+    "source": "NREL SPA (pvlib 0.16.1) at OriginGeopoint; NOAA calculator agrees within 0.01 degrees"
+  },
   "vehicles": {
     "Drone1": {
       "spawnUeCm": {

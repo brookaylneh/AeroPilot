@@ -1,12 +1,14 @@
 """Inline public-landmark fixtures; no scenario placements or authored world data."""
 
 import copy
+import hashlib
 import json
 import math
 import tempfile
 import unittest
 from pathlib import Path
 
+from world.cosys import landmarks as module
 from world.cosys.landmarks import directions, find, load, validate
 
 
@@ -168,13 +170,30 @@ class LandmarkTests(unittest.TestCase):
             with self.subTest(kind=kind), self.assertRaisesRegex(AssertionError, "must be zero"):
                 validate(self.document, self.world)
 
+    def test_raised_obstacle_requires_footprint_and_supplies_directions(self):
+        item = feature("sign", "Sign", "obstacle", "polygon", [(0, 0), (1, 0), (1, 1), (0, 1)])
+        item["heightM"] = 2
+        self.document["landmarks"] = [item]
+        landmarks = validate(self.document, self.world)
+        result = directions(landmarks, 2, 0.5)
+        self.assertEqual(result["nearest"]["kind"], "obstacle")
+        self.assertEqual(result["text"], "1.0 m north of Sign")
+        points = item["geometry"]["points"]
+        for kind, count in (("point", 1), ("polyline", 2)):
+            item["geometry"] = {"type": kind, "points": points[:count]}
+            with (
+                self.subTest(kind=kind),
+                self.assertRaisesRegex(AssertionError, "polygon footprint"),
+            ):
+                validate(self.document, self.world)
+
     def test_projection_uses_segment_interior_and_true_horizontal_metres(self):
         result = directions(validate(self.document, self.world), 7, 38)
         self.assertEqual(result["nearest"]["id"], "creek")
         self.assertAlmostEqual(result["nearest"]["distance_m"], 2)
         self.assertEqual(result["nearest"]["point"], {"north_m": 7, "east_m": 40})
         self.assertEqual(result["linear"]["side"], "west")
-        self.assertIn("west bank of Creek", result["text"])
+        self.assertEqual(result["text"], "2.0 m from Creek, on its west bank")
         self.document["landmarks"][1]["geometry"]["points"].reverse()
         self.assertEqual(directions(validate(self.document, self.world), 7, 38), result)
 
@@ -191,11 +210,14 @@ class LandmarkTests(unittest.TestCase):
             feature("track", "Track", "trail", "polyline", [(-10, 0), (10, 0)])
         ]
         landmarks = validate(self.document, self.world)
-        self.assertEqual(directions(landmarks, 0, 0)["linear"]["side"], "on")
+        on_line = directions(landmarks, 0, 0)
+        self.assertEqual(on_line["linear"]["side"], "on")
+        self.assertEqual(on_line["text"], "On Track")
         result = directions(landmarks, 11, 0)
         self.assertEqual(result["linear"]["side"], "beyond endpoint")
         self.assertAlmostEqual(result["nearest"]["distance_m"], 1)
-        self.assertIn("east side of Track", directions(landmarks, 0, 1)["text"])
+        self.assertEqual(result["text"], "1.0 m north beyond an endpoint of Track")
+        self.assertEqual(directions(landmarks, 0, 1)["text"], "1.0 m from Track, on its east side")
 
     def test_internal_bends_and_closed_loops_are_not_line_endpoints(self):
         for coordinates in (
@@ -235,6 +257,12 @@ class LandmarkTests(unittest.TestCase):
             find([], "bridge")
         with self.assertRaises(AssertionError):
             directions(landmarks, math.nan, 0)
+
+    def test_validator_is_the_search_planning_9688712_blob(self):
+        self.assertEqual(
+            hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest(),
+            "a6afda65eb765d4c8bb10478d1af859ab62bce264be78cac41b30f0ed7876b10",
+        )
 
 
 if __name__ == "__main__":

@@ -1,6 +1,56 @@
+import math
 import unittest
 
-from world.unreal.horizon import outside_rectangle
+from world.cosys.terrain import BOUNDS
+from world.unreal.horizon import CREST_LAYERS, CREST_ROWS, crests, outside_rectangle
+
+
+class CrestTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.lower = (BOUNDS["min"]["x"], BOUNDS["min"]["y"])
+        cls.upper = (BOUNDS["max"]["x"], BOUNDS["max"]["y"])
+        cls.layers = crests(cls.lower, cls.upper)
+
+    def test_seeded_layers_repeat_exactly(self):
+        self.assertEqual(len(self.layers), len(CREST_LAYERS))
+        self.assertEqual(crests(self.lower, self.upper), self.layers)
+
+    def test_every_vertex_stays_2_km_outside_the_rectangle_within_its_height_range(self):
+        for (vertices, _), (_, _, high) in zip(self.layers, CREST_LAYERS):
+            gap = min(
+                math.hypot(
+                    max(self.lower[0] - x, 0, x - self.upper[0]),
+                    max(self.lower[1] - y, 0, y - self.upper[1]),
+                )
+                for x, y, _ in vertices
+            )
+            self.assertGreaterEqual(gap, 200000)
+            self.assertTrue(all(0 <= z <= high * 100 for *_, z in vertices))
+
+    def test_triangles_index_vertices_and_face_upward(self):
+        for vertices, triangles in self.layers:
+            for triangle in triangles:
+                a, b, c = (vertices[i] for i in triangle)
+                u = [b[k] - a[k] for k in range(3)]
+                v = [c[k] - a[k] for k in range(3)]
+                self.assertGreater(u[0] * v[1] - u[1] * v[0], 0)
+
+    def test_farther_crests_show_between_nearer_ones(self):
+        centre = [(self.lower[k] + self.upper[k]) / 2 for k in (0, 1)]
+        rows = len(CREST_ROWS)
+        angles = [
+            [
+                math.atan2(
+                    vertices[i + rows // 2][2], math.dist(vertices[i + rows // 2][:2], centre)
+                )
+                for i in range(0, len(vertices), rows)
+            ]
+            for vertices, _ in self.layers
+        ]
+        for near, far in zip(angles, angles[1:]):
+            shown = sum(f > n for n, f in zip(near, far)) / len(near)
+            self.assertTrue(0.1 < shown < 0.9, shown)
 
 
 class HorizonClippingTests(unittest.TestCase):

@@ -23,6 +23,7 @@ COLORS = {
     "pond": "#006cad",
     "bridge": "#722faa",
     "structure": "#722faa",
+    "obstacle": "#9a6a00",
     "forest": "#216e3a",
     "ridge": "#47454d",
     "outcrop": "#47454d",
@@ -75,10 +76,10 @@ def plot(output):
         )
         figure.text(
             0.755,
-            0.875 - (number - 1) * 0.032,
+            0.875 - (number - 1) * 0.78 / len(landmarks),
             f"{number:2d}  {item['name']}",
             color=color,
-            fontsize=11,
+            fontsize=9,
         )
     axis.set(xlabel="East / UE +Y (m)", ylabel="North / UE +X (m)")
     axis.grid(alpha=0.2)
@@ -95,7 +96,7 @@ def plot(output):
     figure.text(
         0.055,
         0.045,
-        f"{WORLD['environmentAssetVersion']} · Generated terrain and authored geometry; no art placed.\nCreek is the selected natural eastern reach. Heights are design envelopes, not mesh measurements.",
+        f"{WORLD['environmentAssetVersion']} · Generated terrain and authored geometry; no art placed.\nMeadow Creek drains Granite Lake through Beaver Pond to the east boundary. Heights are design envelopes, not mesh measurements.",
         fontsize=11,
     )
     output.parent.mkdir(parents=True, exist_ok=True)

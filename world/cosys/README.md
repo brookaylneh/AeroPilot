@@ -448,8 +448,9 @@ PY
 ## Terrain dimensions and sampling
 
 `world.json` is the source of search bounds, heightfield path, per-axis sample counts,
-spacing, row/column orientation, encoding and release hash. `terrain.py` verifies
-those relationships and the raw file hash before supplying north/east heights.
+spacing, row/column orientation, encoding, release hash and the fixed sun.
+`terrain.py` verifies those relationships and the raw file hash before supplying
+north/east heights.
 Rows increase east (+Y); columns increase north (+X). The planner, perception
 geometry, tool schemas, mission fence and browser maps derive their bounds from
 this file. The launch corridor and authored homes remain separate infrastructure.
@@ -460,10 +461,10 @@ Generate the current numeric valley terrain from the repository root:
 .venv-cosys/bin/python -m world.unreal.valley --evidence-dir .local/evidence/world/valley/<new-run>
 ```
 
-The generator reconstructs and verifies the analytic meadow before carving and
-grading from `world/unreal/landmarks.json`. It refuses existing output and evidence
-destinations. Stage 1 produces the numeric field under `.local/world/valley/terrain/`;
-asset-approved landscape masks and the updated browser minimap follow in Stage 2.
+The generator reconstructs and verifies the analytic meadow before shaping, carving
+and grading from `world/unreal/landmarks.json`. It refuses existing output and evidence
+destinations, and writes the numeric field and its landscape layer masks under
+`.local/world/valley/terrain/`; the updated browser minimap follows asset authoring.
 The minimap generator transposes raw axes and reverses north to put north at the
 top. Current dimensions come only from the world file.
 
@@ -471,8 +472,11 @@ top. Current dimensions come only from the world file.
 meadow's original-square bit identity, and duplicated extent literals in tracked
 source. Historical measurements, font licence text and validated absolute landmark
 coordinates are excluded from the literal check. Landmark metadata is still scanned.
-Valley authoring tests additionally check drainage, terrain limits, southern
-preservation, feature classes, height envelopes and disjoint same-kind footprints.
+Valley authoring tests additionally check drainage, the descending lake-to-boundary
+creek with dry banks, basin water inside its footprints, the 37° grid-triangle slope
+cap, walkable trails, the fire-road grade, dome height, pad clearance, layer masks,
+southern preservation, feature classes, height envelopes and disjoint same-kind
+footprints.
 
 The landmark loader uses the public six-field contract: `id`, `name`, `aliases`,
 `kind`, `geometry` and `heightM`. Heights describe the tallest part above local

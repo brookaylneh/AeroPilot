@@ -1,4 +1,4 @@
-"""Deterministic valley grading from the accepted meadow and public landmarks."""
+"""Deterministic valley terrain from the accepted meadow and public landmarks."""
 
 import argparse
 import hashlib
@@ -14,7 +14,14 @@ from pathlib import Path
 
 import numpy as np
 from matplotlib.path import Path as PolygonPath
-from scipy.ndimage import distance_transform_edt, gaussian_filter1d, map_coordinates
+from PIL import Image
+from scipy.ndimage import (
+    distance_transform_edt,
+    gaussian_filter,
+    gaussian_filter1d,
+    map_coordinates,
+)
+from scipy.spatial import ConvexHull
 
 from mission_planner.environment import load_env
 from world.cosys.landmarks import LANDMARKS_PATH, _intersects, _nearest, validate
@@ -27,9 +34,84 @@ SOUTH_BUFFER_M = 32
 CHANNEL_DEPTH_M = 0.65
 CHANNEL_GRADE = 0.0005
 CHANNEL_BANK_M = 40
-POND_DEPTH_M = 0.6
-POND_BANK_M = 48
+CHANNEL = {"bedM": 2.4, "bankM": 0.7, "bankDegrees": 35, "swaleDegrees": 12, "waterM": 0.25}
+CREEK_HEAD_M = (76.64, 440.65)
+NATURAL_REACH_M = 12
 GRADE_BANK_M = {"trail": 7, "road": 15}
+PAD_BLEND_M = 6
+# Nadir footprints require corner rays (38.8 degrees off nadir) to descend faster than the
+# steepest adjacent sample pair along each axis, at any yaw; that fails above 41.4 degrees.
+MAX_SLOPE_DEGREES = 37
+# Shaping limit, leaving the 1/128 m quantization within the cap.
+SHAPED_SLOPE_DEGREES = 36
+# ScenarioManager::ValidateGround walking limit: region MaximumSlopeDegrees, 18 in the catalogue.
+TRAIL_SLOPE_DEGREES = 18
+# USFS Low-Volume Roads BMP Field Guide ch. 4: grades of 12% or less.
+ROAD_GRADE = 0.12
+MEADOW_M = ((-650, 0), (-450, 550))
+# Per-bearing tuples are evenly spaced clockwise from north.
+DOME = {
+    "id": "granite-dome",
+    "summitM": (600, 300),
+    "capM": 3,
+    "capSoftM": 1,
+    "heightM": 49,
+    "exponents": (1.8, 2.4, 3, 2.4),
+    "sheetM": 1.4,
+    "sheetSpacing": 0.07,
+    "sheetStart": 0.25,
+    "sheetWarp": 0.06,
+    "joints": ((35, 34), (125, 47)),
+    "jointM": 0.6,
+    "jointWidthM": 1.4,
+    "apronM": 10,
+    "apronInM": 8,
+    "apronOutM": 14,
+    "apronBearing": 200,
+    "marginM": 60,
+}
+# Underwater shore slope at the waterline; above it the rim rises to a lip held for the bench
+# width, then falls; walls cut from the floor edge. Talus extends the floor to the convex hull
+# of water and talus (landmark, rise m).
+BASINS = {
+    "granite-lake": {
+        "surfaceM": 15.0,
+        "depthM": 9.0,
+        "shoreDegrees": (25, 20, 12, 8, 6, 8, 10, 18),
+        "riseDegrees": (12, 10, 8, 4, 5, 6, 6, 10),
+        "lipM": (3.0, 2.8, 2.2, 1.5, 1.8, 2.4, 2.5, 3.0),
+        "benchM": (25, 20, 15, 10, 12, 12, 60, 20),
+        "fallDegrees": (7, 7, 10, 14, 12, 10, 8, 7),
+        "wallDegrees": (SHAPED_SLOPE_DEGREES,),
+        "talus": None,
+    },
+    "lookout-tarn": {
+        "surfaceM": 16.0,
+        "depthM": 5.0,
+        "shoreDegrees": (30, 25, 30, 15),
+        "riseDegrees": (6, 6, 6, 8),
+        "lipM": (1.5,),
+        "benchM": (12, 12, 12, 20),
+        "fallDegrees": (20, 20, 20, 12),
+        "wallDegrees": (SHAPED_SLOPE_DEGREES,) * 3 + (8,),
+        "talus": ("lookout-talus", 6.0),
+    },
+    "beaver-pond": {
+        "surfaceM": 5.3,
+        "depthM": 1.2,
+        "shoreDegrees": (8,),
+        "riseDegrees": (4,),
+        "lipM": (0.35,),
+        "benchM": (3,),
+        "fallDegrees": (6,),
+        "wallDegrees": (SHAPED_SLOPE_DEGREES,),
+        "talus": None,
+    },
+}
+BASIN_MARGIN_M = 170
+MASKS = ("cobble-bed", "granite", "gravel-road", "trail-tread", "needle-floor", "wet-meadow")
+LODGEPOLES = ("west-lodgepoles", "north-lodgepoles", "east-lodgepoles")
+GRANITE = ("granite-dome", "granite-outcrop", "lookout-talus")
 
 
 def drainage(elevation, spacing_m):
@@ -110,8 +192,10 @@ def catalogue(document):
             assert item["geometry"]["type"] == "polygon"
         if item["kind"] in ("forest", "pond"):
             assert item["geometry"]["type"] == "polygon"
-        if item["kind"] == "forest":
-            assert item["heightM"] <= 18, "Forest exceeds authored tree height envelope"
+        if item["kind"] in ("forest", "obstacle"):
+            assert item["heightM"] <= 18, f"{item['id']} exceeds the tree height envelope"
+    names = [name.casefold() for item in landmarks for name in (item["name"], *item["aliases"])]
+    assert len(names) == len(set(names)), "Landmark names and aliases must be unique"
     polygons = [item for item in landmarks if item["geometry"]["type"] == "polygon"]
     for a, b in combinations(polygons, 2):
         if a["kind"] != b["kind"]:
@@ -187,17 +271,36 @@ def lookup(elevation, vertices):
     )
 
 
-def corridors(vertices, radius):
+def region(vertices, margin):
+    """Grid slices and north/east sample coordinates around vertices plus a margin."""
     north, east = axes()
+    low, high = vertices.min(axis=0) - margin, vertices.max(axis=0) + margin
+    c0, c1 = np.searchsorted(north, [low[0], high[0]])
+    r0, r1 = np.searchsorted(east, [low[1], high[1]])
+    x, y = np.meshgrid(north[c0:c1], east[r0:r1])
+    return (slice(r0, r1), slice(c0, c1)), x, y
+
+
+def inside(vertices, x, y):
+    path = PolygonPath(vertices)
+    return path.contains_points(np.column_stack((x.ravel(), y.ravel()))).reshape(x.shape)
+
+
+def signed_distance(mask):
+    """Metres to a footprint edge half a sample beyond the mask; negative inside."""
+    spacing = FIELD["sampleSpacingMetres"]
+    outside = distance_transform_edt(~mask, sampling=spacing)
+    within = distance_transform_edt(mask, sampling=spacing)
+    return np.where(mask, spacing / 2 - within, outside - spacing / 2)
+
+
+def corridors(vertices, radius):
     for i, (a, b) in enumerate(zip(vertices, vertices[1:])):
-        lo, hi = np.minimum(a, b) - radius, np.maximum(a, b) + radius
-        c0, c1 = np.searchsorted(north, [lo[0], hi[0]])
-        r0, r1 = np.searchsorted(east, [lo[1], hi[1]])
-        x, y = np.meshgrid(north[c0:c1], east[r0:r1])
+        window, x, y = region(np.array([a, b]), radius)
         delta = b - a
         t = np.clip(((x - a[0]) * delta[0] + (y - a[1]) * delta[1]) / np.dot(delta, delta), 0, 1)
         d = np.hypot(x - a[0] - t * delta[0], y - a[1] - t * delta[1])
-        yield i, (slice(r0, r1), slice(c0, c1)), d, t
+        yield i, window, d, t
 
 
 def line_field(vertices, profile, radius):
@@ -211,8 +314,56 @@ def line_field(vertices, profile, radius):
     return distance, target
 
 
+def densify(vertices, step):
+    arc = np.r_[0, np.cumsum(np.linalg.norm(np.diff(vertices, axis=0), axis=1))]
+    stations = np.linspace(0, arc[-1], int(np.ceil(arc[-1] / step)) + 1)
+    return stations, np.column_stack([np.interp(stations, arc, vertices[:, a]) for a in (0, 1)])
+
+
 def blend(distance, radius):
     return np.cos(np.minimum(distance / radius, 1) * np.pi / 2) ** 2
+
+
+def smoothstep(low, high, value):
+    t = np.clip((value - low) / (high - low), 0, 1)
+    return t * t * (3 - 2 * t)
+
+
+def channel_lift(distance):
+    """Height above the bed at a distance from the centreline, and the bank-top distance.
+
+    Smoothstep banks span several samples, so diagonal reaches do not alias into steps; their
+    steepest point plus the swale trend equals the bank angle.
+    """
+    tan_bank, tan_swale = (np.tan(np.radians(CHANNEL[k])) for k in ("bankDegrees", "swaleDegrees"))
+    half = CHANNEL["bedM"] / 2
+    top = half + 1.5 * CHANNEL["bankM"] / (tan_bank - tan_swale)
+    lift = (
+        CHANNEL["bankM"] * smoothstep(half, top, distance)
+        + np.maximum(distance - half, 0) * tan_swale
+    )
+    return lift, top
+
+
+def smooth_min(a, b, width):
+    h = np.maximum(width - np.abs(a - b), 0) / width
+    return np.minimum(a, b) - h * h * width / 4
+
+
+def noise(shape, seed, sigma_m):
+    field = gaussian_filter(
+        np.random.default_rng(seed).standard_normal(shape), sigma_m / FIELD["sampleSpacingMetres"]
+    )
+    return field / field.std()
+
+
+def bearing(x, y, centre):
+    return np.degrees(np.arctan2(y - centre[1], x - centre[0])) % 360
+
+
+def sector(degrees, values):
+    """Interpolate design values evenly spaced clockwise from north around a centre."""
+    return np.interp(degrees, np.arange(len(values)) * 360 / len(values), values, period=360)
 
 
 def triangle_slopes(elevation, spacing_m):
@@ -227,51 +378,292 @@ def triangle_slopes(elevation, spacing_m):
     return np.degrees(np.arctan(np.sqrt(squared_gradient)))
 
 
-def creek_profile(elevation, item, receiver, accumulation):
+def limit_slope(terrain, window, surface):
+    """Write a designed surface lowered until every grid triangle is within the shaped slope.
+
+    Each steeper triangle, on either diagonal, is scaled vertically about its lowest vertex and
+    samples take the lowest proposal. The window border must keep the surrounding terrain.
+    """
+    rise = np.tan(np.radians(SHAPED_SLOPE_DEGREES)) * FIELD["sampleSpacingMetres"]
+    rows, columns = surface.shape
+    for _ in range(4 * max(surface.shape)):
+        padded = np.pad(surface, 1, mode="edge")
+        bound = np.full(padded.shape, np.inf)
+        steepest = 0.0
+        for dr, dc in ((-1, -1), (-1, 1), (1, -1), (1, 1)):
+            windows = (
+                (slice(1, rows + 1), slice(1, columns + 1)),
+                (slice(1, rows + 1), slice(1 + dc, columns + 1 + dc)),
+                (slice(1 + dr, rows + 1 + dr), slice(1, columns + 1)),
+            )
+            corner, north, east = (padded[w] for w in windows)
+            gradient = np.hypot(north - corner, east - corner)
+            steepest = max(steepest, float(gradient.max()))
+            scale = np.minimum(rise / np.maximum(gradient, rise), 1)
+            lowest = np.minimum(np.minimum(corner, north), east)
+            for w, vertex in zip(windows, (corner, north, east)):
+                np.minimum(bound[w], lowest + scale * (vertex - lowest), out=bound[w])
+        if steepest <= rise * (1 + 1e-12):
+            frame = np.ones(surface.shape, dtype=bool)
+            frame[1:-1, 1:-1] = False
+            assert np.array_equal(surface[frame], terrain[window][frame]), (
+                "Shaping reached its window"
+            )
+            terrain[window] = surface
+            return
+        surface = np.minimum(surface, bound[1:-1, 1:-1])
+    raise AssertionError("Slope limit did not converge")
+
+
+def dome(terrain, item):
+    """Exfoliation dome: convex shell, broken sheeting steps, joint grooves, south talus apron."""
+    vertices = points(item)
+    centre = np.array(DOME["summitM"])
+    offsets = vertices - centre
+    angles = np.degrees(np.arctan2(offsets[:, 1], offsets[:, 0]))
+    turns = np.diff(np.unwrap(np.radians(np.r_[angles, angles[0]])))
+    assert np.all(turns > 0) or np.all(turns < 0), (
+        "Dome footprint must be star-shaped at its summit"
+    )
+    window, x, y = region(vertices, DOME["marginM"])
+    rays = bearing(x, y, centre)
+    radius = np.interp(rays, angles % 360, np.hypot(*offsets.T), period=360)
+    rho = np.hypot(x - centre[0], y - centre[1]) / radius
+    shell = DOME["heightM"] * np.maximum(0, 1 - rho ** sector(rays, DOME["exponents"]))
+    # Sheets parallel to the shell expose outward-facing steps where outer sheets spalled off.
+    warped = rho + DOME["sheetWarp"] * noise(x.shape, 1, 40)
+    phase = (warped - DOME["sheetStart"]) / DOME["sheetSpacing"]
+    sheets = (
+        DOME["sheetM"]
+        * np.clip(0.6 + 0.8 * noise(x.shape, 2, 20), 0, 1)
+        * (phase % 1 - 0.5)
+        * smoothstep(0, 1, phase)
+    )
+    # Joint grooves stay on the gentler upper dome: on capped flanks they would trench the face.
+    gentle = 1 - smoothstep(0.35, 0.5, np.hypot(*np.gradient(shell, FIELD["sampleSpacingMetres"])))
+    joints = np.zeros(x.shape)
+    for seed, (strike, spacing) in enumerate(DOME["joints"], 7):
+        strike = np.radians(strike)
+        across = (y - centre[1]) * np.cos(strike) - (x - centre[0]) * np.sin(strike)
+        across = across / spacing + 0.15 * noise(x.shape, seed, 30)
+        gap = np.abs(across - np.rint(across)) * spacing
+        opening = np.clip(0.3 + noise(x.shape, seed + 10, 15), 0, 1)
+        joints += DOME["jointM"] * np.clip(1 - gap / DOME["jointWidthM"], 0, 1) * opening * gentle
+    rock = shell + (sheets - joints) * smoothstep(1, 0.92, rho)
+    assert rock.min() >= 0, "Dome surface dips below its floor"
+    beyond = (rho - 1) * radius
+    south = np.maximum(np.cos(np.radians(rays - DOME["apronBearing"])), 0) ** 2
+    reach = (DOME["apronOutM"] - beyond) / (DOME["apronOutM"] + DOME["apronInM"])
+    apron = DOME["apronM"] * south * np.clip(reach, 0, 1) ** 1.4
+    limit_slope(terrain, window, terrain[window] + np.maximum(rock, apron))
+
+
+def basin(terrain, item, extension):
+    """Designed floor below a flat surface; outside, a bench raises and walls cut the terrain."""
+    spec = BASINS[item["id"]]
+    surface, depth = spec["surfaceM"], spec["depthM"]
+    vertices = points(item)
+    window, x, y = region(vertices, BASIN_MARGIN_M)
+    rays = bearing(x, y, vertices.mean(axis=0))
+
+    def tangent(key):
+        return np.tan(np.radians(sector(rays, spec[key])))
+
+    water = inside(vertices, x, y)
+    # Bearing-keyed values are singular at the centre; smooth them over the basin.
+    steepness = gaussian_filter(tangent("shoreDegrees"), 15 / FIELD["sampleSpacingMetres"])
+    level = surface - depth * (
+        1 - np.exp(np.minimum(signed_distance(water), 0) * steepness / depth)
+    )
+    lip = sector(rays, spec["lipM"]) * np.clip(1 + 0.25 * noise(x.shape, 6, 25), 0.6, 1.4)
+    floor = water.copy()
+    if extension:
+        assert not (inside(points(extension), x, y) & water).any()
+        hull = ConvexHull(np.vstack((vertices, points(extension))))
+        apron = inside(hull.points[hull.vertices], x, y) & ~water
+        reach = signed_distance(water)
+        ramp = np.clip(reach / reach[apron].max(), 0, 1) ** 1.5
+        toe = np.minimum(reach * tangent("riseDegrees"), lip)
+        level = np.where(apron, surface + np.maximum(toe, spec["talus"][1] * ramp), level)
+        floor |= apron
+    delta = signed_distance(floor)
+    edge = np.maximum(level[tuple(distance_transform_edt(~floor, return_indices=True)[1])], surface)
+    bench = sector(rays, spec["benchM"]) * np.clip(1 + 0.35 * noise(x.shape, 5, 40), 0.5, 1.5)
+    rise = np.minimum(delta * tangent("riseDegrees"), lip)
+    rim = surface + np.minimum(rise, lip - (delta - bench) * tangent("fallDegrees"))
+    cut = edge + delta * tangent("wallDegrees")
+    assert np.all(rim[~floor] <= cut[~floor]), f"{item['id']} bench rises above its walls"
+    limit_slope(terrain, window, np.where(floor, level, np.clip(terrain[window], rim, cut)))
+
+
+def creek_profile(elevation, item, receiver, accumulation, named):
+    """Designed bed and water along the lake-to-boundary chain; the natural reach follows D8."""
     vertices = points(item)
     spacing = FIELD["sampleSpacingMetres"] * DRAINAGE_STRIDE
-    indices = (vertices - [BOUNDS["min"]["x"] / 100, BOUNDS["min"]["y"] / 100]) / spacing
-    np.testing.assert_allclose(indices, np.rint(indices), atol=1e-8)
-    col, row = np.rint(indices).astype(int).T
-    flat = row * receiver.shape[1] + col
-    np.testing.assert_array_equal(receiver.ravel()[flat[:-1]], flat[1:])
-    assert receiver.ravel()[flat[-1]] == -1, "Creek must complete its downstream reach"
-    flow = accumulation.ravel()[flat]
-    assert np.all(np.diff(flow) >= 0) and flow[0] > 1000
+    origin = np.array([BOUNDS["min"]["x"], BOUNDS["min"]["y"]]) / 100
+    node = np.rint((np.array(CREEK_HEAD_M) - origin) / spacing).astype(int)
+    assert np.linalg.norm(origin + node * spacing - CREEK_HEAD_M) < 0.01
+    head = int(np.argmin(np.linalg.norm(vertices - origin - node * spacing, axis=1)))
+    assert np.linalg.norm(vertices[head] - origin - node * spacing) < 1e-6, (
+        "Creek must pass its head"
+    )
+    index = node[1] * receiver.shape[1] + node[0]
+    upstream = int(accumulation.ravel()[index])
+    path = []
+    while index != -1:
+        path.append(origin + spacing * np.array(divmod(index, receiver.shape[1]))[::-1])
+        index = receiver.ravel()[index]
+    gap = np.linalg.norm(vertices[head:, None] - np.array(path)[None], axis=2)
+    deviation = float(max(gap.min(axis=1).max(), gap.min(axis=0).max()))
+    assert deviation < NATURAL_REACH_M, f"Natural reach leaves computed drainage by {deviation} m"
+    assert upstream > 1000 and np.allclose(path[-1], vertices[-1], atol=1e-6)
+    assert vertices[-1][1] == BOUNDS["max"]["y"] / 100, "Creek must leave the east boundary"
+    lake, pond = named["granite-lake"], named["beaver-pond"]
+    assert np.isclose(points(lake), vertices[0], rtol=0, atol=1e-6).all(axis=1).any(), (
+        "Creek must start at the lake spillway"
+    )
+    span = np.flatnonzero(inside(points(pond), *vertices.T))
+    assert span.size and np.all(np.diff(span) == 1), "Creek must cross the pond once"
+    dam = span[-1] + 1
+    aspen = np.flatnonzero(inside(points(named["aspen-bend"]), *vertices.T))
+    bridge = int(np.argmin(np.linalg.norm(vertices - points(named["footbridge"]).mean(0), axis=1)))
+    assert aspen.size and aspen[-1] < head < bridge < span[0], "Chain order: lake, aspens, bridge"
+    lake_surface = BASINS["granite-lake"]["surfaceM"]
+    pond_surface = BASINS["beaver-pond"]["surfaceM"]
+    pond_depth = BASINS["beaver-pond"]["depthM"]
+    length = np.r_[0, np.cumsum(np.linalg.norm(np.diff(vertices, axis=0), axis=1))]
+    candidate = lookup(elevation, vertices) - CHANNEL_DEPTH_M
+    candidate[0] = lake_surface - CHANNEL["waterM"]
+    candidate[span] = pond_surface - pond_depth
+    bed = np.minimum.accumulate(candidate + CHANNEL_GRADE * length) - CHANNEL_GRADE * length
+    pool = np.where(np.arange(len(bed)) < dam, pond_surface, -np.inf)
+    water = np.maximum(bed + CHANNEL["waterM"], pool)
+    assert np.all(np.diff(bed) < 0) and np.all(np.diff(water) <= 0) and water[0] == lake_surface
     displacement = vertices[-1] - vertices[0]
     assert abs(displacement[1]) > abs(displacement[0]), "Creek must run broadly east-west"
-    length = np.r_[0, np.cumsum(np.linalg.norm(np.diff(vertices, axis=0), axis=1))]
-    bed = (
-        np.minimum.accumulate(lookup(elevation, vertices))
-        - CHANNEL_DEPTH_M
-        - CHANNEL_GRADE * length
-    )
-    assert np.all(np.diff(bed) < 0)
     return (
         vertices,
         bed,
+        water,
         {
             "id": item["id"],
             "routeNodes": len(vertices),
             "lengthM": float(length[-1]),
             "eastDisplacementM": float(displacement[1]),
             "northDisplacementM": float(displacement[0]),
-            "eastSpanM": float(np.ptp(vertices[:, 1])),
-            "northSpanM": float(np.ptp(vertices[:, 0])),
             "downstreamAzimuthDegrees": float(
                 np.degrees(np.arctan2(displacement[1], displacement[0])) % 360
             ),
-            "upstreamSamplesAtStart": int(flow[0]),
-            "upstreamSamplesAtOutlet": int(flow[-1]),
-            "receiverEdgesMatched": len(vertices) - 1,
-            "strictlyDescendingDesignProfile": True,
+            "naturalReachStartNode": head,
+            "naturalReachMaxDeviationFromD8M": deviation,
+            "upstreamSamplesAtHead": upstream,
+            "lakeSurfaceM": lake_surface,
+            "spillSillM": float(bed[0]),
+            "pondSurfaceM": pond_surface,
+            "pondBedM": pond_surface - pond_depth,
+            "damNode": int(dam),
+            "damStepM": float(water[dam - 1] - water[dam]),
+            "exitBedM": float(bed[-1]),
+            "arcLengthM": length.tolist(),
+            "designBedM": bed.tolist(),
+            "waterSurfaceM": water.tolist(),
         },
     )
+
+
+def route_slopes(elevation, slope, item, decks):
+    """Steepest ground triangle and 3 m station grade along a route, excluding bridge decks."""
+    spacing = FIELD["sampleSpacingMetres"]
+    origin = [BOUNDS["min"]["x"] / 100, BOUNDS["min"]["y"] / 100]
+
+    def ground(vertices):
+        return ~np.any([inside(points(deck), *vertices.T) for deck in decks], 0)
+
+    fine = densify(points(item), spacing / 2)[1]
+    cells = np.minimum(
+        np.floor((fine - origin) / spacing).astype(int), np.array(slope.shape[::-1]) - 1
+    )
+    north, east = cells[ground(fine)].T
+    stations, coarse = densify(points(item), 3)
+    grade = np.abs(np.diff(lookup(elevation, coarse))) / np.diff(stations)
+    walked = ground(coarse)
+    return (
+        float(slope[east, north].max()),
+        float(grade[walked[1:] & walked[:-1]].max()),
+        float(stations[-1]),
+    )
+
+
+def layers(elevation, named, creek, water):
+    """Landscape weights in MASKS order plus dry meadow; each sample sums to exactly 255."""
+    north, east = axes()
+    x, y = np.meshgrid(north, east)
+    slope = np.pad(
+        triangle_slopes(elevation, FIELD["sampleSpacingMetres"]), ((0, 1), (0, 1)), "edge"
+    )
+    steep = smoothstep(22, 30, slope)
+    channel, level = line_field(creek, water, CHANNEL_BANK_M)
+    edge = (CHANNEL["bedM"] / 2 + channel_lift(0)[1]) / 2
+    band = np.clip(10 + 4 * noise(x.shape, 3, 25), 5, 15)
+    cover = {
+        "cobble-bed": (1 - smoothstep(edge, edge + 1, channel)) * (1 - steep),
+        "granite": steep.copy(),
+        "wet-meadow": (1 - smoothstep(band - 2, band + 2, channel))
+        * (1 - smoothstep(0.6, 1.4, elevation - level)),
+    }
+    for identifier, spec in BASINS.items():
+        item, surface = named[identifier], spec["surfaceM"]
+        window, wx, wy = region(points(item), 50)
+        delta = signed_distance(inside(points(item), wx, wy))
+        wet = (1 - smoothstep(6, 10, delta)) * (
+            1 - smoothstep(0.6, 1.4, elevation[window] - surface)
+        )
+        if identifier == "granite-lake":
+            slabs = smoothstep(-0.2, 0.4, np.cos(np.radians(bearing(wx, wy, points(item).mean(0)))))
+            cover["granite"][window] = np.maximum(cover["granite"][window], slabs * (delta < 45))
+            beach = (1 - slabs) * (1 - smoothstep(3, 6, delta))
+            cover["cobble-bed"][window] = np.maximum(cover["cobble-bed"][window], beach)
+        if identifier == "lookout-tarn":
+            cover["granite"][window] = np.maximum(cover["granite"][window], delta < 0)
+        if identifier == "beaver-pond":
+            wet = np.maximum(wet, delta < 0)
+        cover["wet-meadow"][window] = np.maximum(cover["wet-meadow"][window], wet)
+    for identifier in GRANITE:
+        window, wx, wy = region(points(named[identifier]), 1)
+        footprint = inside(points(named[identifier]), wx, wy)
+        cover["granite"][window] = np.maximum(cover["granite"][window], footprint)
+    road = [item for item in named.values() if item["kind"] == "road"]
+    trails = [item for item in named.values() if item["kind"] == "trail"]
+    cover["gravel-road"] = 1 - smoothstep(
+        1.75, 2.5, np.min([line_field(points(i), np.zeros(len(points(i))), 4)[0] for i in road], 0)
+    )
+    cover["trail-tread"] = 1 - smoothstep(
+        0.6, 1.1, np.min([line_field(points(i), np.zeros(len(points(i))), 2)[0] for i in trails], 0)
+    )
+    needle = np.zeros(x.shape)
+    for identifier in LODGEPOLES:
+        window, wx, wy = region(points(named[identifier]), 20)
+        depth = -signed_distance(inside(points(named[identifier]), wx, wy))
+        needle[window] = smoothstep(-3, 5, depth + 6 * noise(wx.shape, 4, 8))
+    cover["needle-floor"] = needle
+    weights, remaining = [], np.ones(x.shape)
+    for name in MASKS:
+        assert cover[name].shape == x.shape and 0 <= cover[name].min() <= cover[name].max() <= 1
+        weights.append(cover[name] * remaining)
+        remaining = remaining - weights[-1]
+    weights = np.stack(weights + [remaining])
+    assert weights.min() >= 0 and np.allclose(weights.sum(axis=0), 1, rtol=0, atol=1e-12)
+    total = np.rint(np.cumsum(weights, axis=0) * 255)
+    assert np.all(total[-1] == 255)
+    quantized = np.diff(total, axis=0, prepend=0).astype(np.uint8)
+    assert np.all(quantized.sum(axis=0, dtype=np.int64) == 255)
+    return quantized
 
 
 def build(document):
     started = time.perf_counter()
     landmarks = catalogue(document)
+    named = {item["id"]: item for item in landmarks}
     original = baseline_samples()
     baseline = (original.astype(float) - FIELD["zeroSample"]) / FIELD["samplesPerMetre"]
     terrain = baseline.copy()
@@ -280,48 +672,38 @@ def build(document):
         baseline[::DRAINAGE_STRIDE, ::DRAINAGE_STRIDE],
         FIELD["sampleSpacingMetres"] * DRAINAGE_STRIDE,
     )
+    north, east = axes()
+    x, y = np.meshgrid(north, east)
+    hill = importlib.import_module("world.unreal.scripts.generate-open-meadow").hill(x, y)
+    reshaped = hill > DOME["capM"] - DOME["capSoftM"]
+    terrain[reshaped] += (smooth_min(hill, DOME["capM"], DOME["capSoftM"]) - hill)[reshaped]
+    dome(terrain, named[DOME["id"]])
+    for identifier, spec in BASINS.items():
+        basin(terrain, named[identifier], spec["talus"] and named[spec["talus"][0]])
+    landform = terrain.copy()
     for item in landmarks:
         if item["kind"] not in GRADE_BANK_M:
             continue
-        vertices = points(item)
-        arc = np.r_[0, np.cumsum(np.linalg.norm(np.diff(vertices, axis=0), axis=1))]
-        stations = np.linspace(0, arc[-1], int(np.ceil(arc[-1] / 3)) + 1)
-        dense = np.column_stack([np.interp(stations, arc, vertices[:, axis]) for axis in (0, 1)])
-        profile = gaussian_filter1d(lookup(baseline, dense), 2, mode="nearest")
+        dense = densify(points(item), 3)[1]
+        profile = gaussian_filter1d(lookup(landform, dense), 2, mode="nearest")
         radius = GRADE_BANK_M[item["kind"]]
         distance, target = line_field(dense, profile, radius)
         terrain += (target - terrain) * blend(distance, radius)
-    creek_reports = []
     for item in landmarks:
-        if item["kind"] != "creek":
-            continue
-        vertices, profile, report = creek_profile(baseline, item, receiver, accumulation)
-        source = terrain.copy()
-        for i, region, distance, t in corridors(vertices, CHANNEL_BANK_M):
-            target = profile[i] + t * (profile[i + 1] - profile[i])
-            candidate = source[region] + np.minimum(target - source[region], 0) * blend(
-                distance, CHANNEL_BANK_M
-            )
-            terrain[region] = np.minimum(terrain[region], candidate)
-        creek_reports.append(report)
-    north, east = axes()
-    x, y = np.meshgrid(north, east)
-    pond_reports = []
-    for item in landmarks:
-        if item["kind"] != "pond":
-            continue
-        inside = (
-            PolygonPath(points(item))
-            .contains_points(np.column_stack((x.ravel(), y.ravel())))
-            .reshape(ROWS, COLUMNS)
-        )
-        assert inside.any()
-        bed = float(terrain[inside].min() - POND_DEPTH_M)
-        distance = distance_transform_edt(~inside, sampling=FIELD["sampleSpacingMetres"])
-        terrain += np.minimum(bed - terrain, 0) * blend(distance, POND_BANK_M)
-        pond_reports.append(
-            {"id": item["id"], "bedElevationM": bed, "footprintSamples": int(inside.sum())}
-        )
+        if item["kind"] == "structure":
+            window, wx, wy = region(points(item), PAD_BLEND_M)
+            beyond = signed_distance(inside(points(item), wx, wy))
+            local = terrain[window]
+            level = np.median(local[beyond < 0])
+            local += (level - local) * blend(np.maximum(beyond, 0), PAD_BLEND_M)
+    (creek,) = [item for item in landmarks if item["kind"] == "creek"]
+    vertices, bed, water, creek_report = creek_profile(
+        terrain, creek, receiver, accumulation, named
+    )
+    channel, channel_bed = line_field(vertices, bed, CHANNEL_BANK_M)
+    lift, bank_top = channel_lift(channel)
+    terrain = np.minimum(terrain, np.where(channel < CHANNEL_BANK_M, channel_bed + lift, np.inf))
+    limit_slope(terrain, np.s_[:, :], terrain.copy())
     samples = np.rint(FIELD["zeroSample"] + terrain * FIELD["samplesPerMetre"])
     assert np.isfinite(samples).all() and samples.min() >= 0 and samples.max() <= 65535
     raw = samples.astype("<u2")
@@ -329,22 +711,109 @@ def build(document):
     different_south = int(np.count_nonzero(raw[:, south] != original[:, south]))
     assert different_south == 0, "Southern terrain buffer changed"
     quantized = (raw.astype(float) - FIELD["zeroSample"]) / FIELD["samplesPerMetre"]
-    for item, report in zip((item for item in landmarks if item["kind"] == "creek"), creek_reports):
-        rise = np.diff(lookup(quantized, points(item)))
-        report["sampledFinalBedMaximumDownstreamRiseM"] = float(rise.max())
-        report["sampledFinalBedRisingSegments"] = int(np.count_nonzero(rise > 1e-8))
-    dy, dx = np.gradient(quantized, FIELD["sampleSpacingMetres"])
+    spacing = FIELD["sampleSpacingMetres"]
+    dy, dx = np.gradient(quantized, spacing)
     central_slope = float(np.degrees(np.arctan(np.hypot(dx, dy))).max())
-    slope = triangle_slopes(quantized, FIELD["sampleSpacingMetres"])
+    slope = triangle_slopes(quantized, spacing)
     maximum_slope = float(slope.max())
     row, column = np.unravel_index(np.argmax(slope), slope.shape)
+    axis_gradient = max(float(np.abs(np.diff(quantized, axis=a)).max()) / spacing for a in (0, 1))
     relief = float(np.ptp(quantized))
-    assert maximum_slope < 12, (
-        f"Valley slope limit exceeded: {maximum_slope} degrees at north/east "
-        f"{north[column]}, {east[row]} m, baseline/final height "
-        f"{baseline[row, column]}, {quantized[row, column]} m"
+    assert maximum_slope <= MAX_SLOPE_DEGREES, (
+        f"Slope cap exceeded: {maximum_slope} degrees at north/east {north[column]}, {east[row]} m"
     )
     assert relief < 65, f"Valley relief limit exceeded: {relief} metres"
+    routes = {}
+    for item in landmarks:
+        if item["kind"] in GRADE_BANK_M:
+            decks = [i for i in landmarks if i["kind"] == "bridge"]
+            steepest, grade, length = route_slopes(quantized, slope, item, decks)
+            routes[item["id"]] = {"lengthM": length, "maxSlopeDegrees": steepest, "maxGrade": grade}
+            if item["kind"] == "trail":
+                assert steepest <= TRAIL_SLOPE_DEGREES, (
+                    f"{item['id']} unwalkable: {steepest} degrees"
+                )
+            else:
+                assert grade <= ROAD_GRADE, f"{item['id']} grade {grade} exceeds {ROAD_GRADE}"
+    sampled = lookup(quantized, vertices)
+    rise = np.diff(sampled)
+    assert rise.max() <= 1 / FIELD["samplesPerMetre"] + 1e-9, f"Creek bed rises {rise.max()} m"
+    assert np.all(sampled <= water + 1e-9), "Creek bed above its water surface"
+    tangent = np.gradient(vertices, axis=0)
+    normal = (
+        np.column_stack((-tangent[:, 1], tangent[:, 0])) / np.linalg.norm(tangent, axis=1)[:, None]
+    )
+    sides = [vertices + side * bank_top * normal for side in (-1, 1)]
+    low, high = (np.array([BOUNDS[end]["x"], BOUNDS[end]["y"]]) / 100 for end in ("min", "max"))
+    near = np.array(
+        [min(_nearest(named[i], v)[0] for i in ("granite-lake", "beaver-pond")) for v in vertices]
+    )
+    checked = (near > 10) & np.all([((s >= low) & (s <= high)).all(axis=1) for s in sides], 0)
+    banks = np.minimum(*(lookup(quantized, s[checked]) for s in sides))
+    margin = banks - water[checked]
+    freeboard = float(margin.min())
+    assert freeboard > 0, (
+        f"Creek bank {-freeboard} m under water at {vertices[checked][margin.argmin()]}"
+    )
+    basins = {}
+    clear = line_field(vertices, bed, 12)[0] >= 12
+    for identifier, spec in BASINS.items():
+        surface = spec["surfaceM"]
+        window, wx, wy = region(points(named[identifier]), 10)
+        delta = signed_distance(inside(points(named[identifier]), wx, wy))
+        local = quantized[window]
+        ring = (delta >= 0.4) & (delta <= 3) & clear[window]
+        basins[identifier] = {
+            "surfaceM": surface,
+            "deepestM": float(surface - local[delta < 0].min()),
+            "highestFloorM": float(local[delta <= -0.8].max()),
+            "lowestRingM": float(local[ring].min()),
+        }
+        assert basins[identifier]["highestFloorM"] < surface, f"{identifier} floor emerges"
+        assert basins[identifier]["lowestRingM"] > surface, f"{identifier} bank below water line"
+    window, wx, wy = region(points(named[DOME["id"]]), 1)
+    summit = float(quantized[window][inside(points(named[DOME["id"]]), wx, wy)].max())
+    (n0, n1), (e0, e1) = MEADOW_M
+    meadow = float(
+        np.median(quantized[np.ix_((east >= e0) & (east <= e1), (north >= n0) & (north <= n1))])
+    )
+    assert summit - meadow <= 60, f"Dome summit {summit - meadow} m above the meadow"
+    port = WORLD["port"]
+    pad = np.array([port["centerUeCm"]["x"], port["centerUeCm"]["y"]]) / 100
+    half_pad = np.array(port["dimensionsMetres"][:2]) / 2
+    gap = np.hypot(
+        *np.maximum(np.abs(np.stack((x, y)) - pad[:, None, None]) - half_pad[:, None, None], 0)
+    )
+    top = port["centerUeCm"]["z"] / 100
+    perimeter = [
+        pad + half_pad * [np.cos(a), np.sin(a)] / max(abs(np.cos(a)), abs(np.sin(a)))
+        for a in np.linspace(0, 2 * np.pi, 400, endpoint=False)
+    ]
+    pad_report = {
+        "padTopM": top,
+        "terrainAbovePadWithin20M": float(quantized[gap <= 20].max() - top),
+        "terrainAbovePadWithin40M": float(quantized[gap <= 40].max() - top),
+        "tallestLandmarkWithin20M": max(
+            [i["heightM"] for i in landmarks if min(_nearest(i, p)[0] for p in perimeter) <= 20],
+            default=0,
+        ),
+        "tallestLandmarkWithin40M": max(
+            [i["heightM"] for i in landmarks if min(_nearest(i, p)[0] for p in perimeter) <= 40],
+            default=0,
+        ),
+    }
+    assert (
+        pad_report["terrainAbovePadWithin20M"] <= 0.3
+        and pad_report["terrainAbovePadWithin40M"] <= 4
+    )
+    assert (
+        pad_report["tallestLandmarkWithin20M"] <= 0.3
+        and pad_report["tallestLandmarkWithin40M"] <= 4
+    )
+    masks = layers(quantized, named, vertices, water)
+    creek_report["sampledFinalBedM"] = sampled.tolist()
+    creek_report["sampledFinalBedMaximumDownstreamRiseM"] = float(rise.max())
+    creek_report["minimumBankFreeboardM"] = freeboard
     report = {
         "environmentAssetVersion": WORLD["environmentAssetVersion"],
         "heightfieldSha256": hashlib.sha256(raw.tobytes()).hexdigest(),
@@ -353,12 +822,15 @@ def build(document):
         "shapeRowsColumns": [ROWS, COLUMNS],
         "rowAxis": FIELD["rowAxis"],
         "columnAxis": FIELD["columnAxis"],
-        "sampleSpacingM": FIELD["sampleSpacingMetres"],
+        "sampleSpacingM": spacing,
         "minElevationM": float(quantized.min()),
         "maxElevationM": float(quantized.max()),
         "reliefM": relief,
         "maxSlopeDegrees": maximum_slope,
         "slopeMethod": "Maximum quantized grid-cell triangle gradient across both diagonals",
+        "slopeCapDegrees": MAX_SLOPE_DEGREES,
+        "shapedSlopeDegrees": SHAPED_SLOPE_DEGREES,
+        "maxAxisSampleGradient": axis_gradient,
         "maxCentralDifferenceSlopeDegrees": central_slope,
         "changedSamples": int(np.count_nonzero(raw != original)),
         "maximumCutM": float((baseline - quantized).max()),
@@ -376,22 +848,44 @@ def build(document):
             "maximumDepressionFillM": float(
                 (filled - baseline[::DRAINAGE_STRIDE, ::DRAINAGE_STRIDE]).max()
             ),
-            "creeks": creek_reports,
+            "creek": creek_report,
         },
-        "ponds": pond_reports,
+        "basins": basins,
+        "dome": {
+            "summitM": summit,
+            "meadowMedianM": meadow,
+            "aboveMeadowM": summit - meadow,
+            "design": DOME,
+        },
+        "routes": {
+            "walkerSlopeLimitDegrees": TRAIL_SLOPE_DEGREES,
+            "roadGradeLimit": ROAD_GRADE,
+            "measured": routes,
+        },
+        "pad": pad_report,
+        "masks": {
+            "layers": [*MASKS, "dry-meadow"],
+            "layout": "uint8 weights summing to 255 per sample, height.r16 row/column layout",
+            "meanWeight": {
+                name: float(layer.mean() / 255)
+                for name, layer in zip([*MASKS, "dry-meadow"], masks)
+            },
+        },
         "grading": {
             "trailBankM": GRADE_BANK_M["trail"],
+            "structurePadBlendM": PAD_BLEND_M,
             "roadBankM": GRADE_BANK_M["road"],
-            "channelBankM": CHANNEL_BANK_M,
+            "channel": CHANNEL,
+            "channelCorridorM": CHANNEL_BANK_M,
             "channelMinimumCutM": CHANNEL_DEPTH_M,
             "channelGrade": CHANNEL_GRADE,
-            "pondBankM": POND_BANK_M,
-            "pondAdditionalDepthM": POND_DEPTH_M,
+            "basins": BASINS,
         },
         "landmarkCount": len(landmarks),
         "landmarkValidation": {
             "worldBoundsAndSchema": True,
             "heightEnvelopes": True,
+            "uniqueNamesAndAliases": True,
             "sameKindPolygonsDisjointAndNotTouching": True,
             "allRouteCreekCrossingsBridged": True,
         },
@@ -402,7 +896,7 @@ def build(document):
         },
         "generationSeconds": time.perf_counter() - started,
     }
-    return raw, report
+    return raw, report, masks
 
 
 def generate(evidence_dir):
@@ -412,7 +906,7 @@ def generate(evidence_dir):
     assert not out.exists(), f"Terrain destination already exists: {out}"
     assert not evidence_dir.exists(), f"Evidence destination already exists: {evidence_dir}"
     document = json.loads(LANDMARKS_PATH.read_text())
-    raw, report = build(document)
+    raw, report, masks = build(document)
     report["landmarksSha256"] = hashlib.sha256(LANDMARKS_PATH.read_bytes()).hexdigest()
     assert report["heightfieldSha256"] == WORLD["heightfieldSha256"], (
         "Record the generated terrain hash in world.json"
@@ -425,9 +919,18 @@ def generate(evidence_dir):
     out.mkdir(parents=True)
     evidence_dir.mkdir(parents=True)
     raw.tofile(out / "height.r16")
+    report["masks"]["files"] = {}
+    for name, layer in zip(report["masks"]["layers"], masks):
+        path = out / f"mask-{name}.png"
+        Image.fromarray(layer).save(path)
+        assert np.array_equal(np.asarray(Image.open(path)), layer)
+        report["masks"]["files"][name] = {
+            "path": str(path.relative_to(ROOT)),
+            "sha256": hashlib.sha256(path.read_bytes()).hexdigest(),
+        }
     for destination in (out, evidence_dir):
         (destination / "terrain.json").write_text(json.dumps(report, indent=2) + "\n")
-    print(json.dumps(report, indent=2))
+    print(json.dumps({key: value for key, value in report.items() if key != "drainage"}, indent=2))
 
 
 if __name__ == "__main__":
