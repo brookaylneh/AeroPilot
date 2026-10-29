@@ -59,6 +59,8 @@ case "$mode" in
       -e "SNR_STREAM_MIN_BITRATE=${SNR_STREAM_MIN_BITRATE:-1000000}" \
       -e "SNR_STREAM_TARGET_BITRATE=${SNR_STREAM_TARGET_BITRATE:-}" \
       -e "SNR_STREAM_HEIGHT=${SNR_STREAM_HEIGHT:-720}" \
+      -e "SNR_STREAMER_ID=${SNR_STREAMER_ID:?}" \
+      -e "SNR_RENDER_PERCENTAGE=${SNR_RENDER_PERCENTAGE:?}" \
       -e "SNR_RHI_THREAD=${SNR_RHI_THREAD:-1}" \
       -e "SNR_PACKAGE_ROOT=${SNR_PACKAGE_ROOT:-$PWD/.local/unreal/Packaged/Linux}" \
       -e "SNR_SCENARIO_DATA_DIR=${SNR_SCENARIO_DATA_DIR:-$PWD/.local/data/unreal-scenarios}" \

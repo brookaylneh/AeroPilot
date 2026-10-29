@@ -25,7 +25,9 @@ test('packaged container needs no editor, accepts bounded host resources and sel
       SNR_MEMORY_LIMIT: '24g',
       SNR_UNREAL_IMAGE: 'snr-unreal-runtime:test',
       SNR_STREAM_CODEC: 'H264',
+      SNR_RENDER_PERCENTAGE: '100',
       SNR_STREAMER_PORT: '8888',
+      SNR_STREAMER_ID: 'DefaultStreamer',
       SNR_WEBRTC_MIN_PORT: '49160',
       SNR_WEBRTC_MAX_PORT: '49200',
     };
@@ -85,7 +87,9 @@ test('runtime selects its manifest and H264 explicitly; missing maps and unsuppo
       SNR_SCENARIO_DATA_DIR: path.join(directory, 'scenarios'),
       SNR_DRONE_DATA_DIR: '',
       SNR_STREAM_CODEC: 'H264',
+      SNR_RENDER_PERCENTAGE: '100',
       SNR_STREAMER_PORT: '8888',
+      SNR_STREAMER_ID: 'DefaultStreamer',
       SNR_WEBRTC_MIN_PORT: '49160',
       SNR_WEBRTC_MAX_PORT: '49200',
       SNR_STREAM_FPS: '60',
@@ -117,6 +121,16 @@ test('runtime selects its manifest and H264 explicitly; missing maps and unsuppo
     assert(!args.some((arg) => arg.startsWith('-PixelStreamingEncoderKeyframeInterval')));
     assert(!args.some((arg) => arg.startsWith('-PixelStreamingEncoderTargetBitrate')));
     assert(args.some((arg) => arg.startsWith('-dpcvars=') && arg.includes('r.ScreenPercentage=100')));
+    assert(
+      args.some((arg) => arg.startsWith('-dpcvars=') && arg.includes('PixelStreaming2.ID=DefaultStreamer')),
+    );
+    env.SNR_RENDER_PERCENTAGE = '75';
+    assert.equal(run().status, 0);
+    const temporalUpscaling: string[] = JSON.parse(readFileSync(output, 'utf8'));
+    assert(temporalUpscaling.some((arg) => arg.includes('r.ScreenPercentage=75')));
+    env.SNR_RENDER_PERCENTAGE = '0';
+    assert.equal(run().status, 2);
+    env.SNR_RENDER_PERCENTAGE = '100';
     env.SNR_STREAM_MAX_BITRATE = 'unlimited';
     assert.equal(run().status, 2, 'Unsupported bandwidth must fail explicitly');
     env.SNR_STREAM_MAX_BITRATE = '25000000';

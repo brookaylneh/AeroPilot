@@ -45,6 +45,18 @@ case "$stream_height" in
   540) stream_width=960 ;;
   *) echo 'Unsupported SNR_STREAM_HEIGHT' >&2; exit 2 ;;
 esac
+render_percentage="${SNR_RENDER_PERCENTAGE:?}"
+[[ "$render_percentage" =~ ^[1-9][0-9]*$ ]] && ((render_percentage >= 50 && render_percentage <= 100)) || {
+  echo 'SNR_RENDER_PERCENTAGE must be an integer from 50 through 100' >&2
+  exit 2
+}
+streamer_id="${SNR_STREAMER_ID:?}"
+[[ "$streamer_id" =~ ^[A-Za-z0-9-]+$ ]] || { echo 'Invalid streamer ID' >&2; exit 2; }
+render_cvars=(r.pso.PrecompileThreadPoolSizeMax=2 r.Streaming.PoolSize=4096
+  "r.ScreenPercentage=$render_percentage" "PixelStreaming2.ID=$streamer_id"
+  r.Vulkan.EnablePSOFileCacheWhenPrecachingActive=1
+  r.ShaderPipelineCache.Enabled=1)
+printf -v device_profile '%s,' "${render_cvars[@]}"
 extra_flags=()
 if [[ "$stream_codec" = H264 || "$stream_codec" = AV1 ]]; then
   # Keyframes only on browser request: periodic ones burst and get lost on Wi-Fi.
@@ -88,7 +100,7 @@ install -D -m 644 world/cosys/materials.csv "$HOME/Documents/AirSim/materials.cs
 exec "$runtime_binary" ScenarioStudio "$world_map" \
   -RenderOffscreen -unattended -nosound -NoSplash -vulkan "$rhi_flag" \
   -savevulkanpsocacheonexit -logPSO \
-  -dpcvars=r.pso.PrecompileThreadPoolSizeMax=2,r.Streaming.PoolSize=4096,r.ScreenPercentage=100 \
+  "-dpcvars=${device_profile%,}" \
   "-ResX=$stream_width" "-ResY=$stream_height" -ForceRes \
   -settings="$cosys_settings" \
   "-ScenarioSaveDir=$scenario_data_dir" \
