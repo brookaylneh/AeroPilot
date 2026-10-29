@@ -140,6 +140,11 @@ test('runtime selects its manifest and H264 explicitly; missing maps and unsuppo
     env.SNR_RENDER_PERCENTAGE = '0';
     assert.equal(run().status, 2);
     env.SNR_RENDER_PERCENTAGE = '100';
+    env.SNR_STREAM_MAX_BITRATE = '80000000';
+    assert.equal(run().status, 0);
+    const highBitrate: string[] = JSON.parse(readFileSync(output, 'utf8'));
+    assert(highBitrate.includes('-PixelStreamingWebRTCStartBitrate=80000000'));
+    assert(highBitrate.includes('-PixelStreamingWebRTCMaxBitrate=80000000'));
     env.SNR_STREAM_MAX_BITRATE = 'unlimited';
     assert.equal(run().status, 2, 'Unsupported bandwidth must fail explicitly');
     env.SNR_STREAM_MAX_BITRATE = '25000000';

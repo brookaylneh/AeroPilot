@@ -20,8 +20,8 @@ stream_fps="${SNR_STREAM_FPS:-60}"
 [[ "$stream_fps" = 30 || "$stream_fps" = 60 ]] || { echo 'SNR_STREAM_FPS must be 30 or 60' >&2; exit 2; }
 max_bitrate="${SNR_STREAM_MAX_BITRATE:-10000000}"
 case "$max_bitrate" in
-  10000000|20000000|25000000|40000000) ;;
-  *) echo 'SNR_STREAM_MAX_BITRATE must be 10000000, 20000000, 25000000 or 40000000' >&2; exit 2 ;;
+  10000000|20000000|25000000|40000000|80000000) ;;
+  *) echo 'SNR_STREAM_MAX_BITRATE must be 10000000, 20000000, 25000000, 40000000 or 80000000' >&2; exit 2 ;;
 esac
 # WebRTC's delay-based estimate collapses to ~1-3 Mbps on jittery Wi-Fi; the
 # floor keeps moving grass encodable. It must stay below the viewer's capacity.
