@@ -1,0 +1,217 @@
+{
+  "license": "CC0-1.0",
+  "licenseUrl": "https://polyhaven.com/license",
+  "files": [
+    {
+      "asset": "rough_wood",
+      "map": "Diffuse",
+      "resolution": "4k",
+      "format": "jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/rough_wood/rough_wood_diff_4k.jpg",
+      "bytes": 8069907,
+      "md5": "3c6d37c559b9dd8ab9bf2d192f0ae629",
+      "dimensionsMm": [
+        500,
+        500
+      ],
+      "authors": [
+        "Rob Tuytel"
+      ],
+      "source": "https://polyhaven.com/a/rough_wood"
+    },
+    {
+      "asset": "rough_wood",
+      "map": "nor_gl",
+      "resolution": "4k",
+      "format": "jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/rough_wood/rough_wood_nor_gl_4k.jpg",
+      "bytes": 7089554,
+      "md5": "c5b3e30e8f00b38c93404f2b70c51729",
+      "dimensionsMm": [
+        500,
+        500
+      ],
+      "authors": [
+        "Rob Tuytel"
+      ],
+      "source": "https://polyhaven.com/a/rough_wood"
+    },
+    {
+      "asset": "rough_wood",
+      "map": "Rough",
+      "resolution": "4k",
+      "format": "jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/rough_wood/rough_wood_rough_4k.jpg",
+      "bytes": 3269262,
+      "md5": "34360ea1a3a04aa12e90453c4909ed54",
+      "dimensionsMm": [
+        500,
+        500
+      ],
+      "authors": [
+        "Rob Tuytel"
+      ],
+      "source": "https://polyhaven.com/a/rough_wood"
+    },
+    {
+      "asset": "stone_wall",
+      "map": "Diffuse",
+      "resolution": "4k",
+      "format": "jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/stone_wall/stone_wall_diff_4k.jpg",
+      "bytes": 11797374,
+      "md5": "4e1243c4ffbce9392ca7e23addd3b47d",
+      "dimensionsMm": [
+        2000,
+        2000
+      ],
+      "authors": [
+        "Charlotte Baglioni",
+        "Dario Barresi"
+      ],
+      "source": "https://polyhaven.com/a/stone_wall"
+    },
+    {
+      "asset": "stone_wall",
+      "map": "nor_gl",
+      "resolution": "4k",
+      "format": "jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/stone_wall/stone_wall_nor_gl_4k.jpg",
+      "bytes": 14419292,
+      "md5": "ea2380b63e07b1568d3c45bafb34865a",
+      "dimensionsMm": [
+        2000,
+        2000
+      ],
+      "authors": [
+        "Charlotte Baglioni",
+        "Dario Barresi"
+      ],
+      "source": "https://polyhaven.com/a/stone_wall"
+    },
+    {
+      "asset": "stone_wall",
+      "map": "Rough",
+      "resolution": "4k",
+      "format": "jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/stone_wall/stone_wall_rough_4k.jpg",
+      "bytes": 4414306,
+      "md5": "547910d5a125bda31ec230405e141daa",
+      "dimensionsMm": [
+        2000,
+        2000
+      ],
+      "authors": [
+        "Charlotte Baglioni",
+        "Dario Barresi"
+      ],
+      "source": "https://polyhaven.com/a/stone_wall"
+    },
+    {
+      "asset": "stone_wall",
+      "map": "Displacement",
+      "resolution": "4k",
+      "format": "png",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/png/4k/stone_wall/stone_wall_disp_4k.png",
+      "bytes": 14071581,
+      "md5": "a73aff6c258e2bb83c987349fb2e9b62",
+      "dimensionsMm": [
+        2000,
+        2000
+      ],
+      "authors": [
+        "Charlotte Baglioni",
+        "Dario Barresi"
+      ],
+      "source": "https://polyhaven.com/a/stone_wall"
+    },
+    {
+      "asset": "plank_flooring_03",
+      "map": "Diffuse",
+      "resolution": "4k",
+      "format": "jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/plank_flooring_03/plank_flooring_03_diff_4k.jpg",
+      "bytes": 13443699,
+      "md5": "de65429589e4d49ccaf6a733e821e0d2",
+      "dimensionsMm": [
+        2250,
+        2250
+      ],
+      "authors": [
+        "Jenelle van Heerden",
+        "Matterfield"
+      ],
+      "source": "https://polyhaven.com/a/plank_flooring_03"
+    },
+    {
+      "asset": "plank_flooring_03",
+      "map": "nor_gl",
+      "resolution": "4k",
+      "format": "jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/plank_flooring_03/plank_flooring_03_nor_gl_4k.jpg",
+      "bytes": 17476068,
+      "md5": "3be0b40e0d97e15f2c42f98a3cfee570",
+      "dimensionsMm": [
+        2250,
+        2250
+      ],
+      "authors": [
+        "Jenelle van Heerden",
+        "Matterfield"
+      ],
+      "source": "https://polyhaven.com/a/plank_flooring_03"
+    },
+    {
+      "asset": "plank_flooring_03",
+      "map": "Rough",
+      "resolution": "4k",
+      "format": "jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/plank_flooring_03/plank_flooring_03_rough_4k.jpg",
+      "bytes": 7919089,
+      "md5": "754e69e17e6bbb6f5662c549eaaa6160",
+      "dimensionsMm": [
+        2250,
+        2250
+      ],
+      "authors": [
+        "Jenelle van Heerden",
+        "Matterfield"
+      ],
+      "source": "https://polyhaven.com/a/plank_flooring_03"
+    },
+    {
+      "asset": "blue_metal_plate",
+      "map": "nor_gl",
+      "resolution": "4k",
+      "format": "jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/blue_metal_plate/blue_metal_plate_nor_gl_4k.jpg",
+      "bytes": 4223201,
+      "md5": "c4c373600e42e664267c6abcef15a90a",
+      "dimensionsMm": [
+        2500,
+        2500
+      ],
+      "authors": [
+        "Rob Tuytel"
+      ],
+      "source": "https://polyhaven.com/a/blue_metal_plate"
+    },
+    {
+      "asset": "blue_metal_plate",
+      "map": "Rough",
+      "resolution": "4k",
+      "format": "jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/4k/blue_metal_plate/blue_metal_plate_rough_4k.jpg",
+      "bytes": 6219260,
+      "md5": "7181637d17fa6fca25af0c00741be7ac",
+      "dimensionsMm": [
+        2500,
+        2500
+      ],
+      "authors": [
+        "Rob Tuytel"
+      ],
+      "source": "https://polyhaven.com/a/blue_metal_plate"
+    }
+  ]
+}

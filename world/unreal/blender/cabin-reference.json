@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "asset": "ranger-cabin",
+  "reference": {
+    "path": ".local/world/valley/generated-references/masters/ranger-cabin-master.png",
+    "sha256": "c614849f66b9be964d3a54e820eae3a4e6c2123356f592198b5a2e03c096dba1",
+    "size": [2880, 2880]
+  },
+  "frame": "Exported asset frame: metres, +Z up, -Y porch side, origin at the footprint centre at grade",
+  "camera": "Level pinhole with horizontal principal point at the image centre and free vertical shift",
+  "correspondences": [
+    {"name": "front-right corner, plate", "modelM": [2.885, -2.4075, 3.2], "pixel": [1775, 1300]},
+    {"name": "front-right corner, sill", "modelM": [2.885, -2.4075, 0.68], "pixel": [1775, 2030]},
+    {"name": "front-right corner, grade", "modelM": [2.92, -2.4075, 0.0], "pixel": [1775, 2212]},
+    {"name": "rear-right corner, plate", "modelM": [2.885, 4.5425, 3.2], "pixel": [2632, 1376]},
+    {"name": "rear-right corner, sill", "modelM": [2.885, 4.5425, 0.68], "pixel": [2632, 1945]},
+    {"name": "rear-right corner, grade", "modelM": [2.92, 4.5775, 0.0], "pixel": [2640, 2070]},
+    {"name": "left porch post, deck", "modelM": [-2.735, -3.7825, 0.65], "pixel": [425, 2028]},
+    {"name": "left porch post, header", "modelM": [-2.735, -3.7825, 2.87], "pixel": [425, 1380]},
+    {"name": "main ridge, front rake", "modelM": [0.0, -2.6825, 5.77], "pixel": [1045, 622]},
+    {"name": "main ridge, rear rake", "modelM": [0.0, 4.8175, 5.77], "pixel": [2137, 893]},
+    {"name": "porch ridge, front rake", "modelM": [0.0, -4.2075, 4.89], "pixel": [793, 842]}
+  ],
+  "colourRegions": {
+    "siding": [[1850, 1750, 2000, 1950], [2200, 1450, 2330, 1950], [1850, 1450, 1990, 1700]],
+    "plinth": [[1900, 2070, 2550, 2170]],
+    "roof": [[1500, 1000, 2300, 1200]],
+    "steps": [[700, 2140, 1200, 2280]],
+    "door": [[1140, 1660, 1250, 1950]],
+    "post": [[1290, 1450, 1335, 1950]]
+  },
+  "studioBackgroundSrgb": [208, 209, 208]
+}
