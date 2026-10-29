@@ -112,3 +112,47 @@ A supported device still needs SM6 shaders and the project's uncooked assets for
 retargets its pinned animations to each original skeleton, and builds the runtime catalog.
 The eleven-character selection uses fixed original clothing. Earlier authoring assets remain
 preserved outside the active catalog.
+
+## Render-quality authoring
+
+`inspect-render-content.py` follows the active landscape material to its grass types,
+meshes and material overrides, and records lighting and post-process settings. The
+following editor Python commandlets author separate comparisons and require a new
+output directory:
+
+- `configure-meadow-nanite.py` duplicates the active grass meshes and grass types,
+  enables Preserve Area and exact fallback meshes, and verifies original asset hashes.
+- `configure-meadow-macro.py` duplicates the landscape material and adds albedo variation
+  at 17, 67 and 231 metre scales. It preserves its grass output and source material.
+- `configure-meadow-atmosphere.py` adds daylight volumetric clouds, cloud shadows and
+  participating haze, retaining the authored sun angle and illuminance.
+- `configure-meadow-foliage.py` duplicates grass types, increases density by 25% and
+  extends both cull distances by 50%.
+
+Each saves the prior map and hashes the resulting map in its evidence directory.
+Cook each comparison into a new package directory before any live activation.
+
+`SNR_RENDER_PERCENTAGE` fixes the browser's internal render percentage at startup;
+TSR reconstructs the configured output resolution. Drone capture uses independent
+render targets: UE's scene-capture path renders at a resolution fraction of 1.0 unless
+explicitly configured to inherit the main view. Sensor resolution remains 3840×2160.
+
+The launcher enables Vulkan's pipeline file cache alongside PSO precaching and records
+PSOs with `-logPSO`. This is required because UE 5.8 disables that file cache by default
+when Vulkan precaching is active. After exercising the final profile, use
+`bundle-pso-cache.py RECORDINGS_DIRECTORY SHADER_KEYS_DIRECTORY NEW_EVIDENCE_DIRECTORY`
+with `UE_ROOT` set. It expands the recorded caches, records input/output hashes and
+installs `Build/Linux/PipelineCaches/ScenarioStudio_SF_VULKAN_SM6.spc`. Package again
+and verify the cook picked up the stable cache. The tool fails if that output already
+exists. Ray-tracing PSOs are not supported by Epic's bundled-cache workflow.
+
+`review-render-quality.py NAME VARIANT...` publishes measured person, meadow and port
+images to `.local/dist/NAME/index.html`. Names start with `render-quality-`; the destination
+must be new. It verifies recorded screenshot hashes and publishes only those images and
+summary measurements, leaving private authoring state in evidence.
+
+For a capacity run, append `STREAMER_ID` after the explicit four-drone capture cadence.
+Set the package, container, Cosys port and data directories for that particular instance.
+The harness verifies its native readiness, selects it through the existing public signalling
+route, and records the selection. The reserved second-instance values are in
+`deploy/runtime.env.example`; no new listener ports may be chosen.
