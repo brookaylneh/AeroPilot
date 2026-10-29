@@ -33,6 +33,9 @@ const titles: Record<string, string> = {
   return_home: 'Return home',
   land: 'Land',
   record_subject_profile: 'Subject profile',
+  find_place: 'Find place',
+  describe_location: 'Landmark directions',
+  set_last_known_place: 'Last known place',
   define_search_area: 'Search area',
   plan_search: 'Plan search',
   start_search: 'Fleet search',
@@ -57,6 +60,7 @@ export function actionTitle(name: string, args: Record<string, unknown>) {
 }
 
 export function approvalSentence(name: string, args: Record<string, unknown>) {
+  if (name === 'set_last_known_place') return 'Set the last known location from the highlighted place';
   if (name === 'notify_ground_team') return `Deliver the confirmed lead to ground team ${args.team_id}`;
   if (name === 'relook_detection')
     return `Fly ${args.drone_id} to the evidence location at ${args.altitude_agl_m} m above ground and hold for ${args.hold_seconds} s`;

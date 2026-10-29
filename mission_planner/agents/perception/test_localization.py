@@ -10,6 +10,7 @@ import numpy as np
 from mission_planner.agents.perception.geometry import Camera
 from mission_planner.agents.perception.localization import (
     ELLIPSE_95,
+    ellipse_cells,
     ellipse_weights,
     gaussian_cells,
     localize,
@@ -49,6 +50,35 @@ class Localization(unittest.TestCase):
             places=6,
         )
         self.assertLess(weights.max(), 1)
+
+    def test_ellipse_region_counts_containing_crossed_and_tangent_cells(self):
+        cells = {
+            "low": np.array([[-2, -2], [1, -0.5], [1.000001, -0.5], [-0.1, 0.2]]),
+            "high": np.array([[2, 2], [2, 0.5], [2, 0.5], [0.1, 0.3]]),
+            "areas": np.array([16, 1, 0.999999, 0.02]),
+        }
+        location = {
+            "ground": {"north_m": 0, "east_m": 0},
+            "covariance_m2": np.eye(2) / ELLIPSE_95,
+        }
+        np.testing.assert_array_equal(ellipse_cells(location, cells), [True, True, False, True])
+        cells["areas"][0] = 0
+        self.assertFalse(ellipse_cells(location, cells)[0])
+
+    def test_thin_rotated_ellipse_crosses_cell_without_corners_or_center(self):
+        cells = {
+            "low": np.array([[0.2, 0.19], [0.8, -0.9]]),
+            "high": np.array([[0.3, 0.21], [0.9, -0.8]]),
+            "areas": np.array([0.002, 0.01]),
+        }
+        location = {
+            "ground": {"north_m": 0, "east_m": 0},
+            "covariance_m2": np.array([[1, 0.99999], [0.99999, 1]]) / ELLIPSE_95,
+        }
+        np.testing.assert_array_equal(ellipse_cells(location, cells), [True, False])
+        inverse = np.linalg.inv(location["covariance_m2"])
+        for point in ([0.2, 0.19], [0.2, 0.21], [0.3, 0.19], [0.3, 0.21], [0.25, 0.2]):
+            self.assertGreater(np.array(point) @ inverse @ point, ELLIPSE_95)
 
     def test_bottom_contact_and_pose_error_on_recorded_frame(self):
         frame = json.loads(

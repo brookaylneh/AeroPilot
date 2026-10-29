@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, Mock
 
 from mission_planner.environment import ROOT
 from mission_planner.gcs.ground_team import GroundTeam
+from world.cosys.landmarks import directions
 
 
 class GroundDelivery(unittest.IsolatedAsyncioTestCase):
@@ -34,6 +35,9 @@ class GroundDelivery(unittest.IsolatedAsyncioTestCase):
             "members": [detection],
             "representative_id": "one",
             "posterior_mass": 0.25,
+            "region_cell_count": 1,
+            "region_area_m2": 16,
+            "directions": None,
             "localization": detection["localization"],
         }
         self.mission = SimpleNamespace(
@@ -60,6 +64,9 @@ class GroundDelivery(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(delivery["acknowledged_at_ms"])
         self.assertEqual(delivery["timestamp_ms"], 1000)
         self.assertEqual(delivery["replay_lane"], "Drone4")
+        self.assertEqual(delivery["region_cell_count"], 1)
+        self.assertEqual(delivery["region_area_m2"], 16)
+        self.assertIsNone(delivery["directions"])
         self.assertIn("destination=", delivery["navigation_url"])
         self.assertEqual(
             json.loads(self.mission.directory.joinpath("deliveries.json").read_text())[identity][
@@ -80,6 +87,21 @@ class GroundDelivery(unittest.IsolatedAsyncioTestCase):
             self.team.acknowledge(identity, "alpha")
         self.mission.event.assert_called_once()
         self.assertEqual(self.mission.event.call_args.kwargs["source"], "team")
+
+    def test_delivery_keeps_computed_landmark_directions_and_region_probability(self):
+        landmark = {
+            "id": "bridge",
+            "name": "Test Bridge",
+            "aliases": [],
+            "kind": "bridge",
+            "geometry": {"type": "point", "points": [{"x": 1200, "y": 2000, "z": 0}]},
+        }
+        self.review["directions"] = directions([landmark], 12, 24)
+        identity = self.send()
+        delivery = self.team.deliveries[identity]
+        self.assertEqual(delivery["directions"]["text"], "4.0 m east of Test Bridge")
+        self.assertEqual(delivery["directions"], self.review["directions"])
+        self.assertEqual(delivery["posterior_mass"], self.review["posterior_mass"])
 
     async def test_socket_identity_controls_acknowledgement(self):
         identity = self.send()

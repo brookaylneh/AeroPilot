@@ -251,7 +251,14 @@ class Commander:
         )
 
     def cluster_view(self, cluster):
-        return {**cluster, **self.evidence.mass(cluster["localization"])}
+        return {
+            **cluster,
+            **self.evidence.mass(cluster["localization"]),
+            "directions": self.search.directions(
+                cluster["localization"]["ground"]["north_m"],
+                cluster["localization"]["ground"]["east_m"],
+            ),
+        }
 
     def asset_url(self, reference):
         assert reference in self.assets and Path(reference).name == reference
@@ -300,6 +307,10 @@ class Commander:
                 )
             },
             "ground": cluster["localization"]["ground"],
+            "directions": self.search.directions(
+                cluster["localization"]["ground"]["north_m"],
+                cluster["localization"]["ground"]["east_m"],
+            ),
             "ellipse95": cluster["localization"]["ellipse95"],
             **self.evidence.mass(cluster["localization"]),
         }

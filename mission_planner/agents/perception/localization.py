@@ -133,6 +133,37 @@ def gaussian_cells(mean, matrix, grid):
     return mass, retained
 
 
+def ellipse_cells(localization, grid, threshold=ELLIPSE_95):
+    center = np.array([localization["ground"][k] for k in ("north_m", "east_m")])
+    matrix = covariance(localization["covariance_m2"])
+    assert center.shape == (2,) and np.isfinite(center).all()
+    assert math.isfinite(threshold) and threshold > 0
+    low, high, areas = grid["low"], grid["high"], grid["areas"]
+    assert low.shape == high.shape == (len(areas), 2) and (high > low).all()
+    radii = np.sqrt(threshold * np.diag(matrix))
+    ids = np.flatnonzero(
+        ((high >= center - radii) & (low <= center + radii)).all(axis=1) & (areas > 0)
+    )
+    a, b = low[ids] - center, high[ids] - center
+    minimum = np.where(((a <= 0) & (b >= 0)).all(axis=1), 0.0, np.inf)
+    inverse = np.linalg.inv(matrix)
+    for axis in (0, 1):
+        other = 1 - axis
+        for fixed in (a[:, axis], b[:, axis]):
+            free = np.clip(
+                -inverse[axis, other] * fixed / inverse[other, other], a[:, other], b[:, other]
+            )
+            value = (
+                inverse[axis, axis] * fixed**2
+                + 2 * inverse[axis, other] * fixed * free
+                + inverse[other, other] * free**2
+            )
+            minimum = np.minimum(minimum, value)
+    result = np.zeros(len(areas), dtype=bool)
+    result[ids] = minimum <= np.nextafter(threshold, np.inf)
+    return result
+
+
 def ellipse_weights(localization, grid, threshold=ELLIPSE_95):
     center = np.array([localization["ground"][k] for k in ("north_m", "east_m")])
     matrix = covariance(localization["covariance_m2"])

@@ -26,7 +26,12 @@ class Sources(unittest.IsolatedAsyncioTestCase):
             ground_team=SimpleNamespace(deliveries={}),
         )
         self.search = SimpleNamespace(
-            mission=mission, changed=Mock(), initialize=Mock(), camera_source=None, paused={}
+            mission=mission,
+            changed=Mock(),
+            initialize=Mock(),
+            camera_source=None,
+            paused={},
+            directions=Mock(return_value=None),
         )
         self.commander = Commander(self.search)
         self.live_path = mission.directory / "captures" / "capture.json"

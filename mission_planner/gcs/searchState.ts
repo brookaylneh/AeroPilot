@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { commanderSchema } from './commanderState';
+import { landmarkSchema, placeGeometry } from './placeState';
 const number = z.number().finite();
 export const searchPoint = z.object({ north_m: number, east_m: number });
 const waypoint = searchPoint.extend({ altitude_above_home_m: number });
@@ -8,6 +9,8 @@ const field = z.object({ value: z.union([z.string(), number, z.array(z.string())
 const curve = z.array(z.object({ seconds: number, pos: number.min(0).max(1) }));
 export const searchSchema = z.object({
   commander: commanderSchema,
+  landmarks: z.array(landmarkSchema).nullable(),
+  landmark_error: z.string().nullable(),
   revision: number.int(),
   profile: z
     .object({
@@ -21,7 +24,24 @@ export const searchSchema = z.object({
       clue_prompts: z.array(z.object({ text: z.string(), evidence })),
     })
     .nullable(),
-  point: searchPoint.extend({ source: z.enum(['operator', 'briefing_coordinates']), evidence }).nullable(),
+  point: searchPoint
+    .extend({
+      source: z.enum(['operator', 'briefing_coordinates', 'operator_approved_place']),
+      evidence,
+      place_id: z.string().min(1).optional(),
+      place_name: z.string().min(1).optional(),
+      geometry: placeGeometry.optional(),
+    })
+    .refine(
+      (point) =>
+        point.source !== 'operator_approved_place' ||
+        (point.place_id !== undefined &&
+          point.place_name !== undefined &&
+          point.geometry !== undefined &&
+          point.geometry.type !== 'polygon'),
+      'An approved last-known place requires its id, name and point or line geometry',
+    )
+    .nullable(),
   vertices: z.array(searchPoint).nullable(),
   domain: z.string().nullable(),
   domains: z.array(z.string()),

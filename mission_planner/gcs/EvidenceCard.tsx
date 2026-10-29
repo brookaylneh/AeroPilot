@@ -70,7 +70,7 @@ export default function EvidenceCard({
               {formatPosition(cluster.localization.ground.north_m, cluster.localization.ground.east_m)}
             </span>
             <small>
-              {cluster.member_ids.length} members · {percent(cluster.posterior_mass)} mass near cluster
+              {cluster.member_ids.length} members · {percent(cluster.posterior_mass)} in lead region
             </small>
           </button>
         ))}
@@ -93,7 +93,8 @@ export default function EvidenceCard({
       </button>
       <header>
         <span className={`gcs-evidence-status ${review.status}`}>{review.status.replaceAll('_', ' ')}</span>
-        <h3>{selected.prompt}</h3>
+        <h3>{percent(review.posterior_mass)} in lead region</h3>
+        <p>{selected.prompt} · cells intersecting the 95% location ellipse</p>
         <strong>{sourceLabel(selected.source)}</strong>
       </header>
       <p className="gcs-evidence-provenance">
@@ -195,6 +196,7 @@ export default function EvidenceCard({
           <MapPin size={14} /> Ground position
         </h4>
         <p>{formatPosition(near.north_m, near.east_m)}</p>
+        <p>{review.directions === null ? 'Landmark data unavailable' : review.directions.text}</p>
         <p>
           95% ellipse radii{' '}
           {review.localization.ellipse95.radii_m.map((radius) => `${radius.toFixed(2)} m`).join(' × ')}
@@ -207,13 +209,14 @@ export default function EvidenceCard({
         </button>
       </section>
       <section className="gcs-evidence-probability">
-        <h4>Probability mass near cluster</h4>
+        <h4>Lead-region probability</h4>
         <strong>
           {percent(review.prior_mass)} → {percent(review.posterior_mass)}
         </strong>
         <p>
-          Estimated inside the displayed 95% ellipse, assuming uniform probability within each map cell.
-          Provisional person-search posterior; identity requires operator review.
+          {review.region_cell_count} {review.region_cell_count === 1 ? 'cell intersects' : 'cells intersect'}{' '}
+          the 95% location ellipse ({review.region_area_m2.toFixed(1)} m²). Provisional person-search
+          posterior; identity requires operator review.
         </p>
         <small>
           {review.reference_frame_id === null
@@ -221,6 +224,22 @@ export default function EvidenceCard({
             : `Positive credit capped at reference frame ${review.reference_frame_id}`}
         </small>
       </section>
+      <details className="gcs-evidence-details">
+        <summary>Ellipse area and probability details</summary>
+        <dl>
+          <div>
+            <dt>Ellipse fraction of the lead region</dt>
+            <dd>{percent(review.ellipse_area_fraction)}</dd>
+          </div>
+          <div>
+            <dt>Prior → posterior inside the ellipse</dt>
+            <dd>
+              {percent(review.ellipse_prior_mass)} → {percent(review.ellipse_posterior_mass)}
+            </dd>
+          </div>
+        </dl>
+        <p>Ellipse-only mass assumes uniform probability inside each map cell.</p>
+      </details>
       <details className="gcs-evidence-details">
         <summary>Positive-update likelihood inputs</summary>
         {review.likelihood.length === 0 ? (

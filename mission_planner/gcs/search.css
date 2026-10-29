@@ -277,3 +277,89 @@
   color: var(--gcs-muted);
   font-size: 9px;
 }
+
+.gcs-landmarks {
+  pointer-events: none;
+}
+.gcs-landmark > polyline,
+.gcs-landmark > polygon,
+.gcs-landmark > circle {
+  fill: none;
+  stroke: #bbc1ac;
+  stroke-width: 1.2;
+  opacity: 0.7;
+}
+.gcs-landmark > polygon {
+  fill: #b5c1a00b;
+  stroke-dasharray: 3 5;
+}
+.gcs-landmark.creek > polyline,
+.gcs-landmark.pond > polygon {
+  stroke: #9bbac4;
+}
+.gcs-landmark.trail > polyline {
+  stroke-dasharray: 4 3;
+}
+.gcs-landmark-label line {
+  stroke: #b0beb3;
+  stroke-width: 0.6;
+  opacity: 0.5;
+}
+.gcs-landmark-label text {
+  fill: #d0d5c6;
+  font-size: 11px;
+  font-weight: 400;
+  paint-order: stroke;
+  stroke: #25352f;
+  stroke-width: 3.5px;
+  stroke-linejoin: round;
+}
+.gcs-landmark.is-proposed > polyline,
+.gcs-landmark.is-proposed > circle {
+  stroke: #f6d276;
+  stroke-width: 3;
+  opacity: 1;
+}
+.gcs-landmark.is-proposed text {
+  fill: #ffe7ad;
+}
+.gcs-lkp-line {
+  fill: none;
+  stroke: #f6d276;
+  stroke-width: 2;
+  stroke-dasharray: 7 3;
+}
+.gcs-place-approval {
+  max-height: 300px;
+  overflow: auto;
+}
+.gcs-place-approval > strong {
+  color: #ffe7ad;
+}
+.gcs-place-approval blockquote {
+  margin: 12px 0;
+  padding-left: 12px;
+  border-left: 2px solid #718b7c;
+  color: #dae3db;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.gcs-place-approval cite {
+  display: block;
+  color: #a4b3a9;
+  font-style: normal;
+  font-size: 10px;
+}
+.gcs-place-approval details {
+  font-size: 11px;
+  color: #b6c5bb;
+  max-height: 140px;
+  overflow: auto;
+}
+.gcs-place-approval ol {
+  padding-left: 20px;
+}
+.gcs-landmark-error {
+  color: #e0c697;
+  overflow-wrap: anywhere;
+}

@@ -114,6 +114,7 @@ export default function Team() {
             <img className="team-photo" src={delivery.crop_url} alt="Photo evidence of the confirmed lead" />
           </a>
           <p>{delivery.message}</p>
+          <p>{delivery.directions === null ? 'Landmark data unavailable' : delivery.directions.text}</p>
           <dl>
             <div>
               <dt>Latitude / longitude</dt>
@@ -147,10 +148,13 @@ export default function Team() {
               <dd>{delivery.glimmer_outside_mass.toFixed(6)}</dd>
             </div>
             <div>
-              <dt>Posterior mass near lead</dt>
+              <dt>Lead-region probability</dt>
               <dd>
                 {formatProbability(delivery.posterior_mass)} ·{' '}
                 {delivery.calibrated ? 'calibrated person configuration' : 'uncalibrated evidence'}
+                <br />
+                {delivery.region_cell_count} {delivery.region_cell_count === 1 ? 'cell' : 'cells'}{' '}
+                intersecting the 95% ellipse · {delivery.region_area_m2.toFixed(1)} m²
               </dd>
             </div>
             <div>

@@ -4,6 +4,19 @@ const number = z.number().finite();
 const probability = number.min(0).max(1);
 const source = z.enum(['live', 'recorded']);
 const drone = z.enum(['Drone1', 'Drone2', 'Drone3', 'Drone4']);
+const namedFeature = z.object({
+  id: z.string(),
+  name: z.string(),
+  kind: z.string(),
+  distance_m: number.nonnegative(),
+  compass: z.string(),
+  point: z.object({ north_m: number, east_m: number }),
+});
+const directions = z.object({
+  text: z.string(),
+  nearest: namedFeature,
+  linear: namedFeature.extend({ side: z.string() }).nullable(),
+});
 export const localizationSchema = z.object({
   ground: z.object({ north_m: number, east_m: number, up_m: number }),
   covariance_m2: z.array(z.array(number).length(2)).length(2),
@@ -45,6 +58,12 @@ const clusterSchema = z.object({
   calibrated: z.boolean(),
   prior_mass: probability,
   posterior_mass: probability,
+  region_cell_count: number.nonnegative().int(),
+  region_area_m2: number.nonnegative(),
+  ellipse_prior_mass: probability,
+  ellipse_posterior_mass: probability,
+  ellipse_area_fraction: probability,
+  directions: directions.nullable(),
 });
 export const deliverySchema = z
   .object({
@@ -66,6 +85,9 @@ export const deliverySchema = z
     glimmer_yes: probability,
     glimmer_outside_mass: probability,
     posterior_mass: probability,
+    region_cell_count: number.nonnegative().int(),
+    region_area_m2: number.nonnegative(),
+    directions: directions.nullable(),
     calibrated: z.boolean(),
     source,
     drone_id: drone,

@@ -59,6 +59,12 @@ export default function SearchPanel({
       {open && (
         <div className="gcs-search-body">
           <p className="gcs-search-status">{search.summary.status.replaceAll('_', ' ')}</p>
+          {search.landmark_error !== null && (
+            <details className="gcs-landmark-error" role="alert">
+              <summary>Landmarks unavailable</summary>
+              <p>{search.landmark_error}</p>
+            </details>
+          )}
           {!search.profile ? (
             <p>Ask Wonder to plan the search. It will record the subject and quote the briefing.</p>
           ) : (
@@ -109,13 +115,34 @@ export default function SearchPanel({
             {marking
               ? 'Click last known point on map'
               : search.point
-                ? 'Move last known point'
+                ? search.point.geometry?.type === 'polyline'
+                  ? 'Replace last known line'
+                  : 'Move last known point'
                 : 'Mark last known point'}
           </button>
           {search.point && (
             <small>
-              {search.point.north_m.toFixed(1)} m north, {search.point.east_m.toFixed(1)} m east ·{' '}
-              {search.point.source === 'operator' ? 'Marked by operator' : 'Explicit briefing coordinates'}
+              {search.point.source === 'operator_approved_place' ? (
+                <>
+                  Approved {search.point.geometry!.type === 'polyline' ? 'line' : 'point'} ·{' '}
+                  {search.point.place_name}
+                  {search.point.geometry!.type === 'polyline' ? (
+                    <span> · Position along the line is unknown.</span>
+                  ) : (
+                    <span>
+                      {' '}
+                      · {search.point.north_m.toFixed(1)} m north, {search.point.east_m.toFixed(1)} m east
+                    </span>
+                  )}
+                </>
+              ) : (
+                <>
+                  {search.point.north_m.toFixed(1)} m north, {search.point.east_m.toFixed(1)} m east ·{' '}
+                  {search.point.source === 'operator'
+                    ? 'Marked by operator'
+                    : 'Explicit briefing coordinates'}
+                </>
+              )}
             </small>
           )}
           <details

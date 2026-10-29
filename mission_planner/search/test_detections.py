@@ -149,6 +149,28 @@ class EvidenceCaps(unittest.TestCase):
         with self.assertRaises(AssertionError):
             Evidence(self.prior, self.grid, 0)
 
+    def test_headline_sums_region_cells_and_keeps_ellipse_fraction_in_details(self):
+        location = record("a", "frame", 2, 2)["localization"]
+        self.apply("frame", [record("a", "frame", 2, 2)])
+        result = self.evidence.mass(location)
+        cell = np.flatnonzero((self.grid["centers"] == [2, 2]).all(axis=1))[0]
+        self.assertEqual(result["region_cell_count"], 1)
+        self.assertEqual(result["region_area_m2"], 16)
+        self.assertEqual(result["prior_mass"], self.prior[cell])
+        self.assertEqual(result["posterior_mass"], self.evidence.probability[cell])
+        fraction = math.pi * ELLIPSE_95 * 0.04 / 16
+        self.assertAlmostEqual(result["ellipse_area_fraction"], fraction)
+        self.assertAlmostEqual(result["ellipse_prior_mass"], result["prior_mass"] * fraction)
+        self.assertAlmostEqual(
+            result["ellipse_posterior_mass"], result["posterior_mass"] * fraction
+        )
+
+    def test_headline_includes_all_four_cells_at_grid_vertex(self):
+        result = self.evidence.mass(record("a", "frame", 0, 0)["localization"])
+        self.assertEqual(result["region_cell_count"], 4)
+        self.assertAlmostEqual(result["prior_mass"], 4 / len(self.prior))
+        self.assertEqual(result["region_area_m2"], 64)
+
     def test_region_probability_averages_subcell_target_locations(self):
         low = np.array([[-2, -2], [2, -2]], dtype=float)
         grid = {"low": low, "high": low + 4, "centers": low + 2, "areas": np.full(2, 16.0)}

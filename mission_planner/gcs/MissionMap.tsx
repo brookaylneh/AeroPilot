@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { LocateFixed, Minus, Plus, Scan } from 'lucide-react';
 import {
   mapScale,
@@ -23,6 +23,7 @@ import { groupPadLabels, placeLabels } from './mapLabels';
 
 import SearchLayers from './SearchLayers';
 import type { SearchState, SearchPoint } from './searchState';
+import type { Landmark } from './placeState';
 
 const extent = 804.672;
 export default function MissionMap({
@@ -38,6 +39,7 @@ export default function MissionMap({
   select,
   focus,
   pendingRoute,
+  pendingPlace,
   age,
   connected,
   inset = false,
@@ -54,6 +56,7 @@ export default function MissionMap({
   select: (id: DroneId) => void;
   focus: MapFocus | null;
   pendingRoute: RouteArguments | null;
+  pendingPlace: Landmark | null;
   age: number;
   connected: boolean;
   inset?: boolean;
@@ -61,6 +64,9 @@ export default function MissionMap({
   const surface = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 1000, height: 700, inset });
   const [view, setView] = useState<MapView>(wholeWorld);
+  const [overlayBoxes, setOverlayBoxes] = useState<{ x: number; y: number; width: number; height: number }[]>(
+    [],
+  );
   const [cursor, setCursor] = useState<{ north_m: number; east_m: number } | null>(null);
   const drag = useRef<{ x: number; y: number; view: MapView } | null>(null);
   const rectangleStart = useRef<SearchPoint | null>(null);
@@ -128,6 +134,24 @@ export default function MissionMap({
     observer.observe(surface.current!);
     return () => observer.disconnect();
   }, [inset]);
+  useLayoutEffect(() => {
+    if (inset) {
+      setOverlayBoxes([]);
+      return;
+    }
+    const rect = surface.current!.getBoundingClientRect();
+    const nodes = surface
+      .current!.closest('.gcs-stage')!
+      .querySelectorAll(
+        '.gcs-map-caption, .gcs-map-tools, .gcs-map-bottom, .gcs-probability-legend, .gcs-north, .gcs-pending-key, .gcs-stage-key, .gcs-inset',
+      );
+    setOverlayBoxes(
+      Array.from(nodes, (node) => {
+        const box = node.getBoundingClientRect();
+        return { x: box.x - rect.x, y: box.y - rect.y, width: box.width, height: box.height };
+      }),
+    );
+  }, [size.width, size.height, inset, Boolean(search?.heatmap_scale), pendingRoute?.drone_id]);
   useEffect(() => {
     for (const v of vehicles) {
       if (!trails.current[v.id]) trails.current[v.id] = [];
@@ -160,6 +184,20 @@ export default function MissionMap({
   useEffect(() => {
     if (!inset && search?.vertices) fitSearch();
   }, [searchFocusKey, size.width, size.height, inset]);
+  useEffect(() => {
+    if (!pendingPlace || inset) return;
+    const north = pendingPlace.geometry.points.map((p) => p.x / 100);
+    const east = pendingPlace.geometry.points.map((p) => p.y / 100);
+    const height = bounds.maxX - bounds.minX;
+    center(
+      (Math.min(...north) + Math.max(...north)) / 2,
+      (Math.min(...east) + Math.max(...east)) / 2,
+      Math.min(
+        span / (Math.max(Math.max(...east) - Math.min(...east), span / 8) * 1.5),
+        height / (Math.max(Math.max(...north) - Math.min(...north), height / 8) * 1.5),
+      ),
+    );
+  }, [pendingPlace?.id, inset, size.width, size.height]);
   useEffect(() => {
     const el = surface.current!;
     const wheel = (e: WheelEvent) => {
@@ -287,7 +325,34 @@ export default function MissionMap({
             height={bottomRight.y - topLeft.y}
             className="gcs-terrain"
           />
-          <SearchLayers search={search} project={projection} reviewDetection={reviewDetection} />
+          <SearchLayers
+            search={search}
+            project={projection}
+            reviewDetection={reviewDetection}
+            viewport={size}
+            obstacles={[
+              ...overlayBoxes,
+              ...Object.values(labels),
+              ...vehicles.map((v) => {
+                const p = projection(v.north_m, v.east_m);
+                return { x: p.x - 20, y: p.y - 20, width: 40, height: 40 };
+              }),
+              ...(search
+                ? search.commander.clusters.map((cluster) => {
+                    const p = projection(
+                      cluster.localization.ground.north_m,
+                      cluster.localization.ground.east_m,
+                    );
+                    return { x: p.x - 14, y: p.y - 18, width: 230, height: 36 };
+                  })
+                : []),
+              ...(search?.point
+                ? [{ ...projection(search.point.north_m, search.point.east_m), width: 280, height: 24 }]
+                : []),
+            ]}
+            pendingPlace={pendingPlace}
+            showLandmarkLabels={!inset && size.inset === inset}
+          />
           {areaDraft && (
             <polygon
               className="gcs-search-draft"

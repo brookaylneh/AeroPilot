@@ -1,10 +1,36 @@
 # Search commander
 
-The mission service owns the quoted subject profile, operator-marked last known
-point, drawn search area, four-aircraft plan, camera evidence and posterior.
+The mission service owns the quoted subject profile, approved last known location,
+drawn search area, four-aircraft plan, camera evidence and posterior.
 Use `/mission?case=<uuid>` in the assigned development slot. The shared tool
 catalogue is in [agents](../agents/README.md); [deployment](../../deploy/README.md)
 contains ports, routes and slot ownership.
+
+## Places and directions
+
+`world/cosys/landmarks.py` loads public `world/unreal/landmarks.json`, with the
+strict schema in [Cosys](../../world/cosys/README.md#public-landmarks).
+Bounds come from `world/cosys/world.json`; actor and clue placements are rejected.
+A missing file is shown explicitly and blocks place tools, not unrelated actions.
+The catalogue is loaded at mission creation; start a new mission after integrating data.
+
+`find_place` matches names/aliases exactly, case-insensitively. It returns every
+candidate on ambiguity and the known names on no match. `set_last_known_place`
+requires verbatim briefing evidence naming the selected place and operator map
+approval in every mode. Point or polyline geometry remains intact. The line's
+arclength midpoint is only a map anchor; its radial prior is averaged uniformly
+along arclength with midpoint intervals no longer than a probability cell.
+This is an explicit location-uncertainty assumption, not a movement model.
+An area landmark requires the operator to mark a point. Approval invalidates a
+saved plan; declined or cancelled proposals leave the hypothesis unchanged.
+
+Named points and line features form a quiet map layer under leads and aircraft.
+`describe_location` computes horizontal nearest-feature distance, eight-way compass
+bearing and the side of the nearest polyline, with exact segment projection.
+Creek sides are geometric compass banks, not downstream left/right banks; open
+endpoints are identified explicitly. These are location descriptions, not validated
+walking routes. Evidence cards, Wonder results and team deliveries use the same
+computed text. Delivery stores the description that existed when it was sent.
 
 ## Planning and flight
 
@@ -50,18 +76,15 @@ once. It cannot silently truncate, restart or mix sources.
 The public live adapter is `await search.consume_capture(metadata_path)` after
 source readiness. Metadata must be under this mission's `captures/` directory,
 and its JPEG must be adjacent. `configuration.py` defines
-and checks the exact truth-free camera fields, pose states, hash and dimensions.
-The capture owner must write that contract before calling ingestion. Extra private
-actor/label fields are rejected. Replay exports are prepared offline; the service
-reads only the selected manifest and its camera records.
+checks truth-free fields, pose, hash and dimensions. Private actor/label fields are
+rejected. Replay exports are prepared offline; the service reads only that manifest.
 
 `ingestion.py` is the single entry point. Each actual drone or explicitly labelled
 replay lane has four SAM slots and an ordered commit queue. SAM releases its slot
 before Glimmer verification; belief commits remain atomic and follow capture order.
-It verifies increasing capture timestamps, keeps every frame and persists queued,
-processing, complete or failed state.
-Post-inference persistence errors explicitly retain whether belief was already
-committed. Backlog, oldest unfinished age, every active frame/stage and terminal errors are visible.
+It verifies increasing capture timestamps and retains every frame/state. Persistence
+errors retain whether belief was committed. Backlog, oldest unfinished age, active
+frame/stage and terminal errors are visible.
 An inference failure is terminal and receives no negative evidence; subsequent
 frames proceed in order. No retry or silent frame/candidate drop is implemented.
 
@@ -111,10 +134,11 @@ A ground-space region receives at most one first-reference-frame positive factor
 Multiple new clusters in one frame share it; repeated views/images earn no further
 credit. Dismissal removes the relevant factor contribution but keeps its region
 reserved. Spatial kernels are integrated over cells, including truncation mass;
-finite range and posterior normalization are asserted. Cards show prior and current
-mass inside the displayed 95% ellipse, assuming uniform density within each map
-cell. Small percentages use plain decimal notation. This provisional composite posterior is
-not a measured probability that a visible person is the missing subject.
+finite range and posterior normalization are asserted. Cards headline the sum of
+prior/current probability over cells intersecting the closed 95% ellipse, including
+tangency. Exact rectangle/ellipse intersection avoids missing small ellipses.
+Ellipse-only mass and area fraction remain in details, assuming uniform density
+inside each cell. This provisional posterior does not establish subject identity.
 
 ## Evidence and operator actions
 
@@ -137,7 +161,7 @@ the preserved item. Failed actions remain visible; no repair flight is generated
 
 `notify_ground_team` requires a confirmed lead and explicit operator approval.
 It persists a delivery and publishes photo, mission metres, WGS84 coordinates,
-time, separately labelled confidence/posterior and a navigation link to
+time, landmark directions, separately labelled confidence/posterior and a navigation link to
 `/team?case=<uuid>&team=<id>`. Sending returns **sent, awaiting acknowledgement**.
 Only an explicit acknowledgement on that receiving page changes it to acknowledged.
 The team WebSocket cannot execute mission tools.
@@ -153,36 +177,22 @@ SAM uses an async endpoint with eight fal request slots per runner and a seriali
 model section; weights and inference precision stay pinned. Separate SAM and
 verification thread pools prevent slow Glimmer work from blocking SAM dispatch.
 
-`agents/perception/bench_commander.py` provides recorded-frame throughput with
-explicit manifest, prompts, profile, release interval, SAM concurrency and output.
-`bench_prompt_equivalence.py` compares dedicated and combined person decisions
-over the entire corpus, including qualified/unqualified candidates, box IoU and scores.
-`profile_pipeline.py` reduces saved request clocks into server-stage durations,
-handler busy time, upload, round trip, queue wait and belief-commit timing.
-Four-drone load at 16 m spacing is one release every 0.8 s. Report backlog growth,
-arrival-to-belief p95 and drain capacity; buffering does not
-establish that the pipeline can sustain that rate. Runner cost and planner cadence
-limits are recorded beside the measured capacity in commander.json. The planner
-reports an unsupported rate without silently changing flight speed or capture
-spacing. Its POS curve uses capture time and excludes processing delay.
-The recorded gate requires every frame to complete, zero failures, p95 at most
-10 s and a declared unfinished-frame budget of `ceil(offered_rate × 10 s)`
-(13 at 1.25 frames/s). The rate check allows 2% finite-run timing variation;
-arrival lag and quarterly backlog counts remain in the evidence.
+`agents/perception/bench_commander.py` measures recorded-frame throughput with
+explicit manifest, prompts, profile, release interval, concurrency and output.
+`bench_prompt_equivalence.py` compares person decisions, box IoU and scores.
+`profile_pipeline.py` reduces saved request clocks into server stages, busy time,
+upload, round trip, queue wait and commit timing. The gate requires every frame,
+zero failures, p95 ≤10 s, unfinished work ≤`ceil(offered_rate × 10 s)` and rate
+within 2% of offered. Record arrival lag and quarterly backlog; buffering alone
+does not establish capacity. Cost/cadence evidence lives in commander.json.
+Planner POS uses capture time and excludes processing delay.
 
-`evaluate_commander.py export` writes truth-free replay records plus a separate
-private label file; `prefix` creates an explicit prefix manifest. `score`
-joins fresh live-pipeline outputs to labels offline, with independent condition
-episodes. It scores detection/verification, false alarms, localization, clustering
-and posterior at the true location. The current corpus contains only actual
-Drone1 captures, so cross-drone performance remains unmeasured.
-
-Run `accept_browser.mjs commander URL NEW_DIRECTORY MANIFEST_ID` for the complete
-browser/flight/delivery sequence. It captures 1920×1080 and 1440×900 mission views
-and a separate phone-sized receiving page. Explicit `--after-plan` continues an
-existing planned, landed mission without repeating briefing/model requests.
-`report_flight.py` derives flown versus
-planned timing and clearance from telemetry/DataFlash logs. The full Wonder
-benchmark, source hashes, failures, screenshots, flight and fal usage are linked
-from commander.json. Use the six repository checks in `AGENTS.md`; boundary tests
-cover truth isolation, source/order failures, evidence caps and operator authority.
+`evaluate_commander.py` exports truth-free replay records with private labels kept
+separate, and scores fresh pipeline outputs offline. The corpus contains only actual
+Drone1 captures; replay lanes establish load, not cross-drone performance.
+`accept_browser.mjs commander` exercises camera/flight/operator/delivery behavior.
+`report_flight.py` derives timings and clearance from telemetry/DataFlash logs.
+Use the six checks in `AGENTS.md`. Truth-isolation tests guard the live processor,
+landmark loader, place proposals and prior against private data and modules.
+[places.json](../measurements/places.json) links place-tool benchmarks, region audit,
+UI evidence and integration dependencies. Every Wonder failure remains preserved.

@@ -27,6 +27,8 @@ import {
 import MissionMap from './MissionMap';
 import SearchPanel from './SearchPanel';
 import SearchApproval from './SearchApproval';
+import PlaceApproval from './PlaceApproval';
+import { placeArguments } from './placeState';
 import EvidenceCard from './EvidenceCard';
 import type { SearchPoint } from './searchState';
 import RouteApproval from './RouteApproval';
@@ -175,6 +177,9 @@ export default function MissionControl() {
   useEffect(() => setAreaDraft(null), [JSON.stringify(search?.vertices)]);
   const approval = state?.approvals[0];
   const pendingRoute = approval?.name === 'fly_route' ? routeArgumentsSchema.parse(approval.arguments) : null;
+  const pendingPlaceId =
+    approval?.name === 'set_last_known_place' ? placeArguments.parse(approval.arguments).place_id : null;
+  const pendingPlace = search?.landmarks?.find((place) => place.id === pendingPlaceId) ?? null;
   const [selected, setSelected] = useState<DroneId>('Drone1');
   const [view, setView] = useState<'map' | 'video'>('map');
   const [panel, setPanel] = useState<'agent' | 'evidence' | 'log'>('agent');
@@ -376,6 +381,7 @@ export default function MissionControl() {
                 select={setSelected}
                 focus={state ? state.map_focus : null}
                 pendingRoute={pendingRoute}
+                pendingPlace={pendingPlace}
                 age={age}
                 connected={connected}
                 inset={view !== 'map'}
@@ -773,7 +779,13 @@ export default function MissionControl() {
                     )}
                   </header>
                   <p>{approvalSentence(approval.name, approval.arguments)}</p>
-                  {approval.name === 'start_search' ? (
+                  {approval.name === 'set_last_known_place' ? (
+                    pendingPlace ? (
+                      <PlaceApproval place={pendingPlace} arguments={approval.arguments} />
+                    ) : (
+                      <p role="alert">Landmark unavailable. Decline this request.</p>
+                    )
+                  ) : approval.name === 'start_search' ? (
                     <SearchApproval search={search} />
                   ) : pendingRoute ? (
                     <RouteApproval key={approval.id} route={pendingRoute} />
@@ -786,8 +798,10 @@ export default function MissionControl() {
                     </details>
                   )}
                   <small>
-                    Requested by {approval.source === 'agent' ? 'Wonder' : 'operator controls'}. Safety checks
-                    run before execution.
+                    Requested by {approval.source === 'agent' ? 'Wonder' : 'operator controls'}.{' '}
+                    {approval.name === 'set_last_known_place'
+                      ? 'Check the highlighted place and briefing quote on the map.'
+                      : 'Safety checks run before execution.'}
                   </small>
                   <div className="gcs-approval-buttons">
                     <button
@@ -798,11 +812,15 @@ export default function MissionControl() {
                     </button>
                     <button
                       className="gcs-primary"
-                      disabled={!enabled}
+                      disabled={!enabled || (approval.name === 'set_last_known_place' && !pendingPlace)}
                       onClick={() => send({ type: 'approval', id: approval.id, approved: true })}
                     >
                       <Check size={15} />
-                      {approval.name === 'notify_ground_team' ? 'Approve delivery' : 'Approve flight'}
+                      {approval.name === 'set_last_known_place'
+                        ? 'Approve place'
+                        : approval.name === 'notify_ground_team'
+                          ? 'Approve delivery'
+                          : 'Approve flight'}
                     </button>
                   </div>
                 </section>

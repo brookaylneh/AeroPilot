@@ -7,6 +7,7 @@ from scipy.special import ndtr
 
 from mission_planner.agents.perception.localization import (
     ELLIPSE_99,
+    ellipse_cells,
     ellipse_weights,
     gaussian_cells,
 )
@@ -219,10 +220,19 @@ class Evidence:
         return {"probability_change": float(np.abs(self.probability - before).sum() / 2)}
 
     def mass(self, localization):
+        region = ellipse_cells(localization, self.grid)
         weights = ellipse_weights(localization, self.grid)
+        region_area = float(self.grid["areas"][region].sum())
         return {
-            "prior_mass": float(self.prior @ weights),
-            "posterior_mass": float(self.probability @ weights),
+            "prior_mass": float(self.prior[region].sum()),
+            "posterior_mass": float(self.probability[region].sum()),
+            "region_cell_count": int(region.sum()),
+            "region_area_m2": region_area,
+            "ellipse_prior_mass": float(self.prior @ weights),
+            "ellipse_posterior_mass": float(self.probability @ weights),
+            "ellipse_area_fraction": float(weights @ self.grid["areas"]) / region_area
+            if region_area > 0
+            else 0.0,
         }
 
     def detail(self, cluster_id):
