@@ -6,8 +6,12 @@ import math
 
 import numpy as np
 
-from mission_planner.gcs.geodesy import NAMES
-from mission_planner.gcs.validation import validate_route, validate_separation
+from mission_planner.gcs.geodesy import NAMES, ORIGIN
+from mission_planner.gcs.validation import (
+    validate_ground_column,
+    validate_route,
+    validate_separation,
+)
 from mission_planner.search.detection import AGL_M, CAPTURE_SPACING_M, track_probability
 from mission_planner.search.grid import inside
 from mission_planner.search.terrain import terrain_leg
@@ -223,13 +227,20 @@ def candidate(grid, probability, vertices, homes, model, spacing, axis, prioriti
     }
 
 
-def validate_batch(routes, states, readbacks):
+def validate_batch(routes, states, readbacks, landmarks):
     reservations = [
         (name, [states[name], *route, point(states[name]["north_m"], states[name]["east_m"], 0)])
         for name, route in routes.items()
     ]
     for name, route in routes.items():
-        validate_route(route, readbacks[name])
+        validate_ground_column(states[name], landmarks)
+        validate_ground_column(states[name]["home"], landmarks)
+        validate_route(
+            route,
+            readbacks[name],
+            states[name]["home"]["altitude_msl_m"] - ORIGIN["altitude_msl_m"],
+            landmarks,
+        )
         validate_separation(
             name,
             [states[name], *route, point(states[name]["north_m"], states[name]["east_m"], 0)],
@@ -238,7 +249,7 @@ def validate_batch(routes, states, readbacks):
         validate_separation(name, route, [(other, [state]) for other, state in states.items()])
 
 
-def materialize(result, states, readbacks):
+def materialize(result, states, readbacks, landmarks):
     routes = {}
     max_error = 0.0
     for name, spec in result["routes"].items():
@@ -272,7 +283,7 @@ def materialize(result, states, readbacks):
         assert math.isclose(spec["airborne_seconds"], expected_airborne, rel_tol=0, abs_tol=1e-8), (
             "Planned airborne timing differs from materialized geometry"
         )
-    validate_batch(routes, states, readbacks)
+    validate_batch(routes, states, readbacks, landmarks)
     result["max_sampled_agl_error_m"] = max_error
     return result
 
@@ -306,7 +317,8 @@ def curve(result, grid, probability, vertices, model):
     return values
 
 
-def plan(grid, probability, vertices, states, readbacks, model, inputs):
+def plan(grid, probability, vertices, states, readbacks, model, inputs, landmarks):
+    assert landmarks is not None, "Landmark catalogue required for obstacle clearance"
     assert model["agl_m"] == AGL_M, "No calibration for requested height above ground"
     assert tuple(sorted(states)) == NAMES
     assert all(
@@ -340,12 +352,12 @@ def plan(grid, probability, vertices, states, readbacks, model, inputs):
         candidates,
         key=lambda c: (c["pos_per_minute"], -c["duration_s"], -c["spacing_m"], -c["axis"]),
     )
-    selected = materialize(selected, states, readbacks)
+    selected = materialize(selected, states, readbacks, landmarks)
     baseline = candidate(
         grid, probability, vertices, homes, model, selected["spacing_m"], selected["axis"], False
     )
     assert baseline is not None
-    baseline = materialize(baseline, states, readbacks)
+    baseline = materialize(baseline, states, readbacks, landmarks)
     selected["comparison"] = {
         "label": "Conservative phase-averaged maximum-look expectation; stationary target, conditional on in-world presence",
         "planned": curve(selected, grid, probability, vertices, model),

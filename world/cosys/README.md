@@ -38,6 +38,9 @@ Each item has exactly these fields:
   across different items are allowed and produce an ambiguous lookup.
 - `kind`: `trail`, `road`, `creek`, `pond`, `bridge`, `structure`, `forest`,
   `ridge`, `outcrop`, `campsite`, `parking` or `command_post`.
+- `heightM`: required finite nonnegative height in metres above terrain. Trails,
+  roads, creeks and ponds have exactly zero height. Any positive height requires
+  a polygon footprint; the full footprint is reserved up to terrain plus `heightM`.
 - `geometry`: exactly `type` and `points`. `type` is `point`, `polyline` or
   `polygon`; `points` is an array of objects with exactly finite numeric `x`, `y`,
   `z` in Unreal centimetres (+X north, +Y east, +Z up). Every coordinate is inside

@@ -62,7 +62,7 @@ def validate(document, world):
     ids = set()
     for landmark in landmarks:
         assert isinstance(landmark, dict)
-        assert set(landmark) == {"id", "name", "aliases", "kind", "geometry"}
+        assert set(landmark) == {"id", "name", "aliases", "kind", "geometry", "heightM"}
         identifier = landmark["id"]
         assert isinstance(identifier, str) and re.fullmatch(r"[a-z0-9][a-z0-9_-]*", identifier)
         assert identifier not in ids, "Duplicate landmark id"
@@ -72,11 +72,19 @@ def validate(document, world):
         assert all(isinstance(name, str) and name and name == name.strip() for name in names)
         assert len({name.casefold() for name in names}) == len(names), "Duplicate landmark alias"
         assert landmark["kind"] in KINDS
+        height = landmark["heightM"]
+        assert type(height) in (int, float) and math.isfinite(height) and height >= 0, (
+            "Landmark heightM must be finite nonnegative metres above terrain"
+        )
+        if landmark["kind"] in ("trail", "road", "creek", "pond"):
+            assert height == 0, "Trail, road, creek and pond heightM must be zero"
         geometry = landmark["geometry"]
         assert isinstance(geometry, dict)
         assert set(geometry) == {"type", "points"}
         kind = geometry["type"]
         assert kind in ("point", "polyline", "polygon")
+        if height > 0:
+            assert kind == "polygon", "Raised landmarks require a polygon footprint"
         if landmark["kind"] in ("trail", "road", "creek", "ridge"):
             assert kind == "polyline", "Linear features require polyline geometry"
         vertices = geometry["points"]

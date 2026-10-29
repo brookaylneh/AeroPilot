@@ -45,7 +45,9 @@ async def begin(search, plan_id):
         for s in states.values()
     )
     routes = {n: r["waypoints"] for n, r in value["routes"].items()}
-    validate_batch(routes, states, {n: v["fence"] for n, v in mission.fleet.vehicles.items()})
+    validate_batch(
+        routes, states, {n: v["fence"] for n, v in mission.fleet.vehicles.items()}, search.landmarks
+    )
     for name, vehicle in mission.fleet.vehicles.items():
         for parameter, expected in PARAMETERS.items():
             reply = await mission.fleet._expect(

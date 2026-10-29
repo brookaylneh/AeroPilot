@@ -150,9 +150,9 @@ class Mission:
         self.fleet_ready = False
         self.fleet_closed = False
         self.fleet_error = None
-        self.fleet = Fleet(self.directory / "sitl", self.fleet_event)
         self.model = Wonder()
         self.search = Search(self)
+        self.fleet = Fleet(self.directory / "sitl", self.fleet_event, self.search.landmarks)
         self.ground_team = GroundTeam(self)
 
     def event(

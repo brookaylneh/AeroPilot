@@ -17,6 +17,7 @@ export const landmarkSchema = z
     id: z.string().min(1),
     name: z.string().min(1),
     aliases: z.array(z.string().min(1)),
+    heightM: number.nonnegative(),
     kind: z.enum([
       'trail',
       'road',
@@ -33,7 +34,13 @@ export const landmarkSchema = z
     ]),
     geometry: placeGeometry,
   })
-  .strict();
+  .strict()
+  .refine(
+    ({ heightM, geometry, kind }) =>
+      (heightM === 0 || geometry.type === 'polygon') &&
+      (!['trail', 'road', 'creek', 'pond'].includes(kind) || heightM === 0),
+    'Raised landmarks require polygon footprints; trails, roads, creeks and ponds have zero height',
+  );
 export const placeArguments = z
   .object({
     place_id: z.string().min(1),

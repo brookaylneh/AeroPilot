@@ -16,6 +16,7 @@ def feature(identifier, name, kind, geometry, coordinates, aliases=()):
         "name": name,
         "aliases": list(aliases),
         "kind": kind,
+        "heightM": 0,
         "geometry": {
             "type": geometry,
             "points": [{"x": n * 100, "y": e * 100, "z": 0} for n, e in coordinates],
@@ -140,6 +141,31 @@ class LandmarkTests(unittest.TestCase):
         for item in invalid:
             self.document["landmarks"] = [item]
             with self.subTest(item=item), self.assertRaises(AssertionError):
+                validate(self.document, self.world)
+
+    def test_heights_are_required_finite_and_bound_to_polygon_footprints(self):
+        item = feature("tower", "Tower", "structure", "polygon", [(0, 0), (1, 0), (0, 1)])
+        self.document["landmarks"] = [item]
+        item["heightM"] = 12.5
+        self.assertEqual(validate(self.document, self.world)[0]["heightM"], 12.5)
+        for height in (-1, math.inf, math.nan, True, "12"):
+            item["heightM"] = height
+            with self.subTest(height=height), self.assertRaisesRegex(AssertionError, "heightM"):
+                validate(self.document, self.world)
+        item["heightM"] = 1
+        item["geometry"] = {"type": "point", "points": [{"x": 0, "y": 0, "z": 0}]}
+        with self.assertRaisesRegex(AssertionError, "polygon footprint"):
+            validate(self.document, self.world)
+        del item["heightM"]
+        with self.assertRaises(AssertionError):
+            validate(self.document, self.world)
+
+    def test_surface_features_have_zero_height(self):
+        for kind in ("trail", "road", "creek", "pond"):
+            item = feature("surface", "Surface", kind, "polygon", [(0, 0), (1, 0), (0, 1)])
+            item["heightM"] = 1
+            self.document["landmarks"] = [item]
+            with self.subTest(kind=kind), self.assertRaisesRegex(AssertionError, "must be zero"):
                 validate(self.document, self.world)
 
     def test_projection_uses_segment_interior_and_true_horizontal_metres(self):

@@ -69,6 +69,7 @@ class Planner(unittest.TestCase):
             self.readbacks,
             self.model,
             {"test": "determinism"},
+            [],
         )
 
     def test_byte_identical_validated_plan_and_endurance(self):
@@ -94,7 +95,7 @@ class Planner(unittest.TestCase):
     def test_batch_collision_is_refused(self):
         p = {"north_m": -600.0, "east_m": 0.0, "altitude_above_home_m": 30.0}
         with self.assertRaisesRegex(AssertionError, "conflicts"):
-            validate_batch({n: [p] for n in self.states}, self.states, self.readbacks)
+            validate_batch({n: [p] for n in self.states}, self.states, self.readbacks, [])
 
     def test_timing_uses_oriented_legs_and_full_terrain_connectors(self):
         vertices = [
@@ -112,7 +113,7 @@ class Planner(unittest.TestCase):
                 asymmetric_legs += abs(forward - reverse) > 1e-6
                 self.assertAlmostEqual(leg["ends_s"] - leg["starts_s"], forward)
         self.assertGreater(asymmetric_legs, 0)
-        materialize(result, self.states, self.readbacks)
+        materialize(result, self.states, self.readbacks, [])
 
     def test_concave_area_connector_blends_preserve_timeline_order(self):
         vertices = [
@@ -137,7 +138,7 @@ class Planner(unittest.TestCase):
                 terrain_connectors += len(terrain_leg(before["end"], after["start"], home_z)[0]) > 2
                 self.assertGreaterEqual(after["starts_s"], before["ends_s"] - 1e-8)
         self.assertGreater(terrain_connectors, 0)
-        materialize(result, self.states, self.readbacks)
+        materialize(result, self.states, self.readbacks, [])
 
     def test_unsupported_prior_is_explicit(self):
         with self.assertRaisesRegex(AssertionError, "Unsupported prior"):

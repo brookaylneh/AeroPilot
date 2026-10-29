@@ -130,6 +130,7 @@ class Search:
             "calibration": self.model["input_sha256"],
             "readbacks": {n: v["fence"] for n, v in self.mission.fleet.vehicles.items()},
             "probability_sha256": hashlib.sha256(self.probability.tobytes()).hexdigest(),
+            "landmarks_sha256": hashlib.sha256(encode(self.landmarks).encode()).hexdigest(),
         }
 
     def summary(self):
@@ -277,6 +278,7 @@ class Search:
                 inputs["readbacks"],
                 self.model,
                 inputs,
+                self.landmarks,
             )
             assert inputs == self.inputs(), "Search inputs changed during planning"
             self.plan = result

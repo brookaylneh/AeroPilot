@@ -6,7 +6,8 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
-from mission_planner.gcs.geodesy import ORIGIN
+from mission_planner.gcs.fleet import Fleet
+from mission_planner.gcs.geodesy import ORIGIN, fence_vertices, to_geodetic
 from mission_planner.search.execution import finish
 from mission_planner.search.relook import relook, resume_search
 from world.cosys.terrain import terrain_height
@@ -156,6 +157,45 @@ class Relook(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.mission_items, original)
         self.assertIn("Drone1", self.search.paused)
         self.assertEqual(self.search.paused["Drone1"]["status"], "failed")
+
+    async def test_actual_route_guard_blocks_raised_footprint_before_flying(self):
+        obstacle = {
+            "id": "woodland",
+            "name": "Woodland",
+            "aliases": [],
+            "kind": "forest",
+            "heightM": 25,
+            "geometry": {
+                "type": "polygon",
+                "points": [
+                    {"x": n * 100, "y": e * 100, "z": 0}
+                    for n, e in ((-645.1, 2.3), (-644.9, 2.3), (-644.9, 2.7), (-645.1, 2.7))
+                ],
+            },
+        }
+        checker = Fleet("unused", lambda event: None, [obstacle])
+        checker.vehicles = {
+            "Drone1": {
+                "fence": [
+                    dict(
+                        zip(
+                            ("x", "y"),
+                            (round(v * 1e7) for v in to_geodetic(p["north_m"], p["east_m"])),
+                        )
+                    )
+                    for p in fence_vertices()
+                ]
+            }
+        }
+        checker.snapshot = lambda: [copy.deepcopy(self.state)]
+        self.fleet._validate_route = checker._validate_route
+        original = copy.deepcopy(self.mission_items)
+        with self.assertRaisesRegex(RuntimeError, "Re-look failed: Route clearance over Woodland"):
+            await self.look()
+        self.fleet.execute.assert_awaited_once_with("hold", {"drone_id": "Drone1"})
+        self.assertEqual(self.search.paused["Drone1"]["status"], "failed")
+        self.assertEqual(self.mission_items, original)
+        self.assertEqual(self.state["mode"], "BRAKE")
 
 
 class PausedMonitor(unittest.IsolatedAsyncioTestCase):

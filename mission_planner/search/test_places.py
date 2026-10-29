@@ -28,6 +28,7 @@ class Places(unittest.IsolatedAsyncioTestCase):
                 "name": "Footbridge",
                 "aliases": ["crossing"],
                 "kind": "bridge",
+                "heightM": 0,
                 "geometry": {"type": "point", "points": [{"x": 100, "y": 200, "z": 0}]},
             },
             {
@@ -35,6 +36,7 @@ class Places(unittest.IsolatedAsyncioTestCase):
                 "name": "Creek Loop",
                 "aliases": [],
                 "kind": "trail",
+                "heightM": 0,
                 "geometry": {
                     "type": "polyline",
                     "points": [

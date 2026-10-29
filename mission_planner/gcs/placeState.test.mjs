@@ -6,6 +6,7 @@ const line = {
   id: 'fixture-trail',
   name: 'Fixture trail',
   aliases: ['test path'],
+  heightM: 0,
   kind: 'trail',
   geometry: {
     type: 'polyline',
@@ -39,4 +40,18 @@ test('landmark and approval UI boundaries reject missing fields and private extr
   );
   assert.throws(() => placeArguments.parse({ place_id: line.id, evidence: [] }));
   assert.throws(() => placeArguments.parse({ place_id: line.id, evidence: [{ quote: 'test path' }] }));
+});
+
+test('landmark height is required and raised objects need an area footprint', () => {
+  for (const heightM of [undefined, null, NaN, -1, 1])
+    assert.throws(() => landmarkSchema.parse({ ...line, heightM }));
+  const raised = {
+    ...line,
+    kind: 'structure',
+    heightM: 10,
+    geometry: { type: 'polygon', points: line.geometry.points },
+  };
+  assert.equal(landmarkSchema.parse(raised).heightM, 10);
+  assert.throws(() => landmarkSchema.parse({ ...raised, kind: 'pond' }));
+  assert.throws(() => landmarkSchema.parse({ ...raised, geometry: line.geometry }));
 });

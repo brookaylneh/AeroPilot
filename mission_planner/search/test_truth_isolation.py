@@ -79,8 +79,8 @@ assert evidence.mass(detection['localization'])['region_cell_count'] > 0
 world = json.loads(WORLD_PATH.read_text())
 bounds = world['searchBoundsCm']
 center = {axis: (bounds['min'][axis] + bounds['max'][axis]) / 2 for axis in 'xyz'}
-bridge = {'id': 'bridge', 'name': 'Test Bridge', 'aliases': ['Crossing'], 'kind': 'bridge', 'geometry': {'type': 'point', 'points': [center]}}
-creek = {'id': 'creek', 'name': 'Test Creek', 'aliases': [], 'kind': 'creek', 'geometry': {'type': 'polyline', 'points': [{**center, 'x': center['x'] + delta, 'y': center['y'] + 2000} for delta in (-2000, 2000)]}}
+bridge = {'id': 'bridge', 'name': 'Test Bridge', 'aliases': ['Crossing'], 'kind': 'bridge', 'heightM': 0, 'geometry': {'type': 'point', 'points': [center]}}
+creek = {'id': 'creek', 'name': 'Test Creek', 'aliases': [], 'kind': 'creek', 'heightM': 0, 'geometry': {'type': 'polyline', 'points': [{**center, 'x': center['x'] + delta, 'y': center['y'] + 2000} for delta in (-2000, 2000)]}}
 document = {'schemaVersion': 1, 'worldId': world['worldId'], 'coordinateSystem': world['coordinateSystem'], 'landmarks': [bridge, creek]}
 landmark_path = Path(sys.argv[1]).parent / 'public-landmarks.json'
 landmark_path.write_text(json.dumps(document))
