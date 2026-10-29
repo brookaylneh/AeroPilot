@@ -36,6 +36,11 @@ def main():
         "profile": result["profile"],
         "workload": result["workload"],
         "summary": result["summary"],
+        "gate": result["gate"],
+        "gate_passed": result["gatePassed"],
+        "concurrent_containers": result["concurrentContainers"],
+        "measurement_tools": result["tools"],
+        "first_video_frame": result["firstVideoFrame"],
         "timing_source": "Unreal CSV per-frame GPUTime, FrameTime, GameThreadTime and RenderThreadTime",
         "render_settings": engine["render_settings"],
         "engine_metadata": engine["summary"]["metadata"],
@@ -51,6 +56,7 @@ def main():
     if result["workload"].startswith("Four SimpleFlight"):
         assert result["droneWorkload"]["status"] == "measured"
         entry["drone_workload"] = artifact(args.run / "drones/result.json")
+        entry["capture_summary"] = result["captureSummary"]
     record["variants"].append(entry)
     record["recorded_at"] = engine["completed_at"]
     target.write_text(json.dumps(record, indent=2) + "\n")

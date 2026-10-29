@@ -26,6 +26,20 @@ def summarize(path):
     header = rows[-2]
     assert header[: len(rows[0])] == rows[0]
     frames = rows[1:-2]
+    captured_frames = len(frames)
+    incomplete = []
+    timing_columns = [
+        header.index(name)
+        for name in ("GPUTime", "GameThreadTime", "RenderThreadTime", "RHIThreadTime")
+    ]
+    if frames and all(float(frames[-1][i]) == 0 for i in timing_columns):
+        incomplete.append(
+            {
+                "index": captured_frames - 1,
+                "FrameTime": float(frames[-1][header.index("FrameTime")]),
+            }
+        )
+        frames = frames[:-1]
     stats = {}
     for name in ("GPUTime", "FrameTime", "GameThreadTime", "RenderThreadTime", "RHIThreadTime"):
         index = header.index(name)
@@ -39,7 +53,13 @@ def summarize(path):
             "p99": ordered[math.ceil(len(values) * 0.99) - 1],
             "max": ordered[-1],
         }
-    return {"milliseconds": stats, "metadata": metadata}
+    return {
+        "milliseconds": stats,
+        "metadata": metadata,
+        "captured_frames": captured_frames,
+        "complete_timing_frames": len(frames),
+        "incomplete_final_frame": incomplete,
+    }
 
 
 def cpu_stats(path):
@@ -133,6 +153,8 @@ def main():
         report = json.loads(manifest.read_text())
         assert report["state"] == "capturing", report["state"]
         path = Path(report["source_csv"])
+        report["state"] = "stopping"
+        manifest.write_text(json.dumps(report, indent=2) + "\n")
         assert client.simRunConsoleCommand("csvprofile STOP")
         log = Path(report["release"]) / "ScenarioStudio/Saved/Logs/ScenarioStudio.log"
         deadline = time.monotonic() + 15

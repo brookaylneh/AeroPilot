@@ -7,7 +7,7 @@
     "dev": "node --env-file=.local/runtime.env --import tsx web/server.ts --dev",
     "build": "tsc --noEmit && node --env-file=.local/runtime.env node_modules/vite/bin/vite.js build",
     "start": "node --env-file=.local/runtime.env --import tsx web/server.ts",
-    "test": "tsx --test 'scenario_creator/*.test.ts' 'world/**/*.test.ts' 'mission_planner/**/*.test.mjs'",
+    "test": "tsx --test 'scenario_creator/*.test.ts' 'world/**/*.test.ts' 'world/**/*.test.mjs' 'mission_planner/**/*.test.mjs'",
     "fonts": "python3 web/fetch-fonts.py",
     "typecheck": "tsc --noEmit",
     "format": "prettier --write web scenario_creator world/unreal/scripts world/unreal/characters mission_planner/gcs 'mission_planner/agents/perception/*.mjs' '*.ts' '*.json'",
