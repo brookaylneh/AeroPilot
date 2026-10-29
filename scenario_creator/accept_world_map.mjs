@@ -40,17 +40,22 @@ const camera = { position: {
   x: bounds.minX + (bounds.maxX - bounds.minX) * 0.71,
   y: bounds.minY + (bounds.maxY - bounds.minY) * 0.99, z: 0 },
   yaw: 30, pitch: 0, fieldOfView: 60, mode: 'explore', inputSequence: 0, transitioning: false };
-createRoot(document.getElementById('root')).render(
-  location.search === '?mission' ?
+function MissionInset() {
+  const [marking, setMarking] = React.useState(true);
+  return (
   <div className="gcs-app"><section className="gcs-stage">
     <p style={{padding: 24}}>Isolated MissionMap inset component · public bounds · no fleet connection</p>
+    <button onClick={() => setMarking(false)}>Finish coordinate check</button>
     <div className="gcs-inset gcs-inset-map">
       <MissionMap vehicles={[]} selected="Drone1" select={() => {}} focus={null}
         pendingRoute={null} age={0} connected={false} inset
-        onMark={(point) => { window.acceptancePoint = point; }} />
+        onMark={marking ? (point) => { window.acceptancePoint = point; } : undefined} />
       <button className="gcs-inset-swap" aria-label="Expand map">Map<kbd>V</kbd></button>
     </div>
-  </section></div> :
+  </section></div>);
+}
+createRoot(document.getElementById('root')).render(
+  location.search === '?mission' ? <MissionInset /> :
   <div className="creator-app stage-placement">
     <p style={{padding: 24}}>Isolated WorldMap component · public bounds · synthetic camera marker · no renderer connection</p>
     <WorldMap bounds={bounds} camera={camera} person={null} busy={false}
@@ -261,6 +266,7 @@ try {
       close(point.east_m, expected.east_m, 0.001, 'East coordinate at edge');
       edgeClicks.push({ point, expected });
     }
+    await mission.getByRole('button', { name: 'Finish coordinate check', exact: true }).click();
     await mission.getByTestId('mission-map').press('+');
     const zoomed = await missionMeasurement(mission);
     close(zoomed.image.width, fitted.image.width * 1.25, 1 / 32, 'Mission zoom');
