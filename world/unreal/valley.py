@@ -252,7 +252,7 @@ def creek_profile(elevation, item, receiver, accumulation):
             "upstreamSamplesAtStart": int(flow[0]),
             "upstreamSamplesAtOutlet": int(flow[-1]),
             "receiverEdgesMatched": len(vertices) - 1,
-            "strictlyDescendingBed": True,
+            "strictlyDescendingDesignProfile": True,
         },
     )
 
@@ -317,6 +317,10 @@ def build(document):
     different_south = int(np.count_nonzero(raw[:, south] != original[:, south]))
     assert different_south == 0, "Southern terrain buffer changed"
     quantized = (raw.astype(float) - FIELD["zeroSample"]) / FIELD["samplesPerMetre"]
+    for item, report in zip((item for item in landmarks if item["kind"] == "creek"), creek_reports):
+        rise = np.diff(lookup(quantized, points(item)))
+        report["sampledFinalBedMaximumDownstreamRiseM"] = float(rise.max())
+        report["sampledFinalBedRisingSegments"] = int(np.count_nonzero(rise > 1e-8))
     dy, dx = np.gradient(quantized, FIELD["sampleSpacingMetres"])
     slope = np.degrees(np.arctan(np.hypot(dx, dy)))
     maximum_slope = float(slope.max())
