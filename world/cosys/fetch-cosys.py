@@ -11,6 +11,7 @@ import zipfile
 from pathlib import Path
 
 from mission_planner.environment import load_env
+from world.cosys.plugin import PATCHES
 
 load_env()
 parser = argparse.ArgumentParser()
@@ -48,7 +49,7 @@ for entry in lock["files"]:
                 raise SystemExit("Archive contains an unsafe path")
         archive.extractall(destination)
     if entry["name"].startswith("AirSim"):
-        for patch in ("airsim-ue58.patch", "airsim-geodesy.patch", "airsim-sensor.patch"):
+        for patch in PATCHES:
             subprocess.run(
                 [
                     "patch",
