@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { distribution, summarizeBrowser, summarizeCaptures, flawlessGate } from './stream-statistics.mjs';
 import { capacityStatus, selectCapacityInstance } from './capacity-browser.mjs';
+import { startHostMonitor } from './host-monitor.mjs';
 import { createHash } from 'node:crypto';
 import { execFile, spawn } from 'node:child_process';
 import { createWriteStream } from 'node:fs';
@@ -73,6 +74,7 @@ for (const source of [
   'world/unreal/scripts/profile-engine.py',
   'world/unreal/scripts/stream-statistics.mjs',
   'world/unreal/scripts/capacity-browser.mjs',
+  'world/unreal/scripts/host-monitor.mjs',
   'world/cosys/render_workload.py',
   'world/cosys/client.py',
   'mission_planner/agents/perception/browser.mjs',
@@ -83,6 +85,7 @@ for (const source of [
   result.tools.push({ source, snapshot, sha256: createHash('sha256').update(bytes).digest('hex') });
 }
 const browser = await launchBrowser();
+let stopHostMonitor;
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
 if (streamerId) {
   await selectCapacityInstance(page, origin, streamerId);
@@ -259,6 +262,7 @@ async function sample() {
   };
 }
 try {
+  stopHostMonitor = await startHostMonitor(output, duration);
   await observeScenario(page);
   const response = await page.goto(`${origin}/studio`, { timeout: 30000 });
   assert(response.ok());
@@ -394,6 +398,10 @@ try {
   } finally {
     await browser.close();
     result.browserClosed = true;
-    await writeFile(`${output}/result.json`, JSON.stringify(result, null, 2) + '\n');
+    try {
+      if (stopHostMonitor) result.hostMonitor = await stopHostMonitor();
+    } finally {
+      await writeFile(`${output}/result.json`, JSON.stringify(result, null, 2) + '\n');
+    }
   }
 }

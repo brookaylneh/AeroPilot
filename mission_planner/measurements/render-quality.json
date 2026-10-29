@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "recorded_at": "2026-10-29T01:00:33.196747+00:00",
-  "status": "Final package cache verified; 30-minute four-drone load test running",
+  "status": "Host rebooted and six services returned; waiting for occupied Studio before remaining tests",
   "vulkan_profile_check": {
     "engine": "5.8.2",
     "implementation": "Engine generated vulkan_profiles_ue.h and vpGetPhysicalDeviceProfileSupport",
@@ -5276,6 +5276,14 @@
       "failure": "CSV parser rejected a final row containing FrameTime but no completed CPU/GPU timing. The failed run and raw CSV are preserved. Independent analysis excludes only that final incomplete row and records it explicitly.",
       "analysis": ".local/evidence/render-quality/rocketbox-lumen-tsr75-4k/csv-analysis.json",
       "status": "This run also missed the browser FPS and GPU p95 gates."
+    },
+    {
+      "variant": "lumen-atmosphere-4k-pso-soak",
+      "evidence": ".local/evidence/render-quality/lumen-atmosphere-4k-pso-soak/result.json",
+      "sha256": "2a875af43647ea58f23e97977fbd340a9f28cd3c3b562b14e8ddfd3a4349e9cd",
+      "failure": "Command failed: docker ps --format {{.Names}}\n",
+      "samples": 1125,
+      "outcome": "Host became unresponsive and subsequently rebooted. Cause unconfirmed. Interrupted run is not accepted; drone cleanup was interrupted by SIGTERM."
     }
   ],
   "user_deferred_grass": {

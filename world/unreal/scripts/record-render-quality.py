@@ -17,6 +17,7 @@ def main():
     source = args.run / "result.json"
     result = json.loads(source.read_text())
     assert result["status"] == "measured" and result["browserClosed"]
+    assert result["hostMonitor"]["exit"]["signal"] == "SIGTERM"
     engine = result["engine"]
     assert engine["state"] == "complete"
     target = Path("mission_planner/measurements/render-quality.json")
@@ -50,6 +51,8 @@ def main():
         "evidence": str(source),
         "sha256": artifact(source)["sha256"],
         "engine_csv": artifact(args.run / "engine.csv"),
+        "host_monitor": artifact(args.run / "host.json"),
+        "host_vmstat": artifact(args.run / "host-vmstat.log"),
         "screenshots": [str(args.run / (pose["name"] + ".png")) for pose in result["poses"]],
         "screenshot_files": [
             artifact(args.run / (pose["name"] + ".png")) for pose in result["poses"]

@@ -68,7 +68,10 @@ node --env-file=.local/runtime.env world/unreal/scripts/measure-stream.mjs \
 ```
 
 The tool records browser WebRTC counters, video-frame callback gaps, native camera telemetry,
-and NVIDIA power, clocks, temperature, utilization and memory. Local Cosys RPC starts and stops
+and NVIDIA power, clocks, temperature, utilization and memory. A separate `vmstat` process
+records host run queues, blocked tasks, memory, CPU utilization and disk I/O every five
+seconds, with boot identity and start/end host memory snapshots. Its log survives a
+measurement-command timeout; the first row contains averages since boot. Local Cosys RPC starts and stops
 Unreal CSV profiling; `profile-engine.py` preserves the CSV, its hash, metadata and per-frame GPU,
 game-thread, render-thread and frame-time distributions. `GPUTime` is the engine
 `RHIGetGPUFrameCycles()` measurement, not a sum of overlapping render passes.
