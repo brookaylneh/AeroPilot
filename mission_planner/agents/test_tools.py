@@ -7,7 +7,7 @@ from mission_planner.agents.tools import TOOLS, validate_arguments
 
 class ToolContracts(unittest.TestCase):
     def test_registry_has_only_available_subsystems(self):
-        self.assertEqual(len(TOOLS), 22)
+        self.assertEqual(len(TOOLS), 25)
         self.assertNotIn("open_feed", [t["name"] for t in TOOLS])
 
     def test_all_drone_query_requires_json_null(self):

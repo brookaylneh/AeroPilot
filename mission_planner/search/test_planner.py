@@ -168,6 +168,7 @@ class Planner(unittest.TestCase):
             "mission_planner.gcs.service",
             "mission_planner.gcs.validation",
             "world.cosys.terrain",
+            "world.cosys.landmarks",
         }
         allowed.update(
             "mission_planner.search." + name
@@ -180,6 +181,7 @@ class Planner(unittest.TestCase):
                 "execution",
                 "grid",
                 "planner",
+                "places",
                 "prior",
                 "relook",
                 "state",
@@ -260,6 +262,49 @@ class Subject(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "verbatim"):
             validate_profile(p, self.report)
         self.profile["age_years"] = {"value": 80, "evidence": self.profile["category"]["evidence"]}
+        with self.assertRaisesRegex(AssertionError, "explicitly stated"):
+            validate_profile(self.profile, self.report)
+
+    def test_parent_appositive_age_in_verbatim_hero_briefing(self):
+        hero = (
+            "My father, 74, early dementia, left the trailhead at 2 pm to walk the creek loop. "
+            "His phone last pinged near the footbridge. Red windbreaker, walking stick. "
+            "He tends to follow water."
+        )
+        self.report["reportedCircumstances"] = hero
+        evidence = [{"field": "reportedCircumstances", "quote": hero}]
+        self.profile["age_years"] = {"value": 74, "evidence": evidence}
+        self.profile["category"] = {"value": "dementia", "evidence": evidence}
+        self.assertEqual(validate_profile(self.profile, self.report)["age_years"]["value"], 74)
+        self.profile["age_years"]["value"] = 2
+        with self.assertRaisesRegex(AssertionError, "explicitly stated"):
+            validate_profile(self.profile, self.report)
+
+    def test_clock_duration_and_disjoint_quotes_are_not_appositive_ages(self):
+        for text in (
+            "My father left at 2 pm after walking for 74 hours.",
+            "My father, 74 hours later, left at 2 pm.",
+            "My father, 74 steps from the bridge, called at 2 pm.",
+        ):
+            self.report["reportedCircumstances"] = text
+            for value in (2, 74):
+                self.profile["age_years"] = {
+                    "value": value,
+                    "evidence": [{"field": "reportedCircumstances", "quote": text}],
+                }
+                with (
+                    self.subTest(text=text, value=value),
+                    self.assertRaisesRegex(AssertionError, "explicitly stated"),
+                ):
+                    validate_profile(self.profile, self.report)
+        self.report["reportedCircumstances"] = "My father, after 74, continued walking."
+        self.profile["age_years"] = {
+            "value": 74,
+            "evidence": [
+                {"field": "reportedCircumstances", "quote": quote}
+                for quote in ("My father,", "74,")
+            ],
+        }
         with self.assertRaisesRegex(AssertionError, "explicitly stated"):
             validate_profile(self.profile, self.report)
 

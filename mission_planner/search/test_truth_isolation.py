@@ -16,11 +16,13 @@ from mission_planner.environment import ROOT
 
 ISOLATED_PASS = """
 import builtins
+import copy
+import json
 import sys
 import unittest
 from pathlib import Path
 
-private = ('profile_pipeline', 'compare_prompts', 'bench_prompt_equivalence', 'analyze_spacing', 'reduce_detection', 'evaluate_commander', 'infer_calibration', 'glimmer_calibration', 'analyze_calibration', 'calibrate', 'report_flight')
+private = ('profile_pipeline', 'compare_prompts', 'bench_prompt_equivalence', 'analyze_spacing', 'reduce_detection', 'evaluate_commander', 'infer_calibration', 'glimmer_calibration', 'analyze_calibration', 'calibrate', 'report_flight', 'scenario_creator')
 original_import = builtins.__import__
 def guarded_import(name, *args, **kwargs):
     assert not any(part in name.split('.') for part in private), 'Private module imported'
@@ -29,7 +31,7 @@ builtins.__import__ = guarded_import
 def audit(event, arguments):
     if event == 'open' and isinstance(arguments[0], (str, bytes)):
         path = str(arguments[0])
-        assert 'data/calibration/' not in path and not path.endswith('poison-truth.json'), 'Private truth opened'
+        assert not any(part in path for part in ('data/calibration/', '/scenarios/', '/truth/')) and not path.endswith('poison-truth.json'), 'Private truth opened'
 sys.addaudithook(audit)
 check = unittest.TestCase()
 with check.assertRaisesRegex(AssertionError, 'Private truth opened'):
@@ -44,6 +46,9 @@ from mission_planner.agents.perception.configuration import load_configuration, 
 from mission_planner.agents.perception.pipeline import Processor
 from mission_planner.search.belief import Evidence
 from mission_planner.search.detections import Detections
+from mission_planner.search.places import location_support, proposal
+from mission_planner.search.prior import initialize
+from world.cosys.landmarks import directions, find, load, WORLD_PATH
 class Sam:
     def detect(self, jpeg, prompts, threshold, *, timing):
         assert prompts == ['person'] and threshold == 0.3
@@ -69,6 +74,36 @@ evidence = Evidence(np.full(len(low), 1 / len(low)), grid, model['false_alarm_ra
 footprint = [{'north_m': float(point[0] + n), 'east_m': float(point[1] + e)} for n, e in ((-10,-10), (-10,10), (10,10), (10,-10))]
 effect = evidence.apply('frame', np.full(len(low), 0.8), footprint, ledger, True)
 assert effect['kind'] == 'positive' and abs(float(evidence.probability.sum()) - 1) < 1e-9
+assert evidence.mass(detection['localization'])['region_cell_count'] > 0
+
+world = json.loads(WORLD_PATH.read_text())
+bounds = world['searchBoundsCm']
+center = {axis: (bounds['min'][axis] + bounds['max'][axis]) / 2 for axis in 'xyz'}
+bridge = {'id': 'bridge', 'name': 'Test Bridge', 'aliases': ['Crossing'], 'kind': 'bridge', 'geometry': {'type': 'point', 'points': [center]}}
+creek = {'id': 'creek', 'name': 'Test Creek', 'aliases': [], 'kind': 'creek', 'geometry': {'type': 'polyline', 'points': [{**center, 'x': center['x'] + delta, 'y': center['y'] + 2000} for delta in (-2000, 2000)]}}
+document = {'schemaVersion': 1, 'worldId': world['worldId'], 'coordinateSystem': world['coordinateSystem'], 'landmarks': [bridge, creek]}
+landmark_path = Path(sys.argv[1]).parent / 'public-landmarks.json'
+landmark_path.write_text(json.dumps(document))
+landmarks = load(landmark_path)
+assert find(landmarks, 'CROSSING')['matches'][0]['id'] == 'bridge'
+heading = directions(landmarks, center['x'] / 100 + 3, center['y'] / 100 + 4)
+assert heading['nearest']['distance_m'] == 5 and heading['linear']['side'] == 'west'
+fence = [{'north_m': bounds[n]['x'] / 100, 'east_m': bounds[e]['y'] / 100} for n, e in (('min', 'min'), ('min', 'max'), ('max', 'max'), ('max', 'min'))]
+briefing = {'lastKnownLocation': 'Phone last pinged on Test Creek'}
+location = proposal(landmarks, 'creek', [{'field': 'lastKnownLocation', 'quote': briefing['lastKnownLocation']}], briefing, fence)
+positions, weights = location_support(location, 4)
+assert len(positions) > 1 and abs(float(weights.sum()) - 1) < 1e-12
+prior, retained, fit = initialize(grid, location, 'dementia', 'temperate_mountainous')
+assert abs(float(prior.sum()) - 1) < 1e-9 and 0 < retained <= 1
+assert fit['location_support']['method'] == 'uniform arclength midpoint quadrature'
+for level in ('document', 'landmark', 'geometry', 'point'):
+    for field in ('subject', 'clue'):
+        poison = copy.deepcopy(document)
+        target = poison if level == 'document' else poison['landmarks'][0] if level == 'landmark' else poison['landmarks'][0]['geometry'] if level == 'geometry' else poison['landmarks'][0]['geometry']['points'][0]
+        target[field] = {'placement': str(sys.argv[2])}
+        landmark_path.write_text(json.dumps(poison))
+        with check.assertRaises(AssertionError):
+            load(landmark_path)
 assert not any(any(part in name.split('.') for part in private) for name in sys.modules)
 """
 

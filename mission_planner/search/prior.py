@@ -106,19 +106,26 @@ def density(distance_squared, category, domain):
 
 
 def initialize(grid, point, category, domain):
-    north, east = point["north_m"], point["east_m"]
+    from mission_planner.search.places import location_support
+
+    positions, weights = location_support(point, float(np.min(grid["high"] - grid["low"])))
     values = np.zeros(len(grid["centers"]))
-    for dn in (-0.25, 0.25):
-        for de in (-0.25, 0.25):
-            delta = (
-                grid["centers"]
-                - np.array([north, east])
-                + np.array([dn, de]) * (grid["high"] - grid["low"])
-            )
-            values += density(np.sum(delta**2, axis=1), category, domain) / 4
+    for position, weight in zip(positions, weights):
+        for dn in (-0.25, 0.25):
+            for de in (-0.25, 0.25):
+                delta = (
+                    grid["centers"] - position + np.array([dn, de]) * (grid["high"] - grid["low"])
+                )
+                values += weight * density(np.sum(delta**2, axis=1), category, domain) / 4
     mass = values * grid["areas"]
     retained = float(mass.sum())
     assert 0 < retained <= 1
     probability = mass / retained
     assert abs(float(probability.sum()) - 1) < 1e-9
-    return probability, retained, table(category, domain)[2]
+    fit = table(category, domain)[2]
+    fit["location_support"] = {
+        "method": "point" if len(positions) == 1 else "uniform arclength midpoint quadrature",
+        "samples": len(positions),
+        "maximum_interval_m": float(np.min(grid["high"] - grid["low"])),
+    }
+    return probability, retained, fit

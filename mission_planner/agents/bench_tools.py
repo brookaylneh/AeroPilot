@@ -4,14 +4,15 @@ import argparse
 import hashlib
 import json
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from mission_planner.agents.models import Wonder
 from mission_planner.agents.tools import AGENT_INSTRUCTIONS, TOOLS
 
 
-def call(name, **arguments):
-    return {"name": name, "arguments": arguments}
+def call(tool_name, **arguments):
+    return {"name": tool_name, "arguments": arguments}
 
 
 def focus(target, drone_id=None, north_m=None, east_m=None, radius_m=None):
@@ -257,7 +258,33 @@ CASES += [
         [call("resume", drone_id="Drone2")],
     ),
 ]
-assert len(CASES) == 46
+CASES += [
+    (
+        "Resolve the named place 'FOOTBRIDGE' using the landmark catalogue.",
+        [call("find_place", name="FOOTBRIDGE")],
+    ),
+    (
+        "Look up the exact alias 'crossing'. It may name more than one place; show all matching candidates.",
+        [call("find_place", name="crossing")],
+    ),
+    (
+        "Look up 'Unlisted Saddle' exactly. If unknown, show the known names.",
+        [call("find_place", name="Unlisted Saddle")],
+    ),
+    (
+        "Give landmark directions for the point 38 metres north and 12 metres west of mission origin.",
+        [call("describe_location", north_m=38, east_m=-12)],
+    ),
+    (
+        "The find_place result for 'crossing' returned two candidates: bridge-a, North Bridge; bridge-b, South Bridge. Ask me which one I mean before proposing a last known location. No new lookup is needed.",
+        [],
+    ),
+    (
+        "The find_place result for 'Unlisted Saddle' has no matches and known_names ['North Bridge', 'Creek Loop']. Present those names and ask me to choose or mark the map; keep this response to that clarification.",
+        [],
+    ),
+]
+assert len(CASES) == 52
 
 
 def run(output, first_case):
@@ -265,14 +292,46 @@ def run(output, first_case):
     output.mkdir(parents=True, exist_ok=False)
     rows = []
     model = Wonder()
+    worker = ThreadPoolExecutor(max_workers=1)
     try:
         for index, (request, expected) in enumerate(CASES[first_case - 1 :], first_case):
             started = time.perf_counter()
             trace = output / f"{index:02d}"
-            response = model.respond(
-                request, [], "low", TOOLS, instructions=AGENT_INSTRUCTIONS, trace_path=trace
+            future = worker.submit(
+                model.respond,
+                request,
+                [],
+                "low",
+                TOOLS,
+                instructions=AGENT_INSTRUCTIONS,
+                trace_path=trace,
             )
+            error = future.exception()
             elapsed = time.perf_counter() - started
+            if error is not None:
+                row = {
+                    "case": index,
+                    "request": request,
+                    "expected": expected,
+                    "actual": None,
+                    "passed": False,
+                    "seconds": elapsed,
+                    "error": type(error).__name__,
+                    "http_status_code": json.loads(trace.with_suffix(".http.json").read_text())[
+                        "status_code"
+                    ]
+                    if trace.with_suffix(".http.json").is_file()
+                    else None,
+                    "usage": None,
+                }
+                rows.append(row)
+                (output / "scores.json").write_text(json.dumps(rows, indent=2) + "\n")
+                print(
+                    f"{index:02d} FAILED {type(error).__name__} {elapsed:.3f} s; preserved, not retried",
+                    flush=True,
+                )
+                continue
+            response = future.result()
             http = json.loads(trace.with_suffix(".http.json").read_text())
             actual = [
                 {"name": item["name"], "arguments": json.loads(item["arguments"])}
@@ -300,6 +359,7 @@ def run(output, first_case):
             print(f"{index:02d} {'PASS' if passed else 'MISS'} {elapsed:.3f} s", flush=True)
             (output / "scores.json").write_text(json.dumps(rows, indent=2) + "\n")
     finally:
+        worker.shutdown()
         model.http.close()
     correct = sum(row["passed"] for row in rows)
     result = {

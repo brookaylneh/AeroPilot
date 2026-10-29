@@ -24,6 +24,7 @@ from mission_planner.gcs.fleet import Fleet
 from mission_planner.gcs.geodesy import BOUND_M, NAMES
 from mission_planner.gcs.ground_team import GroundTeam
 from mission_planner.search.execution import flight_label, start_search
+from mission_planner.search.places import proposal
 from mission_planner.search.relook import relook, resume_search
 from mission_planner.search.state import Search
 from mission_planner.search.tools import NAMES as SEARCH_TOOLS
@@ -258,8 +259,69 @@ class Mission:
             "map_focus": self.map_focus,
         }
 
+    async def approve(self, name, arguments, source, call_id, text):
+        approval_id = str(uuid.uuid4())
+        future = asyncio.get_running_loop().create_future()
+        self.approvals[approval_id] = {
+            "card": {
+                "id": approval_id,
+                "name": name,
+                "arguments": arguments,
+                "source": source,
+                "call_id": call_id,
+            },
+            "future": future,
+            "call_id": call_id,
+        }
+        self.event(
+            "approval",
+            text,
+            name=name,
+            arguments=arguments,
+            result={"approval_id": approval_id},
+            call_id=call_id,
+            source=source,
+        )
+        try:
+            approved = await future
+        finally:
+            del self.approvals[approval_id]
+        assert approved, "Operator declined"
+
     async def execute(self, name, arguments, source, call_id):
         validate_arguments(name, arguments)
+        if name == "set_last_known_place":
+            search = self.search
+            search.editable()
+            assert search.commander.source is None, "Camera source selection locks search inputs"
+            assert self.fleet_ready, "MAVLink fleet unavailable"
+            location = proposal(
+                search.landmarks,
+                arguments["place_id"],
+                arguments["evidence"],
+                self.case["report"],
+                self.vehicles()[0]["fence"],
+            )
+            await self.approve(
+                name,
+                arguments,
+                source,
+                call_id,
+                "Last known place awaiting operator map approval",
+            )
+            search.editable()
+            assert search.commander.source is None, "Camera source selection locks search inputs"
+            assert location == proposal(
+                search.landmarks,
+                arguments["place_id"],
+                arguments["evidence"],
+                self.case["report"],
+                self.vehicles()[0]["fence"],
+            ), "Place changed during approval"
+            search.point = location
+            search.invalidate()
+            search.changed()
+            return search.summary()
         if name == "resolve_detection":
             assert source == "operator", "Only an operator may resolve a detection"
         if name in SEARCH_TOOLS and name not in (
@@ -334,31 +396,13 @@ class Mission:
         assert CATEGORIES[name] == "flight"
         require_available(self.search, name, arguments)
         if self.autonomy == "Supervised" or name in ("notify_ground_team", "relook_detection"):
-            approval_id = str(uuid.uuid4())
-            future = asyncio.get_running_loop().create_future()
-            self.approvals[approval_id] = {
-                "card": {
-                    "id": approval_id,
-                    "name": name,
-                    "arguments": arguments,
-                    "source": source,
-                    "call_id": call_id,
-                },
-                "future": future,
-                "call_id": call_id,
-            }
-            self.event(
-                "approval",
+            await self.approve(
+                name,
+                arguments,
+                source,
+                call_id,
                 f"{flight_label(name, arguments)} · {name.replace('_', ' ')} awaiting operator approval",
-                result={"approval_id": approval_id},
-                name=name,
-                arguments=arguments,
-                call_id=call_id,
-                source=source,
             )
-            approved = await future
-            del self.approvals[approval_id]
-            assert approved, "Operator declined"
         require_available(self.search, name, arguments)
         aircraft = (
             set(NAMES)

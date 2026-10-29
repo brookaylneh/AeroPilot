@@ -14,11 +14,18 @@ from mission_planner.search.grid import make_grid, polygon_areas, validate_area
 from mission_planner.search.planner import encode, plan
 from mission_planner.search.prior import TABLES, initialize
 from mission_planner.search.subject import explicit_point, validate_profile
+from world.cosys.landmarks import LANDMARKS_PATH, directions, find, load
 
 
 class Search:
     def __init__(self, mission):
         self.mission = mission
+        self.landmarks = load() if LANDMARKS_PATH.is_file() else None
+        self.landmark_error = (
+            None
+            if self.landmarks is not None
+            else "Landmark data unavailable: world/unreal/landmarks.json"
+        )
         self.profile = None
         self.point = None
         self.vertices = None
@@ -82,7 +89,7 @@ class Search:
 
     def initialize(self):
         assert self.profile is not None, "Record subject profile first"
-        assert self.point is not None, "Operator must mark the last known point on the map"
+        assert self.point is not None, "Operator must mark or approve the last known location"
         assert self.vertices is not None, "Define the search area and statistical domain"
         assert self.mission.fleet_ready, "MAVLink fleet unavailable"
         if self.grid is None:
@@ -127,6 +134,7 @@ class Search:
 
     def summary(self):
         result = {
+            "landmark_error": self.landmark_error,
             "profile_recorded": self.profile is not None,
             "last_known_point": self.point,
             "area_defined": self.vertices is not None,
@@ -170,6 +178,9 @@ class Search:
             )
         return result
 
+    def directions(self, north_m, east_m):
+        return None if self.landmarks is None else directions(self.landmarks, north_m, east_m)
+
     def coverage_summary(self):
         ingestion = self.commander.ingestion
         return {
@@ -195,6 +206,8 @@ class Search:
             }
         )
         return {
+            "landmarks": self.landmarks,
+            "landmark_error": self.landmark_error,
             "revision": self.revision,
             "profile": self.profile,
             "point": self.point,
@@ -215,6 +228,11 @@ class Search:
         }
 
     async def execute(self, name, arguments, source="operator"):
+        if name in ("find_place", "describe_location"):
+            assert self.landmarks is not None, self.landmark_error
+            if name == "find_place":
+                return find(self.landmarks, arguments["name"])
+            return self.directions(arguments["north_m"], arguments["east_m"])
         if name in ("list_detections", "review_detection", "resolve_detection"):
             return await self.commander.execute(name, arguments, source)
         if name == "record_subject_profile":
@@ -223,7 +241,9 @@ class Search:
             validate_profile(arguments, self.mission.case["report"])
             self.profile = arguments
             p = explicit_point(arguments)
-            if p is not None and (self.point is None or self.point["source"] != "operator"):
+            if p is not None and (
+                self.point is None or self.point["source"] == "briefing_coordinates"
+            ):
                 from mission_planner.gcs.geodesy import BOUND_M
 
                 assert abs(p["north_m"]) <= BOUND_M and abs(p["east_m"]) <= BOUND_M
