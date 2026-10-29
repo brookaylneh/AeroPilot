@@ -8,6 +8,12 @@ runtime_binary="$package_root/ScenarioStudio/Binaries/Linux/ScenarioStudio"
 # A release must identify its cooked map; never substitute an unrelated world.
 read -r world_map < "$package_root/scenario-map.txt"
 [[ "$world_map" =~ ^/Game/[A-Za-z0-9_/]+$ ]] || { echo 'Invalid release map manifest' >&2; exit 2; }
+read -r shader_platform < "$package_root/shader-platform.txt"
+case "$shader_platform" in
+  SF_VULKAN_SM5) rhi_flag=-sm5 ;;
+  SF_VULKAN_SM6) rhi_flag=-sm6 ;;
+  *) echo 'Unsupported packaged shader platform' >&2; exit 2 ;;
+esac
 pixel_streaming="${SNR_PIXEL_STREAMING:?}"
 [[ "$pixel_streaming" = 0 || "$pixel_streaming" = 1 ]] || exit 2
 stream_fps="${SNR_STREAM_FPS:-60}"
@@ -93,7 +99,7 @@ install -D -m 644 world/cosys/materials.csv "$HOME/Documents/AirSim/materials.cs
 # Run the packaged binary directly so Docker/systemd termination reaches UE
 # and flushes its device-specific pipeline cache during graceful shutdown.
 exec "$runtime_binary" ScenarioStudio "$world_map" \
-  -RenderOffscreen -unattended -nosound -NoSplash -notraceserver -vulkan -sm5 \
+  -RenderOffscreen -unattended -nosound -NoSplash -notraceserver -vulkan "$rhi_flag" \
   "-UserDir=$HOME/ScenarioStudio" \
   -savevulkanpsocacheonexit \
   -dpcvars=r.pso.PrecompileThreadPoolSizeMax=2,r.Streaming.PoolSize=4096,r.ScreenPercentage=100 \

@@ -63,7 +63,7 @@ test('packaged container needs no editor, accepts bounded host resources and sel
   }
 });
 
-test('runtime selects its manifest and H264 explicitly; missing maps and unsupported codecs fail', () => {
+test('runtime selects its map, shader platform and H264 explicitly; invalid manifests fail', () => {
   const directory = mkdtempSync(path.join(tmpdir(), 'snr-package-'));
   try {
     const binaries = path.join(directory, 'ScenarioStudio/Binaries/Linux');
@@ -76,6 +76,7 @@ test('runtime selects its manifest and H264 explicitly; missing maps and unsuppo
     );
     writeFileSync(path.join(directory, 'ScenarioStudio.sh'), '#!/bin/sh\nexit 0\n', { mode: 0o700 });
     writeFileSync(path.join(directory, 'scenario-map.txt'), '/Game/OpenMeadow/OpenMeadow\n');
+    writeFileSync(path.join(directory, 'shader-platform.txt'), 'SF_VULKAN_SM6\n');
     writeFileSync(path.join(directory, 'settings.json'), '{}');
     const env: NodeJS.ProcessEnv = {
       ...process.env,
@@ -100,6 +101,8 @@ test('runtime selects its manifest and H264 explicitly; missing maps and unsuppo
     assert.equal(run().status, 0);
     const args: string[] = JSON.parse(readFileSync(output, 'utf8'));
     assert(args.includes('/Game/OpenMeadow/OpenMeadow'));
+    assert(args.includes('-sm6'));
+    assert(!args.includes('-sm5'));
     assert(args.includes('-PixelStreamingEncoderCodec=H264'));
     assert(args.includes('-ResX=1920'));
     assert(args.includes('-PixelStreamingWebRTCFps=60'));
@@ -145,6 +148,16 @@ test('runtime selects its manifest and H264 explicitly; missing maps and unsuppo
     assert(sensorOnly.includes('-ExecCmds=t.MaxFPS 10'));
     assert(!sensorOnly.some((arg) => arg.startsWith('-PixelStreamingConnectionURL=')));
     assert(!sensorOnly.some((arg) => arg.startsWith('-PixelStreamingWebRTCMinPort=')));
+    writeFileSync(path.join(directory, 'shader-platform.txt'), 'SF_VULKAN_SM5\n');
+    assert.equal(run().status, 0);
+    const sm5: string[] = JSON.parse(readFileSync(output, 'utf8'));
+    assert(sm5.includes('-sm5'));
+    assert(!sm5.includes('-sm6'));
+    writeFileSync(path.join(directory, 'shader-platform.txt'), 'unsupported\n');
+    assert.equal(run().status, 2, 'An unsupported shader platform must fail');
+    rmSync(path.join(directory, 'shader-platform.txt'));
+    assert.notEqual(run().status, 0, 'A missing shader platform must fail');
+    writeFileSync(path.join(directory, 'shader-platform.txt'), 'SF_VULKAN_SM6\n');
     rmSync(path.join(directory, 'scenario-map.txt'));
     assert.notEqual(run().status, 0, 'A missing map must never load a substitute world');
   } finally {
