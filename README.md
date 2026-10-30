@@ -1,6 +1,6 @@
 # Search and Rescue Mission Control
 
-An AI incident commander for wilderness search and rescue. Four quadcopters, each flown by an ArduPilot
+An AI incident commander for backcountry search and rescue. Four quadcopters, each flown by an ArduPilot
 autopilot over MAVLink, search a photorealistic Unreal Engine world for a missing person. SAM 3.1 detects,
 Muse Glimmer verifies and Muse Wonder commands through typed tools, while the operator supervises from a
 browser ground control station.
@@ -43,5 +43,5 @@ npm test && npm run typecheck && npm run format:check
 .venv-cosys/bin/python -m unittest
 ```
 
-Licensed Unreal content (MetaHuman, Fab, Cosys binaries) is not included; see
+Licensed Unreal content and Cosys binaries are not included; see
 [assets](world/unreal/assets.md).

@@ -146,7 +146,7 @@ export default function UnrealApp() {
   }
   return (
     <div className={`creator-app stage-${stage}`}>
-      <section className="scene native-scene" aria-label="Unreal wilderness scene">
+      <section className="scene native-scene" aria-label="Unreal valley scene">
         <div ref={container} className="native-stream" />
         {packet && transport.current && region && stage !== 'briefing' && (
           <WorldNavigation

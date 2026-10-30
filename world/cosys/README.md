@@ -126,17 +126,6 @@ Generate the tracked deployment settings with explicit port and instance choices
   --rpc-port 41451 --instance-base 0 --output world/cosys/settings.json
 ```
 
-For an isolated slot, load its ignored environment and write its own settings file:
-
-```sh
-set -a
-. .local/slot.env
-set +a
-.venv-cosys/bin/python -m world.cosys.configure-drones \
-  --rpc-port "$SNR_COSYS_PORT" --instance-base "$SNR_SITL_INSTANCE_BASE" \
-  --output "$SNR_COSYS_SETTINGS"
-```
-
 The four `ArduCopter` vehicles bind their control inputs to `127.0.0.1`; sensor packets
 also target loopback. For SITL instance `i`, `UdpPort` is `9003 + 10*i` and
 `ControlPortLocal` is `9002 + 10*i`. The generator checks the NED spawn coordinates,
@@ -382,7 +371,7 @@ set +a
 
 The environment update takes coupling fields from the installed profile in
 deploy/runtime.env.example; web, signalling, TURN, viewport and resource settings
-retain their installed values. Regeneration deliberately changes the copied slot
+retain their installed values. Regeneration deliberately changes the copied
 settings to RPC 41451 and instances 0–3. The installer renders the actual systemd
 units/drop-ins, reloads systemd and enables the services without starting them.
 The additional drop-in accepts the measured container exit status 143 and clears

@@ -29,11 +29,11 @@ loss and preserve GPS timing on discrete simulator ticks. See upstream
 is required; instance IDs select AirSim ports `9003 + 10*instance` for sensor input
 and `9002 + 10*instance` for motor output. `SNR_COSYS_SETTINGS` must match those
 instances, the configured RPC port and the authored spawns. Every launch checks
-`ss -lntup` before creating listeners. The coupling slot uses `.local/slot.env`.
+`ss -lntup` before creating listeners.
 The pinned release, prerequisites and parameter baseline are recorded in
 [the fleet measurements](../measurements/gcs-sitl.json). Build with at most four jobs.
-The deployment slot uses instances 0–3, system IDs 1–4 and UDP ports 14600–14603,
-without MAVProxy or a router. Development slots use their documented instance/port bases.
+The installed services use instances 0–3, system IDs 1–4 and UDP ports 14600–14603,
+without MAVProxy or a router.
 Do not run the standalone fleet check alongside the service.
 
 The service sends SIGTERM to its four child autopilots on shutdown. In coupled mode,
@@ -153,10 +153,10 @@ Protocol references: [SITL/multiple vehicles](https://ardupilot.org/dev/docs/usi
 
 Search coverage uses the [search modules](../search/README.md) and a single fleet approval.
 `accept_browser.mjs search URL NEW_DIRECTORY` exercises the quoted profile, operator point,
-planning, approval and actual takeoff/coverage/return sequence in the assigned slot.
+planning, approval and actual takeoff/coverage/return sequence.
 
 `accept_world.py --case UUID --output NEW_DIRECTORY` serves the actual mission
-class and owns its coupled fleet in the assigned mission port. Wait for its
+class and owns its coupled fleet on the mission port. Wait for its
 `ready.json`, run browser acceptance, then create `start-flight` in that directory
 to begin the prevalidated AUTO missions. It logs MAVLink and Cosys ground-truth
 pose comparisons without reading actor placement. On completion or failure it
@@ -167,7 +167,7 @@ supervisor must acknowledge within the documented shutdown deadline.
 `accept_browser.mjs world URL NEW_DIRECTORY` records first-view containment at
 both acceptance sizes and tests east/west map focus, zoom and pan. Run it before
 any persistent map-focus command. `scenario_creator/accept_world_map.mjs` records
-isolated Studio map-component evidence when a slot has no Pixel Streaming ports;
+isolated Studio map-component evidence without a Pixel Streaming session;
 that evidence does not establish an end-to-end Studio session.
 
 `bench_world.py --output NEW_JSON` measures one full-world plan and one negative

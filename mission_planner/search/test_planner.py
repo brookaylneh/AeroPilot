@@ -269,7 +269,7 @@ class Subject(unittest.TestCase):
         validate_profile(self.profile, self.report)
         self.assertIsNone(explicit_point(self.profile))
 
-    def test_fabricated_quote_and_age_are_rejected(self):
+    def test_invented_quote_and_age_are_rejected(self):
         p = copy.deepcopy(self.profile)
         p["category"]["evidence"][0]["quote"] = "An elderly hiker is missing."
         with self.assertRaisesRegex(AssertionError, "verbatim"):

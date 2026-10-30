@@ -38,9 +38,7 @@ directory holds logs and saved state. `SNR_PIXEL_STREAMING=0` disables creation
 and automatic start of the default streamer using the packaged Pixel Streaming 2
 settings. It requires no signalling or WebRTC ports. A streaming instance requires
 `SNR_STREAMER_PORT`, `SNR_WEBRTC_MIN_PORT` and `SNR_WEBRTC_MAX_PORT`.
-The coupling slot records its paths and ports in `.local/slot.env`, uses the
-coupling-owned game release with unchanged cooked content hardlinked from the recovery
-release, and caps its container at four CPUs. A non-streaming instance accepts a
+A non-streaming instance accepts a
 320×180 viewport and an explicit 1–60 FPS cap; flight physics runs independently.
 
 ## Build and package
@@ -231,7 +229,7 @@ values go to `lighting.json`.
 
 Packaging requires explicit manifests for the Content being cooked. Override any
 installed `Live` paths inherited from the runtime profile. Generate settings for
-the assigned slot, then supply both files:
+the installed RPC port and instance base, then supply both files:
 
 ```sh
 export SNR_WORLD_CONFIG="$PWD/world/cosys/world.json"
@@ -248,7 +246,7 @@ bash world/unreal/scripts/stage-live-release.sh .local/unreal/<new-build>/Linux
 
 Use these current source manifests only after authoring their corresponding
 Content. A rendering-only baseline instead uses explicit snapshots of the
-unchanged world's manifest and matching slot settings. The package retains both
+unchanged world's manifest and matching Cosys settings. The package retains both
 manifests and records its shader platform; the launcher requires that record.
 
 Content must be a real worktree-owned copy holding exactly the cook closure.
@@ -319,7 +317,7 @@ MCP is for inspection and iteration only; shipped content comes from tracked scr
 | Blender | `https://projects.blender.org/lab/blender_mcp` at `dbbf836ad4b1025f14a2b3b504c43903f39e0b04`, GPL-3.0-or-later         | add-on TCP `127.0.0.1:9879`       |
 
 Both plugins have `TargetAllowList: ["Editor"]` in the `.uproject`, so packaged games exclude them.
-The editor's HTTP listener binds `localhost` by default. Start it under the slot's memory cap:
+The editor's HTTP listener binds `localhost` by default. Start it under the 56 GiB memory cap:
 
 ```sh
 UE_ROOT=... SNR_UNREAL_HOME=$PWD/.local/unreal/editor-home SNR_MEMORY_LIMIT=56g SNR_UNREAL_MCP_PORT=55570 \
@@ -374,7 +372,7 @@ A supported device still needs SM6 shaders and the project's uncooked assets for
 ## Measure packaged performance
 
 `measure_performance.py` launches the release in `SNR_PACKAGE_ROOT` at 3840×2160, 60 FPS cap, no
-Pixel Streaming, under the 56G scope, with the slot's four coupled autopilots. After a warm-up capture
+Pixel Streaming, under the 56G scope, with four coupled autopilots. After a warm-up capture
 it flies the pinned lanes at 5 m/s with a 4K capture every 16 m per drone (1.25 Hz fleet-wide), then
 runs 40 back-to-back captures per hovering drone. Frame and GPU times come from the CSV profiler
 (`FrameTime`, `GPUTime` = `RHIGetGPUFrameCycles`), anchored to host time by the timestamped
@@ -385,7 +383,7 @@ frames, each drone's first render at an identical pose, are saved in the run dir
 capture records its shadow floor, so the two arms compare frames, capture time and GPU time.
 
 ```sh
-set -a; . .local/slot.env; set +a   # SNR_PACKAGE_ROOT, SNR_COSYS_SETTINGS, SNR_WORLD_CONFIG: the release
+set -a; . .local/runtime.env; set +a   # SNR_PACKAGE_ROOT, SNR_COSYS_SETTINGS, SNR_WORLD_CONFIG: the release
 .venv-cosys/bin/python -m world.unreal.measure_performance --lumen on \
   --output .local/evidence/world/<new>.json
 ```

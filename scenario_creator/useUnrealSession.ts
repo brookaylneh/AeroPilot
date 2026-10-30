@@ -81,7 +81,7 @@ export function useUnrealSession() {
   const [transitioning, setTransitioning] = useState(false);
   const [retry, setRetry] = useState(0);
   const [connectionStatus, setConnectionStatus] = useState({
-    title: 'Opening the wilderness…',
+    title: 'Opening the valley…',
     detail: 'Checking scene availability.',
   });
   const [videoStats, setVideoStats] = useState<{ fps: number; height: number } | null>(null);

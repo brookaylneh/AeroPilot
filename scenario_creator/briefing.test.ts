@@ -9,7 +9,7 @@ import { once } from 'node:events';
 import { briefingRouter } from './briefingRouter';
 import { rescueCaseSchema } from './briefing';
 
-const id = '9b6e308e-3257-43d4-bf5d-5fabcf3a9811';
+const id = '9b6e308e-3257-43d4-bf5d-5e1bcf3a9811';
 const rescueCase = {
   id,
   schemaVersion: 1,

@@ -70,7 +70,7 @@ or a successful compile alone is not acceptance.
 
 ## Map component acceptance
 
-`node --env-file=.local/slot.env scenario_creator/accept_world_map.mjs ORIGIN NEW_DIRECTORY`
+`node --env-file=.local/runtime.env scenario_creator/accept_world_map.mjs ORIGIN NEW_DIRECTORY`
 bundles the actual Studio `WorldMap` and Mission Control `MissionMap` inset with
 the public world bounds and existing application styles. It uses Playwright route fulfillment at the assigned origin; it
 starts no server and adds no application route. The existing web server supplies
