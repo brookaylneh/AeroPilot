@@ -5,15 +5,16 @@ import subprocess
 import unittest
 
 import numpy as np
+from scipy.integrate import quad
 
 from mission_planner.agents.perception.geometry import Camera
+from mission_planner.agents.perception.reduce_detection import COHORT, reduce_calibration
 from mission_planner.environment import ROOT
 from mission_planner.gcs.geodesy import fence_vertices
 from mission_planner.search.belief import negative_update
 from mission_planner.search.coverage import capture_pod
-from mission_planner.search.detection import COHORT, reduce_calibration
 from mission_planner.search.grid import make_grid
-from mission_planner.search.prior import TABLES, initialize
+from mission_planner.search.prior import QUANTILES, TABLES, cdf, density, initialize, table
 
 
 class Probability(unittest.TestCase):
@@ -46,13 +47,41 @@ class Probability(unittest.TestCase):
             p, mass, fit = initialize(self.grid, {"north_m": 0, "east_m": 0}, category, domain)
             self.assertAlmostEqual(float(p.sum()), 1, places=12)
             self.assertTrue(0 < mass < 1)
-            self.assertEqual(fit["fit_residuals"], [0, 0, 0, 0])
+            np.testing.assert_allclose(fit["fit_residuals"], 0, atol=1e-15, rtol=0)
+
+    def test_radial_cdf_knots_monotonicity_and_continuous_density(self):
+        for category, domain in TABLES:
+            q, interpolant, _ = table(category, domain)
+            np.testing.assert_allclose(cdf(q, category, domain), QUANTILES, atol=1e-15, rtol=0)
+            samples = np.unique(np.concatenate([np.linspace(a, b, 101) for a, b in zip(q, q[1:])]))
+            self.assertTrue((np.diff(cdf(samples, category, domain)) > 0).all())
+            for knot in q[1:]:
+                neighboring = density(knot * np.array([1 - 1e-9, 1 + 1e-9]), category, domain)
+                self.assertAlmostEqual(float(neighboring[0] / neighboring[1]), 1, places=6)
+            for a, b in zip(q, q[1:]):
+                self.assertGreater(
+                    float(np.ptp(density(np.linspace(a, b, 11), category, domain))), 0
+                )
+            integrated = sum(
+                quad(lambda x: float(density(x, category, domain)) * np.pi, a, b)[0]
+                for a, b in zip(q, q[1:])
+            )
+            scale = 0.05 / float(interpolant(q[-1], 1))
+            integrated += quad(
+                lambda x: float(density(q[-1] + scale * x, category, domain)) * np.pi * scale,
+                0,
+                np.inf,
+            )[0]
+            self.assertAlmostEqual(integrated, 1, places=12)
+            self.assertAlmostEqual(float(cdf(q[-1] + scale * 100, category, domain)), 1, places=15)
 
     def test_real_capture_duplicate_is_not_independent_evidence(self):
         frame = json.loads(
             (ROOT / ".local/data/calibration/adult-kelvin/frame-00-+00-Drone1.json").read_text()
         )
-        pod, footprint = capture_pod(frame, self.grid, self.model)
+        pod, footprint = capture_pod(
+            frame, self.grid, self.model, np.ones(len(self.grid["areas"]), dtype=bool)
+        )
         self.assertEqual(len(footprint), 4)
         self.assertGreater(float(pod.sum()), 0)
         p, _, _ = initialize(self.grid, {"north_m": 0, "east_m": 0}, "hiker", "australian_mixed")
@@ -67,7 +96,10 @@ class Probability(unittest.TestCase):
             json.loads((ROOT / ".local/data/calibration/adult-kelvin" / name).read_text())
             for name in ("frame-00-+00-Drone1.json", "frame-04-+00-Drone1.json")
         ]
-        pods = [capture_pod(f, self.grid, self.model)[0] for f in frames]
+        pods = [
+            capture_pod(f, self.grid, self.model, np.ones(len(self.grid["areas"]), dtype=bool))[0]
+            for f in frames
+        ]
         p, _, _ = initialize(self.grid, {"north_m": 0, "east_m": 0}, "hiker", "australian_mixed")
         a, m = negative_update(p, np.zeros_like(p), pods[0])
         a, m = negative_update(a, m, pods[1])

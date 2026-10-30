@@ -14,10 +14,11 @@ import numpy as np
 from PIL import Image
 
 from mission_planner.agents.models import Glimmer, Sam
-from mission_planner.agents.perception.calibrate import ALONG, CONDITIONS, DATA, OFFSETS
+from mission_planner.agents.perception.calibrate import ALONG, CONDITIONS, OFFSETS
 from mission_planner.agents.perception.geometry import Camera
 from mission_planner.agents.perception.glimmer_calibration import annotate
 from mission_planner.agents.perception.hosting import inference_session
+from mission_planner.environment import ROOT
 
 
 def jpeg(image):
@@ -169,7 +170,7 @@ def main():
     args = parser.parse_args()
     names = [c[0] for c in CONDITIONS] if args.condition == ["all"] else args.condition
     assert "all" not in names and len(names) == len(set(names))
-    selected = [DATA / name for name in names]
+    selected = [ROOT / ".local/data/calibration" / name for name in names]
     assert all(
         (p / "complete.json").exists() and not (p / "inference.json").exists() for p in selected
     )

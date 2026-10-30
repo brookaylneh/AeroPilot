@@ -6,13 +6,23 @@ import unittest
 
 import numpy as np
 
+from mission_planner.agents.perception.reduce_detection import reduce_calibration
 from mission_planner.environment import ROOT
 from mission_planner.gcs.geodesy import fence_vertices, homes, to_geodetic
-from mission_planner.search.detection import reduce_calibration
 from mission_planner.search.grid import make_grid, polygon_areas
-from mission_planner.search.planner import AIRBORNE_SECONDS, encode, plan, validate_batch
+from mission_planner.search.planner import (
+    AIRBORNE_SECONDS,
+    candidate,
+    encode,
+    materialize,
+    plan,
+    validate_batch,
+)
 from mission_planner.search.prior import initialize, table
 from mission_planner.search.subject import PROFILE_FIELDS, explicit_point, validate_profile
+from mission_planner.search.terrain import terrain_leg
+from mission_planner.search.timing import travel_seconds
+from world.cosys.terrain import WORLD
 
 
 class Planner(unittest.TestCase):
@@ -59,6 +69,7 @@ class Planner(unittest.TestCase):
             self.readbacks,
             self.model,
             {"test": "determinism"},
+            [],
         )
 
     def test_byte_identical_validated_plan_and_endurance(self):
@@ -79,12 +90,55 @@ class Planner(unittest.TestCase):
         for name in ("planned", "uniform_lawnmower"):
             curve = first["comparison"][name]
             self.assertTrue(all(a["pos"] <= b["pos"] for a, b in zip(curve, curve[1:])))
-            self.assertTrue({300, 600, 900, 1200}.issubset({p["seconds"] for p in curve}))
+            self.assertTrue({300, 600, 900, 1200, 1800}.issubset({p["seconds"] for p in curve}))
 
     def test_batch_collision_is_refused(self):
         p = {"north_m": -600.0, "east_m": 0.0, "altitude_above_home_m": 30.0}
         with self.assertRaisesRegex(AssertionError, "conflicts"):
-            validate_batch({n: [p] for n in self.states}, self.states, self.readbacks)
+            validate_batch({n: [p] for n in self.states}, self.states, self.readbacks, [])
+
+    def test_timing_uses_oriented_legs_and_full_terrain_connectors(self):
+        vertices = [
+            {"north_m": n, "east_m": e}
+            for n, e in ((-700, -400), (-200, -400), (-200, 400), (-700, 400))
+        ]
+        result = candidate(self.grid, self.probability, vertices, homes(), self.model, 40, 0, True)
+        self.assertIsNotNone(result)
+        asymmetric_legs = 0
+        for name, route in result["routes"].items():
+            home_z = WORLD["vehicles"][name]["spawnUeCm"]["z"] / 100
+            for leg in route["legs"]:
+                forward = travel_seconds(terrain_leg(leg["start"], leg["end"], home_z)[0])
+                reverse = travel_seconds(terrain_leg(leg["end"], leg["start"], home_z)[0])
+                asymmetric_legs += abs(forward - reverse) > 1e-6
+                self.assertAlmostEqual(leg["ends_s"] - leg["starts_s"], forward)
+        self.assertGreater(asymmetric_legs, 0)
+        materialize(result, self.states, self.readbacks, [])
+
+    def test_concave_area_connector_blends_preserve_timeline_order(self):
+        vertices = [
+            {"north_m": n, "east_m": e}
+            for n, e in (
+                (-750, -400),
+                (-100, -400),
+                (-100, 400),
+                (-250, 400),
+                (-250, -390),
+                (-600, -390),
+                (-600, 400),
+                (-750, 400),
+            )
+        ]
+        result = candidate(self.grid, self.probability, vertices, homes(), self.model, 40, 0, True)
+        self.assertIsNotNone(result)
+        terrain_connectors = 0
+        for name, route in result["routes"].items():
+            home_z = WORLD["vehicles"][name]["spawnUeCm"]["z"] / 100
+            for before, after in zip(route["legs"], route["legs"][1:]):
+                terrain_connectors += len(terrain_leg(before["end"], after["start"], home_z)[0]) > 2
+                self.assertGreaterEqual(after["starts_s"], before["ends_s"] - 1e-8)
+        self.assertGreater(terrain_connectors, 0)
+        materialize(result, self.states, self.readbacks, [])
 
     def test_unsupported_prior_is_explicit(self):
         with self.assertRaisesRegex(AssertionError, "Unsupported prior"):
@@ -100,47 +154,77 @@ class Planner(unittest.TestCase):
 
     def test_runtime_has_no_truth_or_actor_dependency(self):
         allowed = {
-            "asyncio",
-            "base64",
-            "functools",
-            "hashlib",
-            "io",
-            "json",
-            "math",
-            "re",
-            "time",
-            "pathlib",
-            "numpy",
-            "PIL",
-            "scipy.stats",
-            "mission_planner.environment",
-            "mission_planner.search",
-            "mission_planner.gcs.geodesy",
-            "mission_planner.gcs.validation",
+            "mission_planner.agents.models",
+            "mission_planner.agents.tools",
+            "mission_planner.agents.perception.configuration",
             "mission_planner.agents.perception.geometry",
-            "mission_planner.agents.perception.glimmer_calibration",
+            "mission_planner.agents.perception.hosting",
+            "mission_planner.agents.perception.ingestion",
+            "mission_planner.agents.perception.localization",
+            "mission_planner.agents.perception.pipeline",
+            "mission_planner.environment",
+            "mission_planner.gcs.fleet",
+            "mission_planner.gcs.geodesy",
+            "mission_planner.gcs.ground_team",
+            "mission_planner.gcs.sensor_feed",
+            "mission_planner.gcs.service",
+            "mission_planner.gcs.sitl",
+            "mission_planner.gcs.validation",
+            "world.cosys.capture",
+            "world.cosys.client",
+            "world.cosys.landmarks",
+            "world.cosys.sensor",
             "world.cosys.terrain",
         }
-        for path in (ROOT / "mission_planner/search").glob("*.py"):
-            if path.name.startswith("test_"):
+        allowed.update(
+            "mission_planner.search." + name
+            for name in (
+                "belief",
+                "baselines",
+                "behavior",
+                "commander",
+                "coverage",
+                "detection",
+                "detections",
+                "execution",
+                "footprint",
+                "grid",
+                "planner",
+                "places",
+                "occlusion",
+                "prior",
+                "relook",
+                "state",
+                "subject",
+                "terrain",
+                "timing",
+                "tools",
+            )
+        )
+        pending, checked = (
+            ["mission_planner.gcs.service", "mission_planner.search.baselines"],
+            set(),
+        )
+        while pending:
+            module = pending.pop()
+            if module in checked:
                 continue
-            tree = ast.parse(path.read_text())
-            for node in ast.walk(tree):
-                modules = (
-                    [node.module]
+            self.assertIn(module, allowed)
+            checked.add(module)
+            path = ROOT.joinpath(*module.split(".")).with_suffix(".py")
+            for node in ast.walk(ast.parse(path.read_text())):
+                imports = (
+                    [node.module, *(node.module + "." + a.name for a in node.names)]
                     if isinstance(node, ast.ImportFrom)
                     else [a.name for a in node.names]
                     if isinstance(node, ast.Import)
                     else []
                 )
-                for module in modules:
-                    self.assertTrue(
-                        any(
-                            module == prefix or module.startswith(prefix + ".")
-                            for prefix in allowed
-                        ),
-                        (path, module),
-                    )
+                for name in imports:
+                    if name.startswith(("mission_planner.", "world.")):
+                        imported = ROOT.joinpath(*name.split(".")).with_suffix(".py")
+                        if imported.is_file():
+                            pending.append(name)
                 if isinstance(node, ast.Constant) and isinstance(node.value, str):
                     self.assertFalse(
                         any(
@@ -151,10 +235,13 @@ class Planner(unittest.TestCase):
                                 "runtime-actors",
                                 "evaluator/",
                                 "scenario.json",
+                                ".local/data/calibration",
+                                "labels.json",
                             )
                         ),
                         (path, node.value),
                     )
+        self.assertEqual(checked, allowed)
 
 
 class Subject(unittest.TestCase):
@@ -188,6 +275,49 @@ class Subject(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "verbatim"):
             validate_profile(p, self.report)
         self.profile["age_years"] = {"value": 80, "evidence": self.profile["category"]["evidence"]}
+        with self.assertRaisesRegex(AssertionError, "explicitly stated"):
+            validate_profile(self.profile, self.report)
+
+    def test_parent_appositive_age_in_verbatim_hero_briefing(self):
+        hero = (
+            "My father, 74, early dementia, left the trailhead at 2 pm to walk the creek loop. "
+            "His phone last pinged near the footbridge. Red windbreaker, walking stick. "
+            "He tends to follow water."
+        )
+        self.report["reportedCircumstances"] = hero
+        evidence = [{"field": "reportedCircumstances", "quote": hero}]
+        self.profile["age_years"] = {"value": 74, "evidence": evidence}
+        self.profile["category"] = {"value": "dementia", "evidence": evidence}
+        self.assertEqual(validate_profile(self.profile, self.report)["age_years"]["value"], 74)
+        self.profile["age_years"]["value"] = 2
+        with self.assertRaisesRegex(AssertionError, "explicitly stated"):
+            validate_profile(self.profile, self.report)
+
+    def test_clock_duration_and_disjoint_quotes_are_not_appositive_ages(self):
+        for text in (
+            "My father left at 2 pm after walking for 74 hours.",
+            "My father, 74 hours later, left at 2 pm.",
+            "My father, 74 steps from the bridge, called at 2 pm.",
+        ):
+            self.report["reportedCircumstances"] = text
+            for value in (2, 74):
+                self.profile["age_years"] = {
+                    "value": value,
+                    "evidence": [{"field": "reportedCircumstances", "quote": text}],
+                }
+                with (
+                    self.subTest(text=text, value=value),
+                    self.assertRaisesRegex(AssertionError, "explicitly stated"),
+                ):
+                    validate_profile(self.profile, self.report)
+        self.report["reportedCircumstances"] = "My father, after 74, continued walking."
+        self.profile["age_years"] = {
+            "value": 74,
+            "evidence": [
+                {"field": "reportedCircumstances", "quote": quote}
+                for quote in ("My father,", "74,")
+            ],
+        }
         with self.assertRaisesRegex(AssertionError, "explicitly stated"):
             validate_profile(self.profile, self.report)
 

@@ -26,6 +26,9 @@ async def run():
 
     async def connection(websocket):
         nonlocal mission
+        if websocket.request.path == "/team":
+            assert mission is not None, "Open a mission before connecting a receiving team"
+            return await mission.ground_team.connection(websocket)
         first = json.loads(await asyncio.wait_for(websocket.recv(), timeout=10))
         assert set(first) == MESSAGE_FIELDS["connect"] and first["type"] == "connect"
         async with lock:

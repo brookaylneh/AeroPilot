@@ -3,8 +3,9 @@
 import unittest
 
 from mission_planner.gcs.accept_world import routes, validate_sortie
-from mission_planner.gcs.geodesy import NAMES, fence_vertices, homes, rtl_route, to_geodetic
+from mission_planner.gcs.geodesy import NAMES, ORIGIN, fence_vertices, homes, rtl_route, to_geodetic
 from mission_planner.gcs.validation import validate_route
+from world.cosys.landmarks import load
 from world.cosys.terrain import BOUNDS
 
 
@@ -24,7 +25,7 @@ class WorldRoutes(unittest.TestCase):
 
     def test_full_sorties_reserve_takeoff_auto_and_rtl_paths(self):
         plans = routes(self.states)
-        returns = validate_sortie(self.states, plans, {name: self.fence for name in NAMES})
+        returns = validate_sortie(self.states, plans, {name: self.fence for name in NAMES}, load())
         for name, boundary in (("Drone1", "min"), ("Drone2", "max")):
             self.assertLessEqual(
                 min(abs(p["east_m"] - BOUNDS[boundary]["y"] / 100) for p in plans[name]), 50
@@ -40,7 +41,12 @@ class WorldRoutes(unittest.TestCase):
         for state in self.states[:2]:
             edge = {**state, **plans[state["id"]][2]}
             with self.assertRaisesRegex(AssertionError, "Route segment exits"):
-                validate_route(rtl_route(edge)[:-1], self.fence)
+                validate_route(
+                    rtl_route(edge)[:-1],
+                    self.fence,
+                    state["home"]["altitude_msl_m"] - ORIGIN["altitude_msl_m"],
+                    load(),
+                )
 
     def test_route_assignment_rejects_reordered_vehicles(self):
         with self.assertRaises(AssertionError):

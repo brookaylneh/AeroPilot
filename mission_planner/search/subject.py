@@ -57,7 +57,16 @@ def validate_profile(profile, briefing):
                 if field == "age_years"
                 else r"(\d+(?:\.\d+)?)\s*hours?"
             )
-            assert any(float(n) == value for n in re.findall(pattern, text, re.I)), (
+            numbers = re.findall(pattern, text, re.I)
+            if field == "age_years":
+                numbers += [
+                    number
+                    for source in item["evidence"]
+                    for number in re.findall(
+                        r"\b(?:father|mother|parent)\s*,\s*(\d+)\s*,", source["quote"], re.I
+                    )
+                ]
+            assert any(float(n) == value for n in numbers), (
                 f"{field} is not explicitly stated in the quotation"
             )
         elif isinstance(value, list):

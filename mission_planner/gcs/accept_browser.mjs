@@ -35,7 +35,7 @@ async function screenshots(page, output, label, approval = false, focus = null) 
       );
     }
     if (approval) {
-      const button = await page.getByRole('button', { name: 'Approve flight', exact: true }).boundingBox();
+      const button = await page.getByRole('button', { name: /^Approve (flight|delivery)$/ }).boundingBox();
       const composer = await page.locator('.gcs-composer').boundingBox();
       assert(
         button && composer && button.y + button.height <= composer.y && button.y >= 0,
@@ -49,6 +49,37 @@ async function screenshots(page, output, label, approval = false, focus = null) 
     assert.equal(new Set(ids).size, ids.length, 'One row per call_id');
     const content = await page.locator('.gcs-app').innerText();
     assert(!/AssertionError:|HTTPStatusError:|-0\.0 m|WILDLANDS|° DEG/.test(content));
+    if (label.startsWith('search-')) {
+      const panel = await page.locator('.gcs-search-panel').boundingBox();
+      const surface = await page.locator('[data-testid="mission-map"]').boundingBox();
+      const controls = await page.locator('.gcs-map-tools').boundingBox();
+      assert(panel && surface && controls);
+      assert(panel.x + panel.width <= surface.x + 1, 'Planner panel must leave the map unobscured');
+      assert(panel.x + panel.width <= controls.x, 'Planner panel must not cover map controls');
+      if (label === 'search-plan') {
+        await page.waitForFunction(() => {
+          const area = document.querySelector('.gcs-search-area').getBoundingClientRect();
+          const surface = document.querySelector('[data-testid="mission-map"]').getBoundingClientRect();
+          return area.width > surface.width / 10;
+        });
+        const area = await page.locator('.gcs-search-area').boundingBox();
+        assert(area && area.width > surface.width / 10, 'Plan must zoom to the drawn area');
+        const routesFit = await page.locator('.gcs-search-world polyline').evaluateAll((routes) => {
+          const map = document.querySelector('[data-testid="mission-map"]').getBoundingClientRect();
+          return routes.every((route) => {
+            const bounds = route.getBoundingClientRect();
+            return (
+              bounds.left >= map.left &&
+              bounds.top >= map.top &&
+              bounds.right <= map.right &&
+              bounds.bottom <= map.bottom
+            );
+          });
+        });
+        assert(routesFit, 'Automatic map fit must contain every planned route');
+        assert.equal(await page.getByLabel('Probability colour scale').count(), 1);
+      }
+    }
     await page.screenshot({ path: `${output}/${label}-${width}.png` });
   }
 }
@@ -906,7 +937,242 @@ async function proxy(base, output) {
   console.log('Mission WebSocket origin/path checks passed');
 }
 
-async function searchFlight(browser, url, output) {
+async function commanderLoop(browser, observation, output, beforeGrid) {
+  const { page } = observation;
+  await page.getByRole('button', { name: 'Start recorded frames', exact: true }).click();
+  await until(
+    () => observation.search.commander.lanes.some((lane) => lane.active.length > 0 || lane.completed > 0),
+    'Recorded frames processing',
+    300,
+  );
+  await screenshots(page, output, 'search-processing');
+  await until(
+    () => observation.search.summary.coverage.negative_observations > 0,
+    'Calibrated negative evidence',
+    300,
+  );
+  const decode = (encoded) => {
+    const bytes = Buffer.from(encoded, 'base64');
+    return Array.from({ length: bytes.length / 4 }, (_, i) => bytes.readFloatLE(i * 4));
+  };
+  const before = decode(beforeGrid.probability_f32_le),
+    after = decode(observation.search.grid.probability_f32_le);
+  assert.equal(before.length, after.length);
+  assert(after.every((value) => Number.isFinite(value) && value >= 0 && value <= 1));
+  assert(Math.abs(after.reduce((a, b) => a + b, 0) - 1) < 1e-5);
+  const lowered = after.filter((value, index) => value < before[index]).length;
+  assert(lowered > 0, 'Negative evidence must visibly reduce covered-cell probability');
+  const footprint = observation.search.footprints.find((item) => item.outcome === 'negative');
+  assert(footprint, 'The processed negative footprint is visible');
+  const center = Object.fromEntries(
+    ['north_m', 'east_m'].map((axis) => [
+      axis,
+      footprint.vertices.reduce((sum, point) => sum + point[axis], 0) / footprint.vertices.length,
+    ]),
+  );
+  assert.equal((await sendTool(page, 'show_on_map', { target: 'point', ...center })).result.ok, true);
+  await screenshots(page, output, 'search-negative');
+  await until(
+    () =>
+      observation.search.commander.clusters.some(
+        (cluster) => cluster.calibrated && cluster.status === 'pending',
+      ),
+    'Qualified calibrated ground cluster',
+    600,
+  );
+  const cluster = observation.search.commander.clusters.find(
+    (item) => item.calibrated && item.status === 'pending',
+  );
+  assert.equal(
+    (
+      await sendTool(page, 'review_detection', {
+        detection_id: cluster.representative_id,
+        model_review: false,
+      })
+    ).result.ok,
+    true,
+  );
+  await until(() => observation.search.commander.review?.id === cluster.id, 'Evidence card data');
+  const review = observation.search.commander.review;
+  const detection = review.members.find((member) => member.calibrated && member.qualified);
+  assert(detection && detection.source === 'recorded' && detection.drone_id === 'Drone1');
+  await page.getByRole('button', { name: `Review member ${detection.id}`, exact: true }).click();
+  await page.getByRole('button', { name: 'Locate evidence on map', exact: true }).click();
+  await screenshots(page, output, 'search-evidence', false, '.gcs-evidence-frame');
+  await screenshots(page, output, 'search-probability-change', false, '.gcs-evidence-probability');
+  const ground = cluster.localization.ground;
+  const owners = Object.entries(observation.search.plan.routes).filter(([, route]) => {
+    const east = route.legs.flatMap((leg) => [leg.start.east_m, leg.end.east_m]);
+    const margin = observation.search.plan.spacing_m / 2;
+    return ground.east_m >= Math.min(...east) - margin && ground.east_m < Math.max(...east) + margin;
+  });
+  assert.equal(owners.length, 1, 'The evidence belongs to exactly one planned search sector');
+  const droneId = owners[0][0];
+  await until(
+    () =>
+      observation.state.vehicles.some(
+        (vehicle) =>
+          vehicle.id === droneId &&
+          vehicle.armed &&
+          vehicle.landed_state === 2 &&
+          vehicle.mode === 'AUTO' &&
+          vehicle.altitude_above_home_m < 40,
+      ),
+    `${droneId} reaches its terrain search leg`,
+    300,
+  );
+  const drone = observation.state.vehicles.find((vehicle) => vehicle.id === droneId);
+  const memberCount = review.member_ids.length;
+  const start = observation.events.length;
+  await page.getByRole('button', { name: 'Conversation', exact: true }).click();
+  await page
+    .locator('.gcs-composer textarea')
+    .fill(
+      `Review detection ${detection.id} and propose a re-look using ${drone.id} at 30 m above ground for 15 seconds. These are Recorded frames. Await my flight approval.`,
+    );
+  await page.locator('.gcs-composer textarea').press('Enter');
+  await until(
+    () => observation.state.approvals.some((item) => item.name === 'relook_detection'),
+    'Wonder proposes re-look',
+    210,
+  );
+  const approval = observation.state.approvals.find((item) => item.name === 'relook_detection');
+  assert.equal(approval.source, 'agent');
+  assert.equal(approval.arguments.drone_id, drone.id);
+  assert.equal(approval.arguments.altitude_agl_m, 30);
+  await screenshots(page, output, 'search-relook-approval', true);
+  await page.getByRole('button', { name: 'Approve flight', exact: true }).click();
+  await until(
+    () =>
+      observation.events
+        .slice(start)
+        .some((event) => event.kind === 'tool_result' && event.name === 'relook_detection'),
+    'Re-look completed',
+    600,
+  );
+  const relook = observation.events
+    .slice(start)
+    .find((event) => event.kind === 'tool_result' && event.name === 'relook_detection');
+  assert.equal(relook.result.ok, true, JSON.stringify(relook.result));
+  await until(() => !observation.state.agent_busy, 'Wonder completes re-look response', 180);
+  await screenshots(page, output, 'search-relook-hold');
+  const resumeStart = observation.events.length;
+  await page.getByRole('button', { name: `Resume ${drone.id}`, exact: true }).click();
+  await until(() => observation.state.approvals.some((item) => item.name === 'resume'), 'Resume approval');
+  await page.getByRole('button', { name: 'Approve flight', exact: true }).click();
+  await until(
+    () =>
+      observation.events
+        .slice(resumeStart)
+        .some((event) => event.kind === 'tool_result' && event.name === 'resume'),
+    'Search route restored',
+    180,
+  );
+  assert.equal(
+    observation.events
+      .slice(resumeStart)
+      .find((event) => event.kind === 'tool_result' && event.name === 'resume').result.ok,
+    true,
+  );
+  assert.equal(
+    (await sendTool(page, 'review_detection', { detection_id: detection.id, model_review: false })).result.ok,
+    true,
+  );
+  await page
+    .getByLabel('Operator review reason', { exact: true })
+    .fill(
+      'Reviewed the original frame and verification crop; confirmed this visible person as a lead for the ground team.',
+    );
+  await page.getByRole('button', { name: 'Confirm as lead', exact: true }).click();
+  await until(
+    () => observation.search.commander.review.status === 'confirmed_lead',
+    'Operator confirms lead',
+  );
+  assert(
+    observation.search.commander.review.member_ids.length >= memberCount,
+    'Every evidence member is retained',
+  );
+  await screenshots(page, output, 'search-confirmed-lead', false, '.gcs-evidence-disposition');
+  const team = 'acceptance-team';
+  const receiverUrl = new URL('/team', page.url());
+  receiverUrl.search = new URLSearchParams({ case: observation.state.mission.case_id, team }).toString();
+  const phone = await browser.newPage({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+  });
+  phone.on('pageerror', (error) => observation.errors.push(error.message));
+  await phone.goto(receiverUrl.href);
+  await phone.locator('.team-page[data-connection="connected"]').waitFor();
+  await phone.screenshot({ path: `${output}/team-awaiting-phone.png`, fullPage: true });
+  await page.getByLabel('Ground team ID', { exact: true }).fill(team);
+  await page
+    .getByLabel('Message to ground team', { exact: true })
+    .fill(
+      'Operator-confirmed person lead. Review the photo and coordinates, navigate to the location, and acknowledge receipt. Evidence source: Recorded frames.',
+    );
+  await page.getByRole('button', { name: 'Request ground-team delivery', exact: true }).click();
+  await until(
+    () => observation.state.approvals.some((item) => item.name === 'notify_ground_team'),
+    'Explicit ground-team delivery approval',
+  );
+  assert.equal(observation.search.commander.deliveries.length, 0, 'No delivery before operator approval');
+  await screenshots(page, output, 'search-delivery-approval', true);
+  await page.getByRole('button', { name: 'Approve delivery', exact: true }).click();
+  await until(() => observation.search.commander.deliveries.length === 1, 'Ground-team page receives lead');
+  assert.equal(observation.search.commander.deliveries[0].status, 'sent');
+  assert.equal(observation.search.commander.deliveries[0].acknowledged_at_ms, null);
+  await phone.getByRole('button', { name: 'Acknowledge lead', exact: true }).waitFor();
+  await phone.locator('.team-photo').evaluate((node) => node.decode());
+  await phone.locator('.team-photo').evaluate((node) => {
+    if (!node.complete || node.naturalWidth === 0) throw new Error('Ground-team photo did not load');
+  });
+  await phone.screenshot({ path: `${output}/team-received-phone.png`, fullPage: true });
+  await phone.getByRole('button', { name: 'Acknowledge lead', exact: true }).click();
+  await until(
+    () => observation.search.commander.deliveries[0].status === 'acknowledged',
+    'Receiving-page acknowledgement arrives at mission control',
+  );
+  await phone.locator('.team-acknowledged').waitFor();
+  await phone.screenshot({ path: `${output}/team-acknowledged-phone.png`, fullPage: true });
+  await screenshots(page, output, 'search-team-acknowledged', false, '.gcs-delivery-status');
+  await phone.close();
+  await until(
+    () =>
+      ['complete', 'failed'].includes(observation.search.commander.replay_status) &&
+      observation.search.commander.lanes.every((lane) => lane.queued === 0 && lane.active.length === 0),
+    'All recorded frames reach a terminal state',
+    900,
+  );
+  assert.equal(
+    observation.search.commander.failed_frames.length,
+    0,
+    'Inference failures remain visible and fail acceptance',
+  );
+  assert.equal(observation.search.commander.replay_status, 'complete', 'Recorded replay must succeed');
+  await writeFile(
+    `${output}/commander.json`,
+    JSON.stringify(
+      {
+        negative_cells_lowered: lowered,
+        cluster_id: cluster.id,
+        detection_id: detection.id,
+        actual_camera_drone: detection.drone_id,
+        relook_drone: drone.id,
+        members_before_relook: memberCount,
+        members_after_relook: observation.search.commander.clusters.find((item) => item.id === cluster.id)
+          .member_ids.length,
+        relook,
+        delivery: observation.search.commander.deliveries[0],
+        commander: observation.search.commander,
+      },
+      null,
+      2,
+    ) + '\n',
+  );
+}
+
+async function searchFlight(browser, url, output, manifestId, afterPlan) {
   const observation = await observe(browser, url);
   const { page } = observation;
   const samples = [];
@@ -934,38 +1200,93 @@ async function searchFlight(browser, url, output) {
       );
       assert.equal(observation.events.slice(index).filter((e) => e.kind === 'error').length, 0);
     }
-    await chat('Plan the search for this case.');
-    assert(observation.search.profile !== null, 'Wonder must record the quoted profile');
-    assert.equal(observation.search.point, null, 'Landmark text cannot supply coordinates');
-    await page.locator('.gcs-search-subject summary').click();
-    assert((await page.locator('.gcs-search-subject blockquote').count()) > 0);
-    await screenshots(page, output, 'search-profile');
-    await page.locator('.gcs-search-subject summary').click();
-    await page.getByRole('button', { name: 'Mark last known point', exact: true }).click();
-    const image = await page.locator('.gcs-terrain').boundingBox();
-    assert(image);
-    await page.mouse.click(
-      image.x + image.width / 2,
-      image.y +
-        (image.height * (world.searchBoundsCm.max.x + 650 * 100)) /
-          (world.searchBoundsCm.max.x - world.searchBoundsCm.min.x),
-    );
-    await until(() => observation.search.point?.source === 'operator', 'Operator last known point');
-    await page.getByText('Define search area', { exact: true }).click();
-    for (const [label, value] of [
-      ['South edge (north m)', '-790'],
-      ['North edge (north m)', '-500'],
-      ['West edge (east m)', '-120'],
-      ['East edge (east m)', '120'],
-    ])
-      await page.getByLabel(label, { exact: true }).fill(value);
-    await page.getByLabel('Published statistical domain', { exact: true }).selectOption('temperate');
-    await page.getByRole('button', { name: 'Set search area', exact: true }).click();
-    await until(() => observation.search.vertices !== null, 'Search area recorded');
-    await chat('The last known point and search area are marked. Plan the search now.');
-    await until(() => observation.search.plan !== null, 'Search plan');
+    if (!afterPlan) {
+      await chat(
+        manifestId === null
+          ? 'Plan the search for this case.'
+          : 'Plan the search for this case. Record exactly these quoted appearance prompts in this order: person wearing a red jacket; person wearing blue trousers. Record exactly this clue prompt: yellow daypack. These briefing prompts are uncalibrated leads; the calibrated person prompt is handled separately.',
+      );
+      assert(observation.search.profile !== null, 'Wonder must record the quoted profile');
+      if (manifestId !== null) {
+        assert.deepEqual(
+          observation.search.profile.person_prompts.map((prompt) => prompt.text),
+          ['person wearing a red jacket', 'person wearing blue trousers'],
+        );
+        assert.deepEqual(
+          observation.search.profile.clue_prompts.map((prompt) => prompt.text),
+          ['yellow daypack'],
+        );
+      }
+      assert.equal(observation.search.point, null, 'Landmark text cannot supply coordinates');
+      await page.locator('.gcs-search-subject summary').click();
+      assert((await page.locator('.gcs-search-subject blockquote').count()) > 0);
+      await screenshots(page, output, 'search-profile');
+      await page.locator('.gcs-search-subject summary').click();
+      await page.getByRole('button', { name: 'Mark last known point', exact: true }).click();
+      const image = await page.locator('.gcs-terrain').boundingBox();
+      assert(image);
+      await page.mouse.click(
+        image.x + image.width / 2,
+        image.y +
+          (image.height * (world.searchBoundsCm.max.x + 650 * 100)) /
+            (world.searchBoundsCm.max.x - world.searchBoundsCm.min.x),
+      );
+      await until(() => observation.search.point?.source === 'operator', 'Operator last known point');
+      await page.getByRole('button', { name: 'Draw search rectangle', exact: true }).click();
+      const terrain = await page.locator('.gcs-terrain').boundingBox();
+      assert(terrain);
+      const { min, max } = world.searchBoundsCm;
+      const drawingPoint = (north, east) => ({
+        x: terrain.x + (terrain.width * (east * 100 - min.y)) / (max.y - min.y),
+        y: terrain.y + (terrain.height * (max.x - north * 100)) / (max.x - min.x),
+      });
+      const start = drawingPoint(-790, -120),
+        end = drawingPoint(-500, 120);
+      await page.mouse.move(start.x, start.y);
+      await page.mouse.down();
+      await page.mouse.move(end.x, end.y, { steps: 12 });
+      await page.mouse.up();
+      assert.equal(await page.getByLabel('Search area coordinates').locator('tbody tr').count(), 4);
+      await screenshots(page, output, 'search-area');
+      await page.getByRole('button', { name: 'Set search area', exact: true }).click();
+      await until(() => observation.search.vertices !== null, 'Search area recorded');
+      await chat('The last known point and search area are marked. Plan the search now.');
+      await until(() => observation.search.plan !== null, 'Search plan');
+    } else {
+      assert(manifestId !== null && observation.search.plan !== null);
+      assert.equal(observation.search.commander.source, null);
+      assert.equal(observation.search.point.source, 'operator');
+      assert.equal(observation.state.approvals.length, 0);
+      assert.equal(observation.state.agent_busy, false);
+      assert.deepEqual(
+        observation.search.profile.person_prompts.map((p) => p.text),
+        ['person wearing a red jacket', 'person wearing blue trousers'],
+      );
+      assert.deepEqual(
+        observation.search.profile.clue_prompts.map((p) => p.text),
+        ['yellow daypack'],
+      );
+    }
     assert.equal(observation.search.summary.coverage.source, null);
     await screenshots(page, output, 'search-plan');
+    if (manifestId !== null) {
+      assert(
+        observation.search.commander.manifests.some((manifest) => manifest.id === manifestId),
+        'Explicit recorded manifest must exist',
+      );
+      await page.getByLabel('Capture source', { exact: true }).selectOption('recorded');
+      await page.getByLabel('Recorded frame set', { exact: true }).selectOption(manifestId);
+      await page.getByRole('button', { name: 'Set capture source', exact: true }).click();
+      await until(
+        () =>
+          observation.events.some(
+            (event) => event.kind === 'perception' && event.text === 'Recorded frames ready',
+          ),
+        'Recorded source warmed and ready',
+        600,
+      );
+      assert.equal(observation.search.commander.source, 'recorded');
+    }
     await page.getByRole('button', { name: 'Review fleet search', exact: true }).click();
     await until(() => observation.state.approvals.length === 1, 'One fleet approval');
     assert.equal(observation.state.approvals[0].name, 'start_search');
@@ -984,6 +1305,7 @@ async function searchFlight(browser, url, output) {
       30,
     );
     await screenshots(page, output, 'search-flying');
+    if (manifestId !== null) await commanderLoop(browser, observation, output, observation.search.grid);
     await until(
       () => ['complete', 'failed'].includes(observation.search.summary.status),
       'Search landed',
@@ -1001,6 +1323,7 @@ async function searchFlight(browser, url, output) {
       JSON.stringify(
         {
           passed,
+          continued_after_plan: afterPlan,
           duration_s: (Date.now() - started) / 1000,
           mission_id: observation.state?.mission.id,
           search: observation.search,
@@ -1019,6 +1342,7 @@ const [command, url, output, ...options] = process.argv.slice(2);
 assert(
   [
     'search',
+    'commander',
     'flight',
     'feed',
     'capture',
@@ -1033,7 +1357,7 @@ assert(
   ].includes(command) &&
     url &&
     output,
-  'Usage: node --import tsx mission_planner/gcs/accept_browser.mjs {flight|feed|capture|world|states|approvals|review|performance|proxy|land|stop} URL NEW_DIRECTORY [feed: SECONDS; capture: LABEL; performance: SERVICE_PID SECONDS; stop: SERVICE_PID]',
+  'Usage: node --import tsx mission_planner/gcs/accept_browser.mjs {commander|search|flight|feed|capture|world|states|approvals|review|performance|proxy|land|stop} URL NEW_DIRECTORY [commander: MANIFEST_ID [--after-plan]; feed: SECONDS; capture: LABEL; performance: SERVICE_PID SECONDS; stop: SERVICE_PID]',
 );
 await mkdir(output, { recursive: false });
 if (command === 'proxy') await proxy(new URL(url).origin, output);
@@ -1044,8 +1368,14 @@ else {
     ignoreDefaultArgs: ['--hide-scrollbars'],
   });
   try {
-    if (command === 'search') await searchFlight(browser, url, output);
-    else if (command === 'feed') {
+    if (command === 'search') await searchFlight(browser, url, output, null, false);
+    else if (command === 'commander') {
+      assert(
+        options.length === 1 || (options.length === 2 && options[1] === '--after-plan'),
+        'commander requires MANIFEST_ID [--after-plan]',
+      );
+      await searchFlight(browser, url, output, options[0], options.length === 2);
+    } else if (command === 'feed') {
       assert.equal(options.length, 1, 'feed requires seconds');
       const seconds = Number(options[0]);
       assert(Number.isFinite(seconds) && seconds >= 10 && seconds <= 1200);

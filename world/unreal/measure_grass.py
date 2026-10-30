@@ -31,6 +31,7 @@ from mission_planner.gcs.sitl import check_ports
 from world.cosys import client as sim
 from world.cosys.capture import nadir_error, shadow_floor
 from world.cosys.flight import move, state, takeoff, until
+from world.cosys.landmarks import load as load_landmarks
 from world.cosys.terrain import terrain_height
 from world.unreal.measure_performance import LAUNCH
 
@@ -118,7 +119,11 @@ async def measure(out):
     check_ports(ports)
     (out / "frames").mkdir(parents=True)
     events = (out / "events.jsonl").open("x")
-    fleet = Fleet(out / "sitl", lambda e: events.write(json.dumps(e, default=str) + "\n"))
+    fleet = Fleet(
+        out / "sitl",
+        lambda e: events.write(json.dumps(e, default=str) + "\n"),
+        load_landmarks(),
+    )
     launched = time.time()
     world = subprocess.Popen(
         ["systemd-run", "--user", "--scope", "-p", "MemoryMax=56G", "-p", "MemorySwapMax=0"]

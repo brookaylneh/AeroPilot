@@ -1,143 +1,211 @@
-# Search planning
+# Search commander
 
-Search uses the rescue briefing, operator inputs, read-back fences, the public
-heightfield and calibrated camera evidence. It never reads target placement or
-runtime actor telemetry. Recorded results and input hashes are in
-[`search.json`](../measurements/search.json); raw runs remain in its evidence paths.
+The mission service owns profiles, plans, camera evidence and posterior. Use
+`/mission?case=<uuid>` in the assigned [slot](../../deploy/README.md).
 
-## Subject and prior
+## Places and directions
 
-`subject.py` validates Wonder's profile. Every known field carries a verbatim quote
-and its briefing field. Missing facts are null; an unknown category is `unknown`.
-SAM prompts retain their own quotes and describe visible appearance. Free-text
-landmarks cannot supply coordinates: the operator marks the last known point.
-Explicit labelled north/east metres or latitude/longitude may supply it, with source
-shown on the map. Operator placement takes precedence.
+`world/cosys/landmarks.py` loads public `world/unreal/landmarks.json` using the
+strict [Cosys schema](../../world/cosys/README.md#public-landmarks). Bounds come
+from `world/cosys/world.json`; private actor and clue placements are rejected.
+Every landmark requires `heightM`; positive heights require polygon footprints.
+Trails, roads, creeks and ponds have zero height. The catalogue loads at mission
+creation. Missing data is visible and blocks place tools, planning and flight
+clearance; start a new mission after integrating an authored catalogue.
 
-`prior.py` contains the supported category/domain tables. Distances below are
-kilometres at the 25th, 50th, 75th and 95th percentiles.
+`find_place` matches names/aliases exactly, case-insensitively, returning every
+ambiguous candidate or the known names on no match. `set_last_known_place` needs
+verbatim briefing evidence naming the selected place and operator map approval in
+every mode. Point or polyline geometry remains intact. A line's arclength midpoint
+is only its map anchor; radial initialization averages uniformly along arclength
+with midpoint intervals no longer than a probability cell. This is a location
+uncertainty assumption. Area landmarks require operator point marking. Approval
+invalidates the saved plan; declined or cancelled proposals leave it unchanged.
 
-| Category / domain | n distances | Percentile distances, km |
-| --- | ---: | --- |
-| Typically developing child 1–16 / temperate | 903 | 0.3, 0.9, 2.4, 11.3 |
-| Typically developing child 1–16 / dry | 115 | 0.8, 2.4, 4.0, 9.7 |
-| Typically developing child 1–16 / urban | 129 | 0.2, 0.5, 1.6, 5.2 |
-| Hiker / Australian mixed | 72 | 1.5, 3.2, 8.1, 17.4 |
-| Dementia / temperate mountainous | 95 | 0.3, 0.8, 1.9, 8.3 |
-| Dementia / temperate flat | 175 | 0.3, 1.0, 2.4, 12.8 |
-| Dementia / dry mountainous | 14 | 1.0, 1.9, 3.1, 6.1 |
-| Dementia / dry flat | 15 | 0.5, 1.6, 3.6, 11.8 |
-| Dementia / urban | 336 | 0.3, 1.1, 3.2, 12.6 |
+Labels and lines sit beneath leads and aircraft. `describe_location` computes
+horizontal nearest-feature distance, eight-way compass bearing and polyline side
+using exact segment projection. When the nearest feature is also that line, its
+name appears once with distance and bank/side. Creek banks use compass directions;
+open endpoints are identified explicitly. Cards, Wonder and team deliveries share
+this text, preserved at dispatch. These descriptions do not establish walking routes.
 
-Sources: [Koester (2020), Table 3, printed p. 73 / PDF p. 9](https://journalofsar.com/wp-content/uploads/2020/04/v4-8-Koester-ASD-vTD.pdf.pdf);
-[Twardy, Koester and Gatt (2006), Table 2.8, printed p. 32 / PDF p. 40](https://sarbayes.org/wp-content/uploads/2012/07/natsar.pdf)
-(hikers: 131 cases, 72 distances); [Koester, *Lost Person Behavior*, printed p. 164 / PDF p. 4](https://www.dbs-sar.com/LPB/Dementia.pdf).
-The hiker source is Australian, not Yosemite-local. Non-dementia elderly and unknown
-categories fail explicitly: no verified table is substituted. The operator chooses
-the statistical domain; simulated landscape appearance does not establish it.
+## Profile and prior
 
-The stationary radial CDF is linear in squared radius through the published knots,
-with constant area density per annulus. Beyond the final knot, exponential survival
-in squared radius matches the last slope. Zero interpolation residuals at the knots
-do not establish predictive accuracy. There are no feature or terrain modifiers;
-hours missing do not scale unconditional distance statistics.
+Each supported fact and person/clue prompt retains exact briefing quotations.
+Unsupported facts remain unknown. Draw an area and inspect its numeric corners.
+The Sierra domain is `temperate_mountainous` for dementia and terrain-pooled
+`temperate` for typically developing children. Other profiles, including hikers,
+lack a verified local table and fail explicitly; no Australian table is selected.
 
-`grid.py` clips polygon cell areas to the searchable world and read-back fence.
-The 4 m cells match calibration lateral bins and resolve the nominal footprint.
-Four quadrature samples integrate each cell. `initialize` records retained world
-mass before normalization and asserts the normalized sum within 1e-9. The operator's
-smaller search polygon does not renormalize the prior. POS is conditional on presence
-in the world; multiplying by retained mass gives the corresponding unconditional POS.
+`prior.py` interpolates published radial CDF knots in squared radius with
+shape-preserving PCHIP slopes, a positive final secant and a derivative-matched
+exponential tail. Density is continuous, knots exact and total mass normalized.
+The finite world is conditioned explicitly; retained unconditioned mass is reported.
 
-## Detection and evidence
+For dementia, `behavior.py` forms a provisional latent mixture of published find
+classes. Each component normalizes radial probability times feature exposure, then
+receives its source mixture weight. Polygon exposure uses authored area; road,
+trail and creek exposure uses exact nearest-line distance and the pooled track-
+offset density, averaged at four points per cell. Corridor areas are effective
+kernel areas, not physical widths. Area factors cancel within each separately
+normalized component. Mixture weights do not define disjoint geographic regions.
 
-`detection.py` reduces its explicit `COHORT` inclusion list without editing the
-capture manifest. Recapture can replace those condition records under the same
-schema. SAM confidence must exceed 0.3 and its linked Glimmer verification must
-meet the threshold selected by the existing calibration analysis. Full-person
-frames form bin denominators; partial and empty frames are excluded. This curve
-therefore does not measure arbitrary capture phase or partial-person detection.
+Find proportions are terrain-pooled; track offsets have no published domain label.
+Mapping Linear to trail and Drainage to creek is explicit. Brush and Field retain
+20% unresolved radial background. No sourced individual water-following multiplier,
+movement speed or elapsed-time update is applied. Missing required feature classes,
+overlapping/touching polygons within one class, and partially fence-clipped cells
+fail explicitly. The resulting in-world probabilities sum to one; radial retained
+and out-of-world mass remain unchanged. [places.json](../measurements/places.json)
+contains source quotations, derivations, limitations and the written-only clue
+update proposal; clue movement updates are not implemented.
 
-The curve interpolates absolute lateral bins symmetrically and is zero beyond the
-nominal 30 m AGL footprint. Its final measured value tapers toward the unobserved
-24 m bin before footprint clipping. Sweep width integrates that exact curve;
-Wilson intervals and a simultaneous Bonferroni envelope express sampling uncertainty.
-Old renderer, characters, dependence between conditions and edge assumptions make
-all detection results provisional. The envelope does not include those uncertainties.
+## Planning and flight
 
-[Koopman, *Search and Screening*, §2.4, pp. 28–29, equation 27](https://tile.loc.gov/storage-services/public/gdcmassbookdig/searchscreening56koop/searchscreening56koop.pdf)
-defines lateral range and sweep width. His pass probability differs from a classifier
-score. We conservatively combine qualified looks using maximum single-look POD,
-not independent trials. At 12 m capture spacing, overlapping frames are correlated.
+Planning fits the map to the area and routes. Semi-transparent Viridis uses a
+labelled log1p scale with actual probability ticks, preserving terrain visibility.
+`planner.py` scores tracks in four worker processes using calibrated lateral/along
+detection averaged over capture phase. Overlapping views earn only maximum-look credit.
+Capture spacing is 16 m: 3.2 s per drone at 5 m/s, applied by the coupling capture
+owner at integration. POA/POD/POS, duration and reserves refer to emitted waypoints;
+unsupported priors, stale plans and infeasible routes fail.
 
 `coverage.py` uses `perception/geometry.py` and the pure heightfield sampler to project
 real capture metadata. Unprocessed frames supply footprints at their measured altitude;
-calibrated negative updates require nominal 30 m AGL with the flight tolerance.
+calibrated evidence requires nominal 30 m AGL with the flight tolerance.
 `footprint.py` clips boundary captures against the actual heightfield perimeter,
 then solves bounded rays to a 1 μm vertical residual. Interior captures retain the
 existing camera transform. Heights are never extended outside the terrain domain;
 a frame with no in-world intersection retains an empty footprint and contributes zero POD.
-`belief.py` tracks previous maximum POD and applies the incremental conditional
-hazard in `P ← P(1−pd)/(1−ΣP·pd)`. Repeated equal looks add no evidence. It asserts
-finite, bounded, normalized probabilities. Captured but unprocessed images do not
-change belief; positive updates and live inference are not implemented.
 
-## Routes and execution
+`occlusion.py` assigns zero aerial POD to every cell with nonzero area overlap with
+an authored structure or forest footprint. Planning and camera evidence share this
+conservative boundary rule. This mass stays in belief; aerial expected POS excludes
+it without renormalizing it away. No canopy/interior detection calibration is assumed.
 
-`planner.py` compares six spacings and both axis directions. Four disjoint east
-sectors and separate ingress/egress heights permit static fleet separation checks.
-Within each sector, marginal expected POS per minute orders legs, charging travel,
-climb, turns and return. Equal-width sectors constrain workload; they do not guarantee
-an equal duration or a globally optimal solution. Invalid final geometry fails.
+`baselines.py` partitions an LKP-centred expanding square across the four safety sectors, preserving pattern order.
+This fleet adaptation and same-polygon parallel tracks share terrain, timing, capture spacing and aerial credit.
+Curves include 5, 10, 20 and 30 minutes; places.json records sources and measurement status.
 
-[Koester's Notes, p. 383, chapter 9 note 18](https://www.dbs-sar.com/LPB/Notes.pdf)
-cites Cooper, Frost and Robe and gives sweep width × speed × probability density.
-[Lin and Goodrich (2009), pp. 709–710, equations 1 and 4](https://faculty.cs.byu.edu/~mike/mikeg/papers/LinGoodrichIROS2009.pdf)
-motivate probability accumulation under a time budget. Our routes are a finite
-heuristic comparison, not an implementation of a global optimality theorem.
-POA is area probability, POD is detection conditional on that area, and POS is their
-product. Cell contributions use the same maximum-look rule as belief updates.
+Terrain paths use the fewest deterministic links over samples at most 1 m apart,
+all within **30 ±1 m above ground**, leaving ±1 m for tracking. Quarter-metre heights
+survive pinned MAVLink/ArduPilot encodings. Timing includes acceleration, jerk,
+climb/descent and corner behavior; nominal search speed is 5 m/s. Measured flight
+comparisons are in [commander.json](../measurements/commander.json).
 
-The measured SAM offered rate in `models.json` gives `4v/12 ≤ 1.7` frames/s;
-5 m/s is below the resulting 5.1 m/s ceiling. This does not validate end-to-end
-perception throughput. `AIRBORNE_SECONDS` is an explicit 1800 s simulation policy,
-including a reserve of at least 300 s or the routed return duration, whichever is
-larger. It is not measured aircraft endurance. [DJI's M350 specification](https://enterprise.dji.com/matrice-350-rtk/specs)
-provides context only: its 55 minute figure is windless, no payload, to zero battery.
-Climb and turn allowances are timing assumptions; acceptance records actual times.
-The pinned built-in quad defaults to constant simulated battery voltage with zero
-model capacity. Its percentage gauge is not a validated physical endurance model.
+`validation.py` checks every route and re-look leg for at least 10 m clearance over
+terrain plus `heightM` inside each polygon footprint, including zero-height ones.
+Exact segment/polygon intervals include narrow crossings and tangencies. Heightfield
+cell splits and quadratic minima check continuous clearance between waypoints.
+Takeoff, landing and RTL ground columns cannot intersect raised footprints.
+Ground-contact phases permit zero-height surfaces. Missing catalogue data blocks
+clearance validation. Planning, execution and resumed routes share these checks.
 
-`terrain.py` writes ordinary altitudes above each drone's home, samples search and
-connecting legs every metre, and asserts 30 ± 2 m AGL plus the existing flight band.
-Quarter-metre altitudes survive MAVLink float32 and ArduPilot integer-centimetre storage
-exactly; clearance assertions include this rounding.
-Ingress and egress are separated high transits, not calibrated search. No ArduPilot
-terrain database is used. Shared `gcs/validation.py` supplies fence, segment and
-separation checks to both fleet commands and batch planning.
+`start_search` is one fleet approval. Healthy links, GPS/EKF, read-back fences,
+altitude and separation remain required before takeoff and mission upload/readback.
+Completion follows measured telemetry through return and landing, not acknowledgement.
+No automatic repair flight is generated.
 
-`execution.py` uses existing MAVLink takeoff, mission and RTL handlers under one fleet
-approval. It checks stale inputs, exports QGC plans through the existing exporter,
-and observes actual mission completion and landing. Failure remains visible; no
-automatic retry or recovery flight occurs. Nominal static separation does not provide
-controller-error bounds or collision avoidance.
+## Camera source and queue
 
-## Integration and verification
+Choose **Live coupled captures** or an explicit **Recorded frames** manifest;
+there is no default. Selection locks inputs and warms the owned session. `start_replay`
+releases the complete manifest once, without truncation, restart or mixing sources.
+The mission service writes accepted coupled camera records into its mission directory
+and calls `Search.consume_capture(record)` for each: an unprocessed footprint, recorded
+before search inputs exist and retained when they change. These sensor records are not
+submitted to perception; the live adapter is `Commander.ingest(metadata_path)` after
+readiness. Processed negatives prevent hypothesis changes that would discard their evidence.
+Metadata belongs under this mission's `captures/`, beside its JPEG. `configuration.py`
+checks truth-free fields, pose, hash and dimensions. Replay exports are prepared
+offline; the service reads only the selected public records.
 
-`state.py` owns revisioned inputs, heatmap, plan and camera evidence. `tools.py` defines
-six registrations documented in the [tool catalogue](../agents/README.md).
-Wonder receives compact summaries; grids and routes travel only in browser messages.
-`SearchPanel`, `SearchLayers` and `SearchApproval` display quoted facts, source-labelled
-last known point, probability, geometry, expected POS and fleet approval. The mission
-service writes accepted camera records into its mission directory and calls
-`Search.consume_capture(record, "unprocessed")` for each. This single ingestion
-records live coverage before search inputs exist and retains it when inputs change.
-Processed negatives prevent hypothesis changes that would discard their evidence.
+`ingestion.py` retains every frame, validates increasing timestamps and orders belief
+commits per drone/replay lane. Each lane has four SAM slots, released before Glimmer.
+Backlog, oldest unfinished age, stages and terminal errors are visible. Persistence
+errors retain whether belief committed. Failed inference earns no negative credit or
+retry; subsequent frames proceed in order. No frame or candidate is silently dropped.
+Recorded frames retain actual drone, pose and time. Replay lanes describe load;
+historical images cannot establish a current re-look observation.
 
-Tests beside these modules cover real metadata transform parity, negative evidence,
-prior normalization, quoted facts, deterministic plans and truth isolation. Use the
-repository checks in `AGENTS.md`. The existing browser harness's `search` command
-exercises profile → operator map point → plan → approval → four actual flights.
-Its `capture` and `performance` commands record both acceptance sizes and pan timing.
-Follow the assigned development slot in [deployment](../../deploy/README.md);
-`web/server.ts --mission-only` disables renderer endpoints when no world is assigned.
+## Perception and belief
+
+`configuration.py` reads calibrated configuration/model numbers from commander.json;
+`commander.py` reads its measured capacity. Live code never imports the labelled
+calibration reducer. `pipeline.py` uses:
+
+- Native 3840×2160 to 1920×1080, Pillow Lanczos, JPEG95, subsampling0.
+- Pinned SAM3.1, `person`, strict confidence >0.3, four 1008px tiles and pinned NMS.
+- Native 512px box-centred crop with rounded bounds and explicit black padding.
+- Glimmer `Does this image show a person?`, normalized P(yes) at least
+  0.1329642298905696, retaining outside-option mass separately.
+
+Briefing prompts produce **uncalibrated** leads with no likelihood or negative
+credit. The corpus comparison failed the required combined-prompt person-box IoU
+bound, so the calibrated person request stays separate. Lower visual looks earn
+no detection credit. Every detection retains source/drone/frame, prompt, box,
+mask area, scores, image references, timestamps and configuration hash.
+
+`localization.py` intersects the box bottom-centre ray with terrain and propagates
+calibrated pixel residuals and measured pose brackets through finite-difference
+Jacobians to component covariance and a 95% ellipse. `detections.py` uses complete-
+link Mahalanobis association with the 99% two-degree chi-square gate, retaining
+every member. A deterministic medoid locates the cluster; covariance is not divided
+by member count. No actor position enters these calculations.
+
+`belief.py` combines the prior, maximum-look negative survival and positive
+reference-frame factors. Only completed calibrated frames with no qualified person
+use the simultaneous-Wilson lower positional detection surface for negatives.
+Positive factors use mean TPR and a nonzero conservative false-alarm upper bound
+from separate operational-empty and grass cohorts; commander.json holds the inputs.
+A ground region receives at most one first-reference-frame positive factor, shared
+by new clusters in that frame. Repeated views earn no further credit. Dismissal
+removes the contribution while retaining the region reservation. Integrated spatial
+kernels include truncation mass; finite ranges and normalization are asserted.
+Qualified detections in zero-POD cells remain visible without a positive factor.
+When every new lead lacks credit, the frame outcome is `no_detection_credit`.
+
+## Evidence and operator actions
+
+Cards show full frame/box, crop, every member, model numbers, configuration/source,
+location, uncertainty, directions and likelihood details. Headlines sum
+probability over cells intersecting the closed 95% ellipse, including tangency.
+Ellipse-only mass and area fractions remain in details, assuming uniform density
+inside cells. The provisional posterior does not establish missing-subject identity.
+Optional structured Glimmer descriptions are labelled **Model opinion**.
+
+Only the operator dismisses with a reason or confirms a lead. Wonder may list,
+review and propose `relook_detection`, requiring operator approval in every mode.
+The GUIDED terrain path holds at approved AGL while preserving AUTO state. Thirty
+metres is calibrated; lower looks are visual confirmation. New live frames follow
+normal ingestion. The monitor excludes paused drones; explicit `resume` validates
+saved mission/progress and returns along the saved path before continuing AUTO.
+
+`notify_ground_team` requires a confirmed lead and explicit approval. It delivers
+photo, coordinates, time, directions, labelled confidence/posterior and navigation
+link to `/team?case=<uuid>&team=<id>`, awaiting that page's acknowledgement.
+
+`hasty_check_structure` also requires approval in every mode. It sends an authored
+structure footprint, name, directions and instructions to that page, without a
+photo or model score. Coordinates identify the first footprint vertex, not an entrance.
+The receiving team acknowledges before reporting a negative result. Only an operator
+can execute `confirm_structure_negative` with a reason for a complete check; the
+report alone changes no belief. Confirmation removes exact footprint area fractions,
+preserves accumulated evidence and renormalizes the remainder. It invalidates a ready
+plan and locks search inputs. Duplicate or overlapping confirmed footprints fail.
+The receiving WebSocket cannot execute tools or confirm its own negative report.
+
+## Measurement and verification
+
+`hosting.inference_session` owns runner limits, metered usage and scale-to-zero cleanup.
+SAM uses eight async slots per runner with serialized model calls; separate verification
+pools keep Glimmer off dispatch. Precision stays pinned; preserve every run and failure.
+
+`bench_commander.py` measures recorded-frame processing; `profile_pipeline.py` reduces
+request clocks and busy time. The gate requires every frame, zero failures, p95 ≤10 s,
+unfinished work ≤`ceil(offered_rate × 10 s)` and rate within 2% of offered. Arrival lag
+and backlog remain visible. `bench_prompt_equivalence.py` compares decisions, IoU and
+scores. commander.json records cost/cadence; planner POS excludes processing delay.
+
+`evaluate_commander.py` scores the live pipeline offline; the Drone1 corpus does not prove cross-drone performance.
+`accept_browser.mjs commander` checks the operator flow; `report_flight.py` reduces flight logs. Run all six `AGENTS.md` checks, including truth isolation.

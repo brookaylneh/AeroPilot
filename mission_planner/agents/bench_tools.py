@@ -4,14 +4,15 @@ import argparse
 import hashlib
 import json
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from mission_planner.agents.models import Wonder
 from mission_planner.agents.tools import AGENT_INSTRUCTIONS, TOOLS
 
 
-def call(name, **arguments):
-    return {"name": name, "arguments": arguments}
+def call(tool_name, **arguments):
+    return {"name": tool_name, "arguments": arguments}
 
 
 def focus(target, drone_id=None, north_m=None, east_m=None, radius_m=None):
@@ -117,7 +118,10 @@ CASES = [
     ),
     ("Take off Drone9 to 30 metres above home.", []),
     ("Fly Drone2 to north 100 east 100 at 150 metres above home and 5 metres per second.", []),
-    ("Show me the person detections from Drone1's camera.", []),
+    (
+        "Show all person detections from Drone1's camera, including resolved detections.",
+        [call("list_detections", drone_id="Drone1", status="all")],
+    ),
     ("Take off Drone2.", []),
 ]
 CASES += [
@@ -135,11 +139,11 @@ CASES += [
         [call("start_search", plan_id="0123456789abcdef01234567")],
     ),
     (
-        "Define a hiker search area using Australian mixed statistics with vertices in this order: north -700 east -100, north -400 east -100, north -400 east 100, north -700 east 100.",
+        "The recorded category is dementia. Define a search area using the sourced Sierra temperate mountainous statistics with vertices in this order: north -700 east -100, north -400 east -100, north -400 east 100, north -700 east 100.",
         [
             call(
                 "define_search_area",
-                domain="australian_mixed",
+                domain="temperate_mountainous",
                 vertices=[
                     {"north_m": n, "east_m": e}
                     for n, e in ((-700, -100), (-400, -100), (-400, 100), (-700, 100))
@@ -169,19 +173,181 @@ CASES += [
         ],
     ),
 ]
-assert len(CASES) == 31
+CASES += [
+    (
+        "List unresolved detections across all camera drones.",
+        [call("list_detections", drone_id=None, status="unresolved")],
+    ),
+    (
+        "Open evidence detection person-17 with its saved frame and crop. Do not request a new Glimmer description.",
+        [call("review_detection", detection_id="person-17", model_review=False)],
+    ),
+    (
+        "Review detection person-17 and request the optional structured Glimmer description.",
+        [call("review_detection", detection_id="person-17", model_review=True)],
+    ),
+    (
+        "I reviewed detection person-17. Call resolve_detection now to confirm it as a lead, reason 'Visible person'.",
+        [],
+    ),
+    (
+        "Detection person-17 has already been reviewed. Propose a re-look with Drone2 at 30 metres above ground and hold for 15 seconds. Submit the flight approval request.",
+        [
+            call(
+                "relook_detection",
+                detection_id="person-17",
+                drone_id="Drone2",
+                altitude_agl_m=30,
+                hold_seconds=15,
+            )
+        ],
+    ),
+    (
+        "Detection person-17 is already reviewed. I want a re-look but have not chosen the aircraft, altitude or hold duration. Ask me for the missing inputs; do not infer them.",
+        [],
+    ),
+    (
+        "Detection person-17 is already reviewed. Request an operator visual-confirmation flight with Drone3 at 20 metres above ground and hold 10 seconds. This earns no detection credit and needs my flight approval.",
+        [
+            call(
+                "relook_detection",
+                detection_id="person-17",
+                drone_id="Drone3",
+                altitude_agl_m=20,
+                hold_seconds=10,
+            )
+        ],
+    ),
+    (
+        "The operator has confirmed detection person-17 as a lead. Request delivery to team alpha with the exact message 'Person lead at the marked coordinates; acknowledge receipt.' Await my delivery approval.",
+        [
+            call(
+                "notify_ground_team",
+                team_id="alpha",
+                detection_id="person-17",
+                message="Person lead at the marked coordinates; acknowledge receipt.",
+            )
+        ],
+    ),
+    (
+        "Explain the operator approval required for ground-team delivery in each flight mode. Keep this to an explanation; no delivery is requested.",
+        [],
+    ),
+    (
+        "A completed frame had no detections for 'child in red jacket', an uncalibrated prompt, but the calibrated person request failed. Explain whether this can lower the probability map. Do not call tools.",
+        [],
+    ),
+    (
+        "Detection clue-9 has SAM score 0.82 and Glimmer P(yes) 0.74 on an uncalibrated backpack prompt. Explain whether those scores are identity certainty or can provide person detection likelihood. Do not call tools.",
+        [],
+    ),
+    (
+        "Recorded frame camera-5 failed inference and remains visible. Explain whether you should automatically retry, skip or remove it. Do not run any action.",
+        [],
+    ),
+    (
+        "Ground-team delivery lead-3 has status sent and acknowledged_at_ms null. Explain whether the team has acknowledged it and what must happen next. Do not send another delivery.",
+        [],
+    ),
+    (
+        "The source is Recorded frames: the image was captured by Drone1 yesterday and is replayed on lane Drone4 while today's Drone4 is airborne. Explain which drone and time produced this evidence. Do not call tools.",
+        [],
+    ),
+    (
+        "Drone2 completed a re-look and is holding. Resume its saved search route from the saved mission item.",
+        [call("resume", drone_id="Drone2")],
+    ),
+]
+CASES += [
+    (
+        "Resolve the named place 'FOOTBRIDGE' using the landmark catalogue.",
+        [call("find_place", name="FOOTBRIDGE")],
+    ),
+    (
+        "Look up the exact alias 'crossing'. It may name more than one place; show all matching candidates.",
+        [call("find_place", name="crossing")],
+    ),
+    (
+        "Look up 'Unlisted Saddle' exactly. If unknown, show the known names.",
+        [call("find_place", name="Unlisted Saddle")],
+    ),
+    (
+        "Give landmark directions for the point 38 metres north and 12 metres west of mission origin.",
+        [call("describe_location", north_m=38, east_m=-12)],
+    ),
+    (
+        "The find_place result for 'crossing' returned two candidates: bridge-a, North Bridge; bridge-b, South Bridge. Ask me which one I mean before proposing a last known location. No new lookup is needed.",
+        [],
+    ),
+    (
+        "The find_place result for 'Unlisted Saddle' has no matches and known_names ['North Bridge', 'Creek Loop']. Present those names and ask me to choose or mark the map; keep this response to that clarification.",
+        [],
+    ),
+    (
+        "The authored structure id is ranger-cabin and the probability map is initialized. Propose a hasty structure check for ground team alpha with message 'Check the cabin and report findings'. Present the operator approval.",
+        [
+            call(
+                "hasty_check_structure",
+                place_id="ranger-cabin",
+                team_id="alpha",
+                message="Check the cabin and report findings",
+            )
+        ],
+    ),
+    (
+        "Ground team alpha acknowledged structure task check-1 and reported it checked-negative. I have not confirmed that report. Explain the operator confirmation action; keep the current belief unchanged and make no tool calls.",
+        [],
+    ),
+]
+assert len(CASES) == 54
 
 
-def run(output):
+def run(output, first_case):
+    assert 1 <= first_case <= len(CASES)
     output.mkdir(parents=True, exist_ok=False)
     rows = []
     model = Wonder()
+    worker = ThreadPoolExecutor(max_workers=1)
     try:
-        for index, (request, expected) in enumerate(CASES, 1):
+        for index, (request, expected) in enumerate(CASES[first_case - 1 :], first_case):
             started = time.perf_counter()
-            response = model.respond(request, [], "low", TOOLS, instructions=AGENT_INSTRUCTIONS)
+            trace = output / f"{index:02d}"
+            future = worker.submit(
+                model.respond,
+                request,
+                [],
+                "low",
+                TOOLS,
+                instructions=AGENT_INSTRUCTIONS,
+                trace_path=trace,
+            )
+            error = future.exception()
             elapsed = time.perf_counter() - started
-            (output / f"{index:02d}.json").write_text(json.dumps(response, indent=2) + "\n")
+            if error is not None:
+                row = {
+                    "case": index,
+                    "request": request,
+                    "expected": expected,
+                    "actual": None,
+                    "passed": False,
+                    "seconds": elapsed,
+                    "error": type(error).__name__,
+                    "http_status_code": json.loads(trace.with_suffix(".http.json").read_text())[
+                        "status_code"
+                    ]
+                    if trace.with_suffix(".http.json").is_file()
+                    else None,
+                    "usage": None,
+                }
+                rows.append(row)
+                (output / "scores.json").write_text(json.dumps(rows, indent=2) + "\n")
+                print(
+                    f"{index:02d} FAILED {type(error).__name__} {elapsed:.3f} s; preserved, not retried",
+                    flush=True,
+                )
+                continue
+            response = future.result()
+            http = json.loads(trace.with_suffix(".http.json").read_text())
             actual = [
                 {"name": item["name"], "arguments": json.loads(item["arguments"])}
                 for item in response["output"]
@@ -201,11 +367,14 @@ def run(output):
                 "passed": passed,
                 "seconds": elapsed,
                 "usage": response["usage"],
+                "http_status_code": http["status_code"],
+                "request_body_bytes": http["request_body_bytes"],
             }
             rows.append(row)
             print(f"{index:02d} {'PASS' if passed else 'MISS'} {elapsed:.3f} s", flush=True)
             (output / "scores.json").write_text(json.dumps(rows, indent=2) + "\n")
     finally:
+        worker.shutdown()
         model.http.close()
     correct = sum(row["passed"] for row in rows)
     result = {
@@ -214,6 +383,7 @@ def run(output):
         "effort": "low",
         "created_at_s": time.time(),
         "fresh_conversation_each_case": True,
+        "first_case": first_case,
         "flight_execution": False,
         "scoring": "Exact unordered list of tool names and JSON arguments; no-call cases require zero calls. No-tool prose correctness is not scored.",
         "prompt_sha256": hashlib.sha256(AGENT_INSTRUCTIONS.encode()).hexdigest(),
@@ -233,4 +403,6 @@ def run(output):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
-    run(parser.parse_args().output)
+    parser.add_argument("--first-case", type=int, default=1)
+    args = parser.parse_args()
+    run(args.output, args.first_case)

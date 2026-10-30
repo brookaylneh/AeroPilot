@@ -50,7 +50,7 @@ def routes(states):
     }
 
 
-def validate_sortie(states, planned, readbacks):
+def validate_sortie(states, planned, readbacks, landmarks):
     assert [state["id"] for state in states] == list(NAMES)
     missions = {
         state["id"]: [{**state, "altitude_above_home_m": altitude}, *planned[state["id"]]]
@@ -59,9 +59,11 @@ def validate_sortie(states, planned, readbacks):
     columns = {state["id"]: [state, missions[state["id"]][0]] for state in states}
     returns = {state["id"]: rtl_route({**state, **planned[state["id"]][-1]}) for state in states}
     reservations = [*missions.items(), *columns.items(), *returns.items()]
-    for name in NAMES:
-        validate_route(missions[name], readbacks[name])
-        validate_route(returns[name][:-1], readbacks[name])
+    for state in states:
+        name = state["id"]
+        home_z = state["home"]["altitude_msl_m"] - ORIGIN["altitude_msl_m"]
+        validate_route(missions[name], readbacks[name], home_z, landmarks)
+        validate_route(returns[name][:-1], readbacks[name], home_z, landmarks)
         for route in (missions[name], columns[name], returns[name]):
             validate_separation(name, route, reservations)
     return returns
@@ -110,7 +112,10 @@ async def run(case_id, output):
                     for a, b in zip(state["fence"], expected)
                 )
             report["nominalRtlRoutes"] = validate_sortie(
-                states, planned, {name: fleet.vehicles[name]["fence"] for name in NAMES}
+                states,
+                planned,
+                {name: fleet.vehicles[name]["fence"] for name in NAMES},
+                fleet.landmarks,
             )
             (output / "ready.json").write_text(json.dumps(report, indent=2) + "\n")
             while not (output / "start-flight").exists():

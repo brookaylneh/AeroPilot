@@ -1,11 +1,14 @@
 """Agent context boundaries, independent of live flight acceptance."""
 
 import json
+import tempfile
 import unittest
+from pathlib import Path
 from unittest.mock import Mock
 
 import httpx
 
+from mission_planner.environment import ROOT
 from mission_planner.gcs.service import Mission, compact_vehicle, fence_summary, operator_error
 
 
@@ -57,6 +60,9 @@ class AgentContext(unittest.TestCase):
         mission = object.__new__(Mission)
         from mission_planner.search.state import Search
 
+        temporary = tempfile.TemporaryDirectory(dir=ROOT / ".local")
+        self.addCleanup(temporary.cleanup)
+        mission.directory = Path(temporary.name)
         mission.search = Search(mission)
         mission.autonomy = "Supervised"
         mission.case = {
@@ -76,7 +82,10 @@ class AgentContext(unittest.TestCase):
     def test_current_telemetry_is_distinct_from_historical_acknowledgements(self):
         from mission_planner.search.state import Search
 
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
         mission = object.__new__(Mission)
+        mission.directory = Path(directory.name)
         mission.search = Search(mission)
         mission.autonomy = "Supervised"
         mission.context_index = 0

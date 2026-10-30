@@ -479,14 +479,53 @@ cap, walkable trails, the fire-road grade, dome height, pad clearance, layer mas
 southern preservation, feature classes, height envelopes and disjoint same-kind
 footprints.
 
-The landmark loader uses the public six-field contract: `id`, `name`, `aliases`,
-`kind`, `geometry` and `heightM`. Heights describe the tallest part above local
-ground; positive heights require polygon footprints. The search agent's route
-contract reserves ten metres above terrain plus that height. Ground routes and
-water features have zero height. Subject and clue placements never enter this
-catalogue. Stage 1 heights are design envelopes that asset authoring must verify.
-
 Array orientation and resampling follow the primary
 [NumPy meshgrid documentation](https://numpy.org/doc/stable/reference/generated/numpy.meshgrid.html),
 [SciPy zoom documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.zoom.html)
 and [Pillow image documentation](https://pillow.readthedocs.io/en/stable/reference/Image.html).
+
+## Public landmarks
+
+`landmarks.py` owns the schema and loader for the valley catalogue
+`world/unreal/landmarks.json`. The document has exactly `schemaVersion` (integer 1),
+`worldId` (matching `world.json`), `coordinateSystem`
+(`UE_LH_Z_UP_CENTIMETERS`) and a nonempty `landmarks` array.
+Each item has exactly these fields:
+
+- `id`: unique stable lowercase letters/digits/underscore/hyphen, starting with a letter or digit.
+- `name`: display name; `aliases`: array of alternate names. Names are nonempty,
+  trimmed strings. An item's names must be distinct ignoring case; names shared
+  across different items are allowed and produce an ambiguous lookup.
+- `kind`: `trail`, `road`, `creek`, `pond`, `bridge`, `structure`, `obstacle`, `forest`,
+  `ridge`, `outcrop`, `campsite`, `parking` or `command_post`.
+  `structure` means roofed and enterable. `obstacle` supplies height clearance and
+  directions only; it has no behavior-prior weight, aerial occlusion or structure-check task.
+- `heightM`: required finite nonnegative height in metres above terrain. Trails,
+  roads, creeks and ponds have exactly zero height. Any positive height requires
+  a polygon footprint; the search agent's route contract reserves ten metres above
+  terrain plus `heightM` over the full footprint. Subject and clue placements never
+  enter this catalogue.
+- `geometry`: exactly `type` and `points`. `type` is `point`, `polyline` or
+  `polygon`; `points` is an array of objects with exactly finite numeric `x`, `y`,
+  `z` in Unreal centimetres (+X north, +Y east, +Z up). Every coordinate is inside
+  the corresponding `world.json.searchBoundsCm` range. A point has one vertex;
+  a polyline has at least two; a polygon has at least three distinct vertices,
+  implicit closure, nonzero horizontal area and no self-intersections.
+  Adjacent vertices cannot have the same horizontal position. Trails, roads,
+  creeks and ridges require polyline geometry. All undeclared fields fail validation.
+
+`load()` reads those two authoritative files; missing or invalid data raises.
+`find(landmarks, name)` matches display names and aliases exactly ignoring case,
+returning all matching records ordered by ID. A missing name returns the known
+display names. It does not trim the query, approximate spelling or select an
+ambiguous result.
+
+`directions(landmarks, north_m, east_m)` returns `text`, `nearest` and `linear`.
+`nearest` contains `id`, `name`, `kind`, `distance_m`, `compass` and the nearest
+`point` in mission north/east metres. `linear` is null when there are no lines;
+otherwise it has the same fields plus `side`. Distances are horizontal, using
+exact segment projections and zero distance inside polygons. Distance ties use
+the stable ID; equal segment distances use vertex order. Compass directions use
+eight equal bearing sectors. Side is the compass side of the nearest segment,
+`on`, or `beyond endpoint`; creek sides are called banks without inferring flow
+direction. These are geometric location descriptions, not walkable routes.

@@ -79,6 +79,7 @@ def capture_trigger(record):
 
 class MemorySocket:
     def __init__(self):
+        self.request = SimpleNamespace(path="/")
         self.sent = []
         self.incoming = asyncio.Queue()
         self.updated = asyncio.Queue()
@@ -130,6 +131,7 @@ class SensorServiceTests(unittest.IsolatedAsyncioTestCase):
         mission.fleet = Mock()
         mission.fleet.execute = AsyncMock()
         mission.fleet.on_event = mission.fleet_event
+        mission.ground_team = SimpleNamespace(deliveries={})
         mission.search = Search(mission)
         self.mission = mission
 
@@ -265,7 +267,7 @@ class SensorServiceTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(acquired["position"], record["cameraPositionWorldM"])
             self.assertAlmostEqual(acquired["groundTrackM"], 17)
             sensor.on_capture.assert_awaited_once_with(record, preview)
-            ingestion.assert_called_once_with(record, "unprocessed")
+            ingestion.assert_called_once_with(record)
             with self.assertRaisesRegex(AssertionError, "Duplicate capture record"):
                 await self.mission.capture_received(record, preview)
         coverage = self.mission.search.coverage_summary()

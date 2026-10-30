@@ -1,4 +1,4 @@
-"""Open Meadow bilinear ground heights: metres north/east and metres UE up."""
+"""Valley bilinear ground heights: metres north/east and metres UE up."""
 
 import hashlib
 import json

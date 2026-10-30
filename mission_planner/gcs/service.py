@@ -22,8 +22,11 @@ from mission_planner.agents.tools import (
 from mission_planner.environment import ROOT, load_env
 from mission_planner.gcs.fleet import Fleet
 from mission_planner.gcs.geodesy import NAMES
+from mission_planner.gcs.ground_team import GroundTeam
 from mission_planner.gcs.sensor_feed import sensor_message
 from mission_planner.search.execution import flight_label, start_search
+from mission_planner.search.places import proposal
+from mission_planner.search.relook import relook, resume_search
 from mission_planner.search.state import Search
 from mission_planner.search.tools import NAMES as SEARCH_TOOLS
 from world.cosys.sensor import MissionSensor
@@ -37,6 +40,8 @@ MESSAGE_FIELDS = {
     "autonomy": {"type", "mode"},
     "export_plan": {"type", "drone_id"},
     "search_point": {"type", "north_m", "east_m"},
+    "capture_source": {"type", "source", "manifest_id"},
+    "start_replay": {"type"},
 }
 
 
@@ -83,6 +88,15 @@ def fence_summary(vertices):
             for axis in ("north_m", "east_m")
         },
     }
+
+
+def require_available(search, name, arguments):
+    if "drone_id" in arguments and arguments["drone_id"] in search.paused:
+        action = search.paused[arguments["drone_id"]]
+        if action["kind"] == "relook" and action["status"] != "failed":
+            assert name == "resume" and action["status"] == "awaiting_resume", (
+                "Aircraft has an active re-look; wait for its completion before another flight action"
+            )
 
 
 def read_case(case_id):
@@ -134,6 +148,7 @@ class Mission:
         self.started = time.monotonic()
         self.autonomy = "Supervised"
         self.approvals = {}
+        self.active_flight = set()
         self.tasks = set()
         self.agent_busy = False
         self.context_index = 0
@@ -141,9 +156,10 @@ class Mission:
         self.fleet_ready = False
         self.fleet_closed = False
         self.fleet_error = None
-        self.fleet = Fleet(self.directory / "sitl", self.fleet_event)
         self.model = Wonder()
         self.search = Search(self)
+        self.fleet = Fleet(self.directory / "sitl", self.fleet_event, self.search.landmarks)
+        self.ground_team = GroundTeam(self)
         self.sensor = MissionSensor(self.directory / "captures", self.fleet, self.capture_received)
         self.sensor_error = None
         self.sensor_frames = {}
@@ -242,7 +258,7 @@ class Mission:
 
     async def capture_received(self, record, preview):
         message = sensor_message(record, preview)
-        self.search.consume_capture(record, "unprocessed")
+        self.search.consume_capture(record)
         self.sensor_frames[record["vehicleId"]] = message
 
     def vehicles(self):
@@ -282,10 +298,92 @@ class Mission:
             "map_focus": self.map_focus,
         }
 
+    async def approve(self, name, arguments, source, call_id, text):
+        approval_id = str(uuid.uuid4())
+        future = asyncio.get_running_loop().create_future()
+        self.approvals[approval_id] = {
+            "card": {
+                "id": approval_id,
+                "name": name,
+                "arguments": arguments,
+                "source": source,
+                "call_id": call_id,
+            },
+            "future": future,
+            "call_id": call_id,
+        }
+        self.event(
+            "approval",
+            text,
+            name=name,
+            arguments=arguments,
+            result={"approval_id": approval_id},
+            call_id=call_id,
+            source=source,
+        )
+        try:
+            approved = await future
+        finally:
+            del self.approvals[approval_id]
+        assert approved, "Operator declined"
+
     async def execute(self, name, arguments, source, call_id):
         validate_arguments(name, arguments)
-        if name in SEARCH_TOOLS and name != "start_search":
-            return await self.search.execute(name, arguments)
+        if name == "confirm_structure_negative":
+            assert source == "operator", "Only an operator may confirm a structure negative"
+            return self.ground_team.confirm_negative(**arguments)
+        if name == "hasty_check_structure":
+            place = self.ground_team.structure(arguments["place_id"])
+            assert arguments["message"].strip(), "A structure-check message is required"
+            await self.approve(
+                name,
+                arguments,
+                source,
+                call_id,
+                f"Check {place['name']} with ground team {arguments['team_id']} awaiting operator approval",
+            )
+            assert place == self.ground_team.structure(arguments["place_id"]), (
+                "Structure changed during approval"
+            )
+            return self.ground_team.send_structure(**arguments)
+        if name == "set_last_known_place":
+            search = self.search
+            search.edit_hypothesis()
+            assert self.fleet_ready, "MAVLink fleet unavailable"
+            location = proposal(
+                search.landmarks,
+                arguments["place_id"],
+                arguments["evidence"],
+                self.case["report"],
+                self.vehicles()[0]["fence"],
+            )
+            await self.approve(
+                name,
+                arguments,
+                source,
+                call_id,
+                "Last known place awaiting operator map approval",
+            )
+            search.edit_hypothesis()
+            assert location == proposal(
+                search.landmarks,
+                arguments["place_id"],
+                arguments["evidence"],
+                self.case["report"],
+                self.vehicles()[0]["fence"],
+            ), "Place changed during approval"
+            search.point = location
+            search.invalidate()
+            search.changed()
+            return search.summary()
+        if name == "resolve_detection":
+            assert source == "operator", "Only an operator may resolve a detection"
+        if name in SEARCH_TOOLS and name not in (
+            "start_search",
+            "relook_detection",
+            "notify_ground_team",
+        ):
+            return await self.search.execute(name, arguments, source)
         if name == "start_search":
             self.search.require_plan(arguments["plan_id"])
         if name == "get_mission":
@@ -353,44 +451,52 @@ class Mission:
                 "status_text": vehicle["status_text"][-5:],
             }
         assert CATEGORIES[name] == "flight"
-        if self.autonomy == "Supervised":
-            approval_id = str(uuid.uuid4())
-            future = asyncio.get_running_loop().create_future()
-            self.approvals[approval_id] = {
-                "card": {
-                    "id": approval_id,
-                    "name": name,
-                    "arguments": arguments,
-                    "source": source,
-                    "call_id": call_id,
-                },
-                "future": future,
-                "call_id": call_id,
-            }
-            self.event(
-                "approval",
+        require_available(self.search, name, arguments)
+        if self.autonomy == "Supervised" or name in ("notify_ground_team", "relook_detection"):
+            await self.approve(
+                name,
+                arguments,
+                source,
+                call_id,
                 f"{flight_label(name, arguments)} · {name.replace('_', ' ')} awaiting operator approval",
-                result={"approval_id": approval_id},
+            )
+        require_available(self.search, name, arguments)
+        aircraft = (
+            set(NAMES)
+            if name == "start_search"
+            else set()
+            if name == "notify_ground_team"
+            else {arguments["drone_id"]}
+        )
+        assert aircraft.isdisjoint(self.active_flight), (
+            "Aircraft already has a flight action in progress"
+        )
+        self.active_flight.update(aircraft)
+        try:
+            self.event(
+                "tool_running",
+                f"{flight_label(name, arguments)} · {name.replace('_', ' ')} running",
                 name=name,
                 arguments=arguments,
                 call_id=call_id,
                 source=source,
             )
-            approved = await future
-            del self.approvals[approval_id]
-            assert approved, "Operator declined"
-        self.event(
-            "tool_running",
-            f"{flight_label(name, arguments)} · {name.replace('_', ' ')} running",
-            name=name,
-            arguments=arguments,
-            call_id=call_id,
-            source=source,
-        )
-        if name == "start_search":
-            return await start_search(self.search, arguments["plan_id"])
-        state = await self.fleet.execute(name, arguments)
-        return {**compact_vehicle(state), "acknowledged_command": name}
+            if name == "start_search":
+                return await start_search(self.search, arguments["plan_id"])
+            if name == "notify_ground_team":
+                return self.ground_team.send(**arguments)
+            if name == "relook_detection":
+                return await relook(self.search, **arguments)
+            if name == "resume" and arguments["drone_id"] in self.search.paused:
+                state = await resume_search(self.search, arguments["drone_id"])
+                return {**compact_vehicle(state), "acknowledged_command": name}
+            state = await self.fleet.execute(name, arguments)
+            if self.search.status == "running" and name == "hold":
+                self.search.paused[arguments["drone_id"]] = {"kind": "hold"}
+                self.search.changed()
+            return {**compact_vehicle(state), "acknowledged_command": name}
+        finally:
+            self.active_flight.difference_update(aircraft)
 
     async def invoke(self, name, arguments, source, call_id):
         self.event(
@@ -577,6 +683,11 @@ class Mission:
             item["future"].set_result(message["approved"])
         elif kind == "search_point":
             self.search.mark_point(message["north_m"], message["east_m"])
+        elif kind == "capture_source":
+            self.search.commander.select_source(message["source"], message["manifest_id"])
+            self.launch(self.search.commander.open())
+        elif kind == "start_replay":
+            self.launch(self.search.commander.replay())
         elif kind == "autonomy":
             assert message["mode"] in ("Supervised", "Autonomous")
             assert not self.approvals, "Resolve pending approvals before changing autonomy"
@@ -593,6 +704,8 @@ class Mission:
             raise AssertionError("Mission is already connected")
 
     async def connection(self, websocket, first=None):
+        if websocket.request.path == "/team":
+            return await self.ground_team.connection(websocket)
         if first is None:
             first = json.loads(await asyncio.wait_for(websocket.recv(), timeout=10))
         assert set(first) == MESSAGE_FIELDS["connect"] and first["type"] == "connect"
@@ -605,6 +718,7 @@ class Mission:
         async def publish():
             nonlocal cursor
             search_revision = -1
+            search_updated = 0
             sensor_cursors = {}
             focus_id = None
             while True:
@@ -612,9 +726,14 @@ class Mission:
                     await websocket.send(encode({"type": "event", "event": event}))
                     cursor = event["sequence"]
                 await websocket.send(encode(self.state()))
-                if search_revision != self.search.revision:
+                if search_revision != self.search.revision or (
+                    self.search.commander.ingestion is not None
+                    and not self.search.commander.ingestion.closed
+                    and time.monotonic() - search_updated >= 1
+                ):
                     await websocket.send(encode({"type": "search", "search": self.search.view()}))
                     search_revision = self.search.revision
+                    search_updated = time.monotonic()
                 for drone, message in tuple(self.sensor_frames.items()):
                     capture_id = message["frame"]["capture_id"]
                     if drone not in sensor_cursors or sensor_cursors[drone] != capture_id:
@@ -660,11 +779,14 @@ class Mission:
         try:
             await self.sensor.close()
         finally:
-            if not self.fleet_closed:
-                await self.fleet.close()
-                self.fleet_closed = True
-            self.model.http.close()
-            self.log.close()
+            try:
+                await self.search.commander.close()
+            finally:
+                if not self.fleet_closed:
+                    await self.fleet.close()
+                    self.fleet_closed = True
+                self.model.http.close()
+                self.log.close()
 
 
 async def run(case_id, port):

@@ -17,8 +17,10 @@ from mission_planner.search.belief import negative_update
 from mission_planner.search.coverage import capture_pod
 from mission_planner.search.detection import reduce_calibration
 from mission_planner.search.grid import make_grid
+from mission_planner.search.occlusion import aerial_visibility
 from mission_planner.search.planner import encode, plan
 from mission_planner.search.prior import initialize
+from world.cosys.landmarks import load
 from world.cosys.terrain import WORLD
 
 
@@ -61,14 +63,18 @@ def run(output):
         for p in fence_vertices()
     ]
     readbacks = {name: fence for name in states}
+    landmarks = load()
     t = time.perf_counter()
-    result = plan(grid, probability, vertices, states, readbacks, model, {"benchmark": "world"})
+    result = plan(
+        grid, probability, vertices, states, readbacks, model, {"benchmark": "world"}, landmarks
+    )
     planning_seconds = time.perf_counter() - t
     frame_path = ROOT / ".local/data/calibration/adult-kelvin/frame-00-+00-Drone1.json"
     frame = json.loads(frame_path.read_text())
     previous = np.zeros_like(probability)
+    visible = aerial_visibility(grid, landmarks)
     t = time.perf_counter()
-    pod, footprint = capture_pod(frame, grid, model)
+    pod, footprint = capture_pod(frame, grid, model, visible)
     projection_seconds = time.perf_counter() - t
     t = time.perf_counter()
     updated, cumulative = negative_update(probability, previous, pod)

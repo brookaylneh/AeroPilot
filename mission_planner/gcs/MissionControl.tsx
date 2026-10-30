@@ -22,6 +22,11 @@ import MissionMap from './MissionMap';
 import FleetStrip from './FleetStrip';
 import SearchPanel from './SearchPanel';
 import SearchApproval from './SearchApproval';
+import PlaceApproval from './PlaceApproval';
+import { GroundCheckApproval } from './GroundChecks';
+import { placeArguments, structureCheckArguments } from './placeState';
+import EvidenceCard from './EvidenceCard';
+import type { SearchPoint } from './searchState';
 import RouteApproval from './RouteApproval';
 import SensorFeed from './SensorFeed';
 import {
@@ -110,8 +115,18 @@ export default function MissionControl() {
   const { state, search, sensorFrames, feedFocus, events, connection, error, setError, send, now, age } =
     useMission(caseId);
   const [marking, setMarking] = useState(false);
+  const [drawing, setDrawing] = useState(false);
+  const [areaDraft, setAreaDraft] = useState<SearchPoint[] | null>(null);
+  useEffect(() => setAreaDraft(null), [JSON.stringify(search?.vertices)]);
   const approval = state?.approvals[0];
   const pendingRoute = approval?.name === 'fly_route' ? routeArgumentsSchema.parse(approval.arguments) : null;
+  const pendingPlaceId =
+    approval?.name === 'set_last_known_place'
+      ? placeArguments.parse(approval.arguments).place_id
+      : approval?.name === 'hasty_check_structure'
+        ? structureCheckArguments.parse(approval.arguments).place_id
+        : null;
+  const pendingPlace = search?.landmarks?.find((place) => place.id === pendingPlaceId) ?? null;
   const [selected, setSelected] = useState<DroneId>('Drone1');
   const [view, setView] = useState<'map' | 'video'>('map');
   useEffect(() => {
@@ -119,7 +134,7 @@ export default function MissionControl() {
     setSelected(feedFocus.drone_id);
     setView('video');
   }, [feedFocus]);
-  const [panel, setPanel] = useState<'agent' | 'log'>('agent');
+  const [panel, setPanel] = useState<'agent' | 'evidence' | 'log'>('agent');
   const [text, setText] = useState('');
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [briefingOpen, setBriefingOpen] = useState(false);
@@ -143,6 +158,15 @@ export default function MissionControl() {
     ...lost,
   ];
   const enabled = connected && state !== null;
+  const reviewed = events
+    .filter(
+      (event) =>
+        event.kind === 'tool_result' && event.name === 'review_detection' && event.result?.ok === true,
+    )
+    .at(-1);
+  useEffect(() => {
+    if (reviewed) setPanel('evidence');
+  }, [reviewed?.id]);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if ((e.target as Element).closest('input,textarea,select') || e.ctrlKey || e.altKey || e.metaKey)
@@ -158,7 +182,7 @@ export default function MissionControl() {
   }, []);
   useEffect(() => {
     const el = conversation.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (el && panel !== 'evidence') el.scrollTop = el.scrollHeight;
   }, [events.length, state?.approvals.length, panel]);
   function tool(name: string, id: DroneId) {
     setPanel('agent');
@@ -279,6 +303,18 @@ export default function MissionControl() {
             <div className={view === 'map' ? 'gcs-main-map' : 'gcs-inset gcs-inset-map'}>
               <MissionMap
                 search={search}
+                drawing={drawing}
+                areaDraft={areaDraft}
+                onDraw={setAreaDraft}
+                finishDrawing={() => setDrawing(false)}
+                reviewDetection={(id) => {
+                  setPanel('evidence');
+                  send({
+                    type: 'tool',
+                    name: 'review_detection',
+                    arguments: { detection_id: id, model_review: false },
+                  });
+                }}
                 onMark={
                   marking
                     ? (point) => {
@@ -292,6 +328,7 @@ export default function MissionControl() {
                 select={setSelected}
                 focus={state ? state.map_focus : null}
                 pendingRoute={pendingRoute}
+                pendingPlace={pendingPlace}
                 age={age}
                 connected={connected}
                 inset={view !== 'map'}
@@ -299,10 +336,26 @@ export default function MissionControl() {
               {view === 'map' && (
                 <SearchPanel
                   search={search}
+                  caseId={caseId!}
                   send={send}
                   marking={marking}
-                  setMarking={setMarking}
+                  setMarking={(value) => {
+                    setDrawing(false);
+                    setMarking(value);
+                  }}
+                  drawing={drawing}
+                  draft={areaDraft}
+                  startDrawing={() => {
+                    setMarking(false);
+                    setAreaDraft(null);
+                    setDrawing(true);
+                  }}
+                  cancelDrawing={() => {
+                    setAreaDraft(null);
+                    setDrawing(false);
+                  }}
                   enabled={connected && !state?.agent_busy && !approval}
+                  review={() => setPanel('evidence')}
                 />
               )}
               {view !== 'map' && (
@@ -435,6 +488,9 @@ export default function MissionControl() {
               Flight log
               <span>{events.filter((e) => ['statustext', 'mode', 'error'].includes(e.kind)).length}</span>
             </button>
+            <button className={panel === 'evidence' ? 'active' : ''} onClick={() => setPanel('evidence')}>
+              Evidence <span>{search?.commander.clusters.length ?? 0}</span>
+            </button>
           </div>
           <div className="gcs-conversation" ref={conversation} aria-live="polite">
             {panel === 'agent' ? (
@@ -526,6 +582,17 @@ export default function MissionControl() {
                   </div>
                 )}
               </>
+            ) : panel === 'evidence' ? (
+              search &&
+              caseId && (
+                <EvidenceCard
+                  key={`${reviewed?.id}:${search.commander.review?.selected_id}`}
+                  commander={search.commander}
+                  send={send}
+                  enabled={enabled && !state?.agent_busy && !approval}
+                  caseId={caseId}
+                />
+              )
             ) : (
               <div className="gcs-log">
                 {events.length ? (
@@ -548,7 +615,7 @@ export default function MissionControl() {
             )}
           </div>
           {state && state.approvals.length > 0 && (
-            <div className="gcs-approval-dock" aria-label="Pending flight approvals">
+            <div className="gcs-approval-dock" aria-label="Pending operator approvals">
               {state.approvals.slice(0, 1).map((approval) => (
                 <section
                   className="gcs-approval"
@@ -561,24 +628,42 @@ export default function MissionControl() {
                     <strong>Awaiting approval</strong>
                     {approval.name === 'start_search' ? (
                       <span>All aircraft</span>
+                    ) : ['hasty_check_structure', 'notify_ground_team'].includes(approval.name) ? (
+                      <span>Ground team {String(approval.arguments.team_id)}</span>
                     ) : (
                       <DroneLabel value={approval.arguments.drone_id} />
                     )}
                   </header>
                   <p>{approvalSentence(approval.name, approval.arguments)}</p>
-                  {approval.name === 'start_search' ? (
+                  {['set_last_known_place', 'hasty_check_structure'].includes(approval.name) ? (
+                    pendingPlace ? (
+                      approval.name === 'set_last_known_place' ? (
+                        <PlaceApproval place={pendingPlace} arguments={approval.arguments} />
+                      ) : (
+                        <GroundCheckApproval place={pendingPlace} arguments={approval.arguments} />
+                      )
+                    ) : (
+                      <p role="alert">Landmark unavailable. Decline this request.</p>
+                    )
+                  ) : approval.name === 'start_search' ? (
                     <SearchApproval search={search} />
                   ) : pendingRoute ? (
                     <RouteApproval key={approval.id} route={pendingRoute} />
                   ) : (
                     <details className="gcs-approval-arguments" open>
-                      <summary>Flight details</summary>
+                      <summary>
+                        {approval.name === 'notify_ground_team' ? 'Delivery details' : 'Flight details'}
+                      </summary>
                       <Arguments values={approval.arguments} />
                     </details>
                   )}
                   <small>
-                    Requested by {approval.source === 'agent' ? 'Wonder' : 'operator controls'}. Safety checks
-                    run before execution.
+                    Requested by {approval.source === 'agent' ? 'Wonder' : 'operator controls'}.{' '}
+                    {approval.name === 'set_last_known_place'
+                      ? 'Check the highlighted place and briefing quote on the map.'
+                      : approval.name === 'hasty_check_structure'
+                        ? 'Check the highlighted structure and receiving team before dispatch.'
+                        : 'Safety checks run before execution.'}
                   </small>
                   <div className="gcs-approval-buttons">
                     <button
@@ -589,11 +674,21 @@ export default function MissionControl() {
                     </button>
                     <button
                       className="gcs-primary"
-                      disabled={!enabled}
+                      disabled={
+                        !enabled ||
+                        (['set_last_known_place', 'hasty_check_structure'].includes(approval.name) &&
+                          !pendingPlace)
+                      }
                       onClick={() => send({ type: 'approval', id: approval.id, approved: true })}
                     >
                       <Check size={15} />
-                      Approve flight
+                      {approval.name === 'set_last_known_place'
+                        ? 'Approve place'
+                        : approval.name === 'notify_ground_team'
+                          ? 'Approve delivery'
+                          : approval.name === 'hasty_check_structure'
+                            ? 'Approve ground check'
+                            : 'Approve flight'}
                     </button>
                   </div>
                 </section>

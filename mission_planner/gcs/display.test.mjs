@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { actionStatus, approvalSentence, formatValue, formatPosition, flightLogText } from './display.ts';
+import {
+  actionStatus,
+  approvalSentence,
+  formatValue,
+  formatPosition,
+  formatProbability,
+  flightLogText,
+} from './display.ts';
 import { groupPadLabels, placeLabels } from './mapLabels.ts';
 
 test('telemetry normalizes rounded negative zero and prints one unit', () => {
@@ -10,6 +17,14 @@ test('telemetry normalizes rounded negative zero and prints one unit', () => {
   assert.equal(formatValue(null, 'm'), '— m');
   assert.equal(formatPosition(-790, -2.5), '790.0 m south · 2.5 m west');
   assert.equal(formatPosition(-0.04, 20), '0.0 m north · 20.0 m east');
+});
+test('small positive posterior masses remain distinguishable from zero', () => {
+  assert.equal(formatProbability(0), '0%');
+  assert.equal(formatProbability(1), '100%');
+  assert.equal(formatProbability(0.12345), '12.3%');
+  assert.equal(formatProbability(3.14e-8), '0.00000314%');
+  assert.notEqual(formatProbability(Number.MIN_VALUE), formatProbability(0));
+  for (const value of [NaN, Infinity, -0.1, 1.1]) assert.throws(() => formatProbability(value));
 });
 test('one action progresses through approval, execution and result', () => {
   const call = { kind: 'tool_call', name: 'land', arguments: { drone_id: 'Drone3' } };

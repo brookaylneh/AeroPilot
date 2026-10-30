@@ -6,9 +6,14 @@ import math
 import time
 
 from mission_planner.search.planner import AIRBORNE_SECONDS, validate_batch
+from mission_planner.search.timing import PARAMETERS
 
 
 def flight_label(name, arguments):
+    if name in ("notify_ground_team", "hasty_check_structure"):
+        return "Ground team " + arguments["team_id"]
+    if name == "set_last_known_place":
+        return "Last known place " + arguments["place_id"]
     return "Fleet search" if name == "start_search" else arguments["drone_id"]
 
 
@@ -42,7 +47,26 @@ async def begin(search, plan_id):
         for s in states.values()
     )
     routes = {n: r["waypoints"] for n, r in value["routes"].items()}
-    validate_batch(routes, states, {n: v["fence"] for n, v in mission.fleet.vehicles.items()})
+    validate_batch(
+        routes, states, {n: v["fence"] for n, v in mission.fleet.vehicles.items()}, search.landmarks
+    )
+    for name, vehicle in mission.fleet.vehicles.items():
+        for parameter, expected in PARAMETERS.items():
+            reply = await mission.fleet._expect(
+                name,
+                "PARAM_VALUE",
+                lambda m, parameter=parameter: m.param_id == parameter,
+                lambda: vehicle["connection"].mav.param_request_read_send(
+                    vehicle["sysid"], 1, parameter.encode(), -1
+                ),
+            )
+            assert math.isclose(reply.param_value, expected, abs_tol=1e-5), (
+                name,
+                parameter,
+                reply.param_value,
+                expected,
+            )
+    mission.event("operator", "Search timing parameters read back and verified", result=PARAMETERS)
     search.status = "starting"
     search.changed()
     started = time.monotonic()
@@ -93,14 +117,20 @@ async def finish(search, started):
             assert not state["link_lost"] and state["ekf_healthy"], (
                 f"{name} search telemetry unhealthy"
             )
+            if name in search.paused or name in mission.active_flight:
+                continue
             last = search.plan["routes"][name]["waypoints"][-1]
             error = math.dist(
                 [state[k] for k in ("north_m", "east_m", "altitude_above_home_m")],
                 [last[k] for k in ("north_m", "east_m", "altitude_above_home_m")],
             )
             if state["mission_current"] == state["mission_total"] - 1 and error < 2:
-                await mission.fleet.execute("return_home", {"drone_id": name})
-                pending.remove(name)
+                mission.active_flight.add(name)
+                try:
+                    await mission.fleet.execute("return_home", {"drone_id": name})
+                    pending.remove(name)
+                finally:
+                    mission.active_flight.remove(name)
         await asyncio.sleep(0.2)
     await until(
         mission,

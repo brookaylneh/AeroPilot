@@ -234,6 +234,7 @@ async def condition_flight(fleet, condition, scenario_id, directory):
 async def run(conditions, scenario_id, output, shutdown_file):
     from mission_planner.gcs.fleet import Fleet
     from world.cosys import client as sim
+    from world.cosys.landmarks import load as load_landmarks
 
     assert os.environ["SNR_SITL_MODEL"] == "airsim-copter", "Calibration requires coupled physics"
     assert not shutdown_file.exists(), "World shutdown acknowledgement already exists"
@@ -249,7 +250,7 @@ async def run(conditions, scenario_id, output, shutdown_file):
             log.write(json.dumps({"at_ms": time.time() * 1000, **value}) + "\n")
             log.flush()
 
-        fleet = Fleet(output / "sitl", event)
+        fleet = Fleet(output / "sitl", event, load_landmarks())
         try:
             await fleet.start()
             for condition in conditions:

@@ -18,6 +18,7 @@ from mission_planner.environment import load_env
 from mission_planner.gcs.fleet import MAV, Fleet
 from mission_planner.gcs.geodesy import NAMES, ORIGIN
 from mission_planner.gcs.validation import validate_route, validate_separation
+from world.cosys.landmarks import load as load_landmarks
 
 ALTITUDES_M = (50, 60, 70, 80)
 NORTH_OFFSETS_M = (24, 54, 84, 114, 144, 174, 144, 114, 84, 54, 24, 34)
@@ -139,7 +140,7 @@ async def run(output, shutdown_file, seconds, speed):
         event_log.write(json.dumps(value, allow_nan=False) + "\n")
         event_log.flush()
 
-    fleet = Fleet(output / "sitl", event)
+    fleet = Fleet(output / "sitl", event, load_landmarks())
     monitor = flight = None
     readers = []
     executor = ThreadPoolExecutor(max_workers=1)
@@ -165,7 +166,12 @@ async def run(output, shutdown_file, seconds, speed):
         report["routes"] = routes
         for state, altitude in zip(initial, ALTITUDES_M):
             start = {**state, "altitude_above_home_m": altitude}
-            validate_route([start, *routes[state["id"]]], fleet.vehicles[state["id"]]["fence"])
+            validate_route(
+                [start, *routes[state["id"]]],
+                fleet.vehicles[state["id"]]["fence"],
+                state["home"]["altitude_msl_m"] - ORIGIN["altitude_msl_m"],
+                fleet.landmarks,
+            )
             validate_separation(state["id"], routes[state["id"]], list(routes.items()))
         client = await loop.run_in_executor(
             executor,

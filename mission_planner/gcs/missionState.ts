@@ -74,6 +74,8 @@ const eventSchema = z.object({
     'statustext',
     'error',
     'model_usage',
+    'team_acknowledgement',
+    'perception',
   ]),
   text: z.string(),
   name: z.string().nullable(),

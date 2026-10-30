@@ -25,6 +25,7 @@ from mission_planner.gcs.sitl import check_ports
 from world.cosys import client as sim
 from world.cosys.capture import shadow_floor
 from world.cosys.flight import state, takeoff, until
+from world.cosys.landmarks import load as load_landmarks
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEED_MPS = 5.0
@@ -251,7 +252,11 @@ async def measure(output, lumen):
     fleet_ports += [mavlink + i for i in range(4)] + [rc + 10 * i for i in range(4)]
     run.mkdir(parents=True)
     events = (run / "events.jsonl").open("x")
-    fleet = Fleet(run / "sitl", lambda e: events.write(json.dumps(e, default=str) + "\n"))
+    fleet = Fleet(
+        run / "sitl",
+        lambda e: events.write(json.dumps(e, default=str) + "\n"),
+        load_landmarks(),
+    )
     log_path = run / "unreal.log"
     environment = {**os.environ, **LAUNCH, "SNR_UNREAL_HOME": str(run / "unreal-home")}
     launched = time.time()

@@ -6,21 +6,29 @@ import hashlib
 import io
 
 import numpy as np
+from matplotlib import colormaps
 from PIL import Image
 
-from mission_planner.environment import ROOT
-from mission_planner.search.belief import negative_update
-from mission_planner.search.coverage import capture_geometry, capture_pod
-from mission_planner.search.detection import reduce_calibration
+from mission_planner.search.behavior import DOMAIN, condition, domain_for
+from mission_planner.search.commander import Commander
+from mission_planner.search.coverage import capture_geometry
 from mission_planner.search.grid import make_grid, polygon_areas, validate_area
+from mission_planner.search.occlusion import aerial_visibility
 from mission_planner.search.planner import encode, plan
-from mission_planner.search.prior import TABLES, initialize
+from mission_planner.search.prior import initialize
 from mission_planner.search.subject import explicit_point, validate_profile
+from world.cosys.landmarks import LANDMARKS_PATH, directions, find, load
 
 
 class Search:
     def __init__(self, mission):
         self.mission = mission
+        self.landmarks = load() if LANDMARKS_PATH.is_file() else None
+        self.landmark_error = (
+            None
+            if self.landmarks is not None
+            else "Landmark data unavailable: world/unreal/landmarks.json"
+        )
         self.profile = None
         self.point = None
         self.vertices = None
@@ -34,11 +42,15 @@ class Search:
         self.status = "unplanned"
         self.revision = 0
         self.heatmap = None
+        self.heatmap_scale = None
         self.pod = None
+        self.aerial_visible = None
         self.captures = {}
         self.footprints = []
         self.negative_count = 0
         self.camera_source = None
+        self.paused = {}
+        self.commander = Commander(self)
 
     def changed(self):
         self.revision += 1
@@ -51,7 +63,17 @@ class Search:
             "A new search hypothesis cannot silently discard processed camera evidence"
         )
 
+    def edit_hypothesis(self):
+        self.editable()
+        assert self.commander.source is None, "Camera source selection locks search inputs"
+        assert self.commander.evidence is None or not self.commander.evidence.ground_checks, (
+            "Confirmed ground evidence locks search inputs"
+        )
+
     def invalidate(self):
+        assert self.commander.evidence is None or not self.commander.evidence.ground_checks, (
+            "A new search hypothesis cannot silently discard confirmed ground evidence"
+        )
         self.plan = None
         self.status = "unplanned"
         self.grid = None
@@ -59,10 +81,13 @@ class Search:
         self.retained = None
         self.prior_fit = None
         self.heatmap = None
+        self.heatmap_scale = None
         self.pod = None
+        self.aerial_visible = None
+        self.commander.evidence = None
 
     def mark_point(self, north, east):
-        self.editable()
+        self.edit_hypothesis()
         assert np.isfinite([north, east]).all()
         from mission_planner.gcs.geodesy import point_in_polygon
 
@@ -80,23 +105,51 @@ class Search:
 
     def initialize(self):
         assert self.profile is not None, "Record subject profile first"
-        assert self.point is not None, "Operator must mark the last known point on the map"
+        assert self.point is not None, "Operator must mark or approve the last known location"
         assert self.vertices is not None, "Define the search area and statistical domain"
         assert self.mission.fleet_ready, "MAVLink fleet unavailable"
         if self.grid is None:
-            self.grid = make_grid(self.mission.vehicles()[0]["fence"])
-            self.probability, self.retained, self.prior_fit = initialize(
-                self.grid, self.point, self.profile["category"]["value"], self.domain
+            category = self.profile["category"]["value"]
+            assert self.domain == domain_for(category), (
+                "Statistical domain differs from Sierra source"
+            )
+            grid = make_grid(self.mission.vehicles()[0]["fence"])
+            probability, retained, fit = initialize(grid, self.point, category, self.domain)
+            fit["behavior"] = None
+            if category == "dementia":
+                probability, fit["behavior"] = condition(grid, probability, self.landmarks)
+            visible = None if self.landmarks is None else aerial_visibility(grid, self.landmarks)
+            self.grid, self.probability, self.retained, self.prior_fit = (
+                grid,
+                probability,
+                retained,
+                fit,
             )
             self.pod = np.zeros_like(self.probability)
-            self.model = reduce_calibration(ROOT / ".local/data/calibration")
+            self.aerial_visible = visible
+            self.model = self.commander.model
+            self.commander.initialize_evidence()
             self.render_heatmap()
 
     def render_heatmap(self):
-        ratio = self.probability / float(self.probability.max())
-        rgba = np.column_stack(
-            [np.full(len(ratio), 237), 80 + ratio * 110, np.full(len(ratio), 45), ratio * 130]
-        ).astype("uint8")
+        maximum = float(self.probability.max())
+        scale = float(self.probability[self.probability > 0].min())
+        span = np.log1p(maximum / scale)
+        ratio = np.log1p(self.probability / scale) / span
+        assert np.isfinite(ratio).all() and ((ratio >= 0) & (ratio <= 1)).all()
+        colourmap = colormaps["viridis"]
+        rgba = colourmap(ratio, bytes=True)
+        rgba[:, 3] = np.where(self.grid["areas"] > 0, 110, 0)
+        self.heatmap_scale = {
+            "method": "log1p",
+            "maximum": maximum,
+            "midpoint": float(scale * np.expm1(span / 2)),
+            "scale_probability": scale,
+            "colours": [
+                "#" + "".join(f"{channel:02x}" for channel in colour[:3])
+                for colour in colourmap(np.linspace(0, 1, 9), bytes=True)
+            ],
+        }
         image = Image.fromarray(rgba.reshape(*self.grid["shape"], 4)[::-1], mode="RGBA")
         buffer = io.BytesIO()
         image.save(buffer, format="PNG")
@@ -111,10 +164,12 @@ class Search:
             "calibration": self.model["input_sha256"],
             "readbacks": {n: v["fence"] for n, v in self.mission.fleet.vehicles.items()},
             "probability_sha256": hashlib.sha256(self.probability.tobytes()).hexdigest(),
+            "landmarks_sha256": hashlib.sha256(encode(self.landmarks).encode()).hexdigest(),
         }
 
     def summary(self):
         result = {
+            "landmark_error": self.landmark_error,
             "profile_recorded": self.profile is not None,
             "last_known_point": self.point,
             "area_defined": self.vertices is not None,
@@ -122,6 +177,14 @@ class Search:
             "status": self.status,
             "retained_in_world_mass": self.retained,
             "coverage": self.coverage_summary(),
+            "paused_drones": self.paused,
+            "pipeline_capacity": self.commander.capacity_view(),
+            "behavior_prior": None
+            if self.prior_fit is None or self.prior_fit["behavior"] is None
+            else {
+                key: self.prior_fit["behavior"][key]
+                for key in ("method", "unresolved_weight", "limitations")
+            },
         }
         if self.probability is not None:
             top = np.argsort(-self.probability, kind="stable")[:3]
@@ -152,18 +215,46 @@ class Search:
                     n: {k: r[k] for k in ("length_m", "airborne_seconds", "reserve_seconds")}
                     for n, r in self.plan["routes"].items()
                 },
-                expectation="Conditional on target inside world; stationary, provisional detection model",
+                expectation="Conditional on target inside world; stationary, provisional detection model; zero aerial detection in structure and forest footprints",
             )
         return result
 
+    def directions(self, north_m, east_m):
+        return None if self.landmarks is None else directions(self.landmarks, north_m, east_m)
+
+    def structure_mass(self, place_id, geometry):
+        self.initialize()
+        return self.commander.evidence.structure_mass(place_id, geometry)
+
+    def confirm_structure_negative(self, delivery_id, place_id, geometry):
+        self.initialize()
+        result = self.commander.evidence.ground_negative(delivery_id, place_id, geometry)
+        self.probability = self.commander.evidence.probability
+        if self.status == "planned":
+            self.plan, self.status = None, "unplanned"
+        self.mission.directory.joinpath("ground-evidence.json").write_text(
+            encode(self.commander.evidence.ground_checks) + "\n"
+        )
+        self.render_heatmap()
+        self.changed()
+        self.mission.event(
+            "ground_evidence",
+            "Operator confirmed structure checked negative",
+            result={"delivery_id": delivery_id, "place_id": place_id, **result},
+            source="operator",
+        )
+        return result
+
     def coverage_summary(self):
+        ingestion = self.commander.ingestion
         return {
             "source": self.camera_source,
             "message": "Coverage has no camera source"
             if self.camera_source is None
-            else "Capture geometry and explicitly processed negatives",
+            else "Calibrated person evidence; briefing prompts are uncalibrated leads",
             "captures": len(self.captures),
             "negative_observations": self.negative_count,
+            "backlog": None if ingestion is None else ingestion.summary()["lanes"],
         }
 
     def view(self):
@@ -179,30 +270,42 @@ class Search:
             }
         )
         return {
+            "landmarks": self.landmarks,
+            "landmark_error": self.landmark_error,
             "revision": self.revision,
             "profile": self.profile,
             "point": self.point,
             "vertices": self.vertices,
             "domain": self.domain,
-            "domains": [
-                d
-                for c, d in TABLES
-                if self.profile is not None and c == self.profile["category"]["value"]
-            ],
+            "domains": [DOMAIN[self.profile["category"]["value"]]]
+            if self.profile is not None and self.profile["category"]["value"] in DOMAIN
+            else [],
+            "prior_fit": self.prior_fit,
             "heatmap": self.heatmap,
+            "heatmap_scale": self.heatmap_scale,
             "grid": grid,
             "plan": self.plan,
             "summary": self.summary(),
             "footprints": self.footprints,
+            "commander": self.commander.view(),
         }
 
-    async def execute(self, name, arguments):
+    async def execute(self, name, arguments, source="operator"):
+        if name in ("find_place", "describe_location"):
+            assert self.landmarks is not None, self.landmark_error
+            if name == "find_place":
+                return find(self.landmarks, arguments["name"])
+            return self.directions(arguments["north_m"], arguments["east_m"])
+        if name in ("list_detections", "review_detection", "resolve_detection"):
+            return await self.commander.execute(name, arguments, source)
         if name == "record_subject_profile":
-            self.editable()
+            self.edit_hypothesis()
             validate_profile(arguments, self.mission.case["report"])
             self.profile = arguments
             p = explicit_point(arguments)
-            if p is not None and (self.point is None or self.point["source"] != "operator"):
+            if p is not None and (
+                self.point is None or self.point["source"] == "briefing_coordinates"
+            ):
                 from world.cosys.terrain import EAST_MAX_M, EAST_MIN_M, NORTH_MAX_M, NORTH_MIN_M
 
                 assert NORTH_MIN_M <= p["north_m"] <= NORTH_MAX_M
@@ -212,8 +315,14 @@ class Search:
             self.changed()
             return self.summary()
         if name == "define_search_area":
-            self.editable()
+            self.edit_hypothesis()
             assert self.mission.fleet_ready
+            assert self.profile is not None, (
+                "Record subject profile before defining the search area"
+            )
+            assert arguments["domain"] == domain_for(self.profile["category"]["value"]), (
+                "Statistical domain differs from Sierra source"
+            )
             validate_area(arguments["vertices"], self.mission.vehicles()[0]["fence"])
             self.vertices = arguments["vertices"]
             self.domain = arguments["domain"]
@@ -236,6 +345,7 @@ class Search:
                 inputs["readbacks"],
                 self.model,
                 inputs,
+                self.landmarks,
             )
             assert inputs == self.inputs(), "Search inputs changed during planning"
             self.plan = result
@@ -253,20 +363,17 @@ class Search:
         assert self.plan["inputs"] == self.inputs(), "Search inputs changed since planning"
         return self.plan
 
-    def consume_capture(self, frame, outcome):
-        assert outcome in ("unprocessed", "negative")
+    def consume_capture(self, frame):
         key = f"{frame['vehicleId']}:{frame['timestampNs']}"
         assert key not in self.captures, "Duplicate capture record"
         assert isinstance(frame["sha256"], str) and len(frame["sha256"]) == 64
-        if outcome == "unprocessed":
-            _, footprint = capture_geometry(frame)
-        else:
-            self.initialize()
-            pd, footprint = capture_pod(frame, self.grid, self.model)
-            self.probability, self.pod = negative_update(self.probability, self.pod, pd)
-            self.negative_count += 1
-            self.render_heatmap()
+        _, footprint = capture_geometry(frame)
         self.captures[key] = frame["sha256"]
-        self.camera_source = "Cosys capture records"
-        self.footprints.append({"id": key, "vertices": footprint, "outcome": outcome})
+        self.footprints.append({"id": key, "vertices": footprint, "outcome": "unprocessed"})
         self.changed()
+
+    def complete_capture(self, result):
+        return self.commander.complete_capture(result)
+
+    def review_detection(self, detection_id):
+        return self.commander.review(detection_id)

@@ -5,6 +5,36 @@ camera/actor metadata and inference results stay under ignored `.local/data/cali
 `mission_planner/measurements/calibration.json` is the deterministic reduction, including its input
 provenance. It is not a claim about other terrain, illumination or search altitudes.
 
+## Commander capture processing
+
+`configuration.py` validates camera-only records and reproduces the calibrated image
+transforms. Its numeric operating point is loaded from `measurements/commander.json`.
+`pipeline.py` saves each SAM response, linked Glimmer crop and decision before returning
+georeferenced detections. Briefing prompts remain uncalibrated leads. `ingestion.py`
+accepts a metadata path, pipelines SAM independently of verification, commits each
+lane in order, and persists terminal failures
+without retry. The live adapter must check capture validation before copying the exact
+camera-field whitelist; neither actor records nor evaluation labels enter this path.
+
+Replay requires an explicit manifest and remains labelled **Recorded frames**. Original
+camera identity, pose and timestamp are preserved; the four replay lanes exercise load
+and do not establish performance across four physical cameras. The offline
+`evaluate_commander` commands `export`, `prefix` and `score` create camera-only manifests
+and join saved pipeline outputs to private labels in separate condition episodes.
+`bench_prompt_equivalence` compares dedicated and combined requests over all 490
+frames: every person candidate must retain its qualified/unqualified decision,
+with matched box IoU at least 0.95 and score difference at most 0.01.
+`bench_commander throughput` requires a manifest, repeated `--prompt` arguments,
+`--profile`, `--sam-concurrency`, `--interval` and a fresh `--output` directory.
+The benchmark warms the task-owned apps, records every frame through the mission's
+belief callback, and saves backlog, latency, source versions and metered runner usage.
+SAM responses include decode, tiling, forward, postprocessing and total durations.
+Client request sidecars retain upload/round-trip timing even when a request fails.
+`profile_pipeline` reduces these clocks into utilization and latency summaries;
+its required `--request-source` distinguishes legacy result records from sidecars.
+`hosting.inference_session` owns cleanup to zero. Operator tools and receiving-page
+routes are documented in [search](../../search/README.md).
+
 ## Acquisition and session ownership
 
 `mission_planner/agents/perception/calibration-scenario.mjs` reuses `mission_planner/agents/perception/browser.mjs`. The existing
@@ -99,7 +129,7 @@ SAM runs `person` at request threshold 0.05 on 1920-by-1080 inputs. Four-k frame
 use Pillow Lanczos downscaling. The existing service's edge-aligned tiles give four
 1008 px tiles, with actual overlaps of 96 px horizontally and 936 px vertically;
 64 px is its nominal stride overlap, not the overlap after the final tile aligns
-with an image edge. Serving is unchanged.
+with an image edge. These tile origins remain fixed.
 
 The pinned SAM postprocessor multiplies sigmoid instance score by sigmoid presence
 score and retains scores **strictly greater** than the request threshold. The

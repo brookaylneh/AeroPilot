@@ -13,6 +13,7 @@ from pathlib import Path
 from mission_planner.environment import load_env
 from mission_planner.gcs.fleet import Fleet
 from mission_planner.gcs.geodesy import ORIGIN, ROOT, homes
+from world.cosys.landmarks import load as load_landmarks
 
 
 async def run(output):
@@ -45,7 +46,7 @@ async def run(output):
             log.write(json.dumps({"at_ms": time.time() * 1000, **value}) + "\n")
             log.flush()
 
-        fleet = Fleet(output / "sitl", event)
+        fleet = Fleet(output / "sitl", event, load_landmarks())
         try:
             started = time.monotonic()
             await fleet.start()

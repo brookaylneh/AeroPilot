@@ -71,7 +71,8 @@ class Footprints(unittest.TestCase):
 
     def test_empty_footprint_has_zero_pod_without_height_extrapolation(self):
         with patch("mission_planner.search.coverage.capture_geometry", return_value=(None, [])):
-            pod, vertices = capture_pod({}, {"centers": np.zeros((4, 2))}, None)
+            grid = {"centers": np.zeros((4, 2)), "areas": np.ones(4)}
+            pod, vertices = capture_pod({}, grid, None, np.ones(4, dtype=bool))
         np.testing.assert_array_equal(pod, np.zeros(4))
         self.assertEqual(vertices, [])
 

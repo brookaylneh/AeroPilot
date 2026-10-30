@@ -17,6 +17,7 @@ from pymavlink import mavutil  # noqa: E402
 from mission_planner.environment import load_env  # noqa: E402
 from mission_planner.gcs.geodesy import (  # noqa: E402
     NAMES,
+    ORIGIN,
     fence_vertices,
     rtl_route,
     to_geodetic,
@@ -24,10 +25,12 @@ from mission_planner.gcs.geodesy import (  # noqa: E402
 )
 from mission_planner.gcs.sitl import check_ports, launches  # noqa: E402
 from mission_planner.gcs.validation import (  # noqa: E402
+    validate_ground_column,
     validate_position,
     validate_route,
     validate_separation,
 )
+from world.cosys.landmarks import load as load_landmarks  # noqa: E402
 
 MAV = mavutil.mavlink
 RATES = {0: 2, 1: 5, 24: 5, 33: 10, 42: 5, 193: 5, 245: 5, 242: 1}
@@ -43,13 +46,14 @@ REQUIRED = (
 
 
 class Fleet:
-    def __init__(self, directory, on_event):
+    def __init__(self, directory, on_event, landmarks):
         self.directory = Path(directory).resolve()
         self.on_event = on_event
         self.vehicles = {}
         self.tasks = []
         self.command_lock = asyncio.Lock()
         self.planned_routes = {}
+        self.landmarks = landmarks
 
     async def start(self):
         load_env()
@@ -481,7 +485,14 @@ class Fleet:
 
     def _validate_route(self, name, route):
         assert route
-        validate_route(route, self.vehicles[name]["fence"])
+        assert self.landmarks is not None, "Landmark catalogue required for obstacle clearance"
+        home = next(state["home"] for state in self.snapshot() if state["id"] == name)
+        validate_route(
+            route,
+            self.vehicles[name]["fence"],
+            home["altitude_msl_m"] - ORIGIN["altitude_msl_m"],
+            self.landmarks,
+        )
         self._validate_separation(name, route)
 
     def _validate_separation(self, name, route):
@@ -505,6 +516,7 @@ class Fleet:
                 assert (
                     not state["armed"] and state["landed_state"] == MAV.MAV_LANDED_STATE_ON_GROUND
                 ), "Takeoff requires disarmed, on-ground aircraft"
+                validate_ground_column(state, self.landmarks)
                 route = [{**state, "altitude_above_home_m": args["altitude_above_home_m"]}]
                 self._validate_route(drone, route)
                 route = [state, *route]
@@ -593,6 +605,7 @@ class Fleet:
                     self.planned_routes[drone] = [state, *route]
                 elif name in ("hold", "resume", "return_home", "land"):
                     if name == "land":
+                        validate_ground_column(state, self.landmarks)
                         self._validate_separation(
                             drone, [state, {**state, "altitude_above_home_m": 0}]
                         )
@@ -606,6 +619,7 @@ class Fleet:
                         )
                     if name == "return_home":
                         return_route = rtl_route(state)
+                        validate_ground_column(return_route[-1], self.landmarks)
                         self._validate_route(drone, return_route[:-1])
                         self._validate_separation(drone, return_route)
                     await self._mode(
@@ -725,7 +739,7 @@ async def main():
             log.write(json.dumps({"at_ms": time.time() * 1000, **value}) + "\n")
             log.flush()
 
-        fleet = Fleet(args.output / "sitl", event)
+        fleet = Fleet(args.output / "sitl", event, load_landmarks())
         startup = asyncio.create_task(fleet.start())
         stopped = asyncio.create_task(stop.wait())
         try:

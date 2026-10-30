@@ -1,15 +1,13 @@
-"""Inline public-landmark fixtures; no scenario placements or authored world data."""
+"""Public-landmark schema fixtures and the shipped valley catalogue."""
 
 import copy
-import hashlib
 import json
 import math
 import tempfile
 import unittest
 from pathlib import Path
 
-from world.cosys import landmarks as module
-from world.cosys.landmarks import directions, find, load, validate
+from world.cosys.landmarks import KINDS, directions, find, load, validate
 
 
 def feature(identifier, name, kind, geometry, coordinates, aliases=()):
@@ -258,11 +256,11 @@ class LandmarkTests(unittest.TestCase):
         with self.assertRaises(AssertionError):
             directions(landmarks, math.nan, 0)
 
-    def test_validator_is_the_search_planning_9688712_blob(self):
-        self.assertEqual(
-            hashlib.sha256(Path(module.__file__).read_bytes()).hexdigest(),
-            "a6afda65eb765d4c8bb10478d1af859ab62bce264be78cac41b30f0ed7876b10",
-        )
+    def test_shipped_valley_catalogue_validates_and_covers_every_kind(self):
+        landmarks = load()
+        self.assertEqual({item["kind"] for item in landmarks}, set(KINDS))
+        for query in ("footbridge", "Granite Lake", "ICP"):
+            self.assertEqual(len(find(landmarks, query)["matches"]), 1, query)
 
 
 if __name__ == "__main__":

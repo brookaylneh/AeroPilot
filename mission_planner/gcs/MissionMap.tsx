@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { LocateFixed, Minus, Plus, Scan } from 'lucide-react';
 import {
   fitMapBounds,
@@ -20,11 +20,12 @@ import {
   type RouteArguments,
 } from './missionState';
 import world from '../../world/cosys/world.json';
-import { formatValue } from './display';
+import { formatValue, formatProbability } from './display';
 import { groupPadLabels, placeLabels } from './mapLabels';
 
 import SearchLayers from './SearchLayers';
 import type { SearchState, SearchPoint } from './searchState';
+import type { Landmark } from './placeState';
 
 const searchBounds = {
   minX: world.searchBoundsCm.min.x / 100,
@@ -48,22 +49,34 @@ function gridTicks(minimum: number, maximum: number) {
 export default function MissionMap({
   search = null,
   onMark,
+  drawing,
+  areaDraft,
+  onDraw,
+  finishDrawing,
+  reviewDetection,
   vehicles,
   selected,
   select,
   focus,
   pendingRoute,
+  pendingPlace,
   age,
   connected,
   inset = false,
 }: {
   search?: SearchState | null;
   onMark?: (point: SearchPoint) => void;
+  drawing: boolean;
+  areaDraft: SearchPoint[] | null;
+  onDraw: (vertices: SearchPoint[]) => void;
+  finishDrawing: () => void;
+  reviewDetection: (id: string) => void;
   vehicles: Vehicle[];
   selected: DroneId;
   select: (id: DroneId) => void;
   focus: MapFocus | null;
   pendingRoute: RouteArguments | null;
+  pendingPlace: Landmark | null;
   age: number;
   connected: boolean;
   inset?: boolean;
@@ -71,8 +84,12 @@ export default function MissionMap({
   const surface = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 1000, height: 700, inset });
   const [viewState, setView] = useState<MapView | 'fit'>('fit');
+  const [overlayBoxes, setOverlayBoxes] = useState<{ x: number; y: number; width: number; height: number }[]>(
+    [],
+  );
   const [cursor, setCursor] = useState<{ north_m: number; east_m: number } | null>(null);
   const drag = useRef<{ x: number; y: number; view: MapView } | null>(null);
+  const rectangleStart = useRef<SearchPoint | null>(null);
   const trails = useRef<Record<string, { north_m: number; east_m: number }[]>>({});
   const bounds = fitMapBounds(navigationBounds, size);
   const span = bounds.maxY - bounds.minY;
@@ -88,6 +105,45 @@ export default function MissionMap({
     const p = worldToMap({ x: north_m, y: east_m }, bounds);
     setView(mapView(p.u, p.v, zoom));
   }
+  function unproject(clientX: number, clientY: number): SearchPoint {
+    const rect = surface.current!.getBoundingClientRect();
+    const p = screenToMap(
+      { u: (clientX - rect.left) / rect.width, v: (clientY - rect.top) / rect.height },
+      view,
+    );
+    return { north_m: bounds.maxX - p.v * (bounds.maxX - bounds.minX), east_m: bounds.minY + p.u * span };
+  }
+  function rectangle(a: SearchPoint, b: SearchPoint): SearchPoint[] {
+    const north = Math.max(a.north_m, b.north_m),
+      south = Math.min(a.north_m, b.north_m);
+    const east = Math.max(a.east_m, b.east_m),
+      west = Math.min(a.east_m, b.east_m);
+    return [
+      { north_m: south, east_m: west },
+      { north_m: north, east_m: west },
+      { north_m: north, east_m: east },
+      { north_m: south, east_m: east },
+    ];
+  }
+  function fitSearch() {
+    if (!search?.vertices) {
+      setView('fit');
+      return;
+    }
+    const points = [
+      ...search.vertices,
+      ...(search.plan ? Object.values(search.plan.routes).flatMap((r) => r.waypoints) : []),
+    ];
+    const north = points.map((p) => p.north_m),
+      east = points.map((p) => p.east_m);
+    const height = Math.max(...north) - Math.min(...north),
+      width = Math.max(...east) - Math.min(...east);
+    center(
+      (Math.min(...north) + Math.max(...north)) / 2,
+      (Math.min(...east) + Math.max(...east)) / 2,
+      Math.min(span / (width * 1.25), (bounds.maxX - bounds.minX) / (height * 1.45)),
+    );
+  }
   useEffect(() => {
     const observer = new ResizeObserver(([entry]) =>
       setSize({ width: entry.contentRect.width, height: entry.contentRect.height, inset }),
@@ -95,6 +151,31 @@ export default function MissionMap({
     observer.observe(surface.current!);
     return () => observer.disconnect();
   }, [inset]);
+  useLayoutEffect(() => {
+    if (inset) {
+      setOverlayBoxes([]);
+      return;
+    }
+    const rect = surface.current!.getBoundingClientRect();
+    const nodes = surface
+      .current!.closest('.gcs-stage')!
+      .querySelectorAll(
+        '.gcs-map-caption, .gcs-map-tools, .gcs-map-bottom, .gcs-probability-legend, .gcs-north, .gcs-pending-key, .gcs-stage-key, .gcs-inset, .gcs-search-panel, .gcs-fleet',
+      );
+    setOverlayBoxes(
+      Array.from(nodes, (node) => {
+        const box = node.getBoundingClientRect();
+        return { x: box.x - rect.x, y: box.y - rect.y, width: box.width, height: box.height };
+      }),
+    );
+  }, [
+    size.width,
+    size.height,
+    inset,
+    search?.heatmap_scale?.method,
+    pendingRoute?.drone_id,
+    vehicles.length,
+  ]);
   useEffect(() => {
     for (const v of vehicles) {
       if (!trails.current[v.id]) trails.current[v.id] = [];
@@ -125,6 +206,24 @@ export default function MissionMap({
       );
     }
   }, [focusKey]);
+  const searchFocusKey = JSON.stringify([search?.vertices, search?.plan?.plan_id]);
+  useEffect(() => {
+    if (!inset && search?.vertices) fitSearch();
+  }, [searchFocusKey, size.width, size.height, inset]);
+  useEffect(() => {
+    if (!pendingPlace || inset) return;
+    const north = pendingPlace.geometry.points.map((p) => p.x / 100);
+    const east = pendingPlace.geometry.points.map((p) => p.y / 100);
+    const height = bounds.maxX - bounds.minX;
+    center(
+      (Math.min(...north) + Math.max(...north)) / 2,
+      (Math.min(...east) + Math.max(...east)) / 2,
+      Math.min(
+        span / (Math.max(Math.max(...east) - Math.min(...east), span / 8) * 1.5),
+        height / (Math.max(Math.max(...north) - Math.min(...north), height / 8) * 1.5),
+      ),
+    );
+  }, [pendingPlace?.id, inset, size.width, size.height]);
   useEffect(() => {
     const el = surface.current!;
     const wheel = (e: WheelEvent) => {
@@ -174,7 +273,7 @@ export default function MissionMap({
     <div className={`gcs-map ${inset ? 'is-inset' : ''}`}>
       <div
         ref={surface}
-        className="gcs-map-surface"
+        className={`gcs-map-surface ${drawing || onMark ? 'is-drawing' : ''}`}
         role="application"
         aria-label="Mission map. Drag to pan, scroll to zoom."
         tabIndex={0}
@@ -200,18 +299,17 @@ export default function MissionMap({
         onPointerDown={(e) => {
           if (onMark || e.button !== 0 || (e.target as Element).closest('[data-drone]')) return;
           e.currentTarget.setPointerCapture(e.pointerId);
+          if (drawing) {
+            rectangleStart.current = unproject(e.clientX, e.clientY);
+            return;
+          }
           drag.current = { x: e.clientX, y: e.clientY, view };
         }}
         onPointerMove={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
-          const p = screenToMap(
-            { u: (e.clientX - rect.left) / rect.width, v: (e.clientY - rect.top) / rect.height },
-            view,
-          );
-          setCursor({
-            north_m: bounds.maxX - p.v * (bounds.maxX - bounds.minX),
-            east_m: bounds.minY + p.u * span,
-          });
+          const point = unproject(e.clientX, e.clientY);
+          setCursor(point);
+          if (rectangleStart.current) onDraw(rectangle(rectangleStart.current, point));
           const d = drag.current;
           if (d)
             setView(
@@ -223,24 +321,23 @@ export default function MissionMap({
             );
         }}
         onPointerUp={(e) => {
+          if (rectangleStart.current) {
+            onDraw(rectangle(rectangleStart.current, unproject(e.clientX, e.clientY)));
+            rectangleStart.current = null;
+            finishDrawing();
+          }
           if (onMark && e.button === 0) {
-            const rect = e.currentTarget.getBoundingClientRect();
-            const p = screenToMap(
-              { u: (e.clientX - rect.left) / rect.width, v: (e.clientY - rect.top) / rect.height },
-              view,
-            );
-            onMark({
-              north_m: bounds.maxX - p.v * (bounds.maxX - bounds.minX),
-              east_m: bounds.minY + p.u * span,
-            });
+            onMark(unproject(e.clientX, e.clientY));
           }
           drag.current = null;
         }}
         onPointerCancel={() => {
           drag.current = null;
+          rectangleStart.current = null;
         }}
         onLostPointerCapture={() => {
           drag.current = null;
+          rectangleStart.current = null;
         }}
       >
         <svg
@@ -255,7 +352,46 @@ export default function MissionMap({
             height={bottomRight.y - topLeft.y}
             className="gcs-terrain"
           />
-          <SearchLayers search={search} project={projection} />
+          <SearchLayers
+            search={search}
+            project={projection}
+            reviewDetection={reviewDetection}
+            viewport={size}
+            obstacles={[
+              ...overlayBoxes,
+              ...Object.values(labels),
+              ...vehicles.map((v) => {
+                const p = projection(v.north_m, v.east_m);
+                return { x: p.x - 20, y: p.y - 20, width: 40, height: 40 };
+              }),
+              ...(search
+                ? search.commander.clusters.map((cluster) => {
+                    const p = projection(
+                      cluster.localization.ground.north_m,
+                      cluster.localization.ground.east_m,
+                    );
+                    return { x: p.x - 14, y: p.y - 18, width: 230, height: 36 };
+                  })
+                : []),
+              ...(search?.point
+                ? [{ ...projection(search.point.north_m, search.point.east_m), width: 280, height: 24 }]
+                : []),
+            ]}
+            pendingPlace={pendingPlace}
+            showLandmarkLabels={!inset && size.inset === inset}
+          />
+          {areaDraft && (
+            <polygon
+              className="gcs-search-draft"
+              aria-label="Drawn search rectangle"
+              points={areaDraft
+                .map((p) => {
+                  const q = projection(p.north_m, p.east_m);
+                  return `${q.x},${q.y}`;
+                })
+                .join(' ')}
+            />
+          )}
           {gridTicks(searchBounds.minX, searchBounds.maxX).map((north) => {
             const start = projection(north, searchBounds.minY),
               end = projection(north, searchBounds.maxY);
@@ -463,6 +599,12 @@ export default function MissionMap({
             <span className="gcs-eyebrow">SEARCH AREA</span>
             <strong>Open Meadow</strong>
             <span>Local terrain · north up</span>
+            {!vehicles.length && (
+              <span className="gcs-map-waiting">
+                <i className="gcs-status-dot" />
+                Awaiting autopilot positions and fence
+              </span>
+            )}
           </div>
           <div className="gcs-map-tools">
             <button
@@ -481,7 +623,7 @@ export default function MissionMap({
             >
               <Minus size={17} />
             </button>
-            <button title="Fit search area" aria-label="Fit search area" onClick={() => setView('fit')}>
+            <button title="Fit search area and plan" aria-label="Fit search area" onClick={fitSearch}>
               <Scan size={17} />
             </button>
             <button
@@ -495,18 +637,36 @@ export default function MissionMap({
               <LocateFixed size={17} />
             </button>
           </div>
+          {search?.heatmap_scale && search.grid && (
+            <div className="gcs-probability-legend" aria-label="Probability colour scale">
+              <strong>
+                {search.heatmap_scale.method === 'log1p' ? 'Log probability' : 'Probability'} per{' '}
+                {search.grid.cell_m} m cell
+              </strong>
+              <div
+                style={{
+                  background: `linear-gradient(to right, ${search.heatmap_scale.colours.join(', ')})`,
+                }}
+              />
+              <span>
+                <b>0%</b>
+                <b>{formatProbability(search.heatmap_scale.midpoint)}</b>
+                <b>{formatProbability(search.heatmap_scale.maximum)}</b>
+              </span>
+              <small>
+                {search.heatmap_scale.method === 'log1p'
+                  ? 'Log colour spacing; labels are probabilities.'
+                  : 'Linear colour spacing.'}
+              </small>
+              <small>Conditional on presence in the world</small>
+            </div>
+          )}
           <div className="gcs-north">
             <b>N</b>
             <svg viewBox="0 0 24 30">
               <path d="M12 2L21 26L12 20L3 26Z" />
             </svg>
           </div>
-          {!vehicles.length && (
-            <div className="gcs-map-waiting">
-              <span className="gcs-status-dot" />
-              Awaiting autopilot positions and fence
-            </div>
-          )}
           <div className="gcs-map-bottom">
             <div className="gcs-scale" style={{ width: (scale / visibleWidth) * size.width }}>
               {formatValue(scale, 'm', 0)}

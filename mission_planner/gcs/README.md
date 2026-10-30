@@ -5,7 +5,9 @@ autopilots fly the Cosys vehicles. `quad` is retained only for the named
 `bench_sitl.py` built-in-physics benchmark. See the [coupling gate](../../world/cosys/README.md)
 and its recorded acceptance measurements. One Python process owns their
 MAVLink connections, Wonder, approvals and the event log. The browser receives actual
-telemetry, mission and fence readback, and each aircraft's accepted sensor captures.
+telemetry, mission and fence readback, and each aircraft's accepted sensor captures. The search
+commander processes explicitly selected recorded captures or the coupled live capture contract; see
+[search](../search/README.md).
 
 ## Start and stop
 
@@ -114,7 +116,8 @@ The served build must be clean and committed. No higher-rate preview is enabled.
 
 ## Acceptance and diagnostics
 
-[Tool contracts and Wonder context](../agents/README.md) describe the registered tools. Each operator request starts a bounded conversation; continuations contain compact
+[Tool contracts and Wonder context](../agents/README.md) describe the twenty-eight registered
+tools. Each operator request starts a bounded conversation; continuations contain compact
 results and omit the briefing. Events log actual input/output token counts and request
 sizes. HTTP failures retain the failed body and safe response headers without credentials.
 
@@ -174,3 +177,9 @@ prior, planning, frame projection and update times separately, source hashes,
 dependency versions and CPU affinity. Its full polygon comes from the world file.
 For a before/after comparison, run the same benchmark script with `PYTHONPATH`
 pointing at each source checkout and retain separate output files.
+
+The commander acceptance command is `accept_browser.mjs commander URL NEW_DIRECTORY MANIFEST_ID`.
+It selects an explicit recorded manifest, warms inference, releases frames after approved search,
+reviews evidence, approves a re-look, resumes the saved route, confirms a lead and delivers it
+to a separate `/team` browser that explicitly acknowledges receipt. Re-look and ground delivery
+require operator approval even in Autonomous mode. Only the operator resolves detections.
