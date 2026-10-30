@@ -124,7 +124,7 @@ Shaping keeps every grid triangle, on either diagonal, within 36°, and the quan
 field is asserted at 37°. Nadir footprints require corner rays to descend faster
 than the steepest axis gradient, which fails above 41.4° at any yaw, so steep looks
 come from shape and rock meshes. The generator also asserts the 18° walking limit
-under every trail tread (`build-scenario.py`), fire-road grades of at most 12%
+under every trail tread, fire-road grades of at most 12%
 ([USFS Low-Volume Roads BMP Field Guide, ch. 4](https://www.fs.usda.gov/t-d/programs/forest_mgmt/projects/lowvolroads/ch4.pdf)),
 a descending creek bed and water surface, dry banks, basin water held inside each
 footprint, pad clearance, bridge crossings and an unchanged southern buffer. It

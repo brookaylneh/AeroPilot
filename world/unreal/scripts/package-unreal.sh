@@ -27,7 +27,6 @@ if [ ! -f world/unreal/ScenarioStudio/Plugins/AirSim/AirSim.uplugin ]; then
   echo 'Stage the pinned plugin with python3 world/cosys/fetch-cosys.py.' >&2
   exit 2
 fi
-# These must be real, authored UE assets. The Blocks compatibility scene is not the wilderness deliverable.
 for asset in world/unreal/ScenarioStudio/Content/OpenMeadow/Catalog.uasset world/unreal/ScenarioStudio/Content/OpenMeadow/OpenMeadow.umap; do
   if [ ! -f "$asset" ]; then
     echo "Missing authored runtime asset: $asset. See world/unreal/README.md and world/unreal/assets.md." >&2

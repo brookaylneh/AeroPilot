@@ -7,18 +7,6 @@
       "url": "https://github.com/Cosys-Lab/Cosys-AirSim/releases/download/5.8-v3.5.0/AirSim_plugin_Linux_58_350.zip",
       "sha256": "62ae04aac3f22c9c860e6828a9ad846358b63886668349b45382a2ecd33acf24",
       "bytes": 234140202
-    },
-    {
-      "name": "Blocks_editor_project_58_350.zip",
-      "url": "https://github.com/Cosys-Lab/Cosys-AirSim/releases/download/5.8-v3.5.0/Blocks_editor_project_58_350.zip",
-      "sha256": "9f022f557f787c49dd6056e3c7b59d9b2e11ebc1438b788bc4f4d5eceeb14809",
-      "bytes": 9870311
-    },
-    {
-      "name": "Blocks_packaged_Linux_58_350.zip",
-      "url": "https://github.com/Cosys-Lab/Cosys-AirSim/releases/download/5.8-v3.5.0/Blocks_packaged_Linux_58_350.zip",
-      "sha256": "6521e392d21af0768c31f0722c9d4552ece8530b8ac3b11b7e6865b7621d15ca",
-      "bytes": 570680224
     }
   ],
   "pixelStreaming": {
