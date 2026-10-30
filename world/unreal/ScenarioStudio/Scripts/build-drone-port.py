@@ -1,4 +1,4 @@
-"""Rebuild the pad actors from world.json without changing their southern ground."""
+"""Rebuild the launch slab from world.json; the valley apron of build-open-meadow.py carries it."""
 
 import hashlib
 import json
@@ -41,17 +41,9 @@ assert all(
     abs(getattr(start, axis) - world["playerStartUeCm"][axis]) < 0.01 for axis in ("x", "y", "z")
 )
 assert catalog.get_editor_property("cosys_origin_cm") == start
-old_slabs = [a for a in actors.get_all_level_actors() if a.get_actor_label() == "drone.port"]
-old_supports = [
-    a for a in actors.get_all_level_actors() if a.get_actor_label() == "drone.port.support"
-]
-assert len(old_slabs) == len(old_supports) == 1
-old_slab, old_support = old_slabs[0], old_supports[0]
+(old_slab,) = [a for a in actors.get_all_level_actors() if a.get_actor_label() == "drone.port"]
 slab_material = old_slab.static_mesh_component.get_material(0)
-support_mesh = old_support.static_mesh_component.get_editor_property("static_mesh")
-support_material = old_support.static_mesh_component.get_material(0)
-support_transform = old_support.get_actor_transform()
-assert slab_material and support_mesh and support_material
+assert slab_material
 center = world["port"]["centerUeCm"]
 north_size, east_size, thickness = world["port"]["dimensionsMetres"]
 position = unreal.Vector(center["x"], center["y"], center["z"] - thickness * 50)
@@ -66,7 +58,6 @@ for vehicle in world["vehicles"].values():
     assert abs(spawn["y"] - center["y"]) < east_size * 50
     assert spawn["z"] > center["z"]
 assert actors.destroy_actor(old_slab)
-assert actors.destroy_actor(old_support)
 slab = actors.spawn_actor_from_class(unreal.StaticMeshActor, position)
 assert slab
 slab.set_actor_label("drone.port")
@@ -75,16 +66,8 @@ slab.static_mesh_component.set_static_mesh(unreal.load_asset("/Engine/BasicShape
 slab.set_actor_scale3d(scale)
 slab.static_mesh_component.set_material(0, slab_material)
 slab.static_mesh_component.set_collision_profile_name("ScenarioObstacle")
-support = actors.spawn_actor_from_class(unreal.StaticMeshActor, unreal.Vector())
-assert support
-support.set_actor_label("drone.port.support")
-support.set_actor_transform(support_transform, False, True)
-support.static_mesh_component.set_static_mesh(support_mesh)
-support.static_mesh_component.set_material(0, support_material)
-support.static_mesh_component.set_collision_profile_name("ScenarioObstacle")
 assert levels.save_current_level()
 assert slab.get_actor_location().is_near_equal(position, 0.01)
-assert support.get_actor_transform() == support_transform
 report_path.write_text(
     json.dumps(
         {
@@ -94,8 +77,6 @@ report_path.write_text(
             "playerStartUeCm": world["playerStartUeCm"],
             "port": world["port"],
             "vehicles": world["vehicles"],
-            "retainedSupportMesh": support_mesh.get_path_name(),
-            "retainedSupportMaterial": support_material.get_path_name(),
             "retainedPadMaterial": slab_material.get_path_name(),
         },
         indent=2,

@@ -273,7 +273,7 @@ class Valley(unittest.TestCase):
     def test_natural_reach_must_follow_computed_drainage(self):
         document = copy.deepcopy(self.document)
         creek = next(item for item in document["landmarks"] if item["kind"] == "creek")
-        creek["geometry"]["points"][-20]["y"] += 3000
+        creek["geometry"]["points"][-50]["y"] += 3000
         with self.assertRaisesRegex(AssertionError, "Natural reach leaves computed drainage"):
             build(document)
 

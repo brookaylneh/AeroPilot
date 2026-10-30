@@ -98,21 +98,27 @@ then shapes the landforms, each from design values in `valley.py`:
 - Granite Dome replaces the northern hill as a roche moutonnée: a whaleback stoss
   rising from the north to a rounded summit, and a lee face toward the meadow cut
   by a plane across the ice flow. Each joint block plucks the face back and offsets
-  its ledges, which leave flat bases for cliff meshes. Exfoliation sheets step every
-  few metres, broken at the joints; joint grooves mark the gentler upper dome and a
-  talus apron runs from the face into the meadow, at most 60 m above its median.
+  its ledges, which leave flat bases for cliff meshes; the ledged face curves around
+  the dome. Exfoliation sheets step along wandering contours, joint grooves mark the
+  gentler upper dome and lumpy talus cones run from the face into the meadow, at most
+  60 m above its median.
 - Granite Lake holds a flat 15 m surface, deep under stepped north-shore slabs and
   shallow off the southern beach and outlet moraine; its bench merges into the
   terrain over noise-varied widths. Lookout Tarn's cirque floor reaches into the
   ridge flank under a horseshoe headwall, with a talus fan down to the east shore
-  and a rock threshold on the open west side. Beaver Pond sits behind a low dam rim.
+  and a rock threshold on the open west side. Granite Lake spills over a notched
+  granite sill. Beaver Pond's irregular shore holds a silt floor behind a dam line
+  across its outlet.
   Pond polygons are the shorelines: the basin checks hold each waterline to its
   polygon, so bays and points are authored in `landmarks.json`.
-- Structures stand on pads feathered over 15 m; road and trail beds are graded and
-  the meadow carries hummocks and swales.
+- Structures stand on pads feathered over 15 m; road and trail beds are graded, the
+  fire road carries a crown between two wheel tracks and edge berms, and the meadow
+  carries hummocks and swales. Trail and road corners are circular arcs.
 - Meadow Creek leaves the lake's south-east spillway, passes Aspen Bend, the
   footbridge reach and the pond, then follows priority-flood/D8 drainage to the east
-  boundary within 12 m.
+  boundary within 12 m. It meanders in sine-generated bends with a narrow bank band,
+  widens into a ford at the footbridge, and the receipt lists its seeded bed boulders
+  for placement.
 
 Shaping keeps every grid triangle, on either diagonal, within 36°, and the quantized
 field is asserted at 37°. Nadir footprints require corner rays to descend faster
@@ -122,25 +128,32 @@ under every trail tread (`build-scenario.py`), fire-road grades of at most 12%
 ([USFS Low-Volume Roads BMP Field Guide, ch. 4](https://www.fs.usda.gov/t-d/programs/forest_mgmt/projects/lowvolroads/ch4.pdf)),
 a descending creek bed and water surface, dry banks, basin water held inside each
 footprint, pad clearance, bridge crossings and an unchanged southern buffer. It
-writes `height.r16`, the receipt and seven uint8 layer masks (`mask-<layer>.png`:
-cobble bed, granite, gravel road, trail tread, needle floor, wet meadow, dry
-meadow; 255 per sample in the `height.r16` row/column layout) to
+writes `height.r16`, the receipt and eight uint8 layer masks (`mask-<layer>.png`:
+pond silt, cobble bed, granite, gravel road, trail tread, needle floor, wet meadow,
+dry meadow; 255 per sample in the `height.r16` row/column layout) to
 `.local/world/valley/terrain/`; an existing destination is an error. The original
 square's regression checks the uncarved analytic meadow independently.
 
 `horizon.crests` builds four seeded, overlapping granite crest layers 3.5–17 km
 beyond the rectangle, in UE centimetres with upward normals. Import them without
-collision, each layer with its own aerial-perspective material.
+collision, each layer with its own aerial-perspective material. `horizon.apron` builds
+the meadow ground from the landscape edge out beneath them: radial spokes start on
+edge samples at their exact heights over a skirt that hides LOD cracks, keep the
+drone port's ground flat, and rise within 1 km into rolling foothills that bury the
+crest feet.
 
 `author-unreal.sh build-open-meadow GeometryScripting` (with `SNR_EVIDENCE_DIR`) replaces the
 OpenMeadow landscape from `height.r16`, asserting the hash, layout and spacing against `world.json`
-and the receipt, and imports the seven masks as weight-blended paint layers. Each layer gets a CC0
+and the receipt, and imports the eight masks as weight-blended paint layers. Each layer gets a CC0
 Poly Haven scan pinned in `blender/polyhaven.lock.json` (fetch with `fetch_polyhaven`), hex-tiled at
 full scan resolution (three hashed rotations and offsets on a 150 cm triangle grid, blended by
-luminance-weighted vertex weights) and tinted by 16 m and 120 m colour fields. The script adds flat
-Single Layer Water surfaces for the lake, tarn and pond at their receipt levels and a creek ribbon
-at the receipt water surface out to the bank tops, the four crest layers, and sets the directional
-light to the `world.json` sun. Single Layer Water needs Opacity 0: the unconnected default of 1
+luminance-weighted vertex weights) and tinted by 16 m and 120 m colour fields. Samples are measured
+on the tangent plane, so slopes keep the scan scale, and each scan's mean normal is removed before
+the per-cell rotation. The script rebuilds every asset in `/Game/Valley/Ground`, adds flat Single
+Layer Water surfaces for the lake, tarn and pond at their receipt levels and a creek ribbon at the
+receipt water surface out to the bank tops, the four crest layers and the apron in the ground
+material, removes the legacy horizon plane and port plinth, asserts the kept actors, and sets the
+directional light to the `world.json` sun. Single Layer Water needs Opacity 0: the unconnected default of 1
 replaces the water volume with a black base colour. Foliage, props and the regenerated Mission
 Control minimap belong to the asset-approved authoring stage. Do not label unchanged cooked scenery
 with the valley manifest.

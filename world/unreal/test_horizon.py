@@ -1,8 +1,8 @@
 import math
 import unittest
 
-from world.cosys.terrain import BOUNDS
-from world.unreal.horizon import CREST_LAYERS, CREST_ROWS, crests, outside_rectangle
+from world.cosys.terrain import BOUNDS, WORLD, terrain_height
+from world.unreal.horizon import APRON_RINGS, CREST_LAYERS, CREST_ROWS, apron, crests
 
 
 class CrestTests(unittest.TestCase):
@@ -53,29 +53,44 @@ class CrestTests(unittest.TestCase):
             self.assertTrue(0.1 < shown < 0.9, shown)
 
 
-class HorizonClippingTests(unittest.TestCase):
-    def test_south_triangle_is_returned_unchanged(self):
-        triangle = ((-4.0, 0.0, 9.0), (-2.0, 1.0, 7.0), (-2.0, -3.0, 4.0))
-        clipped = outside_rectangle(triangle, (-1, -2), (1, 2))
-        self.assertIs(clipped[0], triangle)
+class ApronTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.radius = 2_000_000
+        cls.vertices, cls.triangles = apron(cls.radius)
+        cls.count = APRON_RINGS + 2
 
-    def test_inside_is_removed(self):
-        self.assertEqual(outside_rectangle(((0, 0), (0, 1), (0.5, 0)), (-1, -2), (1, 2)), [])
+    def test_spokes_start_on_edge_samples_over_a_skirt_under_the_landscape(self):
+        self.assertEqual(len(self.vertices) % self.count, 0)
+        for k in range(0, len(self.vertices), self.count):
+            (sx, sy, sz), (x, y, z) = self.vertices[k : k + 2]
+            self.assertTrue(
+                x in (BOUNDS["min"]["x"], BOUNDS["max"]["x"])
+                or y in (BOUNDS["min"]["y"], BOUNDS["max"]["y"])
+            )
+            self.assertEqual(z, 100 * terrain_height(x / 100, y / 100))
+            self.assertLess(sz, 100 * terrain_height(sx / 100, sy / 100) - 40)
+            self.assertAlmostEqual(
+                math.hypot(*self.vertices[k + self.count - 1][:2]), self.radius, places=3
+            )
 
-    def test_crossing_interpolates_height_and_uv_without_changing_outside_surface(self):
-        triangle = ((-2.0, 0.0, 0.0, 0.0), (2.0, 0.0, 4.0, 1.0), (0.0, 4.0, 10.0, 0.5))
-        clipped = outside_rectangle(triangle, (-1, -1), (1, 1))
-        area = 0
-        for a, b, c in clipped:
-            for x, y, height, uv in (a, b, c):
-                self.assertAlmostEqual(height, x + 2 * y + 2)
-                self.assertAlmostEqual(uv, (x + 2) / 4)
-            center_x = (a[0] + b[0] + c[0]) / 3
-            center_y = (a[1] + b[1] + c[1]) / 3
-            self.assertFalse(-1 < center_x < 1 and -1 < center_y < 1)
-            area += ((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0])) / 2
-        self.assertAlmostEqual(area, 6)
+    def test_triangles_index_vertices_and_face_upward(self):
+        for triangle in self.triangles:
+            a, b, c = (self.vertices[i] for i in triangle)
+            self.assertGreater((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]), 0)
 
-    def test_boundary_triangle_remains(self):
-        triangle = ((-1, -3), (-1, 3), (-2, 0))
-        self.assertEqual(outside_rectangle(triangle, (-1, -2), (1, 2)), [triangle])
+    def test_drone_port_slab_rests_on_the_apron(self):
+        centre, (north, east, thickness) = (
+            WORLD["port"]["centerUeCm"],
+            WORLD["port"]["dimensionsMetres"],
+        )
+        bottom = centre["z"] - thickness * 100
+        under = [
+            z
+            for x, y, z in self.vertices
+            if abs(x - centre["x"]) <= north * 50 and abs(y - centre["y"]) <= east * 50
+        ]
+        self.assertGreater(len(under), 10)
+        self.assertTrue(
+            all(bottom - 10 <= z <= bottom for z in under), (min(under), max(under), bottom)
+        )
