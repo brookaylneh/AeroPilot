@@ -33,6 +33,8 @@
   "assets": {
     "trailhead-kiosk": {
       "source": "hunyuan-trailhead-kiosk",
+      "objects": null,
+      "cards": null,
       "reference": "trailhead-kiosk",
       "category": "Structures",
       "surface": "wood",
@@ -40,21 +42,25 @@
       "dimensionsM": [null, null, 3.0],
       "dimensionsSource": "facts.md §7: kiosk about 3 m tall",
       "collision": true,
-      "colour": [
-        {
-          "referenceSrgb": [121.4, 111.8, 102.2],
-          "renderSrgb": [118.3, 110.9, 103.8],
-          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
-        },
-        {
-          "referenceSrgb": [121.4, 111.8, 102.2],
-          "renderSrgb": [116.7, 106.9, 97.2],
-          "source": "gen-int/trailhead-kiosk/iter1 master render of the normalised build"
-        }
-      ]
+      "colour": {
+        "opaque": [
+          {
+            "referenceSrgb": [121.4, 111.8, 102.2],
+            "renderSrgb": [118.3, 110.9, 103.8],
+            "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+          },
+          {
+            "referenceSrgb": [121.4, 111.8, 102.2],
+            "renderSrgb": [116.7, 106.9, 97.2],
+            "source": "gen-int/trailhead-kiosk/iter1 master render of the normalised build"
+          }
+        ]
+      }
     },
     "command-van": {
       "source": "hunyuan-command-van",
+      "objects": null,
+      "cards": null,
       "reference": "command-van",
       "category": "Vehicles",
       "surface": "metal",
@@ -62,21 +68,25 @@
       "dimensionsM": [6.0, null, 2.7],
       "dimensionsSource": "facts.md §7: van about 6 m long x 2.7 m tall",
       "collision": true,
-      "colour": [
-        {
-          "referenceSrgb": [117.2, 119.1, 115.5],
-          "renderSrgb": [139.8, 141.9, 140.2],
-          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
-        },
-        {
-          "referenceSrgb": [117.2, 119.1, 115.5],
-          "renderSrgb": [117.6, 119.5, 116.6],
-          "source": "gen-int/command-van/iter1 master render of the normalised build"
-        }
-      ]
+      "colour": {
+        "opaque": [
+          {
+            "referenceSrgb": [117.2, 119.1, 115.5],
+            "renderSrgb": [139.8, 141.9, 140.2],
+            "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+          },
+          {
+            "referenceSrgb": [117.2, 119.1, 115.5],
+            "renderSrgb": [117.6, 119.5, 116.6],
+            "source": "gen-int/command-van/iter1 master render of the normalised build"
+          }
+        ]
+      }
     },
     "bear-storage-box": {
       "source": "hunyuan-bear-storage-box",
+      "objects": null,
+      "cards": null,
       "reference": "bear-storage-box",
       "category": "Props",
       "surface": "metal",
@@ -84,26 +94,30 @@
       "dimensionsM": [null, 1.09, null],
       "dimensionsSource": "NPS Yosemite campsite food locker, 43 in (1.09 m) wide: https://www.nps.gov/yose/planyourvisit/lockers.htm",
       "collision": true,
-      "colour": [
-        {
-          "referenceSrgb": [103.9, 78.1, 63.6],
-          "renderSrgb": [132.9, 114.1, 105.3],
-          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
-        },
-        {
-          "referenceSrgb": [103.9, 78.1, 63.6],
-          "renderSrgb": [106.9, 87.0, 78.5],
-          "source": "gen-int/bear-storage-box/iter1 master render of the normalised build"
-        },
-        {
-          "referenceSrgb": [103.9, 78.1, 63.6],
-          "renderSrgb": [105.2, 83.6, 75.0],
-          "source": "gen-int/bear-storage-box/iter2 master render of the normalised build"
-        }
-      ]
+      "colour": {
+        "opaque": [
+          {
+            "referenceSrgb": [103.9, 78.1, 63.6],
+            "renderSrgb": [132.9, 114.1, 105.3],
+            "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+          },
+          {
+            "referenceSrgb": [103.9, 78.1, 63.6],
+            "renderSrgb": [106.9, 87.0, 78.5],
+            "source": "gen-int/bear-storage-box/iter1 master render of the normalised build"
+          },
+          {
+            "referenceSrgb": [103.9, 78.1, 63.6],
+            "renderSrgb": [105.2, 83.6, 75.0],
+            "source": "gen-int/bear-storage-box/iter2 master render of the normalised build"
+          }
+        ]
+      }
     },
     "split-rail-fence": {
       "source": "hunyuan-split-rail-fence",
+      "objects": null,
+      "cards": null,
       "reference": "split-rail-fence",
       "category": "Structures",
       "surface": "wood",
@@ -111,21 +125,25 @@
       "dimensionsM": [null, 3.0, null],
       "dimensionsSource": "buck-and-rail sections about 10 ft (3.0 m) long: https://en.wikipedia.org/wiki/Split-rail_fence",
       "collision": true,
-      "colour": [
-        {
-          "referenceSrgb": [162.8, 154.6, 145.3],
-          "renderSrgb": [170.5, 166.4, 160.7],
-          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
-        },
-        {
-          "referenceSrgb": [162.8, 154.6, 145.3],
-          "renderSrgb": [163.2, 156.7, 149.1],
-          "source": "gen-int/split-rail-fence/iter1 master render of the normalised build"
-        }
-      ]
+      "colour": {
+        "opaque": [
+          {
+            "referenceSrgb": [162.8, 154.6, 145.3],
+            "renderSrgb": [170.5, 166.4, 160.7],
+            "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+          },
+          {
+            "referenceSrgb": [162.8, 154.6, 145.3],
+            "renderSrgb": [163.2, 156.7, 149.1],
+            "source": "gen-int/split-rail-fence/iter1 master render of the normalised build"
+          }
+        ]
+      }
     },
     "camp-fire-ring": {
       "source": "hunyuan-camp-fire-ring",
+      "objects": null,
+      "cards": null,
       "reference": "camp-fire-ring",
       "category": "Props",
       "surface": "metal",
@@ -133,21 +151,25 @@
       "dimensionsM": [0.8, 0.8, null],
       "dimensionsSource": "Pilot Rock FS-30 campfire ring, 30 in (0.76 m) inside diameter, 0.8 m over the band: https://www.pilotrock.com/seriesgroup/campfire-rings/fs-series-campfire-rings",
       "collision": true,
-      "colour": [
-        {
-          "referenceSrgb": [88.7, 79.1, 72.8],
-          "renderSrgb": [80.2, 74.5, 71.6],
-          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
-        },
-        {
-          "referenceSrgb": [88.7, 79.1, 72.8],
-          "renderSrgb": [85.1, 75.1, 69.0],
-          "source": "gen-int/camp-fire-ring/iter1 master render of the normalised build"
-        }
-      ]
+      "colour": {
+        "opaque": [
+          {
+            "referenceSrgb": [88.7, 79.1, 72.8],
+            "renderSrgb": [80.2, 74.5, 71.6],
+            "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+          },
+          {
+            "referenceSrgb": [88.7, 79.1, 72.8],
+            "renderSrgb": [85.1, 75.1, 69.0],
+            "source": "gen-int/camp-fire-ring/iter1 master render of the normalised build"
+          }
+        ]
+      }
     },
     "picnic-table": {
       "source": "hunyuan-picnic-table",
+      "objects": null,
+      "cards": null,
       "reference": "picnic-table",
       "category": "Props",
       "surface": "wood",
@@ -155,21 +177,25 @@
       "dimensionsM": [1.8, null, null],
       "dimensionsSource": "facts.md §7: picnic table 1.8 m long",
       "collision": true,
-      "colour": [
-        {
-          "referenceSrgb": [163.0, 148.7, 135.1],
-          "renderSrgb": [157.5, 148.5, 139.5],
-          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
-        },
-        {
-          "referenceSrgb": [163.5, 149.2, 135.6],
-          "renderSrgb": [160.3, 146.1, 133.2],
-          "source": "gen-int/picnic-table/iter1 master render of the normalised build"
-        }
-      ]
+      "colour": {
+        "opaque": [
+          {
+            "referenceSrgb": [163.0, 148.7, 135.1],
+            "renderSrgb": [157.5, 148.5, 139.5],
+            "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+          },
+          {
+            "referenceSrgb": [163.5, 149.2, 135.6],
+            "renderSrgb": [160.3, 146.1, 133.2],
+            "source": "gen-int/picnic-table/iter1 master render of the normalised build"
+          }
+        ]
+      }
     },
     "parking-edge": {
       "source": "hunyuan-parking-edge",
+      "objects": null,
+      "cards": null,
       "reference": "parking-edge",
       "category": "Props",
       "surface": "wood",
@@ -177,21 +203,25 @@
       "dimensionsM": [null, 1.83, null],
       "dimensionsSource": "72 in (1.83 m) parking wheel stops: https://www.globalindustrial.com/c/safety/traffic_parking_lot_safety/parking_curbs_speed_bumps",
       "collision": true,
-      "colour": [
-        {
-          "referenceSrgb": [145.7, 131.5, 118.0],
-          "renderSrgb": [166.2, 155.1, 143.2],
-          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
-        },
-        {
-          "referenceSrgb": [145.7, 131.5, 118.0],
-          "renderSrgb": [149.1, 135.7, 123.2],
-          "source": "gen-int/parking-edge/iter1 master render of the normalised build"
-        }
-      ]
+      "colour": {
+        "opaque": [
+          {
+            "referenceSrgb": [145.7, 131.5, 118.0],
+            "renderSrgb": [166.2, 155.1, 143.2],
+            "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+          },
+          {
+            "referenceSrgb": [145.7, 131.5, 118.0],
+            "renderSrgb": [149.1, 135.7, 123.2],
+            "source": "gen-int/parking-edge/iter1 master render of the normalised build"
+          }
+        ]
+      }
     },
     "hiking-tent": {
       "source": "hunyuan-hiking-tent",
+      "objects": null,
+      "cards": null,
       "reference": "hiking-tent",
       "category": "Props",
       "surface": "fabric",
@@ -199,21 +229,25 @@
       "dimensionsM": [null, 2.0, null],
       "dimensionsSource": "facts.md §7: tent about 2.5 x 2 x 1.3 m; the 2 m width governs",
       "collision": true,
-      "colour": [
-        {
-          "referenceSrgb": [158.9, 127.6, 79.8],
-          "renderSrgb": [176.8, 151.5, 101.3],
-          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
-        },
-        {
-          "referenceSrgb": [161.5, 129.7, 80.9],
-          "renderSrgb": [161.0, 129.8, 81.5],
-          "source": "gen-int/hiking-tent/iter1 master render of the normalised build"
-        }
-      ]
+      "colour": {
+        "opaque": [
+          {
+            "referenceSrgb": [158.9, 127.6, 79.8],
+            "renderSrgb": [176.8, 151.5, 101.3],
+            "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+          },
+          {
+            "referenceSrgb": [161.5, 129.7, 80.9],
+            "renderSrgb": [161.0, 129.8, 81.5],
+            "source": "gen-int/hiking-tent/iter1 master render of the normalised build"
+          }
+        ]
+      }
     },
     "trail-fork-sign": {
       "source": "hunyuan-trail-fork-sign",
+      "objects": null,
+      "cards": null,
       "reference": "trail-fork-sign",
       "category": "Structures",
       "surface": "wood",
@@ -221,21 +255,25 @@
       "dimensionsM": [null, null, 1.86],
       "dimensionsSource": "MUTCD 2009 9B.01 P05: sign bottom at least 4 ft (1.22 m) above a shared-use path (lower arm bottom at 0.657 of the height): https://mutcd.fhwa.dot.gov/htm/2009/part9/part9b.htm",
       "collision": true,
-      "colour": [
-        {
-          "referenceSrgb": [132.7, 119.6, 105.2],
-          "renderSrgb": [162.4, 155.1, 144.9],
-          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
-        },
-        {
-          "referenceSrgb": [132.7, 119.6, 105.3],
-          "renderSrgb": [132.0, 120.2, 107.6],
-          "source": "gen-int/trail-fork-sign/iter1 master render of the normalised build"
-        }
-      ]
+      "colour": {
+        "opaque": [
+          {
+            "referenceSrgb": [132.7, 119.6, 105.2],
+            "renderSrgb": [162.4, 155.1, 144.9],
+            "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+          },
+          {
+            "referenceSrgb": [132.7, 119.6, 105.3],
+            "renderSrgb": [132.0, 120.2, 107.6],
+            "source": "gen-int/trail-fork-sign/iter1 master render of the normalised build"
+          }
+        ]
+      }
     },
     "command-canopy": {
       "source": "hunyuan-command-canopy",
+      "objects": null,
+      "cards": null,
       "reference": "command-canopy",
       "category": "Props",
       "surface": "fabric",
@@ -243,21 +281,25 @@
       "dimensionsM": [3.0, 3.0, null],
       "dimensionsSource": "facts.md §7: canopy 3 x 3 x 3.2 m; the 3 x 3 m footprint governs",
       "collision": true,
-      "colour": [
-        {
-          "referenceSrgb": [147.2, 140.6, 134.3],
-          "renderSrgb": [189.0, 185.9, 179.2],
-          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
-        },
-        {
-          "referenceSrgb": [147.2, 140.6, 134.3],
-          "renderSrgb": [151.4, 145.7, 139.7],
-          "source": "gen-int/command-canopy/iter1 master render of the normalised build"
-        }
-      ]
+      "colour": {
+        "opaque": [
+          {
+            "referenceSrgb": [147.2, 140.6, 134.3],
+            "renderSrgb": [189.0, 185.9, 179.2],
+            "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+          },
+          {
+            "referenceSrgb": [147.2, 140.6, 134.3],
+            "renderSrgb": [151.4, 145.7, 139.7],
+            "source": "gen-int/command-canopy/iter1 master render of the normalised build"
+          }
+        ]
+      }
     },
     "creek-cobbles": {
       "source": "hunyuan-creek-cobbles",
+      "objects": null,
+      "cards": null,
       "reference": "creek-cobbles",
       "category": "Rocks",
       "surface": "granite",
@@ -265,21 +307,25 @@
       "dimensionsM": [null, null, 0.2],
       "dimensionsSource": "Udden-Wentworth cobble 64-256 mm: the tallest stone stands 0.2 m: https://en.wikipedia.org/wiki/Cobble_(geology)",
       "collision": false,
-      "colour": [
-        {
-          "referenceSrgb": [128.8, 121.5, 113.2],
-          "renderSrgb": [128.3, 126.4, 123.8],
-          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
-        },
-        {
-          "referenceSrgb": [128.8, 121.5, 113.2],
-          "renderSrgb": [123.1, 116.3, 108.7],
-          "source": "gen-int/creek-cobbles/iter1 master render of the normalised build"
-        }
-      ]
+      "colour": {
+        "opaque": [
+          {
+            "referenceSrgb": [128.8, 121.5, 113.2],
+            "renderSrgb": [128.3, 126.4, 123.8],
+            "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+          },
+          {
+            "referenceSrgb": [128.8, 121.5, 113.2],
+            "renderSrgb": [123.1, 116.3, 108.7],
+            "source": "gen-int/creek-cobbles/iter1 master render of the normalised build"
+          }
+        ]
+      }
     },
     "granite-outcrop-module": {
       "source": "hunyuan-granite-outcrop-module",
+      "objects": null,
+      "cards": null,
       "reference": "granite-outcrop-module",
       "category": "Rocks",
       "surface": "granite",
@@ -287,18 +333,760 @@
       "dimensionsM": [5.0, null, null],
       "dimensionsSource": "no published standard; 5 m, the top of the facts.md §7 rock range (erratics 1-5 m)",
       "collision": true,
-      "colour": [
-        {
-          "referenceSrgb": [170.6, 150.8, 132.7],
-          "renderSrgb": [188.9, 175.0, 160.5],
-          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
-        },
-        {
-          "referenceSrgb": [170.8, 151.1, 132.9],
-          "renderSrgb": [172.1, 153.5, 136.8],
-          "source": "gen-int/granite-outcrop-module/iter1 master render of the normalised build"
-        }
-      ]
+      "colour": {
+        "opaque": [
+          {
+            "referenceSrgb": [170.6, 150.8, 132.7],
+            "renderSrgb": [188.9, 175.0, 160.5],
+            "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+          },
+          {
+            "referenceSrgb": [170.8, 151.1, 132.9],
+            "renderSrgb": [172.1, 153.5, 136.8],
+            "source": "gen-int/granite-outcrop-module/iter1 master render of the normalised build"
+          }
+        ]
+      }
+    },
+    "bear-proof-bin": {
+      "source": "hunyuan-bear-proof-bin",
+      "objects": null,
+      "cards": null,
+      "reference": null,
+      "category": "Props",
+      "surface": "metal",
+      "yawDegrees": 90.0,
+      "dimensionsM": [0.85, 1.6, null],
+      "dimensionsSource": "orchestrator prompt table 2026-10-30; footprint 1.6 x 0.85 m governs",
+      "collision": true,
+      "colour": {
+        "opaque": []
+      }
+    },
+    "trail-register": {
+      "source": "hunyuan-trail-register",
+      "objects": null,
+      "cards": null,
+      "reference": null,
+      "category": "Props",
+      "surface": "wood",
+      "yawDegrees": 90.0,
+      "dimensionsM": [null, 0.4, 1.4],
+      "dimensionsSource": "orchestrator prompt table 2026-10-30; 0.4 m width and 1.4 m height govern",
+      "collision": true,
+      "colour": {
+        "opaque": []
+      }
+    },
+    "cairn-a": {
+      "source": "hunyuan-cairn",
+      "objects": null,
+      "cards": null,
+      "reference": null,
+      "category": "Rocks",
+      "surface": "granite",
+      "yawDegrees": 87.5,
+      "dimensionsM": [null, 0.6, 0.8],
+      "dimensionsSource": "orchestrator prompt table 2026-10-30; 0.6 m width and 0.8 m height govern",
+      "collision": false,
+      "colour": {
+        "opaque": []
+      }
+    },
+    "log-steps": {
+      "source": "hunyuan-log-steps",
+      "objects": null,
+      "cards": null,
+      "reference": null,
+      "category": "Props",
+      "surface": "wood",
+      "yawDegrees": 90.0,
+      "dimensionsM": [1.6, 1.3, null],
+      "dimensionsSource": "orchestrator prompt table 2026-10-30; footprint 1.6 m along the climb x 1.3 m governs",
+      "collision": true,
+      "colour": {
+        "opaque": []
+      }
+    },
+    "generator-a": {
+      "source": "hunyuan-generator",
+      "objects": null,
+      "cards": null,
+      "reference": null,
+      "category": "Props",
+      "surface": "metal",
+      "yawDegrees": 0.0,
+      "dimensionsM": [0.35, null, 0.5],
+      "dimensionsSource": "orchestrator prompt table 2026-10-30; 0.35 m depth and 0.5 m height govern",
+      "collision": true,
+      "colour": {
+        "opaque": []
+      }
+    },
+    "command-table": {
+      "source": "hunyuan-command-table",
+      "objects": null,
+      "cards": null,
+      "reference": null,
+      "category": "Props",
+      "surface": "metal",
+      "yawDegrees": 82.5,
+      "dimensionsM": [null, 1.83, null],
+      "dimensionsSource": "orchestrator prompt table 2026-10-30; 1.83 m length governs (0.74 m is the tabletop, not an extent)",
+      "collision": true,
+      "colour": {
+        "opaque": []
+      }
+    },
+    "hard-cases": {
+      "source": "hunyuan-hard-cases",
+      "objects": null,
+      "cards": null,
+      "reference": null,
+      "category": "Props",
+      "surface": "metal",
+      "yawDegrees": 96.0,
+      "dimensionsM": [null, 1.4, null],
+      "dimensionsSource": "orchestrator prompt table 2026-10-30; 1.4 m group width governs",
+      "collision": true,
+      "colour": {
+        "opaque": []
+      }
+    },
+    "landing-mat": {
+      "source": "hunyuan-landing-mat",
+      "objects": null,
+      "cards": null,
+      "reference": null,
+      "category": "Props",
+      "surface": "fabric",
+      "yawDegrees": 0.0,
+      "dimensionsM": [1.5, 1.5, null],
+      "dimensionsSource": "orchestrator prompt table 2026-10-30; 1.5 x 1.5 m footprint governs",
+      "collision": true,
+      "colour": {
+        "opaque": []
+      }
+    },
+    "woodpile-a": {
+      "source": "hunyuan-woodpile",
+      "objects": null,
+      "cards": null,
+      "reference": null,
+      "category": "Props",
+      "surface": "wood",
+      "yawDegrees": 90.0,
+      "dimensionsM": [0.6, null, 0.9],
+      "dimensionsSource": "orchestrator prompt table 2026-10-30; 0.6 m depth and 0.9 m height govern",
+      "collision": true,
+      "colour": {
+        "opaque": []
+      }
+    },
+    "glacial-slab": {
+      "source": "hunyuan-glacial-slab",
+      "objects": null,
+      "cards": null,
+      "reference": null,
+      "category": "Rocks",
+      "surface": "granite",
+      "yawDegrees": 3.5,
+      "dimensionsM": [1.8, 2.5, null],
+      "dimensionsSource": "orchestrator prompt table 2026-10-30; 2.5 x 1.8 m footprint governs",
+      "collision": true,
+      "colour": {
+        "opaque": []
+      }
+    },
+    "erratic-a": {
+      "source": "hunyuan-erratic-a",
+      "objects": null,
+      "cards": null,
+      "reference": null,
+      "category": "Rocks",
+      "surface": "granite",
+      "yawDegrees": 175.0,
+      "dimensionsM": [null, 2.8, null],
+      "dimensionsSource": "orchestrator prompt table 2026-10-30; 2.8 m long axis governs",
+      "collision": true,
+      "colour": {
+        "opaque": []
+      }
+    },
+    "lodgepole-edge-standard": {
+      "source": "plantcatalog-contorta-lone-standard-75-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "lodgepole-edge",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 11.4],
+      "dimensionsSource": "facts.md §7: edge lodgepoles 10-15 m",
+      "collision": false,
+      "colour": {
+        "masked": [],
+        "opaque": []
+      }
+    },
+    "lodgepole-sapling-rocket": {
+      "source": "plantcatalog-contorta-forest-rocket-0-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "lodgepole-sapling",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 2.8],
+      "dimensionsSource": "facts.md §7: saplings 1-3 m; native 3.01 m",
+      "collision": false,
+      "colour": {
+        "masked": [],
+        "opaque": []
+      }
+    },
+    "log-timber-a": {
+      "source": "plantcatalog-ponderosa-uprooted-timberlong1a-50-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "fallen-log",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, 0.42, null],
+      "dimensionsSource": "facts.md §7: logs 6-12 x 0.3-0.5 m: butt diameter 0.42 m",
+      "collision": true,
+      "colour": {
+        "opaque": []
+      }
+    },
+    "log-timber-b": {
+      "source": "plantcatalog-ponderosa-uprooted-timberlong1b-50-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "fallen-log",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, 0.46, null],
+      "dimensionsSource": "facts.md §7: logs 6-12 x 0.3-0.5 m: butt diameter 0.46 m",
+      "collision": true,
+      "colour": {
+        "opaque": []
+      }
+    },
+    "log-ripped": {
+      "source": "plantcatalog-ponderosa-uprooted-toppedripped1a-50-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "fallen-log",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [10.0, null, null],
+      "dimensionsSource": "facts.md §7: logs 6-12 x 0.3-0.5 m: 10 m with the root plate; trunk 0.62 m at 20 % (veg-c/girth.json) becomes 0.43 m",
+      "collision": true,
+      "colour": {
+        "opaque": []
+      }
+    },
+    "stump-short": {
+      "source": "plantcatalog-ponderosa-deadforest-shortstump1-75-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "weathered-stump",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 1.33],
+      "dimensionsSource": "no §7 stump size: mid-height girth 0.85 m (veg-c/girth.json) scaled to the 0.5 m §7 log diameter cap",
+      "collision": true,
+      "colour": {
+        "opaque": []
+      }
+    },
+    "stump-trunkbase": {
+      "source": "plantcatalog-tsuga-damaged-trunk-base-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "weathered-stump",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 0.65],
+      "dimensionsSource": "no §7 stump size: native, mid-height girth 0.45 m (veg-c/girth.json) within the 0.5 m §7 log diameter cap",
+      "collision": true,
+      "colour": {
+        "opaque": []
+      }
+    },
+    "willow-low-wild": {
+      "source": "plantcatalog-elaeagnos-wild-fall-50-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "low-willow",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 1.3],
+      "dimensionsSource": "facts.md §7: low willows 1-2.5 m; native 0.93 m",
+      "collision": false,
+      "colour": {
+        "masked": [],
+        "opaque": []
+      }
+    },
+    "willow-low-thin": {
+      "source": "plantcatalog-elaeagnos-thin-fall-50-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "low-willow",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 1.5],
+      "dimensionsSource": "facts.md §7: low willows 1-2.5 m",
+      "collision": false,
+      "colour": {
+        "masked": [],
+        "opaque": []
+      }
+    },
+    "willow-low-damaged": {
+      "source": "plantcatalog-elaeagnos-damaged-fall-50-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "low-willow",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 1.4],
+      "dimensionsSource": "facts.md §7: low willows 1-2.5 m",
+      "collision": false,
+      "colour": {
+        "masked": [],
+        "opaque": []
+      }
+    },
+    "willow-tall-thin": {
+      "source": "plantcatalog-elaeagnos-thin-fall-100-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "low-willow",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 3.5],
+      "dimensionsSource": "facts.md §7: tall willows 3-4 m; native 2.30 m",
+      "collision": false,
+      "colour": {
+        "masked": [],
+        "opaque": []
+      }
+    },
+    "willow-tall-wild": {
+      "source": "plantcatalog-elaeagnos-wild-fall-100-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "low-willow",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 3.4],
+      "dimensionsSource": "facts.md §7: tall willows 3-4 m; native 2.05 m",
+      "collision": false,
+      "colour": {
+        "masked": [],
+        "opaque": []
+      }
+    },
+    "grass-festuca-small": {
+      "source": "plantcatalog-arundinacea-small-h100-s90-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "golden-meadow-grass",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 0.55],
+      "dimensionsSource": "facts.md §7: grass 0.3-0.6 m; native 0.90 m",
+      "collision": false,
+      "colour": {
+        "opaque": []
+      }
+    },
+    "grass-festuca-medium": {
+      "source": "plantcatalog-arundinacea-medium-h100-s90-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "golden-meadow-grass",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 0.5],
+      "dimensionsSource": "facts.md §7: grass 0.3-0.6 m; native 0.96 m",
+      "collision": false,
+      "colour": {
+        "opaque": []
+      }
+    },
+    "grass-festuca-short": {
+      "source": "plantcatalog-arundinacea-small-h100-s20-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "golden-meadow-grass",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 0.45],
+      "dimensionsSource": "facts.md §7: grass 0.3-0.6 m",
+      "collision": false,
+      "colour": {
+        "opaque": []
+      }
+    },
+    "grass-lawn": {
+      "source": "plantcatalog-lawn-long-dry-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "golden-meadow-grass",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 0.35],
+      "dimensionsSource": "facts.md §7: grass 0.3-0.6 m; native 0.25 m",
+      "collision": false,
+      "colour": {
+        "opaque": []
+      }
+    },
+    "reeds-typha": {
+      "source": "plantcatalog-typha-standard-fall-75-q40",
+      "objects": null,
+      "cards": null,
+      "reference": null,
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 1.9],
+      "dimensionsSource": "no §7 reed size: native Standard fall mat 75",
+      "collision": false,
+      "colour": {
+        "masked": [],
+        "opaque": []
+      }
+    },
+    "reeds-phragmites": {
+      "source": "plantcatalog-phragmites-standard-fall-75-q40",
+      "objects": null,
+      "cards": null,
+      "reference": null,
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 2.8],
+      "dimensionsSource": "no §7 reed size: native Standard fall mat 75",
+      "collision": false,
+      "colour": {
+        "masked": [],
+        "opaque": []
+      }
+    },
+    "aspen-a": {
+      "source": "sketchfab-quaking-aspen-trees",
+      "objects": ["Object_12", "Object_14"],
+      "cards": null,
+      "reference": null,
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 13.0],
+      "dimensionsSource": "facts.md §7: aspen 10-14 m (Jagobo tree 003)",
+      "collision": false,
+      "colour": {
+        "masked": [],
+        "opaque": []
+      }
+    },
+    "aspen-b": {
+      "source": "sketchfab-quaking-aspen-trees",
+      "objects": ["Object_16", "Object_18"],
+      "cards": null,
+      "reference": null,
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 12.0],
+      "dimensionsSource": "facts.md §7: aspen 10-14 m (Jagobo tree 004)",
+      "collision": false,
+      "colour": {
+        "masked": [],
+        "opaque": []
+      }
+    },
+    "aspen-c": {
+      "source": "sketchfab-quaking-aspen-trees",
+      "objects": ["Object_24", "Object_26"],
+      "cards": null,
+      "reference": null,
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 12.5],
+      "dimensionsSource": "facts.md §7: aspen 10-14 m (Jagobo tree 006)",
+      "collision": false,
+      "colour": {
+        "masked": [],
+        "opaque": []
+      }
+    },
+    "driftwood-scan": {
+      "source": "sketchfab-pine-fallen-trunk-scan-01",
+      "objects": null,
+      "cards": null,
+      "reference": "fallen-log",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 0.5],
+      "dimensionsSource": "facts.md §7: logs 6-12 x 0.3-0.5 m: trunk 0.5 m thick",
+      "collision": true,
+      "colour": {
+        "opaque": []
+      }
+    },
+    "sedge-carex-a": {
+      "source": "pbrpx-carex-dispalata-atlas-01",
+      "objects": null,
+      "cards": {
+        "seed": 1,
+        "stems": 36,
+        "tiltDegrees": 25
+      },
+      "reference": "riparian-sedge",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 0.411],
+      "dimensionsSource": "PBRPX realSize 59 cm atlas: stems at their scanned size",
+      "collision": false,
+      "colour": {
+        "masked": []
+      }
+    },
+    "sedge-carex-b": {
+      "source": "pbrpx-carex-dispalata-atlas-01",
+      "objects": null,
+      "cards": {
+        "seed": 2,
+        "stems": 24,
+        "tiltDegrees": 35
+      },
+      "reference": "riparian-sedge",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 0.437],
+      "dimensionsSource": "PBRPX realSize 59 cm atlas: stems at their scanned size",
+      "collision": false,
+      "colour": {
+        "masked": []
+      }
+    },
+    "seedheads-anaphalis-a": {
+      "source": "pbrpx-anaphalis-nepalensis-atlas-01",
+      "objects": null,
+      "cards": {
+        "seed": 1,
+        "stems": 14,
+        "tiltDegrees": 20
+      },
+      "reference": "dried-seedheads",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 0.313],
+      "dimensionsSource": "PBRPX realSize 51 cm atlas: stems at their scanned size",
+      "collision": false,
+      "colour": {
+        "masked": []
+      }
+    },
+    "seedheads-anaphalis-b": {
+      "source": "pbrpx-anaphalis-nepalensis-atlas-02",
+      "objects": null,
+      "cards": {
+        "seed": 1,
+        "stems": 14,
+        "tiltDegrees": 20
+      },
+      "reference": "dried-seedheads",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 0.394],
+      "dimensionsSource": "PBRPX realSize 51 cm atlas: stems at their scanned size",
+      "collision": false,
+      "colour": {
+        "masked": []
+      }
+    },
+    "lodgepole-mature-rocket-damaged": {
+      "source": "plantcatalog-contorta-forest-rocketdamaged-100-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "lodgepole-mature",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 16.5],
+      "dimensionsSource": "facts.md §7: mature lodgepoles 15-18 m; native 16.48 m",
+      "collision": false,
+      "colour": {
+        "masked": [],
+        "opaque": []
+      }
+    },
+    "lodgepole-mature-branchy-damaged": {
+      "source": "plantcatalog-contorta-forest-branchy1damaged-100-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "lodgepole-mature",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 15.5],
+      "dimensionsSource": "facts.md §7: mature lodgepoles 15-18 m; native 14.82 m",
+      "collision": false,
+      "colour": {
+        "masked": [],
+        "opaque": []
+      }
+    },
+    "lodgepole-mature-standard-damaged": {
+      "source": "plantcatalog-contorta-lone-standarddamaged-100-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "lodgepole-mature",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 15.5],
+      "dimensionsSource": "facts.md §7: mature lodgepoles 15-18 m; native 14.50 m",
+      "collision": false,
+      "colour": {
+        "masked": [],
+        "opaque": []
+      }
+    },
+    "lodgepole-mature-giant": {
+      "source": "plantcatalog-contorta-lone-giant-100-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "lodgepole-mature",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 17.5],
+      "dimensionsSource": "facts.md §7: mature lodgepoles 15-18 m (cap 18); native 18.19 m",
+      "collision": false,
+      "colour": {
+        "masked": [],
+        "opaque": []
+      }
+    },
+    "lodgepole-edge-topped": {
+      "source": "plantcatalog-contorta-forest-topped-100-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "lodgepole-edge",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 12.5],
+      "dimensionsSource": "facts.md §7: edge lodgepoles 10-15 m; native 12.69 m",
+      "collision": false,
+      "colour": {
+        "masked": [],
+        "opaque": []
+      }
+    },
+    "lodgepole-sapling-rocket-25": {
+      "source": "plantcatalog-contorta-forest-rocket-25-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "lodgepole-sapling",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 2.8],
+      "dimensionsSource": "facts.md §7: saplings 1-3 m; open whorls of Rocket mat 25, native 6.14 m",
+      "collision": false,
+      "colour": {
+        "masked": [],
+        "opaque": []
+      }
+    },
+    "lodgepole-sapling-branchy-25": {
+      "source": "plantcatalog-contorta-forest-branchy3-25-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "lodgepole-sapling",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 2.5],
+      "dimensionsSource": "facts.md §7: saplings 1-3 m; open whorls of Branchy 3 mat 25, native 6.81 m",
+      "collision": false,
+      "colour": {
+        "masked": [],
+        "opaque": []
+      }
+    },
+    "snag-barkless": {
+      "source": "plantcatalog-contorta-deadforest-tallstump1e-100-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "standing-snag",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 8.5],
+      "dimensionsSource": "facts.md §7: snags 8-14 m; native 4.25 m tall stump, whose girth the reference snag has",
+      "collision": false,
+      "colour": {
+        "opaque": []
+      }
+    },
+    "snag-peeling": {
+      "source": "plantcatalog-contorta-deadforest-tallstump1c-100-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "standing-snag",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 9.0],
+      "dimensionsSource": "facts.md §7: snags 8-14 m; native 4.25 m tall stump, whose girth the reference snag has",
+      "collision": false,
+      "colour": {
+        "opaque": []
+      }
+    },
+    "snag-ponderosa": {
+      "source": "plantcatalog-ponderosa-deadforest-tallstump1a-100-q40",
+      "objects": null,
+      "cards": null,
+      "reference": "standing-snag",
+      "category": "Vegetation",
+      "surface": null,
+      "yawDegrees": 0.0,
+      "dimensionsM": [null, null, 11.5],
+      "dimensionsSource": "facts.md §7: snags 8-14 m; native 11.50 m",
+      "collision": false,
+      "colour": {
+        "opaque": []
+      }
     }
   }
 }

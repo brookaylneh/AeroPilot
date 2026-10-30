@@ -233,13 +233,14 @@ def stored(img, output):
     return img
 
 
-def saved(name, values, output, colour=False):
-    """An opaque PNG image from a (rows, columns, 3 or 4) array, rows along image V."""
+def saved(name, values, output, colour=False, alpha=False):
+    """A PNG image from a (rows, columns, 3 or 4) array, rows along image V; opaque unless
+    `alpha` keeps the fourth channel."""
     rows, columns, channels = values.shape
-    assert channels in (3, 4), values.shape
+    assert channels in (3, 4) and (channels == 4 or not alpha), values.shape
     if channels == 3:
         values = np.concatenate([values, np.ones((rows, columns, 1))], axis=2)
-    img = bpy.data.images.new(name, columns, rows, alpha=False, is_data=not colour)
+    img = bpy.data.images.new(name, columns, rows, alpha=alpha, is_data=not colour)
     img.pixels.foreach_set(values.astype(np.float32).ravel())
     return stored(img, output)
 

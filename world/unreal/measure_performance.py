@@ -158,7 +158,8 @@ def frames(path, start_rpc, stop_rpc):
         ends[row],
     )
     origin = sum(stop_rpc) / 2 - offset
-    assert start_rpc[0] <= origin <= start_rpc[1] + 0.1, (start_rpc, origin)
+    # The CSV begins with the frame in which START ran, which can begin before the request is sent.
+    assert start_rpc[0] - frame_ms[0] / 1000 <= origin <= start_rpc[1] + 0.1, (start_rpc, origin)
     return {
         "frameMs": frame_ms,
         "gpuMs": gpu_ms,

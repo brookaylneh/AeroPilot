@@ -25,8 +25,11 @@ class MeasurePerformanceTest(unittest.TestCase):
             path = Path(directory) / "p.csv"
             path.write_text("\n".join([header, *rows]) + "\n")
             timeline = perf.frames(path, [99.99, 100.0], [100.05, 100.06])
-            with self.assertRaises(AssertionError):
-                perf.frames(path, [101.0, 101.1], [100.05, 100.06])
+            # START may run in a frame that began up to one frame before the request.
+            perf.frames(path, [100.01, 100.02], [100.05, 100.06])
+            for start_rpc in ([100.03, 100.04], [101.0, 101.1]):
+                with self.assertRaises(AssertionError):
+                    perf.frames(path, start_rpc, [100.05, 100.06])
         self.assertEqual(timeline["gpuMs"].tolist(), [10, 12, 11])
         self.assertAlmostEqual(timeline["beginS"][0], 100.0)
         self.assertAlmostEqual(timeline["endS"][-1], 100.06)

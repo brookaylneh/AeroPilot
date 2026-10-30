@@ -9,11 +9,14 @@ A conifer is a Nanite Foliage assembly with its parts under Parts/SM_<Name>_<Var
 Foliage must be enabled for the project (r.Nanite.Foliage in DefaultEngine.ini). Family
 `external` (blender/external.py builds) is one rigid Nanite mesh with its UCX_ collision, whose
 material instance of M_ValleyDetail tiles the shared T_Detail<Surface>_{D,N} from
-/Game/Valley/Materials. Families `rocks` and `structures` are rigid too. A structure's material
-instances of M_ValleyPrincipled take the Principled inputs its build.json records per slot, with
-the Poly Haven scans shared in /Game/Valley/Materials as T_<Scan>; Nanite renders only opaque
-and masked materials, so transmissive glass becomes opaque glossy black. Meshes come from the
-GLBs through Interchange (metres, glTF +Y up); dimensions are asserted within 5 % of the spec.
+/Game/Valley/Materials; without a surface, opaque materials take M_ValleyPBR and masked ones
+the two-sided M_ValleyMasked, clipped by the BC alpha (Nanite voxels need opaque one-sided
+materials, so masked foliage keeps its triangles). Families `rocks` and `structures` are rigid
+too. A structure's material instances of M_ValleyPrincipled take the Principled inputs its
+build.json records per slot, with the Poly Haven scans shared in /Game/Valley/Materials as
+T_<Scan>; Nanite renders only opaque and masked materials, so transmissive glass becomes opaque
+glossy black. Meshes come from the GLBs through Interchange (metres, glTF +Y up); dimensions are
+asserted within 5 % of the spec.
 """
 
 import argparse
@@ -183,8 +186,11 @@ def main():
     kinds["D"] = kinds["Rough"] = kinds["ORM"]
     kinds["N_GL"] = kinds["N"]
 
-    def master(name, normal, detail=False, principled=False):
+    def master(name, normal, detail=False, principled=False, masked=False):
         material = tools.create_asset(name, MATERIALS, unreal.Material, unreal.MaterialFactoryNew())
+        if masked:
+            material.set_editor_property("blend_mode", unreal.BlendMode.BLEND_MASKED)
+            material.set_editor_property("two_sided", True)
         # Cooked sections fall back to the default material for any usage not declared here
         # (NaniteResources.cpp:1010 for voxels); headless imports never set them on demand.
         for usage in ("used_with_nanite", "used_with_voxels", "used_with_instanced_static_meshes"):
@@ -268,15 +274,17 @@ def main():
             links = [(*base, P.MP_BASE_COLOR), (nodes["ORM"], "R", P.MP_AMBIENT_OCCLUSION)]
             links += [(nodes["ORM"], "G", P.MP_ROUGHNESS), (nodes["ORM"], "B", P.MP_METALLIC)]
             links += [(*normals, P.MP_NORMAL)] * normal
+            links += [(nodes["BC"], "A", P.MP_OPACITY_MASK)] * masked
         for node, pin, prop in links:
             assert editing.connect_material_property(node, pin, prop), prop
         editing.recompile_material(material)
         assert library.save_loaded_asset(material), name
         return material
 
-    def parent(name, *args):
+    def parent(name, *args, **kwargs):
         path = f"{MATERIALS}/{name}"
-        return unreal.load_asset(path) if library.does_asset_exist(path) else master(name, *args)
+        exists = library.does_asset_exist(path)
+        return unreal.load_asset(path) if exists else master(name, *args, **kwargs)
 
     def texture(source, kind, folder, name):
         """Texture `name` imported from `source`; shared textures in MATERIALS import once."""
@@ -348,8 +356,9 @@ def main():
     else:
         pngs = report["textures"]
         external = args.family == "external"
-        if external:
-            details = report["details"]
+        details = report["details"]
+        surface = external and details["external"]["surface"] is not None
+        if surface:
             pngs = {k: v for k, v in pngs.items() if k not in details["detailTextures"]}
             shared = {
                 DETAIL_KINDS[kind]: texture(build / f"{name}.png", kind, MATERIALS, name)
@@ -357,14 +366,19 @@ def main():
                 if (kind := name.rsplit("_", 1)[1]) in DETAIL_KINDS
             }
             assert sorted(shared) == sorted(DETAIL_KINDS.values()), shared
-            parents = {True: parent("M_ValleyDetail", True, True)}
+            parents = {"opaque": parent("M_ValleyDetail", True, True)}
+        elif external:
+            assert not details["detailTextures"], details["detailTextures"]
+            masked = parent("M_ValleyMasked", True, masked=True)
+            parents = {"opaque": parent("M_ValleyPBR", True), "masked": masked}
         else:
             parents = {True: parent("M_ValleyPBR", True), False: parent("M_ValleyFoliage", False)}
         for material, files in textures(build, args.asset, pngs).items():
-            mi = instance(f"MI_{material}", parents["N" in files])
+            key = details["materials"][material]["class"] if external else "N" in files
+            mi = instance(f"MI_{material}", parents[key])
             for kind, source in files.items():
                 assign(mi, kind, texture(source, kind, content, source.stem))
-            if external:
+            if surface:
                 for parameter, value in shared.items():
                     assign(mi, parameter, value)
                 scalar(mi, "DetailTile", details["detailUvScale"])

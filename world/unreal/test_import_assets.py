@@ -16,8 +16,21 @@ from world.unreal.import_assets import (
     ue_matrix,
 )
 
-# Height above grade in metres per lodgepole variant (valley facts, cap 18 m).
-LODGEPOLE_M = {"mature": (15, 18), "edge": (10, 15), "sapling": (1, 3)}
+# Height above grade in metres per role (valley facts §7, lodgepole cap 18 m).
+HEIGHT_M = {
+    "lodgepole-mature": (15, 18),
+    "lodgepole-edge": (10, 15),
+    "lodgepole-sapling": (1, 3),
+    "snag": (8, 14),
+    "willow-low": (1, 2.5),
+    "willow-tall": (3, 4),
+    "aspen": (10, 14),
+    "grass": (0.3, 0.6),
+}
+# Vegetation roles without a §7 height, and those with simple collision (§7).
+UNSIZED = {"log", "stump", "driftwood", "reeds", "sedge", "seedheads"}
+SOLID = {"log", "stump", "driftwood"}
+CREDIT = "PlantCatalog © Bentley Systems"
 
 
 def apply(matrix, local):
@@ -66,7 +79,7 @@ class ImportTests(unittest.TestCase):
 
     def test_conifers_respect_species_heights(self):
         for asset, spec in load("conifers").items():
-            low, high = LODGEPOLE_M[asset.split("-")[1]]
+            low, high = HEIGHT_M[f"lodgepole-{asset.split('-')[1]}"]
             self.assertTrue(low <= spec["dimensionsM"][2] - spec["buriedM"] <= high, asset)
             self.assertFalse(spec["collision"], asset)
 
@@ -89,6 +102,26 @@ class ImportTests(unittest.TestCase):
         stale["details"]["external"]["yawDegrees"] += 90
         with self.assertRaises(AssertionError):
             family_spec("external", "command-van", stale)
+
+    def test_vegetation_holds_section_7(self):
+        assets = json.loads(EXTERNAL.read_text())["assets"]
+        for asset, entry in assets.items():
+            if entry["category"] != "Vegetation":
+                continue
+            role = asset.split("-")[0]
+            sized = [HEIGHT_M[r] for r in HEIGHT_M if asset.startswith(f"{r}-")]
+            self.assertEqual(len(sized), int(role not in UNSIZED), asset)
+            for low, high in sized:
+                self.assertTrue(low <= entry["dimensionsM"][2] <= high, asset)
+            self.assertEqual(entry["collision"], role in SOLID, asset)
+
+    def test_plantcatalog_sources_carry_the_credit(self):
+        rows = json.loads(EXTERNAL.with_name("external.lock.json").read_text())["files"]
+        plants = [r for r in rows if "files" in r and r["plant"] is not None]
+        self.assertTrue(plants)
+        for row in plants:
+            self.assertEqual(row["attribution"], CREDIT, row["id"])
+            self.assertIn(row["plant"]["catalogue"], row["source"], row["id"])
 
     def test_external_meshes_have_distinct_names(self):
         assets = json.loads(EXTERNAL.read_text())["assets"]
