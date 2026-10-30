@@ -132,9 +132,18 @@ square's regression checks the uncarved analytic meadow independently.
 beyond the rectangle, in UE centimetres with upward normals. Import them without
 collision, each layer with its own aerial-perspective material.
 
-The Unreal import of masks and crests, water planes, foliage, props and the
-regenerated Mission Control minimap belong to the asset-approved authoring stage.
-Do not label unchanged cooked scenery with the valley manifest.
+`author-unreal.sh build-open-meadow GeometryScripting` (with `SNR_EVIDENCE_DIR`) replaces the
+OpenMeadow landscape from `height.r16`, asserting the hash, layout and spacing against `world.json`
+and the receipt, and imports the seven masks as weight-blended paint layers. Each layer gets a CC0
+Poly Haven scan pinned in `blender/polyhaven.lock.json` (fetch with `fetch_polyhaven`), hex-tiled at
+full scan resolution (three hashed rotations and offsets on a 150 cm triangle grid, blended by
+luminance-weighted vertex weights) and tinted by 16 m and 120 m colour fields. The script adds flat
+Single Layer Water surfaces for the lake, tarn and pond at their receipt levels and a creek ribbon
+at the receipt water surface out to the bank tops, the four crest layers, and sets the directional
+light to the `world.json` sun. Single Layer Water needs Opacity 0: the unconnected default of 1
+replaces the water volume with a black base colour. Foliage, props and the regenerated Mission
+Control minimap belong to the asset-approved authoring stage. Do not label unchanged cooked scenery
+with the valley manifest.
 
 ## Asset review
 

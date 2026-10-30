@@ -135,6 +135,19 @@ def configure_capture(height):
     raise TimeoutError("Capture profile was not applied by Unreal")
 
 
+def set_view(c, name, pitch=-90, yaw=0):
+    # The position is body-relative NED. The stabilized gimbal (Stabilization 1) holds the rotation
+    # in the world frame (PIPCamera.cpp setCameraPose and Tick), so yaw is a heading from north.
+    c.simSetCameraPose(
+        "front_center",
+        airsim.Pose(
+            airsim.Vector3r(CAMERA_FORWARD, 0, CAMERA_DOWN),
+            airsim.euler_to_quaternion(0, math.radians(pitch), math.radians(yaw)),
+        ),
+        vehicle_name=name,
+    )
+
+
 def home(name):
     return {k: v / 100 for k, v in WORLD["vehicles"][name]["spawnUeCm"].items()}
 

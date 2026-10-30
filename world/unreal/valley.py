@@ -506,7 +506,9 @@ def dome(terrain, item):
 
 
 def basin(terrain, item, extension):
-    """Designed floor below a flat surface; outside, a rim merges into the terrain below walls."""
+    """Designed floor below a flat surface; outside, a rim merges into the terrain below walls.
+
+    Returns the basin window and its floor (water plus the dry cirque floor)."""
     spec = BASINS[item["id"]]
     surface = spec["surfaceM"]
     assert 0 <= min(spec["slabs"]) and max(spec["slabs"]) < 1, "Slabs must keep shores dry"
@@ -555,6 +557,7 @@ def basin(terrain, item, extension):
         fill, 1
     )
     limit_slope(terrain, window, np.where(floor, level, shaped))
+    return window, floor
 
 
 def creek_profile(elevation, item, receiver, accumulation, named):
@@ -655,7 +658,7 @@ def route_slopes(elevation, slope, item, decks):
     )
 
 
-def layers(elevation, named, creek, water):
+def layers(elevation, named, creek, water, floors):
     """Landscape weights in MASKS order plus dry meadow; each sample sums to exactly 255."""
     north, east = axes()
     x, y = np.meshgrid(north, east)
@@ -685,7 +688,8 @@ def layers(elevation, named, creek, water):
             beach = (1 - slabs) * (1 - smoothstep(3, 6, delta))
             cover["cobble-bed"][window] = np.maximum(cover["cobble-bed"][window], beach)
         if identifier == "lookout-tarn":
-            cover["granite"][window] = np.maximum(cover["granite"][window], delta < 0)
+            floor_window, floor = floors[identifier]
+            cover["granite"][floor_window] = np.maximum(cover["granite"][floor_window], floor)
         if identifier == "beaver-pond":
             wet = np.maximum(wet, delta < 0)
         cover["wet-meadow"][window] = np.maximum(cover["wet-meadow"][window], wet)
@@ -752,8 +756,10 @@ def build(document):
         relief * (1 - smoothstep(0, 60, outside)) * smoothstep(20, CHANNEL_BANK_M + 20, stream)
     )
     dome(terrain, named[DOME["id"]])
-    for identifier, spec in BASINS.items():
-        basin(terrain, named[identifier], spec["talus"] and named[spec["talus"][0]])
+    floors = {
+        identifier: basin(terrain, named[identifier], spec["talus"] and named[spec["talus"][0]])
+        for identifier, spec in BASINS.items()
+    }
     landform = terrain.copy()
     for item in landmarks:
         if item["kind"] not in GRADE_BANK_M:
@@ -883,10 +889,11 @@ def build(document):
         pad_report["tallestLandmarkWithin20M"] <= 0.3
         and pad_report["tallestLandmarkWithin40M"] <= 4
     )
-    masks = layers(quantized, named, vertices, water)
+    masks = layers(quantized, named, vertices, water, floors)
     creek_report["sampledFinalBedM"] = sampled.tolist()
     creek_report["sampledFinalBedMaximumDownstreamRiseM"] = float(rise.max())
     creek_report["minimumBankFreeboardM"] = freeboard
+    creek_report["bankTopM"] = float(bank_top)
     report = {
         "environmentAssetVersion": WORLD["environmentAssetVersion"],
         "heightfieldSha256": hashlib.sha256(raw.tobytes()).hexdigest(),

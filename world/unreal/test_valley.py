@@ -7,6 +7,7 @@ import unittest
 
 import numpy as np
 from scipy.ndimage import label
+from scipy.spatial import ConvexHull
 
 from world.cosys.landmarks import LANDMARKS_PATH
 from world.cosys.terrain import COLUMNS, FIELD, ROOT, ROWS, WORLD
@@ -210,6 +211,10 @@ class Valley(unittest.TestCase):
         vertices = points(self.named["granite-dome"])
         window, x, y = region(vertices, 1)
         self.assertGreater(layers["granite"][window][inside(vertices, x, y)].mean(), 0.9)
+        cirque = np.vstack([points(self.named[i]) for i in ("lookout-tarn", "lookout-talus")])
+        cirque = cirque[ConvexHull(cirque).vertices]
+        window, x, y = region(cirque, 1)
+        self.assertGreater(layers["granite"][window][inside(cirque, x, y)].mean(), 0.95)
         self.assertEqual(max(layers, key=lambda name: layers[name].mean()), "dry-meadow")
 
     def test_heroes_stay_clear_of_mission_map_panels(self):
