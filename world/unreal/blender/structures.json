@@ -114,6 +114,18 @@
       "panels": {},
       "correspondences": [],
       "colourRegions": {}
+    },
+    "antenna-mast": {
+      "reference": null,
+      "seed": 61,
+      "dimensionsM": [4.545, 5.247, 6.35],
+      "toleranceM": 0.005,
+      "buriedM": 0.35,
+      "textureSize": 1024,
+      "collision": true,
+      "panels": {},
+      "correspondences": [],
+      "colourRegions": {}
     }
   }
 }

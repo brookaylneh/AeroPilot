@@ -1217,8 +1217,10 @@ def weathered_walls(output, rng, eave, top):
         maps[kind] = pixels(img)
         bpy.data.images.remove(img)
     size = maps["diff"].shape[1]
-    rows = np.arange(round(size * top / WALL_TILE)) % size
-    z = (np.arange(len(rows)) + 0.5) * WALL_TILE / size
+    # Unreal imports only power-of-two textures: the scan rows resampled to the next one.
+    height = 2 ** math.ceil(math.log2(size * top / WALL_TILE))
+    z = (np.arange(height) + 0.5) * top / height
+    rows = (z / WALL_TILE * size).astype(int) % size
     noise = np.random.default_rng(rng.randrange(2**32))
     gray = maps["diff"][rows, :, :3].mean(axis=2)
     grain = np.clip(gray - blur(gray, 24), -0.06, 0.06)
@@ -1378,6 +1380,161 @@ def toilet(rng, output):
     }
 
 
+# Antenna mast build frame: the mast axis at the origin, the directional antenna pointing +X. A
+# folding steel tripod with legs and guys at 60, 180 and 300 degrees carries four telescoping
+# aluminium sections (radius, bottom, top) to 5.13 m and a whip to 6 m; a vertically polarised
+# 4-element UHF Yagi sits below the whip, its coax down the +X face to a coil on the ground.
+SECTIONS = ((0.025, 0.24, 1.85), (0.022, 1.80, 3.05), (0.019, 3.00, 4.20), (0.016, 4.15, 5.10))
+HEAD, LOWER = (0.05, 0.98, 1.06), (0.045, 0.30, 0.36)  # tripod collars: radius, bottom, top
+SLEEVE, LEG_R, FOOT_R, PAD_R = 0.032, 0.0125, 0.90, 0.04
+GUY_Z, STAKE_R, STAKE = 4.10, 3.0, (0.009, 0.35, 0.10)  # stake radius, depth, top above grade
+# Webbing guys 25 mm wide with the width horizontal: 2.3 px at the 30 m nadir, and a flat strip
+# that Nanite simplification cannot collapse the way it drops sub-pixel round wires.
+STRAP = (0.025, 0.002)
+BOOM_Z, ELEMENTS = 4.80, ((0.12, 0.34), (0.27, 0.31), (0.42, 0.29), (0.57, 0.28))
+COAX, COIL = 0.005, ((0.74, 0.18), 0.18)  # LMR-400 radius; ground coil centre and radius
+WHIP = (5.17, 5.27, 6.0)  # spring base, whip base, tip
+
+
+def chaikin(points, rounds):
+    """Corner-cutting smoothing that keeps both ends and stays inside the polyline's hull."""
+    for _ in range(rounds):
+        cut = [p for a, b in zip(points, points[1:]) for p in (a.lerp(b, 0.25), a.lerp(b, 0.75))]
+        points = [points[0], *cut, points[-1]]
+    return points
+
+
+def tube(parts, material, points, radius, segments=10):
+    """Capped round tube swept through `points` on parallel-transported frames."""
+    points = [Vector(p) for p in points]
+    n = len(points)
+    tangents = [(points[min(i + 1, n - 1)] - points[max(i - 1, 0)]).normalized() for i in range(n)]
+    bm = bmesh.new()
+    bm.loops.layers.uv.new("UVMap")
+    normal, rings = tangents[0].orthogonal().normalized(), []
+    for p, t in zip(points, tangents):
+        normal = (normal - t * normal.dot(t)).normalized()
+        side = t.cross(normal)
+        angles = [2 * math.pi * j / segments for j in range(segments)]
+        rings.append(
+            [bm.verts.new(p + radius * (math.cos(a) * normal + math.sin(a) * side)) for a in angles]
+        )
+    for a, b in zip(rings, rings[1:]):
+        for j in range(segments):
+            bm.faces.new((a[j], a[(j + 1) % segments], b[(j + 1) % segments], b[j]))
+    bm.faces.new(rings[0][::-1])
+    bm.faces.new(rings[-1])
+    add(parts, material, bm)
+
+
+def rod(parts, material, start, end, radius, segments=12):
+    start, end = Vector(start), Vector(end)
+    axis = end - start
+    cylinder(parts, material, start, radius, axis.length, segments, axis.normalized())
+
+
+def polar(radius, degrees, z):
+    a = math.radians(degrees)
+    return Vector((radius * math.cos(a), radius * math.sin(a), z))
+
+
+def mast(rng, output):
+    mats = {
+        "aluminium": principled(
+            "Satin aluminium", base=lin((182, 184, 186)), rough=0.32, metallic=1
+        ),
+        "black": principled("Black polymer", base=lin((28, 28, 28)), rough=0.5),
+        "steel": principled("Black powder coat", base=lin((40, 40, 38)), rough=0.55),
+        "galv": principled("Galvanised steel", base=lin((150, 150, 146)), rough=0.35, metallic=1),
+        "coax": principled("Coax jacket", base=lin((20, 20, 20)), rough=0.6),
+        "strap": principled("Orange webbing", base=lin((222, 96, 30)), rough=0.8),
+    }
+    parts = {}
+    collars = [(r + 0.009, z1 - 0.055, z1 + 0.012) for r, _, z1 in SECTIONS[:3]]
+    ring = (SECTIONS[2][0] + 0.008, GUY_Z - 0.015, GUY_Z + 0.015)
+    cap = (0.020, SECTIONS[3][2], SECTIONS[3][2] + 0.03)
+    for material, items in (
+        ("aluminium", SECTIONS),
+        ("black", (*collars, cap, (0.018, cap[2], WHIP[0]))),
+        ("galv", (ring, (0.009, WHIP[0], WHIP[1]))),
+        ("steel", ((SLEEVE, SECTIONS[0][1] - 0.02, HEAD[1]), HEAD, LOWER)),
+    ):
+        for r, z0, z1 in items:
+            cylinder(parts, material, (0, 0, z0), r, z1 - z0, 24)
+    rod(parts, "black", (0, 0, WHIP[1]), (0, 0, WHIP[2] - 0.01), 0.0035)
+    cylinder(parts, "black", (0, 0, WHIP[2] - 0.01), 0.005, 0.01)
+    for r, _, z1 in collars:
+        lever = frame(polar(r + 0.012, 270, z1 - 0.03), (0, -1, 0), (0, 0, 1))
+        box(parts, "black", (0.03, 0.012, 0.05), lever, rng)
+    # Tripod: legs hinged at the head, spreaders from the lower collar, a mast clamp knob.
+    for angle in (60, 180, 300):
+        radial = polar(1, angle, 0)
+        lug = frame(polar(HEAD[0] + 0.01, angle, 1.02), radial, (-radial.y, radial.x, 0))
+        box(parts, "steel", (0.04, 0.03, 0.05), lug, rng, bevel=0.003)
+        top, foot = polar(0.06, angle, 1.0), polar(FOOT_R, angle, 0.02)
+        rod(parts, "steel", top, foot, LEG_R)
+        cylinder(parts, "black", polar(FOOT_R, angle, 0), PAD_R, 0.025)
+        rod(parts, "steel", polar(LOWER[0], angle, 0.33), top.lerp(foot, 0.55), 0.008)
+        stake = polar(STAKE_R, angle, -STAKE[1])
+        cylinder(parts, "galv", stake, STAKE[0], STAKE[1] + STAKE[2])
+        cylinder(parts, "galv", stake + Vector((0, 0, sum(STAKE[1:]))), 0.016, 0.012)
+        eye = polar(ring[0] + 0.012, angle, GUY_Z)
+        box(parts, "galv", (0.03, 0.006, 0.025), frame(eye, radial, (0, 0, 1)), rng, bevel=0.002)
+        anchor = polar(STAKE_R - STAKE[0] - STRAP[1], angle, 0.07)
+        beam(parts, "strap", eye + radial * 0.012, anchor, *STRAP, (0, 0, 1), rng, bevel=0.0005)
+        loop = frame(polar(STAKE_R, angle, 0.07), radial, (0, 0, 1))
+        box(parts, "strap", (0.045, STRAP[0], 0.03), loop, rng, bevel=0.003)
+        along = (anchor - eye).normalized()
+        buckle = anchor - along * 0.5 + along.cross(radial.cross(along)) * 0.007
+        box(parts, "galv", (0.08, 0.035, 0.012), frame(buckle, along, radial.cross(along)), rng)
+        tail = buckle + radial * 0.03 - Vector((0, 0, 0.25))
+        beam(parts, "strap", buckle, tail, *STRAP, radial, rng, bevel=0.0005)
+    knob = polar(SLEEVE, 270, 0.9)
+    rod(parts, "galv", knob, polar(0.085, 270, 0.9), 0.006)
+    cylinder(parts, "black", polar(0.085, 270, 0.9), 0.018, 0.016, 16, (0, -1, 0))
+    # Yagi: square boom on a mast clamp, vertical elements, feed box under the driven element.
+    r4 = SECTIONS[3][0]
+    placed(parts, "black", (0.05, 0.06, 0.08), (r4 + 0.025, 0, BOOM_Z), rng, bevel=0.004)
+    beam(parts, "aluminium", (r4 + 0.05, 0, BOOM_Z), (0.66, 0, BOOM_Z), 0.02, 0.02, (0, 0, 1), rng)
+    for x, length in ELEMENTS:
+        rod(parts, "aluminium", (x, 0, BOOM_Z - length / 2), (x, 0, BOOM_Z + length / 2), 0.004)
+        placed(parts, "black", (0.026, 0.026, 0.03), (x, 0, BOOM_Z), rng, bevel=0.003)
+    feed = (ELEMENTS[1][0] - 0.04, 0, BOOM_Z - 0.035)
+    placed(parts, "black", (0.04, 0.03, 0.05), feed, rng, bevel=0.004)
+
+    def hug(z):
+        """Coax centre radius on the +X face, ramping over collars, the guy eye and the head."""
+        surfaces = (*SECTIONS, *collars, ring, cap, HEAD, LOWER)
+        return max(r - 0.5 * max(0, z0 - z, z - z1) for r, z0, z1 in surfaces) + COAX + 0.002
+
+    (cx, cy), loop = COIL
+    # Down below the reflector's foot, across to the mast, then down its +X face.
+    path = [Vector(feed) - Vector((0, 0, 0.025)), Vector((feed[0], 0, BOOM_Z - 0.20))]
+    path += [Vector((hug(z), 0, z)) for z in np.arange(BOOM_Z - 0.25, HEAD[1] - 0.12, -0.03)]
+    path += [Vector(p) for p in ((0.08, 0, 0.55), (0.11, 0, 0.12), (0.22, 0, COAX), (cx, 0, COAX))]
+    # Two flat turns, each 15 mm outside the last.
+    for t in np.linspace(-math.pi / 2, 3.5 * math.pi, 120)[1:]:
+        path.append(Vector((cx, cy, COAX)) + polar(loop + 0.0024 * t, math.degrees(t), 0))
+    smooth = chaikin(path, 2)
+    tube(parts, "coax", smooth, COAX, 12)
+    end = smooth[-1] + (smooth[-1] - smooth[-2]).normalized() * 0.04
+    rod(parts, "galv", smooth[-1], end, 0.011, 16)
+    hulls = {
+        "mast": ((0.08, 0.08, cap[2] - HEAD[2]), (0, 0, (cap[2] + HEAD[2]) / 2)),
+        "tripod": (
+            (1.5 * FOOT_R + 2 * PAD_R, math.sqrt(3) * FOOT_R + 2 * PAD_R, HEAD[2]),
+            (-FOOT_R / 4, 0, HEAD[2] / 2),
+        ),
+    }
+    objects, hulls = collision(emit(parts, mats), "SM_AntennaMast", hulls, rng, mats["black"])
+    return objects, {
+        "heightM": WHIP[2],
+        "guyHeightM": GUY_Z,
+        "strapM": list(STRAP),
+        "collisionHulls": hulls,
+    }
+
+
 def slots(builder):
     """`builder` that also reports, per material, the Principled inputs import_assets
     rebuilds in Unreal: values, or images as their build.json name and path; `normal` holds
@@ -1426,6 +1583,7 @@ if __name__ == "__main__":
                 "fire-lookout": lookout,
                 "snow-survey-hut": hut,
                 "vault-toilet": toilet,
+                "antenna-mast": mast,
             }.items()
         },
     )

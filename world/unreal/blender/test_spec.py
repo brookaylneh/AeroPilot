@@ -10,6 +10,7 @@ class SpecTests(unittest.TestCase):
         self.assertEqual(
             structures,
             [
+                "antenna-mast",
                 "fire-lookout",
                 "ranger-cabin",
                 "snow-survey-hut",
