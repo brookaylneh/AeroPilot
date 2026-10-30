@@ -8,12 +8,16 @@
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
 #include "HAL/FileManager.h"
+#include "HAL/IConsoleManager.h"
 #include "HAL/PlatformFileManager.h"
 #include "Serialization/JsonSerializer.h"
 #include "TimerManager.h"
 #include "RenderTimer.h"
 #include "DynamicRHI.h"
 #include "ContentStreaming.h"
+#include "GrassInstancedStaticMeshComponent.h"
+#include "LandscapeProxy.h"
+#include "UObject/UObjectIterator.h"
 #include "SimMode/SimModeBase.h"
 #include "Vehicles/Multirotor/FlyingPawn.h"
 
@@ -87,6 +91,14 @@ void ADroneFoundation::Poll()
     Report->SetObjectField(TEXT("worldOriginOffsetCm"), V(FVector(GetWorld()->OriginLocation)));
     Report->SetNumberField(TEXT("worldToMeters"), GetWorld()->GetWorldSettings()->WorldToMeters);
     Report->SetStringField(TEXT("captureRequestId"), LastRequest);
+    // The capture opt-in below is fixed; these scalability cvars switch Lumen off for every view,
+    // falling back to sky light and screen-space reflections (the measured A/B).
+    const auto &Console = IConsoleManager::Get();
+    const IConsoleVariable *LumenGi = Console.FindConsoleVariable(TEXT("r.Lumen.DiffuseIndirect.Allow"));
+    const IConsoleVariable *LumenReflections = Console.FindConsoleVariable(TEXT("r.Lumen.Reflections.Allow"));
+    checkf(LumenGi && LumenReflections, TEXT("Missing Lumen scalability cvars"));
+    Report->SetBoolField(TEXT("lumenGlobalIllumination"), LumenGi->GetInt() != 0);
+    Report->SetBoolField(TEXT("lumenReflections"), LumenReflections->GetInt() != 0);
     TArray<TSharedPtr<FJsonValue>> Vehicles;
     for (TActorIterator<AFlyingPawn> It(GetWorld()); It; ++It)
     {
@@ -164,5 +176,18 @@ void ADroneFoundation::Poll()
     Timing->SetNumberField(TEXT("renderMs"), FPlatformTime::ToMilliseconds(GRenderThreadTime));
     Timing->SetNumberField(TEXT("gpuMs"), FPlatformTime::ToMilliseconds(RHIGetGPUFrameCycles()));
     Report->SetObjectField(TEXT("timing"), Timing);
+    // Runtime landscape grass: built instances and asynchronous builds still in flight, so a
+    // capture can prove the ground cover around it had finished generating.
+    double GrassInstances = 0;
+    for (TObjectIterator<UGrassInstancedStaticMeshComponent> It; It; ++It)
+        if (It->GetWorld() == GetWorld())
+            GrassInstances += It->GetNumRenderInstances();
+    int32 GrassTasks = 0;
+    for (TActorIterator<ALandscapeProxy> It(GetWorld()); It; ++It)
+        GrassTasks += It->AsyncFoliageTasks.Num();
+    auto Grass = MakeShared<FJsonObject>();
+    Grass->SetNumberField(TEXT("instances"), GrassInstances);
+    Grass->SetNumberField(TEXT("asyncTasks"), GrassTasks);
+    Report->SetObjectField(TEXT("grass"), Grass);
     Write(Directory / TEXT("runtime.json"), Report);
 }
