@@ -350,44 +350,7 @@ claude mcp add --scope local -e BLENDER_MCP_HOST=127.0.0.1 -e BLENDER_MCP_PORT=9
   blender -- "$PWD/.local/mcp/blender-venv/bin/blender-mcp"
 ```
 
-## Measure browser streaming
-
-Use the installed public origin with Studio's editing session free. Load the installed runtime
-configuration so the tool can assert the expected stream dimensions and TURN relay ports.
-
-```sh
-node --env-file=.local/runtime.env world/unreal/scripts/measure-stream.mjs \
-  http://35.81.229.78 .local/evidence/render-quality/<new-run> 300 navigation
-```
-
-The tool records browser WebRTC counters, video-frame callback gaps, native camera telemetry,
-and NVIDIA power, clocks, temperature, utilization and memory. A separate `vmstat` process
-records host run queues, blocked tasks, memory, CPU utilization and disk I/O every five
-seconds, with boot identity and start/end host memory snapshots. Its log survives a
-measurement-command timeout; the first row contains averages since boot. Local Cosys RPC starts and stops
-Unreal CSV profiling; `profile-engine.py` preserves the CSV, its hash, metadata and per-frame GPU,
-game-thread, render-thread and frame-time distributions. `GPUTime` is the engine
-`RHIGetGPUFrameCycles()` measurement, not a sum of overlapping render passes.
-The tool selects Adult 2, photographs fixed character, meadow, elevated and launch-pad views, then allows
-30 seconds of settling before profiling a repeating keyboard routine. It preserves the prior
-authoring state in the private evidence directory. The first 30 seconds of presentation callbacks
-are retained separately from the warmed measurement. After timing stops, a moving-view capture
-allows inspection of compression during travel; sensor capture continues through that image.
-Use `person` for a close character view
-with small alternating zoom movements.
-The `navigation` and `person` modes do not start flights. For the complete workload, use
-`four-drones CAPTURE_HZ` in place of `navigation`. The explicit cadence is per drone; captures
-are staggered across the period. The tool starts `world.cosys.render_workload`, which owns the
-local controller lock, verifies four parked SimpleFlight vehicles, flies separated paths,
-encodes every 4K RGB frame as JPEG quality 95, records every frame hash, pose and timing, and
-retains one image per minute per aircraft. This bounds persistent evidence storage during
-long runs. All captures still perform full-resolution readback and JPEG encoding. The worker
-lands before exiting.
-Sensor capture warms for 30 seconds before the timed window. Each sample records active
-containers; the profiler records container CPU quota and cgroup throttling counters.
-Concurrent builds invalidate isolated capacity claims.
-It does not call perception services. Its cadence is an experiment input, not an inferred
-mission-service cadence. Existing output directories fail.
+## Stream resolution and shader platform
 
 The launcher accepts `SNR_STREAM_HEIGHT=2160` for 3840×2160 and `1440` for 2560×1440.
 Each package records its cooked shader platform in `shader-platform.txt`; the launcher requires
@@ -433,24 +396,7 @@ set -a; . .local/slot.env; set +a   # SNR_PACKAGE_ROOT, SNR_COSYS_SETTINGS, SNR_
 retargets its pinned animations to each original skeleton, and builds the runtime catalog.
 The eleven-character selection uses fixed original clothing.
 
-## Render-quality authoring
-
-`inspect-render-content.py` follows the active landscape material to its grass types,
-meshes and material overrides, and records lighting and post-process settings. The
-following editor Python commandlets author separate comparisons and require a new
-output directory:
-
-- `configure-meadow-nanite.py` duplicates the active grass meshes and grass types,
-  enables Preserve Area and exact fallback meshes, and verifies original asset hashes.
-- `configure-meadow-macro.py` duplicates the landscape material and adds albedo variation
-  at 17, 67 and 231 metre scales. It preserves its grass output and source material.
-- `configure-meadow-atmosphere.py` adds daylight volumetric clouds, cloud shadows and
-  participating haze, retaining the authored sun angle and illuminance.
-- `configure-meadow-foliage.py` duplicates grass types, increases density by 25% and
-  extends both cull distances by 50%.
-
-Each saves the prior map and hashes the resulting map in its evidence directory.
-Cook each comparison into a new package directory before any live activation.
+## Render resolution and pipeline cache
 
 `SNR_RENDER_PERCENTAGE` fixes the browser's internal render percentage at startup;
 TSR reconstructs the configured output resolution. Drone capture uses independent
@@ -473,25 +419,3 @@ picked up the stable cache and records its hash in `pso-cache.txt`. Only bundled
 can be staged. The bundled cache contains graphics, compute and ray-tracing shader entries.
 UE 5.8.2 reconstructs partial ray-tracing pipelines from those entries; this does not
 prove coverage of every complete runtime ray-tracing pipeline.
-
-`review-render-quality.py NAME VARIANT...` groups measured person, meadow, elevated,
-port and moving-view images by pose for comparison at `.local/dist/NAME/index.html`.
-Names start with `render-quality-`; the destination must be new. It verifies recorded screenshot hashes and publishes only those images and
-summary measurements, leaving private authoring state in evidence.
-
-For a capacity run, append `STREAMER_ID` after the explicit four-drone capture cadence.
-Set the package, container, Cosys port and data directories for that particular instance.
-The harness verifies its native readiness, selects it through the existing public signalling
-route, and records the selection. The reserved second-instance values are in
-`deploy/runtime.env.example`; no new listener ports may be chosen.
-
-`measure-capacity.mjs ORIGIN NEW_OUTPUT_DIRECTORY SECONDS` tests two independent
-instances through that public signalling route. Start the main instance with the
-chosen lighting package at 1080p60 and 100% internal resolution, then load its
-runtime environment before invoking the tool. The duration must be at least 360
-seconds; the tool verifies at least 300 seconds of overlapping measurements. It
-copies the package into the new evidence directory, gives the second instance its
-own scenario and sensor directories and the reserved Cosys port, and runs four
-drones capturing native 4K at 1 Hz in each instance. Both browser workers finish
-and land their drones before the test container stops. The main service stays up.
-Other active workloads remain in the measurement record and qualify capacity claims.

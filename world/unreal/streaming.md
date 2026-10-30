@@ -26,7 +26,5 @@ sensor features. Restore the live startup values from `deploy/runtime.env.exampl
 and restart after recording. The 30 FPS mode is separate from the 60 FPS live gate.
 
 Measurements use the public HTTP origin and TURN. They do not establish performance
-on a user's device or network. Run `scripts/measure-stream.mjs` as documented in
-[README.md](README.md). Committed results, artifact hashes and qualifications are in
-`mission_planner/measurements/render-quality.json`; raw evidence stays under
-`.local/evidence/`.
+on a user's device or network. Committed results are in
+`mission_planner/measurements/integration.json`; raw evidence stays under `.local/evidence/`.

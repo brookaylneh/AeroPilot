@@ -306,12 +306,3 @@ when CPU limits change on this host; the disposable-container reproduction and t
 verified device-binding fix are recorded under `.local/evidence/render-quality/cpu12/`.
 Set CPU limits in `runtime.env` before recreating the service container.
 See [NVIDIA's container-update diagnosis](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/troubleshooting.html#containers-losing-access-to-gpus-with-error-failed-to-initialize-nvml-unknown-error).
-
-The capacity experiment uses the reserved `SNR_CAPACITY_COSYS_PORT` and
-`SNR_CAPACITY_STREAMER_ID`. Its separate container, release copy, scenario directory and
-sensor directory are created under `.local/`. Both engines use the installed signalling
-service and public `/api/stream` route. The browser harness selects one actual streamer
-from its advertised list and checks that instance's native readiness and occupancy.
-It records this test selection explicitly; it does not provide a public multi-session UI.
-WebRTC media and browser statistics remain unmodified. Stop the task-owned second
-container after both measurement workers have landed their drones and closed their browsers.
