@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import json
 import tempfile
@@ -20,7 +21,13 @@ class MeasurePerformanceTest(unittest.TestCase):
 
     def test_frames_anchor_on_stop_event(self):
         header = "EVENTS,FrameTime,GPUTime"
-        rows = [",20,10", ",20,12", "Cmd: CsvProfile STOP##0.055000,20,11", f"{header},New", "[HasHeaderRowAtEnd],1"]
+        rows = [
+            ",20,10",
+            ",20,12",
+            "Cmd: CsvProfile STOP##0.055000,20,11",
+            f"{header},New",
+            "[HasHeaderRowAtEnd],1",
+        ]
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "p.csv"
             path.write_text("\n".join([header, *rows]) + "\n")
@@ -33,6 +40,28 @@ class MeasurePerformanceTest(unittest.TestCase):
         self.assertEqual(timeline["gpuMs"].tolist(), [10, 12, 11])
         self.assertAlmostEqual(timeline["beginS"][0], 100.0)
         self.assertAlmostEqual(timeline["endS"][-1], 100.06)
+
+    def test_together_cancels_siblings_of_a_failure(self):
+        cancelled = []
+
+        async def sibling():
+            try:
+                await asyncio.sleep(60)
+            except asyncio.CancelledError:
+                cancelled.append(True)
+                raise
+
+        async def failing():
+            await asyncio.sleep(0)
+            raise AssertionError("pose")
+
+        async def run():
+            with self.assertRaisesRegex(AssertionError, "pose"):
+                await perf.together(sibling(), failing())
+            self.assertEqual(cancelled, [True])
+            self.assertEqual(await perf.together(asyncio.sleep(0, 1), asyncio.sleep(0, 2)), [1, 2])
+
+        asyncio.run(run())
 
 
 if __name__ == "__main__":

@@ -11,16 +11,19 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
+from operator import itemgetter
 from pathlib import Path
 
 import cosysairsim as airsim
 import numpy as np
+from PIL import Image
 
 from mission_planner.environment import load_env
 from mission_planner.gcs.fleet import Fleet
 from mission_planner.gcs.geodesy import ORIGIN
 from mission_planner.gcs.sitl import check_ports
 from world.cosys import client as sim
+from world.cosys.capture import shadow_floor
 from world.cosys.flight import state, takeoff, until
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -38,6 +41,8 @@ SAMPLE_INTERVAL_S = 0.5
 PLAN_SHA256 = "8ea528fb4ebf46180ba395fbf2949bbdc96e61aa9efd135c876eb1683d7f419d"
 CONTAINER = "snr-unreal-valley-art-perf"
 CSV_NAME = "measure-performance"
+# Scalability cvars that switch Lumen off for every view, including the opted-in captures.
+LUMEN_CVARS = ("r.Lumen.DiffuseIndirect.Allow", "r.Lumen.Reflections.Allow")
 LAUNCH = {
     "SNR_PIXEL_STREAMING": "0",
     "SNR_MEDIA_CAPTURE": "0",
@@ -121,7 +126,7 @@ def ram_peak(pid, reset):
     return int(value) * 1024
 
 
-def capture(rpc, name, origin):
+def capture(rpc, name, origin, path=None):
     start = time.monotonic()
     (response,) = rpc.simGetImages(
         [airsim.ImageRequest("front_center", airsim.ImageType.Scene, False, False)],
@@ -131,8 +136,17 @@ def capture(rpc, name, origin):
     assert not response.message, response.message
     assert (response.width, response.height) == (3840, 2160)
     assert len(response.image_data_uint8) == 3840 * 2160 * 3
+    if path is not None:
+        pixels = np.frombuffer(response.image_data_uint8, dtype=np.uint8).reshape(2160, 3840, 3)
+        Image.fromarray(pixels, "RGB").save(path)
     position = sim.to_world(name, sim.xyz(response.camera_position), origin)
-    return {"droneId": name, "startS": start, "endS": end, "cameraWorldM": position}
+    return {
+        "droneId": name,
+        "startS": start,
+        "endS": end,
+        "cameraWorldM": position,
+        "shadowFloorLuminanceP1": shadow_floor(response.image_data_uint8, 3840, 2160),
+    }
 
 
 def frames(path, start_rpc, stop_rpc):
@@ -158,8 +172,9 @@ def frames(path, start_rpc, stop_rpc):
         ends[row],
     )
     origin = sum(stop_rpc) / 2 - offset
-    # The CSV begins with the frame in which START ran, which can begin before the request is sent.
-    assert start_rpc[0] - frame_ms[0] / 1000 <= origin <= start_rpc[1] + 0.1, (start_rpc, origin)
+    # The CSV begins with the frame in which START ran, which can begin before the request is sent;
+    # summed FrameTime misses hitches outside frame timing (0.115 s over a 9.4M-instance run).
+    assert start_rpc[0] - frame_ms[0] / 1000 <= origin <= start_rpc[1] + 0.2, (start_rpc, origin)
     return {
         "frameMs": frame_ms,
         "gpuMs": gpu_ms,
@@ -189,6 +204,7 @@ def workload(timeline, captures, gpu, peak_ram, pid):
         "gpuFrameMs": stats(timeline["gpuMs"][inside]),
         "frameMs": stats(timeline["frameMs"][inside]),
         "captureMs": stats([(c["endS"] - c["startS"]) * 1000 for c in captures]),
+        "shadowFloorLuminanceP1": stats([c["shadowFloorLuminanceP1"] for c in captures]),
         "captureSpikeFrameMs": stats(spikes["frameMs"]),
         "captureSpikeGpuMs": stats(spikes["gpuMs"]),
         "vramHighWaterMiB": max(s["processes"][pid][1] for s in window),
@@ -199,7 +215,18 @@ def workload(timeline, captures, gpu, peak_ram, pid):
     }
 
 
-async def measure(output):
+async def together(*coroutines):
+    """gather that cancels and awaits the siblings of a failure (asyncio.TaskGroup needs 3.11)."""
+    tasks = [asyncio.ensure_future(c) for c in coroutines]
+    try:
+        return await asyncio.gather(*tasks)
+    finally:
+        for task in tasks:
+            task.cancel()
+        await asyncio.wait(tasks)
+
+
+async def measure(output, lumen):
     load_env()
     run = output.with_suffix("")
     assert output.suffix == ".json" and not output.exists() and not run.exists()
@@ -263,9 +290,22 @@ async def measure(output):
         sampler = threading.Thread(target=sample_gpu, args=(gpu, stopping))
         sampler.start()
         rpcs = {n: await loop.run_in_executor(pools[n], sim.connect) for n in sim.NAMES}
+        console = rpcs[sim.NAMES[0]]
+        for cvar in LUMEN_CVARS:
+            assert await loop.run_in_executor(
+                pools[sim.NAMES[0]], console.simRunConsoleCommand, f"{cvar} {int(lumen)}"
+            )
+        deadline = time.monotonic() + 10
+        while (
+            itemgetter("lumenGlobalIllumination", "lumenReflections")(sim.native()) != (lumen,) * 2
+        ):
+            assert time.monotonic() < deadline, "DroneFoundation did not report the Lumen arm"
+            await asyncio.sleep(0.5)
 
-        async def shoot(name):
-            return await loop.run_in_executor(pools[name], capture, rpcs[name], name, origins[name])
+        async def shoot(name, path=None):
+            return await loop.run_in_executor(
+                pools[name], capture, rpcs[name], name, origins[name], path
+            )
 
         async def fly(name, point, timeout):
             await fleet.execute(
@@ -304,12 +344,10 @@ async def measure(output):
         async def stress(name):
             return [await shoot(name) for _ in range(STRESS_CAPTURES)]
 
-        await asyncio.gather(
-            *(takeoff(fleet, n, routes[n]["altitudeAboveHomeM"]) for n in sim.NAMES)
-        )
-        await asyncio.gather(*(fly(n, routes[n]["start"], 120) for n in sim.NAMES))
-        warmup = await asyncio.gather(*(shoot(n) for n in sim.NAMES))
-        console = rpcs[sim.NAMES[0]]
+        await together(*(takeoff(fleet, n, routes[n]["altitudeAboveHomeM"]) for n in sim.NAMES))
+        await together(*(fly(n, routes[n]["start"], 120) for n in sim.NAMES))
+        # The arms' first renders at identical poses: the cold per-capture Lumen state is visible here.
+        warmup = await together(*(shoot(n, run / f"warmup-{n}.png") for n in sim.NAMES))
         for command in ("csv.CompressionMode 0", f"CsvProfile STARTFILE={CSV_NAME}"):
             assert await loop.run_in_executor(
                 pools[sim.NAMES[0]], console.simRunConsoleCommand, command
@@ -320,11 +358,11 @@ async def measure(output):
         )
         start_rpc.append(time.monotonic())
         startup_ram = ram_peak(pid, True)
-        flown = await asyncio.gather(
+        flown = await together(
             *(mission(n) for n in sim.NAMES), *(fly(n, routes[n]["end"], 120) for n in sim.NAMES)
         )
         mission_ram = ram_peak(pid, True)
-        stressed = await asyncio.gather(*(stress(n) for n in sim.NAMES))
+        stressed = await together(*(stress(n) for n in sim.NAMES))
         stress_ram = ram_peak(pid, False)
         stop_rpc = [time.monotonic()]
         assert await loop.run_in_executor(
@@ -336,6 +374,10 @@ async def measure(output):
         stopping.set()
         if sampler is not None:
             sampler.join()
+        # An image RPC in flight at SIGTERM deadlocks teardown: ASimHUD::EndPlay joins the rpclib
+        # workers while one waits, without timeout, for a frame the exiting game never draws.
+        for pool in pools.values():
+            pool.shutdown(wait=True)
         subprocess.run(["docker", "kill", "--signal=TERM", CONTAINER], check=True, timeout=30)
         deadline = time.monotonic() + 120
         while b"UWorld::CleanupWorld for OpenMeadow," not in log_path.read_bytes():
@@ -345,8 +387,6 @@ async def measure(output):
         # SIGTERM ends the packaged game with the measured status 143 (world/cosys/README.md).
         exit_code = world.wait(timeout=300)
         assert exit_code == 143, f"Unreal container exit status {exit_code}"
-        for pool in pools.values():
-            pool.shutdown(wait=True)
         events.close()
     ports = check_ports(world_ports + fleet_ports)
     timeline = frames(
@@ -370,6 +410,7 @@ async def measure(output):
             for p in sorted((package / "ScenarioStudio/Content/Paks").iterdir())
         },
         "launch": LAUNCH,
+        "lumen": lumen,
         "planSha256": digest,
         "plan": routes,
         "speedMps": SPEED_MPS,
@@ -384,6 +425,7 @@ async def measure(output):
             k: stats([f["poseErrorM"][k] for f in mission_frames]) for k in ("north", "east", "up")
         },
         "warmupCaptureMs": [(c["endS"] - c["startS"]) * 1000 for c in warmup],
+        "warmupShadowFloorLuminanceP1": [c["shadowFloorLuminanceP1"] for c in warmup],
         "autopilotExitCodes": {n: v["process"].returncode for n, v in fleet.vehicles.items()},
         "portsFreeAfter": ports["ports"],
     }
@@ -394,4 +436,6 @@ async def measure(output):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
-    asyncio.run(measure(parser.parse_args().output.resolve()))
+    parser.add_argument("--lumen", choices=("on", "off"), required=True)
+    arguments = parser.parse_args()
+    asyncio.run(measure(arguments.output.resolve(), arguments.lumen == "on"))
