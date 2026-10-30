@@ -57,8 +57,8 @@ bash world/unreal/scripts/unreal-container.sh build
 Package only after selecting the matching Content and explicit manifests described
 under [Rendering and packaging](#rendering-and-packaging).
 
-`metahuman-login` and `fab-authoring` modes of `unreal-container.sh` need Epic's licensed components and an
-authorized account; Fab also needs `docker build -t snr-unreal-fab:5.8.2 - < world/unreal/docker/fab.Dockerfile`.
+`metahuman-login` and `character-authoring` modes of `unreal-container.sh` need Epic's licensed components and
+an authorized account; they also need `docker build -t snr-unreal-fab:5.8.2 - < world/unreal/docker/fab.Dockerfile`.
 
 ## Valley foundations
 
@@ -78,8 +78,8 @@ The cabin, fence, fire road, campsite, fire ring and boulder field also have pub
 geometry. Their presence in the catalogue is an authoring specification, not proof
 of built scenery. Every landmark has `heightM`, the tallest permitted part above
 local terrain. Raised features have polygon footprints; roads, trails, creeks and
-ponds have zero height. Heights are design envelopes until the selected meshes are
-placed and measured. Authoring must stay within them. Same-kind polygons may neither
+ponds have zero height. Forest and dome heights are the measured dressing tops (rounded up to
+0.5 m); authoring must stay within every height. Same-kind polygons may neither
 overlap nor touch, and the catalogue supplies every class required by the behavior
 prior.
 
@@ -159,15 +159,35 @@ replaces the water volume with a black base colour. The regenerated Mission Cont
 belongs to the asset-approved authoring stage. Do not label unchanged cooked scenery with the valley
 manifest.
 
+`valley-grass.json` is the meadow ground cover: one landscape grass type per entry, spawned at
+runtime by the landscape material (`grass.GrassMap.UseRuntimeGeneration=1` in `DefaultEngine.ini`;
+`DroneFoundation` registers every drone camera as a streaming view, so the grass builds around the
+fleet, not the browser camera). Each type lists its landscape layers (its weight is the largest
+layer weight) and its varieties: a mesh, instances per 10 m x 10 m (at most 1000 each,
+`LandscapeGrassType.h`) and a uniform scale range, all in the cull band `cullM` (full density to the
+first distance, culled at the second); `brightness` multiplies the blades' base colour through the
+masters' `Brightness` scalar (one override material instance per mesh slot), and `patches` thins the
+type with a deterministic noise field (no grass below `bare`, full above `full`) so the meadow reads
+as grass with worn patches. `author-unreal.sh build-valley-grass` rebuilds the `/Game/Valley/Grass`
+types, asserting every mesh top within `heightM` at its largest scale; run it before
+`build-open-meadow`, whose material wires each type to a `LandscapeGrassOutput` pin. The runtime
+telemetry (`runtime.json` `grass`) reports the built instance count and the asynchronous grass
+builds in flight; `measure_grass.py` measures coverage (pixels that differ between `grass.Enable`
+on and off at one pose, once two consecutive captures are byte-identical) at the meadow and creek
+nadirs at 30 and 60 m, then flies one lane between them at 16 m capture spacing.
+
 `valley-dressing.json` places every mesh under `/Game/Valley`: each mesh records its Unreal bounds
 and collision profile (`ScenarioTerrain` for the bridge, rocks and logs, `ScenarioObstacle` for
 structures and props, `NoCollision` for vegetation and small debris). Scatter rows fill stratified
 cells, keep the fraction under a seeded cluster noise and accept points inside their `polygon`
-edge band, creek `line` band, `box` or layer `mask`, outside the trail and road treads, creek bank
-tops, ponds and structure-like polygons; instances get a random yaw and ±15% scale. Explicit rows
-(`at`) give poses whose footprints must lie in their area. Instances taller than 4 m must stand in
-a forest, structure, obstacle or outcrop polygon whose `heightM` covers them. Adding an asset is
-one mesh entry and one row. Plan into a new directory, then author it after `build-open-meadow`:
+edge band (one band across a list of disjoint polygons), creek `line` band, `box` or layer `mask`.
+Centres keep `clearM` from the ponds, so shore rows may overhang the water, and `clearM` plus the
+row's widest bounding radius at its largest scale from the trail and road treads, creek bank tops,
+the drone port and structure-like polygons; instances get a random yaw and ±15% scale, and no
+row's tallest mesh at its largest scale may top 18 m. Explicit rows (`at`) give poses whose
+footprints must lie in their area.
+Instances taller than 4 m must stand in a forest, structure, obstacle or outcrop polygon whose
+`heightM` covers them. Adding an asset is one mesh entry and one row. Plan into a new directory, then author it after `build-open-meadow`:
 
 ```sh
 .venv-cosys/bin/python -m world.unreal.valley_dressing \
@@ -177,7 +197,8 @@ SNR_EVIDENCE_DIR=.local/evidence/world/valley/<new-dressing-run> \
 ```
 
 Ground heights are the bilinear heightfield (explicit footprints use the median of centre and
-corners, so the footbridge rests on its banks); landing mats sit on the drone port. The editor step
+corners, so the footbridge rests on its banks); landing mats lie on the drone port's top. The
+placements name each instance's mesh by index into its row's mesh list. The editor step
 writes one foliage type per mesh into the `valley.dressing` foliage actor, then proves that
 scenario ground traces reach only terrain or `ScenarioTerrain` meshes and that a walker-sized
 capsule standing every 5 m along each trail and road overlaps nothing.
@@ -248,8 +269,27 @@ output files; this workflow never imports assets into Unreal.
 The project requests Vulkan SM6, Lumen GI/reflections with hardware ray tracing,
 virtual shadow maps and Nanite. Cosys scene captures explicitly opt into Lumen;
 viewport settings alone do not establish the sensor lighting path. Startup checks
-the capture component settings. Actual rendered passes and performance still need
-measurement on the packaged profile; configuration checks are not that proof.
+the capture component settings and reports whether the `r.Lumen.DiffuseIndirect.Allow` and
+`r.Lumen.Reflections.Allow` scalability switches leave Lumen on; with them at 0 every view
+falls back to the sky light and screen-space reflections. Each capture keeps its own Lumen scene
+that starts without surface-cache cards, so its first renders shade card-less hits black. Every
+captured frame asserts that its first-percentile luminance (Rec. 709, every 4th pixel) is above
+zero. Actual rendered passes and performance still need measurement on the packaged profile;
+configuration checks are not that proof.
+
+`valley-lighting.json` fixes the look after the level step:
+
+```sh
+SNR_EVIDENCE_DIR=.local/evidence/world/valley/<new-lighting-run> \
+  bash world/unreal/scripts/author-unreal.sh build-valley-lighting
+```
+
+It asserts the `world.json` sun, sets `look.daylight` to manual exposure at `exposureEv100` with no
+physical camera and so no eye adaptation (the drone captures use the same EV through
+`configure-drones.py`), sets the `sky.haze` density from the Koschmieder visibility and its half
+height. The foliage masters carry no world position offset: the T6 `SimpleGrassWind` sway made the
+Nanite lodgepole crowns fall back to bare trunks in the packaged build. The replaced exposure and fog
+values go to `lighting.json`.
 
 Packaging requires explicit manifests for the Content being cooked. Override any
 installed `Live` paths inherited from the runtime profile. Generate settings for
@@ -405,11 +445,15 @@ it flies the pinned lanes at 5 m/s with a 4K capture every 16 m per drone (1.25 
 runs 40 back-to-back captures per hovering drone. Frame and GPU times come from the CSV profiler
 (`FrameTime`, `GPUTime` = `RHIGetGPUFrameCycles`), anchored to host time by the timestamped
 `CsvProfile STOP` event. VRAM is sampled per process with `nvidia-smi`; RAM is the reset `VmHWM`.
-Any GPU process other than a ScenarioStudio world fails the run.
+Any GPU process other than a ScenarioStudio world fails the run. `--lumen on|off` sets both Lumen
+scalability switches before the warm-up and waits until DroneFoundation reports them. The warm-up
+frames, each drone's first render at an identical pose, are saved in the run directory, and every
+capture records its shadow floor, so the two arms compare frames, capture time and GPU time.
 
 ```sh
 set -a; . .local/slot.env; set +a   # SNR_PACKAGE_ROOT, SNR_COSYS_SETTINGS, SNR_WORLD_CONFIG: the release
-.venv-cosys/bin/python -m world.unreal.measure_performance --output .local/evidence/world/<new>.json
+.venv-cosys/bin/python -m world.unreal.measure_performance --lumen on \
+  --output .local/evidence/world/<new>.json
 ```
 
 ## Characters

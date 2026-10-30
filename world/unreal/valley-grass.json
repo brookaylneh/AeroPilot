@@ -1,0 +1,109 @@
+{
+ "folder": "/Game/Valley/Grass",
+ "cullM": [
+  80,
+  160
+ ],
+ "heightM": [
+  0.3,
+  0.6
+ ],
+ "types": {
+  "dry-meadow": {
+   "layers": [
+    "dry-meadow"
+   ],
+   "varieties": [
+    {
+     "mesh": "Vegetation/SM_Grass_Lawn",
+     "per100m2": 1000,
+     "scale": [
+      1.2,
+      1.6
+     ]
+    },
+    {
+     "mesh": "Vegetation/SM_Grass_FestucaSmall",
+     "per100m2": 150,
+     "scale": [
+      0.85,
+      1.05
+     ]
+    },
+    {
+     "mesh": "Vegetation/SM_Grass_FestucaMedium",
+     "per100m2": 150,
+     "scale": [
+      0.85,
+      1.15
+     ]
+    },
+    {
+     "mesh": "Vegetation/SM_Grass_FestucaShort",
+     "per100m2": 150,
+     "scale": [
+      0.85,
+      1.15
+     ]
+    },
+    {
+     "mesh": "Vegetation/SM_Seedheads_AnaphalisA",
+     "per100m2": 2,
+     "scale": [
+      1.0,
+      1.15
+     ]
+    },
+    {
+     "mesh": "Vegetation/SM_Seedheads_AnaphalisB",
+     "per100m2": 2,
+     "scale": [
+      1.0,
+      1.15
+     ]
+    }
+   ],
+   "brightness": 2.2,
+   "patches": {
+    "scaleM": 12,
+    "octaves": 2,
+    "bare": 0.28,
+    "full": 0.5
+   }
+  },
+  "wet-meadow": {
+   "layers": [
+    "wet-meadow",
+    "cobble-bed"
+   ],
+   "varieties": [
+    {
+     "mesh": "Vegetation/SM_Sedge_CarexA",
+     "per100m2": 400,
+     "scale": [
+      1.0,
+      1.3
+     ]
+    },
+    {
+     "mesh": "Vegetation/SM_Sedge_CarexB",
+     "per100m2": 400,
+     "scale": [
+      1.0,
+      1.3
+     ]
+    },
+    {
+     "mesh": "Vegetation/SM_Grass_Lawn",
+     "per100m2": 400,
+     "scale": [
+      1.2,
+      1.6
+     ]
+    }
+   ],
+   "brightness": 2.2,
+   "patches": null
+  }
+ }
+}

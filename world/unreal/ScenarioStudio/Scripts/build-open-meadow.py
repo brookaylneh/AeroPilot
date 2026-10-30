@@ -426,6 +426,15 @@ for name, entry in grass["types"].items():
     weight = samples[0]
     for sample in samples[1:]:
         weight = node(unreal.MaterialExpressionMax, ("A", weight), ("B", sample))
+    if entry["patches"] is not None:
+        # Worn patches: no grass where the noise field falls below `bare`, full density above `full`.
+        patches = entry["patches"]
+        assert 0 <= patches["bare"] < patches["full"] <= 1, patches
+        weight = node(
+            unreal.MaterialExpressionMultiply,
+            ("A", weight),
+            ("B", field(patches["scaleM"], patches["octaves"], patches["bare"], patches["full"])),
+        )
     assert ml.connect_material_expressions(weight, "", grass_output, name), name
 output(switched["BC"], "MP_BASE_COLOR")
 output(switched["N"], "MP_NORMAL")

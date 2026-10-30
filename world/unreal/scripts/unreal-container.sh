@@ -116,24 +116,9 @@ case "$mode" in
       -EnablePlugins=PythonScriptPlugin,EditorScriptingUtilities,MetaHumanCharacter \
       -ddc=InstalledNoZenLocalFallback -nullrhi -unattended -nosound -nocrashreports -stdout -FullStdOutLogOutput
     ;;
-  fab-authoring)
-    # Editor-only asset acquisition. CEF debugging is local; never expose it
-    # through the authoring website. Login URLs are captured in private files.
-    exec docker run "${container_flags[@]}" "${gpu_flags[@]}" --pid=host \
-      --name snr-fab-authoring -e "SNR_AUTH_DIR=$PWD/.secrets" -e SNR_AUTH_FILE=fab-login.url \
-      --mount "type=bind,src=$PWD/world/unreal/scripts/epic-login-open.py,dst=/usr/bin/xdg-open,readonly" \
-      snr-unreal-fab:5.8.2 \
-      xvfb-run -a --server-args="-screen 0 1600x1000x24 -nolisten tcp" \
-      "$engine_root/Engine/Binaries/Linux/UnrealEditor" \
-      "$PWD/world/unreal/ScenarioStudio/ScenarioStudio.uproject" /Engine/Maps/Entry \
-      -ExecutePythonScript="$PWD/world/unreal/ScenarioStudio/Scripts/open-fab.py" \
-      -EnablePlugins=Fab,PythonScriptPlugin,EditorScriptingUtilities \
-      -vulkan -sm5 -cefdebug=9223 -ExecCmds="t.MaxFPS 10" -ResX=1440 -ResY=900 \
-      -ddc=InstalledNoZenLocalFallback -unattended -nosound -NoSplash -nocrashreports -stdout -FullStdOutLogOutput
-    ;;
   *)
     echo 'Usage: unreal-container.sh build | run-packaged | exec command ... |' \
-      'character-authoring command ... | mcp-editor | metahuman-login | fab-authoring' >&2
+      'character-authoring command ... | mcp-editor | metahuman-login' >&2
     exit 2
     ;;
 esac
