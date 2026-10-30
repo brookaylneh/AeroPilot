@@ -393,8 +393,8 @@ timeout 120 bash -c 'until ss -H -ltn sport = :41451 | rg -q "127.0.0.1:41451"; 
 sudo systemctl start snr-mission
 ```
 
-Reload the intended saved case immediately: snr-mission starts idle and that
-connection creates all four controllers. Verify the unchanged startup checks,
+snr-mission starts all four controllers immediately; the world advances once they
+reply. Reload the intended saved case to select it. Verify the unchanged startup checks,
 184 Hz readback, real camera frames and persisted search coverage. Keep the
 mission's case selected across reconnects. With the editor and development worlds
 stopped by their owners, repeat the recorded flight/capture, feed and pan checks;

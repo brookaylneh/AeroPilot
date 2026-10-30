@@ -12,8 +12,9 @@ commander processes explicitly selected recorded captures or the coupled live ca
 ## Start and stop
 
 Use the installed services described in [deployment](../../deploy/README.md). Open a saved briefing
-from `/studio`; its launch button navigates to `/mission?case=<uuid>`. The idle mission service selects
-that first case, starts the fleet and retains it across browser disconnects. Stop/restart `snr-mission`
+from `/studio`; its launch button navigates to `/mission?case=<uuid>`. The mission service starts the
+fleet when it starts, because the coupled world blocks without motor replies. The first connection selects
+its case, which the service retains across browser disconnects. Stop/restart `snr-mission`
 after landing before changing cases. The fixed loopback listener is exposed only through the same-origin
 `/api/mission` WebSocket proxy.
 

@@ -159,10 +159,12 @@ WebSockets use `ws://` on the same origin; no DNS name or certificate is require
 Signalling supplies `iceTransportPolicy: relay` to browsers. Unreal advertises its local candidates;
 Epic's frontend `ForceTURN` flag is unused because it also rejects those remote candidates.
 
-The mission service starts idle. The first `/mission?case=<uuid>` connection selects a saved briefing
-and starts the four autopilots. It keeps that mission across browser disconnects and rejects another
-case. Land all aircraft and stop/restart `snr-mission` before choosing another case. No model inference
-or autonomous flight is started merely by connecting a browser.
+The Unreal world advances only while the four disarmed autopilots return motor outputs, so start
+`snr-mission` after `snr-unreal` and it starts the fleet immediately. Its health state is `starting`
+until the fleet is ready, then `idle` until the first `/mission?case=<uuid>` connection selects a saved
+briefing. It keeps that case across browser disconnects and rejects another case. Land all aircraft and
+stop/restart `snr-mission` before choosing another case. No model inference or autonomous flight is
+started merely by connecting a browser.
 
 Run development with `npm run dev`. Vite middleware and API/WebSocket handlers share the single fixed
 listener; reload the browser after changes. Tunnel it with:
