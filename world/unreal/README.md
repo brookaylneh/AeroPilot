@@ -202,67 +202,6 @@ writes one foliage type per mesh into the `valley.dressing` foliage actor, then 
 scenario ground traces reach only terrain or `ScenarioTerrain` meshes and that a walker-sized
 capsule standing every 5 m along each trail and road overlaps nothing.
 
-## Asset review
-
-`valley-assets.lock.json` records candidate sources, licences, AI-use evidence,
-versions and checksums. `asset_shortlist.py` creates candidate views and measures
-geometry. Its renders are asset previews, not Unreal valley screenshots. The
-shortlist includes replacements for the prohibited NoAI grass packs; it does not
-authorize importing other proposed assets. Approve the shortlist before building
-tier 1. Stage results and outstanding checks are recorded in
-`mission_planner/measurements/world-valley.json`.
-
-`valley-reference-assets.json` specifies the proposed Sierra asset collection,
-its purpose, seasonal appearance and production route. `valley-reference-prompts.json`
-records the master-image requests; `valley-reference-edits.json` records the
-selected reference-conditioned views. `valley-generated-assets.lock.json` fixes
-the selected images, provider terms, review findings and image hashes. The model comparison, primary documentation,
-licensing and reconstruction options are in
-`mission_planner/measurements/asset-generation-research.json`.
-
-The reference workflow uses fal's hosted Model APIs. Sunburst runs at its maximum
-quality setting; alternate views are conditioned on the selected master image.
-Generated designs and camera views need visual review, and their dimensions are
-design targets. Image generation does not establish matching geometry between
-views, physically valid construction or a usable PBR material set. Trees and
-groundcover require foliage authoring; water requires an Unreal shader and
-shoreline geometry. Thin stairs, rails and structural members require explicit
-modelling and collision review after reconstruction.
-
-Run an explicit request plan into fresh directories:
-
-```sh
-.venv-cosys/bin/python -m world.unreal.generate_asset_images \
-  --plan world/unreal/valley-reference-prompts.json \
-  --output .local/world/valley/<new-reference-run> \
-  --evidence .local/evidence/world/valley/<new-reference-run> --workers 3
-```
-
-Requests, endpoint IDs, image hashes, native dimensions and elapsed times are
-recorded beside the outputs. Reference edits require the recorded input hash.
-Existing outputs fail; requests disable fal retries and model fallback. Image
-generation is nondeterministic, so preserve selected PNGs and their receipts.
-`review_asset_images.py` verifies selected image hashes, assembles the collection
-board and exports separate crops from each turnaround sheet:
-
-```sh
-.venv-cosys/bin/python -m world.unreal.review_asset_images \
-  --selection .local/evidence/world/valley/generated-references/selection.json \
-  --output .local/world/valley/<new-review>
-```
-
-Each sheet supplies four view crops, not independent image generations. The board
-is for approval; individual object views require geometric consistency checks
-before reconstruction. Provider
-outputs retain their provider terms and are not automatically CC0 or MIT.
-
-The standalone source-asset review can be reconstructed with
-`python -m world.unreal.asset_shortlist <action> --evidence-dir <new-world-evidence-dir>`.
-Its setup order is `dependencies`, `download-toolchain`, `install-toolchain`,
-`verify-toolchain`, then `acquire --candidate <id>`, `render --candidate <id>` and
-`contact`. Originals need no acquisition. Each action requires its own absent
-output files; this workflow never imports assets into Unreal.
-
 ## Rendering and packaging
 
 The project requests Vulkan SM6, Lumen GI/reflections with hardware ray tracing,
@@ -353,6 +292,11 @@ $B $P/structures.py -- ranger-cabin --output $O/build-repeat --repeat-of $O/buil
 $B $P/studio.py -- --build $O/build --cameras $O/cameras/cameras.json --output $O/render
 .venv-cosys/bin/python -m world.unreal.blender.reference_match compare structures ranger-cabin --input $O/render --output $O/compare
 ```
+
+The approved references are the 30 designs in `valley-generated-assets.lock.json`: each master and
+turnaround sheet with its fal endpoint, request, hash, review and the provider terms
+(`LicenseRef-fal-provider-output`), which are not CC0 or MIT. `reference_match` reads hash-verified
+copies from `.local/references/index.json`. The images are design targets, not geometry or textures.
 
 `fit` solves the master camera from the correspondences, fits an orthographic camera to each turnaround
 panel's silhouette box, and derives the 30 m nadir (70° HFOV, 3840×2160 drone camera, cropped to the
