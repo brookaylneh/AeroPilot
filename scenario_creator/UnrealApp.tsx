@@ -15,7 +15,7 @@ const steps: { id: CreatorStage; title: string; description: string }[] = [
   {
     id: 'person',
     title: 'Create the missing person',
-    description: 'Nine character presets, natural animations, simple clothing customization',
+    description: 'Choose a character and review their appearance',
   },
   {
     id: 'situation',
@@ -113,6 +113,7 @@ export default function UnrealApp() {
   }
   const options = (key: string) => packet?.catalog.options.find((group) => group.key === key)?.values || [];
   function swatches(key: 'topColor' | 'bottomColor' | 'backpackColor', label: string) {
+    if (options(key).length === 1 && options(key)[0] === 'original') return null;
     return (
       <fieldset className="color-options">
         <legend>{label}</legend>

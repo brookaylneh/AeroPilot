@@ -56,7 +56,10 @@ test('packaged container needs no editor, accepts bounded host resources and sel
       SNR_PACKAGE_ROOT: directory,
       SNR_PIXEL_STREAMING: '1',
       SNR_STREAM_CODEC: 'H264',
+      SNR_PROFILE: '0',
+      SNR_RENDER_PERCENTAGE: '100',
       SNR_STREAMER_PORT: '8888',
+      SNR_STREAMER_ID: 'DefaultStreamer',
       SNR_WEBRTC_MIN_PORT: '49160',
       SNR_WEBRTC_MAX_PORT: '49200',
     };
@@ -70,6 +73,8 @@ test('packaged container needs no editor, accepts bounded host resources and sel
     assert(args.includes('--memory=24g'));
     assert(args.includes('--cpus=4'));
     assert(args.includes('--runtime=nvidia'));
+    for (const device of ['nvidia0', 'nvidiactl', 'nvidia-uvm', 'nvidia-uvm-tools', 'nvidia-modeset'])
+      assert(args.includes(`--device=/dev/${device}`));
     assert(args.includes('snr-unreal-runtime:test'));
     assert(args.includes(`type=bind,src=${directory},dst=${directory},readonly`));
     assert(!args.some((value) => value.includes('editor-not-installed')));
@@ -116,7 +121,10 @@ test('runtime selects its map, shader platform and H264 explicitly; invalid mani
       SNR_SCENARIO_DATA_DIR: path.join(directory, 'scenarios'),
       SNR_DRONE_DATA_DIR: '',
       SNR_STREAM_CODEC: 'H264',
+      SNR_PROFILE: '0',
+      SNR_RENDER_PERCENTAGE: '100',
       SNR_STREAMER_PORT: '8888',
+      SNR_STREAMER_ID: 'DefaultStreamer',
       SNR_WEBRTC_MIN_PORT: '49160',
       SNR_WEBRTC_MAX_PORT: '49200',
       SNR_STREAM_FPS: '60',
@@ -133,6 +141,13 @@ test('runtime selects its map, shader platform and H264 explicitly; invalid mani
     assert(!args.includes('-sm5'));
     assert(args.includes('-PixelStreamingEncoderCodec=H264'));
     assert(args.includes('-ResX=1920'));
+    assert(!args.includes('-logPSO'));
+    env.SNR_PROFILE = '1';
+    assert.equal(run().status, 0);
+    assert(JSON.parse(readFileSync(output, 'utf8')).includes('-logPSO'));
+    env.SNR_PROFILE = 'invalid';
+    assert.equal(run().status, 2);
+    env.SNR_PROFILE = '0';
     assert(args.includes('-PixelStreamingWebRTCFps=60'));
     assert(args.includes('-PixelStreamingWebRTCMaxBitrate=40000000'));
     assert(args.includes('-PixelStreamingWebRTCStartBitrate=40000000'));
@@ -142,6 +157,21 @@ test('runtime selects its map, shader platform and H264 explicitly; invalid mani
     assert(!args.some((arg) => arg.startsWith('-PixelStreamingEncoderKeyframeInterval')));
     assert(!args.some((arg) => arg.startsWith('-PixelStreamingEncoderTargetBitrate')));
     assert(args.some((arg) => arg.startsWith('-dpcvars=') && arg.includes('r.ScreenPercentage=100')));
+    assert(
+      args.some((arg) => arg.startsWith('-dpcvars=') && arg.includes('PixelStreaming2.ID=DefaultStreamer')),
+    );
+    env.SNR_RENDER_PERCENTAGE = '75';
+    assert.equal(run().status, 0);
+    const temporalUpscaling: string[] = JSON.parse(readFileSync(output, 'utf8'));
+    assert(temporalUpscaling.some((arg) => arg.includes('r.ScreenPercentage=75')));
+    env.SNR_RENDER_PERCENTAGE = '0';
+    assert.equal(run().status, 2);
+    env.SNR_RENDER_PERCENTAGE = '100';
+    env.SNR_STREAM_MAX_BITRATE = '80000000';
+    assert.equal(run().status, 0);
+    const highBitrate: string[] = JSON.parse(readFileSync(output, 'utf8'));
+    assert(highBitrate.includes('-PixelStreamingWebRTCStartBitrate=80000000'));
+    assert(highBitrate.includes('-PixelStreamingWebRTCMaxBitrate=80000000'));
     env.SNR_STREAM_MAX_BITRATE = 'unlimited';
     assert.equal(run().status, 2, 'Unsupported bandwidth must fail explicitly');
     env.SNR_STREAM_MAX_BITRATE = '25000000';

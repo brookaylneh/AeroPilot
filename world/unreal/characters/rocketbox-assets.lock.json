@@ -1,0 +1,191 @@
+{
+  "repository": "https://github.com/microsoft/Microsoft-Rocketbox",
+  "commit": "0943055db6ec570bcef9f2c8b41c9e5467c808f9",
+  "license": "MIT",
+  "vendor": ".local/vendor/rocketbox",
+  "characters": [
+    {
+      "id": "child",
+      "name": "Male_Child_02",
+      "category": "Children",
+      "texture_prefix": "cm012",
+      "label": "Child \u2014 original Rocketbox model; exact age unverified",
+      "fbx": "Assets/Avatars/Children/Male_Child_02/Export/Male_Child_02_facial.fbx",
+      "textures": "Assets/Avatars/Children/Male_Child_02/Textures",
+      "preview": "Assets/Avatars/Children/Male_Child_02/Male_Child_02.png",
+      "asset_folder": "/Game/Characters/RocketboxSamples/Male_Child_02",
+      "assessment": "Original A-pose, textures and facial rig. No MetaHuman components or generated face details."
+    },
+    {
+      "id": "adult",
+      "name": "Female_Adult_04",
+      "category": "Adults",
+      "texture_prefix": "f004",
+      "label": "Adult \u2014 original Rocketbox model",
+      "fbx": "Assets/Avatars/Adults/Female_Adult_04/Export/Female_Adult_04_facial.fbx",
+      "textures": "Assets/Avatars/Adults/Female_Adult_04/Textures",
+      "preview": "Assets/Avatars/Adults/Female_Adult_04/Female_Adult_04.png",
+      "asset_folder": "/Game/Characters/RocketboxSamples/Female_Adult_04",
+      "assessment": "Original A-pose, textures and facial rig. No MetaHuman components or generated face details."
+    },
+    {
+      "id": "senior",
+      "name": "Male_Adult_03",
+      "category": "Adults",
+      "texture_prefix": "m004",
+      "label": "Senior candidate \u2014 original Rocketbox model; exact age unverified",
+      "fbx": "Assets/Avatars/Adults/Male_Adult_03/Export/Male_Adult_03_facial.fbx",
+      "textures": "Assets/Avatars/Adults/Male_Adult_03/Textures",
+      "preview": "Assets/Avatars/Adults/Male_Adult_03/Male_Adult_03.png",
+      "asset_folder": "/Game/Characters/RocketboxSamples/Male_Adult_03",
+      "assessment": "Original A-pose, textures and facial rig. No MetaHuman components or generated face details."
+    }
+  ],
+  "files": [
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_04/Export/Female_Adult_04_facial.fbx",
+      "bytes": 2349152,
+      "git_blob_sha1": "62b371167090f21a66da305697d15364e125713d"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_04/Female_Adult_04.png",
+      "bytes": 430066,
+      "git_blob_sha1": "0b9d73e3fad02961c2ae3b27118274f1a9b5cb43"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_04/Textures/f004_body_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "d087c788a3d06ddff161f7d726e5964d10ab5679"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_04/Textures/f004_body_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "f4a57692ebc603687d65eda16a8286c03e745963"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_04/Textures/f004_body_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "c1d4bb6286f05fe8dfb95d8cfe9adbb776b2088c"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_04/Textures/f004_head_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "8431d9774e3d416447096367fecf4a0f75bc7ea5"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_04/Textures/f004_head_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "ab4de4da7bd926286f7088a5e9caeb0a2344a479"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_04/Textures/f004_head_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "f214cdb37ef002377784c73cd27b38bffddbcfee"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_04/Textures/f004_opacity_color.tga",
+      "bytes": 16777260,
+      "git_blob_sha1": "86f656686004a338b13026515c7395c946170352"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_03/Export/Male_Adult_03_facial.fbx",
+      "bytes": 1907328,
+      "git_blob_sha1": "0df7b40cedfe94c17e316d6c961143ba4d609f12"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_03/Male_Adult_03.png",
+      "bytes": 515426,
+      "git_blob_sha1": "45b4b5b2e72d6f91a27feccee7f9fd6129f45d01"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_03/Textures/m004_body_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "6c74391f617e383371c9cd77775ebbae16998f8e"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_03/Textures/m004_body_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "c1ae5c98e3d11d7266fff2e0cd693869da21e3a9"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_03/Textures/m004_body_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "3305e77aade42d20e17cbabeebf6a128c97b149c"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_03/Textures/m004_head_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "bc8c4b56be8bef30ea204ea772451a03457a9d85"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_03/Textures/m004_head_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "01cbe98b0d29bfe9b5c8949800e199234014453f"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_03/Textures/m004_head_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "3bf7d8c4741a7b051d59bd1a23e61dfc2fc7db10"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_03/Textures/m004_opacity_color.tga",
+      "bytes": 8388652,
+      "git_blob_sha1": "7a705836b26da41fbd46d5cf41835bcff82b1e0d"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_02/Export/Male_Child_02_facial.fbx",
+      "bytes": 1873456,
+      "git_blob_sha1": "fba813068626d76c1440b313836b80c83ad55d3b"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_02/Male_Child_02.png",
+      "bytes": 416786,
+      "git_blob_sha1": "af76a4b342b1dfa872b9507c0ef724ec98650327"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_02/Textures/cm012_body_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "11e5406d5270364089ed7489f1497c994ad7cf81"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_02/Textures/cm012_body_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "2dde60fc2f3b41366f19029017f0c38bee0ae4fb"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_02/Textures/cm012_body_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "e86d2db2a175f570cef78f57d2ce2a25dac12484"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_02/Textures/cm012_head_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "899fac07d89cf85696beb33ee0b782a6056420f3"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_02/Textures/cm012_head_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "8ba1f8002f94f8dca163cd68be0608ac9e06bb16"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_02/Textures/cm012_head_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "72ed9755ee46b2cb98cb203a6393f02cc6b8b018"
+    },
+    {
+      "path": "LICENSE.md",
+      "bytes": 1066,
+      "git_blob_sha1": "9bcfb3ece5301a55d3a41bbd00a029ab27d61d13"
+    },
+    {
+      "path": "README.md",
+      "bytes": 5345,
+      "git_blob_sha1": "a23370fd4258e59784970d941bf15b53aad38924"
+    }
+  ],
+  "review": {
+    "title": "Rocketbox character trial",
+    "description": "Three original Microsoft Rocketbox characters, imported and rendered in Unreal Engine 5.8.2. Click a view for its original PNG.",
+    "assessment": "This is an appearance trial. Exact ages and full roster coverage are unverified."
+  }
+}

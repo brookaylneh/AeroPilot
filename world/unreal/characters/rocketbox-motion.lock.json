@@ -1,0 +1,55 @@
+{
+  "repository": "https://github.com/microsoft/Microsoft-Rocketbox",
+  "commit": "0943055db6ec570bcef9f2c8b41c9e5467c808f9",
+  "license": "MIT",
+  "vendor": ".local/vendor/rocketbox-motion",
+  "clips": {
+    "f": {
+      "lost": "Assets/Animations/all_animations_max_motextr_static/f_idle_breathe_01.max.fbx",
+      "waiting": "Assets/Animations/all_animations_max_motextr_static/f_wave_01.max.fbx",
+      "walking": "Assets/Animations/all_animations_max_motextr_xy/f_walk_neutral.max.fbx"
+    },
+    "m": {
+      "lost": "Assets/Animations/all_animations_max_motextr_static/m_idle_breathe_01.max.fbx",
+      "waiting": "Assets/Animations/all_animations_max_motextr_static/m_wave_01.max.fbx",
+      "walking": "Assets/Animations/all_animations_max_motextr_xy/m_walk_neutral.max.fbx"
+    }
+  },
+  "files": [
+    {
+      "path": "LICENSE.md",
+      "bytes": 1066,
+      "git_blob_sha1": "9bcfb3ece5301a55d3a41bbd00a029ab27d61d13"
+    },
+    {
+      "path": "Assets/Animations/all_animations_max_motextr_static/f_idle_breathe_01.max.fbx",
+      "bytes": 1379504,
+      "git_blob_sha1": "64d93cc3d5c38dc107d4dad23da70855a64ddb10"
+    },
+    {
+      "path": "Assets/Animations/all_animations_max_motextr_static/f_wave_01.max.fbx",
+      "bytes": 1839824,
+      "git_blob_sha1": "e719cc1cfb2254275ea259ce54828743d904e3ea"
+    },
+    {
+      "path": "Assets/Animations/all_animations_max_motextr_xy/f_walk_neutral.max.fbx",
+      "bytes": 1002832,
+      "git_blob_sha1": "94d6f50765e0865eee6dd439b1ab0ca3511c784e"
+    },
+    {
+      "path": "Assets/Animations/all_animations_max_motextr_static/m_idle_breathe_01.max.fbx",
+      "bytes": 1397280,
+      "git_blob_sha1": "735b406c2f19cf233f042bfe0424c2a15c053c95"
+    },
+    {
+      "path": "Assets/Animations/all_animations_max_motextr_static/m_wave_01.max.fbx",
+      "bytes": 1424016,
+      "git_blob_sha1": "596c54bca6824ce663ac4239096b4c430b4e3d0b"
+    },
+    {
+      "path": "Assets/Animations/all_animations_max_motextr_xy/m_walk_neutral.max.fbx",
+      "bytes": 958512,
+      "git_blob_sha1": "f8816638330d02fb31920d46851188b920d66ab1"
+    }
+  ]
+}

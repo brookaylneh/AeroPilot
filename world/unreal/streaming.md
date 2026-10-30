@@ -1,52 +1,32 @@
 # Streaming image quality
 
-The valley branch prepares Vulkan SM6, Lumen hardware tracing, virtual shadow maps
-and Nanite, with explicit Lumen settings for drone scene captures. That combined
-profile has not been packaged or measured in the world slot. The slot has no
-Pixel Streaming endpoints. Its pending checks, source-level capture review and
-separately attributed installed-profile measurements are recorded in
-`mission_planner/measurements/world-valley.json`. The measurements below describe
-the earlier SM5 baseline, not the prepared valley profile.
+The live profile is **3840×2160 output at a 60 FPS target**, reconstructed by TSR
+from 55% internal resolution (2112×1188). Startup values are defined in
+`deploy/runtime.env.example` and installed in `.local/runtime.env`. Quality remains
+fixed throughout a session.
 
-The live profile is native **3840×2160 at a 60 FPS target**, configured in
-`deploy/runtime.env.example`. Changes take effect when `snr-unreal` starts; the
-application does not switch quality profiles while running.
+The package uses Vulkan SM6, Lumen GI and reflections with hardware ray tracing,
+virtual shadow maps, Nanite including foliage, and runtime-generated grass. The
+approved Rocketbox characters use their mesh hair.
 
-- H.264 through NVENC, `HighQuality` preset and `LowLatency` mode.
-- 100% internal render resolution with TSR antialiasing; motion blur is disabled.
-- Adaptive bitrate from 10 to 40 Mbps; the encoder starts at the ceiling.
-- No fixed encoder bitrate and no periodic keyframes. The browser can request a keyframe.
-- Browser media uses TURN. Its configured 6,250,000 bytes/s limit allows 50 Mbps.
-- Epic scalability level 3, a 4096 MB texture streaming pool and six container CPUs.
+H.264 uses NVENC's HighQuality preset and LowLatency mode, with adaptive bitrate
+from 10 to 40 Mbps through TURN. The renderer has twelve container CPUs, a 24 GiB
+memory limit and a 4096 MB texture streaming pool. Normal serving uses
+`SNR_PROFILE=0` to retain writable pipeline caches. The package contains the
+bundled pipeline cache recorded from its own Content.
 
-The recorded baseline package uses `SF_VULKAN_SM5`, screen-space GI and screen-space reflections.
-Hardware ray tracing and virtual shadow maps are off; Nanite assets use fallback meshes
-on this platform. Both UE 5.8.2 SM6 device profiles pass on the RTX PRO 6000, but enabling
-Lumen and hardware ray tracing requires an SM6 cook with the complete uncooked assets.
-The current recovery release uses explicitly approved temporary cooked content.
+Drone RGB sensors render native 3840×2160 with Lumen GI and reflections, manual
+exposure from `world/unreal/valley-lighting.json`, white balance 6500 K, no bloom
+and no motion blur.
 
-The five-minute navigation run delivered 59.99 decoded FPS at 35.04 Mbps with no dropped
-frames or browser-reported freezes. The largest video callback gap was 99.9 ms. Sampled
-GPU time averaged 8.62 ms, with p95 9.33 ms and p99 10.22 ms. These are camera telemetry
-samples at a target 10 Hz, not an exhaustive per-frame trace.
+For recording, set `SNR_STREAM_HEIGHT=1440`, `SNR_STREAM_FPS=30` and
+`SNR_RENDER_PERCENTAGE=100` in `.local/runtime.env`, then restart `snr-unreal` with
+Studio released. This gives native 2560×1440 at 30 FPS with the same lighting and
+sensor features. Restore the live startup values from `deploy/runtime.env.example`
+and restart after recording. The 30 FPS mode is separate from the 60 FPS live gate.
 
-A 61-second close-character run delivered 60.01 decoded FPS at 34.77 Mbps, with no dropped
-frames or browser-reported freezes and a largest video callback gap of 50 ms. Sampled GPU
-time averaged 10.25 ms, with p95 10.55 ms and p99 10.70 ms. GPU power averaged 296.28 W;
-the highest sampled temperature was 45 °C.
-
-These measurements used a browser on AWS through the public HTTP origin and TURN. They do
-not establish performance on a user's device or network, or across every character.
-Four-drone flight/capture load and the complete realism gate remain unmeasured.
-Drone-camera capture resolution is independent of the browser stream.
-
-Run reproducible measurements with `scripts/measure-stream.mjs`, as documented in
-[README.md](README.md). It records browser statistics, native timing samples, NVIDIA
-power/clocks/temperature and native-resolution screenshots. Committed results are in
-`mission_planner/measurements/render-quality.json`; raw evidence remains under `.local/evidence/`.
-
-## References
-
-- [Epic: temporal super resolution](https://dev.epicgames.com/documentation/en-us/unreal-engine/temporal-super-resolution-in-unreal-engine)
-- [Epic: Pixel Streaming 2 settings](https://github.com/EpicGames/PixelStreamingInfrastructure/blob/master/Docs/pixel-streaming-2-migration-guide.md)
-- The installed UE 5.8.2 `VulkanPC/DataDrivenPlatformInfo.ini` defines SM5/SM6 feature support.
+Measurements use the public HTTP origin and TURN. They do not establish performance
+on a user's device or network. Run `scripts/measure-stream.mjs` as documented in
+[README.md](README.md). Committed results, artifact hashes and qualifications are in
+`mission_planner/measurements/render-quality.json`; raw evidence stays under
+`.local/evidence/`.

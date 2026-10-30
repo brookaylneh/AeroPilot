@@ -1,3 +1,5 @@
+import assert from 'node:assert/strict';
+import { randomUUID } from 'node:crypto';
 import { chromium } from '@playwright/test';
 
 // Use Playwright's installed browser unless the operator supplies an explicit path.
@@ -116,4 +118,33 @@ export async function assertScenarioProtocol(page) {
   const errors = await page.evaluate(() => window.snrProtocolErrors);
   if (!Array.isArray(errors) || errors.length)
     throw new Error(`Scenario protocol errors: ${JSON.stringify(errors)}`);
+}
+
+// The pinned UE 5.8 UIInteraction format is ID 50, uint16 length, then UTF-16LE.
+export async function sendScenarioCommand(page, command) {
+  const requestId = randomUUID();
+  await page.evaluate(
+    ({ requestId, command }) => {
+      const channels = window.snrChannels.filter((channel) => channel.readyState === 'open');
+      if (channels.length !== 1) throw new Error('Expected one bidirectional Unreal data channel');
+      const text = JSON.stringify({ protocolVersion: 1, requestId, command });
+      if (text.length > 65535) throw new Error('UIInteraction exceeds its uint16 length');
+      const bytes = new ArrayBuffer(3 + text.length * 2);
+      const view = new DataView(bytes);
+      view.setUint8(0, 50);
+      view.setUint16(1, text.length, true);
+      for (let i = 0; i < text.length; i++) view.setUint16(3 + 2 * i, text.charCodeAt(i), true);
+      channels[0].send(bytes);
+    },
+    { requestId, command },
+  );
+  await page.waitForFunction((id) => window.snrReplies.some((reply) => reply.requestId === id), requestId, {
+    timeout: 10000,
+  });
+  const reply = await page.evaluate(
+    (id) => window.snrReplies.find((reply) => reply.requestId === id),
+    requestId,
+  );
+  assert.equal(reply.ok, true, JSON.stringify(reply));
+  return reply.state;
 }

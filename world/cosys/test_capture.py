@@ -2,6 +2,7 @@
 
 import asyncio
 import copy
+import hashlib
 import json
 import math
 import tempfile
@@ -250,6 +251,8 @@ class AsyncCaptureTests(unittest.IsolatedAsyncioTestCase):
                 path = Path(record["imagePath"])
                 self.assertTrue(path.exists())
                 self.assertEqual(json.loads(path.with_suffix(".json").read_text()), record)
+                self.assertEqual(record["sha256"], hashlib.sha256(path.read_bytes()).hexdigest())
+                self.assertEqual(record["jpegBytes"], path.stat().st_size)
             finally:
                 stopping.set()
                 await task

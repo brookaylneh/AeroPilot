@@ -108,8 +108,10 @@ host resources and the transferred SDK:
 export UE_ROOT="$PWD/.local/toolchains/UnrealEngine-5.8.2"
 export SNR_CPU_LIMIT=12 SNR_MEMORY_LIMIT=96g
 bash world/unreal/scripts/unreal-container.sh build
-bash world/unreal/scripts/unreal-container.sh exec bash world/unreal/scripts/package-unreal.sh
 ```
+
+Package and stage with the manifests and pipeline-cache mode described in
+[world/unreal/README.md](../world/unreal/README.md).
 
 The build CPU limit is a packaging setting; it does not select the live simulation profile.
 
@@ -167,7 +169,7 @@ set +a
 bash deploy/fetch-caddy.sh
 bash deploy/fetch-browser.sh
 npm run build
-bash world/unreal/scripts/stage-live-release.sh
+bash world/unreal/scripts/stage-live-release.sh .local/unreal/<new-build>/Linux
 sudo bash deploy/install-services.sh
 sudo systemctl start snr-turn snr-signalling snr-unreal snr-mission snr-web
 # Start Caddy after the security group permits HTTP on TCP 80.
@@ -177,8 +179,8 @@ sudo systemctl start snr-caddy
 Acquisition scripts require new destinations; do not rerun them over installed toolchains.
 Units start at boot, fail visibly and do not restart automatically after errors.
 `journalctl -u snr-<service>` records their output. Restart only the affected installed unit after a fix.
-The packaged renderer uses SM5 and a six-CPU limit. The live resolution and encoding profile are
-documented in [streaming](../world/unreal/streaming.md).
+The rendering and encoding profile is documented in [streaming](../world/unreal/streaming.md);
+its startup values are defined in `runtime.env.example`.
 
 | Route or endpoint                 | Purpose                                                       | Listener / upstream                                             |
 | --------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------- |
@@ -194,6 +196,7 @@ documented in [streaming](../world/unreal/streaming.md).
 | `/healthz`                        | All six units plus mission, renderer and TURN protocol health | web; 503 if any check fails                                     |
 | Internal streamer                 | Unreal to signalling                                          | `127.0.0.1:8888`                                                |
 | Internal Cosys RPC                | Native simulation control                                     | `127.0.0.1:41451`                                               |
+| Capacity test RPC                 | Second test instance only                                     | `127.0.0.1:41461`                                               |
 | Internal MAVLink                  | Four SITL telemetry inputs                                    | `127.0.0.1:14600–14603` UDP                                     |
 | Internal RC input                 | Four SITL inputs                                              | `127.0.0.1:5501,5511,5521,5531` UDP                             |
 | TURN                              | Browser relay control                                         | `172.31.61.189:3478` TCP/UDP, public EIP translation            |
@@ -244,11 +247,8 @@ Renderer readiness requires a connected streamer and fresh native `scenarioReady
 signalling socket alone is insufficient. Invalid scenario initialization terminates the renderer visibly.
 Before the first native telemetry file arrives, readiness remains `starting`.
 
-The current `Live` link selects `.local/unreal/releases/cooked-content-recovery`, which combines the
-AWS executable with five explicitly approved temporary cooked-content files. Their hashes and source
-paths are in `mission_planner/measurements/aws-transfer.json`. Restore the complete uncooked character
-assets, build and accept a replacement release, then remove this isolated recovery directory. The
-previous AWS release is retained; it cannot initialize the incomplete character catalog.
+The `Live` link selects a staged release: a package cooked from the tracked world manifest with
+the eleven approved Rocketbox characters and its bundled pipeline cache.
 
 ## Security group
 
@@ -298,3 +298,20 @@ aws ec2 revoke-security-group-ingress --region us-west-2 --group-id sg-007dd0426
 
 After final acceptance at cutover, delete `deploy/transfer.md`, `deploy/transfer.mjs` and its test,
 remove this transfer-tool documentation, and retain `mission_planner/measurements/aws-transfer.json`.
+
+GPU containers explicitly declare the NVIDIA device nodes in `unreal-container.sh`,
+in addition to requesting the NVIDIA runtime and driver libraries. This preserves
+GPU access when runc updates the cgroup. The legacy NVIDIA hook alone loses access
+when CPU limits change on this host; the disposable-container reproduction and the
+verified device-binding fix are recorded under `.local/evidence/render-quality/cpu12/`.
+Set CPU limits in `runtime.env` before recreating the service container.
+See [NVIDIA's container-update diagnosis](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/troubleshooting.html#containers-losing-access-to-gpus-with-error-failed-to-initialize-nvml-unknown-error).
+
+The capacity experiment uses the reserved `SNR_CAPACITY_COSYS_PORT` and
+`SNR_CAPACITY_STREAMER_ID`. Its separate container, release copy, scenario directory and
+sensor directory are created under `.local/`. Both engines use the installed signalling
+service and public `/api/stream` route. The browser harness selects one actual streamer
+from its advertised list and checks that instance's native readiness and occupancy.
+It records this test selection explicitly; it does not provide a public multi-session UI.
+WebRTC media and browser statistics remain unmodified. Stop the task-owned second
+container after both measurement workers have landed their drones and closed their browsers.

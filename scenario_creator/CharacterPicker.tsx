@@ -4,7 +4,7 @@ import type { Packet } from './useUnrealSession';
 const groups = [
   { id: 'Child', label: 'Children' },
   { id: 'Adult', label: 'Adults' },
-  { id: 'Senior', label: 'Seniors' },
+  { id: 'Older', label: 'Older adults' },
 ];
 
 export default function CharacterPicker({

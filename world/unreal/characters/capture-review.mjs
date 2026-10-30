@@ -5,9 +5,14 @@ import { launchBrowser } from '../../../mission_planner/agents/perception/browse
 
 const [url, output, countText, sizeText] = process.argv.slice(2);
 const count = Number(countText);
-const size = Number(sizeText);
+const sizes = sizeText.split(',').map((entry) => {
+  const parts = entry.split('x').map(Number);
+  assert(parts.length === 1 || parts.length === 2);
+  assert(parts.every((value) => Number.isInteger(value) && value > 0));
+  return parts.length === 1 ? [parts[0], parts[0]] : parts;
+});
 assert(url && output && Number.isInteger(count) && count > 0);
-assert(Number.isInteger(size) && size > 0);
+
 await mkdir(output, { recursive: false });
 const browser = await launchBrowser();
 const errors = [];
@@ -32,14 +37,19 @@ try {
   );
   assert.equal(images.length, count);
   assert(images.every((image) => image.width > 0 && image.height > 0));
-  for (const image of images) {
-    assert.equal(new URL(image.full).origin, new URL(url).origin);
-    const full = await page.request.get(image.full, { timeout: 60000 });
+  const links = await page
+    .locator('main a[href$=".png"]')
+    .evaluateAll((items) => [...new Set(items.map((item) => item.href))]);
+  const linkedPngs = [];
+  for (const link of links) {
+    assert.equal(new URL(link).origin, new URL(url).origin);
+    const full = await page.request.get(link, { timeout: 60000 });
     assert.equal(full.status(), 200);
     const bytes = await full.body();
     assert.equal(bytes.subarray(1, 4).toString(), 'PNG');
-    assert.equal(bytes.readUInt32BE(16), size);
-    assert.equal(bytes.readUInt32BE(20), size);
+    const pixels = [bytes.readUInt32BE(16), bytes.readUInt32BE(20)];
+    assert(sizes.some(([width, height]) => pixels[0] === width && pixels[1] === height));
+    linkedPngs.push({ url: link, pixels });
     await full.dispose();
   }
   await page.screenshot({ path: join(output, 'gallery.png'), fullPage: true });
@@ -48,10 +58,17 @@ try {
     await image.decode();
     return [image.naturalWidth, image.naturalHeight];
   });
-  assert.deepEqual(dimensions, [size, size]);
+  assert.deepEqual(dimensions, linkedPngs.find((item) => item.url === images[0].full).pixels);
   await page.screenshot({ path: join(output, 'portrait.png') });
   assert.deepEqual(errors, []);
-  report = { url, status: response.status(), images, portrait_pixels: dimensions, errors };
+  report = {
+    url,
+    status: response.status(),
+    images,
+    linked_pngs: linkedPngs,
+    portrait_pixels: dimensions,
+    errors,
+  };
 } finally {
   await browser.close();
 }

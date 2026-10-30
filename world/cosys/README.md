@@ -26,11 +26,31 @@ The fetcher requires the shared `.env`, verifies release archive hashes, and app
 `airsim-ue58.patch`, `airsim-geodesy.patch` and `airsim-sensor.patch`. The first avoids resetting an unchanged
 CustomDepth value during startup, which would invalidate Landscape PSO precaching in
 UE 5.8. The geodesy patch uses the global NED transform and WGS84 conversion for each
-spawn home. Coupled flight requires a game binary built with these patches; the recovery
-package does not contain the geodesy correction.
+spawn home. Coupled flight requires a game binary built with these patches.
 Editor and package builds run `verify-plugin.sh` before compilation. It checks
 every tracked AirSim patch in reverse without writing; a missing patch fails the
 build before a release can use inconsistent GPS or camera frames.
+
+## Sensor rendering
+
+The native `DroneFoundation` keeps RGB captures at 3840×2160 and registers each camera with
+terrain and texture streaming. Independent scene captures render without Lumen unless their
+post-process settings request it, so `LumenGIEnable` and `LumenReflectionEnable` make Cosys
+select Lumen global illumination and reflections, the world's methods. The runtime fails if a
+capture lacks those overrides, ray tracing, the final tone-curve source, Lumen show flags,
+manual exposure, fixed white balance, or zero bloom and motion blur. Native telemetry records
+each camera's lighting, exposure compensation, white balance and resolution, plus the Lumen
+scalability state; `coordinates.py` asserts them against `world/unreal/valley-lighting.json`.
+
+### RGB readback
+
+`airsim-ue58.patch` copies BGRA8 sensor targets into GPU staging textures and polls
+completion at the render-frame boundary. It reads completed pixels without a synchronous
+GPU wait on the render thread; a 15-second timeout is fatal. Float captures retain their
+existing path. `SNR.Sensors.AsyncRgbReadback` compares RGB bytes against Unreal's
+synchronous readback at 13×7, 257×9 and 3840×2160 to check channel order and padded rows
+on the actual RHI. Response timestamps come from `airsim-sensor.patch` (below), not from
+readback completion.
 
 ## Camera acquisition
 

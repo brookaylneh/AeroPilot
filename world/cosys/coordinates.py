@@ -31,6 +31,8 @@ def run():
     assert r["worldToMeters"] == 100
     assert r["worldOriginOffsetCm"] == dict(x=0, y=0, z=0)
     assert distance(r["globalNedOriginUeCm"], WORLD["playerStartUeCm"]) < 0.01
+    assert r["lumenGlobalIllumination"] and r["lumenReflections"]
+    ev100 = json.loads((ROOT / "world/unreal/valley-lighting.json").read_text())["exposureEv100"]
     field = WORLD["heightfield"]
     assert (field["rowAxis"], field["columnAxis"]) == ("+Y", "+X")
     for axis, count in (("x", field["columns"]), ("y", field["rows"])):
@@ -70,12 +72,17 @@ def run():
         angle = nadir_error(quat(info.pose.orientation))
         assert angle <= LIMITS["nadirDegrees"], (name, angle)
         assert abs(info.fov - 70) < 0.01
+        assert physical["lighting"] == "lumen" and physical["exposureCompensation"] == -ev100
+        assert (physical["whiteBalanceKelvin"], physical["whiteBalanceTint"]) == (6500, 0)
         item = {
             "localNedOriginUeCm": origin(name),
             "nativeCameraPositionErrorM": delta,
             "nadirErrorDegrees": angle,
             "fovDegrees": info.fov,
             "cameraClearanceAboveConcreteM": clearance,
+            "lighting": physical["lighting"],
+            "exposureCompensation": physical["exposureCompensation"],
+            "whiteBalanceKelvin": physical["whiteBalanceKelvin"],
         }
         report["vehicles"][name] = item
     report["passed"] = True

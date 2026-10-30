@@ -20,3 +20,224 @@
  
      //during startup we init stencil IDs to random hash and it takes long time for large environments
      //we get error that GameThread has timed out after 30 sec waiting on render thread
+--- a/Source/RenderRequest.cpp
++++ b/Source/RenderRequest.cpp
+@@ -3,6 +3,7 @@
+ #include "Engine/TextureRenderTarget2D.h"
+ #include "Async/TaskGraphInterfaces.h"
+ #include "ImageUtils.h"
++#include "Misc/CoreDelegates.h"
+ 
+ #include "AirBlueprintLib.h"
+ #include "Async/Async.h"
+@@ -147,6 +148,9 @@
+ void RenderRequest::ExecuteTask()
+ {
+     if (params_ != nullptr && req_size_ > 0) {
++        check(IsInRenderingThread());
++        readbacks_.SetNum(req_size_);
++        bool pending = false;
+         for (unsigned int i = 0; i < req_size_; ++i) {
+             if (params_[i]->render_target != nullptr && params_[i]->render_component != nullptr) {
+                 FRHICommandListImmediate& RHICmdList = GetImmediateCommandList_ForRenderCommand();
+@@ -154,17 +158,14 @@
+                 if (rt_resource != nullptr) {
+                     const FTextureRHIRef& rhi_texture = rt_resource->GetRenderTargetTexture();
+                     FIntPoint size;
+-                    auto flags = setupRenderResource(rt_resource, params_[i].get(), results_[i].get(), size);
+-
+-                    //should we be using ENQUEUE_UNIQUE_RENDER_COMMAND_ONEPARAMETER which was in original commit by @saihv
+-                    //https://github.com/Microsoft/AirSim/pull/162/commits/63e80c43812300a8570b04ed42714a3f6949e63f#diff-56b790f9394f7ca1949ddbb320d8456fR64
++                    setupRenderResource(rt_resource, params_[i].get(), results_[i].get(), size);
++
+                     if (!params_[i]->pixels_as_float) {
+-                        //below is undocumented method that avoids flushing, but it seems to segfault every 2000 or so calls
+-                        RHICmdList.ReadSurfaceData(
+-                            rhi_texture,
+-                            FIntRect(0, 0, size.X, size.Y),
+-                            results_[i]->bmp,
+-                            flags);
++                        checkf(rhi_texture->GetFormat() == PF_B8G8R8A8,
++                            TEXT("RGB capture requires the pinned BGRA8 sensor format"));
++                        readbacks_[i] = MakeUnique<FRHIGPUTextureReadback>(TEXT("CosysRgbCapture"));
++                        readbacks_[i]->EnqueueCopy(RHICmdList, rhi_texture);
++                        pending = true;
+                     }
+                     else {
+                         RHICmdList.ReadSurfaceFloatData(
+@@ -180,10 +181,54 @@
+             results_[i]->time_stamp = msr::airlib::ClockFactory::get()->nowNanos();
+         }
+ 
+-        req_size_ = 0;
+-        params_ = nullptr;
+-        results_ = nullptr;
+-
+-        wait_signal_->signal();
+-    }
+-}
++        if (pending) {
++            readback_started_ = FPlatformTime::Seconds();
++            readback_handle_ = FCoreDelegates::OnEndFrameRT.AddRaw(this, &RenderRequest::PollReadbacks);
++        }
++        else {
++            CompleteTask();
++        }
++    }
++}
++
++void RenderRequest::PollReadbacks()
++{
++    check(IsInRenderingThread());
++    if (FPlatformTime::Seconds() - readback_started_ > 15.0) {
++        UE_LOG(LogTemp, Fatal, TEXT("GPU sensor readback exceeded 15 seconds"));
++    }
++    for (const auto& readback : readbacks_) {
++        if (readback && !readback->IsReady())
++            return;
++    }
++    for (unsigned int i = 0; i < req_size_; ++i) {
++        if (!readbacks_[i])
++            continue;
++        auto& result = *results_[i];
++        int32 row_pitch = 0;
++        int32 buffer_height = 0;
++        const auto* pixels = static_cast<const FColor*>(readbacks_[i]->Lock(row_pitch, &buffer_height));
++        check(pixels && row_pitch >= result.width && buffer_height >= result.height);
++        result.bmp.SetNumUninitialized(result.width * result.height);
++        for (int32 row = 0; row < result.height; ++row) {
++            FMemory::Memcpy(result.bmp.GetData() + row * result.width,
++                pixels + row * row_pitch, result.width * sizeof(FColor));
++        }
++        readbacks_[i]->Unlock();
++    }
++    FCoreDelegates::OnEndFrameRT.Remove(readback_handle_);
++    readback_handle_.Reset();
++    CompleteTask();
++}
++
++void RenderRequest::CompleteTask()
++{
++    check(IsInRenderingThread());
++    readbacks_.Empty();
++    req_size_ = 0;
++    params_ = nullptr;
++    results_ = nullptr;
++    // Keep the signal alive if the caller destroys this request after waking.
++    const auto signal = wait_signal_;
++    signal->signal();
++}
+--- a/Source/RenderRequest.h
++++ b/Source/RenderRequest.h
+@@ -5,6 +5,7 @@
+ #include "common/WorkerThread.hpp"
+ #include "Components/SceneCaptureComponent2D.h"
+ #include "Engine/GameViewportClient.h"
++#include "RHIGPUReadback.h"
+ #include <memory>
+ #include "common/Common.hpp"
+ 
+@@ -38,6 +39,15 @@
+     };
+ 
+ private:
++#if WITH_DEV_AUTOMATION_TESTS
++    friend class FRenderReadbackTest;
++#endif
++    void PollReadbacks();
++    void CompleteTask();
++    TArray<TUniquePtr<FRHIGPUTextureReadback>> readbacks_;
++    FDelegateHandle readback_handle_;
++    double readback_started_ = 0;
++
+     static FReadSurfaceDataFlags setupRenderResource(const FTextureRenderTargetResource* rt_resource, const RenderParams* params, RenderResult* result, FIntPoint& size);
+ 
+     std::shared_ptr<RenderParams>* params_;
+--- /dev/null
++++ b/Source/RenderReadbackTest.cpp
+@@ -0,0 +1,85 @@
++#if WITH_DEV_AUTOMATION_TESTS
++
++#include "RenderRequest.h"
++#include "Misc/AutomationTest.h"
++#include "TextureResource.h"
++#include <atomic>
++
++IMPLEMENT_SIMPLE_AUTOMATION_TEST(FRenderReadbackTest, "SNR.Sensors.AsyncRgbReadback",
++    EAutomationTestFlags::EditorContext | EAutomationTestFlags::EngineFilter)
++
++bool FRenderReadbackTest::RunTest(const FString& Parameters)
++{
++    struct FState {
++        TUniquePtr<RenderRequest> Request;
++        std::vector<std::shared_ptr<RenderRequest::RenderParams>> Params;
++        std::vector<std::shared_ptr<RenderRequest::RenderResult>> Results;
++        TArray<TArray<FColor>> Reference;
++        TArray<UTextureRenderTarget2D*> Targets;
++        USceneCaptureComponent2D* Component;
++        std::atomic<bool> Complete{false};
++    };
++    auto state = MakeShared<FState, ESPMode::ThreadSafe>();
++    state->Component = NewObject<USceneCaptureComponent2D>();
++    state->Component->AddToRoot();
++    const FIntPoint sizes[] = {{13, 7}, {257, 9}, {3840, 2160}};
++    for (int32 index = 0; index < 3; ++index) {
++        auto* target = NewObject<UTextureRenderTarget2D>();
++        target->AddToRoot();
++        target->ClearColor = FLinearColor(0.1f + index * 0.1f, 0.45f, 0.8f, 1.0f);
++        target->InitCustomFormat(sizes[index].X, sizes[index].Y, PF_B8G8R8A8, true);
++        target->UpdateResourceImmediate(true);
++        state->Targets.Add(target);
++        state->Params.push_back(std::make_shared<RenderRequest::RenderParams>(
++            state->Component, target, false, false, true));
++        state->Results.push_back(std::make_shared<RenderRequest::RenderResult>());
++    }
++    state->Reference.SetNum(3);
++    state->Request = MakeUnique<RenderRequest>(nullptr, [] {});
++    state->Request->params_ = state->Params.data();
++    state->Request->results_ = state->Results.data();
++    state->Request->req_size_ = 3;
++    ENQUEUE_RENDER_COMMAND(CompareSensorReadback)([state](FRHICommandListImmediate& commands) {
++        for (int32 index = 0; index < 3; ++index) {
++            auto* target = state->Targets[index];
++            auto* resource = target->GetRenderTargetResource();
++            FReadSurfaceDataFlags flags(RCM_UNorm, CubeFace_MAX);
++            flags.SetLinearToGamma(false);
++            commands.ReadSurfaceData(resource->GetRenderTargetTexture(),
++                FIntRect(0, 0, target->SizeX, target->SizeY), state->Reference[index], flags);
++        }
++        state->Request->ExecuteTask();
++    });
++    ADD_LATENT_AUTOMATION_COMMAND(FFunctionLatentCommand([this, state] {
++        if (!state->Complete.load()) {
++            ENQUEUE_RENDER_COMMAND(CheckSensorReadback)([state](FRHICommandListImmediate&) {
++                state->Complete.store(state->Request->req_size_ == 0);
++            });
++            return false;
++        }
++        for (int32 index = 0; index < 3; ++index) {
++            const auto& actual = *state->Results[index];
++            const auto& expected = state->Reference[index];
++            const auto* target = state->Targets[index];
++            TestEqual(TEXT("Width"), actual.width, target->SizeX);
++            TestEqual(TEXT("Height"), actual.height, target->SizeY);
++            TestEqual(TEXT("Pixel count"), actual.bmp.Num(), expected.Num());
++            bool identical = actual.bmp.Num() == expected.Num();
++            for (int32 pixel = 0; identical && pixel < expected.Num(); ++pixel) {
++                const auto a = actual.bmp[pixel];
++                const auto b = expected[pixel];
++                identical = a.R == b.R && a.G == b.G && a.B == b.B;
++            }
++            TestTrue(FString::Printf(TEXT("RGB byte equivalence %dx%d"),
++                target->SizeX, target->SizeY), identical);
++            TestTrue(TEXT("Reference has distinct colour channels"),
++                expected.Num() > 0 && expected[0].R != expected[0].G && expected[0].G != expected[0].B);
++            state->Targets[index]->RemoveFromRoot();
++        }
++        state->Component->RemoveFromRoot();
++        return true;
++    }));
++    return true;
++}
++
++#endif

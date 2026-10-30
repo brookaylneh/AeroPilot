@@ -1,0 +1,427 @@
+{
+  "schema_version": 1,
+  "recorded_at": "2026-10-28T22:36:36.010748+00:00",
+  "status": "Character phase complete: active release, all-character browser acceptance, save/load and mission handoff passed",
+  "selection": "world/unreal/characters/rocketbox-selection.json",
+  "runtime_catalog": "world/unreal/creator-people.json",
+  "characters": [
+    {
+      "id": "rocketbox-child-01",
+      "name": "Child 1",
+      "age_category": "Child",
+      "height_cm": 143.3027914762497,
+      "situations": [
+        "lost",
+        "waiting",
+        "injured"
+      ]
+    },
+    {
+      "id": "rocketbox-child-02",
+      "name": "Child 2",
+      "age_category": "Child",
+      "height_cm": 143.28024792671204,
+      "situations": [
+        "lost",
+        "waiting",
+        "injured"
+      ]
+    },
+    {
+      "id": "rocketbox-child-04",
+      "name": "Child 4",
+      "age_category": "Child",
+      "height_cm": 142.55371987819672,
+      "situations": [
+        "lost",
+        "waiting",
+        "injured"
+      ]
+    },
+    {
+      "id": "rocketbox-adult-01",
+      "name": "Adult 1",
+      "age_category": "Adult",
+      "height_cm": 176.59247788786888,
+      "situations": [
+        "lost",
+        "waiting",
+        "injured"
+      ]
+    },
+    {
+      "id": "rocketbox-adult-02",
+      "name": "Adult 2",
+      "age_category": "Adult",
+      "height_cm": 181.16994266211987,
+      "situations": [
+        "lost",
+        "waiting",
+        "injured"
+      ]
+    },
+    {
+      "id": "rocketbox-adult-03",
+      "name": "Adult 3",
+      "age_category": "Adult",
+      "height_cm": 173.64205932617188,
+      "situations": [
+        "lost",
+        "waiting",
+        "injured"
+      ]
+    },
+    {
+      "id": "rocketbox-adult-04",
+      "name": "Adult 4",
+      "age_category": "Adult",
+      "height_cm": 180.68531132489443,
+      "situations": [
+        "lost",
+        "waiting",
+        "injured"
+      ]
+    },
+    {
+      "id": "rocketbox-older-01",
+      "name": "Older adult 1",
+      "age_category": "Older",
+      "height_cm": 173.5409707762301,
+      "situations": [
+        "lost",
+        "waiting",
+        "injured"
+      ]
+    },
+    {
+      "id": "rocketbox-older-02",
+      "name": "Older adult 2",
+      "age_category": "Older",
+      "height_cm": 180.72469520568848,
+      "situations": [
+        "lost",
+        "waiting",
+        "injured"
+      ]
+    },
+    {
+      "id": "rocketbox-older-03",
+      "name": "Older adult 3",
+      "age_category": "Older",
+      "height_cm": 172.87524414248765,
+      "situations": [
+        "lost",
+        "waiting",
+        "injured"
+      ]
+    },
+    {
+      "id": "rocketbox-older-04",
+      "name": "Older adult 4",
+      "age_category": "Older",
+      "height_cm": 179.61113873124123,
+      "situations": [
+        "lost",
+        "waiting",
+        "injured"
+      ]
+    }
+  ],
+  "clothing": "Original garments and colors; recoloring and backpack controls disabled",
+  "character_count": 11,
+  "runtime_asset_count": 121,
+  "runtime_asset_bytes": 80651017,
+  "motion_acquisition": {
+    "files": 7,
+    "bytes": 8003034,
+    "verification": "Pinned Git blob SHA-1 and byte sizes; SHA-256 recorded",
+    "evidence": {
+      "path": ".local/evidence/characters/rocketbox-integration/acquisition/files.json",
+      "sha256": "35314c12412a82fa763aa99538c6fc1323bf2146db79c1ac38cdb283ccf0bc84"
+    }
+  },
+  "fixed_pose_review": {
+    "images": 44,
+    "dimensions_px": [
+      1600,
+      1600
+    ],
+    "activities": [
+      "lost",
+      "waiting",
+      "walking",
+      "injured"
+    ],
+    "renderer_cvars": {
+      "r.RayTracing": 1,
+      "r.DynamicGlobalIlluminationMethod": 1,
+      "r.ReflectionMethod": 1,
+      "r.Lumen.HardwareRayTracing": 1,
+      "r.Shadow.Virtual.Enable": 1
+    },
+    "process": {
+      "path": ".local/evidence/characters/rocketbox-integration/pose-review-process.json",
+      "sha256": "008eeb604bfe084cd3b3abc54275ef70d78a280ac529cd332a62c25a90b62015"
+    },
+    "result": {
+      "path": ".local/evidence/characters/rocketbox-integration/pose-review/result.json",
+      "sha256": "919a1587e9d1a016e15c2c52c915c372a4286068768f722f0847f5355419a65f"
+    },
+    "assessment": {
+      "path": ".local/evidence/characters/rocketbox-integration/pose-assessment.json",
+      "sha256": "4c12fe77e6161067576dd31b58e679d149385b0c2c3c8adbd08bf848e65b4093"
+    },
+    "limits": "Fixed poses; not a continuous animation, outdoor sensor, or browser quality test"
+  },
+  "native_tests": {
+    "tests": [
+      {
+        "name": "SNR.Rocketbox.RuntimeActors",
+        "state": "Success"
+      }
+    ],
+    "process": {
+      "path": ".local/evidence/characters/rocketbox-integration/native-tests-graceful-process.json",
+      "sha256": "5e77b638654b7f538b6689b7b9b7d1a89a222dd112c49e5f3bd5e1f5f10b5cd2"
+    },
+    "report": {
+      "path": ".local/evidence/characters/rocketbox-integration/native-tests-graceful/index.json",
+      "sha256": "ef8615390ac9d9b3ccc4970d6a8b252e38e46fe05d0483804584e789b5aaa616"
+    },
+    "coverage": [
+      "Spawn all eleven catalog actors",
+      "Apply original appearance",
+      "Apply every supported situation",
+      "Restore animation time",
+      "Start walking",
+      "Reject unknown situations and unsupported garment recoloring"
+    ]
+  },
+  "package": {
+    "path": ".local/unreal/builds/rocketbox-sm5-reviewed/Linux",
+    "shader_platform": "SF_VULKAN_SM5",
+    "files": 50,
+    "bytes": 1652342963,
+    "process": {
+      "path": ".local/evidence/characters/rocketbox-integration/package-reviewed-process.json",
+      "sha256": "d4c8781993a39bbe3ca5d9148fec8635757d1ffa8b88fb5b0d52c981c8a59223"
+    },
+    "inventory": {
+      "path": ".local/evidence/characters/rocketbox-integration/package-files.json",
+      "sha256": "35022b41fc60a043f9e57b72577377d7390f7ed0e384ae536c8b1fbfb3e82a35"
+    },
+    "license": "licenses/Microsoft-Rocketbox-MIT.txt",
+    "source": "Cooked entirely from available uncooked assets; no temporary recovery package copied"
+  },
+  "web_build": {
+    "path": ".local/evidence/characters/rocketbox-integration/web-build-reviewed",
+    "log": {
+      "path": ".local/evidence/characters/rocketbox-integration/web-build-reviewed.log",
+      "sha256": "9d43d09c85255d20922fbcb24220ef48cd1349f3677e96df30d3b0955bd4b095"
+    },
+    "published": true
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "test"
+      ],
+      "exit_code": 0,
+      "seconds": 0.9133737890006159,
+      "log": ".local/evidence/characters/rocketbox-integration/checks-final/0.log"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "exit_code": 0,
+      "seconds": 2.882576677999168,
+      "log": ".local/evidence/characters/rocketbox-integration/checks-final/1.log"
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "format:check"
+      ],
+      "exit_code": 0,
+      "seconds": 1.5806906560028438,
+      "log": ".local/evidence/characters/rocketbox-integration/checks-final/2.log"
+    },
+    {
+      "command": [
+        ".venv-cosys/bin/ruff",
+        "check"
+      ],
+      "exit_code": 0,
+      "seconds": 0.01260932700097328,
+      "log": ".local/evidence/characters/rocketbox-integration/checks-final/3.log"
+    },
+    {
+      "command": [
+        ".venv-cosys/bin/ruff",
+        "format",
+        "--check"
+      ],
+      "exit_code": 0,
+      "seconds": 0.012245040001289453,
+      "log": ".local/evidence/characters/rocketbox-integration/checks-final/4.log"
+    },
+    {
+      "command": [
+        ".venv-cosys/bin/python",
+        "-m",
+        "unittest"
+      ],
+      "exit_code": 0,
+      "seconds": 0.7819559110066621,
+      "log": ".local/evidence/characters/rocketbox-integration/checks-final/5.log"
+    }
+  ],
+  "preservation": {
+    "source_assets": [
+      {
+        "manifest": ".local/evidence/characters/rocketbox-roster/unreal-assets.json",
+        "verified_files": 134
+      },
+      {
+        "manifest": ".local/evidence/characters/rocketbox-outdoor-jacket/unreal-assets.json",
+        "verified_files": 10
+      }
+    ],
+    "catalog_and_map_backup": {
+      "path": ".local/evidence/characters/rocketbox-integration/preserved.json",
+      "sha256": "d8cb6d0432478b1240c45153750ee2ac953ecbb856fcaa69ecfdcd4cd3374540"
+    },
+    "previous_release_retained": "/home/brook_avionuas/snr/.local/unreal/releases/cooked-content-recovery",
+    "source_characters_unchanged": true,
+    "saved_scenarios": "Retained; new catalog asset version rejects incompatible old character identities instead of remapping silently"
+  },
+  "environment": {
+    "path": ".local/evidence/characters/rocketbox-integration/environment.json",
+    "sha256": "61af28d184415891d76735ea6c0455432689792266581d344f041d6268df8056"
+  },
+  "pending": [],
+  "activation_state": {
+    "state": "ready",
+    "maxEditors": 1
+  },
+  "failed_runs_preserved": [
+    {
+      "path": ".local/evidence/characters/rocketbox-integration/import-process.json",
+      "sha256": "3694f61830d8977d981a1b5e898b8dd2b4298463f3c066fb95da89d2f8d1bd60"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-integration/import-properties-process.json",
+      "sha256": "6f3f030df9fb8598b8028952a937cac01af72b08aa5cf553cb8cf16ec5f8447d"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-integration/native-tests-process.json",
+      "sha256": "9af563bfdabe4c32ff4931275d8918cc875efb68b25a0d39ecc76729649ffbea"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-integration/before-activation/failure.json",
+      "sha256": "52dfa01f1e2e8c80557860951e978821828de58e89d1146ff476fbcb72d1482c"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-integration/services/result.json",
+      "sha256": "cb89423cfed45141709a895dc42d582d444b7ed91c7bf3635e8b6adc7945f908"
+    }
+  ],
+  "limitations": [
+    "Eleven approved models; rejected Child 3 remains excluded",
+    "Exact ages, original twelve-person demographic brief, and heavy body builds are not established",
+    "Lighting and poses in the studio preview do not establish live SM6 performance"
+  ],
+  "completed_at": "2026-10-28T22:46:22.404879+00:00",
+  "activation": {
+    "release": "/home/brook_avionuas/snr/.local/unreal/releases/20261028T223902Z",
+    "health": {
+      "path": ".local/evidence/characters/rocketbox-integration/activation/health-after.json",
+      "sha256": "71ba29ae85ecfc9a2df93613df98bf6de6a4920b8c8e07594948177435ac14a3"
+    },
+    "previous_scene": {
+      "path": ".local/evidence/characters/rocketbox-integration/before-activation-checked/result.json",
+      "sha256": "5ac04e0326e78aa7a8fdcf4b379611ca2eeeacfb606edd977eab736804062c58"
+    },
+    "previous_release": "/home/brook_avionuas/snr/.local/unreal/releases/cooked-content-recovery",
+    "web_backup_and_hashes": {
+      "path": ".local/evidence/characters/rocketbox-integration/activation/web-files.json",
+      "sha256": "a28d5b9940329bee6054d6a4ce2d2c35c63ae9af52eee490a2abf8a3fa1d8547"
+    }
+  },
+  "browser_acceptance": {
+    "result": {
+      "path": ".local/evidence/characters/rocketbox-integration/browser/result.json",
+      "sha256": "b411126f7daa33ff60fc99bd6662fec1bf305e3127eab51e39789f0bf1bf7cb0"
+    },
+    "screenshots": 45,
+    "characters": 11,
+    "activities_checked": [
+      "lost",
+      "waiting",
+      "injured"
+    ],
+    "native_navigation_distance_cm": 375.3041489932232,
+    "browser_closed": true
+  },
+  "service_acceptance": {
+    "result": {
+      "path": ".local/evidence/characters/rocketbox-integration/services-uuid/result.json",
+      "sha256": "6a691a5e8d9e8b3adb56ed3f3f2da58766258b72c98a6d1a7e029c78f170e0b2"
+    },
+    "save_load": {
+      "passed": true,
+      "personId": "rocketbox-child-01"
+    },
+    "fleet": [
+      {
+        "id": "Drone1",
+        "linkLost": false,
+        "ekfHealthy": true,
+        "armed": false
+      },
+      {
+        "id": "Drone2",
+        "linkLost": false,
+        "ekfHealthy": true,
+        "armed": false
+      },
+      {
+        "id": "Drone3",
+        "linkLost": false,
+        "ekfHealthy": true,
+        "armed": false
+      },
+      {
+        "id": "Drone4",
+        "linkLost": false,
+        "ekfHealthy": true,
+        "armed": false
+      }
+    ],
+    "stream_summary": {
+      "seconds": 59.978944091796876,
+      "decodedFps": 60.00439078240164,
+      "bitrateMbps": 35.005762368650245,
+      "droppedFrames": 0,
+      "freezes": 0,
+      "freezeDurationSeconds": 0,
+      "maxVideoCallbackGapMs": 33.400000000001455,
+      "width": 3840,
+      "height": 2160
+    },
+    "screenshots": [
+      "services-uuid/studio-person.png",
+      "services-uuid/studio-navigation.png",
+      "services-uuid/studio-briefing.png",
+      "services-uuid/mission-1920.png",
+      "services-uuid/mission-1440.png"
+    ],
+    "limits": "One-minute navigation screening; not the five-minute four-drone realism gate"
+  },
+  "next_phase": "SM6 and realism measurements are authorized; character source-asset blocker removed"
+}

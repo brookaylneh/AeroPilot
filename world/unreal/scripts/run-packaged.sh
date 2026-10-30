@@ -24,8 +24,8 @@ else
 fi
 max_bitrate="${SNR_STREAM_MAX_BITRATE:-10000000}"
 case "$max_bitrate" in
-  10000000|20000000|25000000|40000000) ;;
-  *) echo 'SNR_STREAM_MAX_BITRATE must be 10000000, 20000000, 25000000 or 40000000' >&2; exit 2 ;;
+  10000000|20000000|25000000|40000000|80000000) ;;
+  *) echo 'SNR_STREAM_MAX_BITRATE must be 10000000, 20000000, 25000000, 40000000 or 80000000' >&2; exit 2 ;;
 esac
 # WebRTC's delay-based estimate collapses to ~1-3 Mbps on jittery Wi-Fi; the
 # floor keeps moving grass encodable. It must stay below the viewer's capacity.
@@ -44,11 +44,24 @@ stream_height="${SNR_STREAM_HEIGHT:-720}"
 case "$stream_height" in
   180) [[ "$pixel_streaming" = 0 ]] || exit 2; stream_width=320 ;;
   2160) stream_width=3840 ;;
+  1440) stream_width=2560 ;;
   1080) stream_width=1920 ;;
   720) stream_width=1280 ;;
   540) stream_width=960 ;;
   *) echo 'Unsupported SNR_STREAM_HEIGHT' >&2; exit 2 ;;
 esac
+render_percentage="${SNR_RENDER_PERCENTAGE:?}"
+[[ "$render_percentage" =~ ^[1-9][0-9]*$ ]] && ((render_percentage >= 50 && render_percentage <= 100)) || {
+  echo 'SNR_RENDER_PERCENTAGE must be an integer from 50 through 100' >&2
+  exit 2
+}
+streamer_id="${SNR_STREAMER_ID:?}"
+[[ "$streamer_id" =~ ^[A-Za-z0-9-]+$ ]] || { echo 'Invalid streamer ID' >&2; exit 2; }
+render_cvars=(r.pso.PrecompileThreadPoolSizeMax=2 r.Streaming.PoolSize=4096
+  "r.ScreenPercentage=$render_percentage" "PixelStreaming2.ID=$streamer_id"
+  r.Vulkan.EnablePSOFileCacheWhenPrecachingActive=1
+  r.ShaderPipelineCache.Enabled=1)
+printf -v device_profile '%s,' "${render_cvars[@]}"
 extra_flags=()
 if [[ "$pixel_streaming" = 1 ]]; then
   streamer_port="${SNR_STREAMER_PORT:?}"
@@ -83,7 +96,11 @@ if [ -n "${SNR_DRONE_DATA_DIR:-}" ]; then
 fi
 if [ "${SNR_RHI_THREAD:-1}" = 0 ]; then extra_flags+=(-norhithread); fi
 runtime_commands="t.MaxFPS $stream_fps"
-if [ "${SNR_PROFILE:-0}" = 1 ]; then runtime_commands+=',PixelStreaming2.LogStats 1'; fi
+case "${SNR_PROFILE:?}" in
+  0) ;;
+  1) runtime_commands+=',PixelStreaming2.LogStats 1'; extra_flags+=(-logPSO) ;;
+  *) echo 'SNR_PROFILE must be 0 or 1' >&2; exit 2 ;;
+esac
 if [ "${1:-}" = diagnostics ]; then
   extra_flags+=(-ScenarioDiagnostics)
   runtime_commands+=',PixelStreaming2.LogStats 1'
@@ -102,7 +119,7 @@ exec "$runtime_binary" ScenarioStudio "$world_map" \
   -RenderOffscreen -unattended -nosound -NoSplash -notraceserver -vulkan "$rhi_flag" \
   "-UserDir=$HOME/ScenarioStudio" \
   -savevulkanpsocacheonexit \
-  -dpcvars=r.pso.PrecompileThreadPoolSizeMax=2,r.Streaming.PoolSize=4096,r.ScreenPercentage=100 \
+  "-dpcvars=${device_profile%,}" \
   "-ResX=$stream_width" "-ResY=$stream_height" -ForceRes \
   -settings="$cosys_settings" \
   "-ScenarioSaveDir=$scenario_data_dir" \

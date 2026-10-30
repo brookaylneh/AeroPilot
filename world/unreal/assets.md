@@ -7,6 +7,7 @@ The repository contains first-party source and OFL fonts. It excludes all Unreal
 | Unreal Engine 5.8.2                                    | Obtain through Epic with an account authorized under the applicable Unreal terms. Do not publish the engine or signed download links.                                                                                                                       |
 | Cosys-AirSim 3.5.0                                     | Pinned official `5.8-v3.5.0` release in `world/unreal/dependencies.lock.json`; MIT source with its third-party notices.                                                                                                                                     |
 | Pixel Streaming 2 infrastructure                       | Pinned Epic commit in the same lock file; dependency licenses remain applicable.                                                                                                                                                                            |
+| Microsoft Rocketbox characters and animations | MIT at pinned Microsoft repository commit; source and motion hashes in `characters/rocketbox-*.lock.json`. Retain the copyright and permission notice with redistributed assets. |
 | MetaHuman Kelvin and additional installed Epic presets | Obtain/assemble using Epic tools and the applicable MetaHuman/Unreal terms. No MetaHuman assets are included in this repository. Future AI evaluation rights remain unresolved.                                                                             |
 | Five child scans by Leopold2026                        | Acquire from the Fab listing in `world/unreal/children-assets.json` under the displayed Fab Standard License. Source scans have no rigs or animations; the project authors those separately. Raw and derived asset files are excluded from this repository. |
 | Poly Haven textures and meshes                         | CC0 sources and checksums are recorded in the asset lock files.                                                                                                                                                                                             |
@@ -20,8 +21,8 @@ The authored landscape, assembled character and vegetation binaries are held pri
 
 ### Character selection thumbnails
 
-`web/public/portraits/` contains small final renders captured from the nine Unreal
-presets, cropped for the character tabs. They contain no source meshes, source
+`web/public/portraits/rocketbox-*.jpg` contains small neutral-light renders of the eleven
+approved Rocketbox characters. Earlier character thumbnails remain preserved. They contain no source meshes, source
 textures, private scenario locations or EXIF metadata. The original character
 licenses above still govern their underlying assets. The briefing no longer
 displays or generates a missing-person portrait.

@@ -1,0 +1,358 @@
+{
+  "schema": 1,
+  "recorded_at": "2026-10-28T22:01:01.540415+00:00",
+  "status": "candidate_review_complete; original roster requirements remain unmet",
+  "url": "http://35.81.229.78/character-rocketbox-candidates/index.html",
+  "code_commit": "af2a71f76e5da7994632aa57c1e652092ae4862c",
+  "manifest": {
+    "path": "world/unreal/characters/rocketbox-candidates.lock.json",
+    "bytes": 28438,
+    "sha256": "d2f8d23cf79e988ded4b58de0bdfa734b163fcce4241c60f490b771fa19f0045"
+  },
+  "source_repository": "https://github.com/microsoft/Microsoft-Rocketbox",
+  "source_commit": "0943055db6ec570bcef9f2c8b41c9e5467c808f9",
+  "catalog_previews_inspected": 115,
+  "acquisition": {
+    "files": 106,
+    "bytes": 1011561146,
+    "git_blob_and_sha256_verified": true
+  },
+  "unreal_assets": {
+    "files": 134,
+    "bytes": 363079428
+  },
+  "characters": [
+    {
+      "id": "child-01",
+      "source_model": "Female_Child_01",
+      "assessment": "Original child model. Fair skin and blond hair; does not match the dark-skinned girl in the original brief. Exact age, including the minimum age of 8, is unverified.",
+      "mesh": "/Game/Characters/RocketboxCandidates/Female_Child_01/Female_Child_01_facial.Female_Child_01_facial",
+      "bounds_height_cm": 143.3027914762497,
+      "bones": 81,
+      "vertices": 4664,
+      "sections": 2
+    },
+    {
+      "id": "child-02",
+      "source_model": "Male_Child_01",
+      "assessment": "Original child model. Fair skin and short dark hair. Exact age and the requested red hair/freckles are unverified.",
+      "mesh": "/Game/Characters/RocketboxCandidates/Male_Child_01/Male_Child_01_facial.Male_Child_01_facial",
+      "bounds_height_cm": 143.28024792671204,
+      "bones": 81,
+      "vertices": 4282,
+      "sections": 2
+    },
+    {
+      "id": "child-03",
+      "source_model": "Female_Child_02",
+      "assessment": "Original child model with a headscarf and long dress. The requested build, age and casual wardrobe are not established.",
+      "mesh": "/Game/Characters/RocketboxCandidates/Female_Child_02/Female_Child_02_facial.Female_Child_02_facial",
+      "bounds_height_cm": 143.80099320411682,
+      "bones": 81,
+      "vertices": 4714,
+      "sections": 2
+    },
+    {
+      "id": "child-04",
+      "source_model": "Male_Child_02",
+      "assessment": "Approved original child model. Dark skin, short hair and slim build; differs from the requested East Asian teenage appearance. Exact age is unverified.",
+      "mesh": "/Game/Characters/RocketboxCandidates/Male_Child_02/Male_Child_02_facial.Male_Child_02_facial",
+      "bounds_height_cm": 142.55371987819672,
+      "bones": 81,
+      "vertices": 4919,
+      "sections": 2
+    },
+    {
+      "id": "adult-01",
+      "source_model": "Female_Adult_04",
+      "assessment": "Approved original adult model. Fair skin and blond hair; does not cover the requested dark-skinned woman.",
+      "mesh": "/Game/Characters/RocketboxCandidates/Female_Adult_04/Female_Adult_04_facial.Female_Adult_04_facial",
+      "bounds_height_cm": 176.59247788786888,
+      "bones": 81,
+      "vertices": 6571,
+      "sections": 3
+    },
+    {
+      "id": "adult-02",
+      "source_model": "Male_Adult_15",
+      "assessment": "Original adult model with medium skin, dark facial hair and long clothing. The requested heavyset build and wardrobe are not established.",
+      "mesh": "/Game/Characters/RocketboxCandidates/Male_Adult_15/Male_Adult_15_facial.Male_Adult_15_facial",
+      "bounds_height_cm": 181.85871124267578,
+      "bones": 81,
+      "vertices": 4985,
+      "sections": 2
+    },
+    {
+      "id": "adult-03",
+      "source_model": "Female_Adult_11",
+      "assessment": "Original adult model with dark hair and a skirt. The requested plus-size build, middle-aged appearance and wardrobe are not established.",
+      "mesh": "/Game/Characters/RocketboxCandidates/Female_Adult_11/Female_Adult_11_facial.Female_Adult_11_facial",
+      "bounds_height_cm": 173.64205932617188,
+      "bones": 81,
+      "vertices": 6825,
+      "sections": 3
+    },
+    {
+      "id": "adult-04",
+      "source_model": "Male_Adult_12",
+      "assessment": "Original adult model with dark skin and denim clothing. Adds skin-tone variety; does not match the requested pale, older adult man.",
+      "mesh": "/Game/Characters/RocketboxCandidates/Male_Adult_12/Male_Adult_12_facial.Male_Adult_12_facial",
+      "bounds_height_cm": 180.68531132489443,
+      "bones": 81,
+      "vertices": 4478,
+      "sections": 2
+    },
+    {
+      "id": "older-01",
+      "source_model": "Female_Adult_09",
+      "assessment": "Comparison candidate only. This model does not convincingly establish a senior age, and does not satisfy the requested older, olive-skinned woman.",
+      "mesh": "/Game/Characters/RocketboxCandidates/Female_Adult_09/Female_Adult_09_facial.Female_Adult_09_facial",
+      "bounds_height_cm": 173.5409707762301,
+      "bones": 81,
+      "vertices": 6333,
+      "sections": 3
+    },
+    {
+      "id": "older-02",
+      "source_model": "Male_Adult_03",
+      "assessment": "Approved senior candidate with fair skin and receding grey hair. Exact age and the requested heavy build are unverified.",
+      "mesh": "/Game/Characters/RocketboxCandidates/Male_Adult_03/Male_Adult_03_facial.Male_Adult_03_facial",
+      "bounds_height_cm": 180.72469520568848,
+      "bones": 81,
+      "vertices": 4883,
+      "sections": 3
+    },
+    {
+      "id": "older-03",
+      "source_model": "Business_Female_02",
+      "assessment": "Comparison candidate with glasses. It does not establish an 81-year-old appearance or the requested medium-deep skin tone and thin build.",
+      "mesh": "/Game/Characters/RocketboxCandidates/Business_Female_02/Business_Female_02_facial.Business_Female_02_facial",
+      "bounds_height_cm": 172.87524414248765,
+      "bones": 81,
+      "vertices": 6418,
+      "sections": 4
+    },
+    {
+      "id": "older-04",
+      "source_model": "Male_Adult_14",
+      "assessment": "Older-looking original model with fair skin and thinning hair. It does not meet the requested dark-skinned 88-year-old appearance.",
+      "mesh": "/Game/Characters/RocketboxCandidates/Male_Adult_14/Male_Adult_14_facial.Male_Adult_14_facial",
+      "bounds_height_cm": 179.61113873124123,
+      "bones": 81,
+      "vertices": 4472,
+      "sections": 2
+    }
+  ],
+  "render": {
+    "images": 60,
+    "bytes": 330133417,
+    "portrait_body_px": [
+      4096,
+      4096
+    ],
+    "sensor_px": [
+      3840,
+      2160
+    ],
+    "sensor_altitude_cm": 3000,
+    "sensor_horizontal_fov_degrees": 70,
+    "oblique_horizontal_offset_cm": 1500,
+    "crop_xyxy": [
+      1600,
+      760,
+      2240,
+      1400
+    ],
+    "crop_resampled": false,
+    "exposure_ev100": 6.5,
+    "white_balance_kelvin": 6500,
+    "renderer_cvars": {
+      "r.RayTracing": 1,
+      "r.DynamicGlobalIlluminationMethod": 1,
+      "r.ReflectionMethod": 1,
+      "r.Lumen.HardwareRayTracing": 1,
+      "r.Shadow.Virtual.Enable": 1
+    },
+    "process_wall_seconds": 597.8525697440055,
+    "wall_time_includes_startup_preparation_warmup_and_screenshot_delays": true,
+    "container_stopped": true
+  },
+  "review": {
+    "visible_detail_images": 72,
+    "overview_portraits": 12,
+    "verified_png_links": 96,
+    "mobile_width_px": 390,
+    "horizontal_overflow_px": 0,
+    "browser_errors": [],
+    "browsers_closed": true
+  },
+  "preserved": {
+    "approved_sample_asset_files": 34,
+    "approved_sample_page_files": 1,
+    "all_sha256_unchanged": true
+  },
+  "checks": [
+    {
+      "command": [
+        "npm",
+        "test"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.9901506219976
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 2.6674461540023913
+    },
+    {
+      "command": [
+        "npm",
+        "run",
+        "format:check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 1.5902728329965612
+    },
+    {
+      "command": [
+        ".venv-cosys/bin/ruff",
+        "check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.011674660003336612
+    },
+    {
+      "command": [
+        ".venv-cosys/bin/ruff",
+        "format",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.01220572699821787
+    },
+    {
+      "command": [
+        ".venv-cosys/bin/python",
+        "-m",
+        "unittest"
+      ],
+      "exit_code": 0,
+      "elapsed_seconds": 0.6911639480022131
+    }
+  ],
+  "limitations": [
+    "Original assets are comparison candidates, not demographic matches for roster.json.",
+    "The two female older-group candidates do not convincingly establish senior age; senior skin-tone diversity and very old appearances remain missing.",
+    "Exact child ages and the minimum age of 8 are unverified; child mesh bounds are approximately 143 cm for all four models.",
+    "Requested heavyset and plus-size bodies, dark-skinned adult woman and several wardrobe targets are not covered by this selection.",
+    "Original facial rigs and A-poses are retained; animation and deformation acceptance has not been performed.",
+    "Studio captures do not establish outdoor realism, detector performance, mission integration or streaming capacity.",
+    "Glasses use original opacity, normal and specular textures with authored roughness; source roughness is not measured PBR data."
+  ],
+  "execution_notes": [
+    "Initial browser check ran before publication completed and returned HTTP 404; the failed check is preserved. Separate post-publication desktop and mobile checks passed.",
+    "Unreal logged the existing PixelStreaming startup target-window error before engine initialization. The capture completed with exit 0 and no Python or material compilation error."
+  ],
+  "evidence": [
+    {
+      "path": ".local/evidence/characters/rocketbox-roster/catalog.json",
+      "bytes": 26784,
+      "sha256": "46caf92b2e9e286854b79e286d5a30b9e610284d0aac596e11386e147a537eca"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-roster/acquisition/files.json",
+      "bytes": 48886,
+      "sha256": "a6a26a9547ff266192a28868304ae69ed962801d679fe72ff7197b978cd6395f"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-roster/verification/files.json",
+      "bytes": 48886,
+      "sha256": "a6a26a9547ff266192a28868304ae69ed962801d679fe72ff7197b978cd6395f"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-roster/import/result.json",
+      "bytes": 18868,
+      "sha256": "c371408d6a1a2951510ca86645521fc7c5f3bfe7b81e6bf100938286576b1622"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-roster/import-process.json",
+      "bytes": 960,
+      "sha256": "4f116e38f870715ba834ac047345dba1b46d071ead32c3f2d8d4e598e03c490c"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-roster/import.log",
+      "bytes": 453374,
+      "sha256": "ff6bb7ab92c1b98d4a1b8fd8609a8bcb9c6b1e81fd2389d73f115d2a8a32888d"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-roster/unreal-assets.json",
+      "bytes": 32010,
+      "sha256": "dce97734bc99d4d155c208263df6908afdcb810612372dd32826d5fd2b225cb2"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-roster/environment.json",
+      "bytes": 1036,
+      "sha256": "7dc98208b42527dfef8e1f87acbfcc4cc46a470e246444c3fbc80e65bbf3aece"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-roster/render/scene.json",
+      "bytes": 24546,
+      "sha256": "a5b40aa6793e8d96fbecaa82b8da6e9d4329c8eb6a77d09aef2d052e4eae3824"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-roster/render/result.json",
+      "bytes": 30960,
+      "sha256": "6a2f254d6fcb65d46ade4f9a457005ea27ca59f5f8f8dcb3844eff15442f5977"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-roster/render-process.json",
+      "bytes": 1486,
+      "sha256": "19601be5dfb3726c3c5034f03c8dbb1ae505ac3c3659db3d4d0f531f06c17c39"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-roster/render.log",
+      "bytes": 471580,
+      "sha256": "7fddb80d23f5d7935898fdb98a9712299c42089b5108d5daa5c0afb2101e3717"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-roster/render-files.json",
+      "bytes": 14895,
+      "sha256": "b21208c0c51824e9990c0a7484100d8c551b6ef12cd19b172e76cc1bb4a91de9"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-roster/review/result.json",
+      "bytes": 34784,
+      "sha256": "f9807f4ed1e1a50924e030b1864b66b0126d2e51a2cf0c132490e12b754d4a45"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-roster/browser/failed-check.json",
+      "bytes": 606,
+      "sha256": "a816412e314572ca1aed0d62718d7d5b9c6e905e58b8a961219a60cf967afd63"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-roster/browser-published/result.json",
+      "bytes": 30368,
+      "sha256": "4b00d7abfbd94b1f4772f23f46ec98dd0ddf7349702542a02b555ba4c801c285"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-roster/browser-layout/result.json",
+      "bytes": 1027,
+      "sha256": "5d450ccdc71f49c404b68aa78742d0aec1580e8faaa36a26ff0b1e4597299709"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-roster/checks/result.json",
+      "bytes": 857,
+      "sha256": "cbedca2d7fc97f0b8f0dc781be0f3d55dd437124ccff97c95ea62c21c8b60dcf"
+    },
+    {
+      "path": ".local/evidence/characters/rocketbox-roster/preservation-verification.json",
+      "bytes": 8541,
+      "sha256": "4890de48a491f0198844d30aa9f0d521a5e29c93d0f68dab723b4823f65e951f"
+    }
+  ]
+}

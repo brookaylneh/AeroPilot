@@ -19,9 +19,18 @@ from mission_planner.environment import ROOT, load_env
 CONDITIONS = (
     [
         (p, p, "rust", "waiting", "none", 2160)
-        for p in [
-            p["id"] for p in json.loads((ROOT / "world/unreal/creator-people.json").read_text())
-        ]
+        # The recorded calibration people, not the current catalog.
+        for p in (
+            "adult-kelvin",
+            "adult-etta",
+            "senior-walter",
+            "senior-sookja",
+            "child-01",
+            "child-02",
+            "child-03",
+            "child-04",
+            "child-05",
+        )
     ]
     + [
         (f"{p}-{color}", p, color, "waiting", "none", 2160)

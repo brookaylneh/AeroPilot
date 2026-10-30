@@ -1,0 +1,77 @@
+{
+  "repository": "https://github.com/microsoft/Microsoft-Rocketbox",
+  "commit": "0943055db6ec570bcef9f2c8b41c9e5467c808f9",
+  "license": "MIT",
+  "vendor": ".local/vendor/rocketbox-outdoor-jacket",
+  "review": {
+    "title": "Rocketbox \u00b7 outdoor replacement",
+    "description": "Actual Unreal renders of the replacement for Adult candidate 2.",
+    "assessment": "Appearance review using the approved lighting. Outdoor clothing takes priority; exact age and requested body build remain unverified."
+  },
+  "characters": [
+    {
+      "id": "adult-02",
+      "name": "Male_Adult_17",
+      "category": "Adults",
+      "texture_prefix": "m022",
+      "label": "Adult candidate 2 \u00b7 outdoor replacement",
+      "assessment": "Blue hooded jacket, jeans, trainers and a cap. Original Rocketbox model selected for casual outdoor clothing; the requested heavyset build and exact age remain unmet.",
+      "fbx": "Assets/Avatars/Adults/Male_Adult_17/Export/Male_Adult_17_facial.fbx",
+      "textures": "Assets/Avatars/Adults/Male_Adult_17/Textures",
+      "preview": "Assets/Avatars/Adults/Male_Adult_17/Male_Adult_17.png",
+      "asset_folder": "/Game/Characters/RocketboxOutdoor/Male_Adult_17"
+    }
+  ],
+  "files": [
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_17/Export/Male_Adult_17_facial.fbx",
+      "bytes": 1821648,
+      "git_blob_sha1": "876979cb15d65d7478efc9750f4ff2348712ec02"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_17/Male_Adult_17.png",
+      "bytes": 483358,
+      "git_blob_sha1": "16202b90a02310b1ddabf3ee31218933e984ccc2"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_17/Textures/m022_body_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "b3ddf7e662510eff72bc06603b53bef6f67c01e2"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_17/Textures/m022_body_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "d80124dd5b4c6d78adae7f1b13e7e3a7235269fd"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_17/Textures/m022_body_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "9d10b0f25ee599c36bf2711e50b997939f233b59"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_17/Textures/m022_head_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "625d89815c5f74ea80a7718849393f7182906e71"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_17/Textures/m022_head_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "aff7efc9d167a78dba3c66c67ae2aa095b7f49bd"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_17/Textures/m022_head_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "b1acef56a4c3d76f7d441c8d0210f0faf3f1d928"
+    },
+    {
+      "path": "LICENSE.md",
+      "bytes": 1066,
+      "git_blob_sha1": "9bcfb3ece5301a55d3a41bbd00a029ab27d61d13"
+    },
+    {
+      "path": "README.md",
+      "bytes": 5345,
+      "git_blob_sha1": "a23370fd4258e59784970d941bf15b53aad38924"
+    }
+  ]
+}

@@ -139,6 +139,7 @@ void ADroneFoundation::Poll()
             // does not depend on where the browser camera is looking.
             auto *Capture = Camera->getCaptureComponent(APIPCamera::ImageType::Scene, false);
             checkf(Capture, TEXT("Missing RGB capture component for %s"), *Name);
+            check(!Capture->ShouldRenderWithMainViewResolution());
             const float Width = CaptureHeight * 16.f / 9.f;
             const float Fov = Capture->FOVAngle;
             IStreamingManager::Get().AddViewInformation(
@@ -163,6 +164,15 @@ void ADroneFoundation::Poll()
                        Capture->ShowFlags.GlobalIllumination && Capture->ShowFlags.LumenGlobalIllumination &&
                        Capture->ShowFlags.LumenReflections && Capture->ShowFlags.DynamicShadows,
                    TEXT("RGB capture rendering prerequisites disabled: %s"), *Name);
+            checkf(Settings.bOverride_AutoExposureMethod && Settings.AutoExposureMethod == AEM_Manual &&
+                       Settings.bOverride_AutoExposureBias && Settings.bOverride_WhiteTemp &&
+                       Settings.bOverride_WhiteTint && Settings.BloomIntensity == 0.f &&
+                       Settings.MotionBlurAmount == 0.f,
+                   TEXT("RGB capture exposure, white balance or effects are not fixed: %s"), *Name);
+            Item->SetStringField(TEXT("lighting"), TEXT("lumen"));
+            Item->SetNumberField(TEXT("exposureCompensation"), Settings.AutoExposureBias);
+            Item->SetNumberField(TEXT("whiteBalanceKelvin"), Settings.WhiteTemp);
+            Item->SetNumberField(TEXT("whiteBalanceTint"), Settings.WhiteTint);
             Item->SetNumberField(TEXT("width"), Target->SizeX);
             Item->SetNumberField(TEXT("height"), Target->SizeY);
             Item->SetObjectField(TEXT("cameraPositionUeCm"), V(Camera->GetActorLocation()));

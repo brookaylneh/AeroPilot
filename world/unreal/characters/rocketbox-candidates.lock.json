@@ -1,0 +1,689 @@
+{
+  "repository": "https://github.com/microsoft/Microsoft-Rocketbox",
+  "commit": "0943055db6ec570bcef9f2c8b41c9e5467c808f9",
+  "license": "MIT",
+  "vendor": ".local/vendor/rocketbox-candidates",
+  "review": {
+    "title": "Rocketbox \u00b7 12 character candidates",
+    "description": "Twelve original Rocketbox models rendered in Unreal Engine 5.8.2 using the approved sample lighting. Click any view for its original PNG.",
+    "assessment": "Candidate review, not an accepted demographic match. Four children, four adults and four older-group comparison candidates are shown. Senior diversity, exact ages, the minimum child age of 8 and heavier body builds remain unresolved. Read each character\u2019s assessment before selecting."
+  },
+  "characters": [
+    {
+      "id": "child-01",
+      "name": "Female_Child_01",
+      "category": "Children",
+      "texture_prefix": "cf001",
+      "label": "Child candidate 1",
+      "assessment": "Original child model. Fair skin and blond hair; does not match the dark-skinned girl in the original brief. Exact age, including the minimum age of 8, is unverified.",
+      "fbx": "Assets/Avatars/Children/Female_Child_01/Export/Female_Child_01_facial.fbx",
+      "textures": "Assets/Avatars/Children/Female_Child_01/Textures",
+      "preview": "Assets/Avatars/Children/Female_Child_01/Female_Child_01.png",
+      "asset_folder": "/Game/Characters/RocketboxCandidates/Female_Child_01"
+    },
+    {
+      "id": "child-02",
+      "name": "Male_Child_01",
+      "category": "Children",
+      "texture_prefix": "cm001",
+      "label": "Child candidate 2",
+      "assessment": "Original child model. Fair skin and short dark hair. Exact age and the requested red hair/freckles are unverified.",
+      "fbx": "Assets/Avatars/Children/Male_Child_01/Export/Male_Child_01_facial.fbx",
+      "textures": "Assets/Avatars/Children/Male_Child_01/Textures",
+      "preview": "Assets/Avatars/Children/Male_Child_01/Male_Child_01.png",
+      "asset_folder": "/Game/Characters/RocketboxCandidates/Male_Child_01"
+    },
+    {
+      "id": "child-03",
+      "name": "Female_Child_02",
+      "category": "Children",
+      "texture_prefix": "cf011",
+      "label": "Child candidate 3",
+      "assessment": "Original child model with a headscarf and long dress. The requested build, age and casual wardrobe are not established.",
+      "fbx": "Assets/Avatars/Children/Female_Child_02/Export/Female_Child_02_facial.fbx",
+      "textures": "Assets/Avatars/Children/Female_Child_02/Textures",
+      "preview": "Assets/Avatars/Children/Female_Child_02/Female_Child_02.png",
+      "asset_folder": "/Game/Characters/RocketboxCandidates/Female_Child_02"
+    },
+    {
+      "id": "child-04",
+      "name": "Male_Child_02",
+      "category": "Children",
+      "texture_prefix": "cm012",
+      "label": "Child candidate 4 \u00b7 approved sample",
+      "assessment": "Approved original child model. Dark skin, short hair and slim build; differs from the requested East Asian teenage appearance. Exact age is unverified.",
+      "fbx": "Assets/Avatars/Children/Male_Child_02/Export/Male_Child_02_facial.fbx",
+      "textures": "Assets/Avatars/Children/Male_Child_02/Textures",
+      "preview": "Assets/Avatars/Children/Male_Child_02/Male_Child_02.png",
+      "asset_folder": "/Game/Characters/RocketboxCandidates/Male_Child_02"
+    },
+    {
+      "id": "adult-01",
+      "name": "Female_Adult_04",
+      "category": "Adults",
+      "texture_prefix": "f004",
+      "label": "Adult candidate 1 \u00b7 approved sample",
+      "assessment": "Approved original adult model. Fair skin and blond hair; does not cover the requested dark-skinned woman.",
+      "fbx": "Assets/Avatars/Adults/Female_Adult_04/Export/Female_Adult_04_facial.fbx",
+      "textures": "Assets/Avatars/Adults/Female_Adult_04/Textures",
+      "preview": "Assets/Avatars/Adults/Female_Adult_04/Female_Adult_04.png",
+      "asset_folder": "/Game/Characters/RocketboxCandidates/Female_Adult_04"
+    },
+    {
+      "id": "adult-02",
+      "name": "Male_Adult_15",
+      "category": "Adults",
+      "texture_prefix": "m204",
+      "label": "Adult candidate 2",
+      "assessment": "Original adult model with medium skin, dark facial hair and long clothing. The requested heavyset build and wardrobe are not established.",
+      "fbx": "Assets/Avatars/Adults/Male_Adult_15/Export/Male_Adult_15_facial.fbx",
+      "textures": "Assets/Avatars/Adults/Male_Adult_15/Textures",
+      "preview": "Assets/Avatars/Adults/Male_Adult_15/Male_Adult_15.png",
+      "asset_folder": "/Game/Characters/RocketboxCandidates/Male_Adult_15"
+    },
+    {
+      "id": "adult-03",
+      "name": "Female_Adult_11",
+      "category": "Adults",
+      "texture_prefix": "f011",
+      "label": "Adult candidate 3",
+      "assessment": "Original adult model with dark hair and a skirt. The requested plus-size build, middle-aged appearance and wardrobe are not established.",
+      "fbx": "Assets/Avatars/Adults/Female_Adult_11/Export/Female_Adult_11_facial.fbx",
+      "textures": "Assets/Avatars/Adults/Female_Adult_11/Textures",
+      "preview": "Assets/Avatars/Adults/Female_Adult_11/Female_Adult_11.png",
+      "asset_folder": "/Game/Characters/RocketboxCandidates/Female_Adult_11"
+    },
+    {
+      "id": "adult-04",
+      "name": "Male_Adult_12",
+      "category": "Adults",
+      "texture_prefix": "m007",
+      "label": "Adult candidate 4",
+      "assessment": "Original adult model with dark skin and denim clothing. Adds skin-tone variety; does not match the requested pale, older adult man.",
+      "fbx": "Assets/Avatars/Adults/Male_Adult_12/Export/Male_Adult_12_facial.fbx",
+      "textures": "Assets/Avatars/Adults/Male_Adult_12/Textures",
+      "preview": "Assets/Avatars/Adults/Male_Adult_12/Male_Adult_12.png",
+      "asset_folder": "/Game/Characters/RocketboxCandidates/Male_Adult_12"
+    },
+    {
+      "id": "older-01",
+      "name": "Female_Adult_09",
+      "category": "Adults",
+      "texture_prefix": "f009",
+      "label": "Older-group candidate 1 \u00b7 age gap",
+      "assessment": "Comparison candidate only. This model does not convincingly establish a senior age, and does not satisfy the requested older, olive-skinned woman.",
+      "fbx": "Assets/Avatars/Adults/Female_Adult_09/Export/Female_Adult_09_facial.fbx",
+      "textures": "Assets/Avatars/Adults/Female_Adult_09/Textures",
+      "preview": "Assets/Avatars/Adults/Female_Adult_09/Female_Adult_09.png",
+      "asset_folder": "/Game/Characters/RocketboxCandidates/Female_Adult_09"
+    },
+    {
+      "id": "older-02",
+      "name": "Male_Adult_03",
+      "category": "Adults",
+      "texture_prefix": "m004",
+      "label": "Older-group candidate 2 \u00b7 approved sample",
+      "assessment": "Approved senior candidate with fair skin and receding grey hair. Exact age and the requested heavy build are unverified.",
+      "fbx": "Assets/Avatars/Adults/Male_Adult_03/Export/Male_Adult_03_facial.fbx",
+      "textures": "Assets/Avatars/Adults/Male_Adult_03/Textures",
+      "preview": "Assets/Avatars/Adults/Male_Adult_03/Male_Adult_03.png",
+      "asset_folder": "/Game/Characters/RocketboxCandidates/Male_Adult_03"
+    },
+    {
+      "id": "older-03",
+      "name": "Business_Female_02",
+      "category": "Professions",
+      "texture_prefix": "f015",
+      "label": "Older-group candidate 3 \u00b7 age gap",
+      "assessment": "Comparison candidate with glasses. It does not establish an 81-year-old appearance or the requested medium-deep skin tone and thin build.",
+      "fbx": "Assets/Avatars/Professions/Business_Female_02/Export/Business_Female_02_facial.fbx",
+      "textures": "Assets/Avatars/Professions/Business_Female_02/Textures",
+      "preview": "Assets/Avatars/Professions/Business_Female_02/Business_Female_02.png",
+      "asset_folder": "/Game/Characters/RocketboxCandidates/Business_Female_02"
+    },
+    {
+      "id": "older-04",
+      "name": "Male_Adult_14",
+      "category": "Adults",
+      "texture_prefix": "m012",
+      "label": "Older-group candidate 4 \u00b7 diversity gap",
+      "assessment": "Older-looking original model with fair skin and thinning hair. It does not meet the requested dark-skinned 88-year-old appearance.",
+      "fbx": "Assets/Avatars/Adults/Male_Adult_14/Export/Male_Adult_14_facial.fbx",
+      "textures": "Assets/Avatars/Adults/Male_Adult_14/Textures",
+      "preview": "Assets/Avatars/Adults/Male_Adult_14/Male_Adult_14.png",
+      "asset_folder": "/Game/Characters/RocketboxCandidates/Male_Adult_14"
+    }
+  ],
+  "files": [
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_04/Export/Female_Adult_04_facial.fbx",
+      "bytes": 2349152,
+      "git_blob_sha1": "62b371167090f21a66da305697d15364e125713d"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_04/Female_Adult_04.png",
+      "bytes": 430066,
+      "git_blob_sha1": "0b9d73e3fad02961c2ae3b27118274f1a9b5cb43"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_04/Textures/f004_body_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "d087c788a3d06ddff161f7d726e5964d10ab5679"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_04/Textures/f004_body_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "f4a57692ebc603687d65eda16a8286c03e745963"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_04/Textures/f004_body_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "c1d4bb6286f05fe8dfb95d8cfe9adbb776b2088c"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_04/Textures/f004_head_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "8431d9774e3d416447096367fecf4a0f75bc7ea5"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_04/Textures/f004_head_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "ab4de4da7bd926286f7088a5e9caeb0a2344a479"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_04/Textures/f004_head_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "f214cdb37ef002377784c73cd27b38bffddbcfee"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_04/Textures/f004_opacity_color.tga",
+      "bytes": 16777260,
+      "git_blob_sha1": "86f656686004a338b13026515c7395c946170352"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_09/Export/Female_Adult_09_facial.fbx",
+      "bytes": 2135024,
+      "git_blob_sha1": "19278c9fb72766e1bd33cbfa1735621480b6eb52"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_09/Female_Adult_09.png",
+      "bytes": 430008,
+      "git_blob_sha1": "cd774c5d8c75530745bafb52a2448bd4268f2a1b"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_09/Textures/f009_body_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "a1f63096b3e712c07c6812315f74f4abb79c1fd9"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_09/Textures/f009_body_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "3a12915026c7939a4ad37616d9d9bbf4f8b40d20"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_09/Textures/f009_body_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "b104004ae06e36c4c6c160b3720ffc70f7f3b21f"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_09/Textures/f009_head_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "946e89b15a23173457d17ae3a7e6627d3e5b2166"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_09/Textures/f009_head_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "ffce60e5e001b7532ef841fce106446feed5ffc9"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_09/Textures/f009_head_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "32a55874a3896f1fb639c1e76a8badb2e88d57d0"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_09/Textures/f009_opacity_color.tga",
+      "bytes": 16777260,
+      "git_blob_sha1": "fef407c359ae03e257944ec1b530cdd1b1f921ea"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_11/Export/Female_Adult_11_facial.fbx",
+      "bytes": 2126800,
+      "git_blob_sha1": "3867c06567f059b41263911718d2a93ac3c876c6"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_11/Female_Adult_11.png",
+      "bytes": 440534,
+      "git_blob_sha1": "5a16f481015e059d4d567bc0f70c10472806e432"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_11/Textures/f011_body_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "ecf3094eb13c47388c61cc9022eddfedc4004de7"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_11/Textures/f011_body_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "6e9579ec792ff4b59a36643af5ce2a6211b10d1e"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_11/Textures/f011_body_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "51bc712bc52299bb0e6dbe6254ed0962e5b18d27"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_11/Textures/f011_head_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "f0c90595950a7d7cd677e09960e28a4cec9c03b4"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_11/Textures/f011_head_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "1fcb039bdc9226685f1b6c9d5d150cea556b787d"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_11/Textures/f011_head_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "6a82b6de5b33fcea2a9bd6373ac5b209d75bfa52"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Female_Adult_11/Textures/f011_opacity_color.tga",
+      "bytes": 16777260,
+      "git_blob_sha1": "c2ad85f17b180e2a1da5a08c0b49130222b7af7a"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_03/Export/Male_Adult_03_facial.fbx",
+      "bytes": 1907328,
+      "git_blob_sha1": "0df7b40cedfe94c17e316d6c961143ba4d609f12"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_03/Male_Adult_03.png",
+      "bytes": 515426,
+      "git_blob_sha1": "45b4b5b2e72d6f91a27feccee7f9fd6129f45d01"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_03/Textures/m004_body_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "6c74391f617e383371c9cd77775ebbae16998f8e"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_03/Textures/m004_body_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "c1ae5c98e3d11d7266fff2e0cd693869da21e3a9"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_03/Textures/m004_body_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "3305e77aade42d20e17cbabeebf6a128c97b149c"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_03/Textures/m004_head_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "bc8c4b56be8bef30ea204ea772451a03457a9d85"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_03/Textures/m004_head_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "01cbe98b0d29bfe9b5c8949800e199234014453f"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_03/Textures/m004_head_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "3bf7d8c4741a7b051d59bd1a23e61dfc2fc7db10"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_03/Textures/m004_opacity_color.tga",
+      "bytes": 8388652,
+      "git_blob_sha1": "7a705836b26da41fbd46d5cf41835bcff82b1e0d"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_12/Export/Male_Adult_12_facial.fbx",
+      "bytes": 1772832,
+      "git_blob_sha1": "2a78471b6a2770562746092aea079580bcd6642f"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_12/Male_Adult_12.png",
+      "bytes": 506050,
+      "git_blob_sha1": "2b4e07161df2786c8cde85952403bc71eaabc031"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_12/Textures/m007_body_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "1757150789a5fdcf733394ff21a60512530b4f1a"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_12/Textures/m007_body_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "5bc8f98e588d55964e2b6a2d0029778f4a9db9e6"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_12/Textures/m007_body_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "611bbd149179a52c6fbded07375904d462e49c19"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_12/Textures/m007_head_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "e5b23c4f55e499893c2a92ec7e52d0252bee2ae3"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_12/Textures/m007_head_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "0a99ce9aa6014e94c3385555f66a14da7599b757"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_12/Textures/m007_head_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "81fe377939cf8eaedd5d14dfb5261650de86bf1e"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_14/Export/Male_Adult_14_facial.fbx",
+      "bytes": 1765696,
+      "git_blob_sha1": "22740b37f0a6fe36c180dfae451dac4b2454ab3a"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_14/Male_Adult_14.png",
+      "bytes": 465232,
+      "git_blob_sha1": "5b0cd11a74f7ceab2b6a9218d060a4b187a9aea2"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_14/Textures/m012_body_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "5c1fbd9f483d84ac97feec84a72773bb3b90762c"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_14/Textures/m012_body_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "b7a3ea9c4c3b90d63f116ee7595016f77ea97652"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_14/Textures/m012_body_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "05899b0b7465288fddeda3d566b11944c0317b93"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_14/Textures/m012_head_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "d3a74ca56b46de52af2d1c8cb49c874f094785b6"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_14/Textures/m012_head_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "86e0bb61379344a5e870db3152241382ee161af5"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_14/Textures/m012_head_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "72b01964c9c2ea78d68b612d95bc88e139e95a16"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_15/Export/Male_Adult_15_facial.fbx",
+      "bytes": 1853888,
+      "git_blob_sha1": "768c9adf7c383c50effac3d8916cafc0feeba5d7"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_15/Male_Adult_15.png",
+      "bytes": 389579,
+      "git_blob_sha1": "ce0858b9f8b8b5479550cd97bf3e3fe3922b2104"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_15/Textures/m204_body_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "f7c95bfe928b5fc20a191921e1515596fb73caea"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_15/Textures/m204_body_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "12a74447f110d12babf71c36a6f611f50c4f4dee"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_15/Textures/m204_body_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "4239b492411f557ac22cfecb57ebacd34cde7ac5"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_15/Textures/m204_head_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "08011be46ab1f8a76768d633378b8ba4cb326906"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_15/Textures/m204_head_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "bd56e123ba25d3ad0cb51c25bbd6dde530debae1"
+    },
+    {
+      "path": "Assets/Avatars/Adults/Male_Adult_15/Textures/m204_head_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "09f8284e52deadf4a3a1dced49fa85ceda44a64e"
+    },
+    {
+      "path": "Assets/Avatars/Children/Female_Child_01/Export/Female_Child_01_facial.fbx",
+      "bytes": 1832640,
+      "git_blob_sha1": "bf41529c7b030639c2db20353eb3451669c253f1"
+    },
+    {
+      "path": "Assets/Avatars/Children/Female_Child_01/Female_Child_01.png",
+      "bytes": 396354,
+      "git_blob_sha1": "4709e9f1d34ad5d7b96340b2effef17ccb892c91"
+    },
+    {
+      "path": "Assets/Avatars/Children/Female_Child_01/Textures/cf001_body_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "ef91edfdcbc95ef6a26e5b3fa4b4f4f8388b0348"
+    },
+    {
+      "path": "Assets/Avatars/Children/Female_Child_01/Textures/cf001_body_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "96f031026568aa1f48383b16e0b58335254104f4"
+    },
+    {
+      "path": "Assets/Avatars/Children/Female_Child_01/Textures/cf001_body_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "0314af64a36bf9fc07910d608b90d43957854645"
+    },
+    {
+      "path": "Assets/Avatars/Children/Female_Child_01/Textures/cf001_head_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "611ce1b19a1a12207b3ee1dc0a467e95af0e59c3"
+    },
+    {
+      "path": "Assets/Avatars/Children/Female_Child_01/Textures/cf001_head_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "ad8667341cdffcd78ad6f02468a869eefc09a283"
+    },
+    {
+      "path": "Assets/Avatars/Children/Female_Child_01/Textures/cf001_head_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "a45eb1562dd736c54d8a154a726d47193f118b0b"
+    },
+    {
+      "path": "Assets/Avatars/Children/Female_Child_02/Export/Female_Child_02_facial.fbx",
+      "bytes": 1784976,
+      "git_blob_sha1": "17b03dc8e9906f3c9fb92fa49acb8ba2e43941f8"
+    },
+    {
+      "path": "Assets/Avatars/Children/Female_Child_02/Female_Child_02.png",
+      "bytes": 436854,
+      "git_blob_sha1": "78fcce369c2f86350b7c592c516db068888df9c9"
+    },
+    {
+      "path": "Assets/Avatars/Children/Female_Child_02/Textures/cf011_body_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "8764e6f4749f9c526c909f1130fd2e54b0fef888"
+    },
+    {
+      "path": "Assets/Avatars/Children/Female_Child_02/Textures/cf011_body_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "36bc2d7a93ded4b28ca92e27d79a8e954b914a53"
+    },
+    {
+      "path": "Assets/Avatars/Children/Female_Child_02/Textures/cf011_body_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "b10e8df194d92570667a60bae75f53dd96076aec"
+    },
+    {
+      "path": "Assets/Avatars/Children/Female_Child_02/Textures/cf011_head_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "72953e211787f725ed047efafc8d195ae7f62dbd"
+    },
+    {
+      "path": "Assets/Avatars/Children/Female_Child_02/Textures/cf011_head_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "973d9960346690845577d9c40c02057d2ed16517"
+    },
+    {
+      "path": "Assets/Avatars/Children/Female_Child_02/Textures/cf011_head_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "fcd48efca9fd417c35f2401069994feb71dee20e"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_01/Export/Male_Child_01_facial.fbx",
+      "bytes": 1807104,
+      "git_blob_sha1": "d9f79aaf4cd610f14f6cea4c53b709614835fa8c"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_01/Male_Child_01.png",
+      "bytes": 461151,
+      "git_blob_sha1": "15d7e6b0c6ddc89ee594a068395bae93bab063d7"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_01/Textures/cm001_body_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "afee29cc2289eb1403cbe6e6a68c26b8d7618c31"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_01/Textures/cm001_body_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "2961be0dd27769dc438a48a6f06bec06868c9ba5"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_01/Textures/cm001_body_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "101e1a4af155faacd316992c38be3c2230d279b7"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_01/Textures/cm001_head_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "aa7d4cb1931eab13a6227562038b1ecb34110dbb"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_01/Textures/cm001_head_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "9c72c998d9e4e7704ae15ac2dbfd38a9fdc6fbc2"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_01/Textures/cm001_head_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "f075debd4149b867b642758d0fede3d155b3da10"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_02/Export/Male_Child_02_facial.fbx",
+      "bytes": 1873456,
+      "git_blob_sha1": "fba813068626d76c1440b313836b80c83ad55d3b"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_02/Male_Child_02.png",
+      "bytes": 416786,
+      "git_blob_sha1": "af76a4b342b1dfa872b9507c0ef724ec98650327"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_02/Textures/cm012_body_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "11e5406d5270364089ed7489f1497c994ad7cf81"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_02/Textures/cm012_body_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "2dde60fc2f3b41366f19029017f0c38bee0ae4fb"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_02/Textures/cm012_body_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "e86d2db2a175f570cef78f57d2ce2a25dac12484"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_02/Textures/cm012_head_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "899fac07d89cf85696beb33ee0b782a6056420f3"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_02/Textures/cm012_head_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "8ba1f8002f94f8dca163cd68be0608ac9e06bb16"
+    },
+    {
+      "path": "Assets/Avatars/Children/Male_Child_02/Textures/cm012_head_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "72ed9755ee46b2cb98cb203a6393f02cc6b8b018"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Business_Female_02/Business_Female_02.png",
+      "bytes": 455239,
+      "git_blob_sha1": "faea6e96e38249d6ba00d6fbff6353853d0c0a15"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Business_Female_02/Export/Business_Female_02_facial.fbx",
+      "bytes": 2221184,
+      "git_blob_sha1": "3b7201662edced58173a047605446c7f88e526b9"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Business_Female_02/Textures/f015_body_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "9a3d5fbd2b69e34628ec0220572b64cb314c51d7"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Business_Female_02/Textures/f015_body_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "f8fd6f901665a43b3c46ae151734bbf1cc610ff9"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Business_Female_02/Textures/f015_body_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "4119436fd3dbbff1f5f3fd778e815b10f4004d9e"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Business_Female_02/Textures/f015_glasses_normal.tga",
+      "bytes": 393260,
+      "git_blob_sha1": "bd00a20c0ba7391d69ca3d7bad2dd0c899f7ddb7"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Business_Female_02/Textures/f015_glasses_opacity_color.tga",
+      "bytes": 524332,
+      "git_blob_sha1": "4041db975842d4655e0fb76ff673ee59fd9a7c3d"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Business_Female_02/Textures/f015_glasses_specular.tga",
+      "bytes": 393260,
+      "git_blob_sha1": "f79aaba70c682b4e7c7724d9ce1836f938cddf1f"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Business_Female_02/Textures/f015_head_color.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "41eac4aaed7ed8f36b32d53ae96599694a7fd687"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Business_Female_02/Textures/f015_head_normal.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "83b20203ee6d2597ea2626e765d350b8e94ffc69"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Business_Female_02/Textures/f015_head_specular.tga",
+      "bytes": 12582956,
+      "git_blob_sha1": "ad0011158390d1527669ce58424de788cace3bfd"
+    },
+    {
+      "path": "Assets/Avatars/Professions/Business_Female_02/Textures/f015_opacity_color.tga",
+      "bytes": 16777260,
+      "git_blob_sha1": "b96abab3f5c8fae7bd72fab26a17a31b91c70ac5"
+    },
+    {
+      "path": "LICENSE.md",
+      "bytes": 1066,
+      "git_blob_sha1": "9bcfb3ece5301a55d3a41bbd00a029ab27d61d13"
+    },
+    {
+      "path": "README.md",
+      "bytes": 5345,
+      "git_blob_sha1": "a23370fd4258e59784970d941bf15b53aad38924"
+    }
+  ]
+}

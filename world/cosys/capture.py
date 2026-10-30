@@ -268,7 +268,10 @@ class FrameCapture:
         )
         path = self.directory / f"{tag}-{frame['vehicleId']}.jpg"
         assert not path.exists() and not path.with_suffix(".json").exists(), path
-        image.save(path, quality=quality, subsampling=0)
+        encoded = io.BytesIO()
+        image.save(encoded, format="JPEG", quality=quality, subsampling=0)
+        encoded = encoded.getvalue()
+        path.write_bytes(encoded)
         preview = None
         if frame["validation"]["accepted"]:
             small = image.resize(PREVIEW_SIZE, Image.Resampling.LANCZOS)
@@ -283,8 +286,8 @@ class FrameCapture:
             file=path.name,
             imagePath=str(path),
             captureId=path.stem,
-            jpegBytes=path.stat().st_size,
-            sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
+            jpegBytes=len(encoded),
+            sha256=hashlib.sha256(encoded).hexdigest(),
             previewBytes=0 if preview is None else len(preview["jpeg_base64"]),
             writeLatencySeconds=time.perf_counter() - start,
         )
