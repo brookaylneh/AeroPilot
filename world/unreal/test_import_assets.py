@@ -1,9 +1,18 @@
+import copy
+import json
 import math
 import unittest
 from pathlib import Path
 
 from world.unreal.blender.spec import load
-from world.unreal.import_assets import check_dimensions, names, textures, ue_matrix
+from world.unreal.import_assets import (
+    EXTERNAL,
+    check_dimensions,
+    family_spec,
+    names,
+    textures,
+    ue_matrix,
+)
 
 # Height above grade in metres per lodgepole variant (valley facts, cap 18 m).
 LODGEPOLE_M = {"mature": (15, 18), "edge": (10, 15), "sapling": (1, 3)}
@@ -49,16 +58,28 @@ class ImportTests(unittest.TestCase):
 
     def test_textures_group_by_material_and_kind(self):
         kinds = ("BC", "N", "N_GL", "ORM")
-        report = {
-            "asset": "lodgepole-mature",
-            "textures": dict.fromkeys(f"T_LodgepoleMatureBark_{k}" for k in kinds),
-        }
-        groups = textures(Path("/b"), report)
+        images = [f"T_LodgepoleMatureBark_{k}" for k in kinds]
+        groups = textures(Path("/b"), "lodgepole-mature", images)
         self.assertEqual(sorted(groups["LodgepoleMatureBark"]), ["BC", "N", "ORM"])
         self.assertEqual(groups["LodgepoleMatureBark"]["N"], Path("/b/T_LodgepoleMatureBark_N.png"))
         for images in (["T_LodgepoleMatureBark_BC"], ["T_Bark_BC", "T_Bark_ORM"]):
             with self.assertRaises(AssertionError):
-                textures(Path("/b"), {"asset": "lodgepole-mature", "textures": images})
+                textures(Path("/b"), "lodgepole-mature", images)
+
+    def test_external_builds_must_match_their_entry(self):
+        entry = json.loads(EXTERNAL.read_text())["assets"]["command-van"]
+        report = {"spec": {"dimensionsM": [6.03, 2.22, 2.69]}, "details": {"external": entry}}
+        spec, content = family_spec("external", "command-van", report)
+        self.assertEqual((spec, content), (report["spec"], "/Game/Valley/Vehicles"))
+        stale = copy.deepcopy(report)
+        stale["details"]["external"]["yawDegrees"] += 90
+        with self.assertRaises(AssertionError):
+            family_spec("external", "command-van", stale)
+
+    def test_external_meshes_have_distinct_names(self):
+        assets = json.loads(EXTERNAL.read_text())["assets"]
+        meshes = {names(a) for a in assets}
+        self.assertEqual(len(meshes), len(assets))
 
 
 if __name__ == "__main__":

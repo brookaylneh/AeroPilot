@@ -1,0 +1,304 @@
+{
+  "schemaVersion": 1,
+  "surfaces": {
+    "wood": {
+      "albedo": "polyhaven-rough_wood_diff_2k",
+      "normal": "polyhaven-rough_wood_nor_gl_2k",
+      "tileM": 0.5,
+      "albedoStrength": 0.12,
+      "normalStrength": 0.5
+    },
+    "metal": {
+      "albedo": "polyhaven-rust_coarse_01_diff_2k",
+      "normal": "polyhaven-rust_coarse_01_nor_gl_2k",
+      "tileM": 2.2,
+      "albedoStrength": 0.1,
+      "normalStrength": 0.5
+    },
+    "granite": {
+      "albedo": "polyhaven-rock_surface_diff_2k",
+      "normal": "polyhaven-rock_surface_nor_gl_2k",
+      "tileM": 2.0,
+      "albedoStrength": 0.12,
+      "normalStrength": 0.6
+    },
+    "fabric": {
+      "albedo": "polyhaven-terlenka_diff_2k",
+      "normal": "polyhaven-terlenka_nor_gl_2k",
+      "tileM": 0.266,
+      "albedoStrength": 0.08,
+      "normalStrength": 0.4
+    }
+  },
+  "assets": {
+    "trailhead-kiosk": {
+      "source": "hunyuan-trailhead-kiosk",
+      "reference": "trailhead-kiosk",
+      "category": "Structures",
+      "surface": "wood",
+      "yawDegrees": 180.0,
+      "dimensionsM": [null, null, 3.0],
+      "dimensionsSource": "facts.md §7: kiosk about 3 m tall",
+      "collision": true,
+      "colour": [
+        {
+          "referenceSrgb": [121.4, 111.8, 102.2],
+          "renderSrgb": [118.3, 110.9, 103.8],
+          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+        },
+        {
+          "referenceSrgb": [121.4, 111.8, 102.2],
+          "renderSrgb": [116.7, 106.9, 97.2],
+          "source": "gen-int/trailhead-kiosk/iter1 master render of the normalised build"
+        }
+      ]
+    },
+    "command-van": {
+      "source": "hunyuan-command-van",
+      "reference": "command-van",
+      "category": "Vehicles",
+      "surface": "metal",
+      "yawDegrees": 92.5,
+      "dimensionsM": [6.0, null, 2.7],
+      "dimensionsSource": "facts.md §7: van about 6 m long x 2.7 m tall",
+      "collision": true,
+      "colour": [
+        {
+          "referenceSrgb": [117.2, 119.1, 115.5],
+          "renderSrgb": [139.8, 141.9, 140.2],
+          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+        },
+        {
+          "referenceSrgb": [117.2, 119.1, 115.5],
+          "renderSrgb": [117.6, 119.5, 116.6],
+          "source": "gen-int/command-van/iter1 master render of the normalised build"
+        }
+      ]
+    },
+    "bear-storage-box": {
+      "source": "hunyuan-bear-storage-box",
+      "reference": "bear-storage-box",
+      "category": "Props",
+      "surface": "metal",
+      "yawDegrees": 90.0,
+      "dimensionsM": [null, 1.09, null],
+      "dimensionsSource": "NPS Yosemite campsite food locker, 43 in (1.09 m) wide: https://www.nps.gov/yose/planyourvisit/lockers.htm",
+      "collision": true,
+      "colour": [
+        {
+          "referenceSrgb": [103.9, 78.1, 63.6],
+          "renderSrgb": [132.9, 114.1, 105.3],
+          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+        },
+        {
+          "referenceSrgb": [103.9, 78.1, 63.6],
+          "renderSrgb": [106.9, 87.0, 78.5],
+          "source": "gen-int/bear-storage-box/iter1 master render of the normalised build"
+        },
+        {
+          "referenceSrgb": [103.9, 78.1, 63.6],
+          "renderSrgb": [105.2, 83.6, 75.0],
+          "source": "gen-int/bear-storage-box/iter2 master render of the normalised build"
+        }
+      ]
+    },
+    "split-rail-fence": {
+      "source": "hunyuan-split-rail-fence",
+      "reference": "split-rail-fence",
+      "category": "Structures",
+      "surface": "wood",
+      "yawDegrees": 180.0,
+      "dimensionsM": [null, 3.0, null],
+      "dimensionsSource": "buck-and-rail sections about 10 ft (3.0 m) long: https://en.wikipedia.org/wiki/Split-rail_fence",
+      "collision": true,
+      "colour": [
+        {
+          "referenceSrgb": [162.8, 154.6, 145.3],
+          "renderSrgb": [170.5, 166.4, 160.7],
+          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+        },
+        {
+          "referenceSrgb": [162.8, 154.6, 145.3],
+          "renderSrgb": [163.2, 156.7, 149.1],
+          "source": "gen-int/split-rail-fence/iter1 master render of the normalised build"
+        }
+      ]
+    },
+    "camp-fire-ring": {
+      "source": "hunyuan-camp-fire-ring",
+      "reference": "camp-fire-ring",
+      "category": "Props",
+      "surface": "metal",
+      "yawDegrees": 110.5,
+      "dimensionsM": [0.8, 0.8, null],
+      "dimensionsSource": "Pilot Rock FS-30 campfire ring, 30 in (0.76 m) inside diameter, 0.8 m over the band: https://www.pilotrock.com/seriesgroup/campfire-rings/fs-series-campfire-rings",
+      "collision": true,
+      "colour": [
+        {
+          "referenceSrgb": [88.7, 79.1, 72.8],
+          "renderSrgb": [80.2, 74.5, 71.6],
+          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+        },
+        {
+          "referenceSrgb": [88.7, 79.1, 72.8],
+          "renderSrgb": [85.1, 75.1, 69.0],
+          "source": "gen-int/camp-fire-ring/iter1 master render of the normalised build"
+        }
+      ]
+    },
+    "picnic-table": {
+      "source": "hunyuan-picnic-table",
+      "reference": "picnic-table",
+      "category": "Props",
+      "surface": "wood",
+      "yawDegrees": 270.0,
+      "dimensionsM": [1.8, null, null],
+      "dimensionsSource": "facts.md §7: picnic table 1.8 m long",
+      "collision": true,
+      "colour": [
+        {
+          "referenceSrgb": [163.0, 148.7, 135.1],
+          "renderSrgb": [157.5, 148.5, 139.5],
+          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+        },
+        {
+          "referenceSrgb": [163.5, 149.2, 135.6],
+          "renderSrgb": [160.3, 146.1, 133.2],
+          "source": "gen-int/picnic-table/iter1 master render of the normalised build"
+        }
+      ]
+    },
+    "parking-edge": {
+      "source": "hunyuan-parking-edge",
+      "reference": "parking-edge",
+      "category": "Props",
+      "surface": "wood",
+      "yawDegrees": 90.0,
+      "dimensionsM": [null, 1.83, null],
+      "dimensionsSource": "72 in (1.83 m) parking wheel stops: https://www.globalindustrial.com/c/safety/traffic_parking_lot_safety/parking_curbs_speed_bumps",
+      "collision": true,
+      "colour": [
+        {
+          "referenceSrgb": [145.7, 131.5, 118.0],
+          "renderSrgb": [166.2, 155.1, 143.2],
+          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+        },
+        {
+          "referenceSrgb": [145.7, 131.5, 118.0],
+          "renderSrgb": [149.1, 135.7, 123.2],
+          "source": "gen-int/parking-edge/iter1 master render of the normalised build"
+        }
+      ]
+    },
+    "hiking-tent": {
+      "source": "hunyuan-hiking-tent",
+      "reference": "hiking-tent",
+      "category": "Props",
+      "surface": "fabric",
+      "yawDegrees": 90.0,
+      "dimensionsM": [null, 2.0, null],
+      "dimensionsSource": "facts.md §7: tent about 2.5 x 2 x 1.3 m; the 2 m width governs",
+      "collision": true,
+      "colour": [
+        {
+          "referenceSrgb": [158.9, 127.6, 79.8],
+          "renderSrgb": [176.8, 151.5, 101.3],
+          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+        },
+        {
+          "referenceSrgb": [161.5, 129.7, 80.9],
+          "renderSrgb": [161.0, 129.8, 81.5],
+          "source": "gen-int/hiking-tent/iter1 master render of the normalised build"
+        }
+      ]
+    },
+    "trail-fork-sign": {
+      "source": "hunyuan-trail-fork-sign",
+      "reference": "trail-fork-sign",
+      "category": "Structures",
+      "surface": "wood",
+      "yawDegrees": 42.5,
+      "dimensionsM": [null, null, 1.86],
+      "dimensionsSource": "MUTCD 2009 9B.01 P05: sign bottom at least 4 ft (1.22 m) above a shared-use path (lower arm bottom at 0.657 of the height): https://mutcd.fhwa.dot.gov/htm/2009/part9/part9b.htm",
+      "collision": true,
+      "colour": [
+        {
+          "referenceSrgb": [132.7, 119.6, 105.2],
+          "renderSrgb": [162.4, 155.1, 144.9],
+          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+        },
+        {
+          "referenceSrgb": [132.7, 119.6, 105.3],
+          "renderSrgb": [132.0, 120.2, 107.6],
+          "source": "gen-int/trail-fork-sign/iter1 master render of the normalised build"
+        }
+      ]
+    },
+    "command-canopy": {
+      "source": "hunyuan-command-canopy",
+      "reference": "command-canopy",
+      "category": "Props",
+      "surface": "fabric",
+      "yawDegrees": 0.0,
+      "dimensionsM": [3.0, 3.0, null],
+      "dimensionsSource": "facts.md §7: canopy 3 x 3 x 3.2 m; the 3 x 3 m footprint governs",
+      "collision": true,
+      "colour": [
+        {
+          "referenceSrgb": [147.2, 140.6, 134.3],
+          "renderSrgb": [189.0, 185.9, 179.2],
+          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+        },
+        {
+          "referenceSrgb": [147.2, 140.6, 134.3],
+          "renderSrgb": [151.4, 145.7, 139.7],
+          "source": "gen-int/command-canopy/iter1 master render of the normalised build"
+        }
+      ]
+    },
+    "creek-cobbles": {
+      "source": "hunyuan-creek-cobbles",
+      "reference": "creek-cobbles",
+      "category": "Rocks",
+      "surface": "granite",
+      "yawDegrees": 223.5,
+      "dimensionsM": [null, null, 0.2],
+      "dimensionsSource": "Udden-Wentworth cobble 64-256 mm: the tallest stone stands 0.2 m: https://en.wikipedia.org/wiki/Cobble_(geology)",
+      "collision": false,
+      "colour": [
+        {
+          "referenceSrgb": [128.8, 121.5, 113.2],
+          "renderSrgb": [128.3, 126.4, 123.8],
+          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+        },
+        {
+          "referenceSrgb": [128.8, 121.5, 113.2],
+          "renderSrgb": [123.1, 116.3, 108.7],
+          "source": "gen-int/creek-cobbles/iter1 master render of the normalised build"
+        }
+      ]
+    },
+    "granite-outcrop-module": {
+      "source": "hunyuan-granite-outcrop-module",
+      "reference": "granite-outcrop-module",
+      "category": "Rocks",
+      "surface": "granite",
+      "yawDegrees": 100.5,
+      "dimensionsM": [5.0, null, null],
+      "dimensionsSource": "no published standard; 5 m, the top of the facts.md §7 rock range (erratics 1-5 m)",
+      "collision": true,
+      "colour": [
+        {
+          "referenceSrgb": [170.6, 150.8, 132.7],
+          "renderSrgb": [188.9, 175.0, 160.5],
+          "source": "gen3d-review/audit.json masterColour (glTF material, KHR specular 2.0)"
+        },
+        {
+          "referenceSrgb": [170.8, 151.1, 132.9],
+          "renderSrgb": [172.1, 153.5, 136.8],
+          "source": "gen-int/granite-outcrop-module/iter1 master render of the normalised build"
+        }
+      ]
+    }
+  }
+}
