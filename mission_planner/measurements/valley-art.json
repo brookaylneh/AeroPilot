@@ -1,0 +1,625 @@
+{
+  "schemaVersion": 1,
+  "recordedAtUtc": "2026-10-30T20:40:07.142922+00:00",
+  "task": "G3 runtime landscape grass, Fab removal, T6 wind removal, Lumen on (valley-art)",
+  "worktree": "/home/brook_avionuas/snr-art",
+  "branch": "valley-art",
+  "baseCommit": "86feb0b36623fd7b50d27565600d34d09c887b60",
+  "package": {
+    "path": "/home/brook_avionuas/snr-art/.local/dist/valley-art-g3/Linux",
+    "gameBinarySha256": "487991cffce3cf9353dc3ee13f7f416875ee90f407b715bf74e246ef344741ee",
+    "pakBytes": {
+      "ScenarioStudio/Content/Paks/ScenarioStudio-Linux.pak": 11648897,
+      "ScenarioStudio/Content/Paks/ScenarioStudio-Linux.ucas": 2773546640,
+      "ScenarioStudio/Content/Paks/ScenarioStudio-Linux.utoc": 1564994,
+      "ScenarioStudio/Content/Paks/global.ucas": 3310208,
+      "ScenarioStudio/Content/Paks/global.utoc": 806
+    },
+    "listing": ".local/evidence/world/valley-art/g3/pak-listing-2.txt",
+    "listedEntries": 8423,
+    "pnEntries": 0,
+    "grassTypeEntries": 42,
+    "fabContentMovedTo": ".local/staging/fab-removed/ (PN_GrassLibrary, PN_MeadowFlowers, PN_OpenWorldFoliage, OpenMeadow/Vegetation030)",
+    "lumen": "on (user decision; r.Lumen.*.Allow=0 removed from world/unreal/ScenarioStudio/Config/DefaultEngine.ini)",
+    "wind": "SimpleGrassWind WPO removed from M_ValleyMasked and M_ValleyFoliage (12->3 and 11->2 expressions, 0 errors; logs/wind.log)"
+  },
+  "grass": {
+    "table": "world/unreal/valley-grass.json",
+    "types": {
+      "dry-meadow": {
+        "layers": [
+          "dry-meadow"
+        ],
+        "per100m2": 1454,
+        "varieties": [
+          {
+            "mesh": "Vegetation/SM_Grass_Lawn",
+            "per100m2": 1000,
+            "scale": [
+              1.2,
+              1.6
+            ]
+          },
+          {
+            "mesh": "Vegetation/SM_Grass_FestucaSmall",
+            "per100m2": 150,
+            "scale": [
+              0.85,
+              1.05
+            ]
+          },
+          {
+            "mesh": "Vegetation/SM_Grass_FestucaMedium",
+            "per100m2": 150,
+            "scale": [
+              0.85,
+              1.15
+            ]
+          },
+          {
+            "mesh": "Vegetation/SM_Grass_FestucaShort",
+            "per100m2": 150,
+            "scale": [
+              0.85,
+              1.15
+            ]
+          },
+          {
+            "mesh": "Vegetation/SM_Seedheads_AnaphalisA",
+            "per100m2": 2,
+            "scale": [
+              1.0,
+              1.15
+            ]
+          },
+          {
+            "mesh": "Vegetation/SM_Seedheads_AnaphalisB",
+            "per100m2": 2,
+            "scale": [
+              1.0,
+              1.15
+            ]
+          }
+        ]
+      },
+      "wet-meadow": {
+        "layers": [
+          "wet-meadow",
+          "cobble-bed"
+        ],
+        "per100m2": 1200,
+        "varieties": [
+          {
+            "mesh": "Vegetation/SM_Sedge_CarexA",
+            "per100m2": 400,
+            "scale": [
+              1.0,
+              1.3
+            ]
+          },
+          {
+            "mesh": "Vegetation/SM_Sedge_CarexB",
+            "per100m2": 400,
+            "scale": [
+              1.0,
+              1.3
+            ]
+          },
+          {
+            "mesh": "Vegetation/SM_Grass_Lawn",
+            "per100m2": 400,
+            "scale": [
+              1.2,
+              1.6
+            ]
+          }
+        ]
+      }
+    },
+    "cullM": [
+      80,
+      160
+    ],
+    "grassTypes": {
+      "dry-meadow": "/Game/Valley/Grass/GT_DryMeadow.GT_DryMeadow",
+      "wet-meadow": "/Game/Valley/Grass/GT_WetMeadow.GT_WetMeadow"
+    },
+    "staticDressingInstances": 10911,
+    "runtimeInstancesAtPoses": {
+      "meadow-30m": 4751547,
+      "meadow-60m": 4751547
+    },
+    "engineSource": {
+      "density": "LandscapeGrass.cpp:2070 SqrtMaxInstances = ceil(sqrt(Extent.X*Extent.Y*GrassDensity/1e6)) (per 10 m x 10 m)",
+      "cull": "LandscapeGrass.cpp:3227-3228 InstanceStart/EndCullDistance * grass.CullDistanceScale",
+      "cameras": "LandscapeSubsystem.cpp:643-651 IStreamingManager views (DroneFoundation.cpp AddViewInformation per drone)",
+      "runtimeGeneration": "LandscapeGrassMapsBuilder.cpp:43-47 grass.GrassMap.UseRuntimeGeneration; :787 cooked builds update only with it"
+    }
+  },
+  "coverage": {
+    "tool": "world/unreal/measure_grass.py",
+    "definition": "fraction of pixels differing between grass on and grass off at one frozen kinematic state; 'differing' lists the fractions above 0/1/2/4/8 of 255 together with the same-state repeat noise",
+    "console": [
+      "r.AntiAliasingMethod 0",
+      "r.Tonemapper.GrainQuantization 0"
+    ],
+    "warmUpCaptures": 2,
+    "poses": {
+      "meadow-30m": {
+        "site": [
+          -350.0,
+          50.0
+        ],
+        "cameraWorldM": {
+          "x": -349.51480468750003,
+          "y": 50.05245590209961,
+          "z": 40.09383697509766
+        },
+        "captures": {
+          "on": {
+            "index": 3,
+            "shadowFloorP1": 25.503400802612305
+          },
+          "again": {
+            "index": 4,
+            "shadowFloorP1": 25.138771686553955
+          },
+          "off": {
+            "index": 5,
+            "shadowFloorP1": 59.44816024780273
+          },
+          "regrown": {
+            "index": 6,
+            "shadowFloorP1": 29.29199981689453
+          }
+        },
+        "aboveTerrainM": 29.87422346885102,
+        "positionErrorM": 0.17461805894404245,
+        "repeat": 0.9748655719521605,
+        "coverage": 0.9832086709104938,
+        "target": 0.9,
+        "regrownIdentical": false,
+        "differing": {
+          "repeat": {
+            "0": 0.9748655719521605,
+            "1": 0.7890137924382716,
+            "2": 0.5537396315586419,
+            "4": 0.27761381172839505,
+            "8": 0.07662290219907407
+          },
+          "onOff": {
+            "0": 0.9832086709104938,
+            "1": 0.9418889853395062,
+            "2": 0.9281412760416666,
+            "4": 0.9119214168595678,
+            "8": 0.8807174720293209
+          },
+          "regrownOff": {
+            "0": 0.9617311680169753,
+            "1": 0.9263935908564814,
+            "2": 0.9160569782021605,
+            "4": 0.8988617621527778,
+            "8": 0.8658556375385802
+          }
+        },
+        "texture": {
+          "on": 43.70945358276367,
+          "off": 11.687756538391113
+        },
+        "grass": {
+          "on": {
+            "instances": 4751547,
+            "asyncTasks": 0
+          },
+          "off": {
+            "instances": 0,
+            "asyncTasks": 0
+          },
+          "regrown": {
+            "instances": 4751547,
+            "asyncTasks": 0
+          }
+        },
+        "settleSeconds": 6.012289333011722,
+        "clearSeconds": 0.5007599999953527,
+        "regrowSeconds": 11.518292638007551
+      },
+      "meadow-60m": {
+        "site": [
+          -350.0,
+          50.0
+        ],
+        "cameraWorldM": {
+          "x": -349.5062292480469,
+          "y": 50.05937576293945,
+          "z": 70.04640884399414
+        },
+        "captures": {
+          "on": {
+            "index": 9,
+            "shadowFloorP1": 29.85759925842285
+          },
+          "again": {
+            "index": 10,
+            "shadowFloorP1": 30.215787334442137
+          },
+          "off": {
+            "index": 11,
+            "shadowFloorP1": 88.48200225830078
+          },
+          "regrown": {
+            "index": 12,
+            "shadowFloorP1": 37.799800872802734
+          }
+        },
+        "aboveTerrainM": 59.826795337747505,
+        "positionErrorM": 0.1493933522377985,
+        "repeat": 0.8722440441743827,
+        "coverage": 0.9739580922067901,
+        "target": 0.75,
+        "regrownIdentical": false,
+        "differing": {
+          "repeat": {
+            "0": 0.8722440441743827,
+            "1": 0.4000016878858025,
+            "2": 0.17823061342592592,
+            "4": 0.054510151427469136,
+            "8": 0.00711058063271605
+          },
+          "onOff": {
+            "0": 0.9739580922067901,
+            "1": 0.9051130883487655,
+            "2": 0.8801915750385803,
+            "4": 0.8305334924768518,
+            "8": 0.6371794222608025
+          },
+          "regrownOff": {
+            "0": 0.9623126446759259,
+            "1": 0.857757282021605,
+            "2": 0.792763671875,
+            "4": 0.6410643325617283,
+            "8": 0.4950663097993827
+          }
+        },
+        "texture": {
+          "on": 30.325098037719727,
+          "off": 7.440380573272705
+        },
+        "grass": {
+          "on": {
+            "instances": 4751547,
+            "asyncTasks": 0
+          },
+          "off": {
+            "instances": 0,
+            "asyncTasks": 0
+          },
+          "regrown": {
+            "instances": 4677724,
+            "asyncTasks": 0
+          }
+        },
+        "settleSeconds": 1.0004093509924132,
+        "clearSeconds": 0.5009829769842327,
+        "regrowSeconds": 11.019280260981759
+      }
+    },
+    "evidence": ".local/evidence/world/valley-art/g3/coverage-2/ (final run); .local/evidence/world/valley-art/g3/coverage-final-poses/ (before brightness and patches)",
+    "posesBefore": {
+      "evidence": ".local/evidence/world/valley-art/g3/logs/coverage-final-poses.console.log",
+      "meadow-30m": {
+        "site": [
+          -350.0,
+          50.0
+        ],
+        "cameraWorldM": {
+          "x": -349.3533972167969,
+          "y": 49.997493743896484,
+          "z": 40.098872375488284
+        },
+        "captures": {
+          "on": {
+            "index": 3,
+            "shadowFloorP1": 2.4304001331329346
+          },
+          "again": {
+            "index": 4,
+            "shadowFloorP1": 2.4304001331329346
+          },
+          "off": {
+            "index": 5,
+            "shadowFloorP1": 54.93543861389159
+          },
+          "regrown": {
+            "index": 6,
+            "shadowFloorP1": 7.503799915313721
+          }
+        },
+        "aboveTerrainM": 29.879258869241646,
+        "positionErrorM": 0.18536168724641922,
+        "repeat": 0.8190632233796297,
+        "coverage": 0.9991112075617284,
+        "target": 0.9,
+        "regrownIdentical": false,
+        "differing": {
+          "repeat": {
+            "0": 0.8190632233796297,
+            "1": 0.22104877989969135,
+            "2": 0.06938163097993827,
+            "4": 0.007851683063271605,
+            "8": 0.00048683449074074075
+          },
+          "onOff": {
+            "0": 0.9991112075617284,
+            "1": 0.9949090952932099,
+            "2": 0.9928501157407408,
+            "4": 0.9902680121527778,
+            "8": 0.9782608748070988
+          },
+          "regrownOff": {
+            "0": 0.9966707658179013,
+            "1": 0.9927683738425926,
+            "2": 0.9915989101080247,
+            "4": 0.9860529996141976,
+            "8": 0.9674187403549382
+          }
+        },
+        "texture": {
+          "on": 41.458003997802734,
+          "off": 11.94477367401123
+        },
+        "grass": {
+          "on": {
+            "instances": 6635734,
+            "asyncTasks": 0
+          },
+          "off": {
+            "instances": 0,
+            "asyncTasks": 0
+          },
+          "regrown": {
+            "instances": 6291798,
+            "asyncTasks": 0
+          }
+        },
+        "clearSeconds": 0.5007649429899175,
+        "regrowSeconds": 12.520929729973432
+      },
+      "meadow-60m": {
+        "site": [
+          -350.0,
+          50.0
+        ],
+        "cameraWorldM": {
+          "x": -349.4917028808594,
+          "y": 50.04195785522461,
+          "z": 69.95369262695313
+        },
+        "captures": {
+          "on": {
+            "index": 9,
+            "shadowFloorP1": 7.503799915313721
+          },
+          "again": {
+            "index": 10,
+            "shadowFloorP1": 7.431600093841553
+          },
+          "off": {
+            "index": 11,
+            "shadowFloorP1": 85.07396507263184
+          },
+          "regrown": {
+            "index": 12,
+            "shadowFloorP1": 13.070600509643555
+          }
+        },
+        "aboveTerrainM": 59.73407912070649,
+        "positionErrorM": 0.16153805499306997,
+        "repeat": 0.8141074701003086,
+        "coverage": 0.9990124662422839,
+        "target": 0.75,
+        "regrownIdentical": false,
+        "differing": {
+          "repeat": {
+            "0": 0.8141074701003086,
+            "1": 0.23336817611882715,
+            "2": 0.056482204861111114,
+            "4": 0.0050148292824074075,
+            "8": 0.0003030960648148148
+          },
+          "onOff": {
+            "0": 0.9990124662422839,
+            "1": 0.9978666329089506,
+            "2": 0.9953891782407407,
+            "4": 0.9553707320601852,
+            "8": 0.707465518904321
+          },
+          "regrownOff": {
+            "0": 0.9983977141203704,
+            "1": 0.9774148823302469,
+            "2": 0.9146572386188272,
+            "4": 0.7271915991512345,
+            "8": 0.5984633005401234
+          }
+        },
+        "texture": {
+          "on": 36.017578125,
+          "off": 7.61724853515625
+        },
+        "grass": {
+          "on": {
+            "instances": 6291798,
+            "asyncTasks": 0
+          },
+          "off": {
+            "instances": 0,
+            "asyncTasks": 0
+          },
+          "regrown": {
+            "instances": 6190826,
+            "asyncTasks": 0
+          }
+        },
+        "clearSeconds": 0.5005742020148318,
+        "regrowSeconds": 12.520696663006674
+      }
+    },
+    "textureProxyReferences": {
+      "/home/brook_avionuas/snr/.local/data/calibration/adult-kelvin/frame-00-+00-Drone1.jpg": 9.58563232421875,
+      ".local/evidence/world/valley-art/d2b/frames-2/meadow-nadir-30m.png": 11.574851036071777,
+      ".local/evidence/world/valley-art/d2b/frames-2/meadow-nadir-60m.png": 7.567010879516602,
+      ".local/evidence/world/valley-art/t5/frames/meadow-nadir-30m.png": 8.719999313354492,
+      ".local/evidence/world/valley-art/t5/frames/meadow-nadir-60m.png": 6.613553047180176
+    }
+  },
+  "performance": {
+    "tool": "world/unreal/measure_performance.py --lumen on",
+    "g3": {
+      "evidence": ".local/evidence/world/valley-art/g3/perf-2.json",
+      "gpuFrameMsP50": 17.445,
+      "gpuFrameMsP95": 18.0397,
+      "frameMsP95": 62.75516,
+      "captureSpikeFrameMsP95": 111.44830999999999,
+      "vramHighWaterMiB": 14140.0,
+      "fleetCaptureHz": 0.7983417311792732,
+      "peakRamBytes": 5856157696,
+      "stressGpuFrameMsP95": 44.2587
+    },
+    "d2bPass2": {
+      "evidence": ".local/evidence/world/valley-art/d2b/perf-2.json",
+      "gpuFrameMsP50": 23.608,
+      "gpuFrameMsP95": 44.372600000000006,
+      "frameMsP95": 364.96966,
+      "captureSpikeFrameMsP95": 395.163185,
+      "vramHighWaterMiB": 20429.0,
+      "fleetCaptureHz": 1.2184718725272505,
+      "peakRamBytes": 9967792128
+    },
+    "t6LumenOn": {
+      "evidence": ".local/evidence/world/valley-art/t6/perf-lumen-on.json",
+      "gpuFrameMsP50": 23.808500000000002,
+      "gpuFrameMsP95": 44.69275,
+      "frameMsP95": 379.41339999999997,
+      "captureSpikeFrameMsP95": 389.692505,
+      "vramHighWaterMiB": 19777.0,
+      "fleetCaptureHz": 1.2174755011609921,
+      "peakRamBytes": 9907712000
+    },
+    "pass2TooHeavy": ".local/evidence/world/valley-art/g3/perf-failed-pass2/ (26/m2: route arrival exceeded 120 s; runtime-last.json game thread 60.9 ms, 11.3M instances)",
+    "firstFinalRunHang": ".local/evidence/world/valley-art/g3/perf/ (EndPlay marker timed out; harness deadlock, perf-hang.md)",
+    "fleetCaptureHzNote": "0.798 vs 1.218 (d2b, t6): the mission lane took 99 s instead of about 65 s; the sim ran below real time under the runtime grass build load"
+  },
+  "flight": "not measured: the one-drone flight over meadow, creek and lake did not complete in this task (user close-out 20:37 UTC); it becomes a separate agent",
+  "brightness": {
+    "definition": "mean HSV (PIL) of the full frame and of grass pixels, those whose largest channel difference between the grass-on and grass-off frames at the same frozen pose exceeds 8 of 255",
+    "frames": {
+      "after (coverage-2, brightness 2.2, patches) meadow 30m": {
+        "path": ".local/evidence/world/valley-art/g3/coverage-2/frames/meadow-30m-on.png",
+        "full": {
+          "hueDegrees": 63.63634803921564,
+          "saturation": 0.5376081537649784,
+          "value": 0.5072497773125451
+        },
+        "grass": {
+          "hueDegrees": 66.54344455057529,
+          "saturation": 0.5379938375091696,
+          "value": 0.4972003161520553
+        },
+        "grassFraction": 0.8807174720293209,
+        "groundOff": {
+          "hueDegrees": 40.02469958469498,
+          "saturation": 0.5680303630325589,
+          "value": 0.5844645841843682
+        }
+      },
+      "after (coverage-2, brightness 2.2, patches) meadow 60m": {
+        "path": ".local/evidence/world/valley-art/g3/coverage-2/frames/meadow-60m-on.png",
+        "full": {
+          "hueDegrees": 53.94882012527228,
+          "saturation": 0.604336898696593,
+          "value": 0.5491597004735528
+        },
+        "grass": {
+          "hueDegrees": 61.99387919400218,
+          "saturation": 0.6201325973917601,
+          "value": 0.5170664604664366
+        },
+        "grassFraction": 0.6371794222608025,
+        "groundOff": {
+          "hueDegrees": 40.606653390522915,
+          "saturation": 0.5718332983463444,
+          "value": 0.6132448975732276
+        }
+      },
+      "before (coverage-final-poses, olive) meadow 30m": {
+        "path": ".local/evidence/world/valley-art/g3/coverage-final-poses/frames/meadow-30m-on.png",
+        "full": {
+          "hueDegrees": 69.3397727736929,
+          "saturation": 0.6341186985596704,
+          "value": 0.3126405952137802
+        },
+        "grass": {
+          "hueDegrees": 69.65770563770232,
+          "saturation": 0.6382845547309436,
+          "value": 0.307557388990863
+        },
+        "grassFraction": 0.9782608748070988,
+        "groundOff": {
+          "hueDegrees": 39.938390012254935,
+          "saturation": 0.5814426837478818,
+          "value": 0.5695404525236007
+        }
+      },
+      "before (coverage-final-poses, olive) meadow 60m": {
+        "path": ".local/evidence/world/valley-art/g3/coverage-final-poses/frames/meadow-60m-on.png",
+        "full": {
+          "hueDegrees": 57.15955099400874,
+          "saturation": 0.6457630865521367,
+          "value": 0.42305985990074924
+        },
+        "grass": {
+          "hueDegrees": 64.66285177295636,
+          "saturation": 0.6607162048964376,
+          "value": 0.35194443609630005
+        },
+        "grassFraction": 0.707465518904321,
+        "groundOff": {
+          "hueDegrees": 39.72152284177556,
+          "saturation": 0.5782386363206558,
+          "value": 0.5979980804435967
+        }
+      },
+      "t5 meadow 30m": {
+        "path": ".local/evidence/world/valley-art/t5/frames/meadow-nadir-30m.png",
+        "full": {
+          "hueDegrees": 39.603089256535995,
+          "saturation": 0.5384061540221792,
+          "value": 0.5693396153889801
+        }
+      },
+      "t5 meadow 60m": {
+        "path": ".local/evidence/world/valley-art/t5/frames/meadow-nadir-60m.png",
+        "full": {
+          "hueDegrees": 40.10475575299566,
+          "saturation": 0.5105302902217984,
+          "value": 0.5835513991958672
+        }
+      }
+    }
+  },
+  "linkLoss": ".local/evidence/world/valley-art/g3/link-loss.md",
+  "perfHang": ".local/evidence/world/valley-art/g3/perf-hang.md",
+  "moment5Crowns": {
+    "status": "failed",
+    "evidence": ".local/evidence/world/valley-art/g3/moment5-compare.jpg (d2b crowns present; t6 and g3 bare trunks; wind removal did not restore them)",
+    "frame": ".local/evidence/world/valley-art/g3/frames-2/moment5-forest-edge-oblique.png"
+  },
+  "checks": {
+    "npm-test": "exit 0",
+    "typecheck": "exit 0",
+    "format": "exit 0",
+    "unittest": "exit 0",
+    "ruff-check": "exit 0",
+    "ruff-format": "exit 0"
+  }
+}
