@@ -87,7 +87,7 @@ return w.x * BC0 + w.y * BC1 + w.z * BC2;
 """
 # Water body: Single Layer Water scattering and absorption per metre (linear RGB), and roughness.
 WATER = {
-    "granite-lake": ((0.002, 0.004, 0.006), (0.45, 0.09, 0.05), 0.03),
+    "granite-lake": ((0.0014, 0.0028, 0.0045), (0.45, 0.09, 0.05), 0.03),
     "lookout-tarn": ((0.002, 0.006, 0.008), (0.6, 0.15, 0.1), 0.03),
     "beaver-pond": ((0.008, 0.006, 0.003), (0.35, 0.5, 1.0), 0.04),
     "meadow-creek": ((0.002, 0.004, 0.003), (0.35, 0.07, 0.04), 0.08),
@@ -326,6 +326,7 @@ blends = {
     for key in ("BC", "N", "ORM")
 }
 scans = {asset_id: scan(asset_id) for asset_id in sorted({g[0] for g in GROUND.values()})}
+chains = {}
 for name in layers:
     asset_id, tint_a, tint_b = GROUND[name]
     images, tile_cm = scans[asset_id]
@@ -387,13 +388,25 @@ for name in layers:
         ("A", node(unreal.MaterialExpressionMultiply, ("A", blend), ("B", tint))),
         ("B", patch),
     )
-    for key, source, pin in (("BC", colour, ""), ("N", blend, "N"), ("ORM", blend, "ORM")):
+    chains[name] = {"BC": (colour, ""), "N": (blend, "N"), "ORM": (blend, "ORM")}
+    for key, (source, pin) in chains[name].items():
         assert ml.connect_material_expressions(source, pin, blends[key], f"Layer {name}")
         assert ml.connect_material_expressions(blend, "H", blends[key], f"Height {name}")
-output(blends["BC"], "MP_BASE_COLOR")
-output(blends["N"], "MP_NORMAL")
+# A static mesh gets no landscape layer weights: StaticTerrainLayerWeight returns PreviewWeight
+# only in preview materials (HLSLMaterialTranslator.cpp), so the apron takes dry meadow directly.
+switched = {
+    key: node(
+        unreal.MaterialExpressionStaticSwitchParameter,
+        ("True", chains["dry-meadow"][key]),
+        ("False", blends[key]),
+        parameter_name="Apron",
+    )
+    for key in blends
+}
+output(switched["BC"], "MP_BASE_COLOR")
+output(switched["N"], "MP_NORMAL")
 for pin, prop in (("r", "MP_AMBIENT_OCCLUSION"), ("g", "MP_ROUGHNESS")):
-    output(mask(blends["ORM"], pin), prop)
+    output(mask(switched["ORM"], pin), prop)
 save(ground)
 
 landscape = unreal.ScenarioLandscapeTools.create_landscape(
@@ -588,7 +601,11 @@ for index, ((vertices, triangles), haze) in enumerate(zip(ridges, CREST_HAZE, st
     horizon.append(surface(f"valley.horizon.crest{index}", buffers(vertices, triangles), material))
 # The apron runs 1 km past the farthest crest foot, so every crest stands on ground.
 reach = max(math.hypot(x, y) for vertices, _ in ridges for x, y, _ in vertices)
-ground_apron = surface("valley.apron", buffers(*apron(reach + 100000)), ground)
+apron_material = instance("MI_ValleyApron", ground, {}, {})
+ml.set_material_instance_static_switch_parameter_value(apron_material, "Apron", True)
+assert ml.get_material_instance_static_switch_parameter_value(apron_material, "Apron")
+assert lib.save_loaded_asset(apron_material)
+ground_apron = surface("valley.apron", buffers(*apron(reach + 100000)), apron_material)
 
 sun_rotation = unreal.Rotator(
     roll=0,

@@ -151,12 +151,36 @@ luminance-weighted vertex weights) and tinted by 16 m and 120 m colour fields. S
 on the tangent plane, so slopes keep the scan scale, and each scan's mean normal is removed before
 the per-cell rotation. The script rebuilds every asset in `/Game/Valley/Ground`, adds flat Single
 Layer Water surfaces for the lake, tarn and pond at their receipt levels and a creek ribbon at the
-receipt water surface out to the bank tops, the four crest layers and the apron in the ground
-material, removes the legacy horizon plane and port plinth, asserts the kept actors, and sets the
+receipt water surface out to the bank tops, the four crest layers and the apron in `MI_ValleyApron`,
+whose `Apron` static switch feeds the dry-meadow layer straight to the outputs (a static mesh gets
+no landscape layer weights), removes the legacy horizon plane and port plinth, asserts the kept actors, and sets the
 directional light to the `world.json` sun. Single Layer Water needs Opacity 0: the unconnected default of 1
-replaces the water volume with a black base colour. Foliage, props and the regenerated Mission
-Control minimap belong to the asset-approved authoring stage. Do not label unchanged cooked scenery
-with the valley manifest.
+replaces the water volume with a black base colour. The regenerated Mission Control minimap
+belongs to the asset-approved authoring stage. Do not label unchanged cooked scenery with the valley
+manifest.
+
+`valley-dressing.json` places every mesh under `/Game/Valley`: each mesh records its Unreal bounds
+and collision profile (`ScenarioTerrain` for the bridge, rocks and logs, `ScenarioObstacle` for
+structures and props, `NoCollision` for vegetation and small debris). Scatter rows fill stratified
+cells, keep the fraction under a seeded cluster noise and accept points inside their `polygon`
+edge band, creek `line` band, `box` or layer `mask`, outside the trail and road treads, creek bank
+tops, ponds and structure-like polygons; instances get a random yaw and ±15% scale. Explicit rows
+(`at`) give poses whose footprints must lie in their area. Instances taller than 4 m must stand in
+a forest, structure, obstacle or outcrop polygon whose `heightM` covers them. Adding an asset is
+one mesh entry and one row. Plan into a new directory, then author it after `build-open-meadow`:
+
+```sh
+.venv-cosys/bin/python -m world.unreal.valley_dressing \
+  --output .local/evidence/world/valley/<new-dressing-run>/placements.json
+SNR_EVIDENCE_DIR=.local/evidence/world/valley/<new-dressing-run> \
+  bash world/unreal/scripts/author-unreal.sh build-valley-dressing
+```
+
+Ground heights are the bilinear heightfield (explicit footprints use the median of centre and
+corners, so the footbridge rests on its banks); landing mats sit on the drone port. The editor step
+writes one foliage type per mesh into the `valley.dressing` foliage actor, then proves that
+scenario ground traces reach only terrain or `ScenarioTerrain` meshes and that a walker-sized
+capsule standing every 5 m along each trail and road overlaps nothing.
 
 ## Asset review
 

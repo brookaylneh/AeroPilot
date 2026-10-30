@@ -36,7 +36,7 @@
           }
         ]
       },
-      "heightM": 3.5
+      "heightM": 4.0
     },
     {
       "id": "incident-command",
@@ -72,6 +72,41 @@
         ]
       },
       "heightM": 4
+    },
+    {
+      "id": "antenna-mast",
+      "name": "ICP Antenna Mast",
+      "aliases": [
+        "antenna mast",
+        "radio mast"
+      ],
+      "kind": "obstacle",
+      "geometry": {
+        "type": "polygon",
+        "points": [
+          {
+            "x": -75950.0,
+            "y": -2500.0,
+            "z": 1087.7477
+          },
+          {
+            "x": -75950.0,
+            "y": -1920.0,
+            "z": 1078.5121
+          },
+          {
+            "x": -75400.0,
+            "y": -1920.0,
+            "z": 1081.6027
+          },
+          {
+            "x": -75400.0,
+            "y": -2500.0,
+            "z": 1081.2875
+          }
+        ]
+      },
+      "heightM": 6.0
     },
     {
       "id": "trailhead-access",
@@ -6626,7 +6661,7 @@
           }
         ]
       },
-      "heightM": 9
+      "heightM": 12.5
     },
     {
       "id": "fire-lookout",
@@ -6662,7 +6697,7 @@
           }
         ]
       },
-      "heightM": 12
+      "heightM": 12.5
     },
     {
       "id": "ranger-cabin",
@@ -6741,7 +6776,7 @@
           }
         ]
       },
-      "heightM": 1.4
+      "heightM": 1.5
     },
     {
       "id": "fire-road",
@@ -9429,7 +9464,7 @@
           }
         ]
       },
-      "heightM": 18
+      "heightM": 13.0
     },
     {
       "id": "lookout-tarn",
