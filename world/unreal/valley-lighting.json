@@ -1,0 +1,8 @@
+{
+  "exposureEv100": 13,
+  "haze": {
+    "visibilityKm": 60,
+    "halfHeightM": 1000,
+    "heightM": 0
+  }
+}
