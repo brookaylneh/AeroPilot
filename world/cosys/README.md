@@ -485,9 +485,16 @@ Generate the current numeric valley terrain from the repository root:
 The generator reconstructs and verifies the analytic meadow before shaping, carving
 and grading from `world/unreal/landmarks.json`. It refuses existing output and evidence
 destinations, and writes the numeric field and its landscape layer masks under
-`.local/world/valley/terrain/`; the updated browser minimap follows asset authoring.
-The minimap generator transposes raw axes and reverses north to put north at the
-top. Current dimensions come only from the world file.
+`.local/world/valley/terrain/`. The browser map `web/public/maps/valley-topographic.png`
+is drawn from that field and its masks with 5 m contours:
+
+```sh
+.venv-cosys/bin/python -m world.unreal.scripts.generate-minimap --evidence-dir <new-directory>
+```
+
+It transposes raw axes and reverses north to put north at the top, and fails unless the
+heightfield agrees with the north-up image and disagrees with its mirror and flip. Existing
+outputs fail. Current dimensions come only from the world file.
 
 `test_terrain.py` checks asymmetric corners/edge samples, the uncarved analytic
 meadow's original-square bit identity, and duplicated extent literals in tracked

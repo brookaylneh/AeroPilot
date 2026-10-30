@@ -664,7 +664,7 @@ async function worldViews(browser, url, output) {
     assert(Math.abs(terrain.height - Math.min(stage.height, stage.width / aspect)) < 0.1);
     const image = await page.evaluate(async () => {
       const image = new Image();
-      image.src = '/maps/open-meadow-topographic.png';
+      image.src = '/maps/valley-topographic.png';
       await image.decode();
       return { width: image.naturalWidth, height: image.naturalHeight };
     });

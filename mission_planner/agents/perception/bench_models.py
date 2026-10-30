@@ -84,7 +84,7 @@ def main():
 
     if args.case.startswith("wonder"):
         model = attach(Wonder())
-        map_image = (ROOT / "web/public/maps/open-meadow-topographic.png").read_bytes()
+        map_image = (ROOT / "web/public/maps/valley-topographic.png").read_bytes()
         text = (
             "The rescue team searches a meadow with four drones. Each drone captures a downward "
             "image and reports its position, altitude, battery, and observed candidates. "

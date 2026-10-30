@@ -155,9 +155,8 @@ receipt water surface out to the bank tops, the four crest layers and the apron 
 whose `Apron` static switch feeds the dry-meadow layer straight to the outputs (a static mesh gets
 no landscape layer weights), removes the legacy horizon plane and port plinth, asserts the kept actors, and sets the
 directional light to the `world.json` sun. Single Layer Water needs Opacity 0: the unconnected default of 1
-replaces the water volume with a black base colour. The regenerated Mission Control minimap
-belongs to the asset-approved authoring stage. Do not label unchanged cooked scenery with the valley
-manifest.
+replaces the water volume with a black base colour. Do not label unchanged cooked scenery with the
+valley manifest.
 
 `valley-grass.json` is the meadow ground cover: one landscape grass type per entry, spawned at
 runtime by the landscape material (`grass.GrassMap.UseRuntimeGeneration=1` in `DefaultEngine.ini`;

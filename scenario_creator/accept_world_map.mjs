@@ -91,8 +91,8 @@ const errors = [],
   interactions = [];
 const eastMetres = (world.searchBoundsCm.max.y - world.searchBoundsCm.min.y) / 100;
 const northMetres = (world.searchBoundsCm.max.x - world.searchBoundsCm.min.x) / 100;
-const minimap = await readFile('web/public/maps/open-meadow-topographic.png');
-const minimapResponse = await fetch(new URL('/maps/open-meadow-topographic.png', origin), {
+const minimap = await readFile('web/public/maps/valley-topographic.png');
+const minimapResponse = await fetch(new URL('/maps/valley-topographic.png', origin), {
   signal: AbortSignal.timeout(10000),
 });
 assert.equal(minimapResponse.status, 200);

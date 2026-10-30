@@ -345,7 +345,7 @@ export default function MissionMap({
           aria-label="Live aircraft positions and autopilot mission readback"
         >
           <image
-            href="/maps/open-meadow-topographic.png"
+            href="/maps/valley-topographic.png"
             x={topLeft.x}
             y={topLeft.y}
             width={bottomRight.x - topLeft.x}

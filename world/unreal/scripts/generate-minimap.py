@@ -1,4 +1,4 @@
-"""North-up map from the exact rectangular heightfield and trail mask."""
+"""North-up topographic map of the valley heightfield with its water, roads, trails and forest."""
 
 import argparse
 import hashlib
@@ -9,42 +9,98 @@ import numpy as np
 from PIL import Image
 
 from mission_planner.environment import load_env
-from world.cosys.terrain import BOUNDS, COLUMNS, FIELD, ROOT, ROWS, WORLD
+from world.cosys.terrain import BOUNDS, COLUMNS, FIELD, ROOT, ROWS, WORLD, terrain_height
+
+OUTPUT = ROOT / "web/public/maps/valley-topographic.png"
+IMAGE_HEIGHT = 2048
+CONTOUR_M = 5
+# Terrain mask, colour and opacity, drawn in this order over the shaded relief.
+LAYERS = (
+    ("needle-floor", (64, 92, 56), 0.45),
+    ("granite", (168, 166, 158), 0.6),
+    ("cobble-bed", (78, 132, 184), 0.85),
+    ("pond-silt", (78, 132, 184), 0.95),
+    ("gravel-road", (176, 160, 136), 0.9),
+    ("trail-tread", (227, 213, 162), 0.85),
+)
+
+
+def display(samples, size):
+    """Heightfield layout (rows +Y, columns +X) to north-up display (rows -X, columns +Y)."""
+    return np.asarray(Image.fromarray(np.flipud(samples.T)).resize(size))
 
 
 def generate(evidence_dir):
     load_env()
-    evidence = evidence_dir / "navigation-minimap.json"
-    assert not evidence.exists()
+    evidence = evidence_dir / "valley-topographic.json"
+    assert not evidence.exists() and not OUTPUT.exists(), "Map outputs must be new"
     source = ROOT / FIELD["path"]
     assert hashlib.sha256(source.read_bytes()).hexdigest() == WORLD["heightfieldSha256"]
-    height = np.fromfile(source, dtype="<u2").reshape(ROWS, COLUMNS).astype(float)
+    terrain = json.loads((source.parent / "terrain.json").read_text())
+    assert terrain["heightfieldSha256"] == WORLD["heightfieldSha256"]
+    height = np.fromfile(source, dtype="<u2").reshape(ROWS, COLUMNS).astype("float32")
     height = (height - FIELD["zeroSample"]) / FIELD["samplesPerMetre"]
     north_m, east_m = [(BOUNDS["max"][a] - BOUNDS["min"][a]) / 100 for a in "xy"]
-    image_height = 2048
-    image_width = round(image_height * east_m / north_m)
-    # Input rows are +Y, columns +X; display rows are -X, columns +Y.
-    height = np.flipud(height.T)
-    height = np.asarray(Image.fromarray(height.astype("float32")).resize((image_width, image_height)))
-    dy, dx = np.gradient(height, north_m / (image_height - 1), east_m / (image_width - 1))
-    shade = np.clip((1 + .9 * dx - .8 * dy) / np.sqrt(1 + dx * dx + dy * dy), .6, 1.3)
-    base = np.array([114, 133, 82]) + (height[..., None] / 46) * np.array([32, 23, 14])
-    rgb = base * shade[..., None]
-    contour = np.abs((height + .18) % 5 - .18) < .12
-    rgb[contour] *= .79
-    trail = np.asarray(Image.open(source.parent / "ground-mask.png"))[:, :, 0]
-    trail = np.asarray(Image.fromarray(np.flipud(trail.T)).resize((image_width, image_height))).astype(float) / 255
-    rgb = rgb * (1 - trail[..., None] * .85) + np.array([227, 213, 162]) * trail[..., None] * .85
-    out = ROOT / "web/public/maps/open-meadow-topographic.png"
-    out.parent.mkdir(parents=True, exist_ok=True)
-    Image.fromarray(np.clip(rgb, 0, 255).astype("uint8")).save(out, optimize=True)
+    size = (round(IMAGE_HEIGHT * east_m / north_m), IMAGE_HEIGHT)
+    shown = display(height, size)
+    dy, dx = np.gradient(shown, north_m / (size[1] - 1), east_m / (size[0] - 1))
+    shade = np.clip((1 + 0.9 * dx - 0.8 * dy) / np.sqrt(1 + dx * dx + dy * dy), 0.6, 1.3)
+    level = (shown - shown.min()) / (shown.max() - shown.min())
+    rgb = np.array([114, 133, 82]) + level[..., None] * np.array([70, 50, 30])
+    rgb = rgb * shade[..., None]
+    band = np.floor(shown / CONTOUR_M)
+    contour = np.zeros(band.shape, dtype=bool)
+    contour[1:] |= band[1:] != band[:-1]
+    contour[:, 1:] |= band[:, 1:] != band[:, :-1]
+    rgb[contour] *= 0.72
+    masks = {}
+    for name, colour, opacity in LAYERS:
+        path = source.parent / f"mask-{name}.png"
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        assert digest == terrain["masks"]["files"][name]["sha256"], path
+        masks[name] = digest
+        weight = display(np.asarray(Image.open(path)), size)[..., None] / 255 * opacity
+        rgb = rgb * (1 - weight) + np.array(colour) * weight
+    OUTPUT.parent.mkdir(parents=True, exist_ok=True)
+    Image.fromarray(np.clip(rgb, 0, 255).astype("uint8")).save(OUTPUT, optimize=True)
+
+    # Pixel (row, column) at fractions (v, u) of the map is north v from the top, east u from the
+    # left. A mirrored or flipped image must disagree with the heightfield by far more.
+    lo, hi = BOUNDS["min"], BOUNDS["max"]
+    errors = {"northUp": [], "mirrored": [], "flipped": []}
+    for v in np.linspace(0.02, 0.98, 13):
+        for u in np.linspace(0.02, 0.98, 13):
+            row, column = int(v * size[1]), int(u * size[0])
+            expected = terrain_height(
+                (hi["x"] - v * (hi["x"] - lo["x"])) / 100, (lo["y"] + u * (hi["y"] - lo["y"])) / 100
+            )
+            for key, (r, c) in (
+                ("northUp", (row, column)),
+                ("mirrored", (row, size[0] - 1 - column)),
+                ("flipped", (size[1] - 1 - row, column)),
+            ):
+                errors[key].append(abs(float(shown[r, c]) - expected))
+    proof = {key: {"samples": len(e), "maximumErrorM": max(e)} for key, e in errors.items()}
+    assert proof["northUp"]["maximumErrorM"] < 1, proof
+    assert min(proof["mirrored"]["maximumErrorM"], proof["flipped"]["maximumErrorM"]) > 10, proof
     report = {
-        "source": "Actual Open Meadow heightfield and trail mask",
+        "source": "Valley heightfield and terrain masks",
+        "environmentAssetVersion": WORLD["environmentAssetVersion"],
         "heightfieldSha256": WORLD["heightfieldSha256"],
-        "north": "Unreal +X", "east": "Unreal +Y", "widthMetres": east_m, "heightMetres": north_m,
-        "resolution": [image_width, image_height], "output": str(out.relative_to(ROOT)),
-        "outputSha256": hashlib.sha256(out.read_bytes()).hexdigest(),
-        "bytes": out.stat().st_size, "containsPrivateTarget": False,
+        "masks": masks,
+        "top": "Unreal +X (north)",
+        "right": "Unreal +Y (east)",
+        "boundsCm": BOUNDS,
+        "widthMetres": east_m,
+        "heightMetres": north_m,
+        "metresPerPixel": north_m / size[1],
+        "contourIntervalM": CONTOUR_M,
+        "resolution": list(size),
+        "orientationProof": proof,
+        "output": str(OUTPUT.relative_to(ROOT)),
+        "outputSha256": hashlib.sha256(OUTPUT.read_bytes()).hexdigest(),
+        "bytes": OUTPUT.stat().st_size,
+        "containsPrivateTarget": False,
     }
     evidence_dir.mkdir(parents=True, exist_ok=True)
     evidence.write_text(json.dumps(report, indent=2) + "\n")

@@ -218,7 +218,7 @@ export default function WorldMap({
         }}
       >
         <img
-          src="/maps/open-meadow-topographic.png"
+          src="/maps/valley-topographic.png"
           alt="Terrain and trail, north up"
           draggable={false}
           style={{
