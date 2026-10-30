@@ -96,7 +96,7 @@ case "$mode" in
     ;;
   character-authoring)
     exec docker run "${container_flags[@]}" "${gpu_flags[@]}" --pid=host \
-      --name snr-character-authoring --ulimit memlock=-1 snr-unreal-fab:5.8.2 \
+      --name snr-character-authoring --ulimit memlock=-1 snr-unreal-authoring:5.8.2 \
       xvfb-run -a --server-args="-screen 0 2048x2048x24 -nolisten tcp" "$@" -ScriptErrorsAreFatal
     ;;
   mcp-editor)

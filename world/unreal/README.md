@@ -4,12 +4,12 @@
 port and telemetry. The JSON files beside it are asset manifests and locks. [Assets](assets.md) lists licences;
 [streaming](streaming.md) covers Pixel Streaming quality.
 
-| Path                      | Purpose                                                                               |
-| ------------------------- | ------------------------------------------------------------------------------------- |
-| `ScenarioStudio/Source/`  | C++ game module                                                                       |
-| `ScenarioStudio/Scripts/` | Editor Python operations, run with `scripts/author-unreal.sh <name>`                  |
-| `scripts/`                | Build, package, stage, run and stream                                                 |
-| `docker/`                 | Editor, runtime and Fab images; runtime configuration in `deploy/runtime.env.example` |
+| Path                      | Purpose                                                                                     |
+| ------------------------- | ------------------------------------------------------------------------------------------- |
+| `ScenarioStudio/Source/`  | C++ game module                                                                             |
+| `ScenarioStudio/Scripts/` | Editor Python operations, run with `scripts/author-unreal.sh <name>`                        |
+| `scripts/`                | Build, package, stage, run and stream                                                       |
+| `docker/`                 | Editor, runtime and authoring images; runtime configuration in `deploy/runtime.env.example` |
 
 Licensed content (`Content/`, `Plugins/`) and engine output are not tracked. Packaged builds, releases and the
 `Live` link live in `.local/unreal/`.
@@ -57,8 +57,8 @@ bash world/unreal/scripts/unreal-container.sh build
 Package only after selecting the matching Content and explicit manifests described
 under [Rendering and packaging](#rendering-and-packaging).
 
-The `character-authoring` mode of `unreal-container.sh` needs
-`docker build -t snr-unreal-fab:5.8.2 - < world/unreal/docker/fab.Dockerfile`.
+The `character-authoring` mode of `unreal-container.sh` adds a private X display:
+`docker build -t snr-unreal-authoring:5.8.2 - < world/unreal/docker/authoring.Dockerfile`.
 
 ## Valley foundations
 
