@@ -166,17 +166,6 @@
    ],
    "collision": "NoCollision"
   },
-  "Rocks/SM_Creek_Cobbles": {
-   "boundsM": [
-    -0.3084,
-    0.3118,
-    -0.2851,
-    0.286,
-    0.0,
-    0.2
-   ],
-   "collision": "NoCollision"
-  },
   "Rocks/SM_Erratic_A": {
    "boundsM": [
     -1.1671,
@@ -240,6 +229,17 @@
     4.02,
     -0.25,
     12.0141
+   ],
+   "collision": "ScenarioObstacle"
+  },
+  "Structures/SM_Ranger_Cabin": {
+   "boundsM": [
+    -4.9328,
+    4.7222,
+    -3.33,
+    3.3299,
+    0.0,
+    5.7832
    ],
    "collision": "ScenarioObstacle"
   },
@@ -352,50 +352,6 @@
     0.5
    ],
    "collision": "ScenarioTerrain"
-  },
-  "Vegetation/SM_Grass_FestucaMedium": {
-   "boundsM": [
-    -0.231,
-    0.2803,
-    -0.2798,
-    0.35,
-    -0.0357,
-    0.5
-   ],
-   "collision": "NoCollision"
-  },
-  "Vegetation/SM_Grass_FestucaShort": {
-   "boundsM": [
-    -0.3337,
-    0.3223,
-    -0.3683,
-    0.3385,
-    -0.06,
-    0.45
-   ],
-   "collision": "NoCollision"
-  },
-  "Vegetation/SM_Grass_FestucaSmall": {
-   "boundsM": [
-    -0.3113,
-    0.2081,
-    -0.2589,
-    0.2282,
-    -0.0052,
-    0.55
-   ],
-   "collision": "NoCollision"
-  },
-  "Vegetation/SM_Grass_Lawn": {
-   "boundsM": [
-    -0.6026,
-    0.288,
-    -0.453,
-    0.4935,
-    -0.042,
-    0.35
-   ],
-   "collision": "NoCollision"
   },
   "Vegetation/SM_Lodgepole_EdgeStandard": {
    "boundsM": [
@@ -551,50 +507,6 @@
    ],
    "collision": "NoCollision"
   },
-  "Vegetation/SM_Sedge_CarexA": {
-   "boundsM": [
-    -0.1036,
-    0.1177,
-    -0.103,
-    0.1429,
-    0.0,
-    0.411
-   ],
-   "collision": "NoCollision"
-  },
-  "Vegetation/SM_Sedge_CarexB": {
-   "boundsM": [
-    -0.2051,
-    0.2074,
-    -0.221,
-    0.1405,
-    0.0,
-    0.437
-   ],
-   "collision": "NoCollision"
-  },
-  "Vegetation/SM_Seedheads_AnaphalisA": {
-   "boundsM": [
-    -0.086,
-    0.0381,
-    -0.1071,
-    0.0789,
-    0.0,
-    0.313
-   ],
-   "collision": "NoCollision"
-  },
-  "Vegetation/SM_Seedheads_AnaphalisB": {
-   "boundsM": [
-    -0.0705,
-    0.1196,
-    -0.1055,
-    0.1448,
-    0.0,
-    0.394
-   ],
-   "collision": "NoCollision"
-  },
   "Vegetation/SM_Snag_Barkless": {
    "boundsM": [
     -1.8702,
@@ -719,7 +631,7 @@
  },
  "rows": [
   {
-   "name": "west-canopy",
+   "name": "forest-canopy",
    "meshes": [
     "Vegetation/SM_Lodgepole_MatureGiant",
     "Vegetation/SM_Lodgepole_MatureRocketDamaged",
@@ -747,8 +659,12 @@
    "region": [
     [
      "polygon",
-     "west-lodgepoles",
-     -1000000.0,
+     [
+      "west-lodgepoles",
+      "north-lodgepoles",
+      "east-lodgepoles"
+     ],
+     -Infinity,
      -7
     ]
    ],
@@ -758,7 +674,7 @@
    "ground": "terrain"
   },
   {
-   "name": "west-edge",
+   "name": "forest-edge",
    "meshes": [
     "Vegetation/SM_Lodgepole_EdgeStandard",
     "Vegetation/SM_Lodgepole_EdgeTopped",
@@ -777,116 +693,13 @@
    "region": [
     [
      "polygon",
-     "west-lodgepoles",
+     [
+      "west-lodgepoles",
+      "north-lodgepoles",
+      "east-lodgepoles"
+     ],
      -7,
      -1.5
-    ]
-   ],
-   "clearM": 2.5,
-   "scale": 0.9,
-   "align": false,
-   "ground": "terrain"
-  },
-  {
-   "name": "west-saplings",
-   "meshes": [
-    "Vegetation/SM_Lodgepole_SaplingRocket",
-    "Vegetation/SM_Lodgepole_SaplingRocket25",
-    "Vegetation/SM_Lodgepole_SaplingBranchy25"
-   ],
-   "spacingM": 3.5,
-   "keep": 0.3,
-   "clusterM": 12,
-   "region": [
-    [
-     "polygon",
-     "west-lodgepoles",
-     0,
-     22
-    ]
-   ],
-   "clearM": 1.0,
-   "scale": 1.0,
-   "align": false,
-   "ground": "terrain"
-  },
-  {
-   "name": "west-logs",
-   "meshes": [
-    "Vegetation/SM_Log_TimberA",
-    "Vegetation/SM_Log_TimberB",
-    "Vegetation/SM_Log_Ripped"
-   ],
-   "spacingM": 14,
-   "keep": 0.45,
-   "clusterM": 30,
-   "region": [
-    [
-     "polygon",
-     "west-lodgepoles",
-     -1000000.0,
-     -4
-    ]
-   ],
-   "clearM": 2.0,
-   "scale": 1.0,
-   "align": true,
-   "ground": "terrain"
-  },
-  {
-   "name": "west-stumps",
-   "meshes": [
-    "Vegetation/SM_Stump_Short",
-    "Vegetation/SM_Stump_Trunkbase"
-   ],
-   "spacingM": 16,
-   "keep": 0.4,
-   "clusterM": 30,
-   "region": [
-    [
-     "polygon",
-     "west-lodgepoles",
-     -1000000.0,
-     -2
-    ]
-   ],
-   "clearM": 1.0,
-   "scale": 1.0,
-   "align": false,
-   "ground": "terrain"
-  },
-  {
-   "name": "north-canopy",
-   "meshes": [
-    "Vegetation/SM_Lodgepole_MatureGiant",
-    "Vegetation/SM_Lodgepole_MatureRocketDamaged",
-    "Vegetation/SM_Lodgepole_MatureBranchyDamaged",
-    "Vegetation/SM_Lodgepole_MatureStandardDamaged",
-    "Vegetation/SM_Lodgepole_MatureGiant",
-    "Vegetation/SM_Lodgepole_MatureRocketDamaged",
-    "Vegetation/SM_Lodgepole_MatureBranchyDamaged",
-    "Vegetation/SM_Lodgepole_MatureStandardDamaged",
-    "Vegetation/SM_Lodgepole_MatureGiant",
-    "Vegetation/SM_Lodgepole_MatureRocketDamaged",
-    "Vegetation/SM_Lodgepole_MatureBranchyDamaged",
-    "Vegetation/SM_Lodgepole_MatureStandardDamaged",
-    "Vegetation/SM_Lodgepole_MatureGiant",
-    "Vegetation/SM_Lodgepole_MatureRocketDamaged",
-    "Vegetation/SM_Lodgepole_MatureBranchyDamaged",
-    "Vegetation/SM_Lodgepole_MatureStandardDamaged",
-    "Vegetation/SM_Snag_Barkless",
-    "Vegetation/SM_Snag_Peeling",
-    "Vegetation/SM_Snag_Ponderosa"
-   ],
-   "spacingM": 5.5,
-   "keep": 0.72,
-   "clusterM": 35,
-   "region": [
-    [
-     "polygon",
-     "north-lodgepoles",
-     -1000000.0,
-     -7
     ]
    ],
    "clearM": 2.5,
@@ -895,37 +708,7 @@
    "ground": "terrain"
   },
   {
-   "name": "north-edge",
-   "meshes": [
-    "Vegetation/SM_Lodgepole_EdgeStandard",
-    "Vegetation/SM_Lodgepole_EdgeTopped",
-    "Vegetation/SM_Lodgepole_EdgeStandard",
-    "Vegetation/SM_Lodgepole_EdgeTopped",
-    "Vegetation/SM_Lodgepole_EdgeStandard",
-    "Vegetation/SM_Lodgepole_EdgeTopped",
-    "Vegetation/SM_Lodgepole_MatureGiant",
-    "Vegetation/SM_Lodgepole_MatureRocketDamaged",
-    "Vegetation/SM_Lodgepole_MatureBranchyDamaged",
-    "Vegetation/SM_Lodgepole_MatureStandardDamaged"
-   ],
-   "spacingM": 5.0,
-   "keep": 0.5,
-   "clusterM": 18,
-   "region": [
-    [
-     "polygon",
-     "north-lodgepoles",
-     -7,
-     -1.5
-    ]
-   ],
-   "clearM": 2.5,
-   "scale": 0.9,
-   "align": false,
-   "ground": "terrain"
-  },
-  {
-   "name": "north-saplings",
+   "name": "forest-saplings",
    "meshes": [
     "Vegetation/SM_Lodgepole_SaplingRocket",
     "Vegetation/SM_Lodgepole_SaplingRocket25",
@@ -937,7 +720,11 @@
    "region": [
     [
      "polygon",
-     "north-lodgepoles",
+     [
+      "west-lodgepoles",
+      "north-lodgepoles",
+      "east-lodgepoles"
+     ],
      0,
      22
     ]
@@ -948,7 +735,7 @@
    "ground": "terrain"
   },
   {
-   "name": "north-logs",
+   "name": "forest-logs",
    "meshes": [
     "Vegetation/SM_Log_TimberA",
     "Vegetation/SM_Log_TimberB",
@@ -960,8 +747,12 @@
    "region": [
     [
      "polygon",
-     "north-lodgepoles",
-     -1000000.0,
+     [
+      "west-lodgepoles",
+      "north-lodgepoles",
+      "east-lodgepoles"
+     ],
+     -Infinity,
      -4
     ]
    ],
@@ -971,7 +762,7 @@
    "ground": "terrain"
   },
   {
-   "name": "north-stumps",
+   "name": "forest-stumps",
    "meshes": [
     "Vegetation/SM_Stump_Short",
     "Vegetation/SM_Stump_Trunkbase"
@@ -982,145 +773,12 @@
    "region": [
     [
      "polygon",
-     "north-lodgepoles",
-     -1000000.0,
-     -2
-    ]
-   ],
-   "clearM": 1.0,
-   "scale": 1.0,
-   "align": false,
-   "ground": "terrain"
-  },
-  {
-   "name": "east-canopy",
-   "meshes": [
-    "Vegetation/SM_Lodgepole_MatureGiant",
-    "Vegetation/SM_Lodgepole_MatureRocketDamaged",
-    "Vegetation/SM_Lodgepole_MatureBranchyDamaged",
-    "Vegetation/SM_Lodgepole_MatureStandardDamaged",
-    "Vegetation/SM_Lodgepole_MatureGiant",
-    "Vegetation/SM_Lodgepole_MatureRocketDamaged",
-    "Vegetation/SM_Lodgepole_MatureBranchyDamaged",
-    "Vegetation/SM_Lodgepole_MatureStandardDamaged",
-    "Vegetation/SM_Lodgepole_MatureGiant",
-    "Vegetation/SM_Lodgepole_MatureRocketDamaged",
-    "Vegetation/SM_Lodgepole_MatureBranchyDamaged",
-    "Vegetation/SM_Lodgepole_MatureStandardDamaged",
-    "Vegetation/SM_Lodgepole_MatureGiant",
-    "Vegetation/SM_Lodgepole_MatureRocketDamaged",
-    "Vegetation/SM_Lodgepole_MatureBranchyDamaged",
-    "Vegetation/SM_Lodgepole_MatureStandardDamaged",
-    "Vegetation/SM_Snag_Barkless",
-    "Vegetation/SM_Snag_Peeling",
-    "Vegetation/SM_Snag_Ponderosa"
-   ],
-   "spacingM": 5.5,
-   "keep": 0.72,
-   "clusterM": 35,
-   "region": [
-    [
-     "polygon",
-     "east-lodgepoles",
-     -1000000.0,
-     -7
-    ]
-   ],
-   "clearM": 2.5,
-   "scale": 0.89,
-   "align": false,
-   "ground": "terrain"
-  },
-  {
-   "name": "east-edge",
-   "meshes": [
-    "Vegetation/SM_Lodgepole_EdgeStandard",
-    "Vegetation/SM_Lodgepole_EdgeTopped",
-    "Vegetation/SM_Lodgepole_EdgeStandard",
-    "Vegetation/SM_Lodgepole_EdgeTopped",
-    "Vegetation/SM_Lodgepole_EdgeStandard",
-    "Vegetation/SM_Lodgepole_EdgeTopped",
-    "Vegetation/SM_Lodgepole_MatureGiant",
-    "Vegetation/SM_Lodgepole_MatureRocketDamaged",
-    "Vegetation/SM_Lodgepole_MatureBranchyDamaged",
-    "Vegetation/SM_Lodgepole_MatureStandardDamaged"
-   ],
-   "spacingM": 5.0,
-   "keep": 0.5,
-   "clusterM": 18,
-   "region": [
-    [
-     "polygon",
-     "east-lodgepoles",
-     -7,
-     -1.5
-    ]
-   ],
-   "clearM": 2.5,
-   "scale": 0.9,
-   "align": false,
-   "ground": "terrain"
-  },
-  {
-   "name": "east-saplings",
-   "meshes": [
-    "Vegetation/SM_Lodgepole_SaplingRocket",
-    "Vegetation/SM_Lodgepole_SaplingRocket25",
-    "Vegetation/SM_Lodgepole_SaplingBranchy25"
-   ],
-   "spacingM": 3.5,
-   "keep": 0.3,
-   "clusterM": 12,
-   "region": [
-    [
-     "polygon",
-     "east-lodgepoles",
-     0,
-     22
-    ]
-   ],
-   "clearM": 1.0,
-   "scale": 1.0,
-   "align": false,
-   "ground": "terrain"
-  },
-  {
-   "name": "east-logs",
-   "meshes": [
-    "Vegetation/SM_Log_TimberA",
-    "Vegetation/SM_Log_TimberB",
-    "Vegetation/SM_Log_Ripped"
-   ],
-   "spacingM": 14,
-   "keep": 0.45,
-   "clusterM": 30,
-   "region": [
-    [
-     "polygon",
-     "east-lodgepoles",
-     -1000000.0,
-     -4
-    ]
-   ],
-   "clearM": 2.0,
-   "scale": 1.0,
-   "align": true,
-   "ground": "terrain"
-  },
-  {
-   "name": "east-stumps",
-   "meshes": [
-    "Vegetation/SM_Stump_Short",
-    "Vegetation/SM_Stump_Trunkbase"
-   ],
-   "spacingM": 16,
-   "keep": 0.4,
-   "clusterM": 30,
-   "region": [
-    [
-     "polygon",
-     "east-lodgepoles",
-     -1000000.0,
+     [
+      "west-lodgepoles",
+      "north-lodgepoles",
+      "east-lodgepoles"
+     ],
+     -Infinity,
      -2
     ]
    ],
@@ -1142,37 +800,15 @@
    "region": [
     [
      "polygon",
-     "aspen-bend",
-     -1000000.0,
+     [
+      "aspen-bend"
+     ],
+     -Infinity,
      -1.5
     ]
    ],
    "clearM": 2.0,
    "scale": 0.92,
-   "align": false,
-   "ground": "terrain"
-  },
-  {
-   "name": "aspen-grass",
-   "meshes": [
-    "Vegetation/SM_Grass_FestucaSmall",
-    "Vegetation/SM_Grass_FestucaMedium",
-    "Vegetation/SM_Grass_FestucaShort",
-    "Vegetation/SM_Grass_Lawn"
-   ],
-   "spacingM": 0.8,
-   "keep": 0.6,
-   "clusterM": 6,
-   "region": [
-    [
-     "polygon",
-     "aspen-bend",
-     -1000000.0,
-     0
-    ]
-   ],
-   "clearM": 0.4,
-   "scale": 1.0,
    "align": false,
    "ground": "terrain"
   },
@@ -1187,71 +823,15 @@
    "region": [
     [
      "polygon",
-     "aspen-bend",
-     -1000000.0,
+     [
+      "aspen-bend"
+     ],
+     -Infinity,
      -3
     ]
    ],
    "clearM": 2.0,
    "scale": 0.3,
-   "align": false,
-   "ground": "terrain"
-  },
-  {
-   "name": "meadow-grass",
-   "meshes": [
-    "Vegetation/SM_Grass_FestucaSmall",
-    "Vegetation/SM_Grass_FestucaMedium",
-    "Vegetation/SM_Grass_FestucaShort",
-    "Vegetation/SM_Grass_Lawn"
-   ],
-   "spacingM": 1.0,
-   "keep": 0.42,
-   "clusterM": 14,
-   "region": [
-    [
-     "box",
-     -650,
-     0,
-     -450,
-     550
-    ],
-    [
-     "mask",
-     "dry-meadow",
-     160
-    ]
-   ],
-   "clearM": 0.3,
-   "scale": 1.0,
-   "align": false,
-   "ground": "terrain"
-  },
-  {
-   "name": "meadow-seedheads",
-   "meshes": [
-    "Vegetation/SM_Seedheads_AnaphalisA",
-    "Vegetation/SM_Seedheads_AnaphalisB"
-   ],
-   "spacingM": 2.5,
-   "keep": 0.25,
-   "clusterM": 9,
-   "region": [
-    [
-     "box",
-     -650,
-     0,
-     -450,
-     550
-    ],
-    [
-     "mask",
-     "dry-meadow",
-     160
-    ]
-   ],
-   "clearM": 0.3,
-   "scale": 1.0,
    "align": false,
    "ground": "terrain"
   },
@@ -1266,13 +846,6 @@
    "keep": 0.25,
    "clusterM": 60,
    "region": [
-    [
-     "box",
-     -650,
-     0,
-     -450,
-     550
-    ],
     [
      "mask",
      "dry-meadow",
@@ -1294,65 +867,12 @@
    "clusterM": 120,
    "region": [
     [
-     "box",
-     -650,
-     0,
-     -450,
-     550
-    ],
-    [
      "mask",
      "dry-meadow",
      200
     ]
    ],
    "clearM": 3.0,
-   "scale": 1.0,
-   "align": false,
-   "ground": "terrain"
-  },
-  {
-   "name": "wet-sedge",
-   "meshes": [
-    "Vegetation/SM_Sedge_CarexA",
-    "Vegetation/SM_Sedge_CarexB",
-    "Vegetation/SM_Sedge_CarexA",
-    "Vegetation/SM_Sedge_CarexB",
-    "Vegetation/SM_Grass_Lawn"
-   ],
-   "spacingM": 0.8,
-   "keep": 0.55,
-   "clusterM": 10,
-   "region": [
-    [
-     "mask",
-     "wet-meadow",
-     140
-    ]
-   ],
-   "clearM": 0.25,
-   "scale": 1.0,
-   "align": false,
-   "ground": "terrain"
-  },
-  {
-   "name": "creek-sedge",
-   "meshes": [
-    "Vegetation/SM_Sedge_CarexA",
-    "Vegetation/SM_Sedge_CarexB"
-   ],
-   "spacingM": 0.7,
-   "keep": 0.6,
-   "clusterM": 8,
-   "region": [
-    [
-     "line",
-     "meadow-creek",
-     0,
-     4.5
-    ]
-   ],
-   "clearM": 0.25,
    "scale": 1.0,
    "align": false,
    "ground": "terrain"
@@ -1403,28 +923,6 @@
    "ground": "terrain"
   },
   {
-   "name": "pond-sedge",
-   "meshes": [
-    "Vegetation/SM_Sedge_CarexA",
-    "Vegetation/SM_Sedge_CarexB"
-   ],
-   "spacingM": 0.7,
-   "keep": 0.7,
-   "clusterM": 6,
-   "region": [
-    [
-     "polygon",
-     "beaver-pond",
-     0.2,
-     6
-    ]
-   ],
-   "clearM": 0.2,
-   "scale": 1.0,
-   "align": false,
-   "ground": "terrain"
-  },
-  {
    "name": "pond-stumps",
    "meshes": [
     "Vegetation/SM_Stump_Short",
@@ -1436,7 +934,9 @@
    "region": [
     [
      "polygon",
-     "beaver-pond",
+     [
+      "beaver-pond"
+     ],
      0.5,
      5
     ]
@@ -1459,7 +959,9 @@
    "region": [
     [
      "polygon",
-     "beaver-pond",
+     [
+      "beaver-pond"
+     ],
      1,
      8
     ]
@@ -1488,7 +990,9 @@
     ],
     [
      "polygon",
-     "granite-lake",
+     [
+      "granite-lake"
+     ],
      0.3,
      5
     ]
@@ -1516,7 +1020,9 @@
     ],
     [
      "polygon",
-     "granite-lake",
+     [
+      "granite-lake"
+     ],
      1,
      7
     ]
@@ -1544,7 +1050,9 @@
     ],
     [
      "polygon",
-     "granite-lake",
+     [
+      "granite-lake"
+     ],
      0.5,
      12
     ]
@@ -1573,7 +1081,9 @@
     ],
     [
      "polygon",
-     "granite-lake",
+     [
+      "granite-lake"
+     ],
      2,
      18
     ]
@@ -1594,8 +1104,10 @@
    "region": [
     [
      "polygon",
-     "granite-dome",
-     -1000000.0,
+     [
+      "granite-dome"
+     ],
+     -Infinity,
      -2
     ],
     [
@@ -1606,7 +1118,7 @@
    ],
    "clearM": 1.0,
    "scale": 1.6,
-   "align": false,
+   "align": true,
    "ground": "terrain"
   },
   {
@@ -1620,14 +1132,16 @@
    "region": [
     [
      "polygon",
-     "granite-dome",
-     -1000000.0,
+     [
+      "granite-dome"
+     ],
+     -Infinity,
      -2
     ]
    ],
    "clearM": 1.0,
    "scale": 1.8,
-   "align": false,
+   "align": true,
    "ground": "terrain"
   },
   {
@@ -1642,8 +1156,10 @@
    "region": [
     [
      "polygon",
-     "granite-dome",
-     -1000000.0,
+     [
+      "granite-dome"
+     ],
+     -Infinity,
      -15
     ]
    ],
@@ -1667,8 +1183,10 @@
    "region": [
     [
      "polygon",
-     "granite-dome",
-     -1000000.0,
+     [
+      "granite-dome"
+     ],
+     -Infinity,
      -4
     ]
    ],
@@ -1696,7 +1214,9 @@
     ],
     [
      "polygon",
-     "granite-dome",
+     [
+      "granite-dome"
+     ],
      -12,
      6
     ]
@@ -1718,8 +1238,10 @@
    "region": [
     [
      "polygon",
-     "boulder-field",
-     -1000000.0,
+     [
+      "boulder-field"
+     ],
+     -Infinity,
      -1.5
     ]
    ],
@@ -1740,8 +1262,10 @@
    "region": [
     [
      "polygon",
-     "boulder-field",
-     -1000000.0,
+     [
+      "boulder-field"
+     ],
+     -Infinity,
      -1
     ]
    ],
@@ -1763,8 +1287,10 @@
    "region": [
     [
      "polygon",
-     "lookout-talus",
-     -1000000.0,
+     [
+      "lookout-talus"
+     ],
+     -Infinity,
      -0.8
     ]
    ],
@@ -1780,18 +1306,20 @@
     "Rocks/SM_Granite_HeroBoulder"
    ],
    "spacingM": 6,
-   "keep": 0.5,
+   "keep": 0.15,
    "clusterM": 18,
    "region": [
     [
      "polygon",
-     "granite-outcrop",
-     -1000000.0,
+     [
+      "granite-outcrop"
+     ],
+     -Infinity,
      -2.5
     ]
    ],
    "clearM": 1.0,
-   "scale": 1.5,
+   "scale": 1.0,
    "align": false,
    "ground": "terrain"
   },
@@ -1862,9 +1390,9 @@
   },
   {
    "name": "ranger-cabin",
-   "mesh": "Structures/SM_Snow_SurveyHut",
+   "mesh": "Structures/SM_Ranger_Cabin",
    "area": "ranger-cabin",
-   "scale": 1.25,
+   "scale": 1.0,
    "align": false,
    "ground": "terrain",
    "at": [
@@ -2284,8 +1812,8 @@
    "ground": "terrain",
    "at": [
     [
-     -708.0,
-     66.0,
+     -704.0,
+     53.5,
      0
     ]
    ]
@@ -2314,8 +1842,8 @@
    "ground": "terrain",
    "at": [
     [
-     -708.0,
-     75.0,
+     -706.5,
+     56.5,
      0
     ]
    ]
@@ -2329,8 +1857,8 @@
    "ground": "terrain",
    "at": [
     [
-     -703.0,
-     49.5,
+     -702.5,
+     50.5,
      0
     ]
    ]

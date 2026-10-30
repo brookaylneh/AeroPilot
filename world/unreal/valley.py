@@ -125,7 +125,7 @@ BASINS = {
     },
     "beaver-pond": {
         "surfaceM": 5.7,
-        "depthM": (0.85, 0.9, 0.8, 0.65, 0.5, 0.5, 0.55, 0.7),
+        "depthM": (1.76, 1.87, 1.66, 1.34, 1.07, 1.07, 1.12, 1.44),
         "shoreDegrees": (22, 24, 14, 8, 5, 4, 4, 8),
         "floorM": (0,),
         "riseDegrees": (28, 28, 18, 6, 4, 4, 4, 10),
@@ -788,6 +788,13 @@ def layers(elevation, named, creek, water, floors):
     cover["gravel-road"] = (1 - smoothstep(ROAD["treadM"], ROAD["treadM"] + 0.5, road)) * (
         1 - crown
     )
+    # The trailhead lot and the command post are gravel to a 1 m noisy edge.
+    for item in named.values():
+        if item["kind"] in ("parking", "command_post"):
+            window, wx, wy = region(points(item), 4)
+            delta = signed_distance(inside(points(item), wx, wy))
+            lot = smoothstep(1, -1, delta + noise(wx.shape, 21, 2))
+            cover["gravel-road"][window] = np.maximum(cover["gravel-road"][window], lot)
     cover["trail-tread"] = 1 - smoothstep(
         0.6, 1.1, np.min([line_field(points(i), np.zeros(len(points(i))), 2)[0] for i in trails], 0)
     )
@@ -1068,7 +1075,7 @@ def build(document):
             "sameKindPolygonsDisjointAndNotTouching": True,
             "allRouteCreekCrossingsBridged": True,
         },
-        "heightMMeaning": "Authored design maxima above terrain; not measured mesh dimensions",
+        "heightMMeaning": "Maxima above terrain; forests and the dome hold the measured dressing tops",
         "pythonVersion": platform.python_version(),
         "dependencies": {
             name: version(name) for name in ("numpy", "scipy", "matplotlib", "pillow")

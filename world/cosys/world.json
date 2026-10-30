@@ -35,7 +35,7 @@
     "nearestBoundaryGapMetres": 5,
     "searchable": false
   },
-  "heightfieldSha256": "bde9af412ecee2f6249b4aec950b2f7816b7b4d5214cd9abfff469ab96f23835",
+  "heightfieldSha256": "d44a5a9545de404844be1b03c81225abf4156f990d26ec931d893ed15b491766",
   "sun": {
     "localTime": "2026-10-31T15:30:00-07:00",
     "apparentElevationDegrees": 24.504808170777153,

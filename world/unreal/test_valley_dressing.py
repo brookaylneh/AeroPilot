@@ -3,15 +3,17 @@ import unittest
 
 import numpy as np
 
+from world.cosys.terrain import WORLD
 from world.unreal.valley_dressing import (
+    CAP_M,
     HOLDERS,
     LINE_HALF_M,
-    SCALE_JITTER,
     TALL_M,
     Site,
     load,
     measured,
     plan,
+    reach,
     scatter,
 )
 
@@ -29,11 +31,12 @@ class DressingTests(unittest.TestCase):
 
     def test_scatter_repeats_exactly_for_its_seed(self):
         row = self.row("dome-erratics")
-        again = scatter(self.site, row, self.dressing["seed"])
+        meshes = self.dressing["meshes"]
+        again = scatter(self.site, row, self.dressing["seed"], meshes)
         for key in ("north", "east", "yaw", "scale"):
             np.testing.assert_array_equal(again[key], self.rows["dome-erratics"][key])
         self.assertEqual(again["mesh"], self.rows["dome-erratics"]["mesh"])
-        moved = scatter(self.site, row, self.dressing["seed"] + 1)
+        moved = scatter(self.site, row, self.dressing["seed"] + 1, meshes)
         self.assertFalse(np.array_equal(moved["north"], again["north"]))
 
     def test_instances_take_any_yaw_and_scale_within_15_percent(self):
@@ -41,7 +44,7 @@ class DressingTests(unittest.TestCase):
             placed = self.rows[row["name"]]
             self.assertTrue(((placed["yaw"] >= 0) & (placed["yaw"] < 360)).all(), row["name"])
             ratio = placed["scale"] / row["scale"]
-            self.assertTrue((abs(ratio - 1) <= SCALE_JITTER + 1e-12).all(), row["name"])
+            self.assertTrue((abs(ratio - 1) <= 0.15 + 1e-12).all(), row["name"])
             self.assertLessEqual(set(placed["mesh"]), set(self.dressing["meshes"]))
 
     def test_scattered_instances_keep_trails_roads_creek_ponds_and_structures_clear(self):
@@ -50,8 +53,28 @@ class DressingTests(unittest.TestCase):
                 continue
             placed = self.rows[row["name"]]
             p = np.column_stack((placed["north"], placed["east"]))
-            self.assertTrue(self.site.clear(p, row["clearM"] - 1e-6).all(), row["name"])
+            margin = reach(row, self.dressing["meshes"]) - 1e-6
+            self.assertTrue(self.site.clear(p, row["clearM"], margin).all(), row["name"])
         self.assertEqual(LINE_HALF_M, {"trail": 1.2, "road": 2.8})
+
+    def test_the_outcrop_keeps_its_boulders_off_the_lookout(self):
+        placed = self.rows["ridge-outcrop"]
+        p = np.column_stack((placed["north"], placed["east"]))
+        gap = self.site.edge(["fire-lookout"], p, 100) - reach(
+            self.row("ridge-outcrop"), self.dressing["meshes"]
+        )
+        self.assertGreater(gap.min(), 0)
+
+    def test_landing_mats_lie_on_the_pad_top(self):
+        top = WORLD["port"]["centerUeCm"]["z"] / 100
+        np.testing.assert_array_equal(self.rows["port-mats"]["z"], top)
+
+    def test_no_instance_tops_the_cap(self):
+        for placed in self.rows.values():
+            self.assertLessEqual(placed["top"].max(), CAP_M)
+        row = dict(self.row("forest-edge"), scale=0.9)
+        with self.assertRaises(AssertionError):
+            plan(dict(self.dressing, rows=[row]), self.document, self.receipt)
 
     def test_forest_heights_are_the_measured_tops(self):
         heights = measured(self.rows, self.document)
@@ -62,7 +85,7 @@ class DressingTests(unittest.TestCase):
                 self.assertGreaterEqual(item["heightM"], heights[item["id"]], item["id"])
 
     def test_a_tall_instance_outside_a_high_enough_polygon_fails(self):
-        dressing = dict(self.dressing, rows=[self.row("east-canopy")])
+        dressing = dict(self.dressing, rows=[self.row("forest-canopy")])
         document = copy.deepcopy(self.document)
         (forest,) = [i for i in document["landmarks"] if i["id"] == "east-lodgepoles"]
         forest["heightM"] = TALL_M + 6

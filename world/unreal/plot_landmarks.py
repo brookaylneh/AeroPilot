@@ -96,7 +96,7 @@ def plot(output):
     figure.text(
         0.055,
         0.045,
-        f"{WORLD['environmentAssetVersion']} · Generated terrain and authored geometry; no art placed.\nMeadow Creek drains Granite Lake through Beaver Pond to the east boundary. Heights are design envelopes, not mesh measurements.",
+        f"{WORLD['environmentAssetVersion']} · Generated terrain and authored geometry.\nMeadow Creek drains Granite Lake through Beaver Pond to the east boundary. Forest and dome heights are measured dressing tops.",
         fontsize=11,
     )
     output.parent.mkdir(parents=True, exist_ok=True)

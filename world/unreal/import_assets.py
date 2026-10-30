@@ -11,8 +11,8 @@ Foliage must be enabled for the project (r.Nanite.Foliage in DefaultEngine.ini).
 material instance of M_ValleyDetail tiles the shared T_Detail<Surface>_{D,N} from
 /Game/Valley/Materials; without a surface, opaque materials take M_ValleyPBR and masked ones
 the two-sided M_ValleyMasked, clipped by the BC alpha (Nanite voxels need opaque one-sided
-materials, so masked foliage keeps its triangles). Families `rocks` and `structures` are rigid
-too. A structure's material instances of M_ValleyPrincipled take the Principled inputs its
+materials, so masked foliage keeps its triangles and preserves its area). Families `rocks` and
+`structures` are rigid too. A structure's material instances of M_ValleyPrincipled take the Principled inputs its
 build.json records per slot, with the Poly Haven scans shared in /Game/Valley/Materials as
 T_<Scan>; Nanite renders only opaque and masked materials, so transmissive glass becomes opaque
 glossy black. Meshes come from the GLBs through Interchange (metres, glTF +Y up); dimensions are

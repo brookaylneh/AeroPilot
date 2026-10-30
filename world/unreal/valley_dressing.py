@@ -26,9 +26,11 @@ TERRAIN = (ROOT / FIELD["path"]).parent
 # Tread half-widths (m) kept clear around each trail and road centreline; the creek clears its
 # receipt bank tops.
 LINE_HALF_M = {"trail": 1.2, "road": 2.8}
-CLEARED = ("pond", "structure", "obstacle", "bridge", "parking", "command_post", "campsite")
+CLEARED = ("structure", "obstacle", "bridge", "parking", "command_post", "campsite")
 # facts.md §8: instances taller than this stand in a polygon whose heightM covers them.
 TALL_M = 4.0
+# facts.md §7: no instance may top the 18 m lodgepole cap at its row's largest jittered scale.
+CAP_M = 18.0
 HOLDERS = ("forest", "structure", "obstacle", "outcrop")
 SCALE_JITTER = 0.15
 # Scatter stays 1 m inside the landscape, where every terrain normal has samples.
@@ -54,7 +56,8 @@ class Site:
             if item["geometry"]["type"] == "polygon"
         }
         self.areas["port"] = corners
-        self.port_top = port["centerUeCm"]["z"] / 100 + port["dimensionsMetres"][2] / 2
+        # centerUeCm.z is the pad top (build-drone-port.py hangs the slab below it).
+        self.port_top = port["centerUeCm"]["z"] / 100
         data = (ROOT / FIELD["path"]).read_bytes()
         assert hashlib.sha256(data).hexdigest() == WORLD["heightfieldSha256"]
         raw = np.frombuffer(data, dtype="<u2").reshape(FIELD["rows"], FIELD["columns"])
@@ -75,33 +78,41 @@ class Site:
             for item in self.landmarks.values()
             if item["kind"] in LINE_HALF_M
         ]
+        self.ponds = [i for i, item in self.landmarks.items() if item["kind"] == "pond"]
         self.cleared = [i for i, item in self.landmarks.items() if item["kind"] in CLEARED]
+        self.cleared += ["port"]
         self.masks = {
             name: np.asarray(Image.open(ROOT / entry["path"]))
             for name, entry in receipt["masks"]["files"].items()
         }
         assert all(m.shape == (FIELD["rows"], FIELD["columns"]) for m in self.masks.values())
 
-    def edge(self, area, p):
-        """Signed metres from the area's edge, negative inside."""
-        path, tree = self.edges[area]
-        distance = tree.query(p)[0]
-        return np.where(path.contains_points(p), -distance, distance)
+    def edge(self, areas, p, bound):
+        """Signed metres from the nearest edge of the disjoint areas, negative inside one, and
+        infinite beyond bound metres."""
+        signed = []
+        for area in areas:
+            path, tree = self.edges[area]
+            distance = tree.query(p, distance_upper_bound=bound)[0]
+            signed.append(np.where(path.contains_points(p), -distance, distance))
+        return np.min(signed, axis=0)
 
-    def channel(self, p):
-        """Metres from the creek centreline and the bank-top half-width there."""
-        distance, index = self.creek.query(p)
-        return distance, self.banks[index]
+    def channel(self, p, bound):
+        """Metres from the creek centreline (infinite beyond bound) and the bank-top half-width."""
+        distance, index = self.creek.query(p, distance_upper_bound=bound)
+        # A miss has index len(banks) and an infinite distance, which clears any bank.
+        return distance, self.banks[np.minimum(index, len(self.banks) - 1)]
 
-    def clear(self, p, margin):
-        keep = np.ones(len(p), bool)
+    def clear(self, p, margin, reach):
+        """Centres margin metres clear of the ponds, and margin plus the instance reach clear of
+        the trails, roads, creek banks and the other cleared areas; shore rows overhang water."""
+        keep = self.edge(self.ponds, p, margin) >= margin
+        margin += reach
         for tree, half in self.lines:
-            keep &= tree.query(p)[0] >= half + margin
-        distance, bank = self.channel(p)
+            keep &= tree.query(p, distance_upper_bound=half + margin)[0] >= half + margin
+        distance, bank = self.channel(p, self.banks.max() + margin)
         keep &= distance >= bank + margin
-        for area in self.cleared:
-            keep &= self.edge(area, p) >= margin
-        return keep
+        return keep & (self.edge(self.cleared, p, margin) >= margin)
 
     def ground(self, kind, p):
         """Ground metres under p: the bilinear heightfield or the drone port's top."""
@@ -134,7 +145,11 @@ def extent(site, constraint):
         return values
     if kind == "mask":
         return WHOLE
-    ring = site.areas[values[0]] if kind == "polygon" else points(site.landmarks[values[0]])
+    ring = (
+        np.vstack([site.areas[a] for a in values[0]])
+        if kind == "polygon"
+        else points(site.landmarks[values[0]])
+    )
     reach = max(values[2], 0)
     low, high = ring.min(axis=0) - reach, ring.max(axis=0) + reach
     return [low[0], high[0], low[1], high[1]]
@@ -147,11 +162,13 @@ def accepts(site, constraint, p):
         return (p[:, 0] >= n0) & (p[:, 0] <= n1) & (p[:, 1] >= e0) & (p[:, 1] <= e1)
     if kind == "mask":
         return site.mask(values[0], p) >= values[1]
+    # Distances beyond the band's finite limits only need to be known as beyond.
+    bound = max(abs(v) for v in values[1:] if math.isfinite(v)) + 1
     if kind == "polygon":
-        signed = site.edge(values[0], p)
+        signed = site.edge(values[0], p, bound)
     else:
         assert kind == "line" and values[0] == "meadow-creek", constraint
-        signed = site.channel(p)[0]
+        signed = site.channel(p, bound)[0]
     return (signed >= values[1]) & (signed <= values[2])
 
 
@@ -172,8 +189,21 @@ def noise(p, cell_m, seed):
     return bottom * (1 - t[:, 0]) + top * t[:, 0]
 
 
-def scatter(site, row, seed):
-    rng = np.random.default_rng([seed, zlib.crc32(row["name"].encode())])
+def reach(row, meshes):
+    """Horizontal bounding radius (m) of the row's widest mesh at its largest scale, whose
+    tallest mesh must stay under the cap."""
+    largest = row["scale"] * (1 + SCALE_JITTER)
+    assert largest * max(meshes[m]["boundsM"][5] for m in row["meshes"]) <= CAP_M, row["name"]
+    radii = [
+        math.hypot(*np.abs(np.reshape(meshes[m]["boundsM"][:4], (2, 2))).max(1))
+        for m in row["meshes"]
+    ]
+    return largest * max(radii)
+
+
+def scatter(site, row, seed, meshes):
+    salt = zlib.crc32(row["name"].encode())
+    rng = np.random.default_rng([seed, salt])
     boxes = np.array([WHOLE] + [extent(site, c) for c in row["region"]])
     n0, e0 = boxes[:, [0, 2]].max(axis=0)
     n1, e1 = boxes[:, [1, 3]].min(axis=0)
@@ -183,12 +213,13 @@ def scatter(site, row, seed):
     p = grid.reshape(-1, 2) + rng.uniform(0, step, (grid.size // 2, 2))
     for constraint in [["box", n0, n1, e0, e1]] + row["region"]:
         p = p[accepts(site, constraint, p)]
-    p = p[site.clear(p, row["clearM"])]
+    p = p[site.clear(p, row["clearM"], reach(row, meshes))]
     assert len(p), row["name"]
-    score = 0.75 * noise(p, row["clusterM"], zlib.crc32(row["name"].encode()) & 0xFFFF)
+    score = 0.75 * noise(p, row["clusterM"], (seed ^ salt) & 0xFFFF)
     score += 0.25 * rng.uniform(size=len(p))
     p = p[score < np.quantile(score, row["keep"])]
     count = len(p)
+    assert count, row["name"]
     return {
         "z": site.ground(row["ground"], p),
         "mesh": [row["meshes"][i] for i in rng.integers(len(row["meshes"]), size=count)],
@@ -239,11 +270,14 @@ def plan(dressing, document, receipt):
     meshes = dressing["meshes"]
     rows = {}
     for row in dressing["rows"]:
-        assert row["name"] not in rows and row["align"] in (True, False), row["name"]
+        assert row["name"] not in rows and isinstance(row["align"], bool), row["name"]
         placed = (
-            explicit(site, row, meshes) if "at" in row else scatter(site, row, dressing["seed"])
+            explicit(site, row, meshes)
+            if "at" in row
+            else scatter(site, row, dressing["seed"], meshes)
         )
         placed["top"] = placed["scale"] * [meshes[m]["boundsM"][5] for m in placed["mesh"]]
+        assert placed["top"].max() <= CAP_M, row["name"]
         p = np.column_stack((placed["north"], placed["east"]))
         placed["normal"] = site.normal(p) if row["align"] else np.tile([0.0, 0.0, 1.0], (len(p), 1))
         rows[row["name"]] = placed
@@ -279,6 +313,11 @@ def measured(rows, document):
     return tops
 
 
+def indexed(names):
+    unique, index = np.unique(names, return_inverse=True)
+    return unique.tolist(), index.tolist()
+
+
 def load():
     receipt = json.loads((TERRAIN / "terrain.json").read_text())
     assert receipt["heightfieldSha256"] == WORLD["heightfieldSha256"]
@@ -303,7 +342,8 @@ def write(output):
             {
                 "name": row["name"],
                 "ground": row["ground"],
-                "mesh": rows[row["name"]]["mesh"],
+                # Each instance names its mesh by index into the row's list.
+                **dict(zip(("meshes", "mesh"), indexed(rows[row["name"]]["mesh"]))),
                 **{
                     key: np.round(rows[row["name"]][key], 3).tolist()
                     for key in ("north", "east", "z", "yaw", "scale")
@@ -316,6 +356,7 @@ def write(output):
     output.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(json.dumps(placements) + "\n")
     counts = {row["name"]: len(row["mesh"]) for row in placements["rows"]}
+    counts["total"] = sum(counts.values())
     print(
         json.dumps({"counts": counts, "measuredHeightM": placements["measuredHeightM"]}, indent=2)
     )

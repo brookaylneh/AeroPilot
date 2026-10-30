@@ -1,5 +1,5 @@
-"""Replace the search landscape, its ground layers, water, horizon crests, meadow apron and sun from
-world.json."""
+"""Replace the search landscape, its ground layers and runtime grass, water, horizon crests, meadow
+apron and sun from world.json."""
 
 import hashlib
 import json
@@ -87,9 +87,9 @@ return w.x * BC0 + w.y * BC1 + w.z * BC2;
 """
 # Water body: Single Layer Water scattering and absorption per metre (linear RGB), and roughness.
 WATER = {
-    "granite-lake": ((0.0014, 0.0028, 0.0045), (0.45, 0.09, 0.05), 0.03),
-    "lookout-tarn": ((0.002, 0.006, 0.008), (0.6, 0.15, 0.1), 0.03),
-    "beaver-pond": ((0.008, 0.006, 0.003), (0.35, 0.5, 1.0), 0.04),
+    "granite-lake": ((0.0014, 0.0028, 0.0045), (0.6, 0.27, 0.15), 0.03),
+    "lookout-tarn": ((0.002, 0.006, 0.008), (0.7, 0.35, 0.25), 0.03),
+    "beaver-pond": ((0.02, 0.016, 0.008), (0.35, 0.5, 1.0), 0.04),
     "meadow-creek": ((0.002, 0.004, 0.003), (0.35, 0.07, 0.04), 0.08),
 }
 COEFFICIENTS = ("ScatteringCoefficients", "AbsorptionCoefficients")
@@ -403,6 +403,30 @@ switched = {
     )
     for key in blends
 }
+# Runtime landscape grass (valley-grass.json types from build-valley-grass.py): a grass type's
+# weight is the largest weight of its layers, so sedge follows both wet margins and cobble bed.
+grass = json.loads((ROOT / "world/unreal/valley-grass.json").read_text())
+grass_types = {
+    name: unreal.load_asset(f"{grass['folder']}/GT_{title(name)}") for name in grass["types"]
+}
+assert all(grass_types.values()), grass_types
+grass_output = node(
+    unreal.MaterialExpressionLandscapeGrassOutput,
+    grass_types=[
+        struct(unreal.GrassInput, name=name, grass_type=asset)
+        for name, asset in grass_types.items()
+    ],
+)
+for name, entry in grass["types"].items():
+    assert set(entry["layers"]) <= set(layers), entry["layers"]
+    samples = [
+        node(unreal.MaterialExpressionLandscapeLayerSample, parameter_name=layer)
+        for layer in entry["layers"]
+    ]
+    weight = samples[0]
+    for sample in samples[1:]:
+        weight = node(unreal.MaterialExpressionMax, ("A", weight), ("B", sample))
+    assert ml.connect_material_expressions(weight, "", grass_output, name), name
 output(switched["BC"], "MP_BASE_COLOR")
 output(switched["N"], "MP_NORMAL")
 for pin, prop in (("r", "MP_AMBIENT_OCCLUSION"), ("g", "MP_ROUGHNESS")):
@@ -658,6 +682,7 @@ report_path.write_text(
             "extentCm": {"northSouth": extent.x * 2, "eastWest": extent.y * 2},
             "landscapeComponents": component_count,
             "landscapeMaterial": ground.get_path_name(),
+            "grassTypes": {name: asset.get_path_name() for name, asset in grass_types.items()},
             "groundTextures": sources,
             "groundLicence": lock["license"],
             "water": bodies,

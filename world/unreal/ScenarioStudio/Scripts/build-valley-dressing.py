@@ -51,7 +51,6 @@ for actor in actors.get_all_level_actors():
 # Every asset below is rebuilt from the placements, so nothing stale survives a run.
 for path in lib.list_assets(FOLDER):
     assert lib.delete_asset(path), path
-(landscape,) = [a for a in actors.get_all_level_actors() if isinstance(a, unreal.Landscape)]
 
 
 def trace(north, east):
@@ -78,9 +77,10 @@ def trace(north, east):
 
 transforms = {}
 for row in placements["rows"]:
-    for mesh, north, east, z, yaw, scale, normal in zip(
+    for index, north, east, z, yaw, scale, normal in zip(
         *(row[k] for k in ("mesh", "north", "east", "z", "yaw", "scale", "normal")), strict=True
     ):
+        mesh = row["meshes"][index]
         forward = unreal.Vector(math.cos(math.radians(yaw)), math.sin(math.radians(yaw)), 0)
         transforms.setdefault(mesh, []).append(
             unreal.Transform(
@@ -139,15 +139,16 @@ for component in holder.get_components_by_class(unreal.InstancedStaticMeshCompon
     )
 assert counts == Counter({m: len(t) for m, t in transforms.items()}), counts
 
-# Scenario placement traces reach terrain, the bridge deck, rocks or logs, never canopies or grass.
+# Scenario placement traces reach terrain, the bridge deck, rocks or logs, never canopies.
 terrain = {m for m, entry in meshes.items() if entry["collision"] == "ScenarioTerrain"}
 traces = Counter()
 for row in [r for r in placements["rows"] if r["ground"] == "terrain"]:
-    for mesh, north, east in list(zip(row["mesh"], row["north"], row["east"]))[::SAMPLE]:
+    for index, north, east in list(zip(row["mesh"], row["north"], row["east"]))[::SAMPLE]:
         fields = trace(north, east)
         hit = "landscape" if fields[9] == landscape else mesh_of(fields[10])
         assert hit == "landscape" or (fields[9] == holder and hit in terrain), (
             row["name"],
+            row["meshes"][index],
             north,
             east,
             hit,
