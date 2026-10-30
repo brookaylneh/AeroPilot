@@ -313,13 +313,15 @@ Content. A rendering-only baseline instead uses explicit snapshots of the
 unchanged world's manifest and matching slot settings. The package retains both
 manifests and records its shader platform; the launcher requires that record.
 
-Content must be a real worktree-owned copy, excluding unreferenced character
-folders. Preserve the installed character agent's assets. Check disk space before
-each copy, build and package, retaining the required reserve, and keep the editor
-at six parallel actions. Check slot ports before every process start. The world
-slot has no Pixel Streaming endpoints; it cannot establish a live browser stream
-quality gate. Integration and replay are deferred until the asset-approved world
-is built and accepted. Never activate a Stage 1 candidate on the installed services.
+Content must be a real worktree-owned copy holding exactly the cook closure.
+`SNR_EVIDENCE_DIR=<new-directory> bash world/unreal/scripts/author-unreal.sh audit-content`
+follows hard and soft package references from the cooked map and the always-cooked
+directories and writes `content-manifest.json` with each kept package's size and SHA-256.
+It fails on a missing `/Game` reference, a redirector, an empty or unreferenced package, or
+a catalog whose people, Rocketbox actor classes, region bounds or asset version disagree with
+`creator-people.json` and `world.json`. Dangling references inside the pinned Cosys plugin
+content are recorded separately. Check disk space before each copy, build and package, and
+keep the editor at six parallel actions.
 
 ## Engine plugin overrides
 

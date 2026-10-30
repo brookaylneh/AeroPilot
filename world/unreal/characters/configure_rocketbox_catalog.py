@@ -61,7 +61,6 @@ def main():
             for key, values in options.items()
         ],
     )
-    catalog.set_editor_property("asset_version", "open-meadow-rocketbox-1")
     assert LIB.save_loaded_asset(catalog)
     result = {
         "asset_version": str(catalog.get_editor_property("asset_version")),

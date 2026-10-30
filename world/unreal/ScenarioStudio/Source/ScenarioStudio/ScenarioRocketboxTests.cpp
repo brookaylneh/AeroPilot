@@ -13,7 +13,6 @@ bool FRocketboxRuntimeTest::RunTest(const FString &Parameters)
     if (!TestNotNull(TEXT("Catalog loads"), Catalog))
         return false;
     TestEqual(TEXT("Approved roster size"), Catalog->People.Num(), 11);
-    TestEqual(TEXT("Catalog version"), Catalog->AssetVersion, FString(TEXT("open-meadow-rocketbox-1")));
     UWorld *World = GEditor->GetEditorWorldContext().World();
     if (!TestNotNull(TEXT("Editor world exists"), World))
         return false;

@@ -14,6 +14,7 @@ assert(origin && output, 'Usage: accept_rocketbox.mjs ORIGIN NEW_OUTPUT_DIRECTOR
 assert.equal(new URL(origin).origin, origin);
 await mkdir(output, { recursive: false });
 const expected = JSON.parse(await readFile(new URL('../creator-people.json', import.meta.url), 'utf8'));
+const world = JSON.parse(await readFile(new URL('../../cosys/world.json', import.meta.url), 'utf8'));
 const result = { origin, recordedAt: new Date().toISOString(), people: [], errors: [] };
 const status = await fetch(`${origin}/api/unreal/status`, { signal: AbortSignal.timeout(5000) });
 assert(status.ok);
@@ -46,7 +47,7 @@ try {
   await waitForCreator(page);
   const before = await snapshot();
   await writeFile(`${output}/before.json`, JSON.stringify(before, null, 2) + '\n');
-  assert.equal(before.catalog.assetVersion, 'open-meadow-rocketbox-1');
+  assert.equal(before.catalog.assetVersion, world.environmentAssetVersion);
   assert.deepEqual(
     before.catalog.people.map((p) => p.id),
     expected.map((p) => p.id),

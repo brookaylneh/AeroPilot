@@ -89,13 +89,14 @@ with fresh evidence directories, in order:
    `/Game/Scenario/Rocketbox`, preserving the reviewed assets, and imports the pinned source motions.
 2. `configure_rocketbox.py IMPORT_RESULT_JSON NEW_OUTPUT` bakes the motions onto each character's
    original limb lengths. Horizontal displacement belongs to scenario behavior. A separate authored
-   seated-rest loop supplies the injured situation. The catalog uses a new asset version so old
-   scenarios cannot silently select different people; their files remain preserved.
+   seated-rest loop supplies the injured situation.
 3. `capture_rocketbox_runtime.py CONFIGURE_RESULT_JSON NEW_OUTPUT` captures all four activities with
    the fixed review lighting and records bone positions. Use the SM6 editor invocation below. Inspect
    these captures before accepting the packaged world; animation import alone is not acceptance.
 4. `configure_rocketbox_catalog.py CONFIGURE_RESULT_JSON NEW_OUTPUT` publishes the actor catalog
-   with descriptions from `creator-people.json`. Run this after reviewing the poses.
+   with descriptions from `creator-people.json`. Run this after reviewing the poses. The catalog
+   version stays the world's `environmentAssetVersion`, which `build-open-meadow.py` sets; saved
+   scenarios of any other version are rejected.
 
 Back up `Content/OpenMeadow/Catalog.uasset` before configuration. These commands fail on existing
 output assets. Preserve unsuccessful logs and correct the cause before an explicitly named new run.
