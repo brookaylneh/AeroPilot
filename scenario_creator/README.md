@@ -49,69 +49,21 @@ The searchable extent comes from [`world.json`](../world/cosys/world.json). Its 
 centimeters: +X north, +Y east, +Z up. The existing southern drone port stays
 outside character-placement bounds. No permanent search sectors are introduced.
 
-## Character preparation
+## Characters
 
-`world/unreal/creator-people.json` is the preset inventory. Both MetaHumans and scanned
-children implement the same `AScenarioHuman` runtime contract: a skeletal body,
-material tint bindings and explicit equipment and situation capabilities.
-The browser reads these options from Unreal; it does not maintain another
-character catalog.
+`world/unreal/creator-people.json` lists the eleven approved Microsoft Rocketbox people: three
+children, four adults and four older adults. Each implements the `AScenarioHuman` runtime
+contract: a skeletal body and explicit situation capabilities. The browser reads these options
+from Unreal; it does not maintain another character catalog. Original clothing colours are kept,
+so the browser offers no recolouring or backpack controls. Authoring and acceptance are in
+[`world/unreal/characters/README.md`](../world/unreal/characters/README.md).
 
-| Category | Presets                      | Clothing and equipment                                                                                |
-| -------- | ---------------------------- | ----------------------------------------------------------------------------------------------------- |
-| Children | Noah; Leo; Maya; Sofia; Lily | Scanned outfits with upper/lower tint masks; cap, bag and board remain part of their original meshes. |
-| Adults   | Kelvin; Etta                 | Fitted shirt and shorts, with an optional daypack.                                                    |
-| Seniors  | Walter; Sook-ja              | Fitted shirt and shorts, with an optional daypack.                                                    |
-
-Upper clothing has six colors; lower clothing has three. The removable daypack
-has prepared color options. These controls change material colors and supported
-equipment, not garment meshes. The adult and senior presets currently use their
-assembled default outfits, including bare feet.
-
-The five child scans are acquired separately through the Fab listing recorded
-in `world/unreal/children-assets.json`. Place the acquired GLB at
-`.local/vendor/children-fab/blend.glb`, then run:
-
-```sh
-blender --background --python world/unreal/scripts/rig-children.py
-bash world/unreal/scripts/author-unreal.sh import-children
-```
-
-The Children, Adults and Seniors tabs use circular thumbnails cropped from
+The Children, Adults and Older adults tabs use circular thumbnails cropped from
 actual Unreal portrait captures, stored under `web/public/portraits/`. The live
 preview remains the selected native actor. The mission briefing contains no
-portrait; the optional legacy portrait field remains empty in new reports.
+portrait; the optional portrait field remains empty in new reports.
 The briefing also hides authoring markers and the camera minimap to avoid
 indicating the target location through the camera position.
-
-The Blender script fits a skeleton to each scan, transfers weights from a closed
-proxy, removes isolated scan fragments, authors clothing masks and exports
-skeletal animations. Fixed scanned accessories are identified in the catalog;
-controls for removing them are not offered.
-
-All five children are selectable. Four support all three situations. The fifth
-has a skateboard fused into its scan and supports standing situations only;
-its resting pose is deferred because the mesh deforms incorrectly when seated.
-
-The existing Kelvin asset is reused. To assemble the three additional installed
-Epic presets, use an authenticated MetaHuman authoring session and the installed
-Creator core data. Rendering is required for texture baking:
-
-```sh
-bash world/unreal/scripts/unreal-container.sh exec "$UE_ROOT/Engine/Binaries/Linux/UnrealEditor-Cmd" \
-  "$PWD/world/unreal/ScenarioStudio/ScenarioStudio.uproject" -run=pythonscript \
-  -script="$PWD/world/unreal/ScenarioStudio/Scripts/prepare-creator-people.py" \
-  -EnablePlugins=PythonScriptPlugin,EditorScriptingUtilities,MetaHumanCharacter \
-  -NoMetaHumanAccountPortalLoginFallback \
-  '-ini:Engine:[ConsoleVariables]:TextureGraph.AllowCommandlets=1' \
-  -ddc=InstalledNoZenLocalFallback -AllowCommandletRendering -RenderOffscreen \
-  -vulkan -sm5 -unattended -nosound
-bash world/unreal/scripts/author-unreal.sh configure-creator MetaHumanCharacter
-```
-
-This assembles runtime Blueprints; Creator source characters remain excluded
-from cooking. Configure the catalog after all inventory assets exist.
-Missing assets, skeletons, tint parameters or animations fail authoring explicitly.
 
 Always visually review new rigs and animations before packaging. Asset import
 or a successful compile alone is not acceptance.

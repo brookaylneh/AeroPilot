@@ -523,9 +523,6 @@ TSharedRef<FJsonObject> AScenarioSession::Packet() const
     Result->SetObjectField(TEXT("camera"), CameraPacket());
     auto Catalog = MakeShared<FJsonObject>();
     Catalog->SetStringField(TEXT("environmentId"), Manager->Catalog->EnvironmentId.ToString().ToLower());
-    Catalog->SetStringField(TEXT("environmentName"), Manager->Catalog->DisplayName.IsEmpty()
-                                                         ? TEXT("Alder Valley")
-                                                         : Manager->Catalog->DisplayName.ToString());
     Catalog->SetNumberField(TEXT("navigationVersion"), 7);
     Catalog->SetNumberField(TEXT("creatorVersion"), 1);
     Catalog->SetBoolField(TEXT("droneFoundation"), true);

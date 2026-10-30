@@ -2,7 +2,7 @@
   "FileVersion": 3,
   "EngineAssociation": "5.8",
   "Category": "Simulation",
-  "Description": "UE 5.8.2 wilderness scenario authoring. Native browser placement and save/load tested; visual and packaged acceptance in progress.",
+  "Description": "UE 5.8.2 valley search-and-rescue scenarios with browser placement, save/load and Pixel Streaming.",
   "Modules": [
     {
       "Name": "ScenarioStudio",
@@ -25,14 +25,6 @@
     },
     {
       "Name": "PixelCapture",
-      "Enabled": true
-    },
-    {
-      "Name": "MetaHumanSDK",
-      "Enabled": true
-    },
-    {
-      "Name": "LiveLink",
       "Enabled": true
     },
     {

@@ -7,25 +7,6 @@
 #include "Animation/Skeleton.h"
 #include "Animation/AnimSingleNodeInstance.h"
 
-bool AScenarioHuman::PrepareStandingAnimation(UAnimSequence *Animation, USkeleton *TargetSkeleton)
-{
-#if WITH_EDITOR
-    if (!Animation || !Animation->GetSkeleton() || !TargetSkeleton)
-        return false;
-    const FReferenceSkeleton &Source = Animation->GetSkeleton()->GetReferenceSkeleton();
-    const FReferenceSkeleton &Target = TargetSkeleton->GetReferenceSkeleton();
-    for (const FName Bone :
-         {FName("root"), FName("pelvis"), FName("spine_01"), FName("foot_l"), FName("foot_r")})
-    {
-        if (Source.FindBoneIndex(Bone) == INDEX_NONE || Target.FindBoneIndex(Bone) == INDEX_NONE)
-            return false;
-    }
-    return Animation->ReplaceSkeleton(TargetSkeleton, false);
-#else
-    return false;
-#endif
-}
-
 AScenarioHuman::AScenarioHuman()
 {
     Character = CreateDefaultSubobject<UChildActorComponent>(TEXT("Character"));

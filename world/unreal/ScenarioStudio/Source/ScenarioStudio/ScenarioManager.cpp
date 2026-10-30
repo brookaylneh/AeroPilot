@@ -94,7 +94,7 @@ bool AScenarioManager::SetAppearance(const FScenarioAppearance &Selection, FStri
         return false;
     }
     // Updating tint/equipment on an existing preset preserves the skeletal
-    // actor, animation and stable identity, avoiding full MetaHuman respawns.
+    // actor, animation and stable identity instead of respawning it.
     if (Person && Person->GetClass() == Class &&
         Appearance.Options.FindRef(TEXT("personId")) == Selection.Options.FindRef(TEXT("personId")))
     {

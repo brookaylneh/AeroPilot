@@ -111,20 +111,9 @@ case "$mode" in
       -RenderOffscreen -vulkan -ddc=InstalledNoZenLocalFallback -unattended -nosound -NoSplash \
       -nocrashreports -stdout -FullStdOutLogOutput
     ;;
-  metahuman-login)
-    exec docker run "${container_flags[@]}" "${gpu_flags[@]}" \
-      --name snr-metahuman-authoring -e "SNR_AUTH_DIR=$PWD/.secrets" \
-      --mount "type=bind,src=$PWD/world/unreal/scripts/epic-login-open.py,dst=/usr/bin/xdg-open,readonly" \
-      snr-unreal:5.8.2-ubuntu24.04 timeout 900 \
-      "$engine_root/Engine/Binaries/Linux/UnrealEditor-Cmd" \
-      "$PWD/world/unreal/ScenarioStudio/ScenarioStudio.uproject" \
-      -run=pythonscript -script="$PWD/world/unreal/ScenarioStudio/Scripts/prepare-metahuman.py" \
-      -EnablePlugins=PythonScriptPlugin,EditorScriptingUtilities,MetaHumanCharacter \
-      -ddc=InstalledNoZenLocalFallback -nullrhi -unattended -nosound -nocrashreports -stdout -FullStdOutLogOutput
-    ;;
   *)
     echo 'Usage: unreal-container.sh build | run-packaged | exec command ... |' \
-      'character-authoring command ... | mcp-editor | metahuman-login' >&2
+      'character-authoring command ... | mcp-editor' >&2
     exit 2
     ;;
 esac

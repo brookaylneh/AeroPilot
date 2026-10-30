@@ -27,13 +27,6 @@ class SCENARIOSTUDIO_API AScenarioHuman : public AScenarioPerson
     GENERATED_BODY()
   public:
     UFUNCTION(BlueprintCallable, Category = "Scenario|Authoring")
-    static bool PrepareStandingAnimation(UAnimSequence *Animation, USkeleton *TargetSkeleton);
-    UFUNCTION(BlueprintCallable, Category = "Scenario|Authoring")
-    static bool PrepareSituationAnimation(UAnimSequence *Animation, UAnimSequence *Reference,
-                                          FName Situation);
-    UFUNCTION(BlueprintCallable, Category = "Scenario|Authoring")
-    static bool PrepareActivityAnimation(UAnimSequence *Animation, UAnimSequence *Reference, FName Activity);
-    UFUNCTION(BlueprintCallable, Category = "Scenario|Authoring")
     static bool PrepareRocketboxAnimation(UAnimSequence *Animation, UAnimSequence *Reference, FName Activity);
     UFUNCTION(BlueprintCallable, Category = "Scenario|Authoring")
     static bool BindRocketboxSkeleton(USkeletalMesh *Mesh, USkeleton *Skeleton);

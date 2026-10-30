@@ -31,7 +31,6 @@ export const packetSchema = z.object({
   }),
   catalog: z.object({
     environmentId: z.string(),
-    environmentName: z.string(),
     navigationVersion: z.number().min(7),
     creatorVersion: z.literal(1),
     droneFoundation: z.boolean(),

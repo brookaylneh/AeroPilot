@@ -1,49 +1,12 @@
 # Character authoring
 
-Create characters directly from Epic MetaHuman presets and explicit appearance settings.
-`roster.json` specifies twelve fictional characters: four children, four adults and four seniors.
-Age, gender presentation, build, skin tone, hair and clothing are authoring targets that require
-visual review. Children also require individual proportion and deformation checks.
+The scenario people are eleven Microsoft Rocketbox characters. `review-cameras.json` defines the
+shared render settings and fixed cameras for their review captures.
 
-`nia.json` is the executable sample recipe. It defines the preset, body and appearance controls,
-wardrobe and output asset paths. `review-cameras.json` defines the shared render settings and
-fixed cameras for both comparison characters. Body control readback verifies requested
-settings; it does not independently measure the final geometry or establish perceived age.
-
-## Author
-
-Run `metahuman.py RECIPE STAGE NEW_REPORT` inside Unreal's Python commandlet with
-`PythonScriptPlugin`, `EditorScriptingUtilities`, `MetaHumanCharacter` and `MetaHumanGenerator`
-enabled. Reports must use new paths under `.local/evidence/characters/`.
-
-Stages run in order:
-
-1. `create` duplicates the Epic preset and uses the MetaHuman Generator toolset to set body shape,
-   skin tone and both eyes. Required values are range-checked and read back before saving.
-2. `wardrobe` selects one groom/outfit per specified slot, avoiding duplicate garments.
-3. `cloud` requests Epic's joints-and-blendshapes rig and 8K source textures. Epic authentication
-   is required; desired resolution is verified separately from assembled texture resolution.
-4. `assemble` builds UE Cine with wardrobe validation and saves every generated asset.
-5. `materials` applies explicit material parameters within the assembly folder, verifying readback.
-6. `inventory` independently reloads the assembly and records assets, textures and materials.
-
-These calls use the same MetaHuman Generator implementations exposed by Unreal MCP.
-Running the commandlet does not require an MCP network listener. The body helper's height range is
-135–220 cm; a smaller character requires a separately validated authoring approach.
-
-Set `UE_ROOT` to `.local/toolchains/UnrealEngine-5.8.2`. Create, wardrobe, cloud, materials and
-inventory can run with `unreal-container.sh exec`, `UnrealEditor-Cmd`, `-run=pythonscript`,
-`-nullrhi`, `-unattended` and `-ScriptErrorsAreFatal`. Assembly requires graphics: use
-`unreal-container.sh character-authoring` with the existing Fab authoring image.
-This mode supplies a private Xvfb display and permits pinned memory for Vulkan ray tracing.
-
-## Render and review
-
-`render_metahuman.py RECIPE CAMERAS NEW_OUTPUT` runs through `-ExecutePythonScript` in the editor and
-reads the shared camera profile. It captures fixed camera views with LOD 0, fully loaded
-textures, neutral lighting, fixed exposure, no bloom and no motion blur. It verifies the requested
-renderer CVars. Captures establish appearance only; animation and streaming performance need
-separate acceptance.
+Set `UE_ROOT` to `.local/toolchains/UnrealEngine-5.8.2`. Commandlets run with
+`unreal-container.sh exec`, `UnrealEditor-Cmd`, `-run=pythonscript`, `-nullrhi`, `-unattended` and
+`-ScriptErrorsAreFatal`. Rendering requires graphics: use `unreal-container.sh character-authoring`,
+which supplies a private Xvfb display and permits pinned memory for Vulkan ray tracing.
 
 For SM6 captures use `-vulkan -sm6` and process-specific Engine settings:
 `r.RayTracing=1`, `r.DynamicGlobalIlluminationMethod=1`, `r.ReflectionMethod=1`,
@@ -52,29 +15,7 @@ must contain `SF_VULKAN_SM6`. Preserve both Vulkan profile checks, ray-tracing a
 the editor exit status and the screenshots. Keep character review settings separate from the
 installed renderer profile.
 
-Publish a selection containing `title`, `assessment` and `images` entries with `name`, `path`,
-`sha256` and `caption`:
-
-```sh
-.venv-cosys/bin/python -m world.unreal.characters.review_metahuman \
-  .local/evidence/characters/metahuman-uploaded-face/comparison-selection.json character-nia
-```
-
-Load `.local/runtime.env` with exported variables to select the provisioned Chromium.
-Verify the public gallery and capture browser evidence with
-`node world/unreal/characters/capture-review.mjs URL NEW_OUTPUT IMAGE_COUNT PIXEL_SIZE`.
-It checks every full-resolution PNG and closes its browser in all cases.
-
-The gallery copies only verified renders and thumbnails into the existing web build.
-Use `--update` to replace an existing gallery: its HTML switches after all image copies finish.
-A web rebuild removes it; republish using the saved selection. No new listener is needed.
-The twelve selected reference photographs are retained privately under
-`.local/evidence/characters/references/`; provenance is in
-`mission_planner/measurements/character-references.json`. They are visual references only.
-
-## Rocketbox characters
-
-### Simulation integration
+## Simulation integration
 
 The approved selection contains eleven characters: three children, four adults and four older-adult
 candidates. `rocketbox-selection.json` identifies the reviewed source assets;
@@ -91,7 +32,7 @@ with fresh evidence directories, in order:
    original limb lengths. Horizontal displacement belongs to scenario behavior. A separate authored
    seated-rest loop supplies the injured situation.
 3. `capture_rocketbox_runtime.py CONFIGURE_RESULT_JSON NEW_OUTPUT` captures all four activities with
-   the fixed review lighting and records bone positions. Use the SM6 editor invocation below. Inspect
+   the fixed review lighting and records bone positions. Use the SM6 settings above. Inspect
    these captures before accepting the packaged world; animation import alone is not acceptance.
 4. `configure_rocketbox_catalog.py CONFIGURE_RESULT_JSON NEW_OUTPUT` publishes the actor catalog
    with descriptions from `creator-people.json`. Run this after reviewing the poses. The catalog
@@ -106,14 +47,15 @@ before running them.
 Original clothing colors are retained. The browser hides unsupported recoloring and backpack
 controls, and descriptions name the visible garments. Runtime portraits are reduced copies of the
 reviewed neutral-light renders. The packaged release includes `licenses/Microsoft-Rocketbox-MIT.txt`.
-Old catalogs, characters, portraits, preview galleries and releases are retained. Unreal packaging
-cooks the active map and catalog dependencies instead of every historical character directory.
+Unreal packaging cooks the map, its catalog dependencies and `/Game/Scenario/Rocketbox`.
+
+## Acquire, import and render
 
 `rocketbox-assets.lock.json` pins three Microsoft Rocketbox facial meshes, original textures,
 catalog previews and MIT notices to one repository commit and Git blob hashes.
 `rocketbox-candidates.lock.json` separately pins twelve comparison candidates and their individual
-roster gaps. These are original models, not verified matches for `roster.json`; senior diversity,
-heavier builds and exact child ages remain unresolved. Both manifests define their own vendor
+roster gaps. These are original models; senior diversity, heavier builds and exact child ages
+remain unresolved. Both manifests define their own vendor
 and Unreal asset directories, preserving the approved sample. Acquisition
 records SHA-256 hashes and exact byte sizes for every file:
 
@@ -171,7 +113,7 @@ allowed dimensions, including full sensor frames, and always closes its browser.
 The child and senior labels are visual categories; exact ages are unverified. Animation,
 outdoor materials and detector performance require separate acceptance.
 
-### Clothing and revised selections
+## Clothing and revised selections
 
 Rocketbox clothing is part of the body mesh, not a modular wardrobe preset. Texture/color edits
 are simpler than changing garment geometry. The creators describe a shared neck boundary for
@@ -202,37 +144,3 @@ Assemble a selection without rerendering unchanged characters, then publish it:
 The selector requires matching renderer profiles, fixed exposure and white balance. It records
 source/output hashes for every copied preview and capture, preserves the source assets, and
 fails if the destination exists. Its derived manifest is for publication, not asset acquisition.
-
-## Imported heads
-
-KeenFace's MetaHuman ZIP export contains a template head FBX and color, normal and SRMF maps.
-Use MetaHuman Creator's Conform from Template workflow, retain Epic's body, eyes, teeth and rig,
-and apply the supplied skin maps. The uploaded sample's inventory and hashes are recorded in
-`mission_planner/measurements/character-head-input.json`.
-
-`uploaded-face.json` defines the comparison character. Run `import_head.py RECIPE conform NEW_REPORT`
-to duplicate the reference character, import the hash-verified FBX, fit by template UVs and adapt
-the neck to the existing body. Run the normal cloud and assembly stages, then
-`import_head.py RECIPE textures NEW_REPORT` to apply the three supplied 4K maps to the assembled
-face materials. This exports the generated face and body base colors beside the report.
-Run `.venv-cosys/bin/python -m world.unreal.characters.match_skin RECIPE REFERENCE_HEAD NEW_REPORT`
-with the exported `face-basecolor.tga`. It samples the configured neck UV region in linear RGB
-and records a body-color multiplier in the recipe, preserving the supplied face textures.
-Finally apply the recipe’s material parameters and render the same `review-cameras.json` profile as Nia.
-The uploaded head’s original textures remain unchanged.
-
-Match the neck geometry and body skin under neutral lighting, then check head rotation, blinking
-and facial expressions before accepting the character. SRMF packs specular, roughness, metallic
-and fuzz into RGBA. Normal and SRMF maps are non-color data; the MetaHuman export's normal map
-already uses Unreal's DirectX convention. Prefer the export's lossless PNG option for subsequent
-heads, especially normal maps. Changing JPG files to PNG cannot recover discarded detail.
-
-## Sources
-
-- [Epic MetaHuman presets](https://dev.epicgames.com/documentation/metahuman/presets)
-- [Body parameters](https://dev.epicgames.com/documentation/metahuman/metahuman-creator-body-params-tool-in-unreal-engine)
-- [Skin materials](https://dev.epicgames.com/documentation/metahuman/skin-material-tools)
-- [MetaHuman Generator](https://dev.epicgames.com/documentation/unreal-engine/API/PluginIndex/MetaHumanGenerator)
-- [Unreal MCP](https://dev.epicgames.com/documentation/unreal-engine/unreal-mcp-in-unreal-editor)
-- [KeenFace MetaHuman export specification](https://keenface.ai/docs/reference?moved=1)
-- [Template head fitting](https://dev.epicgames.com/documentation/metahuman/metahuman-creator-from-template-tool-in-unreal-engine)

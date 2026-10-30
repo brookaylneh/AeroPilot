@@ -57,8 +57,8 @@ bash world/unreal/scripts/unreal-container.sh build
 Package only after selecting the matching Content and explicit manifests described
 under [Rendering and packaging](#rendering-and-packaging).
 
-`metahuman-login` and `character-authoring` modes of `unreal-container.sh` need Epic's licensed components and
-an authorized account; they also need `docker build -t snr-unreal-fab:5.8.2 - < world/unreal/docker/fab.Dockerfile`.
+The `character-authoring` mode of `unreal-container.sh` needs
+`docker build -t snr-unreal-fab:5.8.2 - < world/unreal/docker/fab.Dockerfile`.
 
 ## Valley foundations
 

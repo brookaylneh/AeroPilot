@@ -81,7 +81,6 @@ class SCENARIOSTUDIO_API UScenarioCatalog : public UPrimaryDataAsset
     GENERATED_BODY()
   public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly) FName EnvironmentId;
-    UPROPERTY(EditAnywhere, BlueprintReadOnly) FText DisplayName;
     UPROPERTY(EditAnywhere, BlueprintReadOnly) FString AssetVersion;
     UPROPERTY(EditAnywhere, BlueprintReadOnly) TArray<FScenarioRegion> Regions;
     UPROPERTY(EditAnywhere, BlueprintReadOnly) TArray<FScenarioPersonPreset> People;

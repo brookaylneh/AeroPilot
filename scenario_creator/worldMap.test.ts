@@ -117,7 +117,7 @@ test('development serves the public world manifest while other world and private
   assert.equal(isFileLoadingAllowed(config, resolve('world/cosys/world.json')), true);
   for (const file of [
     'world/cosys/settings.json',
-    'world/unreal/characters/roster.json',
+    'world/unreal/characters/rocketbox-selection.json',
     'world/cosys/subdir/world.json',
     'world/README.md',
     '.env',
