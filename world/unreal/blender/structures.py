@@ -712,13 +712,14 @@ def bolt(parts, centre, normal):
     add(parts, "iron", bm)
 
 
-def cylinder(parts, material, base, radius, height, segments=24):
+def cylinder(parts, material, base, radius, height, segments=24, axis=(0, 0, 1)):
     bm = bmesh.new()
     bmesh.ops.create_cone(
         bm, cap_ends=True, segments=segments, radius1=radius, radius2=radius, depth=height
     )
     bm.loops.layers.uv.new("UVMap")
-    bm.transform(Matrix.Translation(Vector(base) + Vector((0, 0, height / 2))))
+    rotation = Vector(axis).to_track_quat("Z", "Y").to_matrix().to_4x4()
+    bm.transform(Matrix.Translation(Vector(base) + Vector(axis) * (height / 2)) @ rotation)
     add(parts, material, bm)
 
 
@@ -752,64 +753,122 @@ def hut(rng, output):
     return objects, {"derivedAlbedo": derived, "sidingPlanks": len(bands), "collisionHulls": hulls}
 
 
-# Footbridge build frame: z = 0 at grade on the sill timbers, y along the span, x across the deck.
+# Footbridge build frame: z = 0 at grade, y along the span, x across the deck.
 # T3 terrain at the footbridge: creek bank tops 3.35 m either side of the centreline.
 BANK_TOP_M = 3.35
-WIDTH, SPAN, SILL_Y = 2.4, 8.6, 4.1
-SILL = (0.30, 0.30, 0.05)  # along the span, height, height above grade
+WIDTH, SPAN, BEARING_Y = 2.4, 8.6, 4.1
+PAD = (0.45, 0.30, 0.30, 0.05)  # concrete bearing pad: across, along the span, height, above grade
 FOOT = (0.02, 0.05)  # base plate and bearing block
 CHANNEL = (0.305, 0.075, 0.010, 0.013)  # C12x20.7: depth, flange, web, flange thickness
-DECK_T, BOARD_W, GAP = 0.076, 0.20, 0.012
-CURB, POST_SIZE, RAIL = 0.20, (0.15, 0.20), (0.09, 0.19)
-POSTS = 5
+DECK_T, BOARD_W, GAP = 0.076, 0.20, 0.016
+CURB, POST, RAIL = 0.20, 0.20, (0.09, 0.19)
+END_POST = SPAN / 2 - 0.10 - POST / 2  # rail and curb ends stand proud of the end posts
 RAIL_M = 1.07  # AASHTO pedestrian railing height, 42 in
 BOLT = (0.024, 0.45)  # head radius, height over radius
-BEARING = SILL[2] + sum(FOOT)
+WASHER = (0.032, 0.005)  # radius, thickness
+HEAD = WASHER[1] + BOLT[0] * BOLT[1]
+BEARING = PAD[3] + sum(FOOT)
 DECK_TOP = BEARING + CHANNEL[0] + DECK_T
-EDGE = WIDTH / 2 - BOLT[0] * BOLT[1] - POST_SIZE[0]
-POST_Z = (BEARING + 0.02, DECK_TOP + RAIL_M + 0.04)
+EDGE = WIDTH / 2 - HEAD - POST
+POST_Z = (BEARING + 0.02, DECK_TOP + RAIL_M + 0.10)
+GRAIN = (0.6, 4)  # scan tile across the grain (m) and its stretch along the grain
+END = 0.002  # end-grain plate proud of a timber end
+# Mill scale and light rust albedo sRGB.
+STEEL = ((80, 80, 82), (124, 80, 52))
 # Cabin targets rescaled by the footbridge master's measured rail and deck regions over the
 # first studio render's.
-BRIDGE_TARGETS = {"timber": ((149, 140, 129), 24), "deck": ((162, 154, 145), 30)}
+BRIDGE_TARGETS = {"timber": ((140, 126, 112), 30), "deck": ((170, 159, 146), 30)}
+END_GRAIN = ((92, 80, 68), 26)
+
+
+def fastener(parts, centre, normal):
+    """Domed bolt head on a round washer, on the face at `centre` with outward unit `normal`."""
+    cylinder(parts, "iron", centre, WASHER[0], WASHER[1], 16, normal)
+    bolt(parts, Vector(centre) + Vector(normal) * WASHER[1], normal)
+
+
+def mill_scale(output, rng):
+    """Periodic 2048 px hot-rolled steel albedo and roughness one metre a tile: mottled mill
+    scale with paler flaked patches and sparse light rust."""
+    noise = np.random.default_rng(rng.randrange(2**32))
+
+    def field(sigma):
+        f = blur(noise.standard_normal((2048, 2048)), sigma)
+        return f / f.std()
+
+    mottle, flake = field(60) + 0.5 * field(8), np.clip((field(20) - 1.2) / 0.5, 0, 1)
+    rust = np.clip((field(30) + 0.6 * field(5) - 1.8) / 0.7, 0, 1)[..., None]
+    scale = np.array(STEEL[0]) / 255 * (1 + 0.06 * mottle[..., None]) + 0.10 * flake[..., None]
+    albedo = np.clip(scale * (1 - rust) + np.array(STEEL[1]) / 255 * rust, 0, 1)
+    rough = np.repeat(np.clip(0.45 + 0.04 * mottle[..., None] + 0.35 * rust, 0, 1), 3, axis=2)
+    return principled(
+        "Mill-scale steel",
+        base_image=saved("steel_albedo", albedo, output, colour=True),
+        rough_image=saved("steel_rough", rough, output),
+    ), {"mill scale": list(STEEL[0]), "rust": list(STEEL[1]), "rustFraction": float(rust.mean())}
 
 
 def footbridge(rng, output):
     buried = load("structures")["timber-footbridge"]["buriedM"]
-    assert math.isclose(buried, SILL[1] - SILL[2]), buried
-    clear = 2 * SILL_Y - SILL[0]
-    assert clear > 2 * BANK_TOP_M and SILL_Y + SILL[0] / 2 < SPAN / 2
+    assert math.isclose(buried, PAD[2] - PAD[3]), buried
+    clear = 2 * BEARING_Y - PAD[1]
+    assert clear > 2 * BANK_TOP_M and BEARING_Y + PAD[1] / 2 < SPAN / 2
     mats, bands, derived = cabin_materials(output, TARGETS | BRIDGE_TARGETS, CABIN_ROOF)
-    mats["steel"] = principled("Dark painted steel", base=lin((70, 72, 74)), rough=0.5)
+    mats["nail"] = mats["iron"]
+    mats["iron"] = principled("Galvanised steel", base=lin((150, 150, 146)), rough=0.35, metallic=1)
+    mats["steel"], derived["steel"] = mill_scale(output, rng)
+    mats["concrete"], derived["concrete"] = scan(
+        "Bearing pad", "concrete_wall_008", ((150, 146, 140), 14), output
+    )
+    wood = TEXTURES / "rough_wood" / "rough_wood_diff_4k.jpg"
+    albedo, derived["endgrain"] = matched(wood, END_GRAIN, "endgrain_albedo", output)
+    mats["endgrain"] = principled(
+        "End grain",
+        base_image=albedo,
+        rough_image=bpy.data.images["rough_wood_rough_4k.jpg"],
+        normal_image=bpy.data.images["rough_wood_nor_gl_4k.jpg"],
+        strength=1.5,
+    )
     parts = {}
 
     def piece(material, size, centre, grain=0, **kwargs):
         placed(parts, material, size, centre, rng, grain=grain, **kwargs)
 
+    def timber(size, centre, grain):
+        """Long grain: the scan stretched GRAIN[1] times along `grain`; end-grain plates."""
+        uvs = parts.setdefault("timber", ([], [], []))[2]
+        start = len(uvs)
+        piece("timber", size, centre, grain, bevel=0.012, segments=2, tile=GRAIN[0])
+        uvs[start:] = [(u, v / GRAIN[1]) for u, v in uvs[start:]]
+        face = [s - 0.024 for s in size]
+        face[grain] = END
+        for s in (-1, 1):
+            end = list(centre)
+            end[grain] += s * (size[grain] + END) / 2
+            piece("endgrain", face, end, bevel=0.0005)
+
     depth, flange, web, flange_t = CHANNEL
-    # Outer channels show their webs; flanges point inward.
-    stringers = ((-EDGE, 1), (-web / 2, 1), (EDGE, -1))
-    flanges = [x + inward * flange / 2 for x, inward in stringers]
-    for (x, inward), cx in zip(stringers, flanges):
-        centre = (x + inward * web / 2, 0, BEARING + depth / 2)
-        piece("steel", (web, SPAN, depth), centre, 1, bevel=0.002)
+    # Edge channels show their webs; flanges point inward.
+    flanges = [sx * (EDGE - flange / 2) for sx in (-1, 1)]
+    for sx, cx in zip((-1, 1), flanges):
+        centre = (sx * (EDGE - web / 2), 0, BEARING + depth / 2)
+        piece("steel", (web, SPAN, depth), centre, 1, bevel=0.002, tile=1.0)
         for z in (BEARING + flange_t / 2, BEARING + depth - flange_t / 2):
-            piece("steel", (flange, SPAN, flange_t), (cx, 0, z), 1, bevel=0.002)
-    for sy in (-1, 1):
-        centre = (0, sy * SILL_Y, SILL[2] - SILL[1] / 2)
-        piece("timber", (WIDTH, SILL[0], SILL[1]), centre, 0, bevel=0.01, segments=2)
-        for cx in flanges:
-            plate = (cx, sy * SILL_Y, SILL[2] + FOOT[0] / 2)
-            piece("steel", (0.30, 0.24, FOOT[0]), plate, bevel=0.003)
-            block = (cx, sy * SILL_Y, SILL[2] + FOOT[0] + FOOT[1] / 2)
-            piece("steel", (0.14, 0.16, FOOT[1]), block, bevel=0.003)
-            for dx in (-0.11, 0.11):
-                bolt(parts, (cx + dx, sy * SILL_Y, SILL[2] + FOOT[0]), (0, 0, 1))
-        for sx in (-1, 1):
-            x, height = sx * (EDGE - 0.1), depth + DECK_T
-            corner = (x, sy * (SPAN / 2 + 0.006), BEARING + height / 2)
-            piece("steel", (0.2, 0.012, height), corner, bevel=0.002)
+            piece("steel", (flange, SPAN, flange_t), (cx, 0, z), 1, bevel=0.002, tile=1.0)
+        for sy in (-1, 1):
+            y = sy * BEARING_Y
+            piece("concrete", (PAD[0], PAD[1], PAD[2]), (cx, y, PAD[3] - PAD[2] / 2), bevel=0.02)
+            piece("steel", (0.26, 0.28, FOOT[0]), (cx, y, PAD[3] + FOOT[0] / 2), bevel=0.003)
+            block = (cx, y, PAD[3] + FOOT[0] + FOOT[1] / 2)
+            piece("steel", (0.14, 0.12, FOOT[1]), block, bevel=0.003)
+            for dy in (-0.10, 0.10):
+                fastener(parts, (cx, y + dy, PAD[3] + FOOT[0]), (0, 0, 1))
+            stiffener = (flange - web, 0.012, depth - 2 * flange_t)
+            piece("steel", stiffener, (cx - sx * web / 2, y, BEARING + depth / 2), bevel=0.002)
+            x, end = sx * (EDGE - 0.1), sy * (SPAN / 2 + 0.006)
+            piece("steel", (0.2, 0.012, depth), (x, end, BEARING + depth / 2), bevel=0.002)
             for z in (BEARING + 0.08, BEARING + depth - 0.08):
-                bolt(parts, (x, sy * (SPAN / 2 + 0.012), z), (0, sy, 0))
+                fastener(parts, (x + sx * 0.04, end + sy * 0.006, z), (0, sy, 0))
     boards = round((SPAN + GAP) / (BOARD_W + GAP))
     width = (SPAN - (boards - 1) * GAP) / boards
     flat = frame((0, 0, 0), (1, 0, 0), (0, 0, 1))
@@ -818,32 +877,30 @@ def footbridge(rng, output):
         centre = (rng.uniform(-0.004, 0.004), y, DECK_TOP - DECK_T / 2 + rng.uniform(-0.002, 0))
         matrix = Matrix.Translation(centre) @ Matrix.Rotation(rng.uniform(-0.004, 0.004), 4, "Z")
         size, band = (2 * EDGE - rng.uniform(0.01, 0.02), DECK_T, width), rng.choice(bands)
-        box(parts, "deck", size, matrix @ flat, rng, bevel=0.005, tile=PLANK_TILE, band=band)
-        for dy in (-0.05, 0.05):
-            spike = (flanges[1] + rng.uniform(-0.01, 0.01), y + dy, DECK_TOP + 0.001)
-            piece("iron", (0.014, 0.014, 0.004), spike, bevel=0.001)
-    posts = [
-        -SPAN / 2 + POST_SIZE[1] / 2 + i * (SPAN - POST_SIZE[1]) / (POSTS - 1) for i in range(POSTS)
-    ]
+        box(parts, "deck", size, matrix @ flat, rng, bevel=0.008, tile=PLANK_TILE, band=band)
+        for cx in flanges:
+            for dy in (-0.05, 0.05):
+                spike = (cx + rng.uniform(-0.01, 0.01), y + dy, DECK_TOP + 0.001)
+                piece("nail", (0.014, 0.014, 0.004), spike, bevel=0.001)
     rails = (DECK_TOP + RAIL_M - RAIL[1] / 2, DECK_TOP + 0.60)
-    assert (
-        math.isclose(rails[0] + RAIL[1] / 2 - DECK_TOP, RAIL_M)
-        and rails[1] - RAIL[1] / 2 > DECK_TOP + CURB
-    )
+    assert math.isclose(rails[0] + RAIL[1] / 2 - DECK_TOP, RAIL_M)
+    assert rails[1] - RAIL[1] / 2 > DECK_TOP + CURB and POST_Z[1] > rails[0] + RAIL[1] / 2 + 0.05
     for sx in (-1, 1):
-        curb = (sx * (EDGE - CURB / 2), 0, DECK_TOP + CURB / 2)
-        piece("timber", (CURB, SPAN, CURB), curb, 1, bevel=0.012, segments=2)
-        for y0, y1 in ((-SPAN / 2, -0.002), (0.002, SPAN / 2)):
+        timber((CURB, SPAN - 2 * END, CURB), (sx * (EDGE - CURB / 2), 0, DECK_TOP + CURB / 2), 1)
+        for y0, y1 in ((-SPAN / 2, -0.003), (0.003, SPAN / 2)):
             for z in rails:
                 rail = (sx * (EDGE - RAIL[0] / 2), (y0 + y1) / 2, z)
-                piece("timber", (RAIL[0], y1 - y0, RAIL[1]), rail, 1, bevel=0.01, segments=2)
-        for y in posts:
-            post = (sx * (EDGE + POST_SIZE[0] / 2), y, sum(POST_Z) / 2)
-            size = (*POST_SIZE, POST_Z[1] - POST_Z[0])
-            piece("timber", size, post, 2, bevel=0.012, segments=2)
-            for z in (*rails, DECK_TOP + CURB / 2, BEARING + depth / 2):
-                bolt(parts, (sx * (EDGE + POST_SIZE[0]), y, z), (sx, 0, 0))
-    rail_x = (EDGE - CURB, EDGE + POST_SIZE[0])
+                timber((RAIL[0], y1 - y0 - 2 * END, RAIL[1]), rail, 1)
+        for y in (-END_POST, 0, END_POST):
+            post = (sx * (EDGE + POST / 2), y, sum(POST_Z) / 2)
+            timber((POST, POST, POST_Z[1] - POST_Z[0] - 2 * END), post, 2)
+            heights = [z + dz for z in rails for dz in (-0.045, 0.045)]
+            for z in (*heights, DECK_TOP + CURB / 2, BEARING + 0.09, BEARING + depth - 0.09):
+                fastener(parts, (sx * (EDGE + POST), y, z), (sx, 0, 0))
+            for z in heights:
+                fastener(parts, (sx * (EDGE - RAIL[0]), y, z), (-sx, 0, 0))
+            fastener(parts, (sx * (EDGE - CURB), y, DECK_TOP + CURB / 2), (-sx, 0, 0))
+    rail_x = (EDGE - CURB, EDGE + POST)
     hulls = {
         "deck": ((2 * EDGE, SPAN, DECK_TOP - BEARING), (0, 0, (DECK_TOP + BEARING) / 2)),
         **{
@@ -854,7 +911,7 @@ def footbridge(rng, output):
             for sx in (-1, 1)
         },
         **{
-            f"abutment{sy:+d}": ((WIDTH, SILL[0], BEARING), (0, sy * SILL_Y, BEARING / 2))
+            f"bearing{sy:+d}": ((WIDTH, PAD[1], BEARING), (0, sy * BEARING_Y, BEARING / 2))
             for sy in (-1, 1)
         },
     }
@@ -864,12 +921,13 @@ def footbridge(rng, output):
     return objects, {
         "derivedAlbedo": derived,
         "stringerLengthM": SPAN,
-        "bearingSpanM": 2 * SILL_Y,
+        "bearingSpanM": 2 * BEARING_Y,
         "clearSpanM": clear,
         "widthM": WIDTH,
         "clearWidthM": 2 * (EDGE - CURB),
         "deckTopM": DECK_TOP,
         "railHeightM": rails[0] + RAIL[1] / 2 - DECK_TOP,
+        "postTopM": POST_Z[1],
         "deckBoards": boards,
         "boardWidthM": width,
         "boardGapM": GAP,

@@ -573,6 +573,45 @@
       "authors": ["Charlotte Baglioni", "Dario Barresi"],
       "source": "https://polyhaven.com/a/concrete_wall_008",
       "sha256": "f88aab6f11e0cbe3d366a2beb4ea1e50468e8e31da32bf1ea4a098b3be2f984e"
+    },
+    {
+      "asset": "rock_05",
+      "map": "Diffuse",
+      "resolution": "2k",
+      "format": "jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rock_05/rock_05_diff_2k.jpg",
+      "bytes": 3115501,
+      "md5": "9e9398175c503701571b19d727aa3532",
+      "dimensionsMm": [1500, 1500],
+      "authors": ["Rob Tuytel"],
+      "source": "https://polyhaven.com/a/rock_05",
+      "sha256": "5681891240b82184103c7310bd07da93dd438126df69bfe6a19b5d9816b748a8"
+    },
+    {
+      "asset": "rock_05",
+      "map": "nor_gl",
+      "resolution": "2k",
+      "format": "jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rock_05/rock_05_nor_gl_2k.jpg",
+      "bytes": 2979378,
+      "md5": "861ed1876f0bdca9465226f229f5ebbf",
+      "dimensionsMm": [1500, 1500],
+      "authors": ["Rob Tuytel"],
+      "source": "https://polyhaven.com/a/rock_05",
+      "sha256": "2cb734957c95762c02dce843ca6cf7b75cf5dd47de215372f8f2c9f3aa512580"
+    },
+    {
+      "asset": "rock_05",
+      "map": "Rough",
+      "resolution": "2k",
+      "format": "jpg",
+      "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/rock_05/rock_05_rough_2k.jpg",
+      "bytes": 1256189,
+      "md5": "379116c46ff044e1cea039ecbecf8fc4",
+      "dimensionsMm": [1500, 1500],
+      "authors": ["Rob Tuytel"],
+      "source": "https://polyhaven.com/a/rock_05",
+      "sha256": "7d41012958b4a3c0fba902e6cf91f1f35f56322de73b26453c7559f5502ba2d1"
     }
   ]
 }

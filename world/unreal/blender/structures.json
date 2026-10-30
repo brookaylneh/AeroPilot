@@ -39,22 +39,22 @@
     "timber-footbridge": {
       "reference": "timber-footbridge",
       "seed": 31,
-      "dimensionsM": [2.4, 8.646, 1.861],
+      "dimensionsM": [2.4, 8.656, 1.921],
       "toleranceM": 0.005,
       "buriedM": 0.25,
       "textureSize": 4096,
       "collision": true,
       "panels": { "left": [0, 0], "right": [1, 0], "front": [0, 1], "top": [1, 1] },
       "correspondences": [
-        { "name": "+X near end post, top", "modelM": [1.189, -4.3, 1.611], "pixel": [1708, 1220] },
-        { "name": "+X near end post, foot", "modelM": [1.189, -4.3, 0.14], "pixel": [1710, 2250] },
-        { "name": "+X middle post, top", "modelM": [1.189, -0.1, 1.611], "pixel": [2405, 895] },
-        { "name": "+X middle post, foot", "modelM": [1.189, -0.1, 0.14], "pixel": [2405, 1710] },
-        { "name": "+X far end post, top", "modelM": [1.189, 4.1, 1.611], "pixel": [2750, 730] },
-        { "name": "+X far end post, foot", "modelM": [1.189, 4.1, 0.14], "pixel": [2750, 1425] },
-        { "name": "-X near end post, top", "modelM": [-1.039, -4.3, 1.611], "pixel": [250, 1130] },
-        { "name": "-X far end post, top", "modelM": [-1.039, 4.1, 1.611], "pixel": [1785, 690] },
-        { "name": "-X curb, near end top", "modelM": [-1.039, -4.3, 0.701], "pixel": [125, 1820] }
+        { "name": "+X near end post, top", "modelM": [1.1842, -4.2, 1.671], "pixel": [1708, 1220] },
+        { "name": "+X near end post, foot", "modelM": [1.1842, -4.2, 0.14], "pixel": [1710, 2250] },
+        { "name": "+X middle post, top", "modelM": [1.1842, -0.1, 1.671], "pixel": [2405, 895] },
+        { "name": "+X middle post, foot", "modelM": [1.1842, -0.1, 0.14], "pixel": [2405, 1710] },
+        { "name": "+X far end post, top", "modelM": [1.1842, 4.0, 1.671], "pixel": [2750, 730] },
+        { "name": "+X far end post, foot", "modelM": [1.1842, 4.0, 0.14], "pixel": [2750, 1425] },
+        { "name": "-X near end post, top", "modelM": [-0.9842, -4.2, 1.671], "pixel": [250, 1130] },
+        { "name": "-X far end post, top", "modelM": [-0.9842, 4.0, 1.671], "pixel": [1785, 690] },
+        { "name": "-X curb, near end top", "modelM": [-0.9842, -4.3, 0.701], "pixel": [125, 1820] }
       ],
       "colourRegions": {
         "deck": [[550, 1800, 900, 1880]],
