@@ -86,23 +86,10 @@ simulation performance. A digest-pinned Ubuntu container must also expose the GP
 user with `docker run --gpus all`. Raw verification output stays in `.local/evidence/host/`;
 accepted host measurements belong in `mission_planner/measurements/`.
 
-## Transfer verification
+## Engine build
 
-[transfer.md](transfer.md) records the transferred items, exclusions and provenance.
-Per-file manifests and command output live in .local/evidence/transfer/.
-The transfer tool hashes regular files, checks executable flags and symbolic-link targets,
-and rejects files that change during hashing. Generate manifests on the source and stream
-them to the target; verification reads both the target tree and its saved source manifest.
-
-```sh
-node deploy/transfer.mjs manifest /path/to/source __pycache__
-node deploy/transfer.mjs verify /path/to/target /path/to/source-manifest.json
-node --test deploy/transfer.test.mjs
-```
-
-The installed engine SDK is retained in full, including its intermediates and DDC.
-Project and project-plugin build outputs are regenerated. Build and package with explicit
-host resources and the transferred SDK:
+The engine SDK in `.local/toolchains/UnrealEngine-5.8.2` keeps its intermediates and DDC.
+Project and project-plugin build outputs are regenerated. Build with explicit host resources:
 
 ```sh
 export UE_ROOT="$PWD/.local/toolchains/UnrealEngine-5.8.2"
@@ -294,10 +281,7 @@ aws ec2 revoke-security-group-ingress --region us-west-2 --group-id sg-007dd0426
 - [LunarG SDK installation](https://vulkan.lunarg.com/doc/view/latest/linux/getting_started.html)
 - [NVIDIA codec engine and format matrix](https://developer.nvidia.com/video-encode-decode-support-matrix)
 
-## Cutover cleanup
-
-After final acceptance at cutover, delete `deploy/transfer.md`, `deploy/transfer.mjs` and its test,
-remove this transfer-tool documentation, and retain `mission_planner/measurements/aws-transfer.json`.
+## GPU containers
 
 GPU containers explicitly declare the NVIDIA device nodes in `unreal-container.sh`,
 in addition to requesting the NVIDIA runtime and driver libraries. This preserves
