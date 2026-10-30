@@ -111,12 +111,9 @@ export default function GroundChecks({
   const [place, setPlace] = useState('');
   const [team, setTeam] = useState('');
   const [message, setMessage] = useState('');
-  const structures =
-    search.landmarks === null
-      ? []
-      : search.landmarks.filter(
-          (landmark) => landmark.kind === 'structure' && landmark.geometry.type === 'polygon',
-        );
+  const structures = search.landmarks.filter(
+    (landmark) => landmark.kind === 'structure' && landmark.geometry.type === 'polygon',
+  );
   const tasks = search.commander.deliveries.filter((delivery) => delivery.kind === 'structure_check');
   const tool = (name: string, args: Record<string, unknown>) => send({ type: 'tool', name, arguments: args });
   return (

@@ -17,18 +17,13 @@ from mission_planner.search.occlusion import aerial_visibility
 from mission_planner.search.planner import encode, plan
 from mission_planner.search.prior import initialize
 from mission_planner.search.subject import explicit_point, validate_profile
-from world.cosys.landmarks import LANDMARKS_PATH, directions, find, load
+from world.cosys.landmarks import directions, find, load
 
 
 class Search:
     def __init__(self, mission):
         self.mission = mission
-        self.landmarks = load() if LANDMARKS_PATH.is_file() else None
-        self.landmark_error = (
-            None
-            if self.landmarks is not None
-            else "Landmark data unavailable: world/unreal/landmarks.json"
-        )
+        self.landmarks = load()
         self.profile = None
         self.point = None
         self.vertices = None
@@ -118,7 +113,7 @@ class Search:
             fit["behavior"] = None
             if category == "dementia":
                 probability, fit["behavior"] = condition(grid, probability, self.landmarks)
-            visible = None if self.landmarks is None else aerial_visibility(grid, self.landmarks)
+            visible = aerial_visibility(grid, self.landmarks)
             self.grid, self.probability, self.retained, self.prior_fit = (
                 grid,
                 probability,
@@ -169,7 +164,6 @@ class Search:
 
     def summary(self):
         result = {
-            "landmark_error": self.landmark_error,
             "profile_recorded": self.profile is not None,
             "last_known_point": self.point,
             "area_defined": self.vertices is not None,
@@ -220,7 +214,7 @@ class Search:
         return result
 
     def directions(self, north_m, east_m):
-        return None if self.landmarks is None else directions(self.landmarks, north_m, east_m)
+        return directions(self.landmarks, north_m, east_m)
 
     def structure_mass(self, place_id, geometry):
         self.initialize()
@@ -271,7 +265,6 @@ class Search:
         )
         return {
             "landmarks": self.landmarks,
-            "landmark_error": self.landmark_error,
             "revision": self.revision,
             "profile": self.profile,
             "point": self.point,
@@ -292,7 +285,6 @@ class Search:
 
     async def execute(self, name, arguments, source="operator"):
         if name in ("find_place", "describe_location"):
-            assert self.landmarks is not None, self.landmark_error
             if name == "find_place":
                 return find(self.landmarks, arguments["name"])
             return self.directions(arguments["north_m"], arguments["east_m"])

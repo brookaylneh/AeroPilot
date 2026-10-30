@@ -9,8 +9,7 @@ const field = z.object({ value: z.union([z.string(), number, z.array(z.string())
 const curve = z.array(z.object({ seconds: number, pos: number.min(0).max(1) }));
 export const searchSchema = z.object({
   commander: commanderSchema,
-  landmarks: z.array(landmarkSchema).nullable(),
-  landmark_error: z.string().nullable(),
+  landmarks: z.array(landmarkSchema),
   revision: number.int(),
   profile: z
     .object({

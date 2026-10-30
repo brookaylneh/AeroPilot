@@ -64,7 +64,6 @@ class Places(unittest.IsolatedAsyncioTestCase):
         self.mission.fleet = SimpleNamespace(snapshot=lambda: [{"fence": self.fence}])
         self.mission.search = Search(self.mission)
         self.mission.search.landmarks = self.landmarks
-        self.mission.search.landmark_error = None
         self.mission.search.changed = Mock()
 
     def test_quotes_must_name_the_selected_place(self):
@@ -143,14 +142,6 @@ class Places(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(search.point["north_m"], 10)
         self.assertEqual(search.plan["plan_id"], "old")
         self.assertFalse(self.mission.approvals)
-
-    async def test_missing_landmarks_fail_only_place_tools(self):
-        self.mission.search.landmarks = None
-        self.mission.search.landmark_error = "Landmark data unavailable"
-        with self.assertRaisesRegex(AssertionError, "unavailable"):
-            await self.mission.search.execute("find_place", {"name": "footbridge"})
-        self.assertIsNone(self.mission.search.directions(0, 0))
-        self.assertIsNone(self.mission.search.summary()["last_known_point"])
 
     async def test_cancelled_approval_does_not_leave_a_pending_card(self):
         task = asyncio.create_task(

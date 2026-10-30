@@ -358,11 +358,6 @@
 .gcs-place-approval ol {
   padding-left: 20px;
 }
-.gcs-landmark-error {
-  color: #e0c697;
-  overflow-wrap: anywhere;
-}
-
 .gcs-source-domain {
   display: flex;
   flex-direction: column;

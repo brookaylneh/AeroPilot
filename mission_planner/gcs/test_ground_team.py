@@ -16,7 +16,7 @@ from mission_planner.gcs.ground_team import GroundTeam
 from mission_planner.gcs.service import Mission
 from mission_planner.search.belief import Evidence
 from mission_planner.search.state import Search
-from world.cosys.landmarks import directions
+from world.cosys.landmarks import directions, load
 
 
 class GroundDelivery(unittest.IsolatedAsyncioTestCase):
@@ -44,7 +44,7 @@ class GroundDelivery(unittest.IsolatedAsyncioTestCase):
             "posterior_mass": 0.25,
             "region_cell_count": 1,
             "region_area_m2": 16,
-            "directions": None,
+            "directions": directions(load(), 12, 24),
             "localization": detection["localization"],
         }
         self.mission = SimpleNamespace(
@@ -74,7 +74,7 @@ class GroundDelivery(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(delivery["replay_lane"], "Drone4")
         self.assertEqual(delivery["region_cell_count"], 1)
         self.assertEqual(delivery["region_area_m2"], 16)
-        self.assertIsNone(delivery["directions"])
+        self.assertEqual(delivery["directions"], self.review["directions"])
         self.assertIn("destination=", delivery["navigation_url"])
         self.assertEqual(
             json.loads(self.mission.directory.joinpath("deliveries.json").read_text())[identity][

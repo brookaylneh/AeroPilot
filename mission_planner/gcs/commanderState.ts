@@ -64,7 +64,7 @@ const clusterSchema = z.object({
   ellipse_prior_mass: probability,
   ellipse_posterior_mass: probability,
   ellipse_area_fraction: probability,
-  directions: directions.nullable(),
+  directions,
 });
 const leadDeliverySchema = z
   .object({
@@ -89,7 +89,7 @@ const leadDeliverySchema = z
     posterior_mass: probability,
     region_cell_count: number.nonnegative().int(),
     region_area_m2: number.nonnegative(),
-    directions: directions.nullable(),
+    directions,
     calibrated: z.boolean(),
     source,
     drone_id: drone,

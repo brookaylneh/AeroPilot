@@ -12,14 +12,13 @@ export default function LandmarkLayer({
   pending,
   showLabels,
 }: {
-  landmarks: Landmark[] | null;
+  landmarks: Landmark[];
   project: (north: number, east: number) => Point;
   viewport: { width: number; height: number };
   obstacles: Box[];
   pending: Landmark | null;
   showLabels: boolean;
 }) {
-  if (landmarks === null) return null;
   const anchors = landmarks.map((place) => {
     const anchor = placeAnchor(place);
     return {

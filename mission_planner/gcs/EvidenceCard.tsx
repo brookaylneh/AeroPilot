@@ -201,7 +201,7 @@ export default function EvidenceCard({
           <MapPin size={14} /> Ground position
         </h4>
         <p>{formatPosition(near.north_m, near.east_m)}</p>
-        <p>{review.directions === null ? 'Landmark data unavailable' : review.directions.text}</p>
+        <p>{review.directions.text}</p>
         <p>
           95% ellipse radii{' '}
           {review.localization.ellipse95.radii_m.map((radius) => `${radius.toFixed(2)} m`).join(' × ')}

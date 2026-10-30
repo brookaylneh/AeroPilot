@@ -60,12 +60,6 @@ export default function SearchPanel({
       {open && (
         <div className="gcs-search-body">
           <p className="gcs-search-status">{search.summary.status.replaceAll('_', ' ')}</p>
-          {search.landmark_error !== null && (
-            <details className="gcs-landmark-error" role="alert">
-              <summary>Landmarks unavailable</summary>
-              <p>{search.landmark_error}</p>
-            </details>
-          )}
           {!search.profile ? (
             <p>Ask Wonder to plan the search. It will record the subject and quote the briefing.</p>
           ) : (

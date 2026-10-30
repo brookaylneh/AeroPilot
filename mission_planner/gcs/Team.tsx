@@ -191,7 +191,7 @@ export default function Team() {
             </a>
           )}
           <p>{delivery.message}</p>
-          <p>{delivery.directions === null ? 'Landmark data unavailable' : delivery.directions.text}</p>
+          <p>{delivery.directions.text}</p>
           <dl>
             <div>
               <dt>Latitude / longitude</dt>
