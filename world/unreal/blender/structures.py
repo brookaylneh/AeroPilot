@@ -36,7 +36,7 @@ from world.unreal.blender.common import (  # noqa: E402
     principled,
     saved,
 )
-from world.unreal.blender.spec import load  # noqa: E402
+from world.unreal.blender.spec import ROOT, load  # noqa: E402
 
 # Cabin kit frame: -Y is the front, y = 0 the front wall, x = 0 the ridge line. A kit has the body
 # outside the siding (w across the ridge, l along it), the sill-beam base `plinth` (the top of the
@@ -1378,14 +1378,54 @@ def toilet(rng, output):
     }
 
 
+def slots(builder):
+    """`builder` that also reports, per material, the Principled inputs import_assets
+    rebuilds in Unreal: values, or images as their build.json name and path; `normal` holds
+    at most one map with its strength."""
+
+    def source(socket):
+        if not socket.is_linked:
+            value = socket.default_value
+            return value if isinstance(value, float) else list(value)[:3]
+        (link,) = socket.links
+        assert link.from_node.type == "TEX_IMAGE", (socket.name, link.from_node.type)
+        img = link.from_node.image
+        return {"name": img.name, "path": str(Path(img.filepath_raw).relative_to(ROOT))}
+
+    def inputs(material):
+        bsdf = material.node_tree.nodes["Principled BSDF"]
+        keys = ("baseColor", "roughness", "metallic", "transmission")
+        sockets = ("Base Color", "Roughness", "Metallic", "Transmission Weight")
+        record = {key: source(bsdf.inputs[socket]) for key, socket in zip(keys, sockets)}
+        assert isinstance(record["metallic"], float) and record["transmission"] in (0, 1), record
+        maps = [link.from_node for link in bsdf.inputs["Normal"].links]
+        assert all(node.type == "NORMAL_MAP" for node in maps), material.name
+        record["normal"] = [
+            source(node.inputs["Color"]) | {"strength": node.inputs["Strength"].default_value}
+            for node in maps
+        ]
+        return record
+
+    def build(rng, output):
+        objects, details = builder(rng, output)
+        # Interchange also makes slots of the UCX_ hulls' materials.
+        materials = {m.name: inputs(m) for o in objects for m in o.data.materials}
+        return objects, details | {"materials": materials}
+
+    return build
+
+
 if __name__ == "__main__":
     main(
         Path(__file__).resolve(),
         {
-            "ranger-cabin": cabin,
-            "timber-footbridge": footbridge,
-            "fire-lookout": lookout,
-            "snow-survey-hut": hut,
-            "vault-toilet": toilet,
+            name: slots(builder)
+            for name, builder in {
+                "ranger-cabin": cabin,
+                "timber-footbridge": footbridge,
+                "fire-lookout": lookout,
+                "snow-survey-hut": hut,
+                "vault-toilet": toilet,
+            }.items()
         },
     )

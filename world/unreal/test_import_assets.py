@@ -7,8 +7,10 @@ from pathlib import Path
 from world.unreal.blender.spec import load
 from world.unreal.import_assets import (
     EXTERNAL,
+    camel,
     check_dimensions,
     family_spec,
+    images,
     names,
     textures,
     ue_matrix,
@@ -27,6 +29,18 @@ class ImportTests(unittest.TestCase):
     def test_names_follow_the_content_convention(self):
         self.assertEqual(names("lodgepole-mature"), "SM_Lodgepole_Mature")
         self.assertEqual(names("granite-hero-boulder"), "SM_Granite_HeroBoulder")
+
+    def test_slot_names_survive_interchange_sanitising(self):
+        self.assertEqual(camel("Mill-scale steel"), "MillScaleSteel")
+        self.assertEqual(camel("Mill_scale_steel"), "MillScaleSteel")
+        self.assertEqual(camel("MI_GraniteHeroBoulder"), "MIGraniteHeroBoulder")
+
+    def test_structure_slots_import_only_their_images(self):
+        albedo, normal = {"name": "deck_albedo"}, {"name": "n.jpg", "strength": 1.2}
+        slot = {"baseColor": albedo, "roughness": 0.4, "normal": [normal]}
+        self.assertEqual(images(slot), [("BC", albedo), ("N", normal)])
+        with self.assertRaises(AssertionError):
+            images(slot | {"normal": [normal, normal]})
 
     def test_build_frame_maps_to_unreal_centimetres(self):
         # A Blender quarter turn about +Z sends front +X to left +Y; Unreal's left is -Y.

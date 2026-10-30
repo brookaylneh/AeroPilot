@@ -9,20 +9,24 @@ A conifer is a Nanite Foliage assembly with its parts under Parts/SM_<Name>_<Var
 Foliage must be enabled for the project (r.Nanite.Foliage in DefaultEngine.ini). Family
 `external` (blender/external.py builds) is one rigid Nanite mesh with its UCX_ collision, whose
 material instance of M_ValleyDetail tiles the shared T_Detail<Surface>_{D,N} from
-/Game/Valley/Materials. Meshes come from the GLBs through Interchange (metres, glTF +Y up);
-dimensions are asserted within 5 % of the spec.
+/Game/Valley/Materials. Families `rocks` and `structures` are rigid too. A structure's material
+instances of M_ValleyPrincipled take the Principled inputs its build.json records per slot, with
+the Poly Haven scans shared in /Game/Valley/Materials as T_<Scan>; Nanite renders only opaque
+and masked materials, so transmissive glass becomes opaque glossy black. Meshes come from the
+GLBs through Interchange (metres, glTF +Y up); dimensions are asserted within 5 % of the spec.
 """
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
-from world.unreal.blender.spec import digest, load  # noqa: E402
+from world.unreal.blender.spec import TEXTURES, digest, load  # noqa: E402
 
-CATEGORIES = {"conifers": "Vegetation"}
+CATEGORIES = {"conifers": "Vegetation", "rocks": "Rocks", "structures": "Structures"}
 EXTERNAL = ROOT / "world/unreal/blender/external.json"
 MATERIALS = "/Game/Valley/Materials"
 TOLERANCE = 0.05
@@ -31,6 +35,12 @@ FLIP = (1, -1, 1)
 KINDS = ("BC", "N", "ORM")
 DETAIL_KINDS = {"D": "DetailD", "N": "DetailN"}
 BLEND_NORMALS = "/Engine/Functions/Engine_MaterialFunctions02/Utility/BlendAngleCorrectedNormals"
+FLATTEN_NORMAL = "/Engine/Functions/Engine_MaterialFunctions01/Texturing/FlattenNormal"
+
+
+def camel(name):
+    """`Mill-scale steel` and Interchange's `Mill_scale_steel` are both MillScaleSteel."""
+    return "".join(w[:1].upper() + w[1:] for w in re.split(r"[^0-9A-Za-z]+", name))
 
 
 def names(asset):
@@ -73,6 +83,14 @@ def textures(build, asset, images):
     return groups
 
 
+def images(slot):
+    """(parameter, image) pairs of a structure material slot's textured inputs."""
+    pairs = [("BC", slot["baseColor"]), ("Rough", slot["roughness"])]
+    pairs += [("N", normal) for normal in slot["normal"]]
+    assert len(slot["normal"]) <= 1, slot
+    return [(parameter, image) for parameter, image in pairs if isinstance(image, dict)]
+
+
 def family_spec(family, asset, report):
     """The spec build.json must have been made from, and the content folder of the asset."""
     if family == "external":
@@ -95,15 +113,22 @@ def main():
     build = (ROOT / args.build).resolve(strict=True)
     report = json.loads((build / "build.json").read_text())
     spec, content = family_spec(args.family, args.asset, report)
-    rigid = args.family == "external"
+    rigid = args.family != "conifers"
+    principled = args.family == "structures"
     glb = build / f"{args.asset}.glb"
     assert digest(glb) == report["glb"]["sha256"], glb
     if not rigid:
         assembly = report["details"]["assembly"]
         assert digest(build / "tufts.glb") == assembly["glb"], "tufts.glb"
         assert digest(build / "tufts.json") == assembly["json"], "tufts.json"
-    for name, entry in report["textures"].items():
-        assert digest(build / f"{name}.png") == entry["sha256"], name
+    slots = report["details"]["materials"] if principled else {}
+    sources = (
+        {i["name"]: ROOT / i["path"] for slot in slots.values() for _, i in images(slot)}
+        if principled
+        else {name: build / f"{name}.png" for name in report["textures"]}
+    )
+    for name, source in sources.items():
+        assert digest(source) == report["textures"][name]["sha256"], name
     output = (ROOT / args.report).resolve()
     assert output.suffix == ".json" and not output.exists(), output
     assert unreal.SystemLibrary.get_console_variable_int_value("r.Nanite.Foliage") == 1
@@ -127,7 +152,7 @@ def main():
         # A collision mesh without its UCX_ hull must fail the import, not get a generated one.
         mesh.fallback_collision_type = unreal.InterchangeMeshCollision.NONE
         pipeline.material_pipeline.import_materials = False
-        pipeline.material_pipeline.texture_pipeline.import_textures = source.suffix == ".png"
+        pipeline.material_pipeline.texture_pipeline.import_textures = source.suffix != ".glb"
         parameters = unreal.ImportAssetParameters()
         parameters.is_automated = True
         parameters.replace_existing = False
@@ -155,9 +180,10 @@ def main():
             C.TC_NORMALMAP,
         ),
     }
-    kinds["D"] = kinds["ORM"]
+    kinds["D"] = kinds["Rough"] = kinds["ORM"]
+    kinds["N_GL"] = kinds["N"]
 
-    def master(name, normal, detail=False):
+    def master(name, normal, detail=False, principled=False):
         material = tools.create_asset(name, MATERIALS, unreal.Material, unreal.MaterialFactoryNew())
         # Cooked sections fall back to the default material for any usage not declared here
         # (NaniteResources.cpp:1010 for voxels); headless imports never set them on demand.
@@ -173,7 +199,8 @@ def main():
         def connect(source, pin, target, socket):
             assert editing.connect_material_expressions(source, pin, target, socket), socket
 
-        parameters = list(("BC", "ORM", "N")[: 2 + normal]) + list(DETAIL_KINDS.values()) * detail
+        parameters = list(("BC", "Rough" if principled else "ORM", "N")[: 2 + normal])
+        parameters += list(DETAIL_KINDS.values()) * detail
         nodes = {}
         for i, parameter in enumerate(parameters):
             sampler, default = kinds[parameter.removeprefix("Detail")][:2]
@@ -209,9 +236,38 @@ def main():
             connect(nodes["N"], "RGB", blend, "BaseNormal")
             connect(nodes["DetailN"], "RGB", blend, "AdditionalNormal")
             base, normals = (doubled, ""), (blend, "")
-        links = [(*base, P.MP_BASE_COLOR), (nodes["ORM"], "R", P.MP_AMBIENT_OCCLUSION)]
-        links += [(nodes["ORM"], "G", P.MP_ROUGHNESS), (nodes["ORM"], "B", P.MP_METALLIC)]
-        links += [(*normals, P.MP_NORMAL)] * normal
+        if principled:
+
+            def scalar(name, y):
+                return expression(unreal.MaterialExpressionScalarParameter, y, parameter_name=name)
+
+            def lerp(a, b, alpha, y):
+                node = expression(unreal.MaterialExpressionLinearInterpolate, y)
+                for (source, pin), socket in zip((a, b, (alpha, "")), ("A", "B", "Alpha")):
+                    connect(source, pin, node, socket)
+                return node
+
+            # Constant inputs leave the texture unset and take the alpha-0 side of the lerp.
+            tint = expression(
+                unreal.MaterialExpressionVectorParameter, -260, parameter_name="BaseTint"
+            )
+            textured = scalar("BaseTextured", -390)
+            base = lerp((tint, ""), (nodes["BC"], "RGB"), textured, -520)
+            value, textured = scalar("Roughness", -650), scalar("RoughTextured", -780)
+            rough = lerp((value, ""), (nodes["Rough"], "R"), textured, -910)
+            flat = expression(
+                unreal.MaterialExpressionMaterialFunctionCall,
+                -1040,
+                material_function=unreal.load_asset(FLATTEN_NORMAL),
+            )
+            connect(nodes["N"], "RGB", flat, "Normal")
+            connect(scalar("Flatness", -1170), "", flat, "Flatness")
+            links = [(base, "", P.MP_BASE_COLOR), (rough, "", P.MP_ROUGHNESS)]
+            links += [(scalar("Metallic", -1300), "", P.MP_METALLIC), (flat, "", P.MP_NORMAL)]
+        else:
+            links = [(*base, P.MP_BASE_COLOR), (nodes["ORM"], "R", P.MP_AMBIENT_OCCLUSION)]
+            links += [(nodes["ORM"], "G", P.MP_ROUGHNESS), (nodes["ORM"], "B", P.MP_METALLIC)]
+            links += [(*normals, P.MP_NORMAL)] * normal
         for node, pin, prop in links:
             assert editing.connect_material_property(node, pin, prop), prop
         editing.recompile_material(material)
@@ -222,14 +278,20 @@ def main():
         path = f"{MATERIALS}/{name}"
         return unreal.load_asset(path) if library.does_asset_exist(path) else master(name, *args)
 
-    def texture(source, kind, folder):
+    def texture(source, kind, folder, name):
+        """Texture `name` imported from `source`; shared textures in MATERIALS import once."""
+        path = f"{folder}/{name}"
+        if folder == MATERIALS and library.does_asset_exist(path):
+            return unreal.load_asset(path)
         (imported,) = interchange(source, folder).values()
-        assert imported.get_name() == source.stem, imported.get_name()
+        if imported.get_name() != name:
+            assert library.rename_asset(imported.get_outermost().get_name(), path), path
         srgb, compression = kinds[kind][2:]
         imported.set_editor_property("srgb", srgb)
         imported.set_editor_property("compression_settings", compression)
-        assert library.save_loaded_asset(imported), source.stem
-        record["textures"][source.stem] = imported.get_path_name()
+        imported.set_editor_property("flip_green_channel", kind == "N_GL")
+        assert library.save_loaded_asset(imported), name
+        record["textures"][name] = imported.get_path_name()
         return imported
 
     def assign(mi, parameter, value):
@@ -237,48 +299,77 @@ def main():
         editing.set_material_instance_texture_parameter_value(mi, parameter, value)
         assert editing.get_material_instance_texture_parameter_value(mi, parameter) == value
 
+    def scalar(mi, parameter, value):
+        editing.set_material_instance_scalar_parameter_value(mi, parameter, value)
+        got = editing.get_material_instance_scalar_parameter_value(mi, parameter)
+        assert abs(got - value) <= 1e-4 * max(1, abs(value)), (parameter, got, value)
+
     record = {"textures": {}, "materials": {}}
-    images = report["textures"]
-    if rigid:
-        details = report["details"]
-        images = {k: v for k, v in images.items() if k not in details["detailTextures"]}
-        shared = {}
-        for name in details["detailTextures"]:
-            kind = name.rsplit("_", 1)[1]
-            if kind in DETAIL_KINDS:
-                path = f"{MATERIALS}/{name}"
-                exists = library.does_asset_exist(path)
-                shared[DETAIL_KINDS[kind]] = (
-                    unreal.load_asset(path)
-                    if exists
-                    else texture(build / f"{name}.png", kind, MATERIALS)
-                )
-        assert sorted(shared) == sorted(DETAIL_KINDS.values()), shared
-        parents = {True: parent("M_ValleyDetail", True, True)}
-    else:
-        parents = {True: parent("M_ValleyPBR", True), False: parent("M_ValleyFoliage", False)}
     instances = {}
-    for material, files in textures(build, args.asset, images).items():
+
+    def instance(name, parent):
         mi = tools.create_asset(
-            f"MI_{material}",
+            name,
             content,
             unreal.MaterialInstanceConstant,
             unreal.MaterialInstanceConstantFactoryNew(),
         )
-        assert mi, material
-        editing.set_material_instance_parent(mi, parents["N" in files])
-        for kind, source in files.items():
-            assign(mi, kind, texture(source, kind, content))
-        if rigid:
-            for parameter, value in shared.items():
-                assign(mi, parameter, value)
-            tile = details["detailUvScale"]
-            editing.set_material_instance_scalar_parameter_value(mi, "DetailTile", tile)
-            got = editing.get_material_instance_scalar_parameter_value(mi, "DetailTile")
-            assert abs(got - tile) < 1e-4 * tile, (got, tile)
-        assert library.save_loaded_asset(mi), material
-        instances[f"MI_{material}"] = mi
-        record["materials"][mi.get_name()] = mi.get_path_name()
+        assert mi, name
+        editing.set_material_instance_parent(mi, parent)
+        record["materials"][name] = mi.get_path_name()
+        return mi
+
+    if principled:
+        prefix = names(args.asset)[3:].replace("_", "")
+        principal = parent("M_ValleyPrincipled", True, False, True)
+        for material, slot in slots.items():
+            mi = instance(f"MI_{prefix}{camel(material)}", principal)
+            for parameter, image in images(slot):
+                source = ROOT / image["path"]
+                scan = source.is_relative_to(TEXTURES)
+                name = f"T_{camel(source.stem)}" if scan else f"T_{prefix}{camel(image['name'])}"
+                kind = {"BC": "BC", "Rough": "Rough", "N": "N_GL"}[parameter]
+                assign(mi, parameter, texture(source, kind, MATERIALS if scan else content, name))
+            base, rough = slot["baseColor"], slot["roughness"]
+            constant = isinstance(base, list)
+            assert constant or slot["transmission"] == 0, material
+            # Opaque glass: the light it would transmit is lost into the dark interior.
+            tint = [c * (1 - slot["transmission"]) for c in base] if constant else [1.0] * 3
+            colour = unreal.LinearColor(*tint, 1.0)
+            editing.set_material_instance_vector_parameter_value(mi, "BaseTint", colour)
+            assert editing.get_material_instance_vector_parameter_value(mi, "BaseTint") == colour
+            scalar(mi, "BaseTextured", float(not constant))
+            scalar(mi, "Roughness", rough if isinstance(rough, float) else 0.0)
+            scalar(mi, "RoughTextured", float(isinstance(rough, dict)))
+            scalar(mi, "Metallic", slot["metallic"])
+            scalar(mi, "Flatness", 1 - sum(n["strength"] for n in slot["normal"]))
+            assert library.save_loaded_asset(mi), material
+            instances[camel(material)] = mi
+    else:
+        pngs = report["textures"]
+        external = args.family == "external"
+        if external:
+            details = report["details"]
+            pngs = {k: v for k, v in pngs.items() if k not in details["detailTextures"]}
+            shared = {
+                DETAIL_KINDS[kind]: texture(build / f"{name}.png", kind, MATERIALS, name)
+                for name in details["detailTextures"]
+                if (kind := name.rsplit("_", 1)[1]) in DETAIL_KINDS
+            }
+            assert sorted(shared) == sorted(DETAIL_KINDS.values()), shared
+            parents = {True: parent("M_ValleyDetail", True, True)}
+        else:
+            parents = {True: parent("M_ValleyPBR", True), False: parent("M_ValleyFoliage", False)}
+        for material, files in textures(build, args.asset, pngs).items():
+            mi = instance(f"MI_{material}", parents["N" in files])
+            for kind, source in files.items():
+                assign(mi, kind, texture(source, kind, content, source.stem))
+            if external:
+                for parameter, value in shared.items():
+                    assign(mi, parameter, value)
+                scalar(mi, "DetailTile", details["detailUvScale"])
+            assert library.save_loaded_asset(mi), material
+            instances[camel(mi.get_name())] = mi
 
     def collisions(mesh):
         shapes = mesh.get_editor_property("body_setup").get_editor_property("agg_geom")
@@ -292,7 +383,7 @@ def main():
 
     def finish(mesh):
         for index, slot in enumerate(mesh.get_editor_property("static_materials")):
-            mesh.set_material(index, instances[str(slot.material_slot_name)])
+            mesh.set_material(index, instances[camel(str(slot.material_slot_name))])
         nanite = mesh.get_editor_property("nanite_settings")
         nanite.enabled = True
         nanite.shape_preservation = preservation
@@ -310,7 +401,8 @@ def main():
         finish(mesh)
         shapes = mesh.get_editor_property("body_setup").get_editor_property("agg_geom")
         convex = len(shapes.get_editor_property("convex_elems"))
-        assert collisions(mesh) == convex == spec["collision"], collisions(mesh)
+        hulls = sum(name.startswith("UCX_") for name in report["objectTriangles"])
+        assert collisions(mesh) == convex == hulls, (collisions(mesh), hulls)
         return mesh, {}
 
     def assemble():
