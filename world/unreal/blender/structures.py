@@ -1165,16 +1165,6 @@ def lookout(rng, output):
     }
 
 
-# Trailhead kiosk build frame: the notice board in the y-z plane facing +X between posts at
-# y = +-0.83. Sizes follow the approved reference at about 430 px/m: 0.25 m posts and a 36 degree
-# shake roof 1.58 m deep and 2.36 m wide under a ridge flashing near 3.0 m.
-K_POST, K_POST_Y, K_HALF = 0.25, 0.83, (0.79, 1.18)
-K_PITCH, K_RIDGE = math.radians(36), 2.92  # roof deck underside at the ridge line
-K_BOARD = (0.94, 2.08)  # board bottom and top
-# Post and shake regions of the kiosk master; the shakes rescaled by the first studio render's.
-KIOSK_TARGETS = {"timber": ((170, 162, 152), 26), "deck": ((126, 124, 115), 30)}
-
-
 def shakes(parts, rng, material, eave, up, along, length, width, exposure, thickness, bands, tile):
     """Courses of split shakes `exposure` apart from the eave line centre `eave` to `length` up
     the slope `up`, `width` wide along `along`; each course laps the one below."""
@@ -1195,81 +1185,6 @@ def shakes(parts, rng, material, eave, up, along, length, width, exposure, thick
             size3, band = (size, thickness, w - 0.006), rng.choice(bands)
             box(parts, material, size3, matrix, rng, bevel=0.002, tile=tile, band=band)
             a += w
-
-
-def kiosk(rng, output):
-    mats, bands, derived = cabin_materials(output, TARGETS | KIOSK_TARGETS, CABIN_ROOF)
-    mats["board"] = principled("Notice board", base=lin((80, 70, 62)), rough=0.85)
-    mats["zinc"] = principled("Ridge flashing", base=lin((96, 106, 104)), rough=0.45, metallic=0.7)
-    mats["iron"] = principled("Black powder coat", base=lin((34, 34, 33)), rough=0.6)
-    parts = {}
-    sin, cos, tan = math.sin(K_PITCH), math.cos(K_PITCH), math.tan(K_PITCH)
-    ridge = Vector((0, 0, K_RIDGE))
-    clip = tuple((ridge, Vector((s * sin, 0, cos))) for s in (-1, 1))
-
-    def under(x):
-        return K_RIDGE - abs(x) * tan
-
-    timber = partial(placed, parts, "timber", rng=rng, clip=clip)
-
-    plate = under(0.55)  # outer top edge of the eave plates
-    cross = plate - 0.14  # top of the crossbeams through the posts
-    for y in (-K_POST_Y, K_POST_Y):
-        centre = (0, y, (K_RIDGE + 0.012) / 2)
-        timber((K_POST, K_POST, K_RIDGE - 0.012), centre, bevel=0.012, segments=2, grain=2)
-        timber((1.24, 0.12, 0.16), (0, y, cross - 0.08), bevel=0.008, segments=2)
-        placed(parts, "iron", (0.32, 0.32, 0.012), (0, y, 0.006), rng, bevel=0.002)
-        for s in (-1, 1):
-            start, end = Vector((s * K_POST / 2, y, 1.85)), Vector((s * 0.45, y, cross - 0.12))
-            beam(parts, "timber", start, end, 0.08, 0.10, (0, 0, 1), rng, bevel=0.006)
-            # Flat black straps on both faces of the brace foot, let into the post and bolted
-            # through the brace; a base strap on the post face.
-            d = (end - start).normalized()
-            for sy in (-1, 1):
-                side = Vector((0, sy * 0.043, 0))
-                p0, p1 = start - d * 0.08 + side, start + d * 0.22 + side
-                beam(parts, "iron", p0, p1, 0.006, 0.07, (0, 0, 1), rng, bevel=0.002)
-                for along in (0.06, 0.15):
-                    bolt(parts, start + d * along + side * 1.07, (0, sy, 0))
-            strap = (s * (K_POST / 2 + 0.004), y, 0.132)
-            placed(parts, "iron", (0.008, 0.16, 0.24), strap, rng, bevel=0.002)
-            bolt(parts, (s * (K_POST / 2 + 0.008), y, 0.13), (s, 0, 0))
-    timber((0.10, 2 * K_HALF[1], 0.14), (0, 0, K_RIDGE - 0.07), bevel=0.006)
-    for s in (-1, 1):
-        timber((0.10, 2 * K_HALF[1], 0.14), (s * 0.50, 0, plate - 0.07), bevel=0.006)
-        for y in (-1.12, -0.45, 0.45, 1.12):
-            x0, x1 = s * 0.001, s * (K_HALF[0] - 0.02)
-            under_beam(parts, under, K_PITCH, x0, x1, y, 0.06, 0.12, rng, segments=2)
-        a, b = Vector((0, 0, K_RIDGE)), Vector((s * K_HALF[0], 0, under(K_HALF[0])))
-        down, normal = (b - a).normalized(), Vector((s * sin, 0, cos))
-        deck = frame((a + b) / 2 + normal * 0.01, down, (0, 1, 0))
-        size = ((b - a).length, 2 * K_HALF[1], 0.02)
-        box(parts, "timber", size, deck, rng, bevel=0.002, tile=1.2)
-        eave, run = b + normal * 0.02, (b - a).length
-        width, along = 2 * K_HALF[1], (0, s, 0)
-        shakes(parts, rng, "deck", eave, -down, along, run, width, 0.46, 0.016, bands, PLANK_TILE)
-        # The two flashing leaves cross above the ridge line.
-        flashing = frame(a + normal * 0.07 + down * 0.05, down, (0, 1, 0))
-        box(parts, "zinc", (0.20, width + 0.04, 0.006), flashing, rng, bevel=0.002)
-    rail_y = K_POST_Y - K_POST / 2
-    for z0, z1 in ((K_BOARD[1], K_BOARD[1] + 0.15), (K_BOARD[0] - 0.14, K_BOARD[0])):
-        timber((0.10, 2 * rail_y, z1 - z0), (0, 0, (z0 + z1) / 2), bevel=0.008, segments=2, grain=1)
-        for sy in (-1, 1):
-            for sx in (-1, 1):
-                bolt(parts, (sx * 0.05, sy * (rail_y - 0.06), (z0 + z1) / 2), (sx, 0, 0))
-    height, middle = K_BOARD[1] - K_BOARD[0], sum(K_BOARD) / 2
-    for sy in (-1, 1):
-        timber((0.06, 0.06, height), (0, sy * (rail_y - 0.03), middle), bevel=0.004, grain=2)
-    placed(parts, "board", (0.03, 2 * (rail_y - 0.06), height), (0, 0, middle), rng, bevel=0.003)
-    roof = (cross - 0.16, K_RIDGE + 0.06)
-    hulls = {
-        "posts": ((K_POST + 0.07, 2 * (K_POST_Y + K_POST / 2), cross), (0, 0, cross / 2)),
-        "roof": ((2 * K_HALF[0], 2 * K_HALF[1], roof[1] - roof[0]), (0, 0, sum(roof) / 2)),
-    }
-    objects, hulls = collision(
-        emit(parts, mats), "SM_TrailheadKiosk", hulls, rng, mats["sheathing"]
-    )
-    return objects, {"derivedAlbedo": derived, "collisionHulls": hulls}
 
 
 # Vault toilet build frame: the CXT Gunnison precast single-vault toilet (drawings G-02 to G-04,
@@ -1470,7 +1385,6 @@ if __name__ == "__main__":
             "ranger-cabin": cabin,
             "timber-footbridge": footbridge,
             "fire-lookout": lookout,
-            "trailhead-kiosk": kiosk,
             "snow-survey-hut": hut,
             "vault-toilet": toilet,
         },

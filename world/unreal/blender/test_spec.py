@@ -14,7 +14,6 @@ class SpecTests(unittest.TestCase):
                 "ranger-cabin",
                 "snow-survey-hut",
                 "timber-footbridge",
-                "trailhead-kiosk",
                 "vault-toilet",
             ],
         )

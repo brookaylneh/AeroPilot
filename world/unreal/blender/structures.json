@@ -91,31 +91,6 @@
         "tread": [[1020, 2625, 1150, 2645]]
       }
     },
-    "trailhead-kiosk": {
-      "reference": "trailhead-kiosk",
-      "seed": 19,
-      "dimensionsM": [1.641, 2.4, 3.007],
-      "toleranceM": 0.005,
-      "buriedM": 0,
-      "textureSize": 4096,
-      "collision": true,
-      "panels": { "front": [0, 0], "back": [1, 0], "left": [0, 1] },
-      "correspondences": [
-        { "name": "ridge flashing, -Y gable end", "modelM": [0.0, -1.2, 2.985], "pixel": [733, 118] },
-        { "name": "+X-Y eave corner, shake butt", "modelM": [0.8, -1.18, 2.36], "pixel": [1121, 452] },
-        { "name": "+X+Y eave corner, shake butt", "modelM": [0.8, 1.18, 2.36], "pixel": [2541, 668] },
-        { "name": "-X-Y eave corner, shake butt", "modelM": [-0.8, -1.18, 2.36], "pixel": [398, 547] },
-        { "name": "board top, +Y edge", "modelM": [0.015, 0.645, 2.08], "pixel": [1950, 948] },
-        { "name": "board foot, +Y edge", "modelM": [0.015, 0.645, 0.94], "pixel": [1942, 1847] },
-        { "name": "-Y base plate, front outer corner", "modelM": [0.16, -0.99, 0.0], "pixel": [985, 2703] }
-      ],
-      "colourRegions": {
-        "post": [[850, 1200, 970, 1600]],
-        "shake": [[1300, 330, 1800, 420]],
-        "board": [[1300, 1100, 1800, 1500]],
-        "rail": [[1200, 1880, 1900, 1960]]
-      }
-    },
     "snow-survey-hut": {
       "reference": null,
       "seed": 47,
