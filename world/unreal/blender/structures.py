@@ -3,8 +3,8 @@
 blender -b --factory-startup --python world/unreal/blender/structures.py -- <asset> --output <dir>
 Writes <asset>.blend, <asset>.glb, derived albedo PNGs and build.json into a new .local directory.
 The ranger cabin, the snow survey hut and the fire lookout cab are one cabin kit with different
-parameters. Every asset but the cabin is one render mesh SM_<Name> plus box hulls UCX_SM_<Name>_##
-that Unreal Interchange imports as its collision.
+parameters. Every asset is one render mesh SM_<Name> plus box hulls UCX_SM_<Name>_## that Unreal
+Interchange imports as its collision.
 """
 
 import math
@@ -727,10 +727,21 @@ def cabin(rng, output):
     mats, bands, derived = cabin_materials(output, TARGETS, CABIN_ROOF)
     parts = {}
     kit(parts, CABIN, rng, bands)
-    objects = emit(parts, mats)
-    for obj in objects:
+    render = emit(parts, mats)
+    for obj in render:
         obj.data.transform(TURN)
-    return objects, {"derivedAlbedo": derived, "sidingPlanks": len(bands)}
+    ridge, porch_ridge = roof_under(CABIN, 0) + 0.06, porch_under(CABIN, 0) + 0.06
+    x0, deck, stair = -CABIN.l - 0.06, -DECK_Y, -DECK_Y + 3 * TREAD
+    hulls = {
+        "cabin": ((-x0, CABIN.w + 0.12, ridge), (x0 / 2, 0, ridge / 2)),
+        "porch": ((deck, CABIN.w + 0.08, porch_ridge), (deck / 2, 0, porch_ridge / 2)),
+        "stairs": (
+            (stair - deck, STAIR[1] - STAIR[0], CABIN.floor),
+            ((deck + stair) / 2, sum(STAIR) / 2, CABIN.floor / 2),
+        ),
+    }
+    objects, hulls = collision(render, "SM_RangerCabin", hulls, rng, mats["sheathing"])
+    return objects, {"derivedAlbedo": derived, "sidingPlanks": len(bands), "collisionHulls": hulls}
 
 
 def hut(rng, output):

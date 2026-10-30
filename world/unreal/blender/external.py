@@ -74,6 +74,9 @@ DETAIL_PX = 2048
 TEXTURE_SIZE = 4096
 # Atlas stems are the islands of opacity above one half on this grid.
 ISLAND_CELLS = 512
+# Mean alpha of the outer 2 % of an atlas: an inverted map's border is opaque (PlantCatalog
+# willow 0.92, Phragmites 0.99); the lodgepole needle atlas runs to its edges at 0.53.
+BORDER, BORDER_ALPHA = 0.02, 0.6
 LUMINANCE = np.array([0.2126, 0.7152, 0.0722])
 
 
@@ -116,6 +119,7 @@ def check(external, lock):
         targets = [d for d in asset["dimensionsM"] if d is not None]
         assert len(asset["dimensionsM"]) == 3 and targets and all(0 < d < 100 for d in targets)
         assert asset["colour"] and set(asset["colour"]) <= CLASSES, name
+        assert all(asset["colour"].values()), (name, "every class needs a measured colour record")
         for measured in sum(asset["colour"].values(), []):
             assert set(measured) == {"referenceSrgb", "renderSrgb", "source"}, name
             assert all(0 < c < 255 for c in measured["referenceSrgb"] + measured["renderSrgb"])
@@ -154,7 +158,7 @@ def gain(colour):
         linear(np.array(m["referenceSrgb"]) / 255) / linear(np.array(m["renderSrgb"]) / 255)
         for m in colour
     ]
-    return np.prod([np.ones(3), *ratios], axis=0)
+    return np.prod(ratios, axis=0)
 
 
 def scale(native, targets):
@@ -221,14 +225,15 @@ def channels(paths):
     }
 
 
-def maps(material, extra):
+def maps(material, extra, plant):
     """Pixel arrays of a source material and the directory maps it takes from `extra`: Base
     Color, Alpha (None when opaque), Normal (OpenGL, None when unlinked) and Occlusion, Roughness
     and Metallic (2D arrays or constants). A Separate Color picks a channel, a Math node scales
     (glTF factors), a Color output feeding a value takes its luminance, and the glTF output
-    group gives Occlusion. An unlinked occlusion or roughness map of `extra` belongs to the
-    material when its stem without the channel suffix begins the stem of the material's normal
-    or base colour map without its last word."""
+    group gives Occlusion. A PlantCatalog (`plant`) Alpha map is a transparency map, white where
+    clear, that Blender's FBX importer links uninverted. An unlinked occlusion or roughness map of
+    `extra` belongs to the material when its stem without the channel suffix begins the stem of
+    the material's normal or base colour map without its last word."""
     nodes = material.node_tree.nodes
     bsdf = nodes["Principled BSDF"]
     images = {}
@@ -255,7 +260,8 @@ def maps(material, extra):
         if link.from_socket.name == "Alpha":
             return values[..., 3]
         if channel is None and socket.type == "VALUE":
-            return values[..., :3] @ LUMINANCE
+            value = values[..., :3] @ LUMINANCE
+            return 1 - value if plant and socket.name == "Alpha" else value
         return factor * (values[..., :3] if channel is None else values[..., channel])
 
     keys = ("Base Color", "Alpha", "Normal", "Roughness", "Metallic")
@@ -482,7 +488,9 @@ def baked(label, found, gains, output):
     rgb = encoded(np.clip(linear(found["Base Color"].astype(np.float64)) * gains, 0, 1))
     alpha = found["Alpha"]
     if alpha is not None:
-        assert alpha.shape == rgb.shape[:2] and alpha.min() < 0.5, label
+        k = max(1, round(BORDER * min(alpha.shape)))
+        ring = np.concatenate([alpha[:k], alpha[-k:], alpha[:, :k].T, alpha[:, -k:].T], axis=1)
+        assert alpha.shape == rgb.shape[:2] and ring.mean() < BORDER_ALPHA, (label, ring.mean())
         rgb = np.concatenate([rgb, alpha[..., None]], axis=2)
     orm = [found[k] for k in ("Occlusion", "Roughness", "Metallic")]
     # Constant channels make a flat 4 px map.
@@ -528,7 +536,8 @@ def normalise(asset, entry, surfaces, rows, output):
     mesh = obj.data
     mesh.transform(Matrix.Rotation(np.radians(entry["yawDegrees"]), 4, "Z") @ world)
     co = vertices(mesh)
-    grade = 0.0 if "files" in row and row["plant"] else co[:, 2].min()
+    plant = "files" in row and row["plant"] is not None
+    grade = 0.0 if plant else co[:, 2].min()
     native = np.ptp(co, axis=0)
     s = scale([*native[:2], co[:, 2].max() - grade], entry["dimensionsM"])
     mesh.transform(Matrix.Scale(s, 4))
@@ -557,7 +566,7 @@ def normalise(asset, entry, surfaces, rows, output):
     extra = channels(paths.values())
     taken, report = [], {}
     for slot, (source, label) in enumerate(zip(originals, labels)):
-        found, used = maps(source, extra)
+        found, used = maps(source, extra, plant)
         taken += used
         kind = "opaque" if found["Alpha"] is None else "masked"
         unique = baked(label, found, gain(entry["colour"][kind]), output)

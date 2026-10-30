@@ -360,7 +360,13 @@
       "dimensionsSource": "orchestrator prompt table 2026-10-30; footprint 1.6 x 0.85 m governs",
       "collision": true,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [106.7, 111.3, 104.6],
+            "renderSrgb": [106.7, 111.3, 104.6],
+            "source": "valley-art/d2a/colour0/bear-proof-bin master render of the normalised build; no reference master, identity at this render"
+          }
+        ]
       }
     },
     "trail-register": {
@@ -375,7 +381,13 @@
       "dimensionsSource": "orchestrator prompt table 2026-10-30; 0.4 m width and 1.4 m height govern",
       "collision": true,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [150.2, 141.4, 132.2],
+            "renderSrgb": [150.2, 141.4, 132.2],
+            "source": "valley-art/d2a/colour0/trail-register master render of the normalised build; no reference master, identity at this render"
+          }
+        ]
       }
     },
     "cairn-a": {
@@ -390,7 +402,13 @@
       "dimensionsSource": "orchestrator prompt table 2026-10-30; 0.6 m width and 0.8 m height govern",
       "collision": false,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [153.2, 149.3, 145.6],
+            "renderSrgb": [153.2, 149.3, 145.6],
+            "source": "valley-art/d2a/colour0/cairn-a master render of the normalised build; no reference master, identity at this render"
+          }
+        ]
       }
     },
     "log-steps": {
@@ -405,7 +423,13 @@
       "dimensionsSource": "orchestrator prompt table 2026-10-30; footprint 1.6 m along the climb x 1.3 m governs",
       "collision": true,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [160.4, 149.2, 136.4],
+            "renderSrgb": [160.4, 149.2, 136.4],
+            "source": "valley-art/d2a/colour0/log-steps master render of the normalised build; no reference master, identity at this render"
+          }
+        ]
       }
     },
     "generator-a": {
@@ -420,7 +444,13 @@
       "dimensionsSource": "orchestrator prompt table 2026-10-30; 0.35 m depth and 0.5 m height govern",
       "collision": true,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [114.0, 114.4, 100.9],
+            "renderSrgb": [114.0, 114.4, 100.9],
+            "source": "valley-art/d2a/colour0/generator-a master render of the normalised build; no reference master, identity at this render"
+          }
+        ]
       }
     },
     "command-table": {
@@ -435,7 +465,13 @@
       "dimensionsSource": "orchestrator prompt table 2026-10-30; 1.83 m length governs (0.74 m is the tabletop, not an extent)",
       "collision": true,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [132.6, 131.8, 129.1],
+            "renderSrgb": [132.6, 131.8, 129.1],
+            "source": "valley-art/d2a/colour0/command-table master render of the normalised build; no reference master, identity at this render"
+          }
+        ]
       }
     },
     "hard-cases": {
@@ -450,7 +486,13 @@
       "dimensionsSource": "orchestrator prompt table 2026-10-30; 1.4 m group width governs",
       "collision": true,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [104.9, 104.4, 93.3],
+            "renderSrgb": [104.9, 104.4, 93.3],
+            "source": "valley-art/d2a/colour0/hard-cases master render of the normalised build; no reference master, identity at this render"
+          }
+        ]
       }
     },
     "landing-mat": {
@@ -465,7 +507,13 @@
       "dimensionsSource": "orchestrator prompt table 2026-10-30; 1.5 x 1.5 m footprint governs",
       "collision": true,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [176.8, 136.3, 103.8],
+            "renderSrgb": [176.8, 136.3, 103.8],
+            "source": "valley-art/d2a/colour0/landing-mat master render of the normalised build; no reference master, identity at this render"
+          }
+        ]
       }
     },
     "woodpile-a": {
@@ -480,7 +528,13 @@
       "dimensionsSource": "orchestrator prompt table 2026-10-30; 0.6 m depth and 0.9 m height govern",
       "collision": true,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [162.4, 143.5, 123.5],
+            "renderSrgb": [162.4, 143.5, 123.5],
+            "source": "valley-art/d2a/colour0/woodpile-a master render of the normalised build; no reference master, identity at this render"
+          }
+        ]
       }
     },
     "glacial-slab": {
@@ -495,7 +549,13 @@
       "dimensionsSource": "orchestrator prompt table 2026-10-30; 2.5 x 1.8 m footprint governs",
       "collision": true,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [168.3, 166.7, 164.3],
+            "renderSrgb": [168.3, 166.7, 164.3],
+            "source": "valley-art/d2a/colour0/glacial-slab master render of the normalised build; no reference master, identity at this render"
+          }
+        ]
       }
     },
     "erratic-a": {
@@ -510,7 +570,13 @@
       "dimensionsSource": "orchestrator prompt table 2026-10-30; 2.8 m long axis governs",
       "collision": true,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [166.2, 160.6, 153.1],
+            "renderSrgb": [166.2, 160.6, 153.1],
+            "source": "valley-art/d2a/colour0/erratic-a master render of the normalised build; no reference master, identity at this render"
+          }
+        ]
       }
     },
     "lodgepole-edge-standard": {
@@ -525,8 +591,30 @@
       "dimensionsSource": "facts.md §7: edge lodgepoles 10-15 m",
       "collision": false,
       "colour": {
-        "masked": [],
-        "opaque": []
+        "masked": [
+          {
+            "referenceSrgb": [75.5, 71.1, 54.6],
+            "renderSrgb": [43.4, 51.9, 26.1],
+            "source": "valley-art/veg-c/colour/lodgepole-edge-standard/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [75.5, 71.1, 54.6],
+            "renderSrgb": [82.0, 83.2, 47.1],
+            "source": "valley-art/d2a/colourA/lodgepole-edge-standard master render of the normalised build"
+          }
+        ],
+        "opaque": [
+          {
+            "referenceSrgb": [131.5, 115.1, 105.0],
+            "renderSrgb": [96.3, 95.1, 96.2],
+            "source": "valley-art/veg-c/colour/lodgepole-edge-standard/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [131.5, 115.1, 105.0],
+            "renderSrgb": [128.3, 113.7, 105.3],
+            "source": "valley-art/d2a/colourA/lodgepole-edge-standard master render of the normalised build"
+          }
+        ]
       }
     },
     "lodgepole-sapling-rocket": {
@@ -541,8 +629,30 @@
       "dimensionsSource": "facts.md §7: saplings 1-3 m; native 3.01 m",
       "collision": false,
       "colour": {
-        "masked": [],
-        "opaque": []
+        "masked": [
+          {
+            "referenceSrgb": [123.5, 115.8, 93.2],
+            "renderSrgb": [43.1, 51.8, 26.4],
+            "source": "valley-art/veg-c/colour/lodgepole-sapling-rocket/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [123.5, 115.8, 93.2],
+            "renderSrgb": [136.1, 146.0, 74.2],
+            "source": "valley-art/d2a/colourA/lodgepole-sapling-rocket master render of the normalised build"
+          }
+        ],
+        "opaque": [
+          {
+            "referenceSrgb": [132.7, 121.5, 115.8],
+            "renderSrgb": [100.2, 98.8, 100.1],
+            "source": "valley-art/veg-c/colour/lodgepole-sapling-rocket/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [132.7, 121.5, 115.8],
+            "renderSrgb": [129.4, 119.7, 114.4],
+            "source": "valley-art/d2a/colourA/lodgepole-sapling-rocket master render of the normalised build"
+          }
+        ]
       }
     },
     "log-timber-a": {
@@ -557,7 +667,18 @@
       "dimensionsSource": "facts.md §7: logs 6-12 x 0.3-0.5 m: butt diameter 0.42 m",
       "collision": true,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [137.3, 124.3, 112.6],
+            "renderSrgb": [112.4, 104.3, 101.3],
+            "source": "valley-art/veg-c/colour/log-timber-a/iter1 master render of the normalised build"
+          },
+          {
+            "referenceSrgb": [137.3, 124.3, 112.6],
+            "renderSrgb": [132.5, 119.6, 109.6],
+            "source": "valley-art/d2a/colourA/log-timber-a master render of the normalised build"
+          }
+        ]
       }
     },
     "log-timber-b": {
@@ -572,7 +693,18 @@
       "dimensionsSource": "facts.md §7: logs 6-12 x 0.3-0.5 m: butt diameter 0.46 m",
       "collision": true,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [137.3, 124.3, 112.6],
+            "renderSrgb": [112.5, 104.5, 101.6],
+            "source": "valley-art/veg-c/colour/log-timber-b/iter1 master render of the normalised build"
+          },
+          {
+            "referenceSrgb": [137.3, 124.3, 112.6],
+            "renderSrgb": [132.7, 119.9, 109.8],
+            "source": "valley-art/d2a/colourA/log-timber-b master render of the normalised build"
+          }
+        ]
       }
     },
     "log-ripped": {
@@ -587,7 +719,18 @@
       "dimensionsSource": "facts.md §7: logs 6-12 x 0.3-0.5 m: 10 m with the root plate; trunk 0.62 m at 20 % (veg-c/girth.json) becomes 0.43 m",
       "collision": true,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [137.3, 124.3, 112.6],
+            "renderSrgb": [112.8, 106.1, 104.3],
+            "source": "valley-art/veg-c/colour/log-ripped/iter1 master render of the normalised build"
+          },
+          {
+            "referenceSrgb": [137.3, 124.3, 112.6],
+            "renderSrgb": [133.8, 121.1, 110.9],
+            "source": "valley-art/d2a/colourA/log-ripped master render of the normalised build"
+          }
+        ]
       }
     },
     "stump-short": {
@@ -602,7 +745,18 @@
       "dimensionsSource": "no §7 stump size: mid-height girth 0.85 m (veg-c/girth.json) scaled to the 0.5 m §7 log diameter cap",
       "collision": true,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [130.9, 115.8, 105.0],
+            "renderSrgb": [114.3, 105.7, 102.5],
+            "source": "valley-art/veg-c/colour/stump-short/iter1 master render of the normalised build"
+          },
+          {
+            "referenceSrgb": [130.9, 115.8, 105.0],
+            "renderSrgb": [128.3, 113.9, 104.5],
+            "source": "valley-art/d2a/colourA/stump-short master render of the normalised build"
+          }
+        ]
       }
     },
     "stump-trunkbase": {
@@ -617,7 +771,18 @@
       "dimensionsSource": "no §7 stump size: native, mid-height girth 0.45 m (veg-c/girth.json) within the 0.5 m §7 log diameter cap",
       "collision": true,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [130.9, 115.8, 105.0],
+            "renderSrgb": [111.8, 101.8, 95.7],
+            "source": "valley-art/veg-c/colour/stump-trunkbase/iter1 master render of the normalised build"
+          },
+          {
+            "referenceSrgb": [130.9, 115.8, 105.0],
+            "renderSrgb": [128.6, 113.5, 103.2],
+            "source": "valley-art/d2a/colourA/stump-trunkbase master render of the normalised build"
+          }
+        ]
       }
     },
     "willow-low-wild": {
@@ -632,8 +797,30 @@
       "dimensionsSource": "facts.md §7: low willows 1-2.5 m; native 0.93 m",
       "collision": false,
       "colour": {
-        "masked": [],
-        "opaque": []
+        "masked": [
+          {
+            "referenceSrgb": [155.2, 121.0, 81.6],
+            "renderSrgb": [135.6, 125.8, 46.8],
+            "source": "valley-art/veg-c/colour/willow-low-wild/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [155.2, 121.0, 81.6],
+            "renderSrgb": [110.8, 97.2, 56.7],
+            "source": "valley-art/d2a/colourA/willow-low-wild master render of the normalised build"
+          }
+        ],
+        "opaque": [
+          {
+            "referenceSrgb": [112.0, 96.3, 89.4],
+            "renderSrgb": [77.1, 70.9, 59.7],
+            "source": "valley-art/veg-c/colour/willow-low-wild/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [112.0, 96.3, 89.4],
+            "renderSrgb": [98.0, 83.0, 74.6],
+            "source": "valley-art/d2a/colourA/willow-low-wild master render of the normalised build"
+          }
+        ]
       }
     },
     "willow-low-thin": {
@@ -648,8 +835,30 @@
       "dimensionsSource": "facts.md §7: low willows 1-2.5 m",
       "collision": false,
       "colour": {
-        "masked": [],
-        "opaque": []
+        "masked": [
+          {
+            "referenceSrgb": [155.2, 121.0, 81.6],
+            "renderSrgb": [138.0, 127.5, 46.8],
+            "source": "valley-art/veg-c/colour/willow-low-thin/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [155.2, 121.0, 81.6],
+            "renderSrgb": [110.8, 97.4, 57.2],
+            "source": "valley-art/d2a/colourA/willow-low-thin master render of the normalised build"
+          }
+        ],
+        "opaque": [
+          {
+            "referenceSrgb": [112.0, 96.3, 89.4],
+            "renderSrgb": [78.2, 71.4, 60.6],
+            "source": "valley-art/veg-c/colour/willow-low-thin/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [112.0, 96.3, 89.4],
+            "renderSrgb": [99.0, 84.0, 75.4],
+            "source": "valley-art/d2a/colourA/willow-low-thin master render of the normalised build"
+          }
+        ]
       }
     },
     "willow-low-damaged": {
@@ -664,8 +873,30 @@
       "dimensionsSource": "facts.md §7: low willows 1-2.5 m",
       "collision": false,
       "colour": {
-        "masked": [],
-        "opaque": []
+        "masked": [
+          {
+            "referenceSrgb": [155.2, 121.0, 81.6],
+            "renderSrgb": [139.9, 128.6, 46.6],
+            "source": "valley-art/veg-c/colour/willow-low-damaged/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [155.2, 121.0, 81.6],
+            "renderSrgb": [111.7, 96.9, 55.7],
+            "source": "valley-art/d2a/colourA/willow-low-damaged master render of the normalised build"
+          }
+        ],
+        "opaque": [
+          {
+            "referenceSrgb": [112.0, 96.3, 89.4],
+            "renderSrgb": [80.9, 74.5, 63.4],
+            "source": "valley-art/veg-c/colour/willow-low-damaged/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [112.0, 96.3, 89.4],
+            "renderSrgb": [100.4, 85.5, 77.2],
+            "source": "valley-art/d2a/colourA/willow-low-damaged master render of the normalised build"
+          }
+        ]
       }
     },
     "willow-tall-thin": {
@@ -680,8 +911,30 @@
       "dimensionsSource": "facts.md §7: tall willows 3-4 m; native 2.30 m",
       "collision": false,
       "colour": {
-        "masked": [],
-        "opaque": []
+        "masked": [
+          {
+            "referenceSrgb": [155.2, 121.0, 81.6],
+            "renderSrgb": [126.3, 116.9, 43.0],
+            "source": "valley-art/veg-c/colour/willow-tall-thin/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [155.2, 121.0, 81.6],
+            "renderSrgb": [111.1, 96.6, 53.8],
+            "source": "valley-art/d2a/colourA/willow-tall-thin master render of the normalised build"
+          }
+        ],
+        "opaque": [
+          {
+            "referenceSrgb": [112.0, 96.3, 89.4],
+            "renderSrgb": [83.3, 76.2, 64.8],
+            "source": "valley-art/veg-c/colour/willow-tall-thin/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [112.0, 96.3, 89.4],
+            "renderSrgb": [102.3, 87.1, 78.3],
+            "source": "valley-art/d2a/colourA/willow-tall-thin master render of the normalised build"
+          }
+        ]
       }
     },
     "willow-tall-wild": {
@@ -696,8 +949,30 @@
       "dimensionsSource": "facts.md §7: tall willows 3-4 m; native 2.05 m",
       "collision": false,
       "colour": {
-        "masked": [],
-        "opaque": []
+        "masked": [
+          {
+            "referenceSrgb": [155.2, 121.0, 81.6],
+            "renderSrgb": [120.8, 112.3, 41.4],
+            "source": "valley-art/veg-c/colour/willow-tall-wild/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [155.2, 121.0, 81.6],
+            "renderSrgb": [111.6, 96.5, 52.4],
+            "source": "valley-art/d2a/colourA/willow-tall-wild master render of the normalised build"
+          }
+        ],
+        "opaque": [
+          {
+            "referenceSrgb": [112.0, 96.3, 89.4],
+            "renderSrgb": [74.9, 68.6, 58.0],
+            "source": "valley-art/veg-c/colour/willow-tall-wild/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [112.0, 96.3, 89.4],
+            "renderSrgb": [99.9, 84.5, 75.4],
+            "source": "valley-art/d2a/colourA/willow-tall-wild master render of the normalised build"
+          }
+        ]
       }
     },
     "grass-festuca-small": {
@@ -712,7 +987,18 @@
       "dimensionsSource": "facts.md §7: grass 0.3-0.6 m; native 0.90 m",
       "collision": false,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [132.2, 111.8, 80.9],
+            "renderSrgb": [88.8, 96.6, 61.0],
+            "source": "valley-art/veg-c/colour/grass-festuca-small/iter1 master render of the normalised build"
+          },
+          {
+            "referenceSrgb": [132.2, 111.8, 80.9],
+            "renderSrgb": [130.1, 110.8, 74.3],
+            "source": "valley-art/d2a/colourA/grass-festuca-small master render of the normalised build"
+          }
+        ]
       }
     },
     "grass-festuca-medium": {
@@ -727,7 +1013,18 @@
       "dimensionsSource": "facts.md §7: grass 0.3-0.6 m; native 0.96 m",
       "collision": false,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [132.2, 111.8, 80.9],
+            "renderSrgb": [82.6, 91.0, 56.4],
+            "source": "valley-art/veg-c/colour/grass-festuca-medium/iter1 master render of the normalised build"
+          },
+          {
+            "referenceSrgb": [132.2, 111.8, 80.9],
+            "renderSrgb": [129.8, 110.7, 72.9],
+            "source": "valley-art/d2a/colourA/grass-festuca-medium master render of the normalised build"
+          }
+        ]
       }
     },
     "grass-festuca-short": {
@@ -742,7 +1039,18 @@
       "dimensionsSource": "facts.md §7: grass 0.3-0.6 m",
       "collision": false,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [132.2, 111.8, 80.9],
+            "renderSrgb": [73.7, 88.7, 50.9],
+            "source": "valley-art/veg-c/colour/grass-festuca-short/iter1 master render of the normalised build"
+          },
+          {
+            "referenceSrgb": [132.2, 111.8, 80.9],
+            "renderSrgb": [126.3, 110.1, 68.7],
+            "source": "valley-art/d2a/colourA/grass-festuca-short master render of the normalised build"
+          }
+        ]
       }
     },
     "grass-lawn": {
@@ -757,7 +1065,18 @@
       "dimensionsSource": "facts.md §7: grass 0.3-0.6 m; native 0.25 m",
       "collision": false,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [132.2, 111.8, 80.9],
+            "renderSrgb": [126.2, 111.1, 76.9],
+            "source": "valley-art/veg-c/colour/grass-lawn/iter1 master render of the normalised build"
+          },
+          {
+            "referenceSrgb": [132.2, 111.8, 80.9],
+            "renderSrgb": [132.7, 111.9, 80.3],
+            "source": "valley-art/d2a/colourA/grass-lawn master render of the normalised build"
+          }
+        ]
       }
     },
     "reeds-typha": {
@@ -772,8 +1091,20 @@
       "dimensionsSource": "no §7 reed size: native Standard fall mat 75",
       "collision": false,
       "colour": {
-        "masked": [],
-        "opaque": []
+        "masked": [
+          {
+            "referenceSrgb": [120.6, 120.1, 119.1],
+            "renderSrgb": [120.6, 120.1, 119.1],
+            "source": "valley-art/veg-c/colour/reeds-typha/iter1 master render of the normalised build; no reference master, identity at this render"
+          }
+        ],
+        "opaque": [
+          {
+            "referenceSrgb": [114.9, 102.3, 77.9],
+            "renderSrgb": [114.9, 102.3, 77.9],
+            "source": "valley-art/veg-c/colour/reeds-typha/iter1 master render of the normalised build; no reference master, identity at this render"
+          }
+        ]
       }
     },
     "reeds-phragmites": {
@@ -788,8 +1119,20 @@
       "dimensionsSource": "no §7 reed size: native Standard fall mat 75",
       "collision": false,
       "colour": {
-        "masked": [],
-        "opaque": []
+        "masked": [
+          {
+            "referenceSrgb": [101.7, 91.4, 65.2],
+            "renderSrgb": [101.7, 91.4, 65.2],
+            "source": "valley-art/veg-c/colour/reeds-phragmites/iter1 master render of the normalised build, PlantCatalog alpha still inverted; no reference master, identity at this render"
+          }
+        ],
+        "opaque": [
+          {
+            "referenceSrgb": [135.7, 124.6, 96.3],
+            "renderSrgb": [135.7, 124.6, 96.3],
+            "source": "valley-art/veg-c/colour/reeds-phragmites/iter1 master render of the normalised build, PlantCatalog alpha still inverted; no reference master, identity at this render"
+          }
+        ]
       }
     },
     "aspen-a": {
@@ -804,8 +1147,20 @@
       "dimensionsSource": "facts.md §7: aspen 10-14 m (Jagobo tree 003)",
       "collision": false,
       "colour": {
-        "masked": [],
-        "opaque": []
+        "masked": [
+          {
+            "referenceSrgb": [181.4, 147.3, 56.6],
+            "renderSrgb": [181.4, 147.3, 56.6],
+            "source": "valley-art/veg-c/colour/aspen-a/iter1 master render of the normalised build; no reference master, identity at this render"
+          }
+        ],
+        "opaque": [
+          {
+            "referenceSrgb": [153.1, 151.6, 150.2],
+            "renderSrgb": [153.1, 151.6, 150.2],
+            "source": "valley-art/veg-c/colour/aspen-a/iter1 master render of the normalised build; no reference master, identity at this render"
+          }
+        ]
       }
     },
     "aspen-b": {
@@ -820,8 +1175,20 @@
       "dimensionsSource": "facts.md §7: aspen 10-14 m (Jagobo tree 004)",
       "collision": false,
       "colour": {
-        "masked": [],
-        "opaque": []
+        "masked": [
+          {
+            "referenceSrgb": [178.7, 144.6, 55.2],
+            "renderSrgb": [178.7, 144.6, 55.2],
+            "source": "valley-art/veg-c/colour/aspen-b/iter1 master render of the normalised build; no reference master, identity at this render"
+          }
+        ],
+        "opaque": [
+          {
+            "referenceSrgb": [139.5, 137.0, 134.6],
+            "renderSrgb": [139.5, 137.0, 134.6],
+            "source": "valley-art/veg-c/colour/aspen-b/iter1 master render of the normalised build; no reference master, identity at this render"
+          }
+        ]
       }
     },
     "aspen-c": {
@@ -836,8 +1203,20 @@
       "dimensionsSource": "facts.md §7: aspen 10-14 m (Jagobo tree 006)",
       "collision": false,
       "colour": {
-        "masked": [],
-        "opaque": []
+        "masked": [
+          {
+            "referenceSrgb": [184.2, 149.5, 57.3],
+            "renderSrgb": [184.2, 149.5, 57.3],
+            "source": "valley-art/veg-c/colour/aspen-c/iter1 master render of the normalised build; no reference master, identity at this render"
+          }
+        ],
+        "opaque": [
+          {
+            "referenceSrgb": [152.6, 151.0, 149.4],
+            "renderSrgb": [152.6, 151.0, 149.4],
+            "source": "valley-art/veg-c/colour/aspen-c/iter1 master render of the normalised build; no reference master, identity at this render"
+          }
+        ]
       }
     },
     "driftwood-scan": {
@@ -852,7 +1231,18 @@
       "dimensionsSource": "facts.md §7: logs 6-12 x 0.3-0.5 m: trunk 0.5 m thick",
       "collision": true,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [159.4, 145.0, 132.4],
+            "renderSrgb": [120.9, 104.4, 94.0],
+            "source": "valley-art/veg-c/colour/driftwood-scan/iter1 master render of the normalised build"
+          },
+          {
+            "referenceSrgb": [159.4, 145.0, 132.4],
+            "renderSrgb": [153.7, 136.6, 122.3],
+            "source": "valley-art/d2a/colourA/driftwood-scan master render of the normalised build"
+          }
+        ]
       }
     },
     "sedge-carex-a": {
@@ -871,7 +1261,18 @@
       "dimensionsSource": "PBRPX realSize 59 cm atlas: stems at their scanned size",
       "collision": false,
       "colour": {
-        "masked": []
+        "masked": [
+          {
+            "referenceSrgb": [115.6, 103.7, 62.3],
+            "renderSrgb": [120.8, 120.5, 71.8],
+            "source": "valley-art/veg-c/colour/sedge-carex-a/iter1 master render of the normalised build"
+          },
+          {
+            "referenceSrgb": [115.6, 103.7, 62.3],
+            "renderSrgb": [116.6, 107.1, 67.8],
+            "source": "valley-art/d2a/colourA/sedge-carex-a master render of the normalised build"
+          }
+        ]
       }
     },
     "sedge-carex-b": {
@@ -890,7 +1291,18 @@
       "dimensionsSource": "PBRPX realSize 59 cm atlas: stems at their scanned size",
       "collision": false,
       "colour": {
-        "masked": []
+        "masked": [
+          {
+            "referenceSrgb": [115.6, 103.7, 62.3],
+            "renderSrgb": [127.2, 128.7, 75.5],
+            "source": "valley-art/veg-c/colour/sedge-carex-b/iter1 master render of the normalised build"
+          },
+          {
+            "referenceSrgb": [115.6, 103.7, 62.3],
+            "renderSrgb": [118.1, 109.0, 70.3],
+            "source": "valley-art/d2a/colourA/sedge-carex-b master render of the normalised build"
+          }
+        ]
       }
     },
     "seedheads-anaphalis-a": {
@@ -909,7 +1321,18 @@
       "dimensionsSource": "PBRPX realSize 51 cm atlas: stems at their scanned size",
       "collision": false,
       "colour": {
-        "masked": []
+        "masked": [
+          {
+            "referenceSrgb": [145.1, 128.1, 106.3],
+            "renderSrgb": [161.4, 146.6, 128.4],
+            "source": "valley-art/veg-c/colour/seedheads-anaphalis-a/iter1 master render of the normalised build"
+          },
+          {
+            "referenceSrgb": [145.1, 128.1, 106.3],
+            "renderSrgb": [146.8, 130.7, 111.0],
+            "source": "valley-art/d2a/colourA/seedheads-anaphalis-a master render of the normalised build"
+          }
+        ]
       }
     },
     "seedheads-anaphalis-b": {
@@ -928,7 +1351,18 @@
       "dimensionsSource": "PBRPX realSize 51 cm atlas: stems at their scanned size",
       "collision": false,
       "colour": {
-        "masked": []
+        "masked": [
+          {
+            "referenceSrgb": [145.1, 128.1, 106.3],
+            "renderSrgb": [157.3, 141.6, 124.3],
+            "source": "valley-art/veg-c/colour/seedheads-anaphalis-b/iter1 master render of the normalised build"
+          },
+          {
+            "referenceSrgb": [145.1, 128.1, 106.3],
+            "renderSrgb": [146.5, 130.3, 110.5],
+            "source": "valley-art/d2a/colourA/seedheads-anaphalis-b master render of the normalised build"
+          }
+        ]
       }
     },
     "lodgepole-mature-rocket-damaged": {
@@ -943,8 +1377,30 @@
       "dimensionsSource": "facts.md §7: mature lodgepoles 15-18 m; native 16.48 m",
       "collision": false,
       "colour": {
-        "masked": [],
-        "opaque": []
+        "masked": [
+          {
+            "referenceSrgb": [107.7, 100.4, 77.0],
+            "renderSrgb": [47.2, 57.0, 29.7],
+            "source": "valley-art/veg-c/colour/lodgepole-mature-rocket-damaged/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [107.7, 100.4, 77.0],
+            "renderSrgb": [111.9, 116.7, 62.2],
+            "source": "valley-art/d2a/colourA/lodgepole-mature-rocket-damaged master render of the normalised build"
+          }
+        ],
+        "opaque": [
+          {
+            "referenceSrgb": [149.6, 133.9, 126.3],
+            "renderSrgb": [108.2, 106.8, 108.3],
+            "source": "valley-art/veg-c/colour/lodgepole-mature-rocket-damaged/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [149.6, 133.9, 126.3],
+            "renderSrgb": [142.1, 128.6, 122.9],
+            "source": "valley-art/d2a/colourA/lodgepole-mature-rocket-damaged master render of the normalised build"
+          }
+        ]
       }
     },
     "lodgepole-mature-branchy-damaged": {
@@ -959,8 +1415,30 @@
       "dimensionsSource": "facts.md §7: mature lodgepoles 15-18 m; native 14.82 m",
       "collision": false,
       "colour": {
-        "masked": [],
-        "opaque": []
+        "masked": [
+          {
+            "referenceSrgb": [107.7, 100.4, 77.0],
+            "renderSrgb": [49.9, 59.2, 31.0],
+            "source": "valley-art/veg-c/colour/lodgepole-mature-branchy-damaged/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [107.7, 100.4, 77.0],
+            "renderSrgb": [114.0, 117.0, 62.6],
+            "source": "valley-art/d2a/colourA/lodgepole-mature-branchy-damaged master render of the normalised build"
+          }
+        ],
+        "opaque": [
+          {
+            "referenceSrgb": [149.6, 133.9, 126.3],
+            "renderSrgb": [106.8, 105.3, 106.8],
+            "source": "valley-art/veg-c/colour/lodgepole-mature-branchy-damaged/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [149.6, 133.9, 126.3],
+            "renderSrgb": [142.3, 128.6, 122.7],
+            "source": "valley-art/d2a/colourA/lodgepole-mature-branchy-damaged master render of the normalised build"
+          }
+        ]
       }
     },
     "lodgepole-mature-standard-damaged": {
@@ -975,8 +1453,30 @@
       "dimensionsSource": "facts.md §7: mature lodgepoles 15-18 m; native 14.50 m",
       "collision": false,
       "colour": {
-        "masked": [],
-        "opaque": []
+        "masked": [
+          {
+            "referenceSrgb": [107.7, 100.4, 77.0],
+            "renderSrgb": [47.0, 55.4, 28.5],
+            "source": "valley-art/veg-c/colour/lodgepole-mature-standard-damaged/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [107.7, 100.4, 77.0],
+            "renderSrgb": [114.6, 118.0, 61.8],
+            "source": "valley-art/d2a/colourA/lodgepole-mature-standard-damaged master render of the normalised build"
+          }
+        ],
+        "opaque": [
+          {
+            "referenceSrgb": [149.6, 133.9, 126.3],
+            "renderSrgb": [107.1, 105.6, 107.0],
+            "source": "valley-art/veg-c/colour/lodgepole-mature-standard-damaged/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [149.6, 133.9, 126.3],
+            "renderSrgb": [142.3, 128.7, 122.8],
+            "source": "valley-art/d2a/colourA/lodgepole-mature-standard-damaged master render of the normalised build"
+          }
+        ]
       }
     },
     "lodgepole-mature-giant": {
@@ -991,8 +1491,30 @@
       "dimensionsSource": "facts.md §7: mature lodgepoles 15-18 m (cap 18); native 18.19 m",
       "collision": false,
       "colour": {
-        "masked": [],
-        "opaque": []
+        "masked": [
+          {
+            "referenceSrgb": [107.7, 100.4, 77.0],
+            "renderSrgb": [40.6, 48.8, 23.9],
+            "source": "valley-art/veg-c/colour/lodgepole-mature-giant/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [107.7, 100.4, 77.0],
+            "renderSrgb": [113.8, 119.3, 60.5],
+            "source": "valley-art/d2a/colourA/lodgepole-mature-giant master render of the normalised build"
+          }
+        ],
+        "opaque": [
+          {
+            "referenceSrgb": [149.6, 133.9, 126.3],
+            "renderSrgb": [106.5, 104.9, 106.3],
+            "source": "valley-art/veg-c/colour/lodgepole-mature-giant/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [149.6, 133.9, 126.3],
+            "renderSrgb": [142.3, 128.7, 122.7],
+            "source": "valley-art/d2a/colourA/lodgepole-mature-giant master render of the normalised build"
+          }
+        ]
       }
     },
     "lodgepole-edge-topped": {
@@ -1007,8 +1529,30 @@
       "dimensionsSource": "facts.md §7: edge lodgepoles 10-15 m; native 12.69 m",
       "collision": false,
       "colour": {
-        "masked": [],
-        "opaque": []
+        "masked": [
+          {
+            "referenceSrgb": [75.5, 71.1, 54.6],
+            "renderSrgb": [54.0, 63.5, 33.8],
+            "source": "valley-art/veg-c/colour/lodgepole-edge-topped/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [75.5, 71.1, 54.6],
+            "renderSrgb": [82.2, 83.8, 50.5],
+            "source": "valley-art/d2a/colourA/lodgepole-edge-topped master render of the normalised build"
+          }
+        ],
+        "opaque": [
+          {
+            "referenceSrgb": [131.5, 115.1, 105.0],
+            "renderSrgb": [106.8, 105.3, 106.8],
+            "source": "valley-art/veg-c/colour/lodgepole-edge-topped/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [131.5, 115.1, 105.0],
+            "renderSrgb": [126.8, 113.0, 105.4],
+            "source": "valley-art/d2a/colourA/lodgepole-edge-topped master render of the normalised build"
+          }
+        ]
       }
     },
     "lodgepole-sapling-rocket-25": {
@@ -1023,8 +1567,30 @@
       "dimensionsSource": "facts.md §7: saplings 1-3 m; open whorls of Rocket mat 25, native 6.14 m",
       "collision": false,
       "colour": {
-        "masked": [],
-        "opaque": []
+        "masked": [
+          {
+            "referenceSrgb": [123.5, 115.8, 93.2],
+            "renderSrgb": [44.2, 52.4, 26.5],
+            "source": "valley-art/veg-c/colour/lodgepole-sapling-rocket-25/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [123.5, 115.8, 93.2],
+            "renderSrgb": [134.2, 144.0, 73.9],
+            "source": "valley-art/d2a/colourA/lodgepole-sapling-rocket-25 master render of the normalised build"
+          }
+        ],
+        "opaque": [
+          {
+            "referenceSrgb": [132.7, 121.5, 115.8],
+            "renderSrgb": [107.0, 105.5, 107.0],
+            "source": "valley-art/veg-c/colour/lodgepole-sapling-rocket-25/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [132.7, 121.5, 115.8],
+            "renderSrgb": [128.2, 118.7, 114.2],
+            "source": "valley-art/d2a/colourA/lodgepole-sapling-rocket-25 master render of the normalised build"
+          }
+        ]
       }
     },
     "lodgepole-sapling-branchy-25": {
@@ -1039,8 +1605,30 @@
       "dimensionsSource": "facts.md §7: saplings 1-3 m; open whorls of Branchy 3 mat 25, native 6.81 m",
       "collision": false,
       "colour": {
-        "masked": [],
-        "opaque": []
+        "masked": [
+          {
+            "referenceSrgb": [123.5, 115.8, 93.2],
+            "renderSrgb": [46.2, 56.1, 29.1],
+            "source": "valley-art/veg-c/colour/lodgepole-sapling-branchy-25/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [123.5, 115.8, 93.2],
+            "renderSrgb": [133.0, 140.6, 74.6],
+            "source": "valley-art/d2a/colourA/lodgepole-sapling-branchy-25 master render of the normalised build"
+          }
+        ],
+        "opaque": [
+          {
+            "referenceSrgb": [132.7, 121.5, 115.8],
+            "renderSrgb": [105.4, 103.9, 105.5],
+            "source": "valley-art/veg-c/colour/lodgepole-sapling-branchy-25/iter1 master render of the normalised build, PlantCatalog alpha still inverted"
+          },
+          {
+            "referenceSrgb": [132.7, 121.5, 115.8],
+            "renderSrgb": [128.8, 119.2, 114.5],
+            "source": "valley-art/d2a/colourA/lodgepole-sapling-branchy-25 master render of the normalised build"
+          }
+        ]
       }
     },
     "snag-barkless": {
@@ -1055,7 +1643,18 @@
       "dimensionsSource": "facts.md §7: snags 8-14 m; native 4.25 m tall stump, whose girth the reference snag has",
       "collision": false,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [161.2, 145.8, 135.0],
+            "renderSrgb": [148.7, 147.4, 152.8],
+            "source": "valley-art/d2a/colour0/snag-barkless master render of the normalised build"
+          },
+          {
+            "referenceSrgb": [161.2, 145.8, 135.0],
+            "renderSrgb": [160.0, 145.9, 136.9],
+            "source": "valley-art/d2a/colourA/snag-barkless master render of the normalised build"
+          }
+        ]
       }
     },
     "snag-peeling": {
@@ -1070,7 +1669,18 @@
       "dimensionsSource": "facts.md §7: snags 8-14 m; native 4.25 m tall stump, whose girth the reference snag has",
       "collision": false,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [161.2, 145.8, 135.0],
+            "renderSrgb": [128.2, 126.7, 130.1],
+            "source": "valley-art/d2a/colour0/snag-peeling master render of the normalised build"
+          },
+          {
+            "referenceSrgb": [161.2, 145.8, 135.0],
+            "renderSrgb": [156.7, 143.0, 134.3],
+            "source": "valley-art/d2a/colourA/snag-peeling master render of the normalised build"
+          }
+        ]
       }
     },
     "snag-ponderosa": {
@@ -1085,7 +1695,18 @@
       "dimensionsSource": "facts.md §7: snags 8-14 m; native 11.50 m",
       "collision": false,
       "colour": {
-        "opaque": []
+        "opaque": [
+          {
+            "referenceSrgb": [161.2, 145.8, 135.0],
+            "renderSrgb": [109.0, 98.8, 94.1],
+            "source": "valley-art/d2a/colour0/snag-ponderosa master render of the normalised build"
+          },
+          {
+            "referenceSrgb": [161.2, 145.8, 135.0],
+            "renderSrgb": [152.3, 135.7, 125.1],
+            "source": "valley-art/d2a/colourA/snag-ponderosa master render of the normalised build"
+          }
+        ]
       }
     }
   }
