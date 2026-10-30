@@ -20,10 +20,12 @@ def generate(world, rpc_port, instance_base):
     assert set(world["vehicles"]) == set(geodesy.NAMES)
     origin = world["playerStartUeCm"]
     assert origin == {"x": 0, "y": 0, "z": 4000}
+    ev100 = json.loads((ROOT / "world/unreal/valley-lighting.json").read_text())["exposureEv100"]
+    # Manual exposure without the physical camera meters at EV100 0; the compensation sets the EV.
     exposure = {
-        "AutoExposureMinBrightness": 13,
-        "AutoExposureMaxBrightness": 13,
-        "AutoExposureCompensation": 0,
+        "AutoExposureMethod": 2,
+        "AutoExposureApplyPhysicalCameraExposure": False,
+        "AutoExposureCompensation": -ev100,
         "WhiteBalanceTemperature": 6500,
         "WhiteBalanceTint": 0,
         "MotionBlurAmount": 0,

@@ -12,7 +12,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 from mission_planner.agents.perception.geometry import Camera
-from world.cosys.capture import FrameCapture, capture_time, nadir_error, validate
+from world.cosys.capture import FrameCapture, capture_time, nadir_error, shadow_floor, validate
 from world.cosys.sensor import GroundTrack, capture_ground_track
 
 
@@ -105,6 +105,15 @@ class CaptureValidationTests(unittest.TestCase):
         result = validate(record, samples, {"groundWorldM": {"x": 0.02, "y": 0, "z": 0}})
         self.assertFalse(result["accepted"])
         self.assertIn("Calibration actor moved during capture", result["reasons"])
+
+    def test_shadow_floor_rejects_exact_black_shadows(self):
+        lit = bytes([30, 40, 50]) * 64
+        self.assertAlmostEqual(shadow_floor(lit, 8, 8), 0.2126 * 30 + 0.7152 * 40 + 0.0722 * 50, 4)
+        # Rows 0-3 black: half of the stride-4 samples.
+        with self.assertRaisesRegex(AssertionError, "Exact-black"):
+            shadow_floor(bytes(96) + lit[96:], 8, 8)
+        with self.assertRaises(AssertionError):
+            shadow_floor(lit, 8, 7)
 
 
 class GroundTrackTests(unittest.TestCase):

@@ -27,8 +27,9 @@ class SettingsTests(unittest.TestCase):
             for capture in [*settings["CameraDefaults"]["CaptureSettings"], *captures]:
                 self.assertIs(capture["LumenGIEnable"], True)
                 self.assertIs(capture["LumenReflectionEnable"], True)
-                self.assertEqual(capture["AutoExposureMinBrightness"], 13)
-                self.assertEqual(capture["AutoExposureMaxBrightness"], 13)
+                self.assertEqual(capture["AutoExposureMethod"], 2)
+                self.assertIs(capture["AutoExposureApplyPhysicalCameraExposure"], False)
+                self.assertEqual(capture["AutoExposureCompensation"], -13)
                 self.assertEqual(capture["WhiteBalanceTemperature"], 6500)
                 self.assertEqual(capture["WhiteBalanceTint"], 0)
                 self.assertEqual(capture["MotionBlurAmount"], 0)

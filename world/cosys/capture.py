@@ -30,6 +30,9 @@ LIMITS = {
 }
 PREVIEW_SIZE = (960, 540)
 PREVIEW_QUALITY = 75
+REC709_LUMA = np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
+# A full 4K percentile costs 0.12 s, which would slow the harness's back-to-back captures.
+SHADOW_STRIDE = 4
 
 
 def vector(value):
@@ -47,6 +50,18 @@ def rotation(value):
 def nadir_error(orientation):
     axis = rotation(orientation).apply([1, 0, 0])
     return math.degrees(math.acos(float(np.clip(axis[2], -1, 1))))
+
+
+def shadow_floor(pixels, width, height):
+    """1st-percentile Rec. 709 luminance of an RGB8 frame sampled at every SHADOW_STRIDE-th pixel
+    of each axis, asserted above zero: exact-black shadows mean the capture lost its sky and
+    indirect fill."""
+    rgb = np.frombuffer(pixels, dtype=np.uint8)
+    assert rgb.size == width * height * 3, (rgb.size, width, height)
+    grid = rgb.reshape(height, width, 3)[::SHADOW_STRIDE, ::SHADOW_STRIDE].reshape(-1, 3)
+    p1 = float(np.percentile(grid.astype(np.float32) @ REC709_LUMA, 1))
+    assert p1 > 0, "Exact-black shadows: the capture has no sky or indirect fill"
+    return p1
 
 
 def mavlink_sample(fleet, name):
@@ -237,6 +252,9 @@ class FrameCapture:
             "vehiclePoseTiming": "Ground-truth brackets; image pose and timestamp sampled together by Cosys",
             "captureLatencySeconds": latency,
             "transportBytes": len(response.image_data_uint8),
+            "shadowFloorLuminanceP1": shadow_floor(
+                response.image_data_uint8, response.width, response.height
+            ),
         }
         if observe is not None:
             frame["observation"] = observation

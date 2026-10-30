@@ -45,9 +45,10 @@ The generator sets a 3840×2160 scene capture with 70° horizontal FOV. The docu
 camera `Gimbal` fixes world pitch at −90° and roll at 0° with stabilization 1. Yaw is
 deliberately omitted so heading can follow the aircraft; the pinned parser uses NaN
 for uncontrolled axes. Runtime `simSetCameraPose` changes these gimbal targets and
-must not be used during a sensor flight. Equal exposure minimum/maximum values fix
-the existing exposure profile at 13. The actual compensation key is
-`AutoExposureCompensation`. Motion blur amount/max and bloom intensity are zero.
+must not be used during a sensor flight. Exposure is manual with no eye adaptation:
+with the physical camera off, manual exposure meters at EV100 0, so
+`AutoExposureCompensation` is minus the `exposureEv100` of
+`world/unreal/valley-lighting.json` (13). Motion blur amount/max and bloom intensity are zero.
 White balance is explicitly 6500 K with tint 0 for the flight. `airsim-sensor.patch`
 adds these missing settings to the pinned plugin and applies Unreal's white-balance
 overrides. It also samples each image timestamp alongside its camera pose in the
