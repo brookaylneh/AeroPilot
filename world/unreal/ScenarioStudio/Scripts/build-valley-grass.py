@@ -46,79 +46,6 @@ def rebuilt(name, cls, factory):
     return asset
 
 
-material = rebuilt("M_Grass", unreal.Material, unreal.MaterialFactoryNew())
-for expression in ml.get_material_expressions(material):
-    ml.delete_material_expression(material, expression)
-assert not ml.get_material_expressions(material)
-set_properties(
-    material,
-    blend_mode=unreal.BlendMode.BLEND_MASKED,
-    two_sided=True,
-    used_with_nanite=True,
-    used_with_voxels=True,
-    used_with_instanced_static_meshes=True,
-)
-
-
-def node(cls, *inputs, **properties):
-    expression = set_properties(ml.create_material_expression(material, cls), **properties)
-    for pin, (source, output) in inputs:
-        assert ml.connect_material_expressions(source, output, expression, pin), pin
-    return expression
-
-
-textures = {
-    name: node(
-        unreal.MaterialExpressionTextureSampleParameter2D,
-        parameter_name=name,
-        texture=unreal.load_asset(path),
-        sampler_type=getattr(unreal.MaterialSamplerType, sampler),
-    )
-    for name, path, sampler in (
-        ("BC", "/Engine/EngineResources/DefaultTexture", "SAMPLERTYPE_COLOR"),
-        ("N", "/Engine/EngineMaterials/BaseFlattenNormalMap", "SAMPLERTYPE_NORMAL"),
-        ("ORM", "/Engine/EngineMaterials/BaseFlattenLinearColor", "SAMPLERTYPE_LINEAR_COLOR"),
-    )
-}
-palette = {}
-for name, value in grass["colour"].items():
-    assert name in ("dark", "light") and len(value) == 3 and all(0 < x < 1 for x in value)
-    palette[name] = node(
-        unreal.MaterialExpressionConstant3Vector, constant=unreal.LinearColor(*value)
-    )
-# Source luminance retains blade veins and tip variation without retaining straw hues.
-luminance = node(
-    unreal.MaterialExpressionDotProduct,
-    ("A", (textures["BC"], "RGB")),
-    (
-        "B",
-        (
-            node(
-                unreal.MaterialExpressionConstant3Vector,
-                constant=unreal.LinearColor(0.2126, 0.7152, 0.0722),
-            ),
-            "",
-        ),
-    ),
-)
-colour = node(
-    unreal.MaterialExpressionLinearInterpolate,
-    ("A", (palette["dark"], "")),
-    ("B", (palette["light"], "")),
-    ("Alpha", (luminance, "")),
-)
-for expression, pin, prop in (
-    (colour, "", "MP_BASE_COLOR"),
-    (textures["BC"], "A", "MP_OPACITY_MASK"),
-    (textures["N"], "RGB", "MP_NORMAL"),
-    (textures["ORM"], "R", "MP_AMBIENT_OCCLUSION"),
-    (textures["ORM"], "G", "MP_ROUGHNESS"),
-    (textures["ORM"], "B", "MP_METALLIC"),
-):
-    assert ml.connect_material_property(expression, pin, getattr(unreal.MaterialProperty, prop))
-assert not ml.recompile_material(material)
-assert lib.save_loaded_asset(material)
-
 meshes = {}
 for name, entry in grass["types"].items():
     title = "".join(part.title() for part in name.split("-"))
@@ -146,17 +73,17 @@ for name, entry in grass["types"].items():
                 unreal.MaterialInstanceConstant,
                 unreal.MaterialInstanceConstantFactoryNew(),
             )
-            ml.clear_all_material_instance_parameters(instance)
-            ml.set_material_instance_parent(instance, material)
-            for parameter in textures:
-                texture = ml.get_material_instance_texture_parameter_value(
-                    slot.material_interface, parameter
+            ml.set_material_instance_parent(instance, slot.material_interface)
+            ml.set_material_instance_scalar_parameter_value(
+                instance, "Brightness", entry["brightness"]
+            )
+            assert (
+                abs(
+                    ml.get_material_instance_scalar_parameter_value(instance, "Brightness")
+                    - entry["brightness"]
                 )
-                assert isinstance(texture, unreal.Texture2D), (mesh, index, parameter)
-                ml.set_material_instance_texture_parameter_value(instance, parameter, texture)
-                assert (
-                    ml.get_material_instance_texture_parameter_value(instance, parameter) == texture
-                )
+                < 1e-6
+            )
             assert lib.save_loaded_asset(instance), mesh
             overrides.append(instance)
         meshes[name, mesh] = asset, overrides
@@ -358,7 +285,6 @@ report.write_text(
         {
             "template": template_path,
             "profiles": grass["profiles"],
-            "colour": grass["colour"],
             "shapePreservation": grass["shapePreservation"],
             "allocations": counts,
         },
