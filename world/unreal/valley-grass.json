@@ -75,13 +75,7 @@
      ]
     }
    ],
-   "brightness": 2.2,
-   "patches": {
-    "scaleM": 12,
-    "octaves": 2,
-    "bare": 0.28,
-    "full": 0.5
-   }
+   "brightness": 2.2
   },
   "wet-meadow": {
    "layers": [
@@ -114,8 +108,7 @@
      ]
     }
    ],
-   "brightness": 2.2,
-   "patches": null
+   "brightness": 2.2
   }
  }
 }

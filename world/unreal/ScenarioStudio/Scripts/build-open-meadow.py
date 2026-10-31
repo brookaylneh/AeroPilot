@@ -418,7 +418,7 @@ grass_output = node(
         for name, asset in grass_types.items()
     ],
 )
-weights, worn = {}, {}
+weights = {}
 for name, entry in grass["types"].items():
     assert set(entry["layers"]) <= set(layers), entry["layers"]
     samples = [
@@ -428,12 +428,6 @@ for name, entry in grass["types"].items():
     weight = samples[0]
     for sample in samples[1:]:
         weight = node(unreal.MaterialExpressionMax, ("A", weight), ("B", sample))
-    if entry["patches"] is not None:
-        # Worn patches: no grass where the noise field falls below `bare`, full density above `full`.
-        patches = entry["patches"]
-        assert 0 <= patches["bare"] < patches["full"] <= 1, patches
-        worn[name] = field(patches["scaleM"], patches["octaves"], patches["bare"], patches["full"])
-        weight = node(unreal.MaterialExpressionMultiply, ("A", weight), ("B", worn[name]))
     weights[name] = weight
     assert ml.connect_material_expressions(weight, "", grass_output, name), name
 # Far ground: where dry-meadow grass ends at the drone cull distance (and on the grassless apron),
@@ -443,29 +437,23 @@ far = grass["farGround"]
 near_m, end_m = far["fadeM"]
 assert 0 < near_m < end_m <= grass["cullM"][1], far["fadeM"]
 assert all(0 < g <= 1 for g in far["gain"]), far["gain"]
-cover = node(
-    unreal.MaterialExpressionStaticSwitchParameter,
-    ("True", worn["dry-meadow"]),
-    ("False", weights["dry-meadow"]),
-    parameter_name="Apron",
-)
 distance = node(
     unreal.MaterialExpressionDistance,
     ("A", position),
     ("B", node(unreal.MaterialExpressionCameraPositionWS)),
 )
+fade = node(
+    unreal.MaterialExpressionSmoothStep,
+    ("Value", distance),
+    const_min=near_m * 100,
+    const_max=end_m * 100,
+)
+# The apron is all dry meadow.
 far_blend = node(
-    unreal.MaterialExpressionMultiply,
-    (
-        "A",
-        node(
-            unreal.MaterialExpressionSmoothStep,
-            ("Value", distance),
-            const_min=near_m * 100,
-            const_max=end_m * 100,
-        ),
-    ),
-    ("B", cover),
+    unreal.MaterialExpressionStaticSwitchParameter,
+    ("True", fade),
+    ("False", node(unreal.MaterialExpressionMultiply, ("A", fade), ("B", weights["dry-meadow"]))),
+    parameter_name="Apron",
 )
 output(
     node(

@@ -171,9 +171,9 @@ ground past the grass reads as the same meadow. The studio scales every cull by
 1, stops rendering the studio view, follows Drone1 and only then registers the drone cameras as
 streaming views. `client.enter_mission` makes that one-way switch when `/mission` connects, and drone
 captures assert it. `brightness` multiplies the blades' base colour through the
-masters' `Brightness` scalar (one override material instance per mesh slot), and `patches` thins the
-type with a deterministic noise field (no grass below `bare`, full above `full`) so the meadow reads
-as grass with worn patches. `author-unreal.sh build-valley-grass` rebuilds the `/Game/Valley/Grass`
+masters' `Brightness` scalar (one override material instance per mesh slot). A type grows at the
+full weight of its layers, so dry meadow is grassed everywhere; bare ground is only where no grass
+layer is painted. `author-unreal.sh build-valley-grass` rebuilds the `/Game/Valley/Grass`
 types, asserting every mesh top within `heightM` at its largest scale; run it before
 `build-open-meadow`, whose material wires each type to a `LandscapeGrassOutput` pin. The runtime
 telemetry (`runtime.json` `grass`) reports the built instance count and the asynchronous grass
