@@ -126,7 +126,7 @@ export function useUnrealSession() {
           return;
         }
         if (health.state === 'mission') {
-          fail('A mission is already running', 'Open Mission Control to watch the search or start over.');
+          fail('A mission is already running', 'Select Start over to end it and create a new mission.');
           return;
         }
         if (health.state === 'occupied') {

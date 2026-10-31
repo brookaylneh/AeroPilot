@@ -357,10 +357,10 @@ export default function MissionControl() {
                 connected={connected}
                 inset={view !== 'map'}
               />
-              {view === 'map' && (
+              {view === 'map' && state && (
                 <SearchPanel
                   search={search}
-                  runId={state!.mission.id}
+                  runId={state.mission.id}
                   send={send}
                   marking={marking}
                   setMarking={(value) => {

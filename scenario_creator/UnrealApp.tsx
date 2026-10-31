@@ -99,7 +99,12 @@ export default function UnrealApp() {
     setWorking(true);
     try {
       await missionRequest({ type: 'reset' });
-      if (await send({ type: 'reset' })) setBriefing(null);
+      if (transport.current) {
+        if (await send({ type: 'reset' })) setBriefing(null);
+      } else {
+        setBriefing(null);
+        reconnect();
+      }
     } catch (error) {
       setError((error as Error).message);
     } finally {
@@ -393,9 +398,6 @@ export default function UnrealApp() {
             )}
             {locked && <span>Applying…</span>}
           </div>
-          <button className="creator-reset" disabled={locked} onClick={() => void startOver()}>
-            Start over
-          </button>
         </>
       )}
       {!packet && (
@@ -403,14 +405,14 @@ export default function UnrealApp() {
           <TreePine size={36} />
           <h2>{connectionStatus.title}</h2>
           <p>{connectionStatus.detail}</p>
-          <a className="creator-secondary" href="/mission">
-            Mission Control
-          </a>
           <button className="creator-secondary" onClick={reconnect}>
             Reconnect
           </button>
         </div>
       )}
+      <button className="creator-reset" disabled={locked} onClick={() => void startOver()}>
+        Start over
+      </button>
       {error && (
         <div className="creator-notification" role="alert">
           <span>{error}</span>
