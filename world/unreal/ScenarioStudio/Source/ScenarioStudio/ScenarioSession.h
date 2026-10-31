@@ -12,6 +12,27 @@ class UDecalComponent;
 class URectLightComponent;
 class UMaterialInterface;
 
+namespace ScenarioNavigation
+{
+inline constexpr int32 ProtocolVersion = 2, Version = 8;
+inline constexpr double EyeHeightCm = 170, Boost = 2, RampSeconds = .25, StopSeconds = .2, HeightSeconds = 1.2;
+inline constexpr double WatchdogSeconds = 1, HitchSeconds = 2, TelemetrySeconds = .05;
+inline constexpr double HeartbeatMs = 100, DefaultFov = 60, MinFov = 20, MaxFov = 90;
+inline constexpr double FramingDistanceCm = 450, FlightSpeedCm = 40000;
+inline constexpr double MinFlightSeconds = .6, MaxFlightSeconds = 1.8;
+inline constexpr double FlightArcFraction = .35, MaxFlightArcCm = 50000;
+struct Mode
+{
+    const TCHAR *Id, *Label, *Key;
+    double SpeedCm, HeightCm;
+};
+inline constexpr Mode Modes[] = {
+    {TEXT("walk"), TEXT("Walk"), TEXT("1"), 140, EyeHeightCm},
+    {TEXT("run"), TEXT("Run"), TEXT("2"), 500, EyeHeightCm},
+    {TEXT("survey"), TEXT("Survey"), TEXT("3"), 2000, 4000},
+};
+}
+
 // One admitted Pixel Streaming peer edits this session. Cosys remains independent.
 UCLASS()
 class SCENARIOSTUDIO_API AScenarioSession : public AActor
@@ -49,21 +70,30 @@ class SCENARIOSTUDIO_API AScenarioSession : public AActor
     bool bShowMarker = true;
     // Navigation is transient, independent of saved target authoring data.
     FString NavigationPlayer, NavigationSession;
-    double NavigationSequence = -1, LastInputTime = 0, LastTelemetryTime = 0;
+    double NavigationSequence = -1, LastInputTime = 0, LastTelemetryTime = 0, LastNavigationTick = 0;
     double InputYaw = 0, InputPitch = 0, InputZoom = 0;
-    double NavigationSpeed = 300, DesiredYaw = 0, DesiredPitch = 0, DesiredFieldOfView = 60;
+    int32 NavigationMode = 0;
+    bool bNavigationBoost = false;
+    double NavigationAcceleration = 0;
+    double NavigationClearance = ScenarioNavigation::EyeHeightCm;
+    double HeightFrom = ScenarioNavigation::EyeHeightCm, HeightElapsed = ScenarioNavigation::HeightSeconds;
+    double DesiredYaw = 0, DesiredPitch = 0, DesiredFieldOfView = ScenarioNavigation::DefaultFov;
     FVector NavigationAxes = FVector::ZeroVector, NavigationVelocity = FVector::ZeroVector;
     bool bFreeCamera = true;
     FTransform CameraTransitionFrom, CameraTransitionTo;
     double CameraTransitionStart = 0, CameraTransitionDuration = 0;
-    float CameraTransitionFov = 60;
+    float CameraTransitionFov = ScenarioNavigation::DefaultFov;
+    bool bNavigationFlight = false;
+    FVector NavigationDestination = FVector::ZeroVector;
     bool bBriefingRisePending = false;
     bool TransitionCamera(const FString &View, double Duration, FString &Error);
     void HandleNavigation(const FString &Player, const TSharedPtr<FJsonObject> &Input);
     void StopNavigation();
     void EnterFreeCamera();
-    bool TravelMap(double U, double V, FString &Error);
+    bool TravelAndPlace(const FString &Space, double U, double V, FString &Error);
+    bool GroundAt(const FVector &Point, double &GroundZ) const;
     FVector ConstrainCamera(FVector Location) const;
+    TSharedRef<FJsonObject> NavigationSettings() const;
     TSharedRef<FJsonObject> CameraPacket() const;
     void SendCameraState();
     void BindStream();

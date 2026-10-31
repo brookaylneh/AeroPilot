@@ -207,9 +207,10 @@ bool AScenarioManager::ValidateGround(FName Region, const FVector &Point, const 
     if (auto *PC = UGameplayStatics::GetPlayerController(this, 0))
         Query.AddIgnoredActor(PC->GetPawn());
     FHitResult Hit;
-    if (!GetWorld()->LineTraceSingleByChannel(Hit, FVector(Point.X, Point.Y, R->Max.Z),
-                                              FVector(Point.X, Point.Y, R->Min.Z), ECC_GameTraceChannel1,
-                                              Query))
+    if (!GetWorld()->SweepSingleByChannel(Hit, FVector(Point.X, Point.Y, R->Max.Z),
+                                          FVector(Point.X, Point.Y, R->Min.Z), FQuat::Identity,
+                                          ECC_GameTraceChannel1,
+                                          FCollisionShape::MakeSphere(TerrainProbeRadiusCm), Query))
     {
         Error = TEXT("No valid terrain at this location");
         return false;
@@ -275,12 +276,6 @@ bool AScenarioManager::PlaceAtGround(double X, double Y, FString &Error)
     bPlaced = true;
     ResetBehavior();
     return true;
-}
-
-bool AScenarioManager::PlaceFromScreen(float U, float V, FString &Error)
-{
-    FVector Ground;
-    return GroundFromScreen(U, V, Ground, Error) && PlaceAtGround(Ground.X, Ground.Y, Error);
 }
 
 bool AScenarioManager::GroundFromScreen(float U, float V, FVector &Ground, FString &Error) const

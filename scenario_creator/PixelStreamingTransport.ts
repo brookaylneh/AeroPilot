@@ -4,7 +4,8 @@ import { briefingSchema } from './briefing';
 // A single-editor admission gateway MUST protect the signalling endpoint before enabling commands.
 export const creatorStageSchema = z.enum(['person', 'situation', 'placement', 'briefing']);
 export type CreatorStage = z.infer<typeof creatorStageSchema>;
-const request = z.discriminatedUnion('type', [
+export const navigationProtocolVersion = 2;
+export const requestSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('viewport'), aspect: z.number().min(0.25).max(4) }).strict(),
   z.object({ type: z.literal('creator-stage'), stage: creatorStageSchema }).strict(),
   z.object({ type: z.literal('situation'), situationId: z.enum(['lost', 'waiting', 'injured']) }).strict(),
@@ -13,13 +14,12 @@ const request = z.discriminatedUnion('type', [
   z.object({ type: z.literal('portrait') }).strict(),
   z.object({ type: z.literal('reset') }).strict(),
   z
-    .object({ type: z.literal('place-screen'), u: z.number().min(0).max(1), v: z.number().min(0).max(1) })
-    .strict(),
-  z
-    .object({ type: z.literal('focus-screen'), u: z.number().min(0).max(1), v: z.number().min(0).max(1) })
-    .strict(),
-  z
-    .object({ type: z.literal('travel-map'), u: z.number().min(0).max(1), v: z.number().min(0).max(1) })
+    .object({
+      type: z.literal('travel-and-place'),
+      space: z.enum(['map', 'screen']),
+      u: z.number().min(0).max(1),
+      v: z.number().min(0).max(1),
+    })
     .strict(),
   z.object({ type: z.literal('rotate'), yaw: z.number().min(0).max(359) }).strict(),
   z.object({ type: z.literal('region'), regionId: z.string().regex(/^[a-z0-9-]{1,48}$/) }).strict(),
@@ -56,28 +56,62 @@ const request = z.discriminatedUnion('type', [
     .strict(),
   z.object({ type: z.literal('load'), id: z.string().uuid() }).strict(),
 ]);
-export type UnrealCommand = z.infer<typeof request>;
+export type UnrealCommand = z.infer<typeof requestSchema>;
 const point = z.object({ x: z.number().finite(), y: z.number().finite(), z: z.number().finite() });
+export const movementModeSchema = z.enum(['walk', 'run', 'survey']);
+export const navigationSettingsSchema = z
+  .object({
+    heartbeatMs: z.number().positive(),
+    boost: z.number().positive(),
+    modes: z
+      .array(
+        z
+          .object({
+            id: movementModeSchema,
+            label: z.string().min(1),
+            key: z.enum(['1', '2', '3']),
+            speedCm: z.number().positive(),
+            heightCm: z.number().positive(),
+          })
+          .strict(),
+      )
+      .length(3),
+  })
+  .strict()
+  .refine(
+    (value) =>
+      new Set(value.modes.map((m) => m.id)).size === 3 && new Set(value.modes.map((m) => m.key)).size === 3,
+  );
+export type NavigationSettings = z.infer<typeof navigationSettingsSchema>;
+export const navigationInputSchema = z
+  .object({
+    forward: z.number().int().min(-1).max(1),
+    right: z.number().int().min(-1).max(1),
+    yaw: z.number().min(-1e9).max(1e9),
+    pitch: z.number().min(-1e9).max(1e9),
+    zoom: z.number().min(-1e9).max(1e9),
+    mode: movementModeSchema,
+    boost: z.boolean(),
+  })
+  .strict();
 export const cameraSchema = z.object({
   position: point,
   yaw: z.number().finite(),
   pitch: z.number().finite(),
   fieldOfView: z.number().min(20).max(90),
   mode: z.enum(['explore', 'inspect']),
-  inputSequence: z.number(),
+  movementMode: movementModeSchema,
+  speedCmPerSecond: z.number().nonnegative(),
+  serverTimeMs: z.number().finite(),
+  groundZ: z.number().finite(),
+  destination: point.nullable(),
+  inputSequence: z.number().int(),
+  inputSession: z.string(),
   transitioning: z.boolean(),
   timing: z.record(z.string(), z.number()).optional(),
 });
 export type CameraState = z.infer<typeof cameraSchema>;
-export type NavigationInput = {
-  forward: number;
-  right: number;
-  up: number;
-  yaw: number;
-  pitch: number;
-  zoom: number;
-  speed: number;
-};
+export type NavigationInput = z.infer<typeof navigationInputSchema>;
 function requestId() {
   // getRandomValues also works on the user's direct HTTP server address.
   const bytes = crypto.getRandomValues(new Uint8Array(16));
@@ -91,6 +125,8 @@ export class PixelStreamingTransport {
   private disposed = false;
   private navigationSession = requestId();
   private navigationSequence = 0;
+  private echoedNavigationSequence = -1;
+  private navigationLook = { yaw: 0, pitch: 0, zoom: 0 };
   private cameraListeners = new Set<(camera: CameraState) => void>();
   private rejectConnect?: (error: Error) => void;
   private connectTimer?: ReturnType<typeof setTimeout>;
@@ -137,34 +173,36 @@ export class PixelStreamingTransport {
       this.rejectConnect?.(new Error(reason));
       for (const p of this.pending.values()) {
         clearTimeout(p.timer);
-        p.reject(new Error('Connection interrupted. Check the scene before repeating your change.'));
+        p.reject(new Error(reason));
       }
       this.pending.clear();
       onDisconnected(reason);
     };
     this.stream.addEventListener('webRtcDisconnected', () =>
-      disconnected('The scene connection was interrupted. Reconnecting automatically…'),
+      disconnected('The scene connection was interrupted. Select Reconnect.'),
     );
     this.stream.addEventListener('webRtcFailed', () =>
-      disconnected('The video connection failed. Retrying…'),
+      disconnected('The video connection failed. Select Reconnect.'),
     );
     this.stream.addEventListener('dataChannelClose', () =>
-      disconnected('The editing connection was interrupted. Reconnecting…'),
+      disconnected('The editing connection was interrupted. Select Reconnect.'),
     );
     this.stream.addEventListener('subscribeFailed', () =>
-      disconnected('The scene is in use in another browser. Waiting for it to become available…'),
+      disconnected('The scene is in use in another browser. Select Reconnect when it is available.'),
     );
     this.stream.addResponseEventListener('scenario', (raw) => {
       try {
         const value = JSON.parse(raw);
-        if (value.protocolVersion === 1 && value.type === 'navigation-state') {
+        if (value.protocolVersion === navigationProtocolVersion && value.type === 'navigation-state') {
           const camera = cameraSchema.parse(value.camera);
+          if (camera.inputSession === this.navigationSession)
+            this.echoedNavigationSequence = camera.inputSequence;
           for (const listener of this.cameraListeners) listener(camera);
           return;
         }
         const reply = z
           .object({
-            protocolVersion: z.literal(1),
+            protocolVersion: z.literal(navigationProtocolVersion),
             requestId: z.string().uuid(),
             ok: z.boolean(),
             state: z.unknown().optional(),
@@ -178,8 +216,10 @@ export class PixelStreamingTransport {
         this.pending.delete(reply.requestId);
         if (reply.ok) p.resolve(reply.state);
         else p.reject(new Error(reply.error || 'Unreal rejected the command'));
-      } catch {
-        /* Malformed or unrelated data channel message cannot alter authoring state. */
+      } catch (error) {
+        disconnected(
+          `Invalid scene response: ${(error as Error).message}. Reload after updating the native world and browser together.`,
+        );
       }
     });
   }
@@ -189,7 +229,9 @@ export class PixelStreamingTransport {
       this.connectTimer = setTimeout(
         () =>
           reject(
-            new Error('The server is running, but the video connection could not be established. Retrying…'),
+            new Error(
+              'The server is running, but the video connection could not be established. Select Reconnect.',
+            ),
           ),
         20000,
       );
@@ -209,11 +251,11 @@ export class PixelStreamingTransport {
       if (video && video.videoWidth > 0 && video.getVideoPlaybackQuality().totalVideoFrames > 0) return;
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
-    throw new Error('Waiting for the first scene image. Reconnecting…');
+    throw new Error('Waiting for the first scene image. Select Reconnect.');
   }
-  command(input: z.infer<typeof request>) {
+  command(input: z.infer<typeof requestSchema>) {
     if (this.disposed) return Promise.reject(new Error('Stream disconnected'));
-    const command = request.parse(input),
+    const command = requestSchema.parse(input),
       id = requestId();
     return new Promise<unknown>((resolve, reject) => {
       const timer = setTimeout(
@@ -224,20 +266,35 @@ export class PixelStreamingTransport {
         command.type === 'snapshot' ? 1500 : 20000,
       );
       this.pending.set(id, { resolve, reject, timer });
-      this.stream.emitUIInteraction({ protocolVersion: 1, requestId: id, command });
+      this.stream.emitUIInteraction({ protocolVersion: navigationProtocolVersion, requestId: id, command });
     });
+  }
+  // Cumulative look belongs to the transport session, including across scene remounts.
+  navigationOrigin() {
+    return { ...this.navigationLook };
   }
   // Continuous input never waits for an authoring round trip. Cumulative look
   // values and sequence numbers make duplicate/stale packets harmless.
-  navigate(input: NavigationInput) {
-    if (this.disposed || Object.values(input).some((n) => !Number.isFinite(n))) return;
+  navigate(input: NavigationInput): boolean {
+    if (this.disposed) return false;
+    const state = navigationInputSchema.parse(input);
+    const channel = this.stream.webRtcController.dataChannelSender.dataChannelProvider.dataChannel;
+    // One unacknowledged state also bounds Unreal's game-thread input queue.
+    if (
+      channel.readyState !== 'open' ||
+      channel.bufferedAmount > 0 ||
+      this.navigationSequence > this.echoedNavigationSequence + 1
+    )
+      return false;
     this.stream.emitUIInteraction({
-      protocolVersion: 1,
+      protocolVersion: navigationProtocolVersion,
       type: 'navigation',
       session: this.navigationSession,
       sequence: this.navigationSequence++,
-      ...input,
+      ...state,
     });
+    this.navigationLook = { yaw: state.yaw, pitch: state.pitch, zoom: state.zoom };
+    return true;
   }
   observeCamera(listener: (camera: CameraState) => void) {
     this.cameraListeners.add(listener);

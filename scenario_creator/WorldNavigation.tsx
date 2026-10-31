@@ -5,29 +5,27 @@ import type { MapBounds } from './worldMap';
 import {
   type CameraState,
   type NavigationInput,
+  type NavigationSettings,
   type PixelStreamingTransport,
   type UnrealCommand,
 } from './PixelStreamingTransport';
 
 type Point = { x: number; y: number; z: number };
-const defaultSpeed = 300; // Unreal centimetres per second.
 const lookSensitivity = 0.09; // Degrees per mouse pixel, shared across capture modes.
-const emptyInput = (): NavigationInput => ({
+const emptyInput = (mode: NavigationInput['mode']): NavigationInput => ({
   forward: 0,
   right: 0,
-  up: 0,
   yaw: 0,
   pitch: 0,
   zoom: 0,
-  speed: defaultSpeed,
+  mode,
+  boost: false,
 });
 const keys = new Set([
   'KeyW',
   'KeyA',
   'KeyS',
   'KeyD',
-  'KeyQ',
-  'KeyE',
   'ArrowUp',
   'ArrowDown',
   'ArrowLeft',
@@ -38,6 +36,7 @@ const keys = new Set([
 
 export default function WorldNavigation({
   transport,
+  settings,
   initialCamera,
   bounds,
   person,
@@ -49,6 +48,7 @@ export default function WorldNavigation({
   inspectionOnly = false,
 }: {
   transport: PixelStreamingTransport;
+  settings: NavigationSettings;
   initialCamera?: CameraState;
   bounds: MapBounds;
   person: Point | null;
@@ -61,16 +61,17 @@ export default function WorldNavigation({
 }) {
   const surface = useRef<HTMLDivElement>(null);
   const [camera, setCamera] = useState(initialCamera);
-  const [speed, setSpeed] = useState(defaultSpeed),
+  const [movementMode, setMovementMode] = useState(settings.modes[0]),
     [help, setHelp] = useState(false);
   const [focused, setFocused] = useState(false),
     [locked, setLocked] = useState(false);
   const [mouseError, setMouseError] = useState('');
   const lockRequest = useRef<{ mode: 'drag' | 'continuous'; acquired: boolean } | null>(null);
-  const current = useRef({ placing, busy, speed, inspectionOnly });
-  current.current = { placing, busy, speed, inspectionOnly };
+  const current = useRef({ placing, busy, movementMode, inspectionOnly, settings });
+  current.current = { placing, busy, movementMode, inspectionOnly, settings };
   const validClicks = useRef(0);
-  const input = useRef(emptyInput()),
+  const lastSent = useRef(0);
+  const input = useRef({ ...emptyInput(settings.modes[0].id), ...transport.navigationOrigin() }),
     pressed = useRef(new Set<string>()),
     dirty = useRef(false);
   const pointer = useRef<{
@@ -92,12 +93,39 @@ export default function WorldNavigation({
     releasePointer();
     if (document.pointerLockElement === surface.current) document.exitPointerLock();
   }
+  function axes() {
+    const has = (...codes: string[]) => codes.some((code) => pressed.current.has(code));
+    input.current.forward = Number(has('KeyW', 'ArrowUp')) - Number(has('KeyS', 'ArrowDown'));
+    input.current.right = Number(has('KeyD', 'ArrowRight')) - Number(has('KeyA', 'ArrowLeft'));
+    input.current.mode = current.current.movementMode.id;
+    input.current.boost = has('ShiftLeft', 'ShiftRight');
+  }
+  function flush() {
+    axes();
+    dirty.current = !transport.navigate(input.current);
+    if (!dirty.current) {
+      lastSent.current = performance.now();
+    }
+  }
+  function selectMode(id: NavigationInput['mode']) {
+    const selected = current.current.settings.modes.find((mode) => mode.id === id);
+    if (!selected) throw new Error('Unknown navigation mode');
+    setMovementMode(selected);
+    current.current.movementMode = selected;
+    flush();
+    surface.current?.focus();
+  }
   function stop() {
+    const pending = pressed.current.size > 0 || dirty.current;
     pressed.current.clear();
     releaseMouse();
     validClicks.current = 0;
-    input.current.forward = input.current.right = input.current.up = 0;
-    transport.navigate(input.current);
+    if (pending) flush();
+  }
+  function prepareTravel() {
+    stop();
+    // A travel command supersedes look motion that never reached the native camera.
+    input.current = { ...emptyInput(current.current.movementMode.id), ...transport.navigationOrigin() };
     dirty.current = false;
   }
   async function captureMouse(mode: 'drag' | 'continuous') {
@@ -115,21 +143,20 @@ export default function WorldNavigation({
     }
   }
   useEffect(() => {
-    if (initialCamera) setCamera(initialCamera);
+    if (initialCamera) {
+      setCamera(initialCamera);
+      const selected = settings.modes.find((mode) => mode.id === initialCamera.movementMode);
+      if (!selected) throw new Error('Unknown native navigation mode');
+      setMovementMode(selected);
+      current.current.movementMode = selected;
+      input.current.mode = selected.id;
+    }
   }, [initialCamera]);
   useEffect(() => transport.observeCamera(setCamera), [transport]);
   useEffect(() => {
     const el = surface.current!;
-    input.current = emptyInput();
+    input.current = { ...emptyInput(current.current.movementMode.id), ...transport.navigationOrigin() };
     const active = () => document.activeElement === el || document.pointerLockElement === el;
-    const axes = () => {
-      const held = pressed.current,
-        has = (...codes: string[]) => codes.some((code) => held.has(code));
-      input.current.forward = Number(has('KeyW', 'ArrowUp')) - Number(has('KeyS', 'ArrowDown'));
-      input.current.right = Number(has('KeyD', 'ArrowRight')) - Number(has('KeyA', 'ArrowLeft'));
-      input.current.up = Number(has('KeyE')) - Number(has('KeyQ'));
-      input.current.speed = current.current.speed * (has('ShiftLeft', 'ShiftRight') ? 2 : 1);
-    };
     const keydown = (e: KeyboardEvent) => {
       if (!active()) return;
       if (e.code === 'Escape') {
@@ -137,18 +164,25 @@ export default function WorldNavigation({
         el.blur();
         return;
       }
-      if (current.current.inspectionOnly || !keys.has(e.code)) return;
+      if (current.current.inspectionOnly || e.repeat) return;
+      const selected = current.current.settings.modes.find(
+        (mode) => e.code === `Digit${mode.key}` || e.code === `Numpad${mode.key}`,
+      );
+      if (selected) {
+        e.preventDefault();
+        selectMode(selected.id);
+        return;
+      }
+      if (!keys.has(e.code)) return;
       e.preventDefault();
       pressed.current.add(e.code);
-      axes();
-      transport.navigate(input.current);
+      flush();
     };
     const keyup = (e: KeyboardEvent) => {
       if (!pressed.current.has(e.code)) return;
       e.preventDefault();
       pressed.current.delete(e.code);
-      axes();
-      transport.navigate(input.current);
+      flush();
     };
     const wheel = (e: WheelEvent) => {
       e.preventDefault();
@@ -197,11 +231,11 @@ export default function WorldNavigation({
       setMouseError('Mouse capture was blocked. Click the scene and try again.');
     };
     const timer = setInterval(() => {
-      axes();
-      if (pressed.current.size || dirty.current) {
-        transport.navigate(input.current);
-        dirty.current = false;
-      }
+      if (
+        dirty.current ||
+        (pressed.current.size && performance.now() - lastSent.current >= current.current.settings.heartbeatMs)
+      )
+        flush();
     }, 1000 / 60);
     el.addEventListener('wheel', wheel, { passive: false });
     window.addEventListener('keydown', keydown);
@@ -230,10 +264,9 @@ export default function WorldNavigation({
     if (busy) stop();
   }, [busy]);
   const travel = async (u: number, v: number) => {
-    stop();
-    const result = await send({ type: 'travel-map', u, v });
+    prepareTravel();
+    await send({ type: 'travel-and-place', space: 'map', u, v });
     surface.current?.focus();
-    return result !== undefined;
   };
   const mode = camera?.mode || 'explore';
   return (
@@ -243,7 +276,7 @@ export default function WorldNavigation({
         className={`native-interaction free-navigation ${focused ? 'focused' : ''}`}
         tabIndex={0}
         role="application"
-        aria-label="Explore the world. WASD to move, drag to look, Q and E to change height."
+        aria-label="Explore the world. WASD to move, drag to look, 1, 2 and 3 to select movement modes."
         onFocus={() => setFocused(true)}
         onBlur={() => {
           setFocused(false);
@@ -255,7 +288,7 @@ export default function WorldNavigation({
         onMouseDown={(e) => e.preventDefault()}
         onDoubleClick={(e) => {
           if (!placing || busy || validClicks.current < 2) return;
-          validClicks.current = 0;
+          prepareTravel();
           const captured = document.pointerLockElement === e.currentTarget;
           const r = e.currentTarget.getBoundingClientRect();
           void place(captured ? r.x + r.width / 2 : e.clientX, captured ? r.y + r.height / 2 : e.clientY);
@@ -315,7 +348,7 @@ export default function WorldNavigation({
         </div>
       )}
       {!inspectionOnly && (
-        <div className="navigation-toolbar">
+        <div className="navigation-toolbar" data-mode={movementMode.id}>
           <button
             className={mode === 'explore' ? 'selected' : ''}
             disabled={busy}
@@ -332,12 +365,15 @@ export default function WorldNavigation({
             Travel speed
             <select
               aria-label="Travel speed"
-              value={speed}
-              onChange={(e) => setSpeed(Number(e.target.value))}
+              value={movementMode.id}
+              disabled={busy}
+              onChange={(e) => selectMode(e.target.value as NavigationInput['mode'])}
             >
-              <option value={140}>Walk · 1.4 m/s</option>
-              <option value={300}>Jog · 3 m/s</option>
-              <option value={500}>Survey · 5 m/s</option>
+              {settings.modes.map((mode) => (
+                <option key={mode.id} value={mode.id}>
+                  {mode.label} · {mode.speedCm / 100} m/s
+                </option>
+              ))}
             </select>
           </label>
           <button
@@ -376,16 +412,16 @@ export default function WorldNavigation({
           <strong>Explore anywhere</strong>
           <p>
             Click the scene, then use <b>W A S D</b> or arrow keys to move horizontally. Hold and drag to look
-            around; release to use the cursor. <b>Q / E</b> move down / up. Hold <b>Shift</b> to travel
-            faster.
+            around; release to use the cursor. <b>1 / 2 / 3</b> select Walk, Run and Survey. Hold <b>Shift</b>{' '}
+            for {settings.boost}× speed. Walk and Run follow the ground; Survey glides above it.
           </p>
           <p>
-            Scroll to zoom in / out. Click the map to jump to that part of the landscape. <b>Mouse look</b>{' '}
+            Scroll to zoom the lens. Click the map to place the person and fly there. <b>Mouse look</b>{' '}
             captures the cursor; <b>Esc</b> releases it.
           </p>
           <p>
             <b>Person</b> opens orbit inspection. Press any movement key or <b>Explore</b> to leave
-            inspection. Moving the camera never moves the person.
+            inspection. WASD and drag exploration keep the placement unchanged.
           </p>
         </div>
       )}
@@ -407,12 +443,12 @@ export default function WorldNavigation({
         />
       )}
       <div className="native-navigation">
-        {placing ? 'Double-click ground to place · ' : ''}
+        {placing ? 'Map click or ground double-click places and flies there · ' : ''}
         {inspectionOnly
           ? 'Drag to inspect · Scroll to zoom'
           : mode === 'inspect'
             ? 'Inspecting scene · Drag to orbit · WASD to explore'
-            : `${focused ? 'WASD move' : 'Click scene to explore'} · Drag to look · Q / E height · Shift faster`}
+            : `${focused ? 'WASD move' : 'Click scene to explore'} · Drag to look · 1 / 2 / 3 modes · Shift faster`}
       </div>
     </>
   );
