@@ -7,7 +7,7 @@ import {
   creatorStageSchema,
   type UnrealCommand,
 } from './PixelStreamingTransport';
-import { briefingSchema, missionRequest, type Briefing } from './briefing';
+import { briefingSchema } from './briefing';
 
 export const packetSchema = z.object({
   camera: cameraSchema,
@@ -73,15 +73,16 @@ export const packetSchema = z.object({
     ),
     options: z.array(z.object({ key: z.string(), values: z.array(z.string()) })),
   }),
+  scenarios: z.array(z.object({ id: z.string().uuid(), name: z.string() })),
+  lastSavedId: z.string(),
 });
 export type Packet = z.infer<typeof packetSchema>;
 
-export function useUnrealSession(activeView: boolean) {
+export function useUnrealSession() {
   const container = useRef<HTMLDivElement>(null);
   const transport = useRef<PixelStreamingTransport | null>(null);
   const openedCreator = useRef(false);
   const [packet, setPacket] = useState<Packet | null>(null);
-  const [activeBriefing, setActiveBriefing] = useState<Briefing | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
@@ -98,7 +99,6 @@ export function useUnrealSession(activeView: boolean) {
     let connection: PixelStreamingTransport | null = null;
     const abort = new AbortController();
     setPacket(null);
-    setActiveBriefing(null);
     setError('');
     setBusy(false);
     const fail = (title: string, detail: string) => {
@@ -125,13 +125,6 @@ export function useUnrealSession(activeView: boolean) {
             title: 'Scene is unavailable',
             detail: 'The renderer is not running. Restore the service, then select Reconnect.',
           });
-          return;
-        }
-        if (health.state === 'mission') {
-          const briefing = await missionRequest({ type: 'connect' });
-          if (!active) return;
-          if (!briefing) throw new Error('The mission has ended. Select Reconnect to open Studio.');
-          setActiveBriefing(briefing);
           return;
         }
         if (health.state === 'occupied') {
@@ -196,7 +189,7 @@ export function useUnrealSession(activeView: boolean) {
     };
   }, [retry]);
   useEffect(() => {
-    if (!activeView || !connected || !container.current) return;
+    if (!connected || !container.current) return;
     let timer: ReturnType<typeof setTimeout>;
     const observer = new ResizeObserver(([entry]) => {
       clearTimeout(timer);
@@ -212,10 +205,10 @@ export function useUnrealSession(activeView: boolean) {
       clearTimeout(timer);
       observer.disconnect();
     };
-  }, [activeView, connected]);
+  }, [connected]);
   useEffect(() => {
     setVideoStats(null);
-    if (!activeView || !connected) return;
+    if (!connected) return;
     let previous: { video: HTMLVideoElement; frames: number; time: number } | undefined;
     const timer = setInterval(() => {
       const video = container.current?.querySelector('video');
@@ -236,7 +229,7 @@ export function useUnrealSession(activeView: boolean) {
       previous = { video, frames, time };
     }, 2000);
     return () => clearInterval(timer);
-  }, [activeView, connected]);
+  }, [connected]);
   async function send(command: UnrealCommand) {
     if (!transport.current) throw new Error('The scene is not connected.');
     setBusy(true);
@@ -257,7 +250,6 @@ export function useUnrealSession(activeView: boolean) {
     container,
     transport,
     packet,
-    activeBriefing,
     busy,
     transitioning,
     error,

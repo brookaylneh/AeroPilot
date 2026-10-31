@@ -43,7 +43,8 @@ try {
     await readFile(new URL('../world/unreal/creator-people.json', import.meta.url), 'utf8'),
   ).map((p) => ({ id: p.id, supportedSituations: p.supportedSituations }));
   assert.deepEqual(result.people, expectedPeople);
-  await page.getByRole('button', { name: 'Start over', exact: true }).click();
+  await page.getByRole('button', { name: 'Scenarios', exact: true }).click();
+  await page.getByRole('button', { name: 'New scenario', exact: true }).click();
   await waitForCreator(page);
   await screenshot('studio-person');
   await enterWorld(page);
@@ -150,9 +151,34 @@ try {
   await waitForCreator(page);
   await page.getByRole('button', { name: 'Confirm Placement', exact: true }).click();
   await page.getByRole('button', { name: 'Edit mission brief', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Mission brief', exact: true }).fill('Deployment acceptance: the selected Rocketbox character in Open Meadow.');
-  await page.getByRole('heading', { name: 'Mission brief', exact: true }).click();
+  await page
+    .getByRole('textbox', { name: 'Mission brief', exact: true })
+    .fill('Deployment acceptance: the selected Rocketbox character in Open Meadow.');
+  await page.getByRole('textbox', { name: 'Mission brief', exact: true }).press('Tab');
   await screenshot('studio-briefing');
+  await page.getByRole('button', { name: 'Scenarios', exact: true }).click();
+  await page.getByRole('button', { name: 'Save scenario', exact: true }).click();
+  await page
+    .getByRole('textbox', { name: 'Scenario name', exact: true })
+    .fill('Rocketbox integration acceptance');
+  await page.getByRole('button', { name: 'Save scenario', exact: true }).click();
+  await waitForCreator(page);
+  const saved = await page.evaluate(() => window.snrStates.at(-1));
+  assert.match(saved.lastSavedId, /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+  await page.getByRole('button', { name: 'Scenarios', exact: true }).click();
+  await page.getByRole('button', { name: 'New scenario', exact: true }).click();
+  await waitForCreator(page);
+  await page.getByRole('button', { name: 'Scenarios', exact: true }).click();
+  await page.getByRole('combobox', { name: 'Saved scenarios', exact: true }).selectOption(saved.lastSavedId);
+  await page.getByRole('button', { name: 'Open scenario', exact: true }).click();
+  await waitForCreator(page);
+  const loaded = await page.evaluate(() => window.snrStates.at(-1));
+  assert.deepEqual(loaded.authoring.appearance, saved.authoring.appearance);
+  assert.equal(loaded.authoring.situationId, saved.authoring.situationId);
+  assert.deepEqual(loaded.briefing, saved.briefing);
+  result.saveLoad = { passed: true, personId: loaded.authoring.appearance.personId };
+  await page.getByRole('button', { name: /Prepare and launch/ }).click();
+  await waitForCreator(page);
   let fleet;
   page.on('websocket', (socket) => {
     if (!socket.url().endsWith('/api/mission')) return;
@@ -162,14 +188,14 @@ try {
     });
   });
   await page.getByRole('button', { name: 'Launch Search & Rescue Mission' }).click();
-  await page.waitForURL(`${origin}/mission`);
+  await page.waitForURL(`${origin}/mission?case=*`);
   const deadline = Date.now() + 90000;
   while (!fleet || fleet.vehicles.length !== 4) {
     assert(Date.now() < deadline, 'Mission fleet did not become ready');
     await delay(250);
   }
   assert(fleet.vehicles.every((v) => !v.link_lost && v.ekf_healthy && !v.armed));
-  result.runId = fleet.mission.id;
+  result.caseId = new URL(page.url()).searchParams.get('case');
   result.fleet = fleet.vehicles.map((v) => ({
     id: v.id,
     linkLost: v.link_lost,
@@ -183,7 +209,7 @@ try {
   assert.deepEqual(result.errors, []);
   result.status = 'passed';
   await save();
-  console.log(JSON.stringify({ status: result.status, summary: result.summary, runId: result.runId }));
+  console.log(JSON.stringify({ status: result.status, summary: result.summary, caseId: result.caseId }));
 } catch (error) {
   result.status = 'failed';
   result.failure = error.message;

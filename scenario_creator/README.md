@@ -1,40 +1,21 @@
 # Scenario creator
 
-`/studio` is a single-visitor, ephemeral Unreal session: choose a person and situation,
-place them, review one mission brief, and launch into `/mission`. Start over clears
-the active mission and native placement. There is no scenario library, save/load
-command, scenario name or rescue-case API. Closing a browser does not end an active
-mission; reloading `/mission` rejoins it. Completion clears the session.
+`/studio` supports named, saved Unreal scenarios. A saved scenario restores the
+person, appearance, situation, placement, movement state and mission brief together.
+Use Scenarios to save, load or begin a new scenario. Launch saves the reviewed brief
+and opens `/mission?case=<saved-id>` through the original case-based workflow.
 
 ## Authoring flow
 
-1. Choose one of the eleven Microsoft Rocketbox people. Original clothing colours
-   and accessories are fixed; the live preview and portrait thumbnails show those assets.
-2. Choose the private situation: local walking, signalling or sitting on the ground.
-3. Use WASD/arrows to move, drag to look, and the wheel to change field of view.
-   A map click or ground double-click places the person and travels there. Inspect
-   person moves close; Explore resumes navigation. Walk/Jog/Survey retain their
-   existing speeds. Confirmation moves toward the person, then rises into the brief.
-4. Review the document. Click it to edit in place, or copy it with the copy icon.
-   Edits persist on this step. Confirming placement again generates a fresh brief.
-5. Launch sends exactly the displayed text through the existing `/api/mission`
-   WebSocket proxy and opens `/mission`, without a URL identifier. A second launch
-   during an active mission returns “A mission is already running”.
-
-Launch adds `/mission` to browser history without unloading Studio. Browser Back
-returns to the reviewed brief with the chosen character and placement retained in
-the same running browser session; Forward rejoins the same mission. Navigation does
-not reset, relaunch or save anything. The launched brief and authoring controls stay
-fixed until Start over. Hidden Studio does not send viewport commands to Unreal.
-After a full page reload, Studio reads the active mission's brief through the same
-proxy and displays that document instead of blocking access to the page.
-
-`browserFlow.test.ts` exercises character selection, placement, edited launch text,
-repeated Back/Forward and an active brief after a reload. It runs the actual browser
-components with intercepted scene/mission inputs and sends no commands to installed
-services. See [History.pushState](https://developer.mozilla.org/en-US/docs/Web/API/History/pushState),
-[popstate](https://developer.mozilla.org/en-US/docs/Web/API/Window/popstate_event) and
-[Playwright WebSocket routing](https://playwright.dev/docs/api/class-websocketroute).
+1. Choose one of the eleven Microsoft Rocketbox people and their private situation.
+2. Place the person using the map or ground double-click. Navigation, inspection and
+   the four-step header remain available while editing.
+3. Confirm placement to generate a fresh professional brief. Changes to the character
+   or placement are reflected when the visitor confirms the placement again.
+4. Click the document to edit it in place, or copy it using the copy icon. Save and
+   Launch write exactly the reviewed text; loading restores saved edits.
+5. Launch saves a scenario and opens Mission Control with its case ID. The saved brief
+   fills the planner prompt once, waiting for the visitor to press Send.
 
 The copy action uses a user-initiated `document.execCommand('copy')` because the
 installed HTTP origin cannot use the secure-context Clipboard API. A failed copy
@@ -81,20 +62,22 @@ The reporting structure follows these sources:
   situation, objectives, current actions and assigned resources. The prose document
   follows that briefing structure without claiming to be a completed ICS form.
 
-## Data boundary
+## Saved data and planner boundary
 
-The launch message is exactly `{type: "launch", schemaVersion: 2, report, world}`.
-`report` has only `brief` (up to 4,000 characters) and `portrait` (empty for generated
-briefs). `world` has only `coordinateSystem` and `searchBoundsCm` from `world.json`.
-Native placement, situation, behaviour and true position remain in the running
-simulation. They are never written as scenarios or sent to the mission planner.
-The southern launch port is outside the searchable placement bounds.
+Unreal writes private authoring snapshots under `SNR_SCENARIO_DATA_DIR` and separate
+public records under its `briefings/` directory. Private snapshots retain schema
+version 3. The public rescue-case record uses schema version 2 and has only
+`schemaVersion`, `id`, `name`, `report`, and `world`; `report` is `{brief, portrait}`
+with a 4,000-character brief. `/api/rescue-cases/:id` and the mission service read only
+these public records. The private position, situation and movement state never enter
+the planner's record. The public world bounds still come from the authored world.
 
-`briefing.test.ts` covers every person across the world grid, exact evidence spans,
-landmark selection/range, local timestamps, geometry projection and the strict
-launch boundary. It requires no running renderer or model request. Native asset
-changes still require the character workflow in
-[world/unreal/characters/README.md](../world/unreal/characters/README.md).
+The mission service selects one saved case for its lifetime. A different case requires an ordered coupled service restart. Scenario
+files survive service restarts; per-mission logs remain separate from saved scenarios.
+
+`briefing.test.ts` checks every person's generated report across a placement grid,
+quoted evidence, landmark selection, local timestamps and the strict saved-record
+schema. The mission's profile-extraction tests accept only evidence from `brief`.
 
 ## Map component acceptance
 

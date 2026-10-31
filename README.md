@@ -31,7 +31,7 @@ cp deploy/runtime.env.example .local/runtime.env
 npm run build && npm start
 ```
 
-`/` opens the scenario creator and `/mission` mission control. The creator needs a running packaged
+`/` opens the scenario creator and `/mission?case=<id>` mission control. The creator needs a running packaged
 world ([world/unreal](world/unreal/README.md)); mission control needs the
 [mission service](mission_planner/gcs/README.md).
 

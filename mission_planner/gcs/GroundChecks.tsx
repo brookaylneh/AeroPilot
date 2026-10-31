@@ -33,12 +33,12 @@ export function GroundCheckApproval({
 
 function CheckResult({
   task,
-  runId,
+  caseId,
   enabled,
   confirm,
 }: {
   task: StructureCheck;
-  runId: string;
+  caseId: string;
   enabled: boolean;
   confirm: (reason: string) => void;
 }) {
@@ -52,7 +52,7 @@ function CheckResult({
       <p>{task.directions.text}</p>
       <small>Footprint probability at dispatch: {formatProbability(task.mass_at_dispatch)}</small>
       <a
-        href={`/team?run=${encodeURIComponent(runId)}&team=${encodeURIComponent(task.team_id)}`}
+        href={`/team?case=${encodeURIComponent(caseId)}&team=${encodeURIComponent(task.team_id)}`}
         target="_blank"
         rel="noreferrer"
       >
@@ -99,12 +99,12 @@ function CheckResult({
 
 export default function GroundChecks({
   search,
-  runId,
+  caseId,
   enabled,
   send,
 }: {
   search: SearchState;
-  runId: string;
+  caseId: string;
   enabled: boolean;
   send: (message: Record<string, unknown>) => void;
 }) {
@@ -171,7 +171,7 @@ export default function GroundChecks({
         <CheckResult
           key={task.id}
           task={task}
-          runId={runId}
+          caseId={caseId}
           enabled={enabled}
           confirm={(reason) => tool('confirm_structure_negative', { delivery_id: task.id, reason })}
         />

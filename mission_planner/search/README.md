@@ -1,7 +1,7 @@
 # Search commander
 
 The mission service owns profiles, plans, camera evidence and posterior. Use
-`/mission` in the assigned [slot](../../deploy/README.md).
+`/mission?case=<uuid>` in the assigned [slot](../../deploy/README.md).
 
 ## Places and directions
 
@@ -185,7 +185,7 @@ saved mission/progress and returns along the saved path before continuing AUTO.
 
 `notify_ground_team` requires a confirmed lead and explicit approval. It delivers
 photo, coordinates, time, directions, labelled confidence/posterior and navigation
-link to `/team?run=<run-id>&team=<id>`, awaiting that page's acknowledgement.
+link to `/team?case=<case-id>&team=<id>`, awaiting that page's acknowledgement.
 
 `hasty_check_structure` also requires approval in every mode. It sends an authored
 structure footprint, name, directions and instructions to that page, without a

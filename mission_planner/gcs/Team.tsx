@@ -68,7 +68,7 @@ function StructureReport({
 
 export default function Team() {
   const query = new URLSearchParams(location.search);
-  const runId = query.get('run'),
+  const caseId = query.get('case'),
     teamId = query.get('team');
   const socket = useRef<WebSocket | null>(null);
   const [deliveries, setDeliveries] = useState<Delivery[]>([]);
@@ -76,8 +76,8 @@ export default function Team() {
   const [error, setError] = useState('');
   const [sending, setSending] = useState<{ id: string; status: 'sent' | 'acknowledged' } | null>(null);
   useEffect(() => {
-    if (!runId || !z.string().uuid().safeParse(runId).success || !teamId) {
-      setError('A mission run ID and ground team ID are required in the receiving-page link.');
+    if (!caseId || !z.string().uuid().safeParse(caseId).success || !teamId) {
+      setError('A rescue case and ground team ID are required in the receiving-page link.');
       setConnection('closed');
       return;
     }
@@ -85,7 +85,7 @@ export default function Team() {
     socket.current = ws;
     ws.onopen = () => {
       setConnection('connected');
-      ws.send(JSON.stringify({ type: 'connect', run_id: runId, team_id: teamId }));
+      ws.send(JSON.stringify({ type: 'connect', case_id: caseId, team_id: teamId }));
     };
     ws.onmessage = (message) => {
       const parsed = messageSchema.safeParse(JSON.parse(message.data));
@@ -123,7 +123,7 @@ export default function Team() {
       ws.onerror = null;
       ws.close();
     };
-  }, [runId, teamId]);
+  }, [caseId, teamId]);
   function send(delivery: Delivery, action: 'acknowledge' | 'report_negative', notes?: string) {
     if (!socket.current || socket.current.readyState !== WebSocket.OPEN) {
       setError('Mission control is disconnected. The action was not sent.');

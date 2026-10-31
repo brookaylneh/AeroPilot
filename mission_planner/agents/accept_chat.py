@@ -92,8 +92,8 @@ class Acceptance:
                 assert item["result"]["ok"], item["result"]
         self.approve = True
 
-    async def run(self, part):
-        await self.send({"type": "connect"})
+    async def run(self, case_id, part):
+        await self.send({"type": "connect", "case_id": case_id})
         await self.wait(lambda: len(self.state["vehicles"]) == 4, 120, "Four real autopilots ready")
         assert self.state["mission"]["autonomy"] == "Supervised"
         if part == "inspection":
@@ -181,7 +181,7 @@ async def run(args):
         acceptance = Acceptance(socket, args.output)
         try:
             started = time.monotonic()
-            task = asyncio.create_task(acceptance.run(args.part))
+            task = asyncio.create_task(acceptance.run(args.case, args.part))
             await asyncio.wait([task])
             error = task.exception()
             result = {"passed": False, "error": str(error)} if error else task.result()
@@ -210,6 +210,7 @@ async def run(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--case", required=True)
     parser.add_argument("--port", type=int, default=int(os.environ["SNR_MISSION_PORT"]))
     parser.add_argument("--part", choices=("inspection", "flight"), default="flight")
     parser.add_argument("--output", type=Path, required=True)

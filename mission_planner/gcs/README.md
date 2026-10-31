@@ -11,20 +11,16 @@ commander processes explicitly selected recorded captures or the coupled live ca
 
 ## Start and stop
 
-Use the installed services described in [deployment](../../deploy/README.md).
-Launch a reviewed brief from `/studio`. The single schema-version-2 message carries
-only `{brief, portrait}` and the world coordinate frame/search bounds. `/mission`
-rejoins the one active in-memory mission without an identifier. A second launch
-fails explicitly; there is no queue or lifetime case lock. With no active mission,
-Mission Control links to Studio. Start over cancels mission work, returns and lands
-any flying aircraft, stops capture/inference, clears the autopilot mission type
-with acknowledged empty readback, resets Unreal to Studio, and clears
-the mission. Search completion performs the same cleanup after all aircraft land.
-The fleet remains alive for the service lifetime because the coupled world needs
-motor replies. Every launched mission gets a fresh run ID and a log under
-`.local/data/missions/<run-id>/`; no API loads that log as a scenario. Receiving-team
-links use `/team?run=<run-id>&team=<id>` and expire with the active mission.
-The reviewed brief is available to the existing operator and Wonder search tools.
+Use the installed services described in [deployment](../../deploy/README.md). Open a saved briefing
+from `/studio`; its launch button navigates to `/mission?case=<uuid>`. The mission service starts the
+fleet when it starts, because the coupled world blocks without motor replies. The first connection selects
+its case, which the service retains across browser disconnects. Stop/restart `snr-mission`
+after landing before changing cases. The fixed loopback listener is exposed only through the same-origin
+`/api/mission` WebSocket proxy.
+
+The saved public record uses schema version 2 and a single `{brief, portrait}` report.
+Mission Control shows that brief and pre-fills the prompt once on case load. It waits
+for Send; telemetry updates do not replace prompt edits or submit model requests.
 
 Build the pinned source and submodules with
 `bash mission_planner/gcs/build-sitl.sh .local/build/ardupilot`.
@@ -131,8 +127,8 @@ results and omit the briefing. Events log actual input/output token counts and r
 sizes. HTTP failures retain the failed body and safe response headers without credentials.
 
 ```sh
-.venv-cosys/bin/python -m mission_planner.agents.accept_chat --output .local/evidence/gcs/<new-chat-run>
-node --import tsx mission_planner/gcs/accept_browser.mjs flight 'http://35.81.229.78/mission' .local/evidence/gcs/<new-ui-run>
+.venv-cosys/bin/python -m mission_planner.agents.accept_chat --case <uuid> --output .local/evidence/gcs/<new-chat-run>
+node --import tsx mission_planner/gcs/accept_browser.mjs flight 'http://35.81.229.78/mission?case=<uuid>' .local/evidence/gcs/<new-ui-run>
 ```
 
 The browser harness also provides `capture URL NEW_DIRECTORY LABEL`, `states URL NEW_DIRECTORY`,
@@ -164,7 +160,7 @@ Search coverage uses the [search modules](../search/README.md) and a single flee
 `accept_browser.mjs search URL NEW_DIRECTORY` exercises the quoted profile, operator point,
 planning, approval and actual takeoff/coverage/return sequence.
 
-`accept_world.py --brief TEXT --output NEW_DIRECTORY` serves the actual mission
+`accept_world.py --case UUID --output NEW_DIRECTORY` serves the actual mission
 class and owns its coupled fleet on the mission port. Wait for its
 `ready.json`, run browser acceptance, then create `start-flight` in that directory
 to begin the prevalidated AUTO missions. It logs MAVLink and Cosys ground-truth
@@ -192,7 +188,3 @@ It selects an explicit recorded manifest, warms inference, releases frames after
 reviews evidence, approves a re-look, resumes the saved route, confirms a lead and delivers it
 to a separate `/team` browser that explicitly acknowledges receipt. Re-look and ground delivery
 require operator approval even in Autonomous mode. Only the operator resolves detections.
-
-Mission reset follows the MAVLink [clear mission protocol](https://mavlink.io/en/services/mission.html#clear_mission):
-`MISSION_CLEAR_ALL` for `MAV_MISSION_TYPE_MISSION`, accepted `MISSION_ACK`, then an
-empty mission download. Geofences remain intact. A timeout raises without retransmission.

@@ -370,7 +370,7 @@ FString AScenarioManager::ExportAuthoringJson() const
     Root->SetStringField(TEXT("situationId"), SituationId.ToString().ToLower());
     TSharedRef<FJsonObject> Options = MakeShared<FJsonObject>();
     // FName display casing can differ between editor and packaged name tables.
-    // Send canonical identifiers, independent of asset load order.
+    // Persist canonical identifiers, independent of asset load order.
     for (const auto &Option : Appearance.Options)
         Options->SetStringField(FScenarioAppearance::JsonKey(Option.Key), Option.Value.ToString().ToLower());
     Root->SetObjectField(TEXT("appearance"), Options);
@@ -395,4 +395,135 @@ FString AScenarioManager::ExportAuthoringJson() const
     FString Json;
     FJsonSerializer::Serialize(Root, TJsonWriterFactory<>::Create(&Json));
     return Json;
+}
+
+bool AScenarioManager::RestoreSnapshot(const FString &Json, FString &Error)
+{
+    TSharedPtr<FJsonObject> Root;
+    if (Json.Len() > 120000 || !FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Json), Root) ||
+        !Root.IsValid() || !Catalog)
+    {
+        Error = TEXT("Invalid snapshot");
+        return false;
+    }
+    FString Environment, Version, Coordinates, Renderer;
+    double Schema;
+    if (!Root->TryGetNumberField(TEXT("schemaVersion"), Schema) ||
+        (Schema != 1 && Schema != 2 && Schema != 3) ||
+        !Root->TryGetStringField(TEXT("environmentId"), Environment) ||
+        Environment != Catalog->EnvironmentId.ToString().ToLower() ||
+        !Root->TryGetStringField(TEXT("assetVersion"), Version) || Version != Catalog->AssetVersion ||
+        !Root->TryGetStringField(TEXT("coordinateSystem"), Coordinates) ||
+        Coordinates != TEXT("UE_LH_Z_UP_CENTIMETERS") ||
+        !Root->TryGetStringField(TEXT("renderer"), Renderer) || Renderer != TEXT("unreal"))
+    {
+        Error = TEXT("Snapshot belongs to a different environment or renderer");
+        return false;
+    }
+    const TSharedPtr<FJsonObject> *State, *Options, *Position, *Rotation;
+    FString Region;
+    if (!Root->TryGetObjectField(TEXT("authoring"), State) ||
+        !(*State)->TryGetStringField(TEXT("regionId"), Region) ||
+        !(*State)->TryGetObjectField(TEXT("appearance"), Options) ||
+        !(*State)->TryGetObjectField(TEXT("position"), Position) ||
+        !(*State)->TryGetObjectField(TEXT("rotation"), Rotation))
+    {
+        Error = TEXT("Incomplete state");
+        return false;
+    }
+    // Version 1 contained a standing pose only. Its explicit migration is waiting.
+    FString Situation = TEXT("waiting");
+    if (Schema >= 2 &&
+        (!(*State)->TryGetStringField(TEXT("situationId"), Situation) ||
+         (Situation != TEXT("lost") && Situation != TEXT("waiting") && Situation != TEXT("injured"))))
+    {
+        Error = TEXT("Invalid saved situation");
+        return false;
+    }
+    FScenarioAppearance Selection;
+    for (const auto &Pair : (*Options)->Values)
+    {
+        FString Value;
+        if (!Pair.Value->TryGetString(Value))
+        {
+            Error = TEXT("Invalid appearance option");
+            return false;
+        }
+        Selection.Options.Add(FName(*Pair.Key), FName(*Value));
+    }
+    if (Schema == 1)
+        Selection.Options.Remove(TEXT("poseId"));
+    FVector P;
+    double Heading, Pitch, Roll;
+    if (!(*Position)->TryGetNumberField(TEXT("x"), P.X) || !(*Position)->TryGetNumberField(TEXT("y"), P.Y) ||
+        !(*Position)->TryGetNumberField(TEXT("z"), P.Z) || P.ContainsNaN() ||
+        !(*Rotation)->TryGetNumberField(TEXT("yaw"), Heading) || !FMath::IsFinite(Heading) || Heading < 0 ||
+        Heading >= 360 || !(*Rotation)->TryGetNumberField(TEXT("pitch"), Pitch) || Pitch != 0 ||
+        !(*Rotation)->TryGetNumberField(TEXT("roll"), Roll) || Roll != 0)
+    {
+        Error = TEXT("Invalid transform");
+        return false;
+    }
+    const FScenarioPersonPreset *Preset = nullptr;
+    FVector Ground;
+    if (!ValidateAppearance(Selection, Preset, Error) ||
+        !ValidateGround(FName(*Region), P, *Preset, FName(*Situation), Ground, Error))
+        return false;
+    if (!Preset->SupportedSituations.Contains(FName(*Situation)))
+    {
+        Error = TEXT("Saved situation is unavailable for this character");
+        return false;
+    }
+    if (FVector::Dist(P, Ground) > .1)
+    {
+        Error = TEXT("Terrain version no longer matches saved ground");
+        return false;
+    }
+    FScenarioBehavior RestoredBehavior;
+    RestoredBehavior.Origin = RestoredBehavior.Destination = P;
+    if (Schema == 3)
+    {
+        const TSharedPtr<FJsonObject> *SavedBehavior;
+        if (!(*State)->TryGetObjectField(TEXT("behavior"), SavedBehavior) ||
+            !ReadBehavior(*SavedBehavior, P, RestoredBehavior, Error) ||
+            (RestoredBehavior.bWalking && (Situation != TEXT("lost") || !Preset->bCanWalk)))
+        {
+            Error = TEXT("Invalid saved character behavior");
+            return false;
+        }
+        for (const FVector &Point : {RestoredBehavior.Origin, RestoredBehavior.Destination})
+            if (!ValidateGround(FName(*Region), Point, *Preset, FName(*Situation), Ground, Error) ||
+                FVector::Dist(Point, Ground) > .1)
+                return false;
+    }
+    UClass *Class = Preset->ActorClass.LoadSynchronous();
+    if (!Class)
+    {
+        Error = TEXT("Character class was not cooked");
+        return false;
+    }
+    FActorSpawnParameters Params;
+    Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+    AScenarioPerson *Candidate =
+        GetWorld()->SpawnActor<AScenarioPerson>(Class, P, FRotator(0, Heading, 0), Params);
+    if (!Candidate || !Candidate->ApplyAppearance(Selection) ||
+        !Candidate->ApplySituation(FName(*Situation)) ||
+        !Candidate->ApplyMotion(RestoredBehavior.bWalking, RestoredBehavior.AnimationTime))
+    {
+        if (Candidate)
+            Candidate->Destroy();
+        Error = TEXT("Wardrobe unavailable");
+        return false;
+    }
+    Candidate->Tags.AddUnique(TEXT("scenario.target.primary"));
+    if (Person)
+        Person->Destroy();
+    Person = Candidate;
+    Appearance = Selection;
+    SituationId = FName(*Situation);
+    RegionId = FName(*Region);
+    Yaw = Heading;
+    bPlaced = true;
+    Behavior = RestoredBehavior;
+    return true;
 }

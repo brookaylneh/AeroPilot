@@ -1,9 +1,9 @@
 import world from '../world/cosys/world.json';
 import { useEffect, useState } from 'react';
-import { ArrowLeft, ArrowRight, Check, TreePine } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Check, Save, TreePine } from 'lucide-react';
 import { useUnrealSession } from './useUnrealSession';
 import { colors, situations, title } from './creator';
-import { missionRequest, type Briefing } from './briefing';
+import type { Briefing } from './briefing';
 import { generateBrief } from './missionBrief';
 import type { CreatorStage } from './PixelStreamingTransport';
 import CharacterPicker from './CharacterPicker';
@@ -35,13 +35,11 @@ const steps: { id: CreatorStage; title: string; description: string }[] = [
   },
 ];
 
-export default function UnrealApp({ active, openMission }: { active: boolean; openMission: () => void }) {
-  const [missionActive, setMissionActive] = useState(false);
+export default function UnrealApp() {
   const {
     container,
     transport,
     packet,
-    activeBriefing,
     busy,
     transitioning,
     error,
@@ -50,24 +48,26 @@ export default function UnrealApp({ active, openMission }: { active: boolean; op
     connectionStatus,
     videoStats,
     reconnect,
-  } = useUnrealSession(active && !missionActive);
+  } = useUnrealSession();
   const [working, setWorking] = useState(false);
+  const [library, setLibrary] = useState(false),
+    [saving, setSaving] = useState(false);
+  const [savedChoice, setSavedChoice] = useState(''),
+    [name, setName] = useState('');
   const [yaw, setYaw] = useState(0);
   const [briefing, setBriefing] = useState<Briefing | null>(null);
-  const locked = busy || working || transitioning || missionActive;
-  const stage = activeBriefing ? 'briefing' : packet?.creatorStage || 'person';
+  const locked = busy || working || transitioning;
+  const stage = packet?.creatorStage || 'person';
   const index = steps.findIndex((step) => step.id === stage);
   const region = packet?.catalog.regions.find((r) => r.id === packet.authoring.regionId);
   const person = packet?.catalog.people.find((p) => p.id === packet.authoring.appearance.personId);
+  const reportText = JSON.stringify(packet?.briefing);
   useEffect(() => {
     if (packet) setYaw(packet.authoring.rotation.yaw);
   }, [packet?.authoring.rotation.yaw]);
   useEffect(() => {
-    if (activeBriefing) {
-      setBriefing(activeBriefing);
-      setMissionActive(true);
-    }
-  }, [activeBriefing]);
+    if (reportText) setBriefing(JSON.parse(reportText));
+  }, [reportText]);
 
   async function changeAppearance(key: string, value: string) {
     if (!packet) return;
@@ -78,42 +78,29 @@ export default function UnrealApp({ active, openMission }: { active: boolean; op
       appearance.bottomId = selected.bottomId;
       if (!selected.supportsBackpack) appearance.backpackId = 'none';
     }
-    await send({ type: 'appearance', appearance });
-    setBriefing(null);
+    const result = await send({ type: 'appearance', appearance });
+    if (result) {
+      const report = { brief: '', portrait: '' };
+      setBriefing(report);
+      await send({ type: 'briefing', briefing: report });
+    }
   }
   async function moveTo(next: CreatorStage) {
-    if (!packet || next === stage) return;
+    if (!packet || !briefing || next === stage) return;
     setWorking(true);
     try {
+      let report = briefing;
       if (next === 'briefing') {
         if (!packet.authoring.position) throw new Error('Place the person before reviewing the brief.');
         if (!packet.authoring.behavior) throw new Error('The placed person has no movement origin.');
-        setBriefing(
-          generateBrief(
-            packet.authoring.appearance.personId,
-            packet.authoring.behavior.origin,
-            packet.authoring.appearance,
-          ),
+        report = generateBrief(
+          packet.authoring.appearance.personId,
+          packet.authoring.behavior.origin,
+          packet.authoring.appearance,
         );
       }
-      await send({ type: 'creator-stage', stage: next });
-    } catch (error) {
-      setError((error as Error).message);
-    } finally {
-      setWorking(false);
-    }
-  }
-  async function startOver() {
-    setWorking(true);
-    try {
-      await missionRequest({ type: 'reset' });
-      setMissionActive(false);
-      if (transport.current) {
-        if (await send({ type: 'reset' })) setBriefing(null);
-      } else {
-        setBriefing(null);
-        reconnect();
-      }
+      if (await send({ type: 'briefing', briefing: report }))
+        await send({ type: 'creator-stage', stage: next });
     } catch (error) {
       setError((error as Error).message);
     } finally {
@@ -156,6 +143,14 @@ export default function UnrealApp({ active, openMission }: { active: boolean; op
         </div>
       </fieldset>
     );
+  }
+  async function save() {
+    if (
+      briefing &&
+      (await send({ type: 'briefing', briefing })) &&
+      (await send({ type: 'save', name, summary: '' }))
+    )
+      setSaving(false);
   }
   return (
     <div className={`creator-app stage-${stage}`}>
@@ -357,13 +352,34 @@ export default function UnrealApp({ active, openMission }: { active: boolean; op
               </div>
             </>
           )}
+          {stage === 'briefing' && briefing && !transitioning && (
+            <RescueBriefing
+              briefing={briefing}
+              setBriefing={setBriefing}
+              ready={!!packet.authoring.position}
+              disabled={locked}
+              editPlacement={() => void moveTo('placement')}
+              launch={async () => {
+                if (!(await send({ type: 'briefing', briefing }))) return;
+                const saved = await send({
+                  type: 'save',
+                  name: name.trim() || 'Open Meadow rescue case',
+                  summary: '',
+                });
+                if (saved) {
+                  if (!saved.lastSavedId) throw new Error('Saved rescue case has no id');
+                  location.assign(`/mission?case=${encodeURIComponent(saved.lastSavedId)}`);
+                }
+              }}
+            />
+          )}
           {transitioning && stage === 'briefing' && (
             <div className="creator-transition" role="status">
               <div>
                 <span className="creator-kicker">SEARCH &amp; RESCUE</span>
                 <h2>
                   {stage === 'briefing' && packet.authoring.position
-                    ? 'Preparing the mission brief.'
+                    ? 'Scenario created. Preparing rescue briefing.'
                     : 'Choose their location'}
                 </h2>
               </div>
@@ -377,40 +393,14 @@ export default function UnrealApp({ active, openMission }: { active: boolean; op
                 {videoStats.height}p · {videoStats.fps} fps
               </span>
             )}
-            {(busy || working || transitioning) && <span>Applying…</span>}
+            {locked && <span>Applying…</span>}
           </div>
+          <button className="scenario-library-link" disabled={locked} onClick={() => setLibrary(true)}>
+            Scenarios
+          </button>
         </>
       )}
-      {stage === 'briefing' && briefing && !transitioning && (
-        <RescueBriefing
-          briefing={briefing}
-          setBriefing={setBriefing}
-          ready={!!packet?.authoring.position}
-          disabled={locked}
-          editPlacement={() => void moveTo('placement')}
-          launch={async () => {
-            setWorking(true);
-            try {
-              await missionRequest({
-                type: 'launch',
-                schemaVersion: 2,
-                report: briefing,
-                world: {
-                  coordinateSystem: 'UE_LH_Z_UP_CENTIMETERS',
-                  searchBoundsCm: world.searchBoundsCm,
-                },
-              });
-              setMissionActive(true);
-              openMission();
-            } catch (error) {
-              setError((error as Error).message);
-            } finally {
-              setWorking(false);
-            }
-          }}
-        />
-      )}
-      {!packet && !activeBriefing && (
+      {!packet && (
         <div className="native-connecting">
           <TreePine size={36} />
           <h2>{connectionStatus.title}</h2>
@@ -420,19 +410,101 @@ export default function UnrealApp({ active, openMission }: { active: boolean; op
           </button>
         </div>
       )}
-      <button
-        className="creator-reset"
-        disabled={busy || working || transitioning}
-        onClick={() => void startOver()}
-      >
-        Start over
-      </button>
       {error && (
         <div className="creator-notification" role="alert">
           <span>{error}</span>
           <button aria-label="Dismiss error" onClick={() => setError('')}>
             ×
           </button>
+        </div>
+      )}
+      {saving && (
+        <div className="creator-modal-backdrop">
+          <form
+            className="creator-modal"
+            onSubmit={(e) => {
+              e.preventDefault();
+              void save();
+            }}
+          >
+            <button type="button" className="modal-close" aria-label="Close" onClick={() => setSaving(false)}>
+              ×
+            </button>
+            <div className="creator-kicker">KEEP THIS STORY</div>
+            <h2>Save your scenario.</h2>
+            <label>
+              Scenario name
+              <input
+                required
+                autoFocus
+                maxLength={80}
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+              />
+            </label>
+            <p>The person, appearance, situation, placement and briefing will be restored together.</p>
+            <button className="creator-primary" disabled={locked || !name.trim()}>
+              <Save size={16} />
+              Save scenario
+            </button>
+          </form>
+        </div>
+      )}
+      {library && (
+        <div className="creator-modal-backdrop">
+          <div className="creator-modal">
+            <button className="modal-close" aria-label="Close" onClick={() => setLibrary(false)}>
+              ×
+            </button>
+            <div className="creator-kicker">YOUR SCENARIOS</div>
+            <h2>Pick up the story.</h2>
+            <div className="scenario-library-actions">
+              <button
+                className="creator-secondary"
+                disabled={!packet?.authoring.position || locked}
+                onClick={() => {
+                  setLibrary(false);
+                  setName('Open Meadow rescue case');
+                  setSaving(true);
+                }}
+              >
+                Save scenario
+              </button>
+              <button
+                className="creator-secondary"
+                disabled={locked}
+                onClick={async () => {
+                  if (await send({ type: 'reset' })) setLibrary(false);
+                }}
+              >
+                New scenario
+              </button>
+            </div>
+            <label>
+              Saved scenarios
+              <select
+                aria-label="Saved scenarios"
+                value={savedChoice}
+                onChange={(e) => setSavedChoice(e.target.value)}
+              >
+                <option value="">Choose a scenario</option>
+                {packet?.scenarios.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              className="creator-primary"
+              disabled={!savedChoice || locked}
+              onClick={async () => {
+                if (await send({ type: 'load', id: savedChoice })) setLibrary(false);
+              }}
+            >
+              Open scenario
+            </button>
+          </div>
         </div>
       )}
     </div>

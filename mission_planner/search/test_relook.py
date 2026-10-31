@@ -202,9 +202,7 @@ class PausedMonitor(unittest.IsolatedAsyncioTestCase):
     async def test_paused_route_still_checks_telemetry_health(self):
         fleet = SimpleNamespace(execute=AsyncMock(), _check_tasks=Mock())
         mission = SimpleNamespace(
-            clear=AsyncMock(),
-            fleet=fleet,
-            vehicles=lambda: [{"id": "Drone1", "link_lost": True, "ekf_healthy": True}],
+            fleet=fleet, vehicles=lambda: [{"id": "Drone1", "link_lost": True, "ekf_healthy": True}]
         )
         search = SimpleNamespace(
             plan={"routes": {"Drone1": {}}}, paused={"Drone1": {"kind": "relook"}}, mission=mission
@@ -236,11 +234,7 @@ class PausedMonitor(unittest.IsolatedAsyncioTestCase):
 
         fleet = SimpleNamespace(execute=AsyncMock(side_effect=execute), _check_tasks=Mock())
         mission = SimpleNamespace(
-            clear=AsyncMock(),
-            fleet=fleet,
-            vehicles=lambda: list(states.values()),
-            event=Mock(),
-            active_flight=set(),
+            fleet=fleet, vehicles=lambda: list(states.values()), event=Mock(), active_flight=set()
         )
         search = SimpleNamespace(
             plan={
@@ -284,9 +278,7 @@ class PausedMonitor(unittest.IsolatedAsyncioTestCase):
             "armed": True,
             "landed_state": 2,
         }
-        mission = SimpleNamespace(
-            active_flight={"Drone1"}, vehicles=lambda: [state], event=Mock(), clear=AsyncMock()
-        )
+        mission = SimpleNamespace(active_flight={"Drone1"}, vehicles=lambda: [state], event=Mock())
 
         async def execute(name, arguments):
             self.assertEqual(mission.active_flight, {"Drone1"})
@@ -311,7 +303,6 @@ class PausedMonitor(unittest.IsolatedAsyncioTestCase):
             await finish(search, time.monotonic())
         mission.fleet.execute.assert_awaited_once_with("return_home", {"drone_id": "Drone1"})
         self.assertFalse(mission.active_flight)
-        mission.clear.assert_awaited_once()
 
 
 if __name__ == "__main__":

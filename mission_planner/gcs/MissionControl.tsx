@@ -110,24 +110,10 @@ function ToolRow({ event, events }: { event: MissionEvent; events: MissionEvent[
     </details>
   );
 }
-export default function MissionControl({ onEnded }: { onEnded: () => void }) {
-  const {
-    idle,
-    state,
-    search,
-    sensorFrames,
-    feedFocus,
-    events,
-    connection,
-    error,
-    setError,
-    send,
-    now,
-    age,
-  } = useMission();
-  useEffect(() => {
-    if (idle) onEnded();
-  }, [idle, onEnded]);
+export default function MissionControl() {
+  const caseId = new URLSearchParams(location.search).get('case');
+  const { state, search, sensorFrames, feedFocus, events, connection, error, setError, send, now, age } =
+    useMission(caseId);
   const [marking, setMarking] = useState(false);
   const [drawing, setDrawing] = useState(false);
   const [areaDraft, setAreaDraft] = useState<SearchPoint[] | null>(null);
@@ -150,6 +136,13 @@ export default function MissionControl({ onEnded }: { onEnded: () => void }) {
   }, [feedFocus]);
   const [panel, setPanel] = useState<'agent' | 'evidence' | 'log'>('agent');
   const [text, setText] = useState('');
+  const promptCase = useRef<string | null>(null);
+  useEffect(() => {
+    if (state && promptCase.current !== state.mission.case_id) {
+      setText(state.mission.briefing.brief);
+      promptCase.current = state.mission.case_id;
+    }
+  }, [state]);
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [briefingOpen, setBriefingOpen] = useState(false);
   const [flightForm, setFlightForm] = useState<'take_off' | 'fly_route' | null>(null);
@@ -221,16 +214,6 @@ export default function MissionControl({ onEnded }: { onEnded: () => void }) {
     setFlightForm(null);
     setPanel('agent');
   }
-  if (idle)
-    return (
-      <main className="gcs-app">
-        <section className="gcs-empty">
-          <h1>No active mission</h1>
-          <p>Create a new search and rescue mission in Studio.</p>
-          <a href="/studio">Go to Studio</a>
-        </section>
-      </main>
-    );
   return (
     <div className="gcs-app" data-connection={connection} data-state-age-s={age}>
       <header className="gcs-header">
@@ -238,11 +221,8 @@ export default function MissionControl({ onEnded }: { onEnded: () => void }) {
           <Compass size={14} strokeWidth={1.5} />
           <strong>Search &amp; Rescue</strong>
         </a>
-        <button className="gcs-briefing-button" disabled={!state} onClick={() => send({ type: 'reset' })}>
-          Start over
-        </button>
         <div className="gcs-case">
-          <h1>{'Mission control'}</h1>
+          <h1>{state ? state.mission.case_name : 'Mission control'}</h1>
         </div>
         <div className="gcs-clock">
           <span className="gcs-sr-only">Mission time</span>
@@ -360,10 +340,10 @@ export default function MissionControl({ onEnded }: { onEnded: () => void }) {
                 connected={connected}
                 inset={view !== 'map'}
               />
-              {view === 'map' && state && (
+              {view === 'map' && (
                 <SearchPanel
                   search={search}
-                  runId={state.mission.id}
+                  caseId={caseId!}
                   send={send}
                   marking={marking}
                   setMarking={(value) => {
@@ -436,8 +416,12 @@ export default function MissionControl({ onEnded }: { onEnded: () => void }) {
                     <X size={16} />
                   </button>
                 </header>
-                <h2>{state ? 'Incident briefing' : 'No active mission'}</h2>
-                <p>{state ? state.mission.briefing.brief : 'Open /studio to create a mission.'}</p>
+                <h2>{state ? state.mission.case_name : 'No case loaded'}</h2>
+                <p>
+                  {state
+                    ? state.mission.briefing.brief
+                    : 'Open a saved rescue case to load the incident briefing.'}
+                </p>
               </section>
             )}
             {alertsOpen && (
@@ -524,8 +508,8 @@ export default function MissionControl({ onEnded }: { onEnded: () => void }) {
                   <div className="gcs-conversation-empty">
                     <span className="gcs-eyebrow">MISSION ASSISTANT</span>
                     <h3>
-                      {idle
-                        ? 'No active mission'
+                      {!caseId
+                        ? 'No rescue case selected'
                         : enabled
                           ? 'Ready for your instructions'
                           : connection === 'connecting'
@@ -533,12 +517,12 @@ export default function MissionControl({ onEnded }: { onEnded: () => void }) {
                             : 'Mission service offline'}
                     </h3>
                     <p>
-                      {idle
-                        ? 'Create a mission in Studio to begin.'
+                      {!caseId
+                        ? 'Open a saved rescue briefing and select Launch Search & Rescue Mission to begin.'
                         : enabled
                           ? 'Inspect the fleet, prepare a route, or coordinate the next flight action. Flight commands require your approval in Supervised mode.'
                           : connection === 'connecting'
-                            ? 'Waiting for the active mission and aircraft telemetry.'
+                            ? 'Waiting for the mission service to load your saved rescue briefing and aircraft telemetry.'
                             : 'Check that the mission service is running, then reload this page. Aircraft data will appear when the connection is established.'}
                     </p>
                     <button
@@ -601,13 +585,13 @@ export default function MissionControl({ onEnded }: { onEnded: () => void }) {
               </>
             ) : panel === 'evidence' ? (
               search &&
-              state && (
+              caseId && (
                 <EvidenceCard
                   key={`${reviewed?.id}:${search.commander.review?.selected_id}`}
                   commander={search.commander}
                   send={send}
                   enabled={enabled && !state?.agent_busy && !approval}
-                  runId={state!.mission.id}
+                  caseId={caseId}
                 />
               )
             ) : (

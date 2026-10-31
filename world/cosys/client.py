@@ -136,27 +136,16 @@ def configure_capture(height):
 
 
 def enter_mission():
+    # One-way switch: Unreal stops rendering the studio view, follows Drone1 and starts drone views.
     if native()["mode"] == "mission":
         return
-    set_session_mode("mission")
-
-
-def reset_session():
-    set_session_mode("studio")
-
-
-def set_session_mode(mode):
-    assert mode in ("studio", "mission")
-    identity = str(uuid.uuid4())
-    write_json(DATA / "mission-request.json", {"mode": mode, "id": identity})
+    write_json(DATA / "mission-request.json", {"mode": "mission"})
     end = time.monotonic() + 20
     while time.monotonic() < end:
-        report = native()
-        if report["modeRequestId"] == identity:
-            assert report["mode"] == mode
+        if native()["mode"] == "mission":
             return
         time.sleep(0.1)
-    raise TimeoutError(f"Unreal did not acknowledge {mode} mode")
+    raise TimeoutError("Unreal did not enter mission mode")
 
 
 def set_view(c, name, pitch=-90, yaw=0):

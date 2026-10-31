@@ -113,9 +113,11 @@ class SensorServiceTests(unittest.IsolatedAsyncioTestCase):
         mission.directory = Path(temporary.name)
         mission.log = io.StringIO()
         mission.id = str(uuid.uuid4())
-        mission.report = {"brief": "Test briefing", "portrait": ""}
-        mission.sockets = set()
-        mission.clearing = False
+        mission.case = {
+            "id": str(uuid.uuid4()),
+            "name": "Sensor test",
+            "report": {key: "Test briefing" for key in ("brief",)},
+        }
         mission.started = time.monotonic()
         mission.events, mission.event_sequence, mission.context_index = [], 0, 0
         mission.autonomy, mission.approvals = "Supervised", {}
@@ -135,7 +137,9 @@ class SensorServiceTests(unittest.IsolatedAsyncioTestCase):
         enter_mission = patch("world.cosys.client.enter_mission")
         enter_mission.start()
         self.addCleanup(enter_mission.stop)
-        task = asyncio.create_task(self.mission.connection(socket, {"type": "connect"}))
+        task = asyncio.create_task(
+            self.mission.connection(socket, {"type": "connect", "case_id": self.mission.case["id"]})
+        )
 
         async def close():
             socket.incoming.put_nowait(None)

@@ -292,7 +292,7 @@ class Search:
             return await self.commander.execute(name, arguments, source)
         if name == "record_subject_profile":
             self.edit_hypothesis()
-            validate_profile(arguments, self.mission.report)
+            validate_profile(arguments, self.mission.case["report"])
             self.profile = arguments
             p = explicit_point(arguments)
             if p is not None and (

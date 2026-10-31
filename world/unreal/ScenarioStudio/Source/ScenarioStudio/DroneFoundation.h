@@ -16,7 +16,7 @@ class SCENARIOSTUDIO_API ADroneFoundation : public AActor
   private:
     void Poll();
     void EnterMission(class ASimModeBase *Mode);
-    FString Directory, LastRequest, LastModeRequest;
+    FString Directory, LastRequest;
     bool bMission = false;
     FTimerHandle Timer;
     int32 CaptureHeight = 2160;

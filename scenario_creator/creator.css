@@ -526,13 +526,16 @@
   flex-direction: column;
   gap: 12px;
 }
-.briefing-fields label {
+.briefing-fields label,
+.creator-modal label {
   display: block;
   font-size: 12px;
   color: var(--ink);
 }
 .briefing-fields input,
-.briefing-fields textarea {
+.briefing-fields textarea,
+.creator-modal input,
+.creator-modal select {
   display: block;
   width: 100%;
   border: 1px solid #ffffff30;
@@ -545,7 +548,9 @@
   font-size: 13px;
   line-height: 1.65;
 }
-.briefing-fields textarea {
+.briefing-fields textarea,
+.creator-modal input,
+.creator-modal select {
   resize: vertical;
   min-height: 84px;
 }
@@ -789,7 +794,7 @@
   }
 }
 
-.creator-reset {
+.scenario-library-link {
   position: absolute;
   right: 18px;
   bottom: 13px;
@@ -850,4 +855,55 @@ textarea.briefing-document {
   min-height: 58vh;
   line-height: 1.6;
   resize: vertical;
+}
+
+.creator-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  background: #03100ac9;
+  backdrop-filter: blur(6px);
+}
+.creator-modal {
+  position: relative;
+  width: min(440px, calc(100vw - 30px));
+  max-height: 85vh;
+  overflow: auto;
+  padding: 32px;
+  background: #172a22;
+  border: 1px solid #ffffff30;
+  border-radius: 9px;
+}
+.creator-modal h2 {
+  font-size: 26px;
+  font-family: Manrope, sans-serif;
+  font-weight: 500;
+  letter-spacing: -1px;
+  margin: 13px 0 25px;
+}
+.creator-modal p {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+.creator-modal > .creator-primary {
+  width: 100%;
+  margin-top: 22px;
+}
+.creator-modal .modal-close {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  font-size: 22px;
+}
+
+.scenario-library-actions {
+  display: flex;
+  gap: 10px;
+  margin: 20px 0;
 }

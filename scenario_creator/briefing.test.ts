@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import world from '../world/cosys/world.json';
-import { briefingSchema, launchSchema } from './briefing';
+import { briefingSchema, rescueCaseSchema } from './briefing';
 import {
   candidates,
   generateBrief,
@@ -92,21 +92,35 @@ test('report profiles require every field and a category-compatible age', () => 
   assert.equal(profileSchema.safeParse({ ...people[0].reportProfile, ageYears: 17 }).success, false);
 });
 
-test('launch has only the public report and world bounds; old schemas and private fields fail', () => {
+test('saved rescue cases have only the public brief and world bounds', () => {
   const message = {
-    type: 'launch',
     schemaVersion: 2,
+    id: '9b6e308e-3257-43d4-bf5d-5e1bcf3a9811',
+    name: 'Reported hiker',
     report: { brief: 'Reported hiker.', portrait: '' },
-    world: { coordinateSystem: world.coordinateSystem, searchBoundsCm: world.searchBoundsCm },
+    world: {
+      environmentId: 'open-meadow',
+      assetVersion: 'test',
+      coordinateSystem: world.coordinateSystem,
+      searchBounds: [
+        {
+          id: 'open-meadow',
+          minX: world.searchBoundsCm.min.x,
+          maxX: world.searchBoundsCm.max.x,
+          minY: world.searchBoundsCm.min.y,
+          maxY: world.searchBoundsCm.max.y,
+        },
+      ],
+    },
   };
-  assert.deepEqual(launchSchema.parse(message), message);
+  assert.deepEqual(rescueCaseSchema.parse(message), message);
   for (const value of [
     { ...message, authoring: { position: [1, 2, 3] } },
     { ...message, schemaVersion: 1 },
     { ...message, case_id: 'saved' },
     { ...message, report: { ...message.report, situationId: 'lost' } },
   ])
-    assert.equal(launchSchema.safeParse(value).success, false);
+    assert.equal(rescueCaseSchema.safeParse(value).success, false);
   assert.equal(briefingSchema.safeParse({ description: 'legacy', portrait: '' }).success, false);
   assert.equal(briefingSchema.safeParse({ brief: 'x'.repeat(4001), portrait: '' }).success, false);
 });

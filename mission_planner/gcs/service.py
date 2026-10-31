@@ -1,12 +1,16 @@
-"""In-memory mission owner: MAVLink, operator/agent tools, approvals and WebSocket."""
+"""Persistent mission owner: MAVLink, operator/agent tools, approvals and WebSocket."""
 
+import argparse
 import asyncio
 import json
 import os
+import signal
 import time
 import uuid
+from pathlib import Path
 
 import httpx
+from websockets.asyncio.server import serve
 
 from mission_planner.agents.models import Wonder
 from mission_planner.agents.tools import (
@@ -15,7 +19,7 @@ from mission_planner.agents.tools import (
     TOOLS,
     validate_arguments,
 )
-from mission_planner.environment import ROOT
+from mission_planner.environment import ROOT, load_env
 from mission_planner.gcs.fleet import Fleet
 from mission_planner.gcs.geodesy import NAMES
 from mission_planner.gcs.ground_team import GroundTeam
@@ -30,8 +34,7 @@ from world.cosys.sensor import MissionSensor
 from world.cosys.terrain import BOUNDS
 
 MESSAGE_FIELDS = {
-    "connect": {"type"},
-    "reset": {"type"},
+    "connect": {"type", "case_id"},
     "chat": {"type", "text"},
     "tool": {"type", "name", "arguments"},
     "approval": {"type", "id", "approved"},
@@ -97,61 +100,40 @@ def require_available(search, name, arguments):
             )
 
 
-def validate_launch(value):
-    assert isinstance(value, dict) and set(value) == {"type", "schemaVersion", "report", "world"}
-    assert (
-        value["type"] == "launch"
-        and type(value["schemaVersion"]) is int
-        and value["schemaVersion"] == 2
-    )
-    report = value["report"]
-    assert set(report) == {"brief", "portrait"}
-    assert (
-        isinstance(report["brief"], str)
-        and report["brief"].strip()
-        and len(report["brief"]) <= 4000
-    )
-    assert isinstance(report["portrait"], str) and len(report["portrait"]) <= 45000
-    import re
-
-    assert report["portrait"] == "" or re.fullmatch(
-        r"data:image/jpeg;base64,[A-Za-z0-9+/=]+", report["portrait"]
-    )
+def read_case(case_id):
+    assert str(uuid.UUID(case_id)) == case_id.lower(), "Case id must be a UUID"
+    directory = Path(os.environ["SNR_SCENARIO_DATA_DIR"])
+    value = json.loads((directory / "briefings" / f"{case_id}.json").read_text())
+    assert set(value) == {"schemaVersion", "id", "name", "report", "world"}
+    assert value["schemaVersion"] == 2 and value["id"].lower() == case_id.lower()
+    assert isinstance(value["name"], str) and 1 <= len(value["name"]) <= 80
+    assert set(value["report"]) == {"brief", "portrait"}
+    assert all(isinstance(v, str) for v in value["report"].values())
+    assert all(len(value["report"][k]) <= 4000 for k in ("brief",))
+    assert len(value["report"]["portrait"]) <= 45000
     world = value["world"]
-    assert set(world) == {"coordinateSystem", "searchBoundsCm"}
+    assert set(world) == {"environmentId", "assetVersion", "coordinateSystem", "searchBounds"}
     assert world["coordinateSystem"] == "UE_LH_Z_UP_CENTIMETERS"
-    bounds = world["searchBoundsCm"]
-    assert set(bounds) == {"min", "max"}
-    for end in ("min", "max"):
-        assert set(bounds[end]) == set("xyz")
-        for axis in "xyz":
-            assert type(bounds[end][axis]) in (int, float)
-            assert bounds[end][axis] == BOUNDS[end][axis], "Search bounds differ from world.json"
-    return report
+    assert world["searchBounds"], "Rescue case has no search bounds"
+    for bounds in world["searchBounds"]:
+        assert set(bounds) == {"id", "minX", "maxX", "minY", "maxY"}
+        assert (bounds["minX"], bounds["maxX"], bounds["minY"], bounds["maxY"]) == (
+            BOUNDS["min"]["x"],
+            BOUNDS["max"]["x"],
+            BOUNDS["min"]["y"],
+            BOUNDS["max"]["y"],
+        ), "Rescue case search bounds differ from the configured mission fence"
+    return value
 
 
 class Mission:
-    def __init__(self, report):
+    def __init__(self, case):
         assert os.environ["SNR_SITL_MODEL"] == "airsim-copter", (
             "Mission service requires the Unreal-coupled fleet"
         )
-        self.fleet_ready = False
-        self.fleet_closed = False
-        self.fleet_error = None
-        self.model = Wonder()
-        self.sockets = set()
-        self.lifecycle_lock = asyncio.Lock()
-        self.clearing = False
-        self.initialize_run(report)
-        self.fleet = Fleet(self.directory / "sitl", self.fleet_event, self.search.landmarks)
-        self.sensor = None
-
-    def initialize_run(self, report):
-        self.report = report
+        self.case = case
         self.id = str(uuid.uuid4())
-        self.directory = (
-            ROOT / ".local/data" / ("missions" if report is not None else "fleet") / self.id
-        )
+        self.directory = ROOT / ".local/data/missions" / self.id
         self.directory.mkdir(parents=True, exist_ok=False)
         self.log = (self.directory / "events.jsonl").open("x")
         self.events = []
@@ -164,71 +146,17 @@ class Mission:
         self.agent_busy = False
         self.context_index = 0
         self.map_focus = None
+        self.fleet_ready = False
+        self.fleet_closed = False
+        self.fleet_error = None
+        self.model = Wonder()
         self.search = Search(self)
+        self.fleet = Fleet(self.directory / "sitl", self.fleet_event, self.search.landmarks)
         self.ground_team = GroundTeam(self)
+        self.sensor = MissionSensor(self.directory / "captures", self.fleet, self.capture_received)
         self.sensor_error = None
         self.sensor_frames = {}
         self.feed_focus = None
-
-    async def begin(self, message):
-        assert self.report is None and not self.clearing, "A mission is already running"
-        async with self.lifecycle_lock:
-            assert self.report is None and not self.clearing, "A mission is already running"
-            report = validate_launch(message)
-            assert self.fleet_ready and self.fleet_error is None, "Fleet is not ready"
-            assert all(not v["armed"] and v["landed_state"] == 1 for v in self.vehicles()), (
-                "Fleet must be landed"
-            )
-            self.log.close()
-            self.initialize_run(report)
-            self.sensor = MissionSensor(
-                self.directory / "captures", self.fleet, self.capture_received
-            )
-            self.event(
-                "mode",
-                "Mission launched",
-                result={"schemaVersion": 2, "report": report, "world": message["world"]},
-            )
-            await asyncio.to_thread(sim.enter_mission)
-            self.launch(self.run_sensor())
-            return self.id
-
-    async def clear(self):
-        assert self.fleet_ready and self.fleet_error is None, "Fleet is not ready"
-        async with self.lifecycle_lock:
-            self.clearing = True
-            current = asyncio.current_task()
-            pending = [task for task in self.tasks if task is not current]
-            for task in pending:
-                task.cancel()
-            if pending:
-                results = await asyncio.gather(*pending, return_exceptions=True)
-                for result in results:
-                    if isinstance(result, Exception):
-                        raise RuntimeError(
-                            f"Mission task failed during reset: {result}"
-                        ) from result
-            for vehicle in self.vehicles():
-                if vehicle["armed"]:
-                    await self.fleet.execute("return_home", {"drone_id": vehicle["id"]})
-            deadline = time.monotonic() + 180
-            while any(v["armed"] or v["landed_state"] != 1 for v in self.vehicles()):
-                assert time.monotonic() < deadline, "Fleet landing timed out during reset"
-                self.fleet._check_tasks()
-                await asyncio.sleep(0.2)
-            if self.sensor is not None:
-                await self.sensor.close()
-                self.sensor = None
-            await self.search.commander.close()
-            await self.fleet.clear_missions()
-            await asyncio.to_thread(sim.reset_session)
-            self.event("mode", "Mission ended; session cleared")
-            for socket in tuple(self.sockets):
-                await socket.send(encode({"type": "idle"}))
-                await socket.close(code=1000, reason="Mission ended")
-            self.log.close()
-            self.initialize_run(None)
-            self.clearing = False
 
     def event(
         self, kind, text, *, name=None, arguments=None, result=None, call_id=None, source=None
@@ -285,7 +213,7 @@ class Mission:
         self.tasks.add(task)
 
         def completed(finished):
-            self.tasks.discard(finished)
+            self.tasks.remove(finished)
             if not finished.cancelled() and finished.exception() is not None:
                 error = finished.exception()
                 self.event("error", operator_error(error))
@@ -309,6 +237,7 @@ class Mission:
             return
         self.fleet_ready = True
         self.event("mode", "Four autopilots connected; fences and missions read back.")
+        self.launch(self.run_sensor())
 
     async def run_sensor(self):
         try:
@@ -344,7 +273,9 @@ class Mission:
                 alerts.append(vehicle["id"] + " EKF is not healthy")
         return {
             "id": self.id,
-            "briefing": self.report,
+            "case_id": self.case["id"],
+            "case_name": self.case["name"],
+            "briefing": self.case["report"],
             "elapsed_s": time.monotonic() - self.started,
             "autonomy": self.autonomy,
             "alerts": alerts,
@@ -416,7 +347,7 @@ class Mission:
                 search.landmarks,
                 arguments["place_id"],
                 arguments["evidence"],
-                self.report,
+                self.case["report"],
                 self.vehicles()[0]["fence"],
             )
             await self.approve(
@@ -431,7 +362,7 @@ class Mission:
                 search.landmarks,
                 arguments["place_id"],
                 arguments["evidence"],
-                self.report,
+                self.case["report"],
                 self.vehicles()[0]["fence"],
             ), "Place changed during approval"
             search.point = location
@@ -451,7 +382,7 @@ class Mission:
         if name == "get_mission":
             return {
                 **self.summary(),
-                "briefing": {key: self.report[key] for key in ("brief",)},
+                "briefing": {key: self.case["report"][key] for key in ("brief",)},
                 "fences": {v["id"]: fence_summary(v["fence"]) for v in self.vehicles()},
             }
         if name == "show_on_map":
@@ -603,7 +534,7 @@ class Mission:
             ][-8:],
         }
         if initial:
-            context["briefing"] = {key: self.report[key] for key in ("brief",)}
+            context["briefing"] = {key: self.case["report"][key] for key in ("brief",)}
             context["recent_messages"] = [
                 {
                     "role": event["kind"],
@@ -703,10 +634,7 @@ class Mission:
         kind = message["type"]
         assert kind in MESSAGE_FIELDS, f"Unknown message type: {kind}"
         assert set(message) == MESSAGE_FIELDS[kind], f"Invalid fields for {kind}"
-        assert self.report is not None and not self.clearing, "No active mission"
-        if kind == "reset":
-            await self.clear()
-        elif kind == "chat":
+        if kind == "chat":
             assert isinstance(message["text"], str) and 1 <= len(message["text"].strip()) <= 4000
             assert not self.agent_busy, "Wonder is still processing the previous request"
             self.agent_busy = True
@@ -760,9 +688,10 @@ class Mission:
         if first is None:
             first = json.loads(await asyncio.wait_for(websocket.recv(), timeout=10))
         assert set(first) == MESSAGE_FIELDS["connect"] and first["type"] == "connect"
-        assert self.report is not None and not self.clearing, "No active mission"
-        identity = self.id
-        self.sockets.add(websocket)
+        assert first["case_id"].lower() == self.case["id"].lower(), (
+            "Service is running a different rescue case"
+        )
+        await asyncio.to_thread(sim.enter_mission)
         await websocket.send(encode({"type": "history", "events": self.events}))
         cursor = self.event_sequence
 
@@ -772,7 +701,7 @@ class Mission:
             search_updated = 0
             sensor_cursors = {}
             focus_id = None
-            while self.id == identity and self.report is not None:
+            while True:
                 for event in [e for e in self.events if e["sequence"] > cursor]:
                     await websocket.send(encode({"type": "event", "event": event}))
                     cursor = event["sequence"]
@@ -797,7 +726,6 @@ class Mission:
 
         async def consume():
             async for raw in websocket:
-                assert self.id == identity and self.report is not None, "Mission has ended"
                 task = asyncio.create_task(self.handle(json.loads(raw), websocket))
                 await asyncio.wait([task])
                 error = task.exception()
@@ -812,7 +740,6 @@ class Mission:
             for task in done:
                 task.result()
         finally:
-            self.sockets.discard(websocket)
             for task in tasks:
                 if not task.done():
                     task.cancel()
@@ -830,8 +757,7 @@ class Mission:
                 if isinstance(result, Exception):
                     self.event("error", "Shutdown task: " + operator_error(result))
         try:
-            if self.sensor is not None:
-                await self.sensor.close()
+            await self.sensor.close()
         finally:
             try:
                 await self.search.commander.close()
@@ -841,3 +767,28 @@ class Mission:
                     self.fleet_closed = True
                 self.model.http.close()
                 self.log.close()
+
+
+async def run(case_id, port):
+    load_env()
+    assert 1 <= port <= 65535
+    mission = Mission(read_case(case_id))
+    stop = asyncio.Event()
+    loop = asyncio.get_running_loop()
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        loop.add_signal_handler(sig, stop.set)
+    print(encode({"pid": os.getpid(), "mission_id": mission.id, "port": port}), flush=True)
+    try:
+        async with serve(mission.connection, "127.0.0.1", port, max_size=32768):
+            mission.launch(mission.start_fleet())
+            await stop.wait()
+    finally:
+        await mission.close()
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--case", required=True)
+    parser.add_argument("--port", type=int, default=int(os.environ["SNR_MISSION_PORT"]))
+    args = parser.parse_args()
+    asyncio.run(run(args.case, args.port))

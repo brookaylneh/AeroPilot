@@ -387,29 +387,6 @@ class Fleet:
         mav.mission_ack_send(sysid, 1, MAV.MAV_MISSION_ACCEPTED, mission_type)
         return items
 
-    async def clear_missions(self):
-        async with self.command_lock:
-            states = self.snapshot()
-            assert all(
-                not v["armed"] and v["landed_state"] == MAV.MAV_LANDED_STATE_ON_GROUND
-                for v in states
-            ), "Land the fleet before clearing missions"
-            for name, vehicle in self.vehicles.items():
-                reply = await self._expect(
-                    name,
-                    "MISSION_ACK",
-                    lambda message: message.mission_type == MAV.MAV_MISSION_TYPE_MISSION,
-                    lambda: vehicle["connection"].mav.mission_clear_all_send(
-                        vehicle["sysid"], 1, MAV.MAV_MISSION_TYPE_MISSION
-                    ),
-                )
-                assert reply.type == MAV.MAV_MISSION_ACCEPTED, f"{name}: mission clear rejected"
-                items = await self._download(name, MAV.MAV_MISSION_TYPE_MISSION)
-                assert items == [], f"{name}: mission clear readback is not empty"
-                vehicle["mission"] = items
-                vehicle["mission_speed_mps"] = None
-            self.planned_routes = {state["id"]: [state] for state in self.snapshot()}
-
     def snapshot(self):
         self._check_tasks()
         result = []

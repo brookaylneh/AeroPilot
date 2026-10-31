@@ -15,8 +15,9 @@
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
 #include "Dom/JsonObject.h"
+#include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
-#include "Misc/Guid.h"
+#include "HAL/FileManager.h"
 #include "TimerManager.h"
 #include "Components/DecalComponent.h"
 #include "Components/SceneComponent.h"
@@ -29,11 +30,6 @@
 
 namespace
 {
-bool ValidRequestId(const FString &Id)
-{
-    FGuid Guid;
-    return FGuid::ParseExact(Id, EGuidFormats::DigitsWithHyphens, Guid);
-}
 TSharedPtr<FJsonObject> Parse(const FString &Text)
 {
     TSharedPtr<FJsonObject> Object;
@@ -55,7 +51,18 @@ bool Fields(const TSharedPtr<FJsonObject> &Object, std::initializer_list<const T
             return false;
     return true;
 }
-
+FString Directory()
+{
+    FString Override;
+    if (FParse::Value(FCommandLine::Get(), TEXT("ScenarioSaveDir="), Override) && !Override.IsEmpty())
+        return FPaths::ConvertRelativePathToFull(Override);
+    return FPaths::Combine(FPaths::ProjectSavedDir(), TEXT("AuthoringScenarios"));
+}
+bool ValidId(const FString &Id)
+{
+    FGuid Guid;
+    return FGuid::ParseExact(Id, EGuidFormats::DigitsWithHyphens, Guid);
+}
 }
 
 AScenarioSession::AScenarioSession()
@@ -209,6 +216,7 @@ bool AScenarioSession::ResetScenario(FString &Error)
     Appearance.Options[TEXT("bottomId")] = Catalog->People[0].BottomId;
     if (!Manager->SetAppearance(Appearance, Error) || !Manager->SetYaw(0, Error))
         return false;
+    LastSavedId.Empty();
     Briefing = MakeShared<FJsonObject>();
     for (const TCHAR *Key :
          {TEXT("brief"), TEXT("portrait")})
@@ -274,25 +282,35 @@ bool AScenarioSession::SetBriefing(const TSharedPtr<FJsonObject> &Value, FString
     return true;
 }
 
-void AScenarioSession::ResetSession()
+TSharedRef<FJsonObject> AScenarioSession::PublicBriefing() const
 {
-    bMissionActive = false;
-    FString Error;
-    checkf(ResetScenario(Error), TEXT("Session reset failed: %s"), *Error);
-    if (!GrassSource)
+    // Construct the rescue-facing record from an allowlist. Never serialize Manager authoring here.
+    auto Result = MakeShared<FJsonObject>();
+    Result->SetNumberField(TEXT("schemaVersion"), 2);
+    Result->SetObjectField(TEXT("report"), Briefing.ToSharedRef());
+    auto World = MakeShared<FJsonObject>();
+    World->SetStringField(TEXT("environmentId"), Manager->Catalog->EnvironmentId.ToString().ToLower());
+    World->SetStringField(TEXT("assetVersion"), Manager->Catalog->AssetVersion);
+    World->SetStringField(TEXT("coordinateSystem"), TEXT("UE_LH_Z_UP_CENTIMETERS"));
+    TArray<TSharedPtr<FJsonValue>> Bounds;
+    for (const auto &Region : Manager->Catalog->Regions)
     {
-        GrassSource = NewObject<UPCGGenSourceComponent>(Camera, TEXT("StudioGrassSource"));
-        GrassSource->RegisterComponent();
+        auto Item = MakeShared<FJsonObject>();
+        Item->SetStringField(TEXT("id"), Region.Id.ToString().ToLower());
+        Item->SetNumberField(TEXT("minX"), Region.Min.X);
+        Item->SetNumberField(TEXT("maxX"), Region.Max.X);
+        Item->SetNumberField(TEXT("minY"), Region.Min.Y);
+        Item->SetNumberField(TEXT("maxY"), Region.Max.Y);
+        Bounds.Add(MakeShared<FJsonValueObject>(Item));
     }
-    GetWorld()->GetGameViewport()->bDisableWorldRendering = false;
-    UpdateCamera();
+    World->SetArrayField(TEXT("searchBounds"), Bounds);
+    Result->SetObjectField(TEXT("world"), World);
+    return Result;
 }
 
 void AScenarioSession::DisableGrassSource()
 {
     check(GrassSource);
-    bMissionActive = true;
-    StopNavigation();
     GrassSource->DestroyComponent();
     GrassSource = nullptr;
 }
@@ -543,6 +561,7 @@ TSharedRef<FJsonObject> AScenarioSession::Packet() const
 {
     auto Result = MakeShared<FJsonObject>();
     Result->SetObjectField(TEXT("authoring"), Parse(Manager->ExportAuthoringJson()));
+    Result->SetStringField(TEXT("lastSavedId"), LastSavedId);
     Result->SetStringField(TEXT("creatorStage"), CreatorStage);
     Result->SetObjectField(TEXT("briefing"), Briefing.ToSharedRef());
     Result->SetObjectField(TEXT("camera"), CameraPacket());
@@ -602,7 +621,134 @@ TSharedRef<FJsonObject> AScenarioSession::Packet() const
     Catalog->SetArrayField(TEXT("people"), People);
     Catalog->SetArrayField(TEXT("options"), Groups);
     Result->SetObjectField(TEXT("catalog"), Catalog);
+    TArray<FString> Files;
+    IFileManager::Get().FindFiles(Files, *(Directory() / TEXT("*.json")), true, false);
+    TArray<TSharedPtr<FJsonValue>> Scenarios;
+    for (const auto &File : Files)
+    {
+        FString Text;
+        if (!FFileHelper::LoadFileToString(Text, *(Directory() / File)) || Text.Len() > 120000)
+            continue;
+        auto Saved = Parse(Text);
+        FString Id, Name, Version;
+        if (!Saved || !Saved->TryGetStringField(TEXT("id"), Id) || !ValidId(Id) ||
+            !Saved->TryGetStringField(TEXT("name"), Name) ||
+            !Saved->TryGetStringField(TEXT("assetVersion"), Version) ||
+            Version != Manager->Catalog->AssetVersion)
+            continue;
+        auto Item = MakeShared<FJsonObject>();
+        Item->SetStringField(TEXT("id"), Id);
+        Item->SetStringField(TEXT("name"), Name);
+        Scenarios.Add(MakeShared<FJsonValueObject>(Item));
+    }
+    Result->SetArrayField(TEXT("scenarios"), Scenarios);
     return Result;
+}
+bool AScenarioSession::Save(const FString &Name, const FString &Summary, FString &Error)
+{
+    if (!Manager->bPlaced || !Manager->Person)
+    {
+        Error = TEXT("Place the person before saving");
+        return false;
+    }
+    if (Name.TrimStartAndEnd().IsEmpty() || Name.Len() > 80 || Summary.Len() > 500)
+    {
+        Error = TEXT("Invalid scenario description");
+        return false;
+    }
+    auto Snapshot = MakeShared<FJsonObject>();
+    const FString Id = FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphens);
+    Snapshot->SetStringField(TEXT("id"), Id);
+    Snapshot->SetStringField(TEXT("name"), Name.TrimStartAndEnd());
+    Snapshot->SetNumberField(TEXT("schemaVersion"), 3);
+    Snapshot->SetStringField(TEXT("createdAt"), FDateTime::UtcNow().ToIso8601());
+    Snapshot->SetStringField(TEXT("environmentId"), Manager->Catalog->EnvironmentId.ToString().ToLower());
+    Snapshot->SetStringField(TEXT("assetVersion"), Manager->Catalog->AssetVersion);
+    Snapshot->SetStringField(TEXT("coordinateSystem"), TEXT("UE_LH_Z_UP_CENTIMETERS"));
+    Snapshot->SetNumberField(TEXT("randomSeed"), 74021);
+    Snapshot->SetStringField(TEXT("renderer"), TEXT("unreal"));
+    Snapshot->SetObjectField(TEXT("authoring"), Parse(Manager->ExportAuthoringJson()));
+    auto Public = MakeShared<FJsonObject>();
+    Public->SetStringField(TEXT("summary"), Summary);
+    Public->SetStringField(TEXT("regionId"), Manager->RegionId.ToString().ToLower());
+    Snapshot->SetObjectField(TEXT("publicDescription"), Public);
+    Snapshot->SetObjectField(TEXT("briefing"), Briefing.ToSharedRef());
+    Snapshot->SetStringField(TEXT("creatorStage"), CreatorStage);
+    auto Case = PublicBriefing();
+    Case->SetStringField(TEXT("id"), Id);
+    Case->SetStringField(TEXT("name"), Name.TrimStartAndEnd());
+    const FString PublicDir = Directory() / TEXT("briefings");
+    IFileManager::Get().MakeDirectory(*PublicDir, true);
+    const FString PublicPath = PublicDir / (Id + TEXT(".json"));
+    if (!FFileHelper::SaveStringToFile(Stringify(Case), *(PublicPath + TEXT(".tmp")),
+                                       FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM) ||
+        !IFileManager::Get().Move(*PublicPath, *(PublicPath + TEXT(".tmp")), false))
+    {
+        Error = TEXT("Could not persist the rescue briefing");
+        return false;
+    }
+    IFileManager::Get().MakeDirectory(*Directory(), true);
+    const FString Final = Directory() / (Id + TEXT(".json")), Temporary = Final + TEXT(".tmp");
+    if (!FFileHelper::SaveStringToFile(Stringify(Snapshot), *Temporary,
+                                       FFileHelper::EEncodingOptions::ForceUTF8WithoutBOM) ||
+        !IFileManager::Get().Move(*Final, *Temporary, false))
+    {
+        IFileManager::Get().Delete(*PublicPath);
+        Error = TEXT("Could not persist the scenario");
+        return false;
+    }
+    LastSavedId = Id;
+    return true;
+}
+bool AScenarioSession::Load(const FString &Id, FString &Error)
+{
+    if (!ValidId(Id))
+    {
+        Error = TEXT("Invalid scenario identifier");
+        return false;
+    }
+    FString Json;
+    if (!FFileHelper::LoadFileToString(Json, *(Directory() / (Id + TEXT(".json")))) || Json.Len() > 120000)
+    {
+        Error = TEXT("Scenario not found");
+        return false;
+    }
+    auto Saved = Parse(Json);
+    const TSharedPtr<FJsonObject> *SavedBriefing;
+    FString Stage = TEXT("placement");
+    double Schema;
+    if (!Saved || !Saved->TryGetNumberField(TEXT("schemaVersion"), Schema) ||
+        (Schema != 1 && Schema != 2 && Schema != 3))
+    {
+        Error = TEXT("Invalid saved scenario");
+        return false;
+    }
+    auto PreviousBriefing = Briefing;
+    if (Schema >= 2)
+    {
+        if (!Saved->TryGetObjectField(TEXT("briefing"), SavedBriefing) ||
+            !SetBriefing(*SavedBriefing, Error) || !Saved->TryGetStringField(TEXT("creatorStage"), Stage) ||
+            (Stage != TEXT("person") && Stage != TEXT("situation") && Stage != TEXT("placement") &&
+             Stage != TEXT("briefing")))
+        {
+            Briefing = PreviousBriefing;
+            Error = TEXT("Invalid saved creator state");
+            return false;
+        }
+    }
+    else
+    {
+        Briefing = MakeShared<FJsonObject>();
+        for (const TCHAR *Key : {TEXT("brief"), TEXT("portrait")})
+            Briefing->SetStringField(Key, TEXT(""));
+    }
+    if (!Manager->RestoreSnapshot(Json, Error))
+    {
+        Briefing = PreviousBriefing;
+        return false;
+    }
+    LastSavedId = Id;
+    return SetCreatorStage(Stage, Error);
 }
 
 void AScenarioSession::HandleCommand(const FString &Player, const FString &Message)
@@ -621,7 +767,7 @@ void AScenarioSession::HandleCommand(const FString &Player, const FString &Messa
     double Protocol;
     const TSharedPtr<FJsonObject> *Command;
     if (!Fields(Root, {TEXT("protocolVersion"), TEXT("requestId"), TEXT("command")}) ||
-        !Root->TryGetStringField(TEXT("requestId"), RequestId) || !ValidRequestId(RequestId) ||
+        !Root->TryGetStringField(TEXT("requestId"), RequestId) || !ValidId(RequestId) ||
         !Root->TryGetNumberField(TEXT("protocolVersion"), Protocol) || Protocol != ScenarioNavigation::ProtocolVersion ||
         !Root->TryGetObjectField(TEXT("command"), Command))
         return;
@@ -632,9 +778,7 @@ void AScenarioSession::HandleCommand(const FString &Player, const FString &Messa
     {
         FString Value;
         double A, B, C;
-        if (bMissionActive)
-            Error = TEXT("A mission is already running. Open /mission to watch or start over.");
-        else if (Type == TEXT("viewport") && Fields(*Command, {TEXT("type"), TEXT("aspect")}) &&
+        if (Type == TEXT("viewport") && Fields(*Command, {TEXT("type"), TEXT("aspect")}) &&
             (*Command)->TryGetNumberField(TEXT("aspect"), A) && FMath::IsFinite(A) && A >= .25 && A <= 4.)
         {
             ViewportAspect = A;
@@ -731,7 +875,16 @@ void AScenarioSession::HandleCommand(const FString &Player, const FString &Messa
                 }
             }
         }
-
+        else if (Type == TEXT("save") && Fields(*Command, {TEXT("type"), TEXT("name"), TEXT("summary")}))
+        {
+            FString Summary;
+            if ((*Command)->TryGetStringField(TEXT("name"), Value) &&
+                (*Command)->TryGetStringField(TEXT("summary"), Summary))
+                Ok = Save(Value, Summary, Error);
+        }
+        else if (Type == TEXT("load") && Fields(*Command, {TEXT("type"), TEXT("id")}) &&
+                 (*Command)->TryGetStringField(TEXT("id"), Value))
+            Ok = Load(Value, Error);
     }
     if (Ok)
     {

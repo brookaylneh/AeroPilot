@@ -138,7 +138,7 @@ class Sources(unittest.IsolatedAsyncioTestCase):
         self.commander.assets.update(["frame.jpg", "crop.jpg"])
         self.commander.directory.mkdir()
         self.commander.directory.joinpath("crop.jpg").write_bytes(b"crop")
-        self.search.mission.report = {"brief": "Briefing text"}
+        self.search.mission.case = {"report": {"brief": "Briefing text"}}
 
     async def test_unknown_review_preserves_selected_evidence_and_future_views(self):
         self.seed_review()
@@ -395,8 +395,7 @@ class Sources(unittest.IsolatedAsyncioTestCase):
 class OperatorActions(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.mission = object.__new__(Mission)
-        self.mission.report = {"brief": "Test", "portrait": ""}
-        self.mission.clearing = False
+        self.mission.case = {"report": {"brief": "Test", "portrait": ""}}
         self.mission.search = SimpleNamespace(
             execute=AsyncMock(return_value={"status": "confirmed_lead"}), paused={}
         )

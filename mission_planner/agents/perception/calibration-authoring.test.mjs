@@ -1,42 +1,65 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { withCalibrationSession } from './calibration-authoring.mjs';
+import { withScenarioBackup } from './calibration-authoring.mjs';
 
-test('empty calibration session resets after capture without persistence commands', async () => {
-  const calls = [];
-  const command = async (request) => {
-    calls.push(request.type);
-    return { authoring: { position: null } };
+function empty() {
+  return {
+    authoring: {
+      position: null,
+      regionId: 'open-meadow',
+      situationId: 'lost',
+      appearance: { personId: 'adult-kelvin', topColor: 'rust' },
+      rotation: { pitch: 0, yaw: 0, roll: 0 },
+    },
+    briefing: { brief: '', portrait: '' },
+    creatorStage: 'person',
+    lastSavedId: '',
   };
-  assert.equal(await withCalibrationSession(command, async () => 'captured'), 'captured');
-  assert.deepEqual(calls, ['snapshot', 'reset']);
-});
+}
 
-test('existing placement is rejected before calibration', async () => {
+test('fresh empty world uses explicit reset restoration without trying to save', async () => {
   const calls = [];
-  await assert.rejects(
-    withCalibrationSession(
-      async (request) => {
-        calls.push(request.type);
-        return { authoring: { position: { x: 1, y: 2, z: 3 } } };
-      },
-      async () => assert.fail('Must not change an occupied session'),
-    ),
-    /empty task-owned session/,
+  const initial = empty();
+  const command = async (request) => {
+    calls.push(request);
+    return initial;
+  };
+  assert.equal(await withScenarioBackup(command, async () => 'captured'), 'captured');
+  assert.deepEqual(
+    calls.map((c) => c.type),
+    ['snapshot', 'reset', 'region', 'appearance', 'situation', 'rotate', 'briefing', 'creator-stage'],
   );
-  assert.deepEqual(calls, ['snapshot']);
+  assert.deepEqual(calls[3].appearance, initial.authoring.appearance);
 });
 
-test('capture failure still resets once and retains both failure causes', async () => {
-  const primary = new Error('Capture rejected'),
-    cleanup = new Error('Reset failed');
+test('placed state restores exactly the saved backup', async () => {
+  const initial = empty();
+  initial.authoring.position = { x: 10, y: 20, z: 30 };
+  const calls = [];
+  await withScenarioBackup(
+    async (request) => {
+      calls.push(request);
+      return request.type === 'save' ? { ...initial, lastSavedId: 'saved-backup' } : initial;
+    },
+    async () => {},
+  );
+  assert.deepEqual(
+    calls.map((c) => c.type),
+    ['snapshot', 'save', 'load'],
+  );
+  assert.equal(calls[2].id, 'saved-backup');
+});
+
+test('action and restore failures retain both causes without retrying reset', async () => {
+  const primary = new Error('Camera capture rejected');
+  const cleanup = new Error('Native reset failed');
   const calls = [];
   await assert.rejects(
-    withCalibrationSession(
+    withScenarioBackup(
       async (request) => {
         calls.push(request.type);
         if (request.type === 'reset') throw cleanup;
-        return { authoring: { position: null } };
+        return empty();
       },
       async () => {
         throw primary;
@@ -45,8 +68,24 @@ test('capture failure still resets once and retains both failure causes', async 
     (error) => {
       assert(error instanceof AggregateError);
       assert.deepEqual(error.errors, [primary, cleanup]);
+      assert.equal(error.cause, primary);
+      assert.match(error.message, /Camera capture rejected.*Native reset failed/);
       return true;
     },
   );
   assert.deepEqual(calls, ['snapshot', 'reset']);
+});
+
+test('restore mismatch is an error', async () => {
+  await assert.rejects(
+    withScenarioBackup(
+      async (request) => {
+        const state = empty();
+        if (request.type === 'creator-stage') state.authoring.position = { x: 0, y: 0, z: 0 };
+        return state;
+      },
+      async () => {},
+    ),
+    /Unplaced authoring state changed/,
+  );
 });

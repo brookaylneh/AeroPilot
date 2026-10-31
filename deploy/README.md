@@ -134,9 +134,9 @@ its startup values are defined in `runtime.env.example`.
 | ---------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------- |
 | `http://35.81.229.78/`             | Redirect to `/studio`                                         | Caddy, 80 TCP                                                   |
 | `/studio`                          | Scenario Creator                                              | web, `127.0.0.1:3001`                                           |
-| `/mission`             | Mission Control                                               | web, `127.0.0.1:3001`                                           |
+| `/mission?case=<uuid>`             | Mission Control                                               | web, `127.0.0.1:3001`                                           |
 | `/api/mission`                     | Mission WebSocket                                             | web origin check, then `127.0.0.1:8765`                         |
-| `/team?run=<run-id>&team=<id>`      | Receiving page with explicit lead acknowledgement             | same web origin                                                 |
+| `/team?case=<uuid>&team=<id>`      | Receiving page with explicit lead acknowledgement             | same web origin                                                 |
 | `/api/team`                        | Team-limited delivery/acknowledgement WebSocket               | origin check, mission listener `/team`                          |
 | `/api/evidence/<mission>/<asset>`  | Registered immutable frame and crop JPEGs                     | same web origin, mission-owned registry                         |
 | `/api/unreal/status`               | Renderer readiness and occupancy                              | web, signalling health                                          |
@@ -161,11 +161,10 @@ Epic's frontend `ForceTURN` flag is unused because it also rejects those remote 
 
 The Unreal world advances only while the four disarmed autopilots return motor outputs, so start
 `snr-mission` after `snr-unreal` and it starts the fleet immediately. Its health state is `starting`
-until the fleet is ready, then `idle` until Studio launches a brief in memory.
-`/mission` reconnects to that mission across browser reloads. A second launch is
-rejected while it is active. Completion or Start over clears mission state and
-returns Unreal to Studio while all four autopilots keep running. Per-run logs are
-retained under `.local/data/missions/`, without a scenario-loading API.
+until the fleet is ready, then `idle` until the first `/mission?case=<uuid>` connection selects a saved
+briefing. It keeps that case across browser disconnects and rejects another case. Land all aircraft and
+stop/restart `snr-mission` before choosing another case. No model inference or autonomous flight is
+started merely by connecting a browser.
 
 Run development with `npm run dev`. Vite middleware and API/WebSocket handlers share the single fixed
 listener; reload the browser after changes. Tunnel it with:

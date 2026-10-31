@@ -60,7 +60,7 @@ class Places(unittest.IsolatedAsyncioTestCase):
         self.mission.fleet_ready = True
         self.mission.autonomy = "Autonomous"
         self.mission.event = Mock()
-        self.mission.report = self.briefing
+        self.mission.case = {"report": self.briefing}
         self.mission.fleet = SimpleNamespace(snapshot=lambda: [{"fence": self.fence}])
         self.mission.search = Search(self.mission)
         self.mission.search.landmarks = self.landmarks

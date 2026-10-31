@@ -22,9 +22,14 @@ test('mission page renders before its first WebSocket state arrives', () => {
     require: createRequire(import.meta.url),
     module,
     exports: module.exports,
+    location: { search: '?case=00000000-0000-4000-8000-000000000001' },
+    URLSearchParams,
   });
-  const page = renderToStaticMarkup(createElement(module.exports.default, { onEnded() {} }));
+  const page = renderToStaticMarkup(createElement(module.exports.default));
   assert.match(page, /Connecting to mission service/);
-  assert.match(page, /Waiting for the active mission and aircraft telemetry/);
+  assert.match(
+    page,
+    /Waiting for the mission service to load your saved rescue briefing and aircraft telemetry/,
+  );
   assert.doesNotMatch(page, /aria-label="Search planner"/);
 });

@@ -27,8 +27,6 @@ export async function rendererHealth() {
     assert(Date.now() - info.mtimeMs < 3000, 'Renderer telemetry is stale');
     assert(typeof runtime.scenarioReady === 'boolean', 'Missing scenario readiness');
     if (!runtime.scenarioReady) return { state: 'starting', maxEditors: 1 };
-    assert(runtime.mode === 'studio' || runtime.mode === 'mission', 'Missing renderer mode');
-    if (runtime.mode === 'mission') return { state: 'mission', maxEditors: 1 };
   }
   return { state: !streamer ? 'starting' : streamer.players > 0 ? 'occupied' : 'ready', maxEditors: 1 };
 }
@@ -76,7 +74,7 @@ export async function health() {
   const units = results[0].status === 'fulfilled' ? results[0].value.stdout.trim().split(/\s+/) : [];
   const renderer = results[1].status === 'fulfilled' ? results[1].value.state : 'unavailable';
   const checks = Object.fromEntries(services.map((name, index) => [name, units[index] === 'active']));
-  checks.unreal &&= renderer === 'ready' || renderer === 'occupied' || renderer === 'mission';
+  checks.unreal &&= renderer === 'ready' || renderer === 'occupied';
   checks.signalling &&= results[1].status === 'fulfilled';
   checks.mission &&= results[2].status === 'fulfilled';
   checks.turn &&= results[3].status === 'fulfilled';

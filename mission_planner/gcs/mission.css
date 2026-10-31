@@ -1529,15 +1529,3 @@
   font-size: 12px;
   line-height: 1.6;
 }
-
-.gcs-empty {
-  margin: auto;
-  max-width: 40rem;
-  padding: 4rem 2rem;
-  text-align: center;
-}
-.gcs-empty a {
-  display: inline-block;
-  margin-top: 1rem;
-  color: var(--gcs-accent);
-}

@@ -8,7 +8,7 @@ Its rectangular extent and terrain grid are defined in [`cosys/world.json`](cosy
 - [`cosys/`](cosys/README.md): the Cosys-AirSim settings and the Python bridge that reads aircraft state and
   captures camera frames.
 
-Unreal owns spawning, terrain queries and the in-memory character session. Browsers never call Cosys RPC or Unreal console
+Unreal owns spawning, terrain queries and scenario persistence. Browsers never call Cosys RPC or Unreal console
 commands. Private scenario truth is used only by authoring and explicitly requested evaluation.
 
 ## Coordinates
@@ -23,15 +23,12 @@ commands. Private scenario truth is used only by authoring and explicitly reques
 - Unreal quaternion `(x, y, z, w)` maps to NED `(−x, −y, z, w)`. World-origin rebasing is disabled.
 - `cosys/world.json` records geometry and drone identities without target locations.
 
-## Session lifetime
+## Persistence
 
-The character, situation and true position exist only in the running simulation.
-There are no scenario save/load commands or disk writes. Start over and mission
-completion clear the placement. The mission service retains one active brief in
-memory across browser reloads; its run log under `.local/data/missions/<run-id>/`
-is not a reloadable scenario. Existing legacy scenario files are left untouched.
+Unreal saves versioned scenario documents under `SNR_SCENARIO_DATA_DIR`, writing temporary files and renaming.
+An editing lease prevents competing browser changes. Native Cosys control uses an OS lock and loopback RPC.
+Image metadata includes the aircraft, capture time, actual camera pose and bracketing vehicle states.
 
-An editing lease prevents competing browser changes. Native Cosys control uses an
-OS lock and loopback RPC. Image metadata includes the aircraft, capture time,
-actual camera pose and bracketing vehicle states. Only explicitly requested
-calibration/evaluation may record private actor observations.
+Saved scenario snapshots include the generated mission brief. Their separate public
+rescue-case record uses schema version 2 and `{brief, portrait}`; private authoring
+positions and situations remain excluded from the planner API.

@@ -25,7 +25,7 @@ class CaptureIngestion(unittest.IsolatedAsyncioTestCase):
             approvals={},
             fleet_ready=True,
             vehicles=lambda: [{"fence": fence_vertices()}],
-            report={"brief": "A missing person with dementia"},
+            case={"report": {"brief": "A missing person with dementia"}},
             event=lambda *args, **kwargs: None,
             ground_team=SimpleNamespace(deliveries={}),
         )

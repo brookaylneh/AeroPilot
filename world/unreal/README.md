@@ -1,6 +1,6 @@
 # Unreal
 
-`ScenarioStudio/` is the UE 5.8.2 project: scenario catalog, in-memory person placement, navigation, drone
+`ScenarioStudio/` is the UE 5.8.2 project: scenario catalog, person placement, persistence, navigation, drone
 port and telemetry. The JSON files beside it are asset manifests and locks. [Assets](assets.md) lists licences;
 [streaming](streaming.md) covers Pixel Streaming quality.
 
@@ -34,7 +34,7 @@ Cosys RPC, editor debugging or the streamer endpoint.
 
 The launcher requires `SNR_UNREAL_HOME` for each instance's writable cache and
 `SNR_PIXEL_STREAMING=0|1`. Packaged releases are mounted read-only; Unreal's user
-directory holds engine logs and pipeline caches. `SNR_PIXEL_STREAMING=0` disables creation
+directory holds logs and saved state. `SNR_PIXEL_STREAMING=0` disables creation
 and automatic start of the default streamer using the packaged Pixel Streaming 2
 settings. It requires no signalling or WebRTC ports. A streaming instance requires
 `SNR_STREAMER_PORT`, `SNR_WEBRTC_MIN_PORT` and `SNR_WEBRTC_MAX_PORT`.

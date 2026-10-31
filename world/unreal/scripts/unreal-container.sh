@@ -85,6 +85,7 @@ case "$mode" in
       -e "SNR_RENDER_PERCENTAGE=${SNR_RENDER_PERCENTAGE:?}" \
       -e "SNR_RHI_THREAD=${SNR_RHI_THREAD:-1}" \
       -e "SNR_PACKAGE_ROOT=$package_root" \
+      -e "SNR_SCENARIO_DATA_DIR=${SNR_SCENARIO_DATA_DIR:-$PWD/.local/data/unreal-scenarios}" \
       "${SNR_UNREAL_IMAGE:-snr-unreal:5.8.2-ubuntu24.04}" bash world/unreal/scripts/run-packaged.sh "$@"
     ;;
   exec)

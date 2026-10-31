@@ -101,6 +101,8 @@ const stateSchema = z.object({
   type: z.literal('state'),
   mission: z.object({
     id: z.string(),
+    case_id: z.string().uuid(),
+    case_name: z.string(),
     briefing: briefingSchema,
     elapsed_s: number.nonnegative(),
     autonomy: z.enum(['Supervised', 'Autonomous']),
@@ -127,7 +129,6 @@ const stateSchema = z.object({
 export type MissionState = z.infer<typeof stateSchema>;
 const messageSchema = z.discriminatedUnion('type', [
   stateSchema,
-  z.object({ type: z.literal('idle') }),
   sensorFrameMessageSchema,
   feedFocusMessageSchema,
   z.object({ type: z.literal('search'), search: searchSchema }),
@@ -143,8 +144,7 @@ declare global {
   }
 }
 
-export function useMission() {
-  const [idle, setIdle] = useState(false);
+export function useMission(caseId: string | null) {
   const [state, setState] = useState<MissionState | null>(null);
   const [search, setSearch] = useState<SearchState | null>(null);
   const [sensorFrames, setSensorFrames] = useState<SensorFrames>({});
@@ -161,6 +161,11 @@ export function useMission() {
     return () => window.clearInterval(clock);
   }, []);
   useEffect(() => {
+    if (!caseId || !z.string().uuid().safeParse(caseId).success) {
+      setConnection('closed');
+      setError('A saved rescue case is required. Open a case from the rescue briefing.');
+      return;
+    }
     const ws = new WebSocket(
       `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/api/mission`,
     );
@@ -170,7 +175,7 @@ export function useMission() {
     socket.current = ws;
     ws.onopen = () => {
       setConnection('connected');
-      ws.send(JSON.stringify({ type: 'connect' }));
+      ws.send(JSON.stringify({ type: 'connect', case_id: caseId }));
     };
     ws.onmessage = (message) => {
       const parsed = messageSchema.safeParse(JSON.parse(message.data));
@@ -180,14 +185,7 @@ export function useMission() {
         return;
       }
       const data = parsed.data;
-      if (data.type === 'idle') {
-        setIdle(true);
-        setState(null);
-        setSearch(null);
-        setEvents([]);
-        setSensorFrames({});
-        setFeedFocus(null);
-      } else if (data.type === 'state') {
+      if (data.type === 'state') {
         arrived.current = Date.now();
         setState(data);
       } else if (data.type === 'search') setSearch(data.search);
@@ -225,7 +223,7 @@ export function useMission() {
       ws.onerror = null;
       ws.close();
     };
-  }, []);
+  }, [caseId]);
   useEffect(() => {
     if (!state) return;
     const frame = requestAnimationFrame(() => {
@@ -250,20 +248,7 @@ export function useMission() {
     socket.current.send(JSON.stringify(message));
   }
   const age = state ? Math.max(0, (now - arrived.current) / 1000) : 0;
-  return {
-    idle,
-    state,
-    search,
-    sensorFrames,
-    feedFocus,
-    events,
-    connection,
-    error,
-    setError,
-    send,
-    now,
-    age,
-  };
+  return { state, search, sensorFrames, feedFocus, events, connection, error, setError, send, now, age };
 }
 
 export function linkLost(vehicle: Vehicle, age: number, connected: boolean) {
