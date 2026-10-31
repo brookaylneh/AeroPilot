@@ -1,5 +1,5 @@
-"""Replace the search landscape, its ground layers and runtime grass, water, horizon crests, meadow
-apron and sun from world.json."""
+"""Replace the search landscape, its ground layers and runtime grass, water, horizon crests and
+meadow apron from world.json."""
 
 import hashlib
 import json
@@ -104,6 +104,7 @@ KEPT = (
     "scenario.manager",
     "scenario.session",
     "sky.atmosphere",
+    "sky.clouds",
     "sky.haze",
 )
 
@@ -640,17 +641,6 @@ assert ml.get_material_instance_static_switch_parameter_value(apron_material, "A
 assert lib.save_loaded_asset(apron_material)
 ground_apron = surface("valley.apron", buffers(*apron(reach + 100000)), apron_material)
 
-sun_rotation = unreal.Rotator(
-    roll=0,
-    pitch=-world["sun"]["apparentElevationDegrees"],
-    yaw=world["sun"]["azimuthDegreesClockwiseFromNorth"] - 180,
-)
-sun.set_actor_rotation(sun_rotation, False)
-toward_sun = -sun.get_actor_forward_vector()
-assert abs(math.degrees(math.asin(toward_sun.z)) - world["sun"]["apparentElevationDegrees"]) < 1e-3
-azimuth = math.degrees(math.atan2(toward_sun.y, toward_sun.x)) % 360
-assert abs(azimuth - world["sun"]["azimuthDegreesClockwiseFromNorth"]) < 1e-3
-
 catalog = unreal.load_asset("/Game/OpenMeadow/Catalog")
 assert catalog
 regions = catalog.get_editor_property("regions")
@@ -697,7 +687,6 @@ report_path.write_text(
             "water": bodies,
             "horizon": horizon,
             "apron": ground_apron,
-            "sunRotation": {"pitch": sun_rotation.pitch, "yaw": sun_rotation.yaw},
             "keptActors": sorted(KEPT),
         },
         indent=2,

@@ -62,7 +62,8 @@ The `character-authoring` mode of `unreal-container.sh` adds a private X display
 
 `world/cosys/world.json` owns the rectangular search bounds, heightfield layout,
 version, hash and the fixed sun: apparent elevation and azimuth (clockwise from
-north, so UE yaw) for 2026-10-31 15:30 PDT at the OriginGeopoint, from NREL SPA.
+north, so UE yaw) for 2026-10-31 13:00 PDT at the OriginGeopoint, from NREL SPA
+(`pvlib 0.15.2`: apparent elevation 37.643379°, azimuth 185.762952°).
 `landmarks.json` owns public names, aliases, kinds and geometry in Unreal
 centimetres; it contains no subject or clue placement. North is +X and east is +Y.
 `world.cosys.landmarks` is the shared search loader, byte-identical to
@@ -220,12 +221,25 @@ SNR_EVIDENCE_DIR=.local/evidence/world/valley/<new-lighting-run> \
   bash world/unreal/scripts/author-unreal.sh build-valley-lighting
 ```
 
-It asserts the `world.json` sun, sets `look.daylight` to manual exposure at `exposureEv100` with no
-physical camera and so no eye adaptation (the drone captures use the same EV through
+It owns and asserts the `world.json` sun rotation, sets `look.daylight` to manual exposure at
+`exposureEv100` with no physical camera and so no eye adaptation (the drone captures use the same EV through
 `configure-drones.py`), sets the `sky.haze` density from the Koschmieder visibility and its half
-height. The foliage masters carry no world position offset: the T6 `SimpleGrassWind` sway made the
-Nanite lodgepole crowns fall back to bare trunks in the packaged build. The replaced exposure and fog
-values go to `lighting.json`.
+height (density 0.0002, falloff 0.2, 50 m half height), and enables volumetric fog over 1600 m
+with scattering distribution 0.2. It requires a map with no VolumetricCloud, spawns `sky.clouds`
+using `/Engine/EngineSky/VolumetricClouds/m_SimpleVolumetricCloud_Inst` at 2 km with a 3 km layer,
+enables sun cloud shadows (strength 0.55, extent 2 km, resolution scale 2), and enables sky light
+real-time capture. SkyAtmosphere's aerial-perspective view distance scale is 3 to soften distant
+crests; their authored material colours are unchanged. Changing those colours requires rebuilding
+the landscape with `build-open-meadow.py`. Every setting is read back and asserted; stored values
+and replaced exposure, sun rotation and fog values go to `lighting.json`. A second application to that Content fails the
+cloud assertion. `build-open-meadow.py` preserves `sky.clouds` and leaves sun rotation to this step.
+The foliage masters carry no world position offset: the T6 `SimpleGrassWind` sway made the
+Nanite lodgepole crowns fall back to bare trunks in the packaged build.
+
+Sun calculation uses [pvlib's NREL SPA](https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.solarposition.spa_python.html)
+at the `settings.json` OriginGeopoint, altitude-derived pressure, 12 °C and delta-T 67 s.
+The UE 5.8.2 component headers define cloud distances in km and volumetric fog distance in cm.
+Cloud shadows and sun changes require recapturing perception calibration frames after deployment.
 
 Packaging requires explicit manifests for the Content being cooked. Override any
 installed `Live` paths inherited from the runtime profile. Generate settings for
