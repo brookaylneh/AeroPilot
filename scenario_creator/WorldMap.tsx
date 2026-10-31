@@ -27,15 +27,16 @@ export default function WorldMap({
   camera?: CameraState;
   person: { x: number; y: number } | null;
   busy: boolean;
-  travel: (u: number, v: number) => Promise<boolean>;
+  travel: (u: number, v: number) => Promise<void>;
   openPort?: () => void;
 }) {
-  const [expanded, setExpanded] = useState(true),
+  const [expanded, setExpanded] = useState(false),
     [view, setView] = useState(wholeWorld);
   const panel = useRef<HTMLDivElement>(null);
   const [offset, setOffset] = useState<{ x: number; y: number } | null>(null);
   const panelDrag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
   const surface = useRef<HTMLButtonElement>(null);
+  const dragged = useRef(false);
   const drag = useRef<{ x: number; y: number; view: MapView; moved: boolean } | null>(null);
   const cameraPoint = camera ? worldToMap(camera.position, bounds) : null;
   const visibleWidth = (bounds.maxY - bounds.minY) / (100 * view.zoom);
@@ -51,12 +52,6 @@ export default function WorldMap({
   function resizeMap() {
     setOffset(null);
     setExpanded(!expanded);
-  }
-  async function chooseLocation(u: number, v: number) {
-    if (await travel(u, v)) {
-      setExpanded(false);
-      setOffset(null);
-    }
   }
   useEffect(() => {
     const observer = new ResizeObserver(() => setOffset(null));
@@ -175,9 +170,12 @@ export default function WorldMap({
         data-v={view.v}
         data-zoom={view.zoom}
         disabled={busy}
+        onMouseDown={(e) => e.preventDefault()}
+        onDoubleClick={(e) => e.preventDefault()}
         onPointerDown={(e) => {
           if (e.button !== 0) return;
           e.currentTarget.setPointerCapture(e.pointerId);
+          dragged.current = false;
           drag.current = { x: e.clientX, y: e.clientY, view, moved: false };
         }}
         onPointerMove={(e) => {
@@ -198,14 +196,10 @@ export default function WorldMap({
           }
         }}
         onPointerUp={(e) => {
-          const d = drag.current;
+          dragged.current = drag.current?.moved === true;
           drag.current = null;
-          if (!d || d.moved) return;
-          const p = pointerPoint(e.clientX, e.clientY);
-          if (insideMap(p)) {
-            const destination = screenToMap(p, view);
-            void chooseLocation(destination.u, destination.v);
-          }
+          if (e.currentTarget.hasPointerCapture(e.pointerId))
+            e.currentTarget.releasePointerCapture(e.pointerId);
         }}
         onPointerCancel={() => {
           drag.current = null;
@@ -214,7 +208,12 @@ export default function WorldMap({
           drag.current = null;
         }}
         onClick={(e) => {
-          if (e.detail === 0) void chooseLocation(view.u, view.v);
+          if (dragged.current || e.detail > 1) return;
+          const point = e.detail === 0 ? { u: 0.5, v: 0.5 } : pointerPoint(e.clientX, e.clientY);
+          if (insideMap(point)) {
+            const destination = screenToMap(point, view);
+            void travel(destination.u, destination.v);
+          }
         }}
       >
         <img
@@ -228,6 +227,13 @@ export default function WorldMap({
             top: `${(0.5 - view.v * view.zoom) * 100}%`,
           }}
         />
+        {camera?.destination && (
+          <span
+            className="minimap-destination"
+            data-testid="map-destination"
+            style={position(worldToMap(camera.destination, bounds))}
+          />
+        )}
         {person && (
           <span
             data-testid="map-person"

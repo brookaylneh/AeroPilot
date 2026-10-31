@@ -109,7 +109,7 @@ export default function UnrealApp() {
       height = width / ratio;
     const u = (clientX - rect.left - (rect.width - width) / 2) / width;
     const v = (clientY - rect.top - (rect.height - height) / 2) / height;
-    if (u >= 0 && u <= 1 && v >= 0 && v <= 1) await send({ type: 'place-screen', u, v });
+    if (u >= 0 && u <= 1 && v >= 0 && v <= 1) await send({ type: 'travel-and-place', space: 'screen', u, v });
   }
   const options = (key: string) => packet?.catalog.options.find((group) => group.key === key)?.values || [];
   function swatches(key: 'topColor' | 'bottomColor' | 'backpackColor', label: string) {
@@ -151,11 +151,12 @@ export default function UnrealApp() {
         {packet && transport.current && region && stage !== 'briefing' && (
           <WorldNavigation
             transport={transport.current}
+            settings={packet.catalog.navigation}
             initialCamera={packet.camera}
             bounds={region.bounds}
             person={stage === 'placement' ? packet.authoring.position : null}
             placing={stage === 'placement'}
-            busy={locked}
+            busy={busy || working}
             send={send}
             place={place}
             hasPort={packet.catalog.droneFoundation}
@@ -299,8 +300,10 @@ export default function UnrealApp() {
                   m
                 </div>
                 <h1>Choose their location</h1>
-                <p>Explore on foot · Click the map to travel · Double-click the ground to place</p>
-                <p>Double-click another location to reposition the person.</p>
+                <p>Click the map or double-click ground to place and fly there</p>
+                <p>
+                  Explore with WASD · Click the map or double-click ground to move the person and fly there.
+                </p>
               </div>
               <div className="placement-actions">
                 <button className="creator-back" disabled={locked} onClick={() => void moveTo('situation')}>
@@ -362,7 +365,7 @@ export default function UnrealApp() {
               }}
             />
           )}
-          {transitioning && (
+          {transitioning && stage === 'briefing' && (
             <div className="creator-transition" role="status">
               <div>
                 <span className="creator-kicker">SEARCH &amp; RESCUE</span>

@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   PixelStreamingTransport,
   cameraSchema,
+  navigationSettingsSchema,
   creatorStageSchema,
   type UnrealCommand,
 } from './PixelStreamingTransport';
@@ -31,7 +32,8 @@ export const packetSchema = z.object({
   }),
   catalog: z.object({
     environmentId: z.string(),
-    navigationVersion: z.number().min(7),
+    navigationVersion: z.literal(8),
+    navigation: navigationSettingsSchema,
     creatorVersion: z.literal(1),
     droneFoundation: z.boolean(),
     assetVersion: z.string(),
@@ -88,14 +90,13 @@ export function useUnrealSession() {
   const connected = packet !== null;
   useEffect(() => {
     if (!container.current) return;
-    let active = true,
-      timer: ReturnType<typeof setTimeout> | undefined;
+    let active = true;
     let connection: PixelStreamingTransport | null = null;
     const abort = new AbortController();
     setPacket(null);
     setError('');
     setBusy(false);
-    const schedule = (title: string, detail: string) => {
+    const fail = (title: string, detail: string) => {
       if (!active) return;
       setPacket(null);
       setBusy(false);
@@ -103,8 +104,6 @@ export function useUnrealSession() {
       connection?.dispose();
       connection = null;
       transport.current = null;
-      clearTimeout(timer);
-      timer = setTimeout(() => void attempt(), 2000);
     };
     const attempt = async () => {
       if (!active || !container.current) return;
@@ -124,17 +123,14 @@ export function useUnrealSession() {
           return;
         }
         if (health.state === 'occupied') {
-          schedule(
+          fail(
             'Scene in use',
-            'Another browser has the editing session. Close that tab to continue here. This page will connect automatically.',
+            'Another browser has the editing session. Close that tab, then select Reconnect.',
           );
           return;
         }
         if (health.state !== 'ready') {
-          schedule(
-            'Scene is starting',
-            'The renderer is warming up. This page will connect automatically when it is ready.',
-          );
+          fail('Scene is starting', 'The renderer is warming up. Select Reconnect when it is ready.');
           return;
         }
         setConnectionStatus({
@@ -145,7 +141,7 @@ export function useUnrealSession() {
           container.current,
           `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/api/stream`,
           (reason) => {
-            if (connection === current) schedule('Reconnecting to the scene…', reason);
+            if (connection === current) fail('Scene connection interrupted', reason);
           },
         );
         connection = current;
@@ -154,18 +150,8 @@ export function useUnrealSession() {
           if (active && connection === current) setTransitioning(camera.transitioning);
         });
         await current.connect();
-        // During a cold start the data channel can open before the native
-        // scenario handler binds. Retry this read only; never replay mutations.
-        let snapshot: Packet | undefined;
-        for (let n = 0; n < 8 && active && connection === current; n++) {
-          try {
-            snapshot = packetSchema.parse(await current.command({ type: 'snapshot' }));
-            break;
-          } catch (e) {
-            if (n === 7 || !active || connection !== current) throw e;
-          }
-        }
-        if (!snapshot || !active || connection !== current) return;
+        let snapshot = packetSchema.parse(await current.command({ type: 'snapshot' }));
+        if (!active || connection !== current) return;
         const rect = container.current.getBoundingClientRect();
         await current.command({ type: 'viewport', aspect: rect.width / rect.height });
         // A new page opens at character selection. A transport reconnect keeps
@@ -186,14 +172,13 @@ export function useUnrealSession() {
         }
       } catch (e) {
         if (active && (!current || connection === current))
-          schedule('Reconnecting to the scene…', (e as Error).message);
+          fail('Scene connection interrupted', (e as Error).message);
       }
     };
     void attempt();
     return () => {
       active = false;
       abort.abort();
-      clearTimeout(timer);
       connection?.dispose();
       transport.current = null;
     };

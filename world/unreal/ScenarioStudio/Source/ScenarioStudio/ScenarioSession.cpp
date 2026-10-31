@@ -10,7 +10,6 @@
 #include "IPixelStreaming2Module.h"
 #include "IPixelStreaming2Streamer.h"
 #include "IPixelStreaming2InputHandler.h"
-#include "Async/Async.h"
 #include "Serialization/MemoryReader.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
@@ -160,10 +159,9 @@ void AScenarioSession::BindStream()
                 Message.GetCharArray().SetNumUninitialized(Length + 1);
                 Reader.Serialize(Message.GetCharArray().GetData(), Length * sizeof(TCHAR));
                 Message.GetCharArray()[Length] = 0;
-                AsyncTask(ENamedThreads::GameThread, [WeakThis, Player, Message]() {
-                    if (WeakThis.IsValid())
-                        WeakThis->HandleCommand(Player, Message);
-                });
+                check(IsInGameThread());
+                if (WeakThis.IsValid())
+                    WeakThis->HandleCommand(Player, Message);
             });
         BoundStreamer = Streamer;
         if (FParse::Param(FCommandLine::Get(), TEXT("ScenarioDiagnostics")))
@@ -344,6 +342,7 @@ bool AScenarioSession::SetCamera(const FString &View, FString &Error)
     bPreviewFraming = View == TEXT("creator");
     bFollowPerson = View == TEXT("person") || View == TEXT("ground") || View == TEXT("elevated");
     CameraTransitionDuration = 0;
+    bNavigationFlight = false;
     bBriefingRisePending = false;
     // Shorter people and resting poses need a lower preview camera to keep
     // their whole body in frame. Free exploration has its own eye-height rule.
@@ -360,6 +359,8 @@ bool AScenarioSession::SetCamera(const FString &View, FString &Error)
     StopNavigation();
     if (View == TEXT("start"))
     {
+        NavigationMode = 0;
+        bNavigationBoost = false;
         const FVector Entry = Region->bUsePreviewCamera ? Region->PreviewCamera.GetLocation()
                                                         : (Region->Min + Region->Max) * .5;
         FHitResult Ground;
@@ -372,8 +373,8 @@ bool AScenarioSession::SetCamera(const FString &View, FString &Error)
             return false;
         }
         const double Yaw = (Region->PreviewTargetCm - Entry).Rotation().Yaw;
-        Camera->SetActorLocationAndRotation(Ground.ImpactPoint + FVector(0, 0, 170), FRotator(0, Yaw, 0));
-        DesiredFieldOfView = 60;
+        Camera->SetActorLocationAndRotation(Ground.ImpactPoint + FVector(0, 0, ScenarioNavigation::EyeHeightCm), FRotator(0, Yaw, 0));
+        DesiredFieldOfView = ScenarioNavigation::DefaultFov;
         Camera->GetCameraComponent()->SetFieldOfView(DesiredFieldOfView);
         if (auto *PC = UGameplayStatics::GetPlayerController(this, 0))
         {
@@ -487,7 +488,7 @@ bool AScenarioSession::SetCamera(const FString &View, FString &Error)
         return false;
     }
     bShowMarker = View == TEXT("overview");
-    DesiredFieldOfView = 60;
+    DesiredFieldOfView = ScenarioNavigation::DefaultFov;
     Camera->GetCameraComponent()->SetFieldOfView(DesiredFieldOfView);
     UpdateMarker();
     UpdateCamera();
@@ -523,7 +524,8 @@ TSharedRef<FJsonObject> AScenarioSession::Packet() const
     Result->SetObjectField(TEXT("camera"), CameraPacket());
     auto Catalog = MakeShared<FJsonObject>();
     Catalog->SetStringField(TEXT("environmentId"), Manager->Catalog->EnvironmentId.ToString().ToLower());
-    Catalog->SetNumberField(TEXT("navigationVersion"), 7);
+    Catalog->SetNumberField(TEXT("navigationVersion"), ScenarioNavigation::Version);
+    Catalog->SetObjectField(TEXT("navigation"), NavigationSettings());
     Catalog->SetNumberField(TEXT("creatorVersion"), 1);
     Catalog->SetBoolField(TEXT("droneFoundation"), true);
     Catalog->SetStringField(TEXT("assetVersion"), Manager->Catalog->AssetVersion);
@@ -724,7 +726,7 @@ void AScenarioSession::HandleCommand(const FString &Player, const FString &Messa
     const TSharedPtr<FJsonObject> *Command;
     if (!Fields(Root, {TEXT("protocolVersion"), TEXT("requestId"), TEXT("command")}) ||
         !Root->TryGetStringField(TEXT("requestId"), RequestId) || !ValidId(RequestId) ||
-        !Root->TryGetNumberField(TEXT("protocolVersion"), Protocol) || Protocol != 1 ||
+        !Root->TryGetNumberField(TEXT("protocolVersion"), Protocol) || Protocol != ScenarioNavigation::ProtocolVersion ||
         !Root->TryGetObjectField(TEXT("command"), Command))
         return;
     NavigationPlayer = Player;
@@ -774,26 +776,11 @@ void AScenarioSession::HandleCommand(const FString &Player, const FString &Messa
         else if (Type == TEXT("rotate") && Fields(*Command, {TEXT("type"), TEXT("yaw")}) &&
                  (*Command)->TryGetNumberField(TEXT("yaw"), A))
             Ok = Manager->SetYaw(A, Error);
-        else if (Type == TEXT("place-screen") && Fields(*Command, {TEXT("type"), TEXT("u"), TEXT("v")}) &&
+        else if (Type == TEXT("travel-and-place") &&
+                 Fields(*Command, {TEXT("type"), TEXT("space"), TEXT("u"), TEXT("v")}) &&
+                 (*Command)->TryGetStringField(TEXT("space"), Value) &&
                  (*Command)->TryGetNumberField(TEXT("u"), A) && (*Command)->TryGetNumberField(TEXT("v"), B))
-            Ok = Manager->PlaceFromScreen(A, B, Error);
-        else if (Type == TEXT("focus-screen") && Fields(*Command, {TEXT("type"), TEXT("u"), TEXT("v")}) &&
-                 (*Command)->TryGetNumberField(TEXT("u"), A) && (*Command)->TryGetNumberField(TEXT("v"), B))
-        {
-            FVector Ground;
-            Ok = Manager->GroundFromScreen(A, B, Ground, Error);
-            if (Ok)
-            {
-                CameraTarget = Ground + FVector(0, 0, 100);
-                CameraDistance = 7000;
-                CameraPitch = 28;
-                UpdateCamera();
-                EnterFreeCamera();
-            }
-        }
-        else if (Type == TEXT("travel-map") && Fields(*Command, {TEXT("type"), TEXT("u"), TEXT("v")}) &&
-                 (*Command)->TryGetNumberField(TEXT("u"), A) && (*Command)->TryGetNumberField(TEXT("v"), B))
-            Ok = TravelMap(A, B, Error);
+            Ok = TravelAndPlace(Value, A, B, Error);
         else if (Type == TEXT("camera") && Fields(*Command, {TEXT("type"), TEXT("view")}) &&
                  (*Command)->TryGetStringField(TEXT("view"), Value) && Value != TEXT("departure"))
             Ok = SetCamera(Value, Error);
@@ -859,12 +846,12 @@ void AScenarioSession::HandleCommand(const FString &Player, const FString &Messa
     }
     if (Ok)
     {
-        if (Type == TEXT("place-screen"))
+        if (Type == TEXT("travel-and-place"))
             bShowMarker = CreatorStage == TEXT("placement");
         UpdateMarker();
     }
     auto Reply = MakeShared<FJsonObject>();
-    Reply->SetNumberField(TEXT("protocolVersion"), 1);
+    Reply->SetNumberField(TEXT("protocolVersion"), ScenarioNavigation::ProtocolVersion);
     Reply->SetStringField(TEXT("requestId"), RequestId);
     Reply->SetBoolField(TEXT("ok"), Ok);
     if (Ok)

@@ -17,6 +17,7 @@ class SCENARIOSTUDIO_API AScenarioManager : public AActor
 {
     GENERATED_BODY()
   public:
+    static constexpr double TerrainProbeRadiusCm = 1;
     AScenarioManager();
     UPROPERTY(EditAnywhere, BlueprintReadOnly) TObjectPtr<UScenarioCatalog> Catalog;
     UPROPERTY(BlueprintReadOnly) TObjectPtr<AScenarioPerson> Person;
@@ -31,7 +32,6 @@ class SCENARIOSTUDIO_API AScenarioManager : public AActor
 
     UFUNCTION(BlueprintCallable) bool SelectRegion(FName Id, FString &Error);
     UFUNCTION(BlueprintCallable) bool SetAppearance(const FScenarioAppearance &Selection, FString &Error);
-    UFUNCTION(BlueprintCallable) bool PlaceFromScreen(float U, float V, FString &Error);
     bool GroundFromScreen(float U, float V, FVector &Ground, FString &Error) const;
     UFUNCTION(BlueprintCallable) bool PlaceAtGround(double X, double Y, FString &Error);
     UFUNCTION(BlueprintCallable) bool SetYaw(double YawDegrees, FString &Error);
