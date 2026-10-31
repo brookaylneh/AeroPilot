@@ -48,9 +48,18 @@ for actor in actors.get_all_level_actors():
     if isinstance(actor, unreal.InstancedFoliageActor):
         assert actor.get_actor_label() == LABEL, actor.get_actor_label()
         assert actors.destroy_actor(actor)
-# Every asset below is rebuilt from the placements, so nothing stale survives a run.
-for path in lib.list_assets(FOLDER):
+# Every asset below is rebuilt from the placements, so nothing stale survives a run. A commandlet
+# starts before its asset registry has scanned the folder, so the listing must match the disk.
+on_disk = Path(unreal.Paths.project_content_dir()).resolve() / FOLDER.removeprefix("/Game/")
+unreal.AssetRegistryHelpers.get_asset_registry().scan_paths_synchronous([FOLDER], True)
+stale = lib.list_assets(FOLDER)
+assert len(stale) == len(list(on_disk.glob("*.uasset"))), (len(stale), on_disk)
+for path in stale:
     assert lib.delete_asset(path), path
+# The commandlet loader keeps each asset loaded for deletion pinned (LoaderImport), so ObjectTools
+# counts it as referenced and leaves its file.
+for path in on_disk.glob("*.uasset"):
+    path.unlink()
 
 
 def trace(north, east):
