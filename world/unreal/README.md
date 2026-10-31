@@ -157,29 +157,49 @@ directional light to the `world.json` sun. Single Layer Water needs Opacity 0: t
 replaces the water volume with a black base colour. Do not label unchanged cooked scenery with the
 valley manifest.
 
-`valley-grass.json` is the meadow ground cover: one landscape grass type per entry, spawned by the
-landscape material from grass maps baked into the level (every editor level save bakes them, so
-`author-unreal.sh` renders offscreen; `DroneFoundation` asserts every landscape component carries
-them and creates the nearest grass first). Each type lists its landscape layers (its weight is the
-largest layer weight) and its varieties: a mesh, instances per 10 m x 10 m (at most 1000 each,
-`LandscapeGrassType.h`) and a uniform scale range. Each variety is split into `rings` equal-density
-copies whose culls step across the band `cullM` (full density to the first distance, thinned to
-nothing at the second), because Nanite ignores the per-instance fade. `farGround.gain` tints the
-dry-meadow ground towards the blades' colour across `farGround.fadeM` and drops its specular, so the
-ground past the grass reads as the same meadow. The studio scales every cull by
-`grass.CullDistanceScale` 2.2 (352 m, within the 16.7M scene-instance limit); mission mode sets it to
-1, stops rendering the studio view, follows Drone1 and only then registers the drone cameras as
-streaming views. `client.enter_mission` makes that one-way switch when `/mission` connects, and drone
-captures assert it. `brightness` multiplies the blades' base colour through the
-masters' `Brightness` scalar (one override material instance per mesh slot). A type grows at the
-full weight of its layers, so dry meadow is grassed everywhere; bare ground is only where no grass
-layer is painted. `author-unreal.sh build-valley-grass` rebuilds the `/Game/Valley/Grass`
-types, asserting every mesh top within `heightM` at its largest scale; run it before
-`build-open-meadow`, whose material wires each type to a `LandscapeGrassOutput` pin. The runtime
-telemetry (`runtime.json` `grass`) reports the built instance count and the asynchronous grass
-builds in flight; `measure_grass.py` measures coverage (pixels that differ between `grass.Enable`
-on and off at one pose, once two consecutive captures are byte-identical) at the meadow and creek
-nadirs at 30 and 60 m, then flies one lane between them at 16 m capture spacing.
+`valley-grass.json` owns GPU runtime grass: landscape layers, mesh densities per 100 m²,
+uniform scales, blade brightness, Nanite shape preservation, and studio/mission grid profiles.
+`author-unreal.sh build-valley-grass` derives both graphs from UE 5.8's
+`TPL_Showcase_RuntimeGrassGPU` and authors `valley.grass` plus `valley.pcg` in OpenMeadow.
+Run it before the meadow step, then dressing and the content audit. The meadow step preserves
+these actors, sky.clouds and the sun; do not rerun the lighting step on this Content.
+
+The graph uses Generate Landscape Textures (the 5.8 replacement for Generate Grass Maps),
+GPU HLSL point generators and GPU Static Mesh Spawners. Every point stays on the GPU; 5.8
+defers texture readback and this graph has no CPU texture consumer. Empty LandscapeGrassType
+assets are required by the engine's named mask exporter and have no varieties. The cooked level
+strips CPU grass-map data. There is no Landscape Grass instance generation or ring split.
+The game module enables `grass.GrassMap.AlwaysBuildRuntimeGenerationResources` before cooking
+and loading materials: UE 5.8's PCG exporter requires that resource flag in game worlds.
+It enables the GPU mask shaders and resources, not Landscape Grass instance generation.
+
+The studio camera supplies a PCGGenSourceComponent. Hierarchical partitioned generation uses
+32 m near cells and 64 m middle cells; middle clumps widen in XY to compensate for lower density
+without changing blade heights. Mission entry destroys the studio source, switches to the authored
+mission graph, and registers one source on each of the four front_center cameras. Texture streaming
+retains its sensor views. Mission mode keeps the viewport disabled but submits scene updates every
+frame so PCG compute and GPU Scene cleanup continue between sensor captures.
+OpenMeadow does not need World Partition: UE 5.8 supports partitioned
+PCG components in ordinary levels, with a saved PCGWorldActor and explicit generation sources.
+The runtime scheduler ticks every frame, with 64 concurrent components and a 10 ms PCG frame budget.
+Nanite instance draw distances hide middle clumps inside the near reach minus one near grid cell,
+leaving a transition overlap; each band's maximum draw distance equals its authored reach.
+`farGround.gain` tints the dry-meadow ground at all distances, including the apron.
+
+The content audit enforces a 12,000,000-instance GPU Scene budget. It counts allocated slots
+before mask rejection, every band inside its cleanup radius, four independent mission sources,
+64 in-flight cells, every authored primitive and foliage instance, and a 65,536-instance reserve
+for runtime actors. `grass_budget.py` bounds every possible camera position within a grid cell;
+mission uses 16 m cells to retain the original density and 160 m reach within that budget.
+Near studio grass uses the original full density; larger density needs a visible coverage benefit.
+
+Source verification: UE 5.8.2 `Engine/Plugins/PCG`, particularly PCGGenerateLandscapeTextures,
+PCGCustomHLSL, PCGStaticMeshSpawner, PCGComponent and RuntimeGen; Landscape.cpp's cooked grass
+stripping; EngineTypes.h's mutually exclusive PreserveArea/Voxelize enum. The second reference is
+PCGBiomeSample's BroadleafForestGroundScatter_RuntimeGrass. Epic's
+[GPU processing](https://dev.epicgames.com/documentation/en-us/unreal-engine/using-pcg-with-gpu-processing-in-unreal-engine?application_version=5.8)
+and [generation modes](https://dev.epicgames.com/documentation/en-us/unreal-engine/using-pcg-generation-modes-in-unreal-engine?application_version=5.8)
+describe the pipeline; the installed 5.8 source supersedes the documentation's old readback checkbox.
 
 `valley-dressing.json` places every mesh under `/Game/Valley`: each mesh records its Unreal bounds
 and collision profile (`ScenarioTerrain` for the bridge, rocks and logs, `ScenarioObstacle` for

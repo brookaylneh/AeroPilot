@@ -12,14 +12,14 @@ cpu_limit="${SNR_CPU_LIMIT:-6}"
 memory_limit="${SNR_MEMORY_LIMIT:-48g}"
 [[ "$memory_limit" =~ ^[1-9][0-9]*[mg]$ ]] || { echo 'SNR_MEMORY_LIMIT must use Docker units, for example 24g' >&2; exit 2; }
 network=host
-if [[ "$mode" = build || "$mode" = exec ]]; then network=none; fi
+if [[ "$mode" = build || "$mode" = exec || "$mode" = run-packaged-isolated ]]; then network=none; fi
 container_flags=(--rm --init "--cpus=$cpu_limit" "--memory=$memory_limit" --shm-size=2g --ulimit core=0 "--network=$network"
   --user "$(id -u):$(id -g)"
   -e XDG_CONFIG_HOME=/home/snr/.config
   --mount "type=bind,src=$PWD,dst=$PWD"
   --mount "type=bind,src=$cache_root,dst=/home/snr"
   --workdir "$PWD")
-for input in .local/vendor .local/evidence .venv-cosys .venv-fal .env; do
+for input in .local/vendor .local/vendor/* .local/evidence .venv-cosys .venv-fal .env; do
   if [[ -L "$input" ]]; then
     resolved_input=$(realpath "$input")
     container_flags+=(--mount "type=bind,src=$resolved_input,dst=$resolved_input,readonly")
@@ -31,7 +31,7 @@ if [[ -n "${SNR_EVIDENCE_DIR:-}" ]]; then
   container_flags+=(--mount "type=bind,src=$evidence_dir,dst=$evidence_dir" -e SNR_EVIDENCE_DIR)
 fi
 # Cooked releases contain the engine runtime. Only editor/build modes need the SDK.
-if [[ "$mode" != run-packaged ]]; then
+if [[ "$mode" != run-packaged && "$mode" != run-packaged-isolated ]]; then
   [[ -f "$engine_root/Engine/Build/Build.version" ]] || { echo "Missing Unreal SDK: $engine_root" >&2; exit 2; }
   engine_root=$(realpath "$engine_root")
   container_flags+=(--mount "type=bind,src=$engine_root,dst=$engine_root,readonly" -e "UE_ROOT=$engine_root")
@@ -61,7 +61,7 @@ case "$mode" in
   build)
     exec docker run "${container_flags[@]}" snr-unreal:5.8.2-ubuntu24.04 bash world/unreal/scripts/build-unreal.sh "$@"
     ;;
-  run-packaged)
+  run-packaged|run-packaged-isolated)
     package_root=$(realpath "${SNR_PACKAGE_ROOT:?}")
     container_flags+=(--mount "type=bind,src=$package_root,dst=$package_root,readonly")
     if [ -n "${SNR_CONTAINER_NAME:-}" ]; then
@@ -112,7 +112,7 @@ case "$mode" in
       -nocrashreports -stdout -FullStdOutLogOutput
     ;;
   *)
-    echo 'Usage: unreal-container.sh build | run-packaged | exec command ... |' \
+    echo 'Usage: unreal-container.sh build | run-packaged | run-packaged-isolated | exec command ... |' \
       'character-authoring command ... | mcp-editor' >&2
     exit 2
     ;;

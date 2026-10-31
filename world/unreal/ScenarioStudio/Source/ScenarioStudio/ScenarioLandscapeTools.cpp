@@ -119,27 +119,6 @@ AActor *UScenarioLandscapeTools::CreateLandscape(const FString &WorldFile, const
 #endif
 }
 
-int32 UScenarioLandscapeTools::BuildGrassMaps(AActor *Actor)
-{
-#if WITH_EDITOR
-    ALandscape *Landscape = Cast<ALandscape>(Actor);
-    checkf(Landscape && FApp::CanEverRender(), TEXT("Grass maps need a landscape and a renderer"));
-    Landscape->BuildGrassMaps();
-    int32 WithGrass = 0;
-    for (const ULandscapeComponent *Component : Landscape->LandscapeComponents)
-    {
-        checkf(Component->GrassData->NumElements >= 0, TEXT("Grass map was not built: %s"),
-               *Component->GetName());
-        WithGrass += Component->GrassData->NumElements > 0;
-    }
-    checkf(WithGrass > 0, TEXT("No landscape component holds grass"));
-    return WithGrass;
-#else
-    checkNoEntry();
-    return 0;
-#endif
-}
-
 FVector UScenarioLandscapeTools::TraceLandscape(const FVector &Start, const FVector &End)
 {
 #if WITH_EDITOR

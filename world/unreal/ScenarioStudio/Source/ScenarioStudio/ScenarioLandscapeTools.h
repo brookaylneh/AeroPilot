@@ -16,10 +16,6 @@ class SCENARIOSTUDIO_API UScenarioLandscapeTools : public UBlueprintFunctionLibr
                                    UMaterialInterface *Material, const TArray<FString> &LayerNames,
                                    const FString &LayerInfoFolder);
 
-    // Bakes every component's grass map now and returns how many hold grass; needs a rendering editor.
-    UFUNCTION(BlueprintCallable, Category = "Scenario|Authoring")
-    static int32 BuildGrassMaps(AActor *Landscape);
-
     UFUNCTION(BlueprintCallable, Category = "Scenario|Authoring")
     static FVector TraceLandscape(const FVector &Start, const FVector &End);
 };

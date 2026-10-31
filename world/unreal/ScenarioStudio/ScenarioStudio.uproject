@@ -12,6 +12,10 @@
   ],
   "Plugins": [
     {
+      "Name": "PCG",
+      "Enabled": true
+    },
+    {
       "Name": "AirSim",
       "Enabled": true
     },

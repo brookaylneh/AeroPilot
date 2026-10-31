@@ -1,4 +1,4 @@
-"""Replace the search landscape, its ground layers and baked grass, water, horizon crests and
+"""Replace the search landscape, its ground layers and GPU grass masks, water, horizon crests and
 meadow apron from world.json."""
 
 import hashlib
@@ -106,6 +106,8 @@ KEPT = (
     "sky.atmosphere",
     "sky.clouds",
     "sky.haze",
+    "valley.grass",
+    "valley.pcg",
 )
 
 load_env()
@@ -156,7 +158,9 @@ suns = [a for a in actors.get_all_level_actors() if isinstance(a, unreal.Directi
 assert len(landscapes) == len(suns) == 1
 previous, sun = landscapes[0], suns[0]
 for actor in actors.get_all_level_actors():
-    if actor.get_actor_label().startswith("valley.") or actor.get_actor_label() in LEGACY:
+    if (
+        actor.get_actor_label().startswith("valley.") and actor.get_actor_label() not in KEPT
+    ) or actor.get_actor_label() in LEGACY:
         assert actors.destroy_actor(actor)
 assert actors.destroy_actor(previous)
 kept = [a for a in actors.get_all_level_actors() if a != sun]
@@ -404,8 +408,7 @@ switched = {
     )
     for key in blends
 }
-# Runtime landscape grass (valley-grass.json types from build-valley-grass.py): a grass type's
-# weight is the largest weight of its layers, so sedge follows both wet margins and cobble bed.
+# Named grass outputs are GPU mask inputs; their types have no CPU varieties.
 grass = json.loads((ROOT / "world/unreal/valley-grass.json").read_text())
 grass_types = {
     name: unreal.load_asset(f"{grass['folder']}/GT_{title(name)}") for name in grass["types"]
@@ -430,29 +433,13 @@ for name, entry in grass["types"].items():
         weight = node(unreal.MaterialExpressionMax, ("A", weight), ("B", sample))
     weights[name] = weight
     assert ml.connect_material_expressions(weight, "", grass_output, name), name
-# Far ground: where dry-meadow grass ends at the drone cull distance (and on the grassless apron),
-# the ground takes the measured colour of the distant grass and a canopy's matte surface, so the
-# meadow does not turn into bare, sheen-lit soil beyond the grass.
+# Tint dry-meadow ground under the blades as well as beyond the generated grass.
 far = grass["farGround"]
-near_m, end_m = far["fadeM"]
-assert 0 < near_m < end_m <= grass["cullM"][1], far["fadeM"]
 assert all(0 < g <= 1 for g in far["gain"]), far["gain"]
-distance = node(
-    unreal.MaterialExpressionDistance,
-    ("A", position),
-    ("B", node(unreal.MaterialExpressionCameraPositionWS)),
-)
-fade = node(
-    unreal.MaterialExpressionSmoothStep,
-    ("Value", distance),
-    const_min=near_m * 100,
-    const_max=end_m * 100,
-)
-# The apron is all dry meadow.
 far_blend = node(
     unreal.MaterialExpressionStaticSwitchParameter,
-    ("True", fade),
-    ("False", node(unreal.MaterialExpressionMultiply, ("A", fade), ("B", weights["dry-meadow"]))),
+    ("True", node(unreal.MaterialExpressionConstant, r=1)),
+    ("False", weights["dry-meadow"]),
     parameter_name="Apron",
 )
 output(
@@ -498,6 +485,8 @@ landscape = unreal.ScenarioLandscapeTools.create_landscape(
     FOLDER + "/Layers",
 )
 assert landscape
+landscape.set_editor_property("strip_grass_when_cooked_client", True)
+landscape.set_editor_property("strip_grass_when_cooked_server", True)
 for name in layers:
     assert lib.save_asset(f"{FOLDER}/Layers/LI_{name}", only_if_is_dirty=False)
 
@@ -698,9 +687,6 @@ regions[0] = region
 catalog.set_editor_property("regions", regions)
 catalog.set_editor_property("asset_version", world["environmentAssetVersion"])
 assert lib.save_loaded_asset(catalog)
-# The cooked game reads these baked grass maps (grass.GrassMap.UseRuntimeGeneration=0); the level
-# save would bake them too, but only this call proves every component was built.
-grass_components = unreal.ScenarioLandscapeTools.build_grass_maps(landscape)
 assert levels.save_current_level()
 
 origin, extent = landscape.get_actor_bounds(False)
@@ -713,9 +699,12 @@ assert component_count == (grid["columns"] - 1) * (grid["rows"] - 1) // (126 * 1
 remaining = [
     a
     for a in actors.get_all_level_actors()
-    if a not in (landscape, sun) and not a.get_actor_label().startswith("valley.")
+    if a not in (landscape, sun)
+    and (not a.get_actor_label().startswith("valley.") or a.get_actor_label() in KEPT)
 ]
-assert sorted(a.get_actor_label() for a in remaining) == sorted(KEPT)
+assert sorted(a.get_actor_label() for a in remaining) == sorted(KEPT), [
+    a.get_actor_label() for a in remaining
+]
 for actor in remaining:
     assert actor.get_actor_transform() == preserved[actor.get_actor_label()], (
         actor.get_actor_label()
@@ -730,7 +719,6 @@ report_path.write_text(
             "landscapeComponents": component_count,
             "landscapeMaterial": ground.get_path_name(),
             "grassTypes": {name: asset.get_path_name() for name, asset in grass_types.items()},
-            "grassMapComponents": grass_components,
             "groundTextures": sources,
             "groundLicence": lock["license"],
             "water": bodies,

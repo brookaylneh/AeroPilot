@@ -33,9 +33,10 @@ build before a release can use inconsistent GPS or camera frames.
 
 ## Sensor rendering
 
-The native `DroneFoundation` keeps RGB captures at 3840×2160 and registers each camera with
-terrain and texture streaming. Independent scene captures render without Lumen unless their
-post-process settings request it, so `LumenGIEnable` and `LumenReflectionEnable` make Cosys
+The native `DroneFoundation` keeps RGB captures at 3840×2160, registers each camera with
+texture streaming, and attaches a PCG generation source to each mission camera. Independent
+scene captures render without Lumen unless their post-process settings request it, so
+`LumenGIEnable` and `LumenReflectionEnable` make Cosys
 select Lumen global illumination and reflections, the world's methods. The runtime fails if a
 capture lacks those overrides, ray tracing, the final tone-curve source, Lumen show flags,
 manual exposure, fixed white balance, or zero bloom and motion blur. Native telemetry records

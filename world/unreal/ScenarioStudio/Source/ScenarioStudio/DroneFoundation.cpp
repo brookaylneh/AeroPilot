@@ -1,5 +1,11 @@
 #include "DroneFoundation.h"
 #include "ScenarioSession.h"
+#include "ScenarioGrass.h"
+#include "RuntimeGen/GenSources/PCGGenSourceComponent.h"
+#include "Components/PrimitiveComponent.h"
+#include "Components/InstancedStaticMeshComponent.h"
+#include "UObject/UObjectIterator.h"
+#include "UObject/UnrealType.h"
 #include "EngineUtils.h"
 #include "Engine/World.h"
 #include "Engine/TextureRenderTarget2D.h"
@@ -17,11 +23,6 @@
 #include "ContentStreaming.h"
 #include "Engine/GameViewportClient.h"
 #include "GameFramework/PlayerController.h"
-#include "GrassInstancedStaticMeshComponent.h"
-#include "LandscapeComponent.h"
-#include "LandscapeProxy.h"
-#include "LandscapeSubsystem.h"
-#include "UObject/UObjectIterator.h"
 #include "SimMode/SimModeBase.h"
 #include "Vehicles/Multirotor/FlyingPawn.h"
 
@@ -54,22 +55,6 @@ ADroneFoundation::ADroneFoundation()
 void ADroneFoundation::BeginPlay()
 {
     Super::BeginPlay();
-    // Grass maps are baked into the level (grass.GrassMap.UseRuntimeGeneration=0) and a cooked
-    // build never generates them, so a component without them would stay bare.
-    int32 GrassComponents = 0;
-    for (TActorIterator<ALandscapeProxy> It(GetWorld()); It; ++It)
-        for (const ULandscapeComponent *Component : It->LandscapeComponents)
-        {
-            checkf(Component->GrassData->NumElements >= 0, TEXT("Landscape grass map missing: %s"),
-                   *Component->GetName());
-            GrassComponents += Component->GrassData->NumElements > 0;
-        }
-    checkf(GrassComponents > 0, TEXT("Landscape has no baked grass maps"));
-    // Nearest landscape components first, four times wider, so the ground around a moved camera
-    // completes before the distance.
-    ULandscapeSubsystem *Landscapes = GetWorld()->GetSubsystem<ULandscapeSubsystem>();
-    checkf(Landscapes, TEXT("Missing landscape subsystem"));
-    Landscapes->PrioritizeGrassCreation(true);
     if (!FParse::Value(FCommandLine::Get(), TEXT("DroneFoundationDir="), Directory) || Directory.IsEmpty())
         return;
     Directory = FPaths::ConvertRelativePathToFull(Directory);
@@ -86,18 +71,24 @@ void ADroneFoundation::EndPlay(const EEndPlayReason::Type Reason)
 }
 void ADroneFoundation::EnterMission(ASimModeBase *Mode)
 {
-    // One way: the studio camera hands the world to the drones. It follows Drone1, so it adds no
-    // grass or streaming area of its own, and it renders only the frames that serve a capture
-    // (Cosys RenderRequest.cpp re-enables world rendering for those). Grass returns to the
-    // authored cull distances that four drone views fit in.
     APIPCamera *Camera = Mode->getCamera(msr::airlib::CameraDetails("front_center", "Drone1"));
     APlayerController *Player = GetWorld()->GetFirstPlayerController();
     UGameViewportClient *Viewport = GetWorld()->GetGameViewport();
-    IConsoleVariable *Scale = IConsoleManager::Get().FindConsoleVariable(TEXT("grass.CullDistanceScale"));
-    checkf(Camera && Player && Viewport && Scale, TEXT("Mission mode prerequisites are missing"));
+    TActorIterator<AScenarioSession> Session(GetWorld());
+    TActorIterator<AScenarioGrass> Grass(GetWorld());
+    checkf(Camera && Player && Viewport && Session && Grass, TEXT("Mission mode prerequisites are missing"));
+    Session->DisableGrassSource();
+    Grass->EnterMission();
+    for (int32 Index = 1; Index <= 4; ++Index)
+    {
+        const FString Name = FString::Printf(TEXT("Drone%d"), Index);
+        APIPCamera *Sensor = Mode->getCamera(msr::airlib::CameraDetails("front_center", TCHAR_TO_UTF8(*Name)));
+        check(Sensor);
+        UPCGGenSourceComponent *Source = NewObject<UPCGGenSourceComponent>(Sensor, TEXT("MissionGrassSource"));
+        Source->RegisterComponent();
+    }
     Player->SetViewTarget(Camera);
     Viewport->bDisableWorldRendering = true;
-    Scale->Set(1.f, ECVF_SetByCode);
     bMission = true;
 }
 void ADroneFoundation::Poll()
@@ -188,9 +179,7 @@ void ADroneFoundation::Poll()
             check(!Capture->ShouldRenderWithMainViewResolution());
             const float Width = CaptureHeight * 16.f / 9.f;
             const float Fov = Capture->FOVAngle;
-            // SceneCapture cameras are not player views. In mission mode, register each sensor
-            // with texture/landscape-grass streaming so distant drone imagery does not depend on
-            // the player camera; before it the drones capture nothing and hold no grass.
+            // Scene captures need their own texture streaming views. PCG has explicit camera sources.
             if (bMission)
                 IStreamingManager::Get().AddViewInformation(
                     Camera->GetActorLocation(), Width, Width / FMath::Tan(FMath::DegreesToRadians(Fov * .5f)),
@@ -236,18 +225,34 @@ void ADroneFoundation::Poll()
     Timing->SetNumberField(TEXT("renderMs"), FPlatformTime::ToMilliseconds(GRenderThreadTime));
     Timing->SetNumberField(TEXT("gpuMs"), FPlatformTime::ToMilliseconds(RHIGetGPUFrameCycles()));
     Report->SetObjectField(TEXT("timing"), Timing);
-    // Runtime landscape grass: built instances and asynchronous builds still in flight, so a
-    // capture can prove the ground cover around it had finished generating.
-    double GrassInstances = 0;
-    for (TObjectIterator<UGrassInstancedStaticMeshComponent> It; It; ++It)
-        if (It->GetWorld() == GetWorld())
-            GrassInstances += It->GetNumRenderInstances();
-    int32 GrassTasks = 0;
-    for (TActorIterator<ALandscapeProxy> It(GetWorld()); It; ++It)
-        GrassTasks += It->AsyncFoliageTasks.Num();
-    auto Grass = MakeShared<FJsonObject>();
-    Grass->SetNumberField(TEXT("instances"), GrassInstances);
-    Grass->SetNumberField(TEXT("asyncTasks"), GrassTasks);
-    Report->SetObjectField(TEXT("grass"), Grass);
+    if (Session)
+    {
+        Report->SetObjectField(TEXT("camera"), Session->CameraPacket());
+        Report->SetStringField(TEXT("sessionActor"), Session->GetName());
+    }
+    // PCG's procedural component is private to its module; its reflected count is the GPU
+    // allocation size, not a readback of generated point data.
+    UClass *ProceduralClass = FindObject<UClass>(nullptr, TEXT("/Script/PCG.PCGProceduralISMComponent"));
+    check(ProceduralClass);
+    const FIntProperty *Count = FindFProperty<FIntProperty>(ProceduralClass, TEXT("NumInstances"));
+    check(Count);
+    int64 Allocated = 0, SceneInstances = 0;
+    for (TObjectIterator<UPrimitiveComponent> It; It; ++It)
+        if (IsValid(*It) && It->IsRegistered() && It->GetWorld() == GetWorld())
+        {
+            if (It->IsA(ProceduralClass))
+            {
+                const int32 Instances = Count->GetPropertyValue_InContainer(*It);
+                Allocated += Instances;
+                SceneInstances += Instances;
+            }
+            else if (const UInstancedStaticMeshComponent *Instances = Cast<UInstancedStaticMeshComponent>(*It))
+                SceneInstances += Instances->GetNumRenderInstances();
+            else
+                ++SceneInstances;
+        }
+    checkf(SceneInstances <= 12000000, TEXT("GPU scene exceeds the authored 12M budget: %lld"), SceneInstances);
+    Report->SetNumberField(TEXT("grassAllocatedInstances"), Allocated);
+    Report->SetNumberField(TEXT("sceneAllocatedInstances"), SceneInstances);
     Write(Directory / TEXT("runtime.json"), Report);
 }

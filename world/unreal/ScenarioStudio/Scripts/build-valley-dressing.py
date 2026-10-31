@@ -5,12 +5,19 @@ import hashlib
 import json
 import math
 import os
+import sys
 from collections import Counter
 from pathlib import Path
 
 import unreal
 
 ROOT = Path(unreal.Paths.project_dir()).resolve().parents[2]
+sites = list((ROOT / ".venv-cosys/lib").glob("python*/site-packages"))
+assert len(sites) == 1
+sys.path.extend([str(ROOT), str(sites[0])])
+from mission_planner.environment import load_env  # noqa: E402
+
+load_env()
 FOLDER = "/Game/Valley/Dressing"
 LABEL = "valley.dressing"
 # Walker-sized capsule (radius, half height m), lifted clear of the ground it stands on.

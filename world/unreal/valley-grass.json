@@ -1,19 +1,10 @@
 {
  "folder": "/Game/Valley/Grass",
- "cullM": [
-  145,
-  160
- ],
- "rings": 4,
  "heightM": [
   0.3,
   0.6
  ],
  "farGround": {
-  "fadeM": [
-   120,
-   160
-  ],
   "gain": [
    0.52,
    0.66,
@@ -62,7 +53,7 @@
      "mesh": "Vegetation/SM_Seedheads_AnaphalisA",
      "per100m2": 2,
      "scale": [
-      1.0,
+      1,
       1.15
      ]
     },
@@ -70,7 +61,7 @@
      "mesh": "Vegetation/SM_Seedheads_AnaphalisB",
      "per100m2": 2,
      "scale": [
-      1.0,
+      1,
       1.15
      ]
     }
@@ -87,7 +78,7 @@
      "mesh": "Vegetation/SM_Sedge_CarexA",
      "per100m2": 400,
      "scale": [
-      1.0,
+      1,
       1.3
      ]
     },
@@ -95,7 +86,7 @@
      "mesh": "Vegetation/SM_Sedge_CarexB",
      "per100m2": 400,
      "scale": [
-      1.0,
+      1,
       1.3
      ]
     },
@@ -110,5 +101,31 @@
    ],
    "brightness": 2.2
   }
- }
+ },
+ "profiles": {
+  "studio": [
+   {
+    "gridM": 32,
+    "reachM": 160,
+    "density": 1,
+    "width": 1
+   },
+   {
+    "gridM": 64,
+    "reachM": 640,
+    "density": 0.125,
+    "width": 2.8284271247461903
+   }
+  ],
+  "mission": [
+   {
+    "gridM": 16,
+    "reachM": 160,
+    "density": 1,
+    "width": 1
+   }
+  ]
+ },
+ "cleanup": 1.05,
+ "shapePreservation": "VOXELIZE"
 }

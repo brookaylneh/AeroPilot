@@ -11,6 +11,7 @@ class FJsonObject;
 class UDecalComponent;
 class URectLightComponent;
 class UMaterialInterface;
+class UPCGGenSourceComponent;
 
 namespace ScenarioNavigation
 {
@@ -41,6 +42,11 @@ class SCENARIOSTUDIO_API AScenarioSession : public AActor
   public:
     AScenarioSession();
     bool IsReady() const { return bInitialized && BoundStreamer.IsValid(); }
+    void DisableGrassSource();
+    TSharedRef<FJsonObject> CameraPacket() const;
+    UFUNCTION(Exec) void CameraView(const FString &View);
+    UFUNCTION(Exec) void CameraTravel(double U, double V);
+    UFUNCTION(Exec) void CameraNavigation(const FString &Input);
     UPROPERTY(EditAnywhere) TObjectPtr<AScenarioManager> Manager;
     UPROPERTY(EditAnywhere) TObjectPtr<UMaterialInterface> MarkerMaterial;
     virtual void BeginPlay() override;
@@ -49,6 +55,7 @@ class SCENARIOSTUDIO_API AScenarioSession : public AActor
 
   private:
     UPROPERTY() TObjectPtr<ACameraActor> Camera;
+    UPROPERTY() TObjectPtr<UPCGGenSourceComponent> GrassSource;
     UPROPERTY() TObjectPtr<UDecalComponent> Marker;
     UPROPERTY() TObjectPtr<URectLightComponent> PreviewFill;
     TWeakPtr<IPixelStreaming2Streamer> BoundStreamer;
@@ -96,7 +103,6 @@ class SCENARIOSTUDIO_API AScenarioSession : public AActor
     bool GroundAt(const FVector &Point, double &GroundZ) const;
     FVector ConstrainCamera(FVector Location, double ClearanceCm) const;
     TSharedRef<FJsonObject> NavigationSettings() const;
-    TSharedRef<FJsonObject> CameraPacket() const;
     void SendCameraState();
     void BindStream();
     void HandleCommand(const FString &Player, const FString &Message);

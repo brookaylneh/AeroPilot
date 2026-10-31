@@ -34,7 +34,7 @@ for asset in world/unreal/ScenarioStudio/Content/OpenMeadow/Catalog.uasset world
   fi
 done
 # A full cook is required here: legacy iteration can retain default-material
-# shader maps when runtime Landscape Grass permutations change.
+# shader maps when PCG compute and landscape material permutations change.
 "$UE_ROOT/Engine/Build/BatchFiles/RunUAT.sh" BuildCookRun \
   -project="$project" -noP4 -platform=Linux -clientconfig=Development \
   -build -cook -map=/Game/OpenMeadow/OpenMeadow -stage -pak -archive \
@@ -50,7 +50,9 @@ from pathlib import Path
 archive, evidence, world_config, cosys_settings = map(Path, sys.argv[1:5])
 pso_cache = sys.argv[5]
 log = (evidence / 'package.log').read_text(errors='replace')
-failures = ['Failed to compile Material', "doesn't have a valid ShaderMap", 'LogCook: Error:']
+failures = ['Failed to compile Material', "doesn't have a valid ShaderMap", 'LogCook: Error:',
+            'LogPCG: Error:', 'LogPCGEditor: Error:', 'LogShaderCompilers: Error:',
+            'LogComputeKernelShaderCompiler: Error:']
 if any(message in log for message in failures):
     raise SystemExit(f'Package contains cook/material failures; inspect {evidence / "package.log"}')
 (archive / 'Linux/scenario-map.txt').write_text('/Game/OpenMeadow/OpenMeadow\n')

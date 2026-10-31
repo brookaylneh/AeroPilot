@@ -2,6 +2,7 @@
 #include "Components/RectLightComponent.h"
 #include "ScenarioManager.h"
 #include "Camera/CameraActor.h"
+#include "RuntimeGen/GenSources/PCGGenSourceComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Engine/World.h"
 #include "EngineUtils.h"
@@ -102,6 +103,8 @@ void AScenarioSession::BindStream()
         if (!Camera)
         {
             Camera = GetWorld()->SpawnActor<ACameraActor>();
+            GrassSource = NewObject<UPCGGenSourceComponent>(Camera, TEXT("StudioGrassSource"));
+            GrassSource->RegisterComponent();
             Camera->GetCameraComponent()->SetFieldOfView(DesiredFieldOfView);
             PreviewFill = NewObject<URectLightComponent>(Camera, TEXT("CharacterPreviewFill"));
             PreviewFill->SetupAttachment(Camera->GetRootComponent());
@@ -304,6 +307,35 @@ TSharedRef<FJsonObject> AScenarioSession::PublicBriefing() const
     World->SetArrayField(TEXT("searchBounds"), Bounds);
     Result->SetObjectField(TEXT("world"), World);
     return Result;
+}
+
+void AScenarioSession::DisableGrassSource()
+{
+    check(GrassSource);
+    GrassSource->DestroyComponent();
+    GrassSource = nullptr;
+}
+
+void AScenarioSession::CameraView(const FString &View)
+{
+    check(FParse::Param(FCommandLine::Get(), TEXT("ScenarioDiagnostics")));
+    FString Error;
+    checkf(SetCreatorStage(TEXT("placement"), Error) && SetCamera(View, Error), TEXT("%s"), *Error);
+}
+
+void AScenarioSession::CameraTravel(double U, double V)
+{
+    check(FParse::Param(FCommandLine::Get(), TEXT("ScenarioDiagnostics")));
+    FString Error;
+    checkf(TravelAndPlace(TEXT("map"), U, V, Error), TEXT("%s"), *Error);
+}
+
+void AScenarioSession::CameraNavigation(const FString &Input)
+{
+    check(FParse::Param(FCommandLine::Get(), TEXT("ScenarioDiagnostics")));
+    TSharedPtr<FJsonObject> Value;
+    check(FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Input), Value) && Value);
+    HandleNavigation(TEXT("PackageCheck"), Value);
 }
 
 void AScenarioSession::UpdateCamera()

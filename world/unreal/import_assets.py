@@ -271,7 +271,7 @@ def main():
             links = [(base, "", P.MP_BASE_COLOR), (rough, "", P.MP_ROUGHNESS)]
             links += [(scalar("Metallic", -1300), "", P.MP_METALLIC), (flat, "", P.MP_NORMAL)]
         else:
-            # Landscape grass varieties lift their blades through this scalar (build-valley-grass.py).
+            # GPU grass material overrides use this scalar (build-valley-grass.py).
             lit = expression(unreal.MaterialExpressionMultiply, -1430)
             connect(*base, lit, "A")
             connect(

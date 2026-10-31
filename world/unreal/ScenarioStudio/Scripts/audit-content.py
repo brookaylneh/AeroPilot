@@ -2,8 +2,10 @@
 
 import hashlib
 import json
+import math
 import os
 import re
+import sys
 from pathlib import Path
 
 import unreal
@@ -11,6 +13,13 @@ import unreal
 PROJECT = Path(unreal.Paths.project_dir()).resolve()
 CONTENT = PROJECT / "Content"
 ROOT = PROJECT.parents[2]
+sites = list((ROOT / ".venv-cosys/lib").glob("python*/site-packages"))
+assert len(sites) == 1
+sys.path.extend([str(ROOT), str(sites[0])])
+from mission_planner.environment import load_env  # noqa: E402
+from world.unreal.grass_budget import scene_budget  # noqa: E402
+
+load_env()
 report_path = Path(os.environ["SNR_EVIDENCE_DIR"]) / "content-manifest.json"
 assert not report_path.exists(), "Archive the previous content manifest before a new run"
 
@@ -79,7 +88,80 @@ for package in sorted(on_disk):
     if any(str(a.asset_class_path.asset_name) == "ObjectRedirector" for a in assets):
         redirectors.append(package)
 
+grass = json.loads((ROOT / "world/unreal/valley-grass.json").read_text())
+for name, entry in grass["types"].items():
+    title = "".join(part.title() for part in name.split("-"))
+    mask = unreal.load_asset(f"{grass['folder']}/GT_{title}")
+    assert mask and not mask.get_editor_property("grass_varieties"), name
+    for row in entry["varieties"]:
+        mesh = unreal.load_asset(f"/Game/Valley/{row['mesh']}")
+        nanite = mesh.get_editor_property("nanite_settings")
+        assert nanite.enabled and nanite.shape_preservation == getattr(
+            unreal.NaniteShapePreservation, grass["shapePreservation"]
+        ), (row["mesh"], nanite.enabled, nanite.shape_preservation)
+        assert mesh.get_num_nanite_triangles() > 0, row["mesh"]
+for profile in grass["profiles"]:
+    graph = unreal.load_asset(f"{grass['folder']}/PCG_{profile.title()}")
+    assert graph.get_editor_property("use_hierarchical_generation") and graph.get_editor_property(
+        "use2d_grid"
+    )
+    nodes = [node.get_settings() for node in graph.get_editor_property("nodes")]
+    spawners = [node for node in nodes if isinstance(node, unreal.PCGStaticMeshSpawnerSettings)]
+    assert spawners and all(node.get_editor_property("execute_on_gpu") for node in spawners)
+    bands = grass["profiles"][profile]
+    radii = graph.get_editor_property("generation_radii")
+    for band in bands:
+        assert (
+            radii.get_editor_property(f"radius{band['gridM'] * 100}").get_editor_property("default")
+            == band["reachM"] * 100
+        ), profile
+    expected_distances = [
+        (
+            (bands[index - 1]["reachM"] - bands[index - 1]["gridM"]) * 100 if index else 0,
+            band["reachM"] * 100,
+        )
+        for index, band in enumerate(bands)
+        for entry in grass["types"].values()
+        for _ in entry["varieties"]
+    ]
+    for spawner, (minimum, maximum) in zip(spawners, expected_distances, strict=True):
+        (choice,) = spawner.get_editor_property("mesh_selector_parameters").get_editor_property(
+            "mesh_entries"
+        )
+        descriptor = choice.get_editor_property("descriptor")
+        assert descriptor.get_editor_property("instance_min_draw_distance") == minimum, profile
+        assert descriptor.get_editor_property("instance_end_cull_distance") == maximum, profile
+    assert sorted(
+        node.get_editor_property("num_elements")
+        for node in nodes
+        if isinstance(node, unreal.PCGCustomHLSLSettings)
+    ) == sorted(
+        math.ceil(band["gridM"] ** 2 * row["per100m2"] / 100 * band["density"])
+        for band in grass["profiles"][profile]
+        for entry in grass["types"].values()
+        for row in entry["varieties"]
+    ), profile
+
 world = json.loads((ROOT / "world/cosys/world.json").read_text())
+levels = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
+assert levels.load_level(maps[0])
+actors = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+authored_instances = sum(
+    component.get_instance_count()
+    if isinstance(component, unreal.InstancedStaticMeshComponent)
+    else 1
+    for actor in actors.get_all_level_actors()
+    for component in actor.get_components_by_class(unreal.PrimitiveComponent)
+)
+(generating_components,) = re.findall(
+    r"^pcg.RuntimeGeneration.NumGeneratingComponents=(\d+)$",
+    (PROJECT / "Config/DefaultEngine.ini").read_text(),
+    re.M,
+)
+instance_budget = scene_budget(
+    grass, len(world["vehicles"]), authored_instances, int(generating_components)
+)
+unreal.log("SNR_GPU_SCENE_BUDGET " + json.dumps(instance_budget))
 people = json.loads((ROOT / "world/unreal/creator-people.json").read_text())
 catalog = unreal.load_asset("/Game/OpenMeadow/Catalog")
 assert catalog, "Missing /Game/OpenMeadow/Catalog"
@@ -121,6 +203,7 @@ for region in catalog_regions:
 kept = [p for p in sorted(on_disk) if p in reachable]
 unreferenced = [p for p in sorted(on_disk) if p not in reachable]
 report = {
+    "gpuSceneBudget": instance_budget,
     "content": str(CONTENT.relative_to(ROOT)),
     "maps": maps,
     "alwaysCookDirectories": directories,
