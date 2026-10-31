@@ -15,6 +15,7 @@ const lookSensitivity = 0.09; // Degrees per mouse pixel, shared across capture 
 const emptyInput = (mode: NavigationInput['mode']): NavigationInput => ({
   forward: 0,
   right: 0,
+  up: 0,
   yaw: 0,
   pitch: 0,
   zoom: 0,
@@ -26,6 +27,8 @@ const keys = new Set([
   'KeyA',
   'KeyS',
   'KeyD',
+  'KeyQ',
+  'KeyE',
   'ArrowUp',
   'ArrowDown',
   'ArrowLeft',
@@ -97,6 +100,7 @@ export default function WorldNavigation({
     const has = (...codes: string[]) => codes.some((code) => pressed.current.has(code));
     input.current.forward = Number(has('KeyW', 'ArrowUp')) - Number(has('KeyS', 'ArrowDown'));
     input.current.right = Number(has('KeyD', 'ArrowRight')) - Number(has('KeyA', 'ArrowLeft'));
+    input.current.up = Number(has('KeyE')) - Number(has('KeyQ'));
     input.current.mode = current.current.movementMode.id;
     input.current.boost = has('ShiftLeft', 'ShiftRight');
   }
@@ -277,7 +281,7 @@ export default function WorldNavigation({
         className={`native-interaction free-navigation ${focused ? 'focused' : ''}`}
         tabIndex={0}
         role="application"
-        aria-label="Explore the world. WASD to move, drag to look, 1, 2 and 3 to select movement modes."
+        aria-label="Explore the world. WASD to move, Q down, E up, drag to look, 1, 2 and 3 to select movement modes."
         onFocus={() => setFocused(true)}
         onBlur={() => {
           setFocused(false);
@@ -414,7 +418,8 @@ export default function WorldNavigation({
           <p>
             Click the scene, then use <b>W A S D</b> or arrow keys to move horizontally. Hold and drag to look
             around; release to use the cursor. <b>1 / 2 / 3</b> select Walk, Run and Survey. Hold <b>Shift</b>{' '}
-            for {settings.boost}× speed. Walk and Run follow the ground; Survey glides above it.
+            for {settings.boost}× speed. Walk and Run follow the ground; Survey glides above it. Hold{' '}
+            <b>Q / E</b> to move down / up; release to keep that height above the ground.
           </p>
           <p>
             Scroll to zoom the lens. Click the map to place the person and fly there. <b>Mouse look</b>{' '}
@@ -449,7 +454,7 @@ export default function WorldNavigation({
           ? 'Drag to inspect · Scroll to zoom'
           : mode === 'inspect'
             ? 'Inspecting scene · Drag to orbit · WASD to explore'
-            : `${focused ? 'WASD move' : 'Click scene to explore'} · Drag to look · 1 / 2 / 3 modes · Shift faster`}
+            : `${focused ? 'WASD move' : 'Click scene to explore'} · Q / E down / up · Drag to look · 1 / 2 / 3 modes · Shift faster`}
       </div>
     </>
   );

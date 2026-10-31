@@ -168,6 +168,7 @@ bool AScenarioSession::TravelAndPlace(const FString &Space, double U, double V, 
     bNavigationFlight = true;
     NavigationMode = 0;
     bNavigationBoost = false;
+    bManualHeight = false;
     NavigationDestination = Ground;
     CameraTransitionFrom = Camera->GetActorTransform();
     FlightStartClearanceCm = FMath::Min(CameraTransitionFrom.GetLocation().Z - StartGroundZ, Nav::EyeHeightCm);
@@ -187,7 +188,7 @@ bool AScenarioSession::TravelAndPlace(const FString &Space, double U, double V, 
 void AScenarioSession::HandleNavigation(const FString &Player, const TSharedPtr<FJsonObject> &Input)
 {
     const auto Reject = [] { UE_LOG(LogTemp, Error, TEXT("Rejected malformed navigation input")); };
-    if (!Camera || !Input || Input->Values.Num() != 11)
+    if (!Camera || !Input || Input->Values.Num() != 12)
     {
         Reject();
         return;
@@ -195,20 +196,21 @@ void AScenarioSession::HandleNavigation(const FString &Player, const TSharedPtr<
     FString Session, Mode;
     FGuid Guid;
     bool Boost;
-    double Protocol, Sequence, Forward, Right, Yaw, Pitch, Zoom;
+    double Protocol, Sequence, Forward, Right, Up, Yaw, Pitch, Zoom;
     if (!Input->TryGetNumberField(TEXT("protocolVersion"), Protocol) || Protocol != Nav::ProtocolVersion ||
         !Input->TryGetStringField(TEXT("session"), Session) ||
         !FGuid::ParseExact(Session, EGuidFormats::DigitsWithHyphens, Guid) ||
         !Input->TryGetNumberField(TEXT("sequence"), Sequence) ||
         !Input->TryGetNumberField(TEXT("forward"), Forward) ||
-        !Input->TryGetNumberField(TEXT("right"), Right) || !Input->TryGetNumberField(TEXT("yaw"), Yaw) ||
+        !Input->TryGetNumberField(TEXT("right"), Right) || !Input->TryGetNumberField(TEXT("up"), Up) ||
+        !Input->TryGetNumberField(TEXT("yaw"), Yaw) ||
         !Input->TryGetNumberField(TEXT("pitch"), Pitch) || !Input->TryGetNumberField(TEXT("zoom"), Zoom) ||
         !Input->TryGetStringField(TEXT("mode"), Mode) || !Input->TryGetBoolField(TEXT("boost"), Boost))
     {
         Reject();
         return;
     }
-    for (double V : {Sequence, Forward, Right, Yaw, Pitch, Zoom})
+    for (double V : {Sequence, Forward, Right, Up, Yaw, Pitch, Zoom})
         if (!FMath::IsFinite(V))
         {
             Reject();
@@ -220,7 +222,8 @@ void AScenarioSession::HandleNavigation(const FString &Player, const TSharedPtr<
             ModeIndex = I;
     if (ModeIndex == INDEX_NONE || Sequence < 0 || Sequence > 9e12 || FMath::FloorToDouble(Sequence) != Sequence ||
         FMath::Abs(Forward) > 1 || FMath::FloorToDouble(Forward) != Forward || FMath::Abs(Right) > 1 ||
-        FMath::FloorToDouble(Right) != Right || FMath::Abs(Yaw) > 1e9 || FMath::Abs(Pitch) > 1e9 ||
+        FMath::FloorToDouble(Right) != Right || FMath::Abs(Up) > 1 || FMath::FloorToDouble(Up) != Up ||
+        FMath::Abs(Yaw) > 1e9 || FMath::Abs(Pitch) > 1e9 ||
         FMath::Abs(Zoom) > 1e9)
     {
         Reject();
@@ -238,7 +241,7 @@ void AScenarioSession::HandleNavigation(const FString &Player, const TSharedPtr<
     NavigationSequence = Sequence;
     NavigationPlayer = Player;
     const bool ModeChanged = ModeIndex != NavigationMode;
-    const bool Active = Forward != 0 || Right != 0 || Yaw != InputYaw || Pitch != InputPitch ||
+    const bool Active = Forward != 0 || Right != 0 || Up != 0 || Yaw != InputYaw || Pitch != InputPitch ||
                         Zoom != InputZoom || ModeChanged;
     if (CameraTransitionDuration > 0 && Active)
     {
@@ -248,14 +251,17 @@ void AScenarioSession::HandleNavigation(const FString &Player, const TSharedPtr<
         bNavigationFlight = bBriefingRisePending = false;
         EnterFreeCamera();
     }
-    if (!bFreeCamera && (Forward != 0 || Right != 0))
+    if (!bFreeCamera && (Forward != 0 || Right != 0 || Up != 0))
         EnterFreeCamera();
     if (ModeChanged)
     {
         HeightFrom = NavigationClearance;
         HeightElapsed = 0;
+        bManualHeight = false;
     }
-    const FVector Axes = FVector(Forward, Right, 0).GetClampedToMaxSize(1.);
+    if (Up != 0)
+        bManualHeight = true;
+    const FVector Axes = FVector(Forward, Right, Up).GetClampedToMaxSize(1.);
     const bool AxesChanged = NavigationAxes != Axes;
     const bool MovementChanged = ModeChanged || bNavigationBoost != Boost || AxesChanged;
     NavigationMode = ModeIndex;
@@ -335,7 +341,8 @@ void AScenarioSession::Tick(float DeltaSeconds)
             Camera->SetActorRotation(Rotation);
             const FRotationMatrix Heading(FRotator(0, Rotation.Yaw, 0));
             const FVector Wanted = (Heading.GetUnitAxis(EAxis::X) * NavigationAxes.X +
-                                     Heading.GetUnitAxis(EAxis::Y) * NavigationAxes.Y) *
+                                     Heading.GetUnitAxis(EAxis::Y) * NavigationAxes.Y +
+                                     FVector::UpVector * NavigationAxes.Z) *
                                     Nav::Modes[NavigationMode].SpeedCm * (bNavigationBoost ? Nav::Boost : 1);
             const FVector Previous = NavigationVelocity;
             const double Distance = FVector::Dist(Previous, Wanted);
@@ -349,15 +356,21 @@ void AScenarioSession::Tick(float DeltaSeconds)
                     NavigationVelocity = Wanted;
             }
             // Integrate the ramp and the remaining constant-speed time separately.
-            FVector P = Camera->GetActorLocation() + (Previous + NavigationVelocity) * (.5 * RampDt) +
-                        Wanted * (Dt - RampDt);
+            const FVector Displacement = (Previous + NavigationVelocity) * (.5 * RampDt) +
+                                         Wanted * (Dt - RampDt);
+            FVector P = Camera->GetActorLocation() + Displacement;
             Stopped = !Previous.IsNearlyZero() && NavigationVelocity.IsNearlyZero();
             P = ConstrainCamera(P, Nav::EyeHeightCm);
             double GroundZ;
             checkf(GroundAt(P, GroundZ), TEXT("Movement requires terrain"));
-            HeightElapsed = FMath::Min(HeightElapsed + Dt, Nav::HeightSeconds);
-            NavigationClearance = FMath::Lerp(HeightFrom, Nav::Modes[NavigationMode].HeightCm,
-                                              Smoothstep(HeightElapsed / Nav::HeightSeconds));
+            if (bManualHeight)
+                NavigationClearance = FMath::Max(Nav::EyeHeightCm, NavigationClearance + Displacement.Z);
+            else
+            {
+                HeightElapsed = FMath::Min(HeightElapsed + Dt, Nav::HeightSeconds);
+                NavigationClearance = FMath::Lerp(HeightFrom, Nav::Modes[NavigationMode].HeightCm,
+                                                  Smoothstep(HeightElapsed / Nav::HeightSeconds));
+            }
             P.Z = GroundZ + FMath::Max(Nav::EyeHeightCm, NavigationClearance);
             Camera->SetActorLocation(P);
         }

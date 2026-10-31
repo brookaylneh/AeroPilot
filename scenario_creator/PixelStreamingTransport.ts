@@ -4,7 +4,7 @@ import { briefingSchema } from './briefing';
 // A single-editor admission gateway MUST protect the signalling endpoint before enabling commands.
 export const creatorStageSchema = z.enum(['person', 'situation', 'placement', 'briefing']);
 export type CreatorStage = z.infer<typeof creatorStageSchema>;
-export const navigationProtocolVersion = 2;
+export const navigationProtocolVersion = 3;
 export const requestSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('viewport'), aspect: z.number().min(0.25).max(4) }).strict(),
   z.object({ type: z.literal('creator-stage'), stage: creatorStageSchema }).strict(),
@@ -87,6 +87,7 @@ export const navigationInputSchema = z
   .object({
     forward: z.number().int().min(-1).max(1),
     right: z.number().int().min(-1).max(1),
+    up: z.number().int().min(-1).max(1),
     yaw: z.number().min(-1e9).max(1e9),
     pitch: z.number().min(-1e9).max(1e9),
     zoom: z.number().min(-1e9).max(1e9),

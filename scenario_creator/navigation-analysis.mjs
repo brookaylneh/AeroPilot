@@ -16,7 +16,7 @@ const [cameras, samples, sends, frames, result] = await Promise.all([
   read('frames'),
   readFile(`${directory}/result.json`, 'utf8').then(JSON.parse),
 ]);
-const keys = result.version === 2 ? await read('keys') : [];
+const keys = result.version >= 2 ? await read('keys') : [];
 const movingCameras = cameras.filter((c) => c.phase.endsWith('-hold'));
 const canonicalHeights = JSON.parse(
   execFileSync(
@@ -90,7 +90,7 @@ const modes = result.actions
       windows.push({ second, mps, errorPercent: 100 * (mps / action.selectedMps - 1) });
     }
     const nativeWindows = [];
-    if (result.version === 2) {
+    if (result.version >= 2) {
       const accepted = cameras.find(
         (c) => c.inputSequence === inputs[0].sequence && c.inputSession === inputs[0].session,
       );
@@ -115,7 +115,7 @@ const modes = result.actions
       (c, i) => i > 0 && c.inputSequence !== cs[i - 1].inputSequence && c.echoLagMs !== null,
     );
     const release =
-      result.version === 2
+      result.version >= 2
         ? keys.find((k) => k.phase === phase && k.type === 'keyup' && k.code === 'KeyW')
         : inputs.findLast((s) => s.forward === 0 && s.right === 0);
     const clearance = cs.map((c) => (c.position.z - groundByTime.get(c.at)) / 100);
@@ -131,7 +131,7 @@ const modes = result.actions
     return {
       phase,
       selectedMps: action.selectedMps,
-      groundSource: result.version === 2 ? 'native collision' : 'canonical bilinear heightfield',
+      groundSource: result.version >= 2 ? 'native collision' : 'canonical bilinear heightfield',
       clearanceMinM: Math.min(...clearance),
       clearanceMaxM: Math.max(...clearance),
       canonicalClearanceMinM: Math.min(...canonicalClearance),

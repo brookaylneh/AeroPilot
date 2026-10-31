@@ -31,6 +31,7 @@ test('travel and placement are one strict command in either coordinate space', (
 const held: NavigationInput = {
   forward: 1,
   right: 0,
+  up: 1,
   yaw: 190,
   pitch: -30,
   zoom: 0.2,
@@ -42,7 +43,9 @@ test('navigation accepts absolute keys and cumulative look, with mode-owned spee
   assert.deepEqual(navigationInputSchema.parse(held), held);
   for (const invalid of [
     { ...held, speed: 4000 },
-    { ...held, up: 1 },
+    { ...held, up: 2 },
+    { ...held, up: 0.5 },
+    { ...held, up: NaN },
     { ...held, forward: 0.5 },
     { ...held, right: 2 },
     { ...held, mode: 'jog' },
@@ -75,7 +78,7 @@ test('backpressure keeps only the latest unsent absolute state', () => {
   assert.deepEqual(transport.navigationOrigin(), { yaw: 190, pitch: -30, zoom: 0.2 });
   assert.equal(sent.length, 1);
   transport.echoedNavigationSequence = 0;
-  const released = { ...held, forward: 0, yaw: 310, boost: false };
+  const released = { ...held, forward: 0, up: 0, yaw: 310, boost: false };
   assert.equal(transport.navigate(released), true);
   assert.deepEqual(transport.navigationOrigin(), { yaw: 310, pitch: -30, zoom: 0.2 });
   assert.deepEqual(sent[1], {

@@ -8,7 +8,7 @@ import { randomUUID } from 'node:crypto';
 const [origin, output, versionText] = process.argv.slice(2);
 const version = Number(versionText);
 assert(
-  origin && output && [1, 2].includes(version),
+  origin && output && [1, 2, 3].includes(version),
   'Usage: navigation-acceptance.mjs ORIGIN NEW_OUTPUT PROTOCOL_VERSION',
 );
 await mkdir(output, { recursive: false });
@@ -360,7 +360,7 @@ try {
     shortcuts.push({ key, selected: await select.inputValue(), state: await state() });
   }
   result.actions.push({ name: 'mode-shortcuts', shortcuts });
-  if (version === 2) {
+  if (version >= 2) {
     await phase('flight-cancellation');
     const mapBox = await page.locator('.minimap-surface').boundingBox();
     assert(mapBox);
@@ -452,6 +452,7 @@ try {
     pitch: 0,
     zoom: 0,
     ...(version === 1 ? { up: 0, speed: 140 } : { mode: 'walk', boost: false }),
+    ...(version === 3 ? { up: 0 } : {}),
   };
   await phase('watchdog');
   await page.evaluate((value) => window.navSend(value), { ...manualBase, sequence: 0, forward: 1 });

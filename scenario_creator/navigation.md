@@ -32,6 +32,12 @@ heading; A/D or left/right arrows strafe. Keys 1/2/3 select Walk/Run/Survey. Cha
 the selector immediately returns focus to the scene. The toolbar displays the
 active mode and its speed.
 
+Hold Q to descend or E to ascend at the selected movement speed; Shift applies
+the same boost. Vertical movement uses the same acceleration and release ramps as
+WASD. Releasing the key keeps the chosen height above terrain, with a minimum
+1.7 m ground clearance. Selecting another movement mode eases back to that mode's
+height. Vertical input cancels a fly-to and never moves the person.
+
 Drag either mouse button to look. A drag captures relative mouse motion after
 three pixels; releasing the button restores the cursor. Mouse look keeps capture
 active without holding a button. Escape releases capture and stops movement.
@@ -55,11 +61,11 @@ labelled explicitly.
 
 ## Protocol and measurement
 
-Authoring and navigation use protocol version 2; the navigation capability
-version is 8. `travel-and-place` carries `space` (`map` or `screen`) and normalized
+Authoring and navigation use protocol version 3; the navigation capability
+version is 9. `travel-and-place` carries `space` (`map` or `screen`) and normalized
 `u`, `v`. It is one strictly validated request and one native operation.
 
-Navigation carries absolute `forward`, `right`, `mode`, `boost`, cumulative
+Navigation carries absolute `forward`, `right`, `up`, `mode`, `boost`, cumulative
 `yaw`, `pitch`, `zoom`, and a session/sequence envelope. The browser sends changes
 and a low-rate held-key heartbeat. It retains the latest unsent state when the
 RTC channel is buffered or an input remains unacknowledged. Cumulative look and
@@ -80,7 +86,7 @@ coupled fleet ready:
 
 ```sh
 set -a; . .local/runtime.env; set +a
-node scenario_creator/navigation-acceptance.mjs "$SNR_ORIGIN" .local/evidence/navigation/<new-run> 2
+node scenario_creator/navigation-acceptance.mjs "$SNR_ORIGIN" .local/evidence/navigation/<new-run> 3
 node scenario_creator/navigation-analysis.mjs .local/evidence/navigation/<new-run>
 ```
 
@@ -91,7 +97,7 @@ delivery stalls. It also reports input echo latency, telemetry gaps, decoded fps
 video frame gaps, freezes and stopping time. Eye height is checked against both
 native collision and the independent canonical heightfield.
 Missing telemetry fails coverage; it is never substituted with an estimated speed.
-The same acceptance supports protocol 1 for a separately labelled release baseline.
+The same acceptance supports protocols 1 and 2 for separately labelled release baselines.
 Controlled frame-rate tests must record the console command and restore the live
 frame cap afterward. Keep those results separate from the live-profile stream gates.
 

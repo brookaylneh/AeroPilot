@@ -32,7 +32,7 @@ export const packetSchema = z.object({
   }),
   catalog: z.object({
     environmentId: z.string(),
-    navigationVersion: z.literal(8),
+    navigationVersion: z.literal(9),
     navigation: navigationSettingsSchema,
     creatorVersion: z.literal(1),
     droneFoundation: z.boolean(),

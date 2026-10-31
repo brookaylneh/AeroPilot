@@ -14,7 +14,7 @@ class UMaterialInterface;
 
 namespace ScenarioNavigation
 {
-inline constexpr int32 ProtocolVersion = 2, Version = 8;
+inline constexpr int32 ProtocolVersion = 3, Version = 9;
 inline constexpr double EyeHeightCm = 170, Boost = 2, RampSeconds = .25, StopSeconds = .2, HeightSeconds = 1.2;
 inline constexpr double WatchdogSeconds = 1, HitchSeconds = 2, TelemetrySeconds = .05;
 inline constexpr double HeartbeatMs = 100, DefaultFov = 60, MinFov = 20, MaxFov = 90;
@@ -74,6 +74,7 @@ class SCENARIOSTUDIO_API AScenarioSession : public AActor
     double InputYaw = 0, InputPitch = 0, InputZoom = 0;
     int32 NavigationMode = 0;
     bool bNavigationBoost = false;
+    bool bManualHeight = false;
     double NavigationAcceleration = 0;
     double NavigationClearance = ScenarioNavigation::EyeHeightCm;
     double HeightFrom = ScenarioNavigation::EyeHeightCm, HeightElapsed = ScenarioNavigation::HeightSeconds;

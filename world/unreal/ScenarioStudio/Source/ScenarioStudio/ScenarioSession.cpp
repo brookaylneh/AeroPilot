@@ -348,6 +348,8 @@ void AScenarioSession::UpdateMarker()
 bool AScenarioSession::SetCamera(const FString &View, FString &Error)
 {
     bPreviewFraming = View == TEXT("creator");
+    if (View != TEXT("explore"))
+        bManualHeight = false;
     bFollowPerson = View == TEXT("person") || View == TEXT("ground") || View == TEXT("elevated");
     CameraTransitionDuration = 0;
     if (bNavigationFlight)
