@@ -53,6 +53,17 @@ synchronous readback at 13×7, 257×9 and 3840×2160 to check channel order and 
 on the actual RHI. Response timestamps come from `airsim-sensor.patch` (below), not from
 readback completion.
 
+## Studio and mission transitions
+
+The local `mission-request.json` contains exactly `mode` (`mission` or `studio`) and a
+unique `id`. Native telemetry acknowledges both `mode` and `modeRequestId`; the bridge
+waits for its own request, not an old matching mode. Launch disables the Studio viewport
+and switches grass generation to the four drone sources. Cancellation is acknowledged only
+after native reset restores the Studio grass graph/source, viewport rendering, default
+character, empty placement and blank brief. The mission owner must cancel its tasks and
+land/disarm the aircraft before requesting this reset. Saving and loading remain separate
+from this runtime transition.
+
 ## Camera acquisition
 
 `capture.FrameCapture` is the unpaused image writer shared by missions and calibration.

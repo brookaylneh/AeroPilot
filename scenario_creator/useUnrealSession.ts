@@ -8,6 +8,7 @@ import {
   type UnrealCommand,
 } from './PixelStreamingTransport';
 import { briefingSchema } from './briefing';
+import { missionLifecycle } from './missionLifecycle';
 
 export const packetSchema = z.object({
   camera: cameraSchema,
@@ -114,6 +115,12 @@ export function useUnrealSession() {
       if (!active || !container.current) return;
       let current: PixelStreamingTransport | null = null;
       try {
+        setConnectionStatus({
+          title: 'Opening Studio…',
+          detail: 'A launched mission will be cancelled. Any airborne drones must return and land first.',
+        });
+        await missionLifecycle({ type: 'studio' }, abort.signal);
+        if (!active) return;
         const response = await fetch('/api/unreal/status', {
           cache: 'no-store',
           signal: AbortSignal.any([abort.signal, AbortSignal.timeout(5000)]),
@@ -181,11 +188,16 @@ export function useUnrealSession() {
       }
     };
     void attempt();
-    return () => {
+    const close = () => {
       active = false;
       abort.abort();
       connection?.dispose();
       transport.current = null;
+    };
+    window.addEventListener('pagehide', close);
+    return () => {
+      window.removeEventListener('pagehide', close);
+      close();
     };
   }, [retry]);
   useEffect(() => {

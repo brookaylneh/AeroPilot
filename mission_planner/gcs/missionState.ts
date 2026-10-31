@@ -128,6 +128,7 @@ const stateSchema = z.object({
 });
 export type MissionState = z.infer<typeof stateSchema>;
 const messageSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('idle') }).strict(),
   stateSchema,
   sensorFrameMessageSchema,
   feedFocusMessageSchema,
@@ -150,7 +151,7 @@ export function useMission(caseId: string | null) {
   const [sensorFrames, setSensorFrames] = useState<SensorFrames>({});
   const [feedFocus, setFeedFocus] = useState<FeedFocus | null>(null);
   const [events, setEvents] = useState<MissionEvent[]>([]);
-  const [connection, setConnection] = useState<'connecting' | 'connected' | 'closed'>('connecting');
+  const [connection, setConnection] = useState<'connecting' | 'connected' | 'closed' | 'idle'>('connecting');
   const [error, setError] = useState('');
   const [now, setNow] = useState(Date.now());
   const socket = useRef<WebSocket | null>(null);
@@ -185,7 +186,17 @@ export function useMission(caseId: string | null) {
         return;
       }
       const data = parsed.data;
-      if (data.type === 'state') {
+      if (data.type === 'idle') {
+        setState(null);
+        setSearch(null);
+        setSensorFrames({});
+        setFeedFocus(null);
+        setEvents([]);
+        setError('');
+        setConnection('idle');
+        ws.onclose = null;
+        ws.close();
+      } else if (data.type === 'state') {
         arrived.current = Date.now();
         setState(data);
       } else if (data.type === 'search') setSearch(data.search);
@@ -218,10 +229,15 @@ export function useMission(caseId: string | null) {
     };
     ws.onerror = () => setError('Mission service connection failed. Check the service and reload this page.');
     ws.onclose = () => setConnection('closed');
-    return () => {
+    const close = () => {
       ws.onclose = null;
       ws.onerror = null;
       ws.close();
+    };
+    window.addEventListener('pagehide', close);
+    return () => {
+      window.removeEventListener('pagehide', close);
+      close();
     };
   }, [caseId]);
   useEffect(() => {

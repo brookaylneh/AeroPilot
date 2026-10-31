@@ -43,6 +43,7 @@ class SCENARIOSTUDIO_API AScenarioSession : public AActor
     AScenarioSession();
     bool IsReady() const { return bInitialized && BoundStreamer.IsValid(); }
     void DisableGrassSource();
+    void ResetSession();
     TSharedRef<FJsonObject> CameraPacket() const;
     UFUNCTION(Exec) void CameraView(const FString &View);
     UFUNCTION(Exec) void CameraTravel(double U, double V);
@@ -74,6 +75,7 @@ class SCENARIOSTUDIO_API AScenarioSession : public AActor
     bool SetBriefing(const TSharedPtr<FJsonObject> &Value, FString &Error);
     TSharedRef<FJsonObject> PublicBriefing() const;
     bool bInitialized = false;
+    bool bMissionActive = false;
     bool bShowMarker = true;
     // Navigation is transient, independent of saved target authoring data.
     FString NavigationPlayer, NavigationSession;

@@ -23,6 +23,7 @@ class SCENARIOSTUDIO_API AScenarioGrass : public AActor
     UFUNCTION(BlueprintCallable, Category = "Scenario|Authoring")
     static void SetKernelSource(UPCGSettings *Settings, const FString &Source);
     void EnterMission();
+    void EnterStudio();
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaSeconds) override;
 };

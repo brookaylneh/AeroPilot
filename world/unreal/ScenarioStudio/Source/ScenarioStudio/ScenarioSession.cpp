@@ -311,8 +311,24 @@ TSharedRef<FJsonObject> AScenarioSession::PublicBriefing() const
 void AScenarioSession::DisableGrassSource()
 {
     check(GrassSource);
+    bMissionActive = true;
+    StopNavigation();
     GrassSource->DestroyComponent();
     GrassSource = nullptr;
+}
+
+void AScenarioSession::ResetSession()
+{
+    bMissionActive = false;
+    FString Error;
+    checkf(ResetScenario(Error), TEXT("Session reset failed: %s"), *Error);
+    if (!GrassSource)
+    {
+        GrassSource = NewObject<UPCGGenSourceComponent>(Camera, TEXT("StudioGrassSource"));
+        GrassSource->RegisterComponent();
+    }
+    GetWorld()->GetGameViewport()->bDisableWorldRendering = false;
+    UpdateCamera();
 }
 
 void AScenarioSession::CameraView(const FString &View)
@@ -778,7 +794,9 @@ void AScenarioSession::HandleCommand(const FString &Player, const FString &Messa
     {
         FString Value;
         double A, B, C;
-        if (Type == TEXT("viewport") && Fields(*Command, {TEXT("type"), TEXT("aspect")}) &&
+        if (bMissionActive)
+            Error = TEXT("This scenario has launched. Return to Studio to cancel it and start over.");
+        else if (Type == TEXT("viewport") && Fields(*Command, {TEXT("type"), TEXT("aspect")}) &&
             (*Command)->TryGetNumberField(TEXT("aspect"), A) && FMath::IsFinite(A) && A >= .25 && A <= 4.)
         {
             ViewportAspect = A;

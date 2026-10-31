@@ -12,6 +12,37 @@ from world.cosys import client
 
 
 class CoordinateTests(unittest.TestCase):
+    def test_studio_reset_requires_its_own_native_acknowledgement(self):
+        with (
+            patch.object(client.uuid, "uuid4", return_value="reset-id"),
+            patch.object(client, "write_json") as write,
+            patch.object(client.time, "sleep") as sleep,
+            patch.object(
+                client,
+                "native",
+                side_effect=[
+                    {"mode": "studio", "modeRequestId": "previous-reset"},
+                    {"mode": "studio", "modeRequestId": "reset-id"},
+                ],
+            ),
+        ):
+            client.reset_session()
+        write.assert_called_once_with(
+            client.DATA / "mission-request.json", {"mode": "studio", "id": "reset-id"}
+        )
+        sleep.assert_called_once_with(0.1)
+
+    def test_mode_timeout_does_not_send_another_request(self):
+        with (
+            patch.object(client, "write_json") as write,
+            patch.object(client.time, "monotonic", side_effect=[0, 21]),
+            patch.object(client, "native") as native,
+        ):
+            with self.assertRaisesRegex(TimeoutError, "did not acknowledge studio"):
+                client.reset_session()
+        write.assert_called_once()
+        native.assert_not_called()
+
     def test_vehicle_local_ned_roundtrip_with_nonzero_origin(self):
         origin = {"x": -81417.2, "y": 250, "z": 1145}
         local = {"x": 123.25, "y": -42.5, "z": -20.0}

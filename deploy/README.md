@@ -161,10 +161,11 @@ Epic's frontend `ForceTURN` flag is unused because it also rejects those remote 
 
 The Unreal world advances only while the four disarmed autopilots return motor outputs, so start
 `snr-mission` after `snr-unreal` and it starts the fleet immediately. Its health state is `starting`
-until the fleet is ready, then `idle` until the first `/mission?case=<uuid>` connection selects a saved
-briefing. It keeps that case across browser disconnects and rejects another case. Land all aircraft and
-stop/restart `snr-mission` before choosing another case. No model inference or autonomous flight is
-started merely by connecting a browser.
+until the fleet is ready, then `idle` until Studio's Launch request selects a saved briefing.
+Mission connections only rejoin that case. Returning to Studio cancels it, returns and lands
+airborne aircraft, and resets native rendering to character selection while keeping the
+coupled fleet running. A later launch can select a new case. No model inference or autonomous
+flight starts merely by launching the briefing or connecting a browser.
 
 Run development with `npm run dev`. Vite middleware and API/WebSocket handlers share the single fixed
 listener; reload the browser after changes. Tunnel it with:

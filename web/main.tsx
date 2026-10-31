@@ -4,6 +4,10 @@ import './base.css';
 const ScenarioStudio = React.lazy(() => import('../scenario_creator/UnrealApp'));
 const MissionControl = React.lazy(() => import('../mission_planner/gcs/MissionControl'));
 const Team = React.lazy(() => import('../mission_planner/gcs/Team'));
+// History restoration must revalidate the mission boundary instead of reviving a cached session.
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) location.reload();
+});
 createRoot(document.getElementById('root')!).render(
   location.pathname === '/mission' ? (
     <React.Suspense fallback={<div className="loading">Opening mission control…</div>}>

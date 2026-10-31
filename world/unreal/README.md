@@ -176,7 +176,10 @@ It enables the GPU mask shaders and resources, not Landscape Grass instance gene
 The studio camera supplies a PCGGenSourceComponent. Hierarchical partitioned generation uses
 32 m near cells and 64 m middle cells; middle clumps widen in XY to compensate for lower density
 without changing blade heights. Mission entry destroys the studio source, switches to the authored
-mission graph, and registers one source on each of the four front_center cameras. Texture streaming
+mission graph, and registers one source on each of the four front_center cameras. After
+mission cancellation and landing, Studio reset removes those sources, restores the Studio
+graph and camera source, and re-enables viewport rendering before acknowledging the reset.
+Texture streaming
 retains its sensor views. Mission mode keeps the viewport disabled but submits scene updates every
 frame so PCG compute and GPU Scene cleanup continue between sensor captures.
 OpenMeadow does not need World Partition: UE 5.8 supports partitioned

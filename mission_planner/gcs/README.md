@@ -13,14 +13,19 @@ commander processes explicitly selected recorded captures or the coupled live ca
 
 Use the installed services described in [deployment](../../deploy/README.md). Open a saved briefing
 from `/studio`; its launch button navigates to `/mission?case=<uuid>`. The mission service starts the
-fleet when it starts, because the coupled world blocks without motor replies. The first connection selects
-its case, which the service retains across browser disconnects. Stop/restart `snr-mission`
-after landing before changing cases. The fixed loopback listener is exposed only through the same-origin
+fleet when it starts, because the coupled world blocks without motor replies. Studio sends `launch` with the saved `case_id` before navigating. Only Launch selects
+its case; `connect` rejoins it and never starts a cancelled case. The service retains the
+active case across browser disconnects. Returning to Studio sends `studio`, cancels model
+and flight tasks, holds and returns airborne aircraft, waits for landing, clears uploaded
+missions with acknowledgement/readback, and resets Unreal to character selection. The
+fleet continues supplying motor replies throughout. A new launch creates a fresh run log
+and can select another saved case without restarting services. The fixed loopback listener is exposed only through the same-origin
 `/api/mission` WebSocket proxy.
 
 The saved public record uses schema version 2 and a single `{brief, portrait}` report.
 Mission Control shows that brief and pre-fills the prompt once on case load. It waits
 for Send; telemetry updates do not replace prompt edits or submit model requests.
+Browser Forward after cancellation receives `idle` and shows a link back to Studio.
 
 Build the pinned source and submodules with
 `bash mission_planner/gcs/build-sitl.sh .local/build/ardupilot`.

@@ -80,6 +80,13 @@ void AScenarioGrass::EnterMission()
     SetActorTickEnabled(true);
 }
 
+void AScenarioGrass::EnterStudio()
+{
+    check(Grass->GetGraph() == MissionGraph);
+    Grass->SetGraphLocal(StudioGraph);
+    SetActorTickEnabled(false);
+}
+
 void AScenarioGrass::Tick(float DeltaSeconds)
 {
     Super::Tick(DeltaSeconds);

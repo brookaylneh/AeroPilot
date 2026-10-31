@@ -34,6 +34,8 @@ from world.cosys.sensor import MissionSensor
 from world.cosys.terrain import BOUNDS
 
 MESSAGE_FIELDS = {
+    "launch": {"type", "case_id"},
+    "studio": {"type"},
     "connect": {"type", "case_id"},
     "chat": {"type", "text"},
     "tool": {"type", "name", "arguments"},
@@ -131,6 +133,18 @@ class Mission:
         assert os.environ["SNR_SITL_MODEL"] == "airsim-copter", (
             "Mission service requires the Unreal-coupled fleet"
         )
+        self.fleet_ready = False
+        self.fleet_closed = False
+        self.fleet_error = None
+        self.model = Wonder()
+        self.sockets = set()
+        self.lifecycle_lock = asyncio.Lock()
+        self.clearing = False
+        self.initialize_run(case)
+        self.fleet = Fleet(self.directory / "sitl", self.fleet_event, self.search.landmarks)
+        self.sensor = None
+
+    def initialize_run(self, case):
         self.case = case
         self.id = str(uuid.uuid4())
         self.directory = ROOT / ".local/data/missions" / self.id
@@ -146,17 +160,75 @@ class Mission:
         self.agent_busy = False
         self.context_index = 0
         self.map_focus = None
-        self.fleet_ready = False
-        self.fleet_closed = False
-        self.fleet_error = None
-        self.model = Wonder()
         self.search = Search(self)
-        self.fleet = Fleet(self.directory / "sitl", self.fleet_event, self.search.landmarks)
         self.ground_team = GroundTeam(self)
-        self.sensor = MissionSensor(self.directory / "captures", self.fleet, self.capture_received)
         self.sensor_error = None
         self.sensor_frames = {}
         self.feed_focus = None
+
+    async def begin(self, case_id):
+        assert self.case is None and not self.clearing, "A mission is already running"
+        async with self.lifecycle_lock:
+            assert self.case is None and not self.clearing, "A mission is already running"
+            case = read_case(case_id)
+            assert self.fleet_ready and self.fleet_error is None, "Fleet is not ready"
+            assert all(not v["armed"] and v["landed_state"] == 1 for v in self.vehicles()), (
+                "Fleet must be landed"
+            )
+            self.log.close()
+            self.initialize_run(case)
+            self.sensor = MissionSensor(
+                self.directory / "captures", self.fleet, self.capture_received
+            )
+            self.event("mode", "Rescue mission launched: " + case["name"])
+            await asyncio.to_thread(sim.enter_mission)
+            self.launch(self.run_sensor())
+            return case["id"]
+
+    async def clear(self):
+        async with self.lifecycle_lock:
+            assert not self.clearing, "Mission cancellation has failed; restore the service"
+            if self.case is None:
+                return
+            assert self.fleet_ready and self.fleet_error is None, "Fleet is not ready"
+            self.clearing = True
+            self.event("mode", "Returning to Studio; cancelling this mission")
+            for socket in tuple(self.sockets):
+                await socket.close(code=1000, reason="Mission cancelled by returning to Studio")
+            pending = list(self.tasks)
+            for task in pending:
+                task.cancel()
+            if pending:
+                results = await asyncio.gather(*pending, return_exceptions=True)
+                for result in results:
+                    if isinstance(result, Exception):
+                        raise RuntimeError(
+                            f"Mission task failed during cancellation: {result}"
+                        ) from result
+            for vehicle in self.vehicles():
+                if vehicle["armed"]:
+                    await self.fleet.execute("hold", {"drone_id": vehicle["id"]})
+            for vehicle in self.vehicles():
+                if vehicle["armed"]:
+                    await self.fleet.execute(
+                        "land" if vehicle["landed_state"] == 1 else "return_home",
+                        {"drone_id": vehicle["id"]},
+                    )
+            deadline = time.monotonic() + 180
+            while any(v["armed"] or v["landed_state"] != 1 for v in self.vehicles()):
+                assert time.monotonic() < deadline, "Fleet landing timed out during cancellation"
+                self.fleet._check_tasks()
+                await asyncio.sleep(0.2)
+            if self.sensor is not None:
+                await self.sensor.close()
+                self.sensor = None
+            await self.search.commander.close()
+            await self.fleet.clear_missions()
+            await asyncio.to_thread(sim.reset_session)
+            self.event("mode", "Mission cancelled; Studio reset to character selection")
+            self.log.close()
+            self.initialize_run(None)
+            self.clearing = False
 
     def event(
         self, kind, text, *, name=None, arguments=None, result=None, call_id=None, source=None
@@ -237,7 +309,11 @@ class Mission:
             return
         self.fleet_ready = True
         self.event("mode", "Four autopilots connected; fences and missions read back.")
-        self.launch(self.run_sensor())
+        if self.case is not None:
+            self.sensor = MissionSensor(
+                self.directory / "captures", self.fleet, self.capture_received
+            )
+            self.launch(self.run_sensor())
 
     async def run_sensor(self):
         try:
@@ -757,7 +833,8 @@ class Mission:
                 if isinstance(result, Exception):
                     self.event("error", "Shutdown task: " + operator_error(result))
         try:
-            await self.sensor.close()
+            if self.sensor is not None:
+                await self.sensor.close()
         finally:
             try:
                 await self.search.commander.close()

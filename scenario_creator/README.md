@@ -3,7 +3,7 @@
 `/studio` supports named, saved Unreal scenarios. A saved scenario restores the
 person, appearance, situation, placement, movement state and mission brief together.
 Use Scenarios to save, load or begin a new scenario. Launch saves the reviewed brief
-and opens `/mission?case=<saved-id>` through the original case-based workflow.
+and starts that case before opening `/mission?case=<saved-id>`.
 
 ## Authoring flow
 
@@ -14,8 +14,22 @@ and opens `/mission?case=<saved-id>` through the original case-based workflow.
    or placement are reflected when the visitor confirms the placement again.
 4. Click the document to edit it in place, or copy it using the copy icon. Save and
    Launch write exactly the reviewed text; loading restores saved edits.
-5. Launch saves a scenario and opens Mission Control with its case ID. The saved brief
-   fills the planner prompt once, waiting for the visitor to press Send.
+5. Launch saves the scenario and waits for the mission service to acknowledge that case
+   before opening Mission Control. The saved brief fills the planner prompt once,
+   waiting for the visitor to press Send.
+
+Launch is the editing boundary. Before Launch, the four-step header remains editable.
+After Launch, returning to `/studio` cancels the active mission and resets the person,
+placement and brief to character selection. Studio waits for cancellation acknowledgement
+before opening the video stream. If aircraft are airborne, cancellation stops mission work,
+holds them, returns them home and waits for landing before resetting the world. Saved
+scenario files remain available in the library. Browser Forward to a cancelled case shows
+no active mission; it cannot launch the old case. A reload of an active mission rejoins it.
+
+Page exit closes the video and mission sockets. A page restored from the browser's
+back/forward cache reloads to revalidate the launch boundary; it cannot revive the cached
+editing session. See [page lifecycle](https://developer.mozilla.org/en-US/docs/Web/API/Window/pageshow_event)
+and [pagehide](https://developer.mozilla.org/en-US/docs/Web/API/Window/pagehide_event).
 
 The copy action uses a user-initiated `document.execCommand('copy')` because the
 installed HTTP origin cannot use the secure-context Clipboard API. A failed copy
@@ -72,8 +86,9 @@ with a 4,000-character brief. `/api/rescue-cases/:id` and the mission service re
 these public records. The private position, situation and movement state never enter
 the planner's record. The public world bounds still come from the authored world.
 
-The mission service selects one saved case for its lifetime. A different case requires an ordered coupled service restart. Scenario
-files survive service restarts; per-mission logs remain separate from saved scenarios.
+The mission service owns one active saved case. Returning to Studio clears that selection
+while retaining the coupled fleet, so a new launch needs no service restart. Per-run logs
+remain separate from saved scenarios and are retained after cancellation.
 
 `briefing.test.ts` checks every person's generated report across a placement grid,
 quoted evidence, landmark selection, local timestamps and the strict saved-record

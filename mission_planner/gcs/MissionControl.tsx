@@ -138,11 +138,15 @@ export default function MissionControl() {
   const [text, setText] = useState('');
   const promptCase = useRef<string | null>(null);
   useEffect(() => {
+    if (connection === 'idle') {
+      setText('');
+      promptCase.current = null;
+    }
     if (state && promptCase.current !== state.mission.case_id) {
       setText(state.mission.briefing.brief);
       promptCase.current = state.mission.case_id;
     }
-  }, [state]);
+  }, [state, connection]);
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [briefingOpen, setBriefingOpen] = useState(false);
   const [flightForm, setFlightForm] = useState<'take_off' | 'fly_route' | null>(null);
@@ -508,8 +512,8 @@ export default function MissionControl() {
                   <div className="gcs-conversation-empty">
                     <span className="gcs-eyebrow">MISSION ASSISTANT</span>
                     <h3>
-                      {!caseId
-                        ? 'No rescue case selected'
+                      {!caseId || connection === 'idle'
+                        ? 'No active mission'
                         : enabled
                           ? 'Ready for your instructions'
                           : connection === 'connecting'
@@ -517,14 +521,17 @@ export default function MissionControl() {
                             : 'Mission service offline'}
                     </h3>
                     <p>
-                      {!caseId
-                        ? 'Open a saved rescue briefing and select Launch Search & Rescue Mission to begin.'
+                      {!caseId || connection === 'idle'
+                        ? 'Return to Studio and launch a mission from the rescue briefing.'
                         : enabled
                           ? 'Inspect the fleet, prepare a route, or coordinate the next flight action. Flight commands require your approval in Supervised mode.'
                           : connection === 'connecting'
                             ? 'Waiting for the mission service to load your saved rescue briefing and aircraft telemetry.'
                             : 'Check that the mission service is running, then reload this page. Aircraft data will appear when the connection is established.'}
                     </p>
+                    {(!caseId || connection === 'idle') && (
+                      <a href="/studio">Start from character selection</a>
+                    )}
                     <button
                       disabled={!enabled}
                       onClick={() => setText('Give me the fleet status and any issues before takeoff.')}

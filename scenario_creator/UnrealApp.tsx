@@ -5,6 +5,7 @@ import { useUnrealSession } from './useUnrealSession';
 import { colors, situations, title } from './creator';
 import type { Briefing } from './briefing';
 import { generateBrief } from './missionBrief';
+import { missionLifecycle } from './missionLifecycle';
 import type { CreatorStage } from './PixelStreamingTransport';
 import CharacterPicker from './CharacterPicker';
 import RescueBriefing from './RescueBriefing';
@@ -360,15 +361,24 @@ export default function UnrealApp() {
               disabled={locked}
               editPlacement={() => void moveTo('placement')}
               launch={async () => {
-                if (!(await send({ type: 'briefing', briefing }))) return;
-                const saved = await send({
-                  type: 'save',
-                  name: name.trim() || 'Open Meadow rescue case',
-                  summary: '',
-                });
-                if (saved) {
-                  if (!saved.lastSavedId) throw new Error('Saved rescue case has no id');
-                  location.assign(`/mission?case=${encodeURIComponent(saved.lastSavedId)}`);
+                setWorking(true);
+                try {
+                  if (!(await send({ type: 'briefing', briefing }))) return;
+                  const saved = await send({
+                    type: 'save',
+                    name: name.trim() || 'Open Meadow rescue case',
+                    summary: '',
+                  });
+                  if (saved) {
+                    if (!saved.lastSavedId) throw new Error('Saved rescue case has no id');
+                    await missionLifecycle({ type: 'launch', case_id: saved.lastSavedId });
+                    transport.current?.dispose();
+                    location.assign(`/mission?case=${encodeURIComponent(saved.lastSavedId)}`);
+                  }
+                } catch (error) {
+                  setError((error as Error).message);
+                } finally {
+                  setWorking(false);
                 }
               }}
             />
