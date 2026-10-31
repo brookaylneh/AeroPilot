@@ -537,7 +537,7 @@
     "slots": 4,
     "context_tokens_per_slot": 32768,
     "projector_loaded": true,
-    "parallel_measurement_scope": "Startup confirms the projector loaded with four slots. Concurrent analyst requests were not measured because the first report failed schema validation."
+    "parallel_measurement_scope": "Corrected Glimmer benchmark: 140 valid reports on one H200 container; server logs show peaks of 1, 2 and 4 simultaneously occupied slots."
   },
   "startup": {
     "sam": {
@@ -1068,90 +1068,374 @@
     }
   },
   "glimmer": {
-    "item": "Frozen Glimmer.report latency benchmark",
-    "status": "blocked",
-    "client_field": "response_format.schema",
-    "required_by_b12004": "response_format.json_schema.schema",
+    "status": "complete",
+    "evidence": ".local/evidence/models/modal-01/glimmer-schema-02/",
+    "client_field": "response_format.json_schema.schema",
     "source": "https://github.com/ggml-org/llama.cpp/blob/b12004/tools/server/server-common.cpp#L1392",
-    "documentation_conflict": "tools/server/README.md at b12004 advertises the flat schema form, but server-common.cpp only reads nested json_schema.schema for type=json_schema.",
-    "attempted_reports": 1,
-    "schema_valid_reports": 0,
-    "http_status": 200,
-    "response_fields": [
-      "decision",
-      "reason",
-      "best_next_action"
-    ],
-    "reasoning_tokens": 190,
-    "timings": {
-      "cache_n": 0,
-      "prompt_n": 923,
-      "prompt_ms": 813.465,
-      "prompt_per_token_ms": 0.8813271939328278,
-      "prompt_per_second": 1134.6523820938821,
-      "predicted_n": 354,
-      "predicted_ms": 4007.163,
-      "predicted_per_token_ms": 11.351736543909348,
-      "predicted_per_second": 88.09224880545165
-    },
-    "remaining_concurrencies": [
-      2,
-      4
-    ],
-    "client_changed": false,
-    "total_s_failed_attempt": 5.768524261016864,
-    "failure_type": "jsonschema.ValidationError",
-    "http_429_count": 0,
-    "raw_response": "glimmer-1.responses.jsonl",
+    "client_changed": true,
+    "client_change": "Nest the existing report schema under json_schema; no other models.py changes in this follow-up.",
+    "template": "analyst-v1",
     "sampling": {
       "temperature": 1.0,
       "top_p": 0.95,
       "top_k": 64,
       "seed": 0
     },
-    "template": "analyst-v1",
-    "planned_requests_per_stream": 20,
-    "concurrency_results": {
-      "1": "Stopped on first schema-invalid report; 1 attempted, 0 valid.",
-      "2": "Blocked by the same client contract.",
-      "4": "Blocked by the same client contract."
+    "source_hashes": {
+      "mission_planner/agents/models.py": "65146309c54341704b0207c8071f708ba0ec2db9b529aa63b6ff656653551b38",
+      "mission_planner/agents/perception/analyst.py": "1061d3735de0cd3c57d55f0c74ba86e9e50d6ca74949f5770c395c643be91c09",
+      "mission_planner/agents/perception/test_analyst.py": "9a52633968438ab7ae24edd796ace0062bc9f87e142de75acc138838a48141b6",
+      "mission_planner/agents/services/benchmark.py": "b939272344d2e4325fddd707d7c03b2071cae6e4f2044192d021243698c827b5"
     },
-    "client_change_required": "Nest the schema under response_format.json_schema.schema. Not applied because the task explicitly requires stopping if models.py needs changes.",
-    "reasoning_token_count_scope": "Separate /tokenize request on the preserved failed response; outside the measured report latency.",
-    "reasoning_token_evidence": "glimmer-failed-report-reasoning.json"
+    "runs": [
+      {
+        "requests": 20,
+        "concurrency": 1,
+        "total_s": {
+          "p50": 4.377593304001493,
+          "p95": 5.538830649062584
+        },
+        "failures": [],
+        "started_at_unix_s": 1793475429.4265401,
+        "finished_at_unix_s": 1793475522.690684,
+        "prompt_processing_s": {
+          "p50": 0.316117,
+          "p95": 0.6332406000000003
+        },
+        "decoding_tokens_per_second": {
+          "p50": 84.14476705361643,
+          "p95": 85.68511735877706
+        },
+        "reasoning_tokens": {
+          "p50": 185.0,
+          "p95": 220.05
+        },
+        "schema_valid": 20,
+        "requests_per_stream": 20,
+        "http_status_counts": {
+          "200": 40
+        },
+        "http_429_count": 0,
+        "per_stream": {
+          "0": {
+            "requests": 20,
+            "total_s": {
+              "p50": 4.377593304001493,
+              "p95": 5.538830649062584
+            }
+          }
+        },
+        "cached_prompt_tokens": {
+          "p50": 491.5,
+          "p95": 918.0
+        },
+        "processed_prompt_tokens": {
+          "p50": 431.5,
+          "p95": 923.0
+        },
+        "reasoning_tokens_total": 3738,
+        "unique_image_pairs": 10,
+        "evidence": "glimmer-1.jsonl",
+        "raw_responses": "glimmer-1.responses.jsonl"
+      },
+      {
+        "requests": 40,
+        "concurrency": 2,
+        "total_s": {
+          "p50": 7.5791003159974935,
+          "p95": 10.625256866644484
+        },
+        "failures": [],
+        "started_at_unix_s": 1793475541.0203023,
+        "finished_at_unix_s": 1793475697.8892357,
+        "prompt_processing_s": {
+          "p50": 0.08145650000000002,
+          "p95": 0.1122745
+        },
+        "decoding_tokens_per_second": {
+          "p50": 46.931151527050076,
+          "p95": 55.11696778041315
+        },
+        "reasoning_tokens": {
+          "p50": 176.5,
+          "p95": 240.0499999999999
+        },
+        "schema_valid": 40,
+        "requests_per_stream": 20,
+        "http_status_counts": {
+          "200": 80
+        },
+        "http_429_count": 0,
+        "per_stream": {
+          "0": {
+            "requests": 20,
+            "total_s": {
+              "p50": 7.7222955114993965,
+              "p95": 9.1440395279089
+            }
+          },
+          "1": {
+            "requests": 20,
+            "total_s": {
+              "p50": 7.28742858399346,
+              "p95": 11.038079278483929
+            }
+          }
+        },
+        "cached_prompt_tokens": {
+          "p50": 918.0,
+          "p95": 918.0
+        },
+        "processed_prompt_tokens": {
+          "p50": 5.0,
+          "p95": 5.0
+        },
+        "reasoning_tokens_total": 7280,
+        "unique_image_pairs": 10,
+        "evidence": "glimmer-2.jsonl",
+        "raw_responses": "glimmer-2.responses.jsonl"
+      },
+      {
+        "requests": 80,
+        "concurrency": 4,
+        "total_s": {
+          "p50": 7.668659430491971,
+          "p95": 10.27017138950032
+        },
+        "failures": [],
+        "started_at_unix_s": 1793475738.318816,
+        "finished_at_unix_s": 1793475908.5352876,
+        "prompt_processing_s": {
+          "p50": 0.0965095,
+          "p95": 0.1472196
+        },
+        "decoding_tokens_per_second": {
+          "p50": 44.28445656095823,
+          "p95": 49.00844400918172
+        },
+        "reasoning_tokens": {
+          "p50": 182.0,
+          "p95": 240.39999999999998
+        },
+        "schema_valid": 80,
+        "requests_per_stream": 20,
+        "http_status_counts": {
+          "200": 160
+        },
+        "http_429_count": 0,
+        "per_stream": {
+          "0": {
+            "requests": 20,
+            "total_s": {
+              "p50": 7.5425266299862415,
+              "p95": 8.370716329971037
+            }
+          },
+          "1": {
+            "requests": 20,
+            "total_s": {
+              "p50": 7.697272660487215,
+              "p95": 9.876476118632127
+            }
+          },
+          "2": {
+            "requests": 20,
+            "total_s": {
+              "p50": 8.793954709981335,
+              "p95": 10.4906936209125
+            }
+          },
+          "3": {
+            "requests": 20,
+            "total_s": {
+              "p50": 7.37737238201953,
+              "p95": 8.575014013084003
+            }
+          }
+        },
+        "cached_prompt_tokens": {
+          "p50": 918.0,
+          "p95": 918.0
+        },
+        "processed_prompt_tokens": {
+          "p50": 5.0,
+          "p95": 5.0
+        },
+        "reasoning_tokens_total": 14669,
+        "unique_image_pairs": 10,
+        "evidence": "glimmer-4.jsonl",
+        "raw_responses": "glimmer-4.responses.jsonl"
+      }
+    ],
+    "total_reports": 140,
+    "schema_valid_reports": 140,
+    "failures": [],
+    "http_429_count": 0,
+    "total_reasoning_tokens": 25687,
+    "timing_scope": "Glimmer.report plus frozen analyst validation. Includes the separate /tokenize request used to count reasoning tokens; local crop preparation is outside the timed interval.",
+    "prompt_cache_scope": "Ten recorded crop/context image pairs are reused, partitioned among the streams. The same warm server is used in order 1, 2, 4 without clearing its prompt cache. Per-request cache_n and prompt_n are logged; prompt-processing percentiles include cache reuse.",
+    "runner": {
+      "object_id": "fu-YvIz4v4bUzrTJYdI8DcXP7",
+      "since": "2026-10-31T19:37:09.426540+00:00",
+      "until": "2026-10-31T19:45:09.535288+00:00",
+      "request_count": 280,
+      "request_count_by_status_code": {
+        "2xx": 280
+      },
+      "request_rate_per_second": 0.5832012040005266,
+      "container_started_count": 0,
+      "container_error_count": 0,
+      "container_total_count": 1,
+      "container_creating_at_end_count": 0,
+      "request_percentile_stats": {
+        "Request latency 2xx (s)": {
+          "unit": "seconds",
+          "percentiles": {
+            "p50": 1.6977452105000002,
+            "p90": 8.6554544693,
+            "p99": 10.913637470649999
+          }
+        }
+      },
+      "container_percentile_stats": {
+        "GPU utilization (%)": {
+          "unit": "percentage",
+          "percentiles": {
+            "p50": 85.5,
+            "p90": 95.0,
+            "p99": 95.0
+          }
+        },
+        "CPU usage (cores)": {
+          "unit": "cores",
+          "percentiles": {
+            "p50": 1.0310520596205577,
+            "p90": 1.0582284768147059,
+            "p99": 1.0895969227642222
+          }
+        },
+        "Memory usage (GiB)": {
+          "unit": "GiB",
+          "percentiles": {
+            "p50": 2.1202735900878906,
+            "p90": 2.262866973876953,
+            "p99": 2.5792893981933576
+          }
+        }
+      },
+      "inference": null
+    },
+    "runner_window": {
+      "start": "2026-10-31T19:37:09.426540+00:00",
+      "end": "2026-10-31T19:45:09.535288+00:00"
+    },
+    "container": "ta-01M69P7SJ9P2VNDFYGWPTFXVTR",
+    "gpu": "NVIDIA H200",
+    "gpu_evidence": "../glimmer-final-lifecycle.log:77",
+    "image_id": "im-k1Fmx0230EtH0CIAmMSQ4x",
+    "llama_cpp_release": "b12004",
+    "llama_cpp_commit": "3c809f44383bcebc318b8cddd8c6d11aaa861e9b",
+    "server_slot_peak_by_stream_count": {
+      "1": 1,
+      "2": 2,
+      "4": 4
+    },
+    "server_slot_evidence": "server-logs.log",
+    "container_errors": 0,
+    "extra_deployments_created": false,
+    "experimental_apps_stopped": true,
+    "billing": "Remains cancelled. No billing calls were made.",
+    "previous_flat_schema_attempt": {
+      "item": "Frozen Glimmer.report latency benchmark",
+      "status": "blocked",
+      "client_field": "response_format.schema",
+      "required_by_b12004": "response_format.json_schema.schema",
+      "source": "https://github.com/ggml-org/llama.cpp/blob/b12004/tools/server/server-common.cpp#L1392",
+      "documentation_conflict": "tools/server/README.md at b12004 advertises the flat schema form, but server-common.cpp only reads nested json_schema.schema for type=json_schema.",
+      "attempted_reports": 1,
+      "schema_valid_reports": 0,
+      "http_status": 200,
+      "response_fields": [
+        "decision",
+        "reason",
+        "best_next_action"
+      ],
+      "reasoning_tokens": 190,
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 923,
+        "prompt_ms": 813.465,
+        "prompt_per_token_ms": 0.8813271939328278,
+        "prompt_per_second": 1134.6523820938821,
+        "predicted_n": 354,
+        "predicted_ms": 4007.163,
+        "predicted_per_token_ms": 11.351736543909348,
+        "predicted_per_second": 88.09224880545165
+      },
+      "remaining_concurrencies": [
+        2,
+        4
+      ],
+      "client_changed": false,
+      "total_s_failed_attempt": 5.768524261016864,
+      "failure_type": "jsonschema.ValidationError",
+      "http_429_count": 0,
+      "raw_response": "glimmer-1.responses.jsonl",
+      "sampling": {
+        "temperature": 1.0,
+        "top_p": 0.95,
+        "top_k": 64,
+        "seed": 0
+      },
+      "template": "analyst-v1",
+      "planned_requests_per_stream": 20,
+      "concurrency_results": {
+        "1": "Stopped on first schema-invalid report; 1 attempted, 0 valid.",
+        "2": "Blocked by the same client contract.",
+        "4": "Blocked by the same client contract."
+      },
+      "client_change_required": "Nest the schema under response_format.json_schema.schema. Not applied because the task explicitly requires stopping if models.py needs changes.",
+      "reasoning_token_count_scope": "Separate /tokenize request on the preserved failed response; outside the measured report latency.",
+      "reasoning_token_evidence": "glimmer-failed-report-reasoning.json"
+    },
+    "input_audit": {
+      "recorded_frames_sha256_match": true,
+      "unique_crop_context_pairs": 10,
+      "same_images_in_all_concurrency_runs": true,
+      "same_images_as_original_flat_schema_attempt": true
+    }
   },
   "checks": {
     "npm test": {
       "passed": true,
-      "tests": 58,
-      "evidence": "check-npm-test-runtime.log"
+      "tests": 80,
+      "evidence": "glimmer-schema-02/check-npm-test.log"
     },
     "npm run typecheck": {
       "passed": true,
-      "evidence": "check-typecheck-runtime.log"
+      "evidence": "glimmer-schema-02/check-typecheck.log"
     },
     "npm run format:check": {
       "passed": true,
-      "evidence": "check-format-check-runtime.log"
+      "evidence": "glimmer-schema-02/check-format-check.log"
     },
     ".venv-cosys/bin/ruff check": {
       "passed": true,
-      "evidence": "check-ruff-final.log"
+      "evidence": "glimmer-schema-02/check-ruff-check.log"
     },
     ".venv-cosys/bin/ruff format --check": {
       "passed": true,
-      "evidence": "check-ruff-format-final.log"
+      "evidence": "glimmer-schema-02/check-ruff-format.log"
     },
     ".venv-cosys/bin/python -m unittest": {
       "passed": true,
-      "tests": 434,
-      "seconds": 97.447,
-      "evidence": "check-unittest-final.log"
+      "tests": 448,
+      "seconds": 94.77,
+      "evidence": "glimmer-schema-02/check-unittest.log"
     },
-    "setup_note": "The initial npm commands could not start because npm was absent from PATH; the documented .local/toolchains/bin PATH fixed that. Original error logs are preserved.",
-    "source_and_configuration_validation": {
+    "summary_validation": {
       "passed": true,
-      "evidence": "check-report-final.log"
+      "evidence": "glimmer-schema-02/check-summary.log"
     }
   },
   "source_hashes": {
@@ -1192,8 +1476,8 @@
     }
   ],
   "image_digest_limitation": "Modal exposes immutable image IDs through ServerInfo.ImageInfo, but no OCI digest for its built image. Registry manifest and binary hashes are recorded separately; they are not represented as final Modal image digests.",
-  "recorded_utc": "2026-10-31T19:32:26.677321+00:00",
-  "status": "Deployed; SAM measurements complete; Glimmer benchmark blocked; billing measurements cancelled by user.",
+  "recorded_utc": "2026-10-31T19:48:09.956043+00:00",
+  "status": "Deployed; SAM and corrected Glimmer benchmarks complete; billing measurements cancelled by user.",
   "runner_records": {
     "sam_loaded_hour": {
       "object_id": "fu-nLLjhOaGp2jfkRO9knsWAu",
@@ -1511,16 +1795,13 @@
     "mission_planner/search/test_commander.py",
     "mission_planner/search/test_planner.py",
     "mission_planner/search/README.md",
-    "mission_planner/measurements/modal.json"
+    "mission_planner/measurements/modal.json",
+    "mission_planner/agents/models.py",
+    "mission_planner/agents/perception/test_analyst.py"
   ],
   "local_configuration": ".env contains production URLs and proxy authorization values; credentials are excluded from this report and from the commit.",
   "commit_scope": "Only mission_planner/measurements/modal.json; existing staged deletions and other work in progress are preserved.",
   "blockers": [
-    {
-      "item": "Glimmer analyst benchmark",
-      "reason": "Nest the schema under response_format.json_schema.schema. Not applied because the task explicitly requires stopping if models.py needs changes.",
-      "source": "https://github.com/ggml-org/llama.cpp/blob/b12004/tools/server/server-common.cpp#L1392"
-    },
     {
       "item": "Final Modal OCI image digests",
       "reason": "Modal exposes immutable image IDs through ServerInfo.ImageInfo, but no OCI digest for its built image. Registry manifest and binary hashes are recorded separately; they are not represented as final Modal image digests.",
@@ -1529,5 +1810,6 @@
         "modal-types.html"
       ]
     }
-  ]
+  ],
+  "source_hashes_scope": "Original deployment/SAM measurements and the initial failed Glimmer request. Corrected Glimmer source hashes are in glimmer.source_hashes."
 }
