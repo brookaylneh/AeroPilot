@@ -294,6 +294,7 @@ async def measure(output, lumen):
         ]
         sampler = threading.Thread(target=sample_gpu, args=(gpu, stopping))
         sampler.start()
+        await loop.run_in_executor(pools[sim.NAMES[0]], sim.enter_mission)
         rpcs = {n: await loop.run_in_executor(pools[n], sim.connect) for n in sim.NAMES}
         console = rpcs[sim.NAMES[0]]
         for cvar in LUMEN_CVARS:

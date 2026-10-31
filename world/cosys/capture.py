@@ -205,6 +205,7 @@ class FrameCapture:
         if name not in self.clients:
             self.clients[name] = sim.connect()
         rpc = self.clients[name]
+        assert sim.native()["mode"] == "mission", "Drone footage requires mission mode"
         assert not rpc.simIsPause(), "Camera acquisition requires running physics"
         origin = sim.origin(name)
         observation = observe(rpc) if observe is not None else None

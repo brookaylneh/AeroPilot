@@ -171,6 +171,7 @@ async def condition_flight(fleet, condition, scenario_id, directory):
             np.array([math.cos(heading), math.sin(heading)]),
             np.array([-math.sin(heading), math.cos(heading)]),
         )
+        await asyncio.to_thread(sim.enter_mission)
         await asyncio.to_thread(sim.configure_capture, height)
         capture = FrameCapture(directory, fleet)
         try:

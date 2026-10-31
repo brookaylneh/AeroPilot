@@ -135,6 +135,19 @@ def configure_capture(height):
     raise TimeoutError("Capture profile was not applied by Unreal")
 
 
+def enter_mission():
+    # One-way switch: Unreal stops rendering the studio view, follows Drone1 and starts drone views.
+    if native()["mode"] == "mission":
+        return
+    write_json(DATA / "mission-request.json", {"mode": "mission"})
+    end = time.monotonic() + 20
+    while time.monotonic() < end:
+        if native()["mode"] == "mission":
+            return
+        time.sleep(0.1)
+    raise TimeoutError("Unreal did not enter mission mode")
+
+
 def set_view(c, name, pitch=-90, yaw=0):
     # The position is body-relative NED. The stabilized gimbal (Stabilization 1) holds the rotation
     # in the world frame (PIPCamera.cpp setCameraPose and Tick), so yaw is a heading from north.

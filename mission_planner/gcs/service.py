@@ -29,6 +29,7 @@ from mission_planner.search.places import proposal
 from mission_planner.search.relook import relook, resume_search
 from mission_planner.search.state import Search
 from mission_planner.search.tools import NAMES as SEARCH_TOOLS
+from world.cosys import client as sim
 from world.cosys.sensor import MissionSensor
 from world.cosys.terrain import BOUNDS
 
@@ -712,6 +713,7 @@ class Mission:
         assert first["case_id"].lower() == self.case["id"].lower(), (
             "Service is running a different rescue case"
         )
+        await asyncio.to_thread(sim.enter_mission)
         await websocket.send(encode({"type": "history", "events": self.events}))
         cursor = self.event_sequence
 

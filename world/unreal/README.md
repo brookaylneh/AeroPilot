@@ -156,13 +156,20 @@ directional light to the `world.json` sun. Single Layer Water needs Opacity 0: t
 replaces the water volume with a black base colour. Do not label unchanged cooked scenery with the
 valley manifest.
 
-`valley-grass.json` is the meadow ground cover: one landscape grass type per entry, spawned at
-runtime by the landscape material (`grass.GrassMap.UseRuntimeGeneration=1` in `DefaultEngine.ini`;
-`DroneFoundation` registers every drone camera as a streaming view, so the grass builds around the
-fleet, not the browser camera). Each type lists its landscape layers (its weight is the largest
-layer weight) and its varieties: a mesh, instances per 10 m x 10 m (at most 1000 each,
-`LandscapeGrassType.h`) and a uniform scale range, all in the cull band `cullM` (full density to the
-first distance, culled at the second); `brightness` multiplies the blades' base colour through the
+`valley-grass.json` is the meadow ground cover: one landscape grass type per entry, spawned by the
+landscape material from grass maps baked into the level (every editor level save bakes them, so
+`author-unreal.sh` renders offscreen; `DroneFoundation` asserts every landscape component carries
+them and creates the nearest grass first). Each type lists its landscape layers (its weight is the
+largest layer weight) and its varieties: a mesh, instances per 10 m x 10 m (at most 1000 each,
+`LandscapeGrassType.h`) and a uniform scale range. Each variety is split into `rings` equal-density
+copies whose culls step across the band `cullM` (full density to the first distance, thinned to
+nothing at the second), because Nanite ignores the per-instance fade. `farGround.gain` tints the
+dry-meadow ground towards the blades' colour across `farGround.fadeM` and drops its specular, so the
+ground past the grass reads as the same meadow. The studio scales every cull by
+`grass.CullDistanceScale` 2.2 (352 m, within the 16.7M scene-instance limit); mission mode sets it to
+1, stops rendering the studio view, follows Drone1 and only then registers the drone cameras as
+streaming views. `client.enter_mission` makes that one-way switch when `/mission` connects, and drone
+captures assert it. `brightness` multiplies the blades' base colour through the
 masters' `Brightness` scalar (one override material instance per mesh slot), and `patches` thins the
 type with a deterministic noise field (no grass below `bare`, full above `full`) so the meadow reads
 as grass with worn patches. `author-unreal.sh build-valley-grass` rebuilds the `/Game/Valley/Grass`

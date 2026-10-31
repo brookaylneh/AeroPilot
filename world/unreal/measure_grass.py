@@ -152,6 +152,7 @@ async def measure(out):
             assert world.poll() is None and time.monotonic() < deadline, "Unreal did not start"
             await asyncio.sleep(1)
         (origin,) = [v["localNedOriginUeCm"] for v in sim.native()["vehicles"] if v["id"] == DRONE]
+        await loop.run_in_executor(pool, sim.enter_mission)
         rpc = await loop.run_in_executor(pool, sim.connect)
 
         def call(fn, *args):

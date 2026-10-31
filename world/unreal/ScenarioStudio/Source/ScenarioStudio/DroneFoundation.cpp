@@ -15,6 +15,8 @@
 #include "RenderTimer.h"
 #include "DynamicRHI.h"
 #include "ContentStreaming.h"
+#include "Engine/GameViewportClient.h"
+#include "GameFramework/PlayerController.h"
 #include "GrassInstancedStaticMeshComponent.h"
 #include "LandscapeComponent.h"
 #include "LandscapeProxy.h"
@@ -72,12 +74,31 @@ void ADroneFoundation::BeginPlay()
         return;
     Directory = FPaths::ConvertRelativePathToFull(Directory);
     IFileManager::Get().MakeDirectory(*Directory, true);
+    // A mission request belongs to the world that consumed it; every world starts in studio mode.
+    checkf(IFileManager::Get().Delete(*(Directory / TEXT("mission-request.json")), false, false, true),
+           TEXT("Cannot clear the previous mission request"));
     GetWorldTimerManager().SetTimer(Timer, this, &ADroneFoundation::Poll, .5f, true, 3.f);
 }
 void ADroneFoundation::EndPlay(const EEndPlayReason::Type Reason)
 {
     GetWorldTimerManager().ClearTimer(Timer);
     Super::EndPlay(Reason);
+}
+void ADroneFoundation::EnterMission(ASimModeBase *Mode)
+{
+    // One way: the studio camera hands the world to the drones. It follows Drone1, so it adds no
+    // grass or streaming area of its own, and it renders only the frames that serve a capture
+    // (Cosys RenderRequest.cpp re-enables world rendering for those). Grass returns to the
+    // authored cull distances that four drone views fit in.
+    APIPCamera *Camera = Mode->getCamera(msr::airlib::CameraDetails("front_center", "Drone1"));
+    APlayerController *Player = GetWorld()->GetFirstPlayerController();
+    UGameViewportClient *Viewport = GetWorld()->GetGameViewport();
+    IConsoleVariable *Scale = IConsoleManager::Get().FindConsoleVariable(TEXT("grass.CullDistanceScale"));
+    checkf(Camera && Player && Viewport && Scale, TEXT("Mission mode prerequisites are missing"));
+    Player->SetViewTarget(Camera);
+    Viewport->bDisableWorldRendering = true;
+    Scale->Set(1.f, ECVF_SetByCode);
+    bMission = true;
 }
 void ADroneFoundation::Poll()
 {
@@ -87,6 +108,15 @@ void ADroneFoundation::Poll()
     ASimModeBase *Mode = *Modes;
     FString Text;
     TSharedPtr<FJsonObject> Command;
+    if (!bMission && FFileHelper::LoadFileToString(Text, *(Directory / TEXT("mission-request.json"))))
+    {
+        FString Requested;
+        checkf(FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Text), Command) && Command &&
+                   Command->Values.Num() == 1 && Command->TryGetStringField(TEXT("mode"), Requested) &&
+                   Requested == TEXT("mission"),
+               TEXT("Invalid mission request: %s"), *Text);
+        EnterMission(Mode);
+    }
     if (FFileHelper::LoadFileToString(Text, *(Directory / TEXT("capture-request.json"))) &&
         FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Text), Command) && Command)
     {
@@ -109,6 +139,7 @@ void ADroneFoundation::Poll()
     Report->SetObjectField(TEXT("worldOriginOffsetCm"), V(FVector(GetWorld()->OriginLocation)));
     Report->SetNumberField(TEXT("worldToMeters"), GetWorld()->GetWorldSettings()->WorldToMeters);
     Report->SetStringField(TEXT("captureRequestId"), LastRequest);
+    Report->SetStringField(TEXT("mode"), bMission ? TEXT("mission") : TEXT("studio"));
     // The capture opt-in below is fixed; these scalability cvars switch Lumen off for every view,
     // falling back to sky light and screen-space reflections (the measured A/B).
     const auto &Console = IConsoleManager::Get();
@@ -152,17 +183,18 @@ void ADroneFoundation::Poll()
             Mode->getCamera(msr::airlib::CameraDetails("front_center", TCHAR_TO_UTF8(*Name)));
         checkf(Camera, TEXT("Missing front_center camera for %s"), *Name);
         {
-            // SceneCapture cameras are not player views. Register each sensor
-            // with texture/landscape-grass streaming so distant drone imagery
-            // does not depend on where the browser camera is looking.
             auto *Capture = Camera->getCaptureComponent(APIPCamera::ImageType::Scene, false);
             checkf(Capture, TEXT("Missing RGB capture component for %s"), *Name);
             check(!Capture->ShouldRenderWithMainViewResolution());
             const float Width = CaptureHeight * 16.f / 9.f;
             const float Fov = Capture->FOVAngle;
-            IStreamingManager::Get().AddViewInformation(
-                Camera->GetActorLocation(), Width, Width / FMath::Tan(FMath::DegreesToRadians(Fov * .5f)),
-                1.f, false, .7f, nullptr, GetWorld());
+            // SceneCapture cameras are not player views. In mission mode, register each sensor
+            // with texture/landscape-grass streaming so distant drone imagery does not depend on
+            // the player camera; before it the drones capture nothing and hold no grass.
+            if (bMission)
+                IStreamingManager::Get().AddViewInformation(
+                    Camera->GetActorLocation(), Width, Width / FMath::Tan(FMath::DegreesToRadians(Fov * .5f)),
+                    1.f, false, .7f, nullptr, GetWorld());
             auto *Target = Camera->getRenderTarget(APIPCamera::ImageType::Scene, false);
             checkf(Target, TEXT("Missing RGB render target for %s"), *Name);
             if (Target->SizeY != CaptureHeight)

@@ -137,6 +137,9 @@ class SensorServiceTests(unittest.IsolatedAsyncioTestCase):
 
     async def connect(self):
         socket = MemorySocket()
+        enter_mission = patch("world.cosys.client.enter_mission")
+        enter_mission.start()
+        self.addCleanup(enter_mission.stop)
         task = asyncio.create_task(
             self.mission.connection(socket, {"type": "connect", "case_id": self.mission.case["id"]})
         )
