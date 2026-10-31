@@ -27,11 +27,13 @@ export default function WorldMap({
   camera?: CameraState;
   person: { x: number; y: number } | null;
   busy: boolean;
-  travel: (u: number, v: number) => Promise<void>;
+  travel: (u: number, v: number) => Promise<boolean>;
   openPort?: () => void;
 }) {
+  const [choosingLocation, setChoosingLocation] = useState(true);
   const [expanded, setExpanded] = useState(false),
     [view, setView] = useState(wholeWorld);
+  const wide = choosingLocation || expanded;
   const panel = useRef<HTMLDivElement>(null);
   const [offset, setOffset] = useState<{ x: number; y: number } | null>(null);
   const panelDrag = useRef<{ x: number; y: number; left: number; top: number } | null>(null);
@@ -52,6 +54,12 @@ export default function WorldMap({
   function resizeMap() {
     setOffset(null);
     setExpanded(!expanded);
+  }
+  async function chooseLocation(u: number, v: number) {
+    if ((await travel(u, v)) && choosingLocation) {
+      setChoosingLocation(false);
+      setOffset(null);
+    }
   }
   useEffect(() => {
     const observer = new ResizeObserver(() => setOffset(null));
@@ -75,7 +83,7 @@ export default function WorldMap({
   return (
     <div
       ref={panel}
-      className={`world-minimap ${expanded ? 'expanded' : ''}`}
+      className={`world-minimap ${wide ? 'expanded' : ''}`}
       style={
         offset
           ? { left: offset.x, top: offset.y, right: 'auto', bottom: 'auto', transform: 'none' }
@@ -125,10 +133,12 @@ export default function WorldMap({
           panelDrag.current = null;
         }}
       >
-        <span>{expanded ? 'Choose where to explore' : 'World map'}</span>
-        <button aria-label={expanded ? 'Collapse map' : 'Expand map'} onClick={resizeMap}>
-          {expanded ? <Minimize size={14} /> : <Maximize size={14} />}
-        </button>
+        <span>{choosingLocation ? 'Choose their location' : 'World map'}</span>
+        {!choosingLocation && (
+          <button aria-label={expanded ? 'Collapse map' : 'Expand map'} onClick={resizeMap}>
+            {expanded ? <Minimize size={14} /> : <Maximize size={14} />}
+          </button>
+        )}
       </div>
       <div className="minimap-tools">
         <button
@@ -212,7 +222,7 @@ export default function WorldMap({
           const point = e.detail === 0 ? { u: 0.5, v: 0.5 } : pointerPoint(e.clientX, e.clientY);
           if (insideMap(point)) {
             const destination = screenToMap(point, view);
-            void travel(destination.u, destination.v);
+            void chooseLocation(destination.u, destination.v);
           }
         }}
       >
@@ -279,12 +289,16 @@ export default function WorldMap({
         )}
         <span>{Math.round(visibleWidth)} m across</span>
       </div>
-      {openPort && (
+      {openPort && !choosingLocation && (
         <button className="minimap-port" onClick={openPort}>
           ↓ Launch port · outside southern boundary
         </button>
       )}
-      <small id="map-instructions">Click to travel · Scroll to zoom · Drag to pan</small>
+      <small id="map-instructions">
+        {choosingLocation
+          ? 'Click to place your character and travel there together'
+          : 'Click to travel · Scroll to zoom · Drag to pan'}
+      </small>
       {(outsideWorld || outsideView) && (
         <small role="status">
           {outsideWorld ? 'Camera outside search boundary' : 'Camera outside map view · use Center'}

@@ -300,9 +300,10 @@ export default function UnrealApp() {
                   m
                 </div>
                 <h1>Choose their location</h1>
-                <p>Click the map or double-click ground to place and fly there</p>
                 <p>
-                  Explore with WASD · Click the map or double-click ground to move the person and fly there.
+                  {packet.authoring.position
+                    ? 'Explore with WASD · Click the map or double-click ground to move together.'
+                    : 'Choose a point on the map to place your character and travel there together.'}
                 </p>
               </div>
               <div className="placement-actions">

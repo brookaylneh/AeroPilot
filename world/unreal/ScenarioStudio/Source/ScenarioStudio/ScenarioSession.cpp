@@ -228,7 +228,15 @@ bool AScenarioSession::SetCreatorStage(const FString &Stage, FString &Error)
         if (!Manager->PreviewPerson(Error) || !SetCamera(TEXT("creator"), Error))
             return false;
     }
-    else if (Stage == TEXT("placement") || Stage == TEXT("briefing"))
+    else if (Stage == TEXT("placement"))
+    {
+        // Keep the preview pose until the location chooser starts the flight.
+        StopNavigation();
+        CameraTransitionDuration = 0;
+        bNavigationFlight = bBriefingRisePending = false;
+        Manager->Person->SetActorHiddenInGame(!Manager->bPlaced);
+    }
+    else if (Stage == TEXT("briefing"))
     {
         const bool Departing =
             Stage == TEXT("briefing") && CreatorStage == TEXT("placement") && Manager->bPlaced;
@@ -342,6 +350,8 @@ bool AScenarioSession::SetCamera(const FString &View, FString &Error)
     bPreviewFraming = View == TEXT("creator");
     bFollowPerson = View == TEXT("person") || View == TEXT("ground") || View == TEXT("elevated");
     CameraTransitionDuration = 0;
+    if (bNavigationFlight)
+        Manager->SetBehaviorActive(true);
     bNavigationFlight = false;
     bBriefingRisePending = false;
     // Shorter people and resting poses need a lower preview camera to keep

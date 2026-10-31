@@ -1,13 +1,19 @@
 # Studio navigation
 
-In placement, click the map or double-click visible ground to place the selected
-person and fly to them in one action. Repeating either gesture moves the person
+After choosing the character and situation, entering placement opens the large
+location map. The camera stays at the preview pose until a location is chosen.
+Click the map to place the selected person and fly to them in one action. The map
+then becomes a compact navigation map, revealing the flight. Repeating a map click
+or double-clicking visible ground moves the person
 and flies to the new location. The camera arrives at eye level, a few metres back
 along the approach heading in Walk mode, with the person framed in view. Terrain and obstacle
 validation applies before the placement changes.
+The person's situation behaviour pauses during the flight and resumes on arrival
+or when the flight is cancelled.
 
-Travel takes 0.6–1.8 seconds according to distance. Its smoothstep path arcs above
-the terrain. Movement, look input or a mode change cancels the flight at the
+Travel takes 2–6 seconds according to distance. Its quintic easing starts and ends
+with zero velocity and acceleration; the path arcs above the terrain.
+Movement, look input or a mode change cancels the flight at the
 current pose. WASD and drag exploration do not change the authored placement.
 
 The [native mode table](../world/unreal/ScenarioStudio/Source/ScenarioStudio/ScenarioSession.h)
@@ -34,9 +40,11 @@ presets use the default 60° lens.
 
 ## Map
 
-The map opens compact. Expand, collapse and drag its header to arrange it. A single
-click travels and places. The second click of a double click is ignored. Clicking
-never changes the map's zoom or panel size. Wheel and +/− zoom; dragging pans; Fit
+The initial location chooser opens wide and becomes compact only after a successful
+placement. An invalid destination keeps the chooser open. After that, expand,
+collapse and drag the map's header to arrange it. A single click travels and places.
+The second click of a double click is ignored. Navigation clicks never change the
+map's zoom or panel size. Wheel and +/− zoom; dragging pans; Fit
 world restores the full extent. Center moves the map view to the camera.
 
 A destination ping remains visible during travel. The camera arrow and person

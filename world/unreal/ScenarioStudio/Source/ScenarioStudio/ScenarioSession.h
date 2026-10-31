@@ -18,8 +18,8 @@ inline constexpr int32 ProtocolVersion = 2, Version = 8;
 inline constexpr double EyeHeightCm = 170, Boost = 2, RampSeconds = .25, StopSeconds = .2, HeightSeconds = 1.2;
 inline constexpr double WatchdogSeconds = 1, HitchSeconds = 2, TelemetrySeconds = .05;
 inline constexpr double HeartbeatMs = 100, DefaultFov = 60, MinFov = 20, MaxFov = 90;
-inline constexpr double FramingDistanceCm = 450, FlightSpeedCm = 40000;
-inline constexpr double MinFlightSeconds = .6, MaxFlightSeconds = 1.8;
+inline constexpr double FramingDistanceCm = 450, FlightSpeedCm = 20000;
+inline constexpr double MinFlightSeconds = 2, MaxFlightSeconds = 6;
 inline constexpr double FlightArcFraction = .35, MaxFlightArcCm = 50000;
 struct Mode
 {
@@ -83,6 +83,7 @@ class SCENARIOSTUDIO_API AScenarioSession : public AActor
     FTransform CameraTransitionFrom, CameraTransitionTo;
     double CameraTransitionStart = 0, CameraTransitionDuration = 0;
     float CameraTransitionFov = ScenarioNavigation::DefaultFov;
+    double FlightStartClearanceCm = ScenarioNavigation::EyeHeightCm;
     bool bNavigationFlight = false;
     FVector NavigationDestination = FVector::ZeroVector;
     bool bBriefingRisePending = false;
@@ -92,7 +93,7 @@ class SCENARIOSTUDIO_API AScenarioSession : public AActor
     void EnterFreeCamera();
     bool TravelAndPlace(const FString &Space, double U, double V, FString &Error);
     bool GroundAt(const FVector &Point, double &GroundZ) const;
-    FVector ConstrainCamera(FVector Location) const;
+    FVector ConstrainCamera(FVector Location, double ClearanceCm) const;
     TSharedRef<FJsonObject> NavigationSettings() const;
     TSharedRef<FJsonObject> CameraPacket() const;
     void SendCameraState();

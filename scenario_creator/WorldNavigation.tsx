@@ -265,8 +265,9 @@ export default function WorldNavigation({
   }, [busy]);
   const travel = async (u: number, v: number) => {
     prepareTravel();
-    await send({ type: 'travel-and-place', space: 'map', u, v });
-    surface.current?.focus();
+    const result = await send({ type: 'travel-and-place', space: 'map', u, v });
+    if (result) surface.current?.focus();
+    return !!result;
   };
   const mode = camera?.mode || 'explore';
   return (

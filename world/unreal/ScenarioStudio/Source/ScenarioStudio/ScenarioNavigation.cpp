@@ -2,6 +2,7 @@
 #include "ScenarioManager.h"
 #include "Camera/CameraActor.h"
 #include "Camera/CameraComponent.h"
+#include "Components/RectLightComponent.h"
 #include "Engine/World.h"
 #include "CollisionShape.h"
 #include "Dom/JsonObject.h"
@@ -25,6 +26,11 @@ double Smoothstep(double T)
 {
     T = FMath::Clamp(T, 0., 1.);
     return T * T * (3. - 2. * T);
+}
+double CameraEase(double T)
+{
+    T = FMath::Clamp(T, 0., 1.);
+    return T * T * T * (T * (T * 6. - 15.) + 10.);
 }
 }
 
@@ -86,7 +92,7 @@ bool AScenarioSession::GroundAt(const FVector &Point, double &GroundZ) const
     return true;
 }
 
-FVector AScenarioSession::ConstrainCamera(FVector P) const
+FVector AScenarioSession::ConstrainCamera(FVector P, double ClearanceCm) const
 {
     const auto *R = Manager->Catalog->Regions.FindByPredicate(
         [this](const FScenarioRegion &Region) { return Region.Id == Manager->RegionId; });
@@ -98,7 +104,7 @@ FVector AScenarioSession::ConstrainCamera(FVector P) const
     P.Y = FMath::Clamp(P.Y, R->Min.Y + 100, R->Max.Y - 100);
     double GroundZ;
     checkf(GroundAt(P, GroundZ), TEXT("Camera left the terrain"));
-    P.Z = FMath::Max(P.Z, GroundZ + Nav::EyeHeightCm);
+    P.Z = FMath::Max(P.Z, GroundZ + ClearanceCm);
     return P;
 }
 
@@ -144,10 +150,19 @@ bool AScenarioSession::TravelAndPlace(const FString &Space, double U, double V, 
         return false;
     }
     End.Z += Nav::EyeHeightCm;
+    double StartGroundZ;
+    if (!GroundAt(Camera->GetActorLocation(), StartGroundZ))
+    {
+        Error = TEXT("The approach camera has no terrain beneath it");
+        return false;
+    }
     if (!Manager->PlaceAtGround(Ground.X, Ground.Y, Error))
         return false;
+    Manager->SetBehaviorActive(false);
     StopNavigation();
     bFreeCamera = true;
+    bPreviewFraming = false;
+    PreviewFill->SetVisibility(false);
     bFollowPerson = false;
     bBriefingRisePending = false;
     bNavigationFlight = true;
@@ -155,6 +170,7 @@ bool AScenarioSession::TravelAndPlace(const FString &Space, double U, double V, 
     bNavigationBoost = false;
     NavigationDestination = Ground;
     CameraTransitionFrom = Camera->GetActorTransform();
+    FlightStartClearanceCm = FMath::Min(CameraTransitionFrom.GetLocation().Z - StartGroundZ, Nav::EyeHeightCm);
     const FRotator Rotation = (Ground + FVector(0, 0, Nav::EyeHeightCm * .5) - End).Rotation();
     CameraTransitionTo = FTransform(Rotation, End);
     CameraTransitionFov = Camera->GetCameraComponent()->FieldOfView;
@@ -227,6 +243,8 @@ void AScenarioSession::HandleNavigation(const FString &Player, const TSharedPtr<
     if (CameraTransitionDuration > 0 && Active)
     {
         CameraTransitionDuration = 0;
+        if (bNavigationFlight)
+            Manager->SetBehaviorActive(true);
         bNavigationFlight = bBriefingRisePending = false;
         EnterFreeCamera();
     }
@@ -275,13 +293,13 @@ void AScenarioSession::Tick(float DeltaSeconds)
     if (CameraTransitionDuration > 0)
     {
         const double T = FMath::Clamp((Now - CameraTransitionStart) / CameraTransitionDuration, 0., 1.);
-        const double Alpha = Smoothstep(T);
+        const double Alpha = CameraEase(T);
         const FVector Start = CameraTransitionFrom.GetLocation(), End = CameraTransitionTo.GetLocation();
         FVector Position = FMath::Lerp(Start, End, Alpha);
         Position.Z += 4. * Alpha * (1. - Alpha) *
                       FMath::Min(FVector::Dist2D(Start, End) * Nav::FlightArcFraction, Nav::MaxFlightArcCm);
         if (bNavigationFlight)
-            Position = ConstrainCamera(Position);
+            Position = ConstrainCamera(Position, FMath::Lerp(FlightStartClearanceCm, Nav::EyeHeightCm, Alpha));
         const FQuat Rotation =
             FQuat::Slerp(CameraTransitionFrom.GetRotation(), CameraTransitionTo.GetRotation(), Alpha);
         Camera->SetActorLocationAndRotation(Position, Rotation);
@@ -293,6 +311,7 @@ void AScenarioSession::Tick(float DeltaSeconds)
             if (bNavigationFlight)
             {
                 bNavigationFlight = false;
+                Manager->SetBehaviorActive(true);
                 HeightFrom = NavigationClearance = Nav::EyeHeightCm;
                 HeightElapsed = Nav::HeightSeconds;
             }
@@ -333,7 +352,7 @@ void AScenarioSession::Tick(float DeltaSeconds)
             FVector P = Camera->GetActorLocation() + (Previous + NavigationVelocity) * (.5 * RampDt) +
                         Wanted * (Dt - RampDt);
             Stopped = !Previous.IsNearlyZero() && NavigationVelocity.IsNearlyZero();
-            P = ConstrainCamera(P);
+            P = ConstrainCamera(P, Nav::EyeHeightCm);
             double GroundZ;
             checkf(GroundAt(P, GroundZ), TEXT("Movement requires terrain"));
             HeightElapsed = FMath::Min(HeightElapsed + Dt, Nav::HeightSeconds);
