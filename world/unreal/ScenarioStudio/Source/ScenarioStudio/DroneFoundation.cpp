@@ -16,7 +16,9 @@
 #include "DynamicRHI.h"
 #include "ContentStreaming.h"
 #include "GrassInstancedStaticMeshComponent.h"
+#include "LandscapeComponent.h"
 #include "LandscapeProxy.h"
+#include "LandscapeSubsystem.h"
 #include "UObject/UObjectIterator.h"
 #include "SimMode/SimModeBase.h"
 #include "Vehicles/Multirotor/FlyingPawn.h"
@@ -50,6 +52,22 @@ ADroneFoundation::ADroneFoundation()
 void ADroneFoundation::BeginPlay()
 {
     Super::BeginPlay();
+    // Grass maps are baked into the level (grass.GrassMap.UseRuntimeGeneration=0) and a cooked
+    // build never generates them, so a component without them would stay bare.
+    int32 GrassComponents = 0;
+    for (TActorIterator<ALandscapeProxy> It(GetWorld()); It; ++It)
+        for (const ULandscapeComponent *Component : It->LandscapeComponents)
+        {
+            checkf(Component->GrassData->NumElements >= 0, TEXT("Landscape grass map missing: %s"),
+                   *Component->GetName());
+            GrassComponents += Component->GrassData->NumElements > 0;
+        }
+    checkf(GrassComponents > 0, TEXT("Landscape has no baked grass maps"));
+    // Nearest landscape components first, four times wider, so the ground around a moved camera
+    // completes before the distance.
+    ULandscapeSubsystem *Landscapes = GetWorld()->GetSubsystem<ULandscapeSubsystem>();
+    checkf(Landscapes, TEXT("Missing landscape subsystem"));
+    Landscapes->PrioritizeGrassCreation(true);
     if (!FParse::Value(FCommandLine::Get(), TEXT("DroneFoundationDir="), Directory) || Directory.IsEmpty())
         return;
     Directory = FPaths::ConvertRelativePathToFull(Directory);

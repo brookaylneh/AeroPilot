@@ -1,4 +1,4 @@
-"""Replace the search landscape, its ground layers and runtime grass, water, horizon crests, meadow
+"""Replace the search landscape, its ground layers and baked grass, water, horizon crests, meadow
 apron and sun from world.json."""
 
 import hashlib
@@ -417,6 +417,7 @@ grass_output = node(
         for name, asset in grass_types.items()
     ],
 )
+weights, worn = {}, {}
 for name, entry in grass["types"].items():
     assert set(entry["layers"]) <= set(layers), entry["layers"]
     samples = [
@@ -430,16 +431,72 @@ for name, entry in grass["types"].items():
         # Worn patches: no grass where the noise field falls below `bare`, full density above `full`.
         patches = entry["patches"]
         assert 0 <= patches["bare"] < patches["full"] <= 1, patches
-        weight = node(
-            unreal.MaterialExpressionMultiply,
-            ("A", weight),
-            ("B", field(patches["scaleM"], patches["octaves"], patches["bare"], patches["full"])),
-        )
+        worn[name] = field(patches["scaleM"], patches["octaves"], patches["bare"], patches["full"])
+        weight = node(unreal.MaterialExpressionMultiply, ("A", weight), ("B", worn[name]))
+    weights[name] = weight
     assert ml.connect_material_expressions(weight, "", grass_output, name), name
-output(switched["BC"], "MP_BASE_COLOR")
+# Far ground: where dry-meadow grass ends at the drone cull distance (and on the grassless apron),
+# the ground takes the measured colour of the distant grass and a canopy's matte surface, so the
+# meadow does not turn into bare, sheen-lit soil beyond the grass.
+far = grass["farGround"]
+near_m, end_m = far["fadeM"]
+assert 0 < near_m < end_m <= grass["cullM"][1], far["fadeM"]
+assert all(0 < g <= 1 for g in far["gain"]), far["gain"]
+cover = node(
+    unreal.MaterialExpressionStaticSwitchParameter,
+    ("True", worn["dry-meadow"]),
+    ("False", weights["dry-meadow"]),
+    parameter_name="Apron",
+)
+distance = node(
+    unreal.MaterialExpressionDistance,
+    ("A", position),
+    ("B", node(unreal.MaterialExpressionCameraPositionWS)),
+)
+far_blend = node(
+    unreal.MaterialExpressionMultiply,
+    (
+        "A",
+        node(
+            unreal.MaterialExpressionSmoothStep,
+            ("Value", distance),
+            const_min=near_m * 100,
+            const_max=end_m * 100,
+        ),
+    ),
+    ("B", cover),
+)
+output(
+    node(
+        unreal.MaterialExpressionLinearInterpolate,
+        ("A", switched["BC"]),
+        (
+            "B",
+            node(
+                unreal.MaterialExpressionMultiply, ("A", switched["BC"]), ("B", rgb(*far["gain"]))
+            ),
+        ),
+        ("Alpha", far_blend),
+    ),
+    "MP_BASE_COLOR",
+)
 output(switched["N"], "MP_NORMAL")
-for pin, prop in (("r", "MP_AMBIENT_OCCLUSION"), ("g", "MP_ROUGHNESS")):
-    output(mask(switched["ORM"], pin), prop)
+output(mask(switched["ORM"], "r"), "MP_AMBIENT_OCCLUSION")
+output(
+    node(
+        unreal.MaterialExpressionLinearInterpolate,
+        ("A", mask(switched["ORM"], "g")),
+        ("Alpha", far_blend),
+        const_b=1.0,
+    ),
+    "MP_ROUGHNESS",
+)
+output(
+    node(
+        unreal.MaterialExpressionLinearInterpolate, ("Alpha", far_blend), const_a=0.5, const_b=0.0
+    ),
+    "MP_SPECULAR",
+)
 save(ground)
 
 landscape = unreal.ScenarioLandscapeTools.create_landscape(
@@ -663,6 +720,9 @@ regions[0] = region
 catalog.set_editor_property("regions", regions)
 catalog.set_editor_property("asset_version", world["environmentAssetVersion"])
 assert lib.save_loaded_asset(catalog)
+# The cooked game reads these baked grass maps (grass.GrassMap.UseRuntimeGeneration=0); the level
+# save would bake them too, but only this call proves every component was built.
+grass_components = unreal.ScenarioLandscapeTools.build_grass_maps(landscape)
 assert levels.save_current_level()
 
 origin, extent = landscape.get_actor_bounds(False)
@@ -692,6 +752,7 @@ report_path.write_text(
             "landscapeComponents": component_count,
             "landscapeMaterial": ground.get_path_name(),
             "grassTypes": {name: asset.get_path_name() for name, asset in grass_types.items()},
+            "grassMapComponents": grass_components,
             "groundTextures": sources,
             "groundLicence": lock["license"],
             "water": bodies,

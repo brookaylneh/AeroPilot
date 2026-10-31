@@ -11,7 +11,11 @@ grass = json.loads((ROOT / "world/unreal/valley-grass.json").read_text())
 lib = unreal.EditorAssetLibrary
 tools = unreal.AssetToolsHelpers.get_asset_tools()
 start_m, end_m = grass["cullM"]
-assert 0 < start_m < end_m, grass["cullM"]
+rings = grass["rings"]
+assert 0 < start_m < end_m and rings >= 1, (grass["cullM"], rings)
+# Nanite ignores PerInstanceFadeAmount, so each variety thins in equal-density rings whose
+# cull distances step across the band instead of ending in one hard edge.
+ends_cm = [round((start_m + (end_m - start_m) * (k + 1) / rings) * 100) for k in range(rings)]
 low_m, high_m = grass["heightM"]
 ml = unreal.MaterialEditingLibrary
 
@@ -56,23 +60,24 @@ for name, entry in grass["types"].items():
             assert abs(stored - entry["brightness"]) < 1e-6, (mesh, index, stored)
             assert lib.save_loaded_asset(instance), mesh
             overrides.append(instance)
-        variety = unreal.GrassVariety()
-        for key, value in {
-            "grass_mesh": asset,
-            "override_materials": overrides,
-            "grass_density": unreal.PerPlatformFloat(default=per_100m2),
-            "start_cull_distance": unreal.PerPlatformInt(default=start_m * 100),
-            "end_cull_distance": unreal.PerPlatformInt(default=end_m * 100),
-            "scaling": unreal.GrassScaling.UNIFORM,
-            "scale_x": unreal.FloatInterval(min=small, max=large),
-            "use_grid": False,
-            "random_rotation": True,
-            "align_to_surface": True,
-            "cast_dynamic_shadow": False,
-            "cast_contact_shadow": False,
-        }.items():
-            variety.set_editor_property(key, value)
-        varieties.append(variety)
+        for end_cm in ends_cm:
+            variety = unreal.GrassVariety()
+            for key, value in {
+                "grass_mesh": asset,
+                "override_materials": overrides,
+                "grass_density": unreal.PerPlatformFloat(default=per_100m2 / rings),
+                "start_cull_distance": unreal.PerPlatformInt(default=start_m * 100),
+                "end_cull_distance": unreal.PerPlatformInt(default=end_cm),
+                "scaling": unreal.GrassScaling.UNIFORM,
+                "scale_x": unreal.FloatInterval(min=small, max=large),
+                "use_grid": False,
+                "random_rotation": True,
+                "align_to_surface": True,
+                "cast_dynamic_shadow": False,
+                "cast_contact_shadow": False,
+            }.items():
+                variety.set_editor_property(key, value)
+            varieties.append(variety)
     grass_type = rebuilt(
         f"GT_{title}", unreal.LandscapeGrassType, unreal.LandscapeGrassTypeFactory()
     )
@@ -93,16 +98,17 @@ for name, entry in grass["types"].items():
     ] == [
         (
             f"/Game/Valley/{r['mesh']}.{r['mesh'].split('/')[-1]}",
-            r["per100m2"],
-            end_m * 100,
+            round(r["per100m2"] / rings, 3),
+            end_cm,
             r["scale"][1],
             False,
         )
         for r in entry["varieties"]
+        for end_cm in ends_cm
     ], name
     assert lib.save_loaded_asset(grass_type), name
     unreal.log(
         f"SNR_GRASS_TYPE {name} per100m2={sum(r['per100m2'] for r in entry['varieties'])} "
-        f"brightness={entry['brightness']} cull_cm={start_m * 100},{end_m * 100}"
+        f"brightness={entry['brightness']} rings_cm={ends_cm}"
     )
 unreal.log("SNR_VALLEY_GRASS_BUILT")
