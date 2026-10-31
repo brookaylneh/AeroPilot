@@ -28,8 +28,17 @@ assert set(lighting) == {
     "clouds",
     "volumetricFog",
     "haze",
+    "sunIntensityLux",
+    "skyLightIntensity",
+    "whiteBalanceKelvin",
+    "localExposure",
 }
 assert lighting["exposureEv100"] == 13
+assert 0 < lighting["sunIntensityLux"] <= 120000
+assert 0 < lighting["skyLightIntensity"] <= 4
+assert 1500 <= lighting["whiteBalanceKelvin"] <= 15000
+assert set(lighting["localExposure"]) == {"highlightContrast", "shadowContrast"}
+assert all(0.6 <= v <= 1 for v in lighting["localExposure"].values())
 assert 0 < lighting["aerialPerspectiveViewDistanceScale"] <= 3
 world = json.loads((ROOT / "world/cosys/world.json").read_text())
 assert (world["coordinateSystem"], world["north"], world["east"]) == (
@@ -64,7 +73,8 @@ actors = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
 levels = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
 assert levels.load_level("/Game/OpenMeadow/OpenMeadow")
 level_actors = actors.get_all_level_actors()
-assert not any(isinstance(a, unreal.VolumetricCloud) for a in level_actors)
+(cloud,) = [a for a in level_actors if isinstance(a, unreal.VolumetricCloud)]
+assert cloud.get_actor_label() == "sky.clouds"
 
 
 def labelled(label):
@@ -80,6 +90,8 @@ def set_properties(component, properties):
         actual = stored[key]
         if type(value) in (int, float):
             assert math.isclose(actual, value, rel_tol=1e-6, abs_tol=1e-9), (key, actual, value)
+        elif isinstance(value, unreal.Color):
+            assert (actual.r, actual.g, actual.b, actual.a) == (value.r, value.g, value.b, value.a)
         else:
             assert actual == value, (key, actual, value)
     return stored
@@ -102,19 +114,19 @@ assert abs(elevation - sun_data["apparentElevationDegrees"]) < 1e-3
 assert abs(azimuth - sun_data["azimuthDegreesClockwiseFromNorth"]) < 1e-3
 assert abs(sun.get_actor_rotation().roll) < 1e-3
 sun_component = sun.get_component_by_class(unreal.DirectionalLightComponent)
+set_properties(
+    sun_component, {"light_color": unreal.Color(255, 255, 255, 255), "use_temperature": False}
+)
 sun_shadows = set_properties(
     sun_component,
     {
+        "intensity": lighting["sunIntensityLux"],
         "cast_cloud_shadows": True,
         "cloud_shadow_strength": cloud_data["shadowStrength"],
         "cloud_shadow_extent": cloud_data["shadowExtentKm"],
         "cloud_shadow_map_resolution_scale": cloud_data["shadowResolutionScale"],
     },
 )
-cloud = actors.spawn_actor_from_class(unreal.VolumetricCloud, unreal.Vector(0, 0, 0))
-assert cloud
-cloud.set_actor_label("sky.clouds")
-assert cloud.get_actor_label() == "sky.clouds"
 component = cloud.get_component_by_class(unreal.VolumetricCloudComponent)
 assert component
 material = unreal.load_asset(cloud_data["material"])
@@ -128,11 +140,13 @@ cloud_properties = set_properties(
     },
 )
 sky = labelled("light.sky").get_component_by_class(unreal.SkyLightComponent)
-sky_properties = set_properties(sky, {"real_time_capture": True})
+set_properties(sky, {"light_color": unreal.Color(255, 255, 255, 255)})
+sky_properties = set_properties(
+    sky, {"real_time_capture": True, "intensity": lighting["skyLightIntensity"]}
+)
 atmosphere = labelled("sky.atmosphere").get_component_by_class(unreal.SkyAtmosphereComponent)
 # The UE 5.8.2 property is spelled AerialPespectiveViewDistanceScale in SkyAtmosphereComponent.h.
 previous_aerial_scale = atmosphere.get_editor_property("aerial_pespective_view_distance_scale")
-assert lighting["aerialPerspectiveViewDistanceScale"] > previous_aerial_scale
 atmosphere_properties = set_properties(
     atmosphere,
     {"aerial_pespective_view_distance_scale": lighting["aerialPerspectiveViewDistanceScale"]},
@@ -151,6 +165,10 @@ exposure = {
     "auto_exposure_method": unreal.AutoExposureMethod.AEM_MANUAL,
     "auto_exposure_apply_physical_camera_exposure": False,
     "auto_exposure_bias": -lighting["exposureEv100"],
+    "white_temp": lighting["whiteBalanceKelvin"],
+    "white_tint": 0.0,
+    "local_exposure_highlight_contrast_scale": lighting["localExposure"]["highlightContrast"],
+    "local_exposure_shadow_contrast_scale": lighting["localExposure"]["shadowContrast"],
 }
 for key, value in exposure.items():
     settings.set_editor_property(f"override_{key}", True)
@@ -159,7 +177,12 @@ look.set_editor_property("settings", settings)
 settings = look.get_editor_property("settings")
 for key, value in exposure.items():
     assert settings.get_editor_property(f"override_{key}")
-    assert settings.get_editor_property(key) == value
+    actual = settings.get_editor_property(key)
+    assert (
+        math.isclose(actual, value, rel_tol=1e-6)
+        if type(value) in (int, float)
+        else actual == value
+    )
 
 haze = labelled("sky.haze")
 fog = haze.get_component_by_class(unreal.ExponentialHeightFogComponent)

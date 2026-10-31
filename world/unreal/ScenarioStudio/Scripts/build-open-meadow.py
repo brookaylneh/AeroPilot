@@ -18,10 +18,14 @@ from mission_planner.environment import load_env  # noqa: E402
 from world.unreal.horizon import apron, crests  # noqa: E402
 
 FOLDER = "/Game/Valley/Ground"
+grass = json.loads((ROOT / "world/unreal/valley-grass.json").read_text())
+meadow = grass["ground"]
+assert set(meadow) == {"scan", "tints"} and len(meadow["tints"]) == 2
+assert all(len(tint) == 3 and all(0 < c <= 1.2 for c in tint) for tint in meadow["tints"])
 # Mask layer: CC0 Poly Haven scan and two linear albedo tints mixed by the 120 m hue field.
 GROUND = {
-    "dry-meadow": ("withered_grass", (1.0, 0.94, 0.49), (1.1, 1.2, 0.83)),
-    "wet-meadow": ("grass_ground", (0.77, 0.97, 0.84), (0.95, 0.85, 0.6)),
+    "dry-meadow": (meadow["scan"], *meadow["tints"]),
+    "wet-meadow": ("grass_ground", (0.82, 0.94, 0.86), (0.93, 1.0, 0.91)),
     "pond-silt": ("forrest_ground_03", (0.3, 0.37, 0.4), (0.26, 0.33, 0.37)),
     "trail-tread": ("gravel_floor_02", (1.2, 1.07, 1.03), (1.166, 1.032, 1.008)),
     "gravel-road": ("gravel_floor_02", (0.781, 0.729, 0.76), (0.821, 0.779, 0.79)),
@@ -409,7 +413,6 @@ switched = {
     for key in blends
 }
 # Named grass outputs are GPU mask inputs; their types have no CPU varieties.
-grass = json.loads((ROOT / "world/unreal/valley-grass.json").read_text())
 grass_types = {
     name: unreal.load_asset(f"{grass['folder']}/GT_{title(name)}") for name in grass["types"]
 }
@@ -433,46 +436,11 @@ for name, entry in grass["types"].items():
         weight = node(unreal.MaterialExpressionMax, ("A", weight), ("B", sample))
     weights[name] = weight
     assert ml.connect_material_expressions(weight, "", grass_output, name), name
-# Tint dry-meadow ground under the blades as well as beyond the generated grass.
-far = grass["farGround"]
-assert all(0 < g <= 1 for g in far["gain"]), far["gain"]
-far_blend = node(
-    unreal.MaterialExpressionStaticSwitchParameter,
-    ("True", node(unreal.MaterialExpressionConstant, r=1)),
-    ("False", weights["dry-meadow"]),
-    parameter_name="Apron",
-)
-output(
-    node(
-        unreal.MaterialExpressionLinearInterpolate,
-        ("A", switched["BC"]),
-        (
-            "B",
-            node(
-                unreal.MaterialExpressionMultiply, ("A", switched["BC"]), ("B", rgb(*far["gain"]))
-            ),
-        ),
-        ("Alpha", far_blend),
-    ),
-    "MP_BASE_COLOR",
-)
+output(switched["BC"], "MP_BASE_COLOR")
 output(switched["N"], "MP_NORMAL")
 output(mask(switched["ORM"], "r"), "MP_AMBIENT_OCCLUSION")
-output(
-    node(
-        unreal.MaterialExpressionLinearInterpolate,
-        ("A", mask(switched["ORM"], "g")),
-        ("Alpha", far_blend),
-        const_b=1.0,
-    ),
-    "MP_ROUGHNESS",
-)
-output(
-    node(
-        unreal.MaterialExpressionLinearInterpolate, ("Alpha", far_blend), const_a=0.5, const_b=0.0
-    ),
-    "MP_SPECULAR",
-)
+output(mask(switched["ORM"], "g"), "MP_ROUGHNESS")
+output(node(unreal.MaterialExpressionConstant, r=0.5), "MP_SPECULAR")
 save(ground)
 
 landscape = unreal.ScenarioLandscapeTools.create_landscape(

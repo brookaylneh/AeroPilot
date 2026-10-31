@@ -1,11 +1,11 @@
 {
   "exposureEv100": 13,
-  "aerialPerspectiveViewDistanceScale": 3,
+  "aerialPerspectiveViewDistanceScale": 1.5,
   "clouds": {
     "material": "/Engine/EngineSky/VolumetricClouds/m_SimpleVolumetricCloud_Inst",
     "bottomKm": 2,
     "heightKm": 3,
-    "shadowStrength": 0.55,
+    "shadowStrength": 0.35,
     "shadowExtentKm": 2,
     "shadowResolutionScale": 2
   },
@@ -17,5 +17,12 @@
     "visibilityKm": 195.6011502714073,
     "halfHeightM": 50,
     "heightM": 0
+  },
+  "sunIntensityLux": 50000,
+  "skyLightIntensity": 2.4,
+  "whiteBalanceKelvin": 6500,
+  "localExposure": {
+    "highlightContrast": 0.85,
+    "shadowContrast": 0.85
   }
 }

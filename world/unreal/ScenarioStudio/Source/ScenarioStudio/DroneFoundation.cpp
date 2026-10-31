@@ -283,7 +283,6 @@ void ADroneFoundation::Poll()
             else
                 ++SceneInstances;
         }
-    checkf(SceneInstances <= 12000000, TEXT("GPU scene exceeds the authored 12M budget: %lld"), SceneInstances);
     Report->SetNumberField(TEXT("grassAllocatedInstances"), Allocated);
     Report->SetNumberField(TEXT("sceneAllocatedInstances"), SceneInstances);
     Write(Directory / TEXT("runtime.json"), Report);

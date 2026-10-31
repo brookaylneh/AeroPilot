@@ -157,37 +157,42 @@ directional light to the `world.json` sun. Single Layer Water needs Opacity 0: t
 replaces the water volume with a black base colour. Do not label unchanged cooked scenery with the
 valley manifest.
 
-`valley-grass.json` owns GPU runtime grass: landscape layers, mesh densities per 100 m²,
-uniform scales, blade brightness, Nanite shape preservation, and studio/mission grid profiles.
-`author-unreal.sh build-valley-grass` derives both graphs from UE 5.8's
-`TPL_Showcase_RuntimeGrassGPU` and authors `valley.grass` plus `valley.pcg` in OpenMeadow.
+`valley-grass.json` owns GPU runtime grass: landscape layers, mesh densities per 100 m², uniform
+scales, foliage transmission/specular, ground scan/tints, Nanite shape preservation, and
+studio/mission grid profiles. `author-unreal.sh build-valley-grass` derives both graphs from UE
+5.8's `TPL_Showcase_RuntimeGrassGPU` and authors `valley.grass` plus `valley.pcg` in OpenMeadow.
 Run it before the meadow step, then dressing and the content audit. The meadow step preserves
-these actors, sky.clouds and the sun; do not rerun the lighting step on this Content.
+these actors, sky.clouds and the sun. Apply `build-valley-lighting` after dressing to update the
+existing daylight actors, then audit.
 
-The graph uses Generate Landscape Textures (the 5.8 replacement for Generate Grass Maps),
-GPU HLSL point generators and GPU Static Mesh Spawners. Every point stays on the GPU; 5.8
-defers texture readback and this graph has no CPU texture consumer. Empty LandscapeGrassType
-assets are required by the engine's named mask exporter and have no varieties. The cooked level
-strips CPU grass-map data. There is no Landscape Grass instance generation or ring split.
-The game module enables `grass.GrassMap.AlwaysBuildRuntimeGenerationResources` before cooking
-and loading materials: UE 5.8's PCG exporter requires that resource flag in game worlds.
-It enables the GPU mask shaders and resources, not Landscape Grass instance generation.
+The graph uses Generate Landscape Textures (the 5.8 replacement for Generate Grass Maps), GPU HLSL
+point generators and GPU Static Mesh Spawners. Every point stays on the GPU; 5.8 defers texture
+readback and this graph has no CPU texture consumer. Empty LandscapeGrassType assets are required
+by the engine's named mask exporter and have no varieties. The cooked level strips CPU grass-map
+data. There is no Landscape Grass instance generation or ring split. The game module enables
+`grass.GrassMap.AlwaysBuildRuntimeGenerationResources` before cooking and loading materials: UE
+5.8's PCG exporter requires that resource flag in game worlds. It enables the GPU mask shaders and
+resources, not Landscape Grass instance generation.
 
-The studio camera supplies a PCGGenSourceComponent. Hierarchical partitioned generation uses
-32 m near cells and 64 m middle cells; middle clumps widen in XY to compensate for lower density
+The studio camera supplies a PCGGenSourceComponent. Hierarchical partitioned generation uses 32 m
+near cells and 64 m middle cells; middle clumps widen in XY to compensate for lower density
 without changing blade heights. Mission entry destroys the studio source, switches to the authored
-mission graph, and registers one source on each of the four front_center cameras. After
-mission cancellation and landing, Studio reset removes those sources, restores the Studio
-graph and camera source, and re-enables viewport rendering before acknowledging the reset.
-Texture streaming
-retains its sensor views. Mission mode keeps the viewport disabled but submits scene updates every
-frame so PCG compute and GPU Scene cleanup continue between sensor captures.
-OpenMeadow does not need World Partition: UE 5.8 supports partitioned
-PCG components in ordinary levels, with a saved PCGWorldActor and explicit generation sources.
-The runtime scheduler ticks every frame, with 64 concurrent components and a 10 ms PCG frame budget.
-Nanite instance draw distances hide middle clumps inside the near reach minus one near grid cell,
-leaving a transition overlap; each band's maximum draw distance equals its authored reach.
-`farGround.gain` tints the dry-meadow ground at all distances, including the apron.
+mission graph, and registers one source on each of the four front_center cameras. After mission
+cancellation and landing, Studio reset removes those sources, restores the Studio graph and
+camera source, and re-enables viewport rendering before acknowledging the reset. Texture
+streaming retains its sensor views. Mission mode keeps the viewport disabled but submits scene
+updates every frame so PCG compute and GPU Scene cleanup continue between sensor captures.
+OpenMeadow does not need World Partition: UE 5.8 supports partitioned PCG components in ordinary
+levels, with a saved PCGWorldActor and explicit generation sources. The runtime scheduler ticks
+every frame, with 64 concurrent components and a 10 ms PCG frame budget. Nanite instance draw
+distances hide middle clumps inside the near reach minus one near grid cell, leaving a transition
+overlap; each band's maximum draw distance equals its authored reach. `ground` selects the scanned
+grass-covered ground and its mild colour variation at all distances, including the apron. The
+ground retains scanned roughness and nonzero dielectric specular. Grass overrides use Two Sided
+Foliage with leaf transmission, the original normal/roughness maps, and no brightness boost.
+`SourceAlbedoGain` reverses the pinned reference-render colour gains in `blender/external.json` to
+remove that colour bias while retaining texture detail, including dry tips. It does not replace
+texture luminance with a uniform green palette.
 
 The content audit enforces a 12,000,000-instance GPU Scene budget. It counts allocated slots
 before mask rejection, every band inside its cleanup radius, four independent mission sources,
@@ -195,6 +200,10 @@ before mask rejection, every band inside its cleanup radius, four independent mi
 for runtime actors. `grass_budget.py` bounds every possible camera position within a grid cell;
 mission uses 16 m cells to retain the original density and 160 m reach within that budget.
 Near studio grass uses the original full density; larger density needs a visible coverage benefit.
+The 12 million budget is an authoring check, not a runtime crash threshold. UE 5.8 time-slices
+out-of-range cell cleanup while continuing to schedule generation, so registered component counts
+can temporarily exceed that model during travel. Telemetry retains those counts; the engine's
+24-bit GPU Scene instance address limit remains in force.
 
 Source verification: UE 5.8.2 `Engine/Plugins/PCG`, particularly PCGGenerateLandscapeTextures,
 PCGCustomHLSL, PCGStaticMeshSpawner, PCGComponent and RuntimeGen; Landscape.cpp's cooked grass
@@ -251,25 +260,32 @@ SNR_EVIDENCE_DIR=.local/evidence/world/valley/<new-lighting-run> \
   bash world/unreal/scripts/author-unreal.sh build-valley-lighting
 ```
 
-It owns and asserts the `world.json` sun rotation, sets `look.daylight` to manual exposure at
-`exposureEv100` with no physical camera and so no eye adaptation (the drone captures use the same EV through
-`configure-drones.py`), sets the `sky.haze` density from the Koschmieder visibility and its half
-height (density 0.0002, falloff 0.2, 50 m half height), and enables volumetric fog over 1600 m
-with scattering distribution 0.2. It requires a map with no VolumetricCloud, spawns `sky.clouds`
-using `/Engine/EngineSky/VolumetricClouds/m_SimpleVolumetricCloud_Inst` at 2 km with a 3 km layer,
-enables sun cloud shadows (strength 0.55, extent 2 km, resolution scale 2), and enables sky light
-real-time capture. SkyAtmosphere's aerial-perspective view distance scale is 3 to soften distant
-crests; their authored material colours are unchanged. Changing those colours requires rebuilding
-the landscape with `build-open-meadow.py`. Every setting is read back and asserted; stored values
-and replaced exposure, sun rotation and fog values go to `lighting.json`. A second application to that Content fails the
-cloud assertion. `build-open-meadow.py` preserves `sky.clouds` and leaves sun rotation to this step.
+It owns and asserts the `world.json` sun rotation and the explicit sun/skylight intensities, sets
+`look.daylight` to manual exposure at `exposureEv100` with no physical camera and so no eye
+adaptation (the drone captures use the same EV through `configure-drones.py`), sets the `sky.haze`
+density from the Koschmieder visibility and its half height (density 0.0002, falloff 0.2, 50 m
+half height), and enables volumetric fog over 1600 m with scattering distribution 0.2. It requires
+the existing `sky.clouds` VolumetricCloud and updates it using
+`/Engine/EngineSky/VolumetricClouds/m_SimpleVolumetricCloud_Inst` at 2 km with a 3 km layer, sets
+sun cloud shadows (strength 0.35, extent 2 km, resolution scale 2), and enables sky light
+real-time capture. The sun is 50,000 lux and the skylight multiplier is 2.4. White balance is 6500
+K; local highlight/shadow contrast is 0.85 with fixed global exposure. These are authored daylight
+settings, not a measured photometric calibration. SkyAtmosphere's aerial-perspective view distance
+scale is 1.5 to soften distant crests; their authored material colours are unchanged. Changing
+those colours requires rebuilding the landscape with `build-open-meadow.py`. Every setting is read
+back and asserted; stored values and replaced exposure, sun rotation and fog values go to
+`lighting.json`. Updates preserve the single cloud actor and require a new evidence destination.
+`build-open-meadow.py` preserves `sky.clouds` and leaves sun rotation to this step.
+
 The foliage masters carry no world position offset: the T6 `SimpleGrassWind` sway made the
 Nanite lodgepole crowns fall back to bare trunks in the packaged build.
 
 Sun calculation uses [pvlib's NREL SPA](https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.solarposition.spa_python.html)
 at the `settings.json` OriginGeopoint, altitude-derived pressure, 12 °C and delta-T 67 s.
 The UE 5.8.2 component headers define cloud distances in km and volumetric fog distance in cm.
-Cloud shadows and sun changes require recapturing perception calibration frames after deployment.
+Shared lighting and material changes alter drone imagery and require recapturing perception
+calibration frames before reusing previous calibration results. Deployment does not run calibration
+automatically.
 
 Packaging requires explicit manifests for the Content being cooked. Override any
 installed `Live` paths inherited from the runtime profile. Generate settings for

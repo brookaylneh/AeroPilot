@@ -47,6 +47,98 @@ def rebuilt(name, cls, factory):
 
 
 meshes = {}
+external = json.loads((ROOT / "world/unreal/blender/external.json").read_text())["assets"]
+sources = {key.replace("-", ""): value for key, value in external.items()}
+material_settings = grass["material"]
+assert set(material_settings) == {"subsurface", "specular"}
+assert all(0 < value <= 1 for value in material_settings.values())
+masters = {}
+material_report = {}
+
+
+def grass_material(masked):
+    name = "M_GrassMasked" if masked else "M_GrassOpaque"
+    material = rebuilt(name, unreal.Material, unreal.MaterialFactoryNew())
+    for expression in ml.get_material_expressions(material):
+        ml.delete_material_expression(material, expression)
+    assert not ml.get_material_expressions(material)
+    set_properties(
+        material,
+        shading_model=unreal.MaterialShadingModel.MSM_TWO_SIDED_FOLIAGE,
+        two_sided=True,
+        blend_mode=unreal.BlendMode.BLEND_MASKED if masked else unreal.BlendMode.BLEND_OPAQUE,
+        used_with_nanite=True,
+        used_with_voxels=True,
+        used_with_instanced_static_meshes=True,
+    )
+
+    def node(cls, **properties):
+        return set_properties(ml.create_material_expression(material, cls), **properties)
+
+    def connect(source, pin, target, socket):
+        assert ml.connect_material_expressions(source, pin, target, socket), socket
+
+    textures = {}
+    for parameter, sampler, default in (
+        ("BC", "SAMPLERTYPE_COLOR", "/Engine/EngineResources/DefaultTexture"),
+        ("ORM", "SAMPLERTYPE_LINEAR_COLOR", "/Engine/EngineMaterials/BaseFlattenLinearColor"),
+        ("N", "SAMPLERTYPE_NORMAL", "/Engine/EngineMaterials/BaseFlattenNormalMap"),
+    ):
+        textures[parameter] = node(
+            unreal.MaterialExpressionTextureSampleParameter2D,
+            parameter_name=parameter,
+            sampler_type=getattr(unreal.MaterialSamplerType, sampler),
+            texture=unreal.load_asset(default),
+        )
+    gain = node(
+        unreal.MaterialExpressionVectorParameter,
+        parameter_name="SourceAlbedoGain",
+        default_value=unreal.LinearColor(1, 1, 1, 1),
+    )
+    colour = node(unreal.MaterialExpressionMultiply)
+    connect(textures["BC"], "RGB", colour, "A")
+    connect(gain, "RGB", colour, "B")
+    bounded = node(unreal.MaterialExpressionClamp, min_default=0.0, max_default=1.0)
+    connect(colour, "", bounded, "")
+    transmission = node(unreal.MaterialExpressionMultiply, const_b=material_settings["subsurface"])
+    connect(bounded, "", transmission, "A")
+    links = [
+        (bounded, "", unreal.MaterialProperty.MP_BASE_COLOR),
+        (transmission, "", unreal.MaterialProperty.MP_SUBSURFACE_COLOR),
+        (textures["ORM"], "R", unreal.MaterialProperty.MP_AMBIENT_OCCLUSION),
+        (textures["ORM"], "G", unreal.MaterialProperty.MP_ROUGHNESS),
+        (textures["N"], "RGB", unreal.MaterialProperty.MP_NORMAL),
+        (
+            node(unreal.MaterialExpressionConstant, r=material_settings["specular"]),
+            "",
+            unreal.MaterialProperty.MP_SPECULAR,
+        ),
+    ]
+    if masked:
+        links.append((textures["BC"], "A", unreal.MaterialProperty.MP_OPACITY_MASK))
+    for expression, pin, prop in links:
+        assert ml.connect_material_property(expression, pin, prop), prop
+    errors = ml.recompile_material(material)
+    assert not errors, (name, errors)
+    assert lib.save_loaded_asset(material), name
+    return material
+
+
+def source_gain(records):
+    def linear(value):
+        value /= 255
+        return value / 12.92 if value <= 0.04045 else ((value + 0.055) / 1.055) ** 2.4
+
+    # Undo the documented reference-render correction; retain each source texture's
+    # RGB detail and dry tips instead of mapping its luminance onto a replacement palette.
+    result = [
+        math.prod(linear(row["renderSrgb"][i]) / linear(row["referenceSrgb"][i]) for row in records)
+        for i in range(3)
+    ]
+    assert all(math.isfinite(value) and 0 < value < 4 for value in result), result
+    return unreal.LinearColor(*result, 1)
+
+
 for name, entry in grass["types"].items():
     title = "".join(part.title() for part in name.split("-"))
     for row in entry["varieties"]:
@@ -68,22 +160,40 @@ for name, entry in grass["types"].items():
         assert lib.save_loaded_asset(asset, only_if_is_dirty=False), mesh
         overrides = []
         for index, slot in enumerate(asset.get_editor_property("static_materials")):
+            source = slot.material_interface
+            assert isinstance(source, unreal.MaterialInstanceConstant), source
+            masked = (
+                source.get_base_material().get_editor_property("blend_mode")
+                == unreal.BlendMode.BLEND_MASKED
+            )
+            if masked not in masters:
+                masters[masked] = grass_material(masked)
             instance = rebuilt(
                 f"MI_{title}_{mesh.split('/')[-1].removeprefix('SM_')}_{index}",
                 unreal.MaterialInstanceConstant,
                 unreal.MaterialInstanceConstantFactoryNew(),
             )
-            ml.set_material_instance_parent(instance, slot.material_interface)
-            ml.set_material_instance_scalar_parameter_value(
-                instance, "Brightness", entry["brightness"]
-            )
-            assert (
-                abs(
-                    ml.get_material_instance_scalar_parameter_value(instance, "Brightness")
-                    - entry["brightness"]
+            ml.set_material_instance_parent(instance, masters[masked])
+            instance.set_editor_property("scalar_parameter_values", [])
+            for parameter in ("BC", "ORM", "N"):
+                texture = ml.get_material_instance_texture_parameter_value(source, parameter)
+                assert texture, (mesh, parameter)
+                ml.set_material_instance_texture_parameter_value(instance, parameter, texture)
+                assert (
+                    ml.get_material_instance_texture_parameter_value(instance, parameter) == texture
                 )
-                < 1e-6
+            key = mesh.split("/")[-1].removeprefix("SM_").replace("_", "").lower()
+            gain = source_gain(sources[key]["colour"]["masked" if masked else "opaque"])
+            ml.set_material_instance_vector_parameter_value(instance, "SourceAlbedoGain", gain)
+            assert (
+                ml.get_material_instance_vector_parameter_value(instance, "SourceAlbedoGain")
+                == gain
             )
+            material_report[instance.get_name()] = {
+                "source": source.get_path_name(),
+                "sourceAlbedoGain": [gain.r, gain.g, gain.b],
+                "shadingModel": "Two Sided Foliage",
+            }
             assert lib.save_loaded_asset(instance), mesh
             overrides.append(instance)
         meshes[name, mesh] = asset, overrides
@@ -287,6 +397,7 @@ report.write_text(
             "profiles": grass["profiles"],
             "shapePreservation": grass["shapePreservation"],
             "allocations": counts,
+            "materials": material_report,
         },
         indent=2,
     )

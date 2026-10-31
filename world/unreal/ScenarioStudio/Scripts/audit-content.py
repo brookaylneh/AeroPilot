@@ -100,6 +100,32 @@ for name, entry in grass["types"].items():
             unreal.NaniteShapePreservation, grass["shapePreservation"]
         ), (row["mesh"], nanite.enabled, nanite.shape_preservation)
         assert mesh.get_num_nanite_triangles() > 0, row["mesh"]
+        for index, slot in enumerate(mesh.get_editor_property("static_materials")):
+            instance = unreal.load_asset(
+                f"{grass['folder']}/MI_{title}_{row['mesh'].split('/')[-1].removeprefix('SM_')}_{index}"
+            )
+            assert instance and not instance.get_editor_property("scalar_parameter_values")
+            material = instance.get_base_material()
+            assert (
+                material.get_editor_property("shading_model")
+                == unreal.MaterialShadingModel.MSM_TWO_SIDED_FOLIAGE
+            )
+            assert material.get_editor_property("two_sided")
+            for usage in (
+                "used_with_nanite",
+                "used_with_voxels",
+                "used_with_instanced_static_meshes",
+            ):
+                assert material.get_editor_property(usage), (material, usage)
+            assert unreal.MaterialEditingLibrary.get_material_property_input_node(
+                material, unreal.MaterialProperty.MP_SUBSURFACE_COLOR
+            ), material
+            for parameter in ("BC", "N", "ORM"):
+                assert unreal.MaterialEditingLibrary.get_material_instance_texture_parameter_value(
+                    instance, parameter
+                ) == unreal.MaterialEditingLibrary.get_material_instance_texture_parameter_value(
+                    slot.material_interface, parameter
+                ), (instance, parameter)
 for profile in grass["profiles"]:
     graph = unreal.load_asset(f"{grass['folder']}/PCG_{profile.title()}")
     assert graph.get_editor_property("use_hierarchical_generation") and graph.get_editor_property(
@@ -146,6 +172,27 @@ world = json.loads((ROOT / "world/cosys/world.json").read_text())
 levels = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
 assert levels.load_level(maps[0])
 actors = unreal.get_editor_subsystem(unreal.EditorActorSubsystem)
+lighting = json.loads((ROOT / "world/unreal/valley-lighting.json").read_text())
+level_actors = actors.get_all_level_actors()
+(sun,) = [actor for actor in level_actors if isinstance(actor, unreal.DirectionalLight)]
+(sky,) = [actor for actor in level_actors if isinstance(actor, unreal.SkyLight)]
+(cloud,) = [actor for actor in level_actors if isinstance(actor, unreal.VolumetricCloud)]
+assert cloud.get_actor_label() == "sky.clouds"
+for component, expected in (
+    (sun.get_component_by_class(unreal.DirectionalLightComponent), lighting["sunIntensityLux"]),
+    (sky.get_component_by_class(unreal.SkyLightComponent), lighting["skyLightIntensity"]),
+):
+    assert math.isclose(component.get_editor_property("intensity"), expected, rel_tol=1e-6)
+(look,) = [actor for actor in level_actors if actor.get_actor_label() == "look.daylight"]
+settings = look.get_editor_property("settings")
+for key, expected in {
+    "auto_exposure_bias": -lighting["exposureEv100"],
+    "white_temp": lighting["whiteBalanceKelvin"],
+    "local_exposure_highlight_contrast_scale": lighting["localExposure"]["highlightContrast"],
+    "local_exposure_shadow_contrast_scale": lighting["localExposure"]["shadowContrast"],
+}.items():
+    assert settings.get_editor_property(f"override_{key}"), key
+    assert math.isclose(settings.get_editor_property(key), expected, rel_tol=1e-6), key
 authored_instances = sum(
     component.get_instance_count()
     if isinstance(component, unreal.InstancedStaticMeshComponent)
