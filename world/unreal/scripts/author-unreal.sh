@@ -11,5 +11,5 @@ exec bash world/unreal/scripts/unreal-container.sh exec \
   "$PWD/world/unreal/ScenarioStudio/ScenarioStudio.uproject" \
   -run=pythonscript -script="$PWD/world/unreal/ScenarioStudio/Scripts/$author_script.py" \
   -EnablePlugins="PythonScriptPlugin,EditorScriptingUtilities${2:+,$2}" \
-  -ddc=InstalledNoZenLocalFallback -RenderOffscreen -vulkan -unattended -nosound -nocrashreports \
+  -ddc=InstalledNoZenLocalFallback -AllowCommandletRendering -RenderOffscreen -vulkan -unattended -nosound -nocrashreports \
   -stdout -FullStdOutLogOutput
