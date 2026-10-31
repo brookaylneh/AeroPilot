@@ -23,7 +23,7 @@ test('mission page renders before its first WebSocket state arrives', () => {
     module,
     exports: module.exports,
   });
-  const page = renderToStaticMarkup(createElement(module.exports.default));
+  const page = renderToStaticMarkup(createElement(module.exports.default, { onEnded() {} }));
   assert.match(page, /Connecting to mission service/);
   assert.match(page, /Waiting for the active mission and aircraft telemetry/);
   assert.doesNotMatch(page, /aria-label="Search planner"/);

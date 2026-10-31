@@ -110,7 +110,7 @@ function ToolRow({ event, events }: { event: MissionEvent; events: MissionEvent[
     </details>
   );
 }
-export default function MissionControl() {
+export default function MissionControl({ onEnded }: { onEnded: () => void }) {
   const {
     idle,
     state,
@@ -125,6 +125,9 @@ export default function MissionControl() {
     now,
     age,
   } = useMission();
+  useEffect(() => {
+    if (idle) onEnded();
+  }, [idle, onEnded]);
   const [marking, setMarking] = useState(false);
   const [drawing, setDrawing] = useState(false);
   const [areaDraft, setAreaDraft] = useState<SearchPoint[] | null>(null);

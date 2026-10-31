@@ -26,18 +26,21 @@ export const launchSchema = z
   })
   .strict();
 
-export async function missionRequest(message: z.infer<typeof launchSchema> | { type: 'reset' }) {
+export async function missionRequest(message: z.infer<typeof launchSchema> | { type: 'reset' | 'connect' }) {
   if (message.type === 'launch') launchSchema.parse(message);
   const socket = new WebSocket(
     `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/api/mission`,
   );
-  return await new Promise<void>((resolve, reject) => {
-    const finish = (error?: Error) => {
+  return await new Promise<Briefing | null>((resolve, reject) => {
+    const finish = (error?: Error, briefing: Briefing | null = null) => {
       clearTimeout(timer);
+      socket.onopen = null;
+      socket.onmessage = null;
+      socket.onerror = null;
       socket.onclose = null;
       socket.close();
       if (error) reject(error);
-      else resolve();
+      else resolve(briefing);
     };
     const timer = setTimeout(
       () => finish(new Error('Mission service request timed out.')),
@@ -52,11 +55,17 @@ export async function missionRequest(message: z.infer<typeof launchSchema> | { t
           z.object({ type: z.literal('launched'), run_id: z.string().uuid() }).strict(),
           z.object({ type: z.literal('idle') }).strict(),
           z.object({ type: z.literal('error'), message: z.string() }).strict(),
+          z.object({ type: z.literal('history'), events: z.array(z.unknown()) }),
+          z.object({ type: z.literal('state'), mission: z.object({ briefing: briefingSchema }) }),
         ])
         .safeParse(JSON.parse(event.data));
       if (!reply.success) finish(new Error('Invalid mission service response.'));
       else if (reply.data.type === 'error') finish(new Error(reply.data.message));
-      else if (reply.data.type !== (message.type === 'launch' ? 'launched' : 'idle'))
+      else if (message.type === 'connect') {
+        if (reply.data.type === 'state') finish(undefined, reply.data.mission.briefing);
+        else if (reply.data.type === 'idle') finish();
+        else if (reply.data.type !== 'history') finish(new Error('Unexpected mission service response.'));
+      } else if (reply.data.type !== (message.type === 'launch' ? 'launched' : 'idle'))
         finish(new Error('Unexpected mission service response.'));
       else finish();
     };

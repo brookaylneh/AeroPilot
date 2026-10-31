@@ -21,6 +21,21 @@ mission; reloading `/mission` rejoins it. Completion clears the session.
    WebSocket proxy and opens `/mission`, without a URL identifier. A second launch
    during an active mission returns “A mission is already running”.
 
+Launch adds `/mission` to browser history without unloading Studio. Browser Back
+returns to the reviewed brief with the chosen character and placement retained in
+the same running browser session; Forward rejoins the same mission. Navigation does
+not reset, relaunch or save anything. The launched brief and authoring controls stay
+fixed until Start over. Hidden Studio does not send viewport commands to Unreal.
+After a full page reload, Studio reads the active mission's brief through the same
+proxy and displays that document instead of blocking access to the page.
+
+`browserFlow.test.ts` exercises character selection, placement, edited launch text,
+repeated Back/Forward and an active brief after a reload. It runs the actual browser
+components with intercepted scene/mission inputs and sends no commands to installed
+services. See [History.pushState](https://developer.mozilla.org/en-US/docs/Web/API/History/pushState),
+[popstate](https://developer.mozilla.org/en-US/docs/Web/API/Window/popstate_event) and
+[Playwright WebSocket routing](https://playwright.dev/docs/api/class-websocketroute).
+
 The copy action uses a user-initiated `document.execCommand('copy')` because the
 installed HTTP origin cannot use the secure-context Clipboard API. A failed copy
 is shown explicitly. See the [browser API documentation](https://developer.mozilla.org/en-US/docs/Web/API/Document/execCommand).

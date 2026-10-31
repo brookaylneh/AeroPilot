@@ -35,11 +35,13 @@ const steps: { id: CreatorStage; title: string; description: string }[] = [
   },
 ];
 
-export default function UnrealApp() {
+export default function UnrealApp({ active, openMission }: { active: boolean; openMission: () => void }) {
+  const [missionActive, setMissionActive] = useState(false);
   const {
     container,
     transport,
     packet,
+    activeBriefing,
     busy,
     transitioning,
     error,
@@ -48,18 +50,24 @@ export default function UnrealApp() {
     connectionStatus,
     videoStats,
     reconnect,
-  } = useUnrealSession();
+  } = useUnrealSession(active && !missionActive);
   const [working, setWorking] = useState(false);
   const [yaw, setYaw] = useState(0);
   const [briefing, setBriefing] = useState<Briefing | null>(null);
-  const locked = busy || working || transitioning;
-  const stage = packet?.creatorStage || 'person';
+  const locked = busy || working || transitioning || missionActive;
+  const stage = activeBriefing ? 'briefing' : packet?.creatorStage || 'person';
   const index = steps.findIndex((step) => step.id === stage);
   const region = packet?.catalog.regions.find((r) => r.id === packet.authoring.regionId);
   const person = packet?.catalog.people.find((p) => p.id === packet.authoring.appearance.personId);
   useEffect(() => {
     if (packet) setYaw(packet.authoring.rotation.yaw);
   }, [packet?.authoring.rotation.yaw]);
+  useEffect(() => {
+    if (activeBriefing) {
+      setBriefing(activeBriefing);
+      setMissionActive(true);
+    }
+  }, [activeBriefing]);
 
   async function changeAppearance(key: string, value: string) {
     if (!packet) return;
@@ -99,6 +107,7 @@ export default function UnrealApp() {
     setWorking(true);
     try {
       await missionRequest({ type: 'reset' });
+      setMissionActive(false);
       if (transport.current) {
         if (await send({ type: 'reset' })) setBriefing(null);
       } else {
@@ -348,34 +357,6 @@ export default function UnrealApp() {
               </div>
             </>
           )}
-          {stage === 'briefing' && briefing && !transitioning && (
-            <RescueBriefing
-              briefing={briefing}
-              setBriefing={setBriefing}
-              ready={!!packet.authoring.position}
-              disabled={locked}
-              editPlacement={() => void moveTo('placement')}
-              launch={async () => {
-                setWorking(true);
-                try {
-                  await missionRequest({
-                    type: 'launch',
-                    schemaVersion: 2,
-                    report: briefing,
-                    world: {
-                      coordinateSystem: 'UE_LH_Z_UP_CENTIMETERS',
-                      searchBoundsCm: world.searchBoundsCm,
-                    },
-                  });
-                  location.assign('/mission');
-                } catch (error) {
-                  setError((error as Error).message);
-                } finally {
-                  setWorking(false);
-                }
-              }}
-            />
-          )}
           {transitioning && stage === 'briefing' && (
             <div className="creator-transition" role="status">
               <div>
@@ -396,11 +377,40 @@ export default function UnrealApp() {
                 {videoStats.height}p · {videoStats.fps} fps
               </span>
             )}
-            {locked && <span>Applying…</span>}
+            {(busy || working || transitioning) && <span>Applying…</span>}
           </div>
         </>
       )}
-      {!packet && (
+      {stage === 'briefing' && briefing && !transitioning && (
+        <RescueBriefing
+          briefing={briefing}
+          setBriefing={setBriefing}
+          ready={!!packet?.authoring.position}
+          disabled={locked}
+          editPlacement={() => void moveTo('placement')}
+          launch={async () => {
+            setWorking(true);
+            try {
+              await missionRequest({
+                type: 'launch',
+                schemaVersion: 2,
+                report: briefing,
+                world: {
+                  coordinateSystem: 'UE_LH_Z_UP_CENTIMETERS',
+                  searchBoundsCm: world.searchBoundsCm,
+                },
+              });
+              setMissionActive(true);
+              openMission();
+            } catch (error) {
+              setError((error as Error).message);
+            } finally {
+              setWorking(false);
+            }
+          }}
+        />
+      )}
+      {!packet && !activeBriefing && (
         <div className="native-connecting">
           <TreePine size={36} />
           <h2>{connectionStatus.title}</h2>
@@ -410,7 +420,11 @@ export default function UnrealApp() {
           </button>
         </div>
       )}
-      <button className="creator-reset" disabled={locked} onClick={() => void startOver()}>
+      <button
+        className="creator-reset"
+        disabled={busy || working || transitioning}
+        onClick={() => void startOver()}
+      >
         Start over
       </button>
       {error && (
