@@ -65,12 +65,7 @@ class AgentContext(unittest.TestCase):
         mission.directory = Path(temporary.name)
         mission.search = Search(mission)
         mission.autonomy = "Supervised"
-        mission.case = {
-            "report": {
-                key: "Briefing text"
-                for key in ("description", "reportedCircumstances", "lastKnownLocation")
-            }
-        }
+        mission.report = {"brief": "Briefing text"}
         mission.events = []
         mission.vehicles = lambda: []
         mission.context_index = 0

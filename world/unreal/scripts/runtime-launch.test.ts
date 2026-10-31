@@ -118,7 +118,6 @@ test('runtime selects its map, shader platform and H264 explicitly; invalid mani
       SNR_PACKAGE_ROOT: directory,
       SNR_PIXEL_STREAMING: '1',
       SNR_COSYS_SETTINGS: path.join(directory, 'settings.json'),
-      SNR_SCENARIO_DATA_DIR: path.join(directory, 'scenarios'),
       SNR_DRONE_DATA_DIR: '',
       SNR_STREAM_CODEC: 'H264',
       SNR_PROFILE: '0',

@@ -41,13 +41,15 @@ routes are documented in [search](../../search/README.md).
 Pixel Streaming command protocol is the only implemented native appearance and
 situation interface; Cosys does not implement those authoring operations. The script
 checks `/api/unreal/status` before opening a browser and queries the current
-authoring snapshot. A placed person uses a saved backup; an unplaced state uses
-the existing reset and authoring commands and verifies exact restoration. It loads
-the fixed calibration placement, applies a condition, and restores the original
-state when its input closes. It never evicts another player. A new browser visit
-opens the person stage, as documented by the creator; backups preserve the resulting
-authoring snapshot. The configured `SNR_NATIVE_URL` must reach the same isolated
-world as `SNR_COSYS_PORT`; calibration never changes those runtime values.
+authoring snapshot. Calibration requires an empty task-owned session and never
+backs it up or loads a saved scenario. Each of the 33 current conditions names one
+explicit placement in world metres (north −600, east 100), an approved person,
+original clothing and one supported situation. `travel-and-place` with map UVs is
+the same in-memory command used by Studio. The runner verifies the resulting
+placement and flat meadow heights before flying. Closing its input resets the
+session, including after a capture failure. It never evicts another player.
+The configured `SNR_NATIVE_URL` must reach the same isolated world as
+`SNR_COSYS_PORT`; calibration never changes those runtime values.
 
 Calibration owns a `Fleet` under the controller lock. Drone1 flies while the other
 autopilots stay parked. `world/cosys/flight.py` converts world metres to each
@@ -63,7 +65,7 @@ a fresh output directory. The runner creates one subdirectory per selected condi
 
 ```sh
 .venv-cosys/bin/python -m mission_planner.agents.perception.calibrate \
-  --condition adult-kelvin --scenario-id <uuid> \
+  --condition rocketbox-adult-01-waiting \
   --output .local/evidence/coupling/<new-calibration-run> \
   --shutdown-file .local/evidence/coupling/<new-calibration-run>/world-ended.json
 ```
@@ -80,20 +82,14 @@ ground positions bracket acquisition; more than 0.01 m movement rejects the fram
 The record retains `observation` and adds timing and validation evidence. A rejected
 frame fails the condition without a retry. FOV and per-drone NED origin remain in
 every record. The completion marker requires every geometry check, landing and
-scenario restoration; it reports the measured maximum round-trip and altitude
+session reset; it reports the measured maximum round-trip and altitude
 errors. Original calibration directories and their manifest are never modified.
 Scenario stderr is saved beside the condition directory; setup EOF and cleanup
 errors retain the native diagnostic and any original capture failure.
 
-Kelvin and Noah (the catalog's shortest preset, 128 cm) each have six shirt-colour
-conditions. Baseline rust is asserted against the saved calibration fixture. Other garments
-are the supported meshes for each preset. Fixed scanned accessories remain part of
-the child presets: Sofia's backpack and Lily's skateboard cannot be removed. The
-optional daypack is absent except in the Kelvin daypack condition. Lily is tested
-waiting only. Lost characters move inside their authored behavior area; the flight
-grid stays fixed, and every frame records actual along/lateral separation as well
-as nominal grid coordinates. A nominal 24 m offset therefore does not guarantee
-that a walking character remains outside the footprint.
+New acquisition uses only the current fixed original appearances;
+historical calibration captures retain their original condition metadata and
+accepted measurements. Changing acquisition does not rewrite those measurements.
 
 ## Geometry and labels
 

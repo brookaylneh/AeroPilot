@@ -43,6 +43,7 @@ class SCENARIOSTUDIO_API AScenarioSession : public AActor
     AScenarioSession();
     bool IsReady() const { return bInitialized && BoundStreamer.IsValid(); }
     void DisableGrassSource();
+    void ResetSession();
     TSharedRef<FJsonObject> CameraPacket() const;
     UFUNCTION(Exec) void CameraView(const FString &View);
     UFUNCTION(Exec) void CameraTravel(double U, double V);
@@ -66,16 +67,15 @@ class SCENARIOSTUDIO_API AScenarioSession : public AActor
     double ViewportAspect = 16. / 9.;
     bool bPreviewFraming = false;
     bool bFollowPerson = false;
-    FString LastSavedId;
     FString CreatorStage = TEXT("person");
     TSharedPtr<FJsonObject> Briefing;
     bool SetCreatorStage(const FString &Stage, FString &Error);
     bool CapturePortrait(FString &Error);
     bool SetBriefing(const TSharedPtr<FJsonObject> &Value, FString &Error);
-    TSharedRef<FJsonObject> PublicBriefing() const;
     bool bInitialized = false;
+    bool bMissionActive = false;
     bool bShowMarker = true;
-    // Navigation is transient, independent of saved target authoring data.
+    // Navigation is transient, independent of target placement.
     FString NavigationPlayer, NavigationSession;
     double NavigationSequence = -1, LastInputTime = 0, LastTelemetryTime = 0, LastNavigationTick = 0;
     double InputYaw = 0, InputPitch = 0, InputZoom = 0;
@@ -110,7 +110,5 @@ class SCENARIOSTUDIO_API AScenarioSession : public AActor
     void UpdateMarker();
     bool SetCamera(const FString &View, FString &Error);
     bool ResetScenario(FString &Error);
-    bool Save(const FString &Name, const FString &Summary, FString &Error);
-    bool Load(const FString &Id, FString &Error);
     TSharedRef<FJsonObject> Packet() const;
 };

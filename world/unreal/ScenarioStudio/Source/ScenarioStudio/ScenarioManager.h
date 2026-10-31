@@ -35,7 +35,6 @@ class SCENARIOSTUDIO_API AScenarioManager : public AActor
     bool GroundFromScreen(float U, float V, FVector &Ground, FString &Error) const;
     UFUNCTION(BlueprintCallable) bool PlaceAtGround(double X, double Y, FString &Error);
     UFUNCTION(BlueprintCallable) bool SetYaw(double YawDegrees, FString &Error);
-    UFUNCTION(BlueprintCallable) bool RestoreSnapshot(const FString &ScenarioJson, FString &Error);
     UFUNCTION(BlueprintCallable) FString ExportAuthoringJson() const;
     // Global settings frame only. Flight/image APIs use each vehicle's local origin.
     UFUNCTION(BlueprintCallable, meta = (DisplayName = "Unreal to Cosys global NED"))
@@ -47,8 +46,7 @@ class SCENARIOSTUDIO_API AScenarioManager : public AActor
     FScenarioBehavior Behavior;
     void ResetBehavior();
     TSharedRef<FJsonObject> BehaviorJson() const;
-    bool ReadBehavior(const TSharedPtr<FJsonObject> &Value, const FVector &Position,
-                      FScenarioBehavior &Result, FString &Error) const;
+
     bool ValidateGround(FName Region, const FVector &Point, const FScenarioPersonPreset &Preset,
                         FName Situation, FVector &Ground, FString &Error) const;
     bool ValidateAppearance(const FScenarioAppearance &Selection, const FScenarioPersonPreset *&Preset,

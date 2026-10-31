@@ -25,7 +25,7 @@ class CaptureIngestion(unittest.IsolatedAsyncioTestCase):
             approvals={},
             fleet_ready=True,
             vehicles=lambda: [{"fence": fence_vertices()}],
-            case={"report": {"description": "A missing person with dementia"}},
+            report={"brief": "A missing person with dementia"},
             event=lambda *args, **kwargs: None,
             ground_team=SimpleNamespace(deliveries={}),
         )
@@ -61,7 +61,7 @@ class CaptureIngestion(unittest.IsolatedAsyncioTestCase):
         profile.update(person_prompts=[], clue_prompts=[])
         profile["category"] = {
             "value": "dementia",
-            "evidence": [{"field": "description", "quote": "dementia"}],
+            "evidence": [{"field": "brief", "quote": "dementia"}],
         }
         await self.search.execute("record_subject_profile", profile)
         self.search.mark_point(0, 0)

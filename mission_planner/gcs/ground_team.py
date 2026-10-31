@@ -72,7 +72,7 @@ class GroundTeam:
             "status": "sent",
             "message": "Sent; awaiting acknowledgement from the receiving page",
             "recipient_url": "/team?"
-            + urlencode({"case": self.mission.case["id"], "team": delivery["team_id"]}),
+            + urlencode({"run": self.mission.id, "team": delivery["team_id"]}),
         }
 
     def structure(self, place_id):
@@ -183,8 +183,9 @@ class GroundTeam:
 
     async def connection(self, websocket):
         first = json.loads(await asyncio.wait_for(websocket.recv(), 10))
-        assert set(first) == {"type", "case_id", "team_id"} and first["type"] == "connect"
-        assert first["case_id"].lower() == self.mission.case["id"].lower()
+        assert set(first) == {"type", "run_id", "team_id"} and first["type"] == "connect"
+        assert first["run_id"].lower() == self.mission.id.lower()
+        self.mission.sockets.add(websocket)
         team = first["team_id"]
         assert re.fullmatch(r"[a-zA-Z0-9_-]{1,64}", team)
 
@@ -219,6 +220,7 @@ class GroundTeam:
                     }
                     self.report_negative(message["delivery_id"], team, message["notes"])
         finally:
+            self.mission.sockets.discard(websocket)
             task.cancel()
             await asyncio.wait([task])
             if not task.cancelled():

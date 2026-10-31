@@ -1,7 +1,7 @@
 # Search commander
 
 The mission service owns profiles, plans, camera evidence and posterior. Use
-`/mission?case=<uuid>` in the assigned [slot](../../deploy/README.md).
+`/mission` in the assigned [slot](../../deploy/README.md).
 
 ## Places and directions
 
@@ -31,7 +31,9 @@ this text, preserved at dispatch. These descriptions do not establish walking ro
 
 ## Profile and prior
 
-Each supported fact and person/clue prompt retains exact briefing quotations.
+Each supported fact and person/clue prompt retains exact quotations from the single
+`brief` field. The schema-version-2 report has `{brief, portrait}`; `BRIEFING_FIELDS`
+is `("brief",)`, including the commander's Glimmer review input.
 Unsupported facts remain unknown. Draw an area and inspect its numeric corners.
 The Sierra domain is `temperate_mountainous` for dementia and terrain-pooled
 `temperate` for typically developing children. Other profiles, including hikers,
@@ -183,7 +185,7 @@ saved mission/progress and returns along the saved path before continuing AUTO.
 
 `notify_ground_team` requires a confirmed lead and explicit approval. It delivers
 photo, coordinates, time, directions, labelled confidence/posterior and navigation
-link to `/team?case=<uuid>&team=<id>`, awaiting that page's acknowledgement.
+link to `/team?run=<run-id>&team=<id>`, awaiting that page's acknowledgement.
 
 `hasty_check_structure` also requires approval in every mode. It sends an authored
 structure footprint, name, directions and instructions to that page, without a

@@ -147,3 +147,4 @@ async def finish(search, started):
         source="operator",
         result={"elapsed_s": time.monotonic() - started},
     )
+    await mission.clear()

@@ -1,5 +1,3 @@
-import type { Packet } from './useUnrealSession';
-
 export const title = (value: string) => value.replaceAll('-', ' ').replace(/^./, (c) => c.toUpperCase());
 export const situations = [
   {
@@ -29,17 +27,3 @@ export const colors: Record<string, string> = {
   sand: '#b8a17c',
   cream: '#d9d1b8',
 };
-export function describePerson(packet: Packet): string {
-  const a = packet.authoring.appearance;
-  const person = packet.catalog.people.find((p) => p.id === a.personId)!;
-  const garment = (color: string, item: string) =>
-    `${color === 'original' ? '' : title(color) + ' '}${item.replaceAll('-', ' ')}`;
-  const clothing = `${garment(a.topColor, a.topId)} and ${garment(a.bottomColor, a.bottomId)}.`;
-  const equipment =
-    a.backpackId === 'none'
-      ? person.supportsBackpack
-        ? 'No backpack.'
-        : ''
-      : `${title(a.backpackColor)} ${a.backpackId.replaceAll('-', ' ')}.`;
-  return `${person.ageCategory}. ${person.description} ${clothing} ${equipment} ${person.fixedAccessories}`.trim();
-}

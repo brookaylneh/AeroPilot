@@ -51,10 +51,6 @@ export const requestSchema = z.discriminatedUnion('type', [
       zoomFactor: z.number().min(0.8).max(1.25),
     })
     .strict(),
-  z
-    .object({ type: z.literal('save'), name: z.string().trim().min(1).max(80), summary: z.string().max(500) })
-    .strict(),
-  z.object({ type: z.literal('load'), id: z.string().uuid() }).strict(),
 ]);
 export type UnrealCommand = z.infer<typeof requestSchema>;
 const point = z.object({ x: z.number().finite(), y: z.number().finite(), z: z.number().finite() });

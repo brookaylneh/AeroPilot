@@ -45,7 +45,7 @@ DEFINITIONS = [
     (
         "get_mission",
         "read",
-        "Use to read the rescue briefing, mission clock, autonomy, fence and alerts. Requires an open mission.",
+        "Use to read the single brief field, mission clock, autonomy, fence and alerts. Requires an active mission.",
         {},
     ),
     (

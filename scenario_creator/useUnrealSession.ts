@@ -28,6 +28,11 @@ export const packetSchema = z.object({
       })
       .strict(),
     position: z.object({ x: z.number(), y: z.number(), z: z.number() }).nullable(),
+    behavior: z
+      .object({
+        origin: z.object({ x: z.number().finite(), y: z.number().finite(), z: z.number().finite() }),
+      })
+      .optional(),
     rotation: z.object({ pitch: z.number(), yaw: z.number(), roll: z.number() }),
   }),
   catalog: z.object({
@@ -68,8 +73,6 @@ export const packetSchema = z.object({
     ),
     options: z.array(z.object({ key: z.string(), values: z.array(z.string()) })),
   }),
-  scenarios: z.array(z.object({ id: z.string().uuid(), name: z.string() })),
-  lastSavedId: z.string(),
 });
 export type Packet = z.infer<typeof packetSchema>;
 
@@ -120,6 +123,10 @@ export function useUnrealSession() {
             title: 'Scene is unavailable',
             detail: 'The renderer is not running. Restore the service, then select Reconnect.',
           });
+          return;
+        }
+        if (health.state === 'mission') {
+          fail('A mission is already running', 'Open Mission Control to watch the search or start over.');
           return;
         }
         if (health.state === 'occupied') {

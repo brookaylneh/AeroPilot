@@ -16,39 +16,21 @@ import numpy as np
 
 from mission_planner.environment import ROOT, load_env
 
-CONDITIONS = (
-    [
-        (p, p, "rust", "waiting", "none", 2160)
-        # The recorded calibration people, not the current catalog.
-        for p in (
-            "adult-kelvin",
-            "adult-etta",
-            "senior-walter",
-            "senior-sookja",
-            "child-01",
-            "child-02",
-            "child-03",
-            "child-04",
-            "child-05",
-        )
-    ]
-    + [
-        (f"{p}-{color}", p, color, "waiting", "none", 2160)
-        for p in ("adult-kelvin", "child-01")
-        for color in ("blue", "forest", "sand", "charcoal", "cream")
-    ]
-    + [
-        (f"{p}-{situation}", p, "rust", situation, "none", 2160)
-        for p in ("adult-kelvin", "child-01")
-        for situation in ("lost", "injured")
-    ]
-    + [
-        ("adult-kelvin-daypack", "adult-kelvin", "rust", "waiting", "daypack", 2160),
-        ("adult-kelvin-native", "adult-kelvin", "rust", "waiting", "none", 1080),
-        ("child-01-native", "child-01", "rust", "waiting", "none", 1080),
-    ]
-)
-assert len(CONDITIONS) == len({c[0] for c in CONDITIONS}) == 26
+PEOPLE = json.loads((ROOT / "world/unreal/creator-people.json").read_text())
+CONDITIONS = [
+    (
+        f"{person['id']}-{situation}",
+        person["id"],
+        "original",
+        situation,
+        "none",
+        2160,
+        {"northM": -600, "eastM": 100},
+    )
+    for person in PEOPLE
+    for situation in person["supportedSituations"]
+]
+assert len(CONDITIONS) == len({condition[0] for condition in CONDITIONS}) == 33
 OFFSETS, ALONG = list(range(0, 25, 4)), list(range(-36, 37, 12))
 
 
@@ -67,7 +49,7 @@ async def close_scenario(process, log, original_error):
     try:
         code = await asyncio.wait_for(process.wait(), 30)
     except asyncio.TimeoutError as error:
-        detail = "Scenario restoration exceeded 30 s"
+        detail = "Calibration session reset exceeded 30 s"
         if original_error is not None:
             raise TimeoutError(
                 f"{type(original_error).__name__}: {original_error}; {detail}"
@@ -103,14 +85,14 @@ def scene_actor():
             raise RuntimeError(f"Actor-query RPC close failed: {error}") from error
 
 
-async def condition_flight(fleet, condition, scenario_id, directory):
+async def condition_flight(fleet, condition, directory):
     from mission_planner.agents.perception.geometry import Camera
     from mission_planner.gcs.fleet import MAV
     from world.cosys import client as sim
     from world.cosys import flight
     from world.cosys.capture import FrameCapture
 
-    label, person, _, situation, _, height = condition
+    label, person, _, situation, _, height, placement = condition
     assert not directory.exists(), "Archive a failed condition explicitly before rerunning by name"
     assert shutil.disk_usage(ROOT).free > 40 * 1024**3, "40 GiB capture reserve required"
     name = "Drone1"
@@ -128,7 +110,6 @@ async def condition_flight(fleet, condition, scenario_id, directory):
         process = await asyncio.create_subprocess_exec(
             "node",
             "mission_planner/agents/perception/calibration-scenario.mjs",
-            scenario_id,
             json.dumps(condition),
             cwd=ROOT,
             stdin=asyncio.subprocess.PIPE,
@@ -149,6 +130,10 @@ async def condition_flight(fleet, condition, scenario_id, directory):
             return dict(actor=actor, poseGlobalNed=pose, groundWorldM=point)
 
         target = {k: configured["authoring"]["behavior"]["origin"][k] / 100 for k in "xyz"}
+        assert (
+            abs(target["x"] - placement["northM"]) < 0.01
+            and abs(target["y"] - placement["eastM"]) < 0.01
+        )
         assert math.hypot(target["x"] - sim.home(name)["x"], target["y"] - sim.home(name)["y"]) > 80
         heights = [
             sim.terrain_height(target["x"] + dx, target["y"] + dy)
@@ -227,7 +212,11 @@ async def condition_flight(fleet, condition, scenario_id, directory):
                 await capture.close()
                 await asyncio.to_thread(sim.configure_capture, runtime["vehicles"][0]["height"])
     finally:
-        await close_scenario(process, scenario_log, sys.exc_info()[1])
+        original_error = sys.exc_info()[1]
+        try:
+            await asyncio.to_thread(sim.reset_session)
+        finally:
+            await close_scenario(process, scenario_log, original_error)
     assert len(frames) == len(OFFSETS) * len(ALONG)
     result = {
         "condition": condition,
@@ -241,7 +230,7 @@ async def condition_flight(fleet, condition, scenario_id, directory):
     return result
 
 
-async def run(conditions, scenario_id, output, shutdown_file):
+async def run(conditions, output, shutdown_file):
     from mission_planner.gcs.fleet import Fleet
     from world.cosys import client as sim
     from world.cosys.landmarks import load as load_landmarks
@@ -249,7 +238,7 @@ async def run(conditions, scenario_id, output, shutdown_file):
     assert os.environ["SNR_SITL_MODEL"] == "airsim-copter", "Calibration requires coupled physics"
     assert not shutdown_file.exists(), "World shutdown acknowledgement already exists"
     output.mkdir(parents=True, exist_ok=False)
-    report = {"scenarioId": scenario_id, "conditions": conditions, "completed": []}
+    report = {"conditions": conditions, "completed": []}
     with (
         open(sim.DATA / "controller.lock", "w") as lock,
         (output / "events.jsonl").open("w") as log,
@@ -265,7 +254,7 @@ async def run(conditions, scenario_id, output, shutdown_file):
             await fleet.start()
             for condition in conditions:
                 report["completed"].append(
-                    await condition_flight(fleet, condition, scenario_id, output / condition[0])
+                    await condition_flight(fleet, condition, output / condition[0])
                 )
         except BaseException as error:
             report["failure"] = {"type": type(error).__name__, "message": str(error)}
@@ -298,17 +287,15 @@ def main():
     mode.add_argument("--condition", choices=[c[0] for c in CONDITIONS])
     mode.add_argument("--all", action="store_true")
     mode.add_argument("--list", action="store_true")
-    parser.add_argument("--scenario-id")
     parser.add_argument("--output", type=Path)
     parser.add_argument("--shutdown-file", type=Path)
     args = parser.parse_args()
     if args.list:
         print(json.dumps(CONDITIONS, indent=2))
         return
-    assert args.scenario_id, "A saved, flat-meadow placement is required"
     assert args.output and args.shutdown_file, "Flight requires --output and --shutdown-file"
     conditions = [c for c in CONDITIONS if args.all or c[0] == args.condition]
-    asyncio.run(run(conditions, args.scenario_id, args.output, args.shutdown_file))
+    asyncio.run(run(conditions, args.output, args.shutdown_file))
 
 
 if __name__ == "__main__":

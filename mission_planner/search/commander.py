@@ -373,12 +373,7 @@ class Commander:
                 review = await blocking(
                     self.glimmer.review,
                     [(self.directory / record["crop_ref"]).read_bytes()],
-                    json.dumps(
-                        {
-                            key: self.search.mission.case["report"][key]
-                            for key in ("description", "reportedCircumstances", "lastKnownLocation")
-                        }
-                    ),
+                    json.dumps({key: self.search.mission.report[key] for key in ("brief",)}),
                     schema,
                 )
                 self.reviews[record["cluster_id"]] = {"label": "Model opinion", **review}

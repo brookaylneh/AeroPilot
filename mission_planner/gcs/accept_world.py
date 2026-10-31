@@ -19,7 +19,7 @@ from mission_planner.environment import load_env
 from mission_planner.gcs.coupling_gate import command_batch, diagnostics, truth, until
 from mission_planner.gcs.fleet import MAV
 from mission_planner.gcs.geodesy import NAMES, ORIGIN, fence_vertices, rtl_route
-from mission_planner.gcs.service import Mission, read_case
+from mission_planner.gcs.service import Mission
 from mission_planner.gcs.sitl import check_ports
 from mission_planner.gcs.validation import validate_route, validate_separation
 from world.cosys.terrain import BOUNDS
@@ -69,12 +69,12 @@ def validate_sortie(states, planned, readbacks, landmarks):
     return returns
 
 
-async def run(case_id, output):
+async def run(brief, output):
     load_env()
     output.mkdir(parents=True, exist_ok=False)
     port = int(os.environ["SNR_MISSION_PORT"])
     check_ports([port])
-    mission = Mission(read_case(case_id))
+    mission = Mission({"brief": brief, "portrait": ""})
     fleet = mission.fleet
     loop = asyncio.get_running_loop()
     main = asyncio.current_task()
@@ -99,6 +99,11 @@ async def run(case_id, output):
             await fleet.start()
             mission.fleet_ready = True
             mission.event("mode", "Four autopilots connected; fences and missions read back.")
+            from world.cosys.sensor import MissionSensor
+
+            mission.sensor = MissionSensor(
+                mission.directory / "captures", fleet, mission.capture_received
+            )
             mission.launch(mission.run_sensor())
             states = fleet.snapshot()
             planned = routes(states)
@@ -329,7 +334,7 @@ async def run(case_id, output):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--case", required=True)
+    parser.add_argument("--brief", required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    asyncio.run(run(args.case, args.output))
+    asyncio.run(run(args.brief, args.output))

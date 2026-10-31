@@ -92,8 +92,8 @@ assert find(landmarks, 'CROSSING')['matches'][0]['id'] == 'bridge'
 heading = directions(landmarks, center['x'] / 100 + 3, center['y'] / 100 + 4)
 assert heading['nearest']['distance_m'] == 5 and heading['linear']['side'] == 'west'
 fence = [{'north_m': bounds[n]['x'] / 100, 'east_m': bounds[e]['y'] / 100} for n, e in (('min', 'min'), ('min', 'max'), ('max', 'max'), ('max', 'min'))]
-briefing = {'lastKnownLocation': 'Phone last pinged on Test Creek'}
-location = proposal(landmarks, 'creek', [{'field': 'lastKnownLocation', 'quote': briefing['lastKnownLocation']}], briefing, fence)
+briefing = {'brief': 'Phone last pinged on Test Creek'}
+location = proposal(landmarks, 'creek', [{'field': 'brief', 'quote': briefing['brief']}], briefing, fence)
 positions, weights = location_support(location, 4)
 assert len(positions) > 1 and abs(float(weights.sum()) - 1) < 1e-12
 prior, retained, fit = initialize(grid, location, 'dementia', 'temperate_mountainous')

@@ -106,8 +106,6 @@ if [ "${1:-}" = diagnostics ]; then
   runtime_commands+=',PixelStreaming2.LogStats 1'
 fi
 if [ "${SNR_MEDIA_CAPTURE:-1}" = 1 ]; then extra_flags+=(-PixelStreamingUseMediaCapture=true); else extra_flags+=(-PixelStreamingUseMediaCapture=false); fi
-scenario_data_dir="${SNR_SCENARIO_DATA_DIR:-$PWD/.local/data/unreal-scenarios}"
-install -d -m 700 "$scenario_data_dir"
 if [ ! -x "$launcher" ] || [ ! -x "$runtime_binary" ]; then
   echo 'Packaged launcher is missing. Run package-unreal.sh in the Unreal container first.' >&2
   exit 2
@@ -122,7 +120,6 @@ exec "$runtime_binary" ScenarioStudio "$world_map" \
   "-dpcvars=${device_profile%,}" \
   "-ResX=$stream_width" "-ResY=$stream_height" -ForceRes \
   -settings="$cosys_settings" \
-  "-ScenarioSaveDir=$scenario_data_dir" \
   "-PixelStreamingEncoderCodec=$stream_codec" "-PixelStreamingWebRTCFps=$stream_fps" \
   "-PixelStreamingWebRTCStartBitrate=$start_bitrate" "-PixelStreamingWebRTCMinBitrate=$min_bitrate" "-PixelStreamingWebRTCMaxBitrate=$max_bitrate" \
   -PixelStreamingWebRTCDisableTransmitAudio=true \

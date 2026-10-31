@@ -1,74 +1,129 @@
-import world from '../world/cosys/world.json';
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import express from 'express';
-import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
-import { once } from 'node:events';
-import { briefingRouter } from './briefingRouter';
-import { rescueCaseSchema } from './briefing';
+import world from '../world/cosys/world.json';
+import { briefingSchema, launchSchema } from './briefing';
+import {
+  candidates,
+  generateBrief,
+  nearestPoint,
+  people,
+  pointLastSeen,
+  profileSchema,
+} from './missionBrief';
 
-const id = '9b6e308e-3257-43d4-bf5d-5e1bcf3a9811';
-const rescueCase = {
-  id,
-  schemaVersion: 1,
-  name: 'Reported northwest; actual placement elsewhere',
-  report: {
-    description: 'Adult wearing a blue shirt.',
-    reportedCircumstances: '',
-    lastKnownLocation: 'Northwest',
-    portrait: '',
-  },
-  world: {
-    environmentId: 'open-meadow',
-    assetVersion: 'test',
-    coordinateSystem: 'UE_LH_Z_UP_CENTIMETERS',
-    searchBounds: [
-      {
-        id: 'open-meadow',
-        minX: world.searchBoundsCm.min.x,
-        maxX: world.searchBoundsCm.max.x,
-        minY: world.searchBoundsCm.min.y,
-        maxY: world.searchBoundsCm.max.y,
-      },
-    ],
-  },
-};
+for (const person of people)
+  test(`${person.id}: reports across the world preserve evidence and exclude placement`, () => {
+    const profile = person.reportProfile;
+    const appearance = {
+      topId: person.topId,
+      bottomId: person.bottomId,
+      topColor: 'original',
+      bottomColor: 'original',
+      backpackId: 'none',
+      backpackColor: 'original',
+    };
+    for (let north = 0; north <= 8; north++)
+      for (let east = 0; east <= 12; east++) {
+        const position = {
+          x:
+            world.searchBoundsCm.min.x +
+            (north / 8) * (world.searchBoundsCm.max.x - world.searchBoundsCm.min.x),
+          y:
+            world.searchBoundsCm.min.y +
+            (east / 12) * (world.searchBoundsCm.max.y - world.searchBoundsCm.min.y),
+          z: 0,
+        };
+        const report = generateBrief(person.id, position, appearance);
+        assert.deepEqual(report, generateBrief(person.id, position, appearance));
+        assert.deepEqual(Object.keys(report), ['brief', 'portrait']);
+        const category = {
+          child_td_1_16: 'typically developing',
+          hiker: 'hiker',
+          elderly_non_dementia: 'older adult',
+          dementia: 'dementia',
+        }[profile.category];
+        const pls = pointLastSeen(position);
+        for (const span of [
+          profile.fullName,
+          `${profile.ageYears} years old`,
+          `missing for about ${profile.hoursMissing} hours`,
+          category,
+          profile.clothing.upper,
+          profile.clothing.lower,
+          profile.clothing.footwear,
+          ...profile.clothing.accessories,
+          ...profile.equipment,
+          pls.landmark.name,
+          pls.direction,
+          profile.reportingParty,
+        ])
+          assert.ok(report.brief.includes(span), span);
+        assert.ok(pls.distanceM >= 150 && pls.distanceM <= 1200);
+        const eligible = candidates
+          .map((landmark) => {
+            const point = nearestPoint(landmark.geometry, position);
+            return Math.hypot(point.x - position.x, point.y - position.y) / 100;
+          })
+          .filter((distance) => distance >= 150 && distance <= 1200);
+        assert.equal(pls.distanceM, Math.min(...eligible));
+        assert.equal(candidates.filter((landmark) => report.brief.includes(landmark.name)).length, 1);
+        assert.match(report.brief, /12:55 local on 2026-10-31/);
+        assert.ok(
+          report.brief.includes(
+            `${String(13 - profile.hoursMissing).padStart(2, '0')}:00 local on 2026-10-31`,
+          ),
+        );
+        assert.doesNotMatch(
+          report.brief,
+          /\b(?:coordinates|latitude|longitude|north_m|east_m|injured|waiting|lost)\b/i,
+        );
+        assert.doesNotMatch(report.brief, /-?\d+\.\d+|\b\d+\s*(?:metres|meters|m)\b|[xyz]\s*[:=]/i);
+        assert.ok(report.brief.length <= 4000);
+      }
+  });
 
-test('rescue API reads only public briefing files and rejects injected private truth', async () => {
-  const dir = await mkdtemp(path.join(tmpdir(), 'snr-briefing-'));
-  await mkdir(path.join(dir, 'briefings'));
-  await writeFile(
-    path.join(dir, `${id}.json`),
-    JSON.stringify({ authoring: { position: { x: 1234, y: 5678, z: 90 }, situationId: 'injured' } }),
-  );
-  const app = express();
-  app.use('/cases', briefingRouter(path.join(dir, 'briefings')));
-  const server = app.listen(0, '127.0.0.1');
-  await once(server, 'listening');
-  const url = `http://127.0.0.1:${(server.address() as { port: number }).port}/cases/${id}`;
-  try {
-    assert.equal((await fetch(url)).status, 404, 'Private authoring files are not rescue records');
-    await writeFile(path.join(dir, 'briefings', `${id}.json`), JSON.stringify(rescueCase));
-    assert.deepEqual(await (await fetch(url)).json(), rescueCase);
-    for (const record of [
-      { ...rescueCase, authoring: { position: { x: 1234, y: 5678, z: 90 } } },
-      { ...rescueCase, report: { ...rescueCase.report, situationId: 'injured' } },
-      { ...rescueCase, world: { ...rescueCase.world, targetPosition: [1234, 5678, 90] } },
-    ])
-      assert.equal(rescueCaseSchema.safeParse(record).success, false);
-    await writeFile(
-      path.join(dir, 'briefings', `${id}.json`),
-      JSON.stringify({ ...rescueCase, authoring: { position: [1234, 5678, 90] } }),
-    );
-    const response = await fetch(url);
-    assert.notEqual(response.status, 200);
-    assert.equal((await response.text()).includes('1234'), false);
-  } finally {
-    await new Promise<void>((resolve, reject) =>
-      server.close((error) => (error ? reject(error) : resolve())),
-    );
-    await rm(dir, { recursive: true });
-  }
+test('report profiles require every field and a category-compatible age', () => {
+  for (const person of people)
+    for (const key of Object.keys(person.reportProfile)) {
+      const value: Record<string, unknown> = { ...person.reportProfile };
+      delete value[key];
+      assert.equal(profileSchema.safeParse(value).success, false, key);
+    }
+  assert.equal(profileSchema.safeParse({ ...people[0].reportProfile, ageYears: 17 }).success, false);
+});
+
+test('launch has only the public report and world bounds; old schemas and private fields fail', () => {
+  const message = {
+    type: 'launch',
+    schemaVersion: 2,
+    report: { brief: 'Reported hiker.', portrait: '' },
+    world: { coordinateSystem: world.coordinateSystem, searchBoundsCm: world.searchBoundsCm },
+  };
+  assert.deepEqual(launchSchema.parse(message), message);
+  for (const value of [
+    { ...message, authoring: { position: [1, 2, 3] } },
+    { ...message, schemaVersion: 1 },
+    { ...message, case_id: 'saved' },
+    { ...message, report: { ...message.report, situationId: 'lost' } },
+  ])
+    assert.equal(launchSchema.safeParse(value).success, false);
+  assert.equal(briefingSchema.safeParse({ description: 'legacy', portrait: '' }).success, false);
+  assert.equal(briefingSchema.safeParse({ brief: 'x'.repeat(4001), portrait: '' }).success, false);
+});
+
+test('nearest geometry uses segment projection and polygon interiors', () => {
+  const points = [
+    { x: 0, y: 0, z: 0 },
+    { x: 1000, y: 0, z: 0 },
+    { x: 1000, y: 1000, z: 0 },
+    { x: 0, y: 1000, z: 0 },
+  ];
+  const position = { x: 500, y: 500, z: 0 };
+  assert.deepEqual(nearestPoint({ type: 'polygon', points }, position), position);
+  assert.deepEqual(nearestPoint({ type: 'polyline', points: points.slice(0, 2) }, position), {
+    x: 500,
+    y: 0,
+    z: 0,
+  });
+  assert.throws(() => pointLastSeen({ x: Infinity, y: 0, z: 0 }));
 });

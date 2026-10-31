@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { createInterface } from 'node:readline';
 import { readFile } from 'node:fs/promises';
 import { launchBrowser, observeScenario, waitForCreator, assertScenarioProtocol } from './browser.mjs';
-import { withScenarioBackup } from './calibration-authoring.mjs';
+import { withCalibrationSession } from './calibration-authoring.mjs';
 
 const url = process.env.SNR_NATIVE_URL;
 assert(url, 'SNR_NATIVE_URL is required');
@@ -40,16 +40,17 @@ try {
   await observeScenario(page);
   await page.goto(url);
   await waitForCreator(page);
-  await withScenarioBackup(command, async () => {
-    const loaded = await command({ type: 'load', id: process.argv[2] });
-    assert(loaded.authoring.position);
-    assert.equal(loaded.authoring.appearance.topColor, 'rust', 'Calibration baseline colour changed');
-    const [, person, color, situation, pack] = JSON.parse(process.argv[3]);
+  await withCalibrationSession(command, async () => {
+    const initial = await command({ type: 'reset' });
+    const [, person, color, situation, pack, , placement] = JSON.parse(process.argv[2]);
+    const world = JSON.parse(await readFile('world/cosys/world.json', 'utf8'));
+    assert.deepEqual(Object.keys(placement).sort(), ['eastM', 'northM']);
+    assert(Number.isFinite(placement.northM) && Number.isFinite(placement.eastM));
     const presets = JSON.parse(await readFile('world/unreal/creator-people.json', 'utf8'));
     const preset = presets.find((p) => p.id === person);
     assert(preset.supportedSituations.includes(situation));
     const appearance = {
-      ...loaded.authoring.appearance,
+      ...initial.authoring.appearance,
       personId: person,
       topColor: color,
       topId: preset.topId,
@@ -58,7 +59,14 @@ try {
     };
     await command({ type: 'appearance', appearance });
     await command({ type: 'situation', situationId: situation });
-    const configured = await command({ type: 'creator-stage', stage: 'briefing' });
+    await command({ type: 'creator-stage', stage: 'placement' });
+    const bounds = world.searchBoundsCm;
+    const u = (placement.eastM * 100 - bounds.min.y) / (bounds.max.y - bounds.min.y);
+    const v = (bounds.max.x - placement.northM * 100) / (bounds.max.x - bounds.min.x);
+    assert(u >= 0 && u <= 1 && v >= 0 && v <= 1);
+    await command({ type: 'travel-and-place', space: 'map', u, v });
+    await page.waitForFunction(() => window.snrReplies.at(-1).state.authoring.position !== null);
+    const configured = await command({ type: 'snapshot' });
     process.stdout.write(JSON.stringify(configured) + '\n');
     for await (const line of createInterface({ input: process.stdin })) {
       process.stdout.write(JSON.stringify(await command(JSON.parse(line))) + '\n');

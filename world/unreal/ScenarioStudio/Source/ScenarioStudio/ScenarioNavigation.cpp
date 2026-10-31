@@ -187,6 +187,8 @@ bool AScenarioSession::TravelAndPlace(const FString &Space, double U, double V, 
 
 void AScenarioSession::HandleNavigation(const FString &Player, const TSharedPtr<FJsonObject> &Input)
 {
+    if (bMissionActive)
+        return;
     const auto Reject = [] { UE_LOG(LogTemp, Error, TEXT("Rejected malformed navigation input")); };
     if (!Camera || !Input || Input->Values.Num() != 12)
     {

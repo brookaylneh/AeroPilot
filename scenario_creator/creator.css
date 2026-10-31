@@ -521,56 +521,18 @@
   color: var(--muted);
   font-size: 12px;
 }
-.case-status {
-  margin-left: auto;
-  font-size: 10px;
-  color: var(--accent);
-}
-.briefing-profile {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 0 0 22px;
-  border-bottom: 1px solid #ffffff20;
-  margin-bottom: 20px;
-}
-.briefing-person-icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 12px;
-  background: #ffffff09;
-  display: grid;
-  place-items: center;
-  color: var(--muted);
-}
-.briefing-profile h2,
-.briefing-private h2 {
-  margin: 0 0 8px;
-  font-size: 15px;
-  font-weight: 600;
-}
-.briefing-profile p,
-.briefing-private p {
-  margin: 0;
-  font-size: 12px;
-  line-height: 1.7;
-  color: var(--muted);
-}
 .briefing-fields {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
-.briefing-fields label,
-.creator-modal label {
+.briefing-fields label {
   display: block;
   font-size: 12px;
   color: var(--ink);
 }
 .briefing-fields input,
-.briefing-fields textarea,
-.creator-modal input,
-.creator-modal select {
+.briefing-fields textarea {
   display: block;
   width: 100%;
   border: 1px solid #ffffff30;
@@ -597,41 +559,11 @@
   color: var(--muted);
   line-height: 1.6;
 }
-.briefing-clues {
-  font-size: 12px;
-}
-.briefing-clues summary {
-  cursor: pointer;
-  color: var(--ink);
-  padding: 4px 0;
-}
-.briefing-clues summary span {
-  color: var(--muted);
-  margin-left: 8px;
-  font-size: 11px;
-}
-.briefing-clues label {
-  margin-top: 15px;
-}
-.unknown-location {
-  margin: 0;
-  font-size: 11px;
-  color: var(--muted);
-}
 .briefing-private {
   border: 1px solid #ffffff25;
   border-radius: 10px;
   padding: 16px;
   margin: 24px 0 16px;
-}
-.briefing-private h2 {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-size: 13px;
-}
-.briefing-private h2 svg {
-  color: var(--accent);
 }
 .launch-button {
   width: 100%;
@@ -678,50 +610,6 @@
   background: none;
   color: inherit;
   font-size: 20px;
-}
-.creator-modal-backdrop {
-  position: absolute;
-  inset: 0;
-  z-index: 20;
-  display: grid;
-  place-items: center;
-  background: #03100ac9;
-  backdrop-filter: blur(6px);
-}
-.creator-modal {
-  position: relative;
-  width: min(440px, calc(100vw - 30px));
-  max-height: 85vh;
-  overflow: auto;
-  padding: 32px;
-  background: #172a22;
-  border: 1px solid #ffffff30;
-  border-radius: 9px;
-}
-.creator-modal h2 {
-  font-size: 26px;
-  font-family: Manrope, sans-serif;
-  font-weight: 500;
-  letter-spacing: -1px;
-  margin: 13px 0 25px;
-}
-.creator-modal p {
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.7;
-}
-.creator-modal > .creator-primary {
-  width: 100%;
-  margin-top: 22px;
-}
-.creator-modal .modal-close {
-  position: absolute;
-  top: 10px;
-  right: 14px;
-  color: var(--muted);
-  background: transparent;
-  border: 0;
-  font-size: 22px;
 }
 .creator-app .native-connecting {
   background: radial-gradient(at 40% 40%, #2c4430, #0b1813);
@@ -874,9 +762,6 @@
   .briefing-title h1 {
     font-size: 28px;
   }
-  .case-status {
-    display: none;
-  }
   .launch-button {
     width: 100%;
     font-size: 11px !important;
@@ -904,7 +789,7 @@
   }
 }
 
-.scenario-library-link {
+.creator-reset {
   position: absolute;
   right: 18px;
   bottom: 13px;
@@ -913,11 +798,7 @@
   color: var(--muted);
   font-size: 11px !important;
 }
-.scenario-library-actions {
-  display: flex;
-  gap: 10px;
-  margin: 20px 0;
-}
+
 .creator-app .world-minimap.expanded {
   z-index: 4;
   width: min(660px, calc(100dvh - 230px), calc(100vw - 40px));
@@ -938,4 +819,35 @@
 }
 .minimap-heading:active {
   cursor: grabbing;
+}
+
+.briefing-copy {
+  margin-left: auto;
+}
+.briefing-document {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  padding: 0;
+}
+.briefing-document section + section {
+  margin-top: 1rem;
+}
+.briefing-document h2 {
+  font-size: 0.8rem;
+  margin: 0 0 0.3rem;
+}
+.briefing-document p {
+  white-space: pre-wrap;
+  line-height: 1.6;
+  margin: 0;
+}
+textarea.briefing-document {
+  min-height: 58vh;
+  line-height: 1.6;
+  resize: vertical;
 }

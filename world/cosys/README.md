@@ -238,7 +238,7 @@ Primary references:
 These are operator commands for the deployment window, not development commands.
 Run them as brook_avionuas only after the accepted revision is merged into a clean
 installed checkout. Land and disarm the installed fleet and release the authoring
-player first. Keep the intended saved case's Mission Control page ready to reload.
+player first. A service restart clears the in-memory mission; launch a fresh brief afterward.
 
 ```sh
 cd /home/brook_avionuas/snr
@@ -395,9 +395,9 @@ sudo systemctl start snr-mission
 ```
 
 snr-mission starts all four controllers immediately; the world advances once they
-reply. Reload the intended saved case to select it. Verify the unchanged startup checks,
+reply. Launch a fresh brief from Studio. Verify the unchanged startup checks,
 184 Hz readback, real camera frames and persisted search coverage. Keep the
-mission's case selected across reconnects. With the editor and development worlds
+active mission available across reconnects. With the editor and development worlds
 stopped by their owners, repeat the recorded flight/capture, feed and pan checks;
 record isolated process CPU, GPU and frame timing before accepting installed
 performance. Development coexistence is not the installed performance result.
@@ -546,3 +546,12 @@ the stable ID; equal segment distances use vertex order. Compass directions use
 eight equal bearing sectors. Side is the compass side of the nearest segment,
 `on`, or `beyond endpoint`; creek sides are called banks without inferring flow
 direction. These are geometric location descriptions, not walkable routes.
+
+## Returning to Studio
+
+The native mode request contains only a mode and request ID. `enter_mission()`
+waits for that request's acknowledgement; `reset_session()` requests Studio even
+when already in Studio, to clear placement. Unreal removes mission grass sources,
+restores the authored Studio grass graph and viewport rendering, resets the
+character session, and publishes the matching `modeRequestId`. This control file
+contains no character, situation, position or briefing.

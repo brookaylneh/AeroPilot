@@ -1,11 +1,10 @@
-import world from '../world/cosys/world.json';
-import { ArrowLeft, ArrowRight, ClipboardList, Compass, LockKeyhole, UserRound } from 'lucide-react';
+import { useState } from 'react';
+import { ArrowLeft, ArrowRight, ClipboardList, Compass, Copy, Check } from 'lucide-react';
 import type { Briefing } from './briefing';
 
 export default function RescueBriefing({
   briefing,
   setBriefing,
-  name,
   ready,
   disabled,
   editPlacement,
@@ -13,87 +12,90 @@ export default function RescueBriefing({
 }: {
   briefing: Briefing;
   setBriefing: (briefing: Briefing) => void;
-  name: string;
   ready: boolean;
   disabled: boolean;
   editPlacement: () => void;
   launch: () => void;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState('');
+  function copy() {
+    // The installed HTTP origin cannot use the secure-context Clipboard API.
+    const field = document.createElement('textarea');
+    field.value = briefing.brief;
+    field.style.position = 'fixed';
+    field.style.opacity = '0';
+    document.body.append(field);
+    field.select();
+    const success = document.execCommand('copy');
+    field.remove();
+    if (!success) {
+      setError('Copy failed. Select the brief text and copy it.');
+      return;
+    }
+    setError('');
+    setCopied(true);
+  }
   return (
     <article className="rescue-briefing">
       <header className="briefing-title">
         <ClipboardList size={20} />
         <div>
-          <h1>Mission ready</h1>
+          <h1>Mission brief</h1>
           <p>Search &amp; Rescue Simulation</p>
         </div>
-        {!ready && <span className="case-status">Placement needed</span>}
+        <button
+          className="creator-back briefing-copy"
+          aria-label={copied ? 'Copied' : 'Copy brief'}
+          onClick={copy}
+        >
+          {copied ? <Check size={18} /> : <Copy size={18} />}
+          <span aria-live="polite">{copied ? 'Copied' : 'Copy'}</span>
+        </button>
       </header>
-      <div className="briefing-profile">
-        <div className="briefing-person-icon">
-          <UserRound size={27} />
-        </div>
-        <div>
-          <h2>Missing person report</h2>
-          <p>{name} · Clothing &amp; visible identifying features</p>
-        </div>
-      </div>
       <div className="briefing-fields">
-        <label>
-          Information available to the rescue team
+        {editing ? (
           <textarea
-            aria-label="Missing-person description"
-            maxLength={1500}
-            value={briefing.description}
-            onChange={(e) => setBriefing({ ...briefing, description: e.target.value })}
+            className="briefing-document"
+            aria-label="Mission brief"
+            autoFocus
+            maxLength={4000}
+            value={briefing.brief}
+            disabled={disabled}
+            onBlur={() => setEditing(false)}
+            onChange={(event) => {
+              setBriefing({ ...briefing, brief: event.target.value });
+              setCopied(false);
+            }}
           />
-        </label>
-        <p className="briefing-note">
-          Prepared from the selected appearance. Edit the report and include only what the rescue team has
-          been told.
-        </p>
-        <details className="briefing-clues">
-          <summary>
-            Reported circumstances &amp; last-seen clue <span>Optional</span>
-          </summary>
-          <label>
-            Reported circumstances
-            <textarea
-              aria-label="Reported circumstances"
-              maxLength={1500}
-              placeholder="What has the rescue team been told?"
-              value={briefing.reportedCircumstances}
-              onChange={(e) => setBriefing({ ...briefing, reportedCircumstances: e.target.value })}
-            />
-          </label>
-          <label>
-            Last-known location
-            <input
-              aria-label="Last-known location"
-              maxLength={1500}
-              placeholder="Unknown — or describe a reported area"
-              value={briefing.lastKnownLocation}
-              onChange={(e) => setBriefing({ ...briefing, lastKnownLocation: e.target.value })}
-            />
-          </label>
-        </details>
-        <p className="unknown-location">
-          Last known location: {briefing.lastKnownLocation.trim() || 'Unknown'}
-        </p>
+        ) : (
+          <button
+            className="briefing-document"
+            aria-label="Edit mission brief"
+            disabled={disabled}
+            onClick={() => setEditing(true)}
+          >
+            {briefing.brief.split('\n\n').map((paragraph, index) => {
+              const [heading, ...body] = paragraph.split('\n');
+              return (
+                <section key={index}>
+                  <h2>{heading}</h2>
+                  {body.length > 0 && <p>{body.join('\n')}</p>}
+                </section>
+              );
+            })}
+          </button>
+        )}
+        <p className="briefing-note">Click the brief to edit. Launch sends the text shown here.</p>
+        {error && <p role="alert">{error}</p>}
       </div>
-      <section className="briefing-private">
-        <h2>
-          <LockKeyhole size={17} />
-          Private scenario information
-        </h2>
-        <p>
-          True position and simulated condition are preserved separately for evaluation. They are not included
-          in the rescue mission briefing.
-        </p>
-      </section>
+      <p className="briefing-private">
+        The true location stays inside the simulation and is never shown to the mission planner.
+      </p>
       <button
         className="creator-primary launch-button"
-        disabled={disabled || !ready || !briefing.description.trim()}
+        disabled={disabled || !ready || !briefing.brief.trim()}
         onClick={launch}
       >
         <Compass size={19} />
@@ -105,11 +107,6 @@ export default function RescueBriefing({
           <ArrowLeft size={14} />
           Edit placement
         </button>
-        <span>
-          Open Meadow ·{' '}
-          {((world.searchBoundsCm.max.y - world.searchBoundsCm.min.y) / 100).toLocaleString('en-US')} m ×{' '}
-          {((world.searchBoundsCm.max.x - world.searchBoundsCm.min.x) / 100).toLocaleString('en-US')} m
-        </span>
       </footer>
     </article>
   );

@@ -246,16 +246,12 @@ class Planner(unittest.TestCase):
 
 class Subject(unittest.TestCase):
     def setUp(self):
-        self.report = {
-            "description": "A hiker is missing.",
-            "reportedCircumstances": "",
-            "lastKnownLocation": "Beside the old bridge.",
-        }
+        self.report = {"brief": "A hiker is missing. Beside the old bridge."}
         self.profile = {k: {"value": None, "evidence": []} for k in PROFILE_FIELDS}
         self.profile.update(
             category={
                 "value": "hiker",
-                "evidence": [{"field": "description", "quote": self.report["description"]}],
+                "evidence": [{"field": "brief", "quote": "A hiker is missing."}],
             },
             person_prompts=[],
             clue_prompts=[],
@@ -263,8 +259,8 @@ class Subject(unittest.TestCase):
 
     def test_unknown_fields_and_landmark_do_not_invent_coordinates(self):
         self.profile["last_known_location"] = {
-            "value": self.report["lastKnownLocation"],
-            "evidence": [{"field": "lastKnownLocation", "quote": self.report["lastKnownLocation"]}],
+            "value": self.report["brief"],
+            "evidence": [{"field": "brief", "quote": self.report["brief"]}],
         }
         validate_profile(self.profile, self.report)
         self.assertIsNone(explicit_point(self.profile))
@@ -284,8 +280,8 @@ class Subject(unittest.TestCase):
             "His phone last pinged near the footbridge. Red windbreaker, walking stick. "
             "He tends to follow water."
         )
-        self.report["reportedCircumstances"] = hero
-        evidence = [{"field": "reportedCircumstances", "quote": hero}]
+        self.report["brief"] = hero
+        evidence = [{"field": "brief", "quote": hero}]
         self.profile["age_years"] = {"value": 74, "evidence": evidence}
         self.profile["category"] = {"value": "dementia", "evidence": evidence}
         self.assertEqual(validate_profile(self.profile, self.report)["age_years"]["value"], 74)
@@ -299,24 +295,21 @@ class Subject(unittest.TestCase):
             "My father, 74 hours later, left at 2 pm.",
             "My father, 74 steps from the bridge, called at 2 pm.",
         ):
-            self.report["reportedCircumstances"] = text
+            self.report["brief"] = "A hiker is missing. " + text
             for value in (2, 74):
                 self.profile["age_years"] = {
                     "value": value,
-                    "evidence": [{"field": "reportedCircumstances", "quote": text}],
+                    "evidence": [{"field": "brief", "quote": text}],
                 }
                 with (
                     self.subTest(text=text, value=value),
                     self.assertRaisesRegex(AssertionError, "explicitly stated"),
                 ):
                     validate_profile(self.profile, self.report)
-        self.report["reportedCircumstances"] = "My father, after 74, continued walking."
+        self.report["brief"] = "A hiker is missing. My father, after 74, continued walking."
         self.profile["age_years"] = {
             "value": 74,
-            "evidence": [
-                {"field": "reportedCircumstances", "quote": quote}
-                for quote in ("My father,", "74,")
-            ],
+            "evidence": [{"field": "brief", "quote": quote} for quote in ("My father,", "74,")],
         }
         with self.assertRaisesRegex(AssertionError, "explicitly stated"):
             validate_profile(self.profile, self.report)

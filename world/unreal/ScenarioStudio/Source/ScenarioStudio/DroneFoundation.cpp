@@ -99,14 +99,45 @@ void ADroneFoundation::Poll()
     ASimModeBase *Mode = *Modes;
     FString Text;
     TSharedPtr<FJsonObject> Command;
-    if (!bMission && FFileHelper::LoadFileToString(Text, *(Directory / TEXT("mission-request.json"))))
+    if (FFileHelper::LoadFileToString(Text, *(Directory / TEXT("mission-request.json"))))
     {
-        FString Requested;
+        FString Requested, Id;
         checkf(FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Text), Command) && Command &&
-                   Command->Values.Num() == 1 && Command->TryGetStringField(TEXT("mode"), Requested) &&
-                   Requested == TEXT("mission"),
-               TEXT("Invalid mission request: %s"), *Text);
-        EnterMission(Mode);
+                   Command->Values.Num() == 2 && Command->TryGetStringField(TEXT("mode"), Requested) &&
+                   Command->TryGetStringField(TEXT("id"), Id) && !Id.IsEmpty() && Id.Len() <= 64 &&
+                   (Requested == TEXT("mission") || Requested == TEXT("studio")),
+               TEXT("Invalid mission mode request"));
+        if (Id != LastModeRequest)
+        {
+            if (Requested == TEXT("mission"))
+            {
+                check(!bMission);
+                EnterMission(Mode);
+            }
+            else
+            {
+                if (bMission)
+                {
+                    for (int32 Index = 1; Index <= 4; ++Index)
+                    {
+                        const FString Name = FString::Printf(TEXT("Drone%d"), Index);
+                        APIPCamera *Sensor = Mode->getCamera(msr::airlib::CameraDetails("front_center", TCHAR_TO_UTF8(*Name)));
+                        check(Sensor);
+                        auto *Source = Sensor->FindComponentByClass<UPCGGenSourceComponent>();
+                        check(Source);
+                        Source->DestroyComponent();
+                    }
+                    TActorIterator<AScenarioGrass> Grass(GetWorld());
+                    check(Grass);
+                    Grass->EnterStudio();
+                }
+                TActorIterator<AScenarioSession> Session(GetWorld());
+                check(Session);
+                Session->ResetSession();
+                bMission = false;
+            }
+            LastModeRequest = Id;
+        }
     }
     if (FFileHelper::LoadFileToString(Text, *(Directory / TEXT("capture-request.json"))) &&
         FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Text), Command) && Command)
@@ -130,6 +161,7 @@ void ADroneFoundation::Poll()
     Report->SetObjectField(TEXT("worldOriginOffsetCm"), V(FVector(GetWorld()->OriginLocation)));
     Report->SetNumberField(TEXT("worldToMeters"), GetWorld()->GetWorldSettings()->WorldToMeters);
     Report->SetStringField(TEXT("captureRequestId"), LastRequest);
+    Report->SetStringField(TEXT("modeRequestId"), LastModeRequest);
     Report->SetStringField(TEXT("mode"), bMission ? TEXT("mission") : TEXT("studio"));
     // The capture opt-in below is fixed; these scalability cvars switch Lumen off for every view,
     // falling back to sky light and screen-space reflections (the measured A/B).

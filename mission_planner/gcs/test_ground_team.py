@@ -49,7 +49,8 @@ class GroundDelivery(unittest.IsolatedAsyncioTestCase):
         }
         self.mission = SimpleNamespace(
             directory=Path(self.temporary.name),
-            case={"id": "case"},
+            id="run",
+            sockets=set(),
             event=Mock(),
             search=SimpleNamespace(review_detection=Mock(return_value=self.review), changed=Mock()),
         )
@@ -115,7 +116,7 @@ class GroundDelivery(unittest.IsolatedAsyncioTestCase):
         identity = self.send()
         socket = AsyncMock()
         socket.recv.return_value = json.dumps(
-            {"type": "connect", "case_id": "case", "team_id": "bravo"}
+            {"type": "connect", "run_id": "run", "team_id": "bravo"}
         )
         socket.__aiter__.return_value = [
             json.dumps({"type": "acknowledge", "delivery_id": identity})
@@ -124,7 +125,7 @@ class GroundDelivery(unittest.IsolatedAsyncioTestCase):
             await self.team.connection(socket)
         self.assertEqual(self.team.deliveries[identity]["status"], "sent")
         socket.recv.return_value = json.dumps(
-            {"type": "connect", "case_id": "case", "team_id": "alpha"}
+            {"type": "connect", "run_id": "run", "team_id": "alpha"}
         )
         await self.team.connection(socket)
         self.assertEqual(self.team.deliveries[identity]["status"], "acknowledged")
@@ -134,6 +135,8 @@ class StructureChecks(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         GroundDelivery.setUp(self)
         mission = object.__new__(Mission)
+        mission.report = {"brief": "Test", "portrait": ""}
+        mission.clearing = False
         mission.__dict__.update(self.mission.__dict__)
         self.mission = mission
         self.mission.autonomy = "Autonomous"
@@ -316,7 +319,7 @@ class StructureChecks(unittest.IsolatedAsyncioTestCase):
         identity = self.send()
         socket = AsyncMock()
         socket.recv.return_value = json.dumps(
-            {"type": "connect", "case_id": "case", "team_id": "alpha"}
+            {"type": "connect", "run_id": "run", "team_id": "alpha"}
         )
         socket.__aiter__.return_value = [
             json.dumps({"type": "acknowledge", "delivery_id": identity}),

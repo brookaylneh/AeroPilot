@@ -128,9 +128,7 @@ async function sendTool(page, name, args) {
           reject(new Error('Acceptance WebSocket failed'));
         };
         socket.onopen = () => {
-          socket.send(
-            JSON.stringify({ type: 'connect', case_id: new URLSearchParams(location.search).get('case') }),
-          );
+          socket.send(JSON.stringify({ type: 'connect' }));
           socket.send(JSON.stringify({ type: 'tool', name, arguments: args }));
         };
         socket.onmessage = ({ data }) => {
@@ -1095,7 +1093,7 @@ async function commanderLoop(browser, observation, output, beforeGrid) {
   await screenshots(page, output, 'search-confirmed-lead', false, '.gcs-evidence-disposition');
   const team = 'acceptance-team';
   const receiverUrl = new URL('/team', page.url());
-  receiverUrl.search = new URLSearchParams({ case: observation.state.mission.case_id, team }).toString();
+  receiverUrl.search = new URLSearchParams({ run: observation.state.mission.id, team }).toString();
   const phone = await browser.newPage({
     viewport: { width: 390, height: 844 },
     isMobile: true,

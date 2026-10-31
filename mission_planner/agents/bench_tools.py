@@ -152,7 +152,7 @@ CASES += [
         ],
     ),
     (
-        "The briefing description, reportedCircumstances and lastKnownLocation are all empty. Record the subject profile with category unknown, all other facts null and no evidence or prompts.",
+        "The briefing brief field is empty. Record the subject profile with category unknown, all other facts null and no evidence or prompts.",
         [
             call(
                 "record_subject_profile",

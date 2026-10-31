@@ -50,8 +50,8 @@ class Places(unittest.IsolatedAsyncioTestCase):
                 },
             },
         ]
-        self.briefing = {"lastKnownLocation": "Phone ping near the footbridge; on the Creek Loop."}
-        self.evidence = [{"field": "lastKnownLocation", "quote": "near the footbridge"}]
+        self.briefing = {"brief": "Phone ping near the footbridge; on the Creek Loop."}
+        self.evidence = [{"field": "brief", "quote": "near the footbridge"}]
         temporary = tempfile.TemporaryDirectory(dir=ROOT / ".local")
         self.addCleanup(temporary.cleanup)
         self.mission = object.__new__(Mission)
@@ -60,7 +60,7 @@ class Places(unittest.IsolatedAsyncioTestCase):
         self.mission.fleet_ready = True
         self.mission.autonomy = "Autonomous"
         self.mission.event = Mock()
-        self.mission.case = {"report": self.briefing}
+        self.mission.report = self.briefing
         self.mission.fleet = SimpleNamespace(snapshot=lambda: [{"fence": self.fence}])
         self.mission.search = Search(self.mission)
         self.mission.search.landmarks = self.landmarks
@@ -73,7 +73,7 @@ class Places(unittest.IsolatedAsyncioTestCase):
             proposal(
                 self.landmarks,
                 "bridge",
-                [{"field": "lastKnownLocation", "quote": "at Footbridge"}],
+                [{"field": "brief", "quote": "at Footbridge"}],
                 self.briefing,
                 self.fence,
             )
@@ -289,7 +289,7 @@ class Places(unittest.IsolatedAsyncioTestCase):
         location = proposal(
             self.landmarks,
             "loop",
-            [{"field": "lastKnownLocation", "quote": "on the Creek Loop"}],
+            [{"field": "brief", "quote": "on the Creek Loop"}],
             self.briefing,
             self.fence,
         )

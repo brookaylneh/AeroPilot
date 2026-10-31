@@ -5,7 +5,7 @@ import re
 from mission_planner.gcs.geodesy import to_local
 from mission_planner.search.prior import CATEGORIES
 
-BRIEFING_FIELDS = ("description", "reportedCircumstances", "lastKnownLocation")
+BRIEFING_FIELDS = ("brief",)
 PROFILE_FIELDS = (
     "category",
     "age_years",

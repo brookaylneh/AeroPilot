@@ -11,12 +11,12 @@ export default function EvidenceCard({
   commander,
   send,
   enabled,
-  caseId,
+  runId,
 }: {
   commander: CommanderState;
   send: (message: Record<string, unknown>) => void;
   enabled: boolean;
-  caseId: string;
+  runId: string;
 }) {
   const review = commander.review;
   const [showList, setShowList] = useState(true);
@@ -453,7 +453,7 @@ export default function EvidenceCard({
               : 'Sent · awaiting receiving-page acknowledgement'}
           </strong>
           <a
-            href={`/team?case=${encodeURIComponent(caseId)}&team=${encodeURIComponent(delivery.team_id)}`}
+            href={`/team?run=${encodeURIComponent(runId)}&team=${encodeURIComponent(delivery.team_id)}`}
             target="_blank"
             rel="noreferrer"
           >

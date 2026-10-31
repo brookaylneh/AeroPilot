@@ -16,13 +16,7 @@ TSharedRef<FJsonObject> PointJson(const FVector &P)
     Json->SetNumberField(TEXT("z"), P.Z);
     return Json;
 }
-bool ReadPoint(const TSharedPtr<FJsonObject> &Json, const TCHAR *Key, FVector &P)
-{
-    const TSharedPtr<FJsonObject> *Point;
-    return Json->TryGetObjectField(Key, Point) && (*Point)->TryGetNumberField(TEXT("x"), P.X) &&
-           (*Point)->TryGetNumberField(TEXT("y"), P.Y) && (*Point)->TryGetNumberField(TEXT("z"), P.Z) &&
-           !P.ContainsNaN();
-}
+
 }
 
 void AScenarioManager::ResetBehavior()
@@ -144,26 +138,4 @@ TSharedRef<FJsonObject> AScenarioManager::BehaviorJson() const
                          bBehaviorActive ? Person->AnimationTime() : Behavior.AnimationTime);
     Json->SetBoolField(TEXT("walking"), Behavior.bWalking);
     return Json;
-}
-
-bool AScenarioManager::ReadBehavior(const TSharedPtr<FJsonObject> &Json, const FVector &Position,
-                                    FScenarioBehavior &Result, FString &Error) const
-{
-    double Seed;
-    if (!Json || Json->Values.Num() != 6 || !ReadPoint(Json, TEXT("origin"), Result.Origin) ||
-        !ReadPoint(Json, TEXT("destination"), Result.Destination) ||
-        !Json->TryGetNumberField(TEXT("seed"), Seed) || !FMath::IsFinite(Seed) || Seed < MIN_int32 ||
-        Seed > MAX_int32 || FMath::FloorToDouble(Seed) != Seed ||
-        !Json->TryGetNumberField(TEXT("pauseSeconds"), Result.PauseSeconds) ||
-        !FMath::IsFinite(Result.PauseSeconds) || Result.PauseSeconds < 0 || Result.PauseSeconds > 5 ||
-        !Json->TryGetNumberField(TEXT("animationTime"), Result.AnimationTime) ||
-        !FMath::IsFinite(Result.AnimationTime) || Result.AnimationTime < 0 || Result.AnimationTime > 60 ||
-        !Json->TryGetBoolField(TEXT("walking"), Result.bWalking) ||
-        !InsideWalkArea(Position, Result.Origin) || !InsideWalkArea(Result.Destination, Result.Origin))
-    {
-        Error = TEXT("Invalid saved character behavior");
-        return false;
-    }
-    Result.Seed = static_cast<int32>(Seed);
-    return true;
 }
