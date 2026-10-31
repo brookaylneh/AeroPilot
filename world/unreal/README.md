@@ -158,7 +158,7 @@ replaces the water volume with a black base colour. Do not label unchanged cooke
 valley manifest.
 
 `valley-grass.json` owns GPU runtime grass: landscape layers, mesh densities per 100 m²,
-uniform scales, blade brightness, Nanite shape preservation, and studio/mission grid profiles.
+uniform scales, the linear green palette, ground scan, Nanite shape preservation, and studio/mission grid profiles.
 `author-unreal.sh build-valley-grass` derives both graphs from UE 5.8's
 `TPL_Showcase_RuntimeGrassGPU` and authors `valley.grass` plus `valley.pcg` in OpenMeadow.
 Run it before the meadow step, then dressing and the content audit. The meadow step preserves
@@ -184,7 +184,15 @@ PCG components in ordinary levels, with a saved PCGWorldActor and explicit gener
 The runtime scheduler ticks every frame, with 64 concurrent components and a 10 ms PCG frame budget.
 Nanite instance draw distances hide middle clumps inside the near reach minus one near grid cell,
 leaving a transition overlap; each band's maximum draw distance equals its authored reach.
-`farGround.gain` tints the dry-meadow ground at all distances, including the apron.
+`colour.dark` and `colour.light` are linear RGB albedos shared by the grass material and
+meadow ground. Source texture luminance blends between them, preserving blade detail without
+retaining straw hues. Both runtime bands use the same material, with no brightness boost or
+distance colour switch. `farGround.texture` supplies the ground scan under the blades and
+beyond their reach, including the apron; its meadow variations change brightness only.
+The material authoring calls follow UE 5.8's
+[MaterialEditingLibrary](https://dev.epicgames.com/documentation/en-us/unreal-engine/python-api/class/MaterialEditingLibrary?application_version=5.8)
+and the installed `MaterialEditor/Private/MaterialEditingLibrary.cpp`; parameter setters are
+verified by reading back values because the engine's setters return false even on success.
 
 The content audit enforces a 12,000,000-instance GPU Scene budget. It counts allocated slots
 before mask rejection, every band inside its cleanup radius, four independent mission sources,
@@ -284,6 +292,10 @@ bash world/unreal/scripts/unreal-container.sh exec \
   .local/unreal/<new-build> .local/evidence/world/valley/<new-package-run>
 bash world/unreal/scripts/stage-live-release.sh .local/unreal/<new-build>/Linux
 ```
+
+Before a recording package, move the tracked `Build/Linux/PipelineCaches/*.spc` cache
+under `.local/`. Packaging rejects an inherited source cache before cooking. After the
+recording exercise, `scripts/bundle-pso-cache.py` installs its replacement for the bundled cook.
 
 Use these current source manifests only after authoring their corresponding
 Content. A rendering-only baseline instead uses explicit snapshots of the

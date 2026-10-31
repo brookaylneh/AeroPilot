@@ -271,21 +271,6 @@ def main():
             links = [(base, "", P.MP_BASE_COLOR), (rough, "", P.MP_ROUGHNESS)]
             links += [(scalar("Metallic", -1300), "", P.MP_METALLIC), (flat, "", P.MP_NORMAL)]
         else:
-            # GPU grass material overrides use this scalar (build-valley-grass.py).
-            lit = expression(unreal.MaterialExpressionMultiply, -1430)
-            connect(*base, lit, "A")
-            connect(
-                expression(
-                    unreal.MaterialExpressionScalarParameter,
-                    -1560,
-                    parameter_name="Brightness",
-                    default_value=1.0,
-                ),
-                "",
-                lit,
-                "B",
-            )
-            base = (lit, "")
             links = [(*base, P.MP_BASE_COLOR), (nodes["ORM"], "R", P.MP_AMBIENT_OCCLUSION)]
             links += [(nodes["ORM"], "G", P.MP_ROUGHNESS), (nodes["ORM"], "B", P.MP_METALLIC)]
             links += [(*normals, P.MP_NORMAL)] * normal

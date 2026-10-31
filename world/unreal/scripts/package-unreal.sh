@@ -17,10 +17,12 @@ mkdir "$uebp_EngineSavedFolder" "$uebp_LogFolder"
 # package carries none and exists to record one; it is never staged.
 pso_cache="${SNR_PSO_CACHE:?Set SNR_PSO_CACHE to bundled or recording}"
 [[ "$pso_cache" = bundled || "$pso_cache" = recording ]] || { echo 'SNR_PSO_CACHE must be bundled or recording' >&2; exit 2; }
-python3 - "$UE_ROOT" <<'PY'
+python3 - "$UE_ROOT" "$pso_cache" <<'PY'
 import json,sys,pathlib
 v=json.loads((pathlib.Path(sys.argv[1])/'Engine/Build/Build.version').read_text())
 assert (v['MajorVersion'],v['MinorVersion'],v['PatchVersion']) == (5,8,2), 'Use UE 5.8.2 for this pinned Cosys binary; rebuild plugin for other engines.'
+if sys.argv[2] == 'recording':
+    assert not list(pathlib.Path('world/unreal/ScenarioStudio/Build/Linux/PipelineCaches').glob('*.spc')), 'Move bundled source PSO caches out before building a recording package'
 PY
 project="$PWD/world/unreal/ScenarioStudio/ScenarioStudio.uproject"
 if [ ! -f world/unreal/ScenarioStudio/Plugins/AirSim/AirSim.uplugin ]; then

@@ -4,12 +4,12 @@
   0.3,
   0.6
  ],
+ "colour": {
+  "dark": [0.035, 0.095, 0.02],
+  "light": [0.1, 0.24, 0.045]
+ },
  "farGround": {
-  "gain": [
-   0.52,
-   0.66,
-   0.48
-  ]
+  "texture": "grass_ground"
  },
  "types": {
   "dry-meadow": {
@@ -65,8 +65,7 @@
       1.15
      ]
     }
-   ],
-   "brightness": 2.2
+   ]
   },
   "wet-meadow": {
    "layers": [
@@ -98,8 +97,7 @@
       1.6
      ]
     }
-   ],
-   "brightness": 2.2
+   ]
   }
  },
  "profiles": {

@@ -89,6 +89,10 @@ for package in sorted(on_disk):
         redirectors.append(package)
 
 grass = json.loads((ROOT / "world/unreal/valley-grass.json").read_text())
+grass_material = unreal.load_asset(f"{grass['folder']}/M_Grass")
+assert isinstance(grass_material, unreal.Material)
+for usage in ("used_with_nanite", "used_with_voxels", "used_with_instanced_static_meshes"):
+    assert grass_material.get_editor_property(usage), usage
 for name, entry in grass["types"].items():
     title = "".join(part.title() for part in name.split("-"))
     mask = unreal.load_asset(f"{grass['folder']}/GT_{title}")
@@ -100,6 +104,18 @@ for name, entry in grass["types"].items():
             unreal.NaniteShapePreservation, grass["shapePreservation"]
         ), (row["mesh"], nanite.enabled, nanite.shape_preservation)
         assert mesh.get_num_nanite_triangles() > 0, row["mesh"]
+        for index, slot in enumerate(mesh.get_editor_property("static_materials")):
+            instance = unreal.load_asset(
+                f"{grass['folder']}/MI_{title}_{row['mesh'].split('/')[-1].removeprefix('SM_')}_{index}"
+            )
+            assert instance.get_editor_property("parent") == grass_material, instance
+            assert not instance.get_editor_property("scalar_parameter_values"), instance
+            for parameter in ("BC", "N", "ORM"):
+                assert unreal.MaterialEditingLibrary.get_material_instance_texture_parameter_value(
+                    instance, parameter
+                ) == unreal.MaterialEditingLibrary.get_material_instance_texture_parameter_value(
+                    slot.material_interface, parameter
+                ), (instance, parameter)
 for profile in grass["profiles"]:
     graph = unreal.load_asset(f"{grass['folder']}/PCG_{profile.title()}")
     assert graph.get_editor_property("use_hierarchical_generation") and graph.get_editor_property(

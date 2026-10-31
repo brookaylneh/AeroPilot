@@ -101,6 +101,8 @@ async def check(output, recording, compare_reaches, renderer_log):
                 phase = "fast-travel"
                 await sample(7)
                 assert not sim.native()["camera"]["transitioning"], "Map flight did not finish"
+                await console(f"HighResShot 1 filename={output / f'travel-{u}-{v}.png'}")
+                await sample(1)
             nav_session = str(uuid.uuid4())
             phase = "survey-20mps"
             for sequence in range(100):
@@ -122,6 +124,8 @@ async def check(output, recording, compare_reaches, renderer_log):
                     f"ke {session} CameraNavigation {json.dumps(value, separators=(',', ':'))}"
                 )
                 await sample(0.1)
+                if sequence in (0, 50, 99):
+                    await console(f"HighResShot 1 filename={output / f'survey-{sequence}.png'}")
             await sample(1.5)
             speeds = [r["camera"]["speedCmPerSecond"] for r in rows if r["phase"] == phase]
             assert speeds and max(speeds) >= 1999, speeds
