@@ -5,7 +5,7 @@ import unittest
 from pymavlink.dialects.v20 import ardupilotmega as MAV
 
 from mission_planner.gcs.geodesy import NAMES, point_in_polygon, to_geodetic
-from mission_planner.gcs.planner import compile_plan, rectangle_bounds, survey_points
+from mission_planner.gcs.planner import compile_plan, survey_points
 from mission_planner.gcs.test_planner import fly, search_plan, states
 from mission_planner.gcs.test_validation import readback
 from mission_planner.gcs.validation import RouteConflict
@@ -57,6 +57,7 @@ def complete_search(fleet, bounds, spacing, bearing):
             )
         survey = {
             "kind": "survey",
+            "observe": True,
             "polygon": sector,
             "spacing_m": spacing,
             "bearing_deg": bearing,
@@ -86,6 +87,48 @@ def complete_search(fleet, bounds, spacing, bearing):
 
 
 class CompleteSearchFlights(unittest.TestCase):
+    def test_current_port_can_launch_four_observed_surveys_and_return(self):
+        fleet = states()
+        value = search_plan()
+        value["search"]["perimeter"] = rectangle(-710, -650, -70, 30)
+        value["drones"] = []
+        for index, (name, lane) in enumerate(
+            zip(("Drone3", "Drone1", "Drone2", "Drone4"), (-65, -40, -15, 10))
+        ):
+            state = next(state for state in fleet if state["id"] == name)
+            survey = {
+                "kind": "survey",
+                "observe": True,
+                "polygon": rectangle(-710, -650, -70 + index * 25, -45 + index * 25),
+                "spacing_m": 20,
+                "bearing_deg": 0,
+                "height_m": 30,
+                "speed_mps": 5,
+            }
+            entry = survey_points(survey)[0]
+            height = 40 + index * 2
+            transit = [
+                fly(state["north_m"], lane, height, 5),
+                fly(entry["north_m"], entry["east_m"], height, 5),
+            ]
+            value["drones"].append(
+                {
+                    "drone_id": name,
+                    "steps": [
+                        {"kind": "takeoff", "height_m": 30},
+                        *transit,
+                        survey,
+                        *reversed(transit),
+                        {"kind": "return_home", "height_m": height, "speed_mps": 5},
+                    ],
+                }
+            )
+        receipt = compile_plan(value, fleet, {name: readback() for name in NAMES}, load())
+        self.assertEqual(receipt["plan"], value)
+        self.assertEqual(set(receipt["missions"]), set(NAMES))
+        for mission in receipt["missions"].values():
+            self.assertEqual(mission["items"][-1]["command"], MAV.MAV_CMD_NAV_LAND)
+
     def test_four_grounded_drones_search_and_return_across_the_map(self):
         fleet = recorded_pad()
         fences, landmarks = {name: readback() for name in NAMES}, load()
@@ -119,12 +162,8 @@ class CompleteSearchFlights(unittest.TestCase):
                         self.assertFalse(point_in_polygon(mission["route"][1], perimeter))
                         self.assertFalse(point_in_polygon(mission["route"][-2], perimeter))
                         survey = branch["steps"][4]
-                        low_n, high_n, low_e, high_e = rectangle_bounds(survey["polygon"], "sector")
                         for point in survey_points(survey):
-                            self.assertGreaterEqual(point["north_m"], low_n - 1e-9)
-                            self.assertLessEqual(point["north_m"], high_n + 1e-9)
-                            self.assertGreaterEqual(point["east_m"], low_e - 1e-9)
-                            self.assertLessEqual(point["east_m"], high_e + 1e-9)
+                            self.assertTrue(point_in_polygon(point, survey["polygon"]))
 
     def test_recorded_crossed_departure_rejects_despite_separate_destinations(self):
         fleet = recorded_pad()

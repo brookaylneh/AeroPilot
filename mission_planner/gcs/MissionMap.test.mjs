@@ -306,7 +306,7 @@ test('failed preview highlights its two rejected legs and preserves the active m
   assert.match(accepted, /Drone2 preview plan version 3/);
 });
 
-test('search preview draws its perimeter and all four assigned survey sectors from the plan', () => {
+test('observation preview draws its perimeter and explicitly observed survey areas', () => {
   const rectangle = (west, east) => [
     { north_m: -500, east_m: west },
     { north_m: -400, east_m: west },
@@ -320,7 +320,7 @@ test('search preview draws its perimeter and all four assigned survey sectors fr
       search: { perimeter: rectangle(-100, 100) },
       drones: names.map((drone_id, i) => ({
         drone_id,
-        steps: [{ kind: 'survey', polygon: rectangle(-100 + 50 * i, -50 + 50 * i) }],
+        steps: [{ kind: 'survey', polygon: rectangle(-100 + 50 * i, -50 + 50 * i), observe: true }],
       })),
     },
     missions: Object.fromEntries(names.map((id) => [id, { route }])),
@@ -328,7 +328,7 @@ test('search preview draws its perimeter and all four assigned survey sectors fr
   const fleet = names.map((id) => vehicle(id, { ...home, armed: false, landed_state: 1 }));
   const planner = { active: null, previous: null, preview: searchReceipt, progress: {} };
   const html = map()(fleet, { planner });
-  assert.match(html, /Search perimeter and sectors for plan 4/);
+  assert.match(html, /Observation perimeter and survey areas for plan 4/);
   assert.match(html, /class="gcs-search-perimeter"/);
   for (const id of names) assert.match(html, new RegExp(`data-search-sector="${id}"`));
   assert.equal((html.match(/class="gcs-search-sector"/g) ?? []).length, 4);
@@ -346,9 +346,9 @@ test('search preview draws its perimeter and all four assigned survey sectors fr
         steps:
           drone_id === 'Drone4'
             ? [
-                { kind: 'survey', polygon: rectangle(-100, -50) },
+                { kind: 'survey', polygon: rectangle(-100, -50), observe: true },
                 { kind: 'fly', north_m: -500, east_m: 50, height_m: 40, speed_mps: 5 },
-                { kind: 'survey', polygon: rectangle(50, 100) },
+                { kind: 'survey', polygon: rectangle(50, 100), observe: true },
                 { kind: 'return_home', height_m: 40, speed_mps: 5 },
               ]
             : [{ kind: 'return_home', height_m: 40, speed_mps: 5 }],
@@ -358,6 +358,76 @@ test('search preview draws its perimeter and all four assigned survey sectors fr
   const revised = map()(fleet, { planner: { ...planner, preview: replacement } });
   assert.equal((revised.match(/data-search-sector="Drone4"/g) ?? []).length, 2);
   for (const id of names.slice(0, 3)) assert.doesNotMatch(revised, new RegExp(`data-search-sector="${id}"`));
+});
+
+test('route and circle observation draw arbitrary perimeters without inventing survey fill', () => {
+  const perimeter = [
+    { north_m: 0, east_m: 0 },
+    { north_m: 100, east_m: 0 },
+    { north_m: 100, east_m: 100 },
+    { north_m: 50, east_m: 80 },
+    { north_m: 0, east_m: 100 },
+  ];
+  for (const step of [
+    { kind: 'follow', points: perimeter.slice(0, 2), observe: true },
+    { kind: 'circle', north_m: 50, east_m: 50, radius_m: 20, turns: 1, clockwise: true, observe: true },
+  ]) {
+    const value = {
+      plan: {
+        version: 6,
+        search: { perimeter },
+        drones: [{ drone_id: 'Drone1', steps: [step] }],
+      },
+      missions: { Drone1: { route } },
+    };
+    const html = map()([vehicle('Drone1')], {
+      planner: { active: null, previous: null, preview: value, progress: {} },
+    });
+    assert.match(html, /Observation perimeter/);
+    assert.equal(html.match(/class="gcs-search-perimeter" points="([^"]+)"/)[1].split(' ').length, 5);
+    assert.doesNotMatch(html, /class="gcs-search-sector"/);
+    assert.match(html, /Drone1 preview plan version 6/);
+  }
+});
+
+test('unobserved surveys and return steps retain routes without observation fill', () => {
+  const polygon = [
+    { north_m: 0, east_m: 0 },
+    { north_m: 100, east_m: 0 },
+    { north_m: 100, east_m: 100 },
+  ];
+  const value = {
+    plan: {
+      version: 7,
+      search: { perimeter: polygon },
+      drones: [
+        { drone_id: 'Drone1', steps: [{ kind: 'survey', polygon, observe: true }] },
+        { drone_id: 'Drone2', steps: [{ kind: 'survey', polygon }] },
+        { drone_id: 'Drone3', steps: [{ kind: 'return_home', height_m: 30, speed_mps: 5 }] },
+      ],
+    },
+    missions: { Drone1: { route }, Drone2: { route }, Drone3: { route } },
+  };
+  const fleet = value.plan.drones.map(({ drone_id }) => vehicle(drone_id));
+  const planner = { active: null, previous: null, preview: value, progress: {} };
+  const html = map()(fleet, { planner });
+  assert.equal((html.match(/class="gcs-search-sector"/g) ?? []).length, 1);
+  assert.match(html, /data-search-sector="Drone1"/);
+  assert.doesNotMatch(html, /data-search-sector="Drone2"/);
+  for (const drone of fleet) assert.match(html, new RegExp(`${drone.id} preview plan version 7`));
+  const returning = {
+    ...value,
+    plan: {
+      ...value.plan,
+      drones: value.plan.drones.map(({ drone_id }) => ({
+        drone_id,
+        steps: [{ kind: 'return_home', height_m: 30, speed_mps: 5 }],
+      })),
+    },
+  };
+  const final = map()(fleet, { planner: { ...planner, preview: returning } });
+  assert.doesNotMatch(final, /class="gcs-search-perimeter"|class="gcs-search-sector"/);
+  for (const drone of fleet) assert.match(final, new RegExp(`${drone.id} preview plan version 7`));
 });
 
 test('live candidate marker uses estimated target position and disappears after tracking stops', () => {

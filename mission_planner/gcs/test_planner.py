@@ -13,6 +13,7 @@ from mission_planner.gcs.geodesy import NAMES, ORIGIN, homes, to_geodetic, to_lo
 from mission_planner.gcs.planner import (
     PLAN_SCHEMA,
     compile_plan,
+    expanding_square,
     mission_item,
     mission_readback,
     survey_points,
@@ -116,6 +117,7 @@ def search_plan():
                 "steps": [
                     {
                         "kind": "survey",
+                        "observe": True,
                         "polygon": rectangle(-750, -700, -60 + i * 30, -30 + i * 30),
                         "spacing_m": 10,
                         "bearing_deg": 0,
@@ -131,9 +133,119 @@ def search_plan():
 
 
 class SearchPlan(unittest.TestCase):
-    def check(self, value, initial_search=True):
+    def test_one_drone_rotated_polygon_and_repeated_passes_are_choices(self):
+        value = search_plan()
+        value["drones"] = value["drones"][:1]
+        step = value["drones"][0]["steps"][0]
+        step["polygon"][1]["east_m"] += 5
+        step["bearing_deg"] = 27
+        value["drones"][0]["steps"].insert(1, copy.deepcopy(step))
+        self.check(value)
+
+    def test_only_selected_observation_steps_are_bound_to_the_perimeter(self):
+        value = search_plan()
+        value["drones"] = value["drones"][:1]
+        step = value["drones"][0]["steps"][0]
+        for point in step["polygon"]:
+            point["east_m"] -= 100
+        with self.assertRaisesRegex(AssertionError, "outside the perimeter"):
+            self.check(value)
+        del step["observe"]
+        self.check(value)
+
+    def test_observation_needs_a_policy_and_supported_movement_step(self):
+        value = search_plan()
+        del value["search"]
+        with self.assertRaisesRegex(AssertionError, "Observed steps require plan.search"):
+            self.check(value)
+        value = plan([{**hover(), "observe": True}])
+        with self.assertRaises(ValidationError):
+            self.check(value)
+        value = search_plan()
+        value["drones"][0]["steps"][0]["observe"] = False
+        with self.assertRaises(ValidationError):
+            self.check(value)
+
+    def test_return_only_version_keeps_policy_without_requiring_a_search(self):
+        value = search_plan()
+        for branch in value["drones"]:
+            branch["steps"] = [{"kind": "return_home", "height_m": 40, "speed_mps": 5}]
+        self.check(value)
+
+    def test_bear_circle_and_route_use_the_same_compiler_and_policy(self):
+        for step in (
+            {
+                "kind": "circle",
+                "north_m": -720,
+                "east_m": 15,
+                "radius_m": 10,
+                "height_m": 30,
+                "speed_mps": 5,
+                "turns": 1,
+                "clockwise": True,
+            },
+            {
+                "kind": "follow",
+                "points": [{"north_m": -740, "east_m": 15}, {"north_m": -710, "east_m": 15}],
+                "height_m": 30,
+                "speed_mps": 5,
+            },
+            fly(-710, 15, 30, 5),
+        ):
+            with self.subTest(kind=step["kind"]):
+                value = search_plan()
+                value["search"]["detector_prompt"] = "bear"
+                value["search"]["look_for"] = {
+                    "objective": "Check a bear sighting",
+                    "target": "bear",
+                    "attributes": [],
+                    "ignore": [],
+                }
+                value["drones"] = [
+                    {"drone_id": "Drone1", "steps": [{**step, "observe": True}, hover()]}
+                ]
+                receipt = compile_plan(
+                    value, airborne(-745, 15, 30), {name: readback() for name in NAMES}, load()
+                )
+                self.assertEqual(receipt["plan"], value)
+                self.assertGreater(receipt["missions"]["Drone1"]["distance_m"], 0)
+
+    def test_selected_pattern_cannot_exit_its_area_between_valid_endpoints(self):
+        value = search_plan()
+        value["search"]["perimeter"] = [
+            {"north_m": n, "east_m": e}
+            for n, e in (
+                (-750, 0),
+                (-750, 50),
+                (-700, 50),
+                (-700, 35),
+                (-735, 35),
+                (-735, 15),
+                (-700, 15),
+                (-700, 0),
+            )
+        ]
+        value["drones"] = [
+            {
+                "drone_id": "Drone1",
+                "steps": [
+                    {
+                        "kind": "follow",
+                        "observe": True,
+                        "points": [{"north_m": -710, "east_m": 5}, {"north_m": -710, "east_m": 45}],
+                        "height_m": 30,
+                        "speed_mps": 5,
+                    },
+                    hover(),
+                ],
+            }
+        ]
+        with self.assertRaisesRegex(AssertionError, "split the pattern"):
+            compile_plan(value, airborne(-740, 5, 30), {name: readback() for name in NAMES}, load())
+
+    def check(self, value):
         Draft202012Validator(PLAN_SCHEMA).validate(value)
-        validate_search(value, {name: readback() for name in NAMES}, initial_search=initial_search)
+        validate_search(value, {name: readback() for name in NAMES})
 
     def test_zoom_requires_nominal_overlap_without_rewriting_the_plan(self):
         value = search_plan()
@@ -156,36 +268,10 @@ class SearchPlan(unittest.TestCase):
         value["drones"] = value["drones"][-1:]
         survey = value["drones"][0]["steps"][0]
         survey.update(height_m=15, spacing_m=10)
-        self.check(value, initial_search=False)
+        self.check(value)
         survey["spacing_m"] = 10.01
         with self.assertRaisesRegex(AssertionError, "Drone4 step 0.*exceeds 10 m.*15 m AGL"):
-            self.check(value, initial_search=False)
-
-    def test_remaining_plan_reassigns_multiple_sectors_and_allows_return_only_branches(self):
-        value = search_plan()
-        value["version"] = 8
-        surveys = [branch["steps"][0] for branch in value["drones"]]
-        for branch in value["drones"][:-1]:
-            branch["steps"] = [{"kind": "return_home", "height_m": 40, "speed_mps": 5}]
-        value["drones"][-1]["steps"] = [*surveys, hover()]
-        self.check(value, initial_search=False)
-        with self.assertRaisesRegex(AssertionError, "exactly one survey"):
-            self.check(value, initial_search=True)
-
-    def test_one_drone_can_search_a_partial_remaining_area(self):
-        value = search_plan()
-        value["drones"] = value["drones"][-1:]
-        value["version"] = 2
-        self.check(value, initial_search=False)
-        with self.assertRaisesRegex(AssertionError, "all four"):
-            self.check(value, initial_search=True)
-
-    def test_remaining_sectors_must_still_be_disjoint_and_inside_perimeter(self):
-        value = search_plan()
-        value["drones"] = value["drones"][-1:]
-        value["drones"][0]["steps"].insert(0, copy.deepcopy(value["drones"][0]["steps"][0]))
-        with self.assertRaisesRegex(AssertionError, "overlaps"):
-            self.check(value, initial_search=False)
+            self.check(value)
 
     def test_return_only_branch_has_no_candidate_lock_allowance(self):
         value = search_plan()
@@ -201,9 +287,13 @@ class SearchPlan(unittest.TestCase):
                 landed_state=MAV.MAV_LANDED_STATE_IN_AIR,
             )
         fences = {name: readback() for name in NAMES}
-        receipt = compile_plan(value, fleet, fences, load(), initial_search=False)
+        receipt = compile_plan(value, fleet, fences, load())
         plain = copy.deepcopy(value)
         del plain["search"]
+        for branch in plain["drones"]:
+            for step in branch["steps"]:
+                if "observe" in step:
+                    del step["observe"]
         baseline = compile_plan(plain, fleet, fences, load())
         self.assertEqual(receipt["plan"], value)
         self.assertEqual(
@@ -233,6 +323,10 @@ class SearchPlan(unittest.TestCase):
         self.assertEqual(receipt["plan"], value)
         plain = copy.deepcopy(value)
         del plain["search"]
+        for branch in plain["drones"]:
+            for step in branch["steps"]:
+                if "observe" in step:
+                    del step["observe"]
         baseline = compile_plan(plain, fleet, {name: readback() for name in NAMES}, load())
         for name in NAMES:
             mission, before = receipt["missions"][name], baseline["missions"][name]
@@ -243,40 +337,10 @@ class SearchPlan(unittest.TestCase):
             )
             self.assertAlmostEqual(before["available_hover_s"] - mission["available_hover_s"], 90)
 
-    def test_missing_aircraft_missing_survey_and_nonrectangular_sector_reject(self):
-        value = search_plan()
-        value["drones"].pop()
-        with self.assertRaisesRegex(AssertionError, "all four drones"):
-            self.check(value)
-        value = search_plan()
-        value["drones"][0]["steps"] = [hover()]
-        with self.assertRaisesRegex(AssertionError, "exactly one survey"):
-            self.check(value)
-        value = search_plan()
-        value["drones"][0]["steps"][0]["polygon"][1]["east_m"] += 1
-        with self.assertRaisesRegex(AssertionError, "axis-aligned rectangle"):
-            self.check(value)
-
-    def test_sector_overlap_gap_and_outside_perimeter_reject(self):
-        for change, message in ((-1, "overlaps"), (1, "complete perimeter")):
-            value = search_plan()
-            points = value["drones"][1]["steps"][0]["polygon"]
-            for point in points:
-                if point["east_m"] == -30:
-                    point["east_m"] += change
-            with self.assertRaisesRegex(AssertionError, message):
-                self.check(value)
-        value = search_plan()
-        for point in value["drones"][0]["steps"][0]["polygon"]:
-            if point["east_m"] == -60:
-                point["east_m"] -= 1
-        with self.assertRaisesRegex(AssertionError, "outside the perimeter"):
-            self.check(value)
-
     def test_perimeter_must_follow_its_corners_and_stay_inside_fence(self):
         value = search_plan()
         value["search"]["perimeter"][1:3] = reversed(value["search"]["perimeter"][1:3])
-        with self.assertRaisesRegex(AssertionError, "follow the perimeter"):
+        with self.assertRaisesRegex(AssertionError, "self-intersects"):
             self.check(value)
         value = search_plan()
         for points in [
@@ -309,6 +373,35 @@ class SearchPlan(unittest.TestCase):
         value["search"]["detector_prompt"] = " "
         with self.assertRaisesRegex(AssertionError, "prompt is empty"):
             self.check(value)
+
+
+class ExpandingSquare(unittest.TestCase):
+    def test_leadin_and_successive_leg_pairs_rotate_about_explicit_datum(self):
+        for bearing in (0, 90, 217):
+            step = expanding_square(-700, 0, 10, bearing, 8, 30, 5)
+            points = step["points"]
+            self.assertEqual(points[1], {"north_m": -700, "east_m": 0})
+            lengths = [
+                math.dist(tuple(a.values()), tuple(b.values())) for a, b in zip(points, points[1:])
+            ]
+            for actual, expected in zip(lengths, (10, 10, 10, 20, 20, 30, 30, 40, 40)):
+                self.assertAlmostEqual(actual, expected)
+            directions = [
+                math.atan2(b["east_m"] - a["east_m"], b["north_m"] - a["north_m"])
+                for a, b in zip(points[1:], points[2:])
+            ]
+            for a, b in zip(directions, directions[1:]):
+                self.assertAlmostEqual((b - a) % math.tau, math.pi / 2)
+            self.assertNotIn("observe", step)
+            Draft202012Validator(PLAN_SCHEMA).validate(plan([step, hover()]))
+
+    def test_bad_extent_fails_without_clipping_and_outside_pattern_reaches_preview(self):
+        for spacing, count in ((0, 2), (10, 0), (10, 101), (10, True)):
+            with self.assertRaises(AssertionError):
+                expanding_square(0, 0, spacing, 0, count, 30, 5)
+        step = expanding_square(0, 0, 1000, 0, 8, 30, 5)
+        with self.assertRaisesRegex(AssertionError, "fence"):
+            compile_steps([step, hover()], airborne(0, 0, 30))
 
 
 class Planner(unittest.TestCase):

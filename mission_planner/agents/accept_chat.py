@@ -13,7 +13,9 @@ from mission_planner.agents.map_context import compact_map, ground_height, groun
 from mission_planner.agents.models import Wonder
 from mission_planner.agents.tools import AGENT_INSTRUCTIONS, TOOLS, validate_arguments
 from mission_planner.gcs.geodesy import NAMES, fence_vertices, homes, to_geodetic
-from mission_planner.gcs.planner import compile_plan
+from mission_planner.gcs.planner import compile_plan, expanding_square
+from mission_planner.gcs.service import flight_constraints
+from mission_planner.gcs.validation import fence_polygon
 from world.cosys.landmarks import directions, find, load
 
 CHANGE = "Go to the Granite Dome instead. Keep Drone1, 40 m above ground, 5 m/s and hover until I instruct you; no return yet, zero stand-off over its centre."
@@ -168,7 +170,11 @@ async def conversation(model, script, recorded, directory):
     directory.mkdir()
     landmarks = load()
     states, fences, planner = fixture(recorded, airborne, landmarks)
+    constraints = flight_constraints(
+        [{**state, "fence": fence_polygon(fences[state["id"]])} for state in states]
+    )
     context = {
+        "flight_constraints": constraints,
         "execution": "Offline test. Telemetry for Drone1 is recorded when airborne; other drones are landed fixtures. The current task plan is a scripted fixture. No command reaches an aircraft.",
         "map": compact_map(landmarks),
         "current_vehicles": states,
@@ -204,11 +210,13 @@ async def conversation(model, script, recorded, directory):
         if name == "get_drone":
             return next(v for v in states if v["id"] == arguments["drone_id"])
         if name == "get_mission":
-            return {"planner": planner, "fence": fence_vertices(), "alerts": []}
+            return {"planner": planner, "flight_constraints": constraints, "alerts": []}
         if name == "find_place":
             return find(landmarks, arguments["name"])
         if name == "describe_location":
             return directions(landmarks, **arguments)
+        if name == "expanding_square":
+            return expanding_square(**arguments)
         if name == "ground_height":
             return ground_height(**arguments)
         if name == "ground_profile":

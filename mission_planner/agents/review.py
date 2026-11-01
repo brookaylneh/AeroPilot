@@ -8,7 +8,7 @@ import time
 
 from PIL import Image
 
-TEMPLATE = "forward-analyst-v1"
+TEMPLATE = "forward-analyst-v2"
 
 
 DECISIONS = ("escalate", "recheck", "discard")
@@ -111,9 +111,9 @@ def instructions(look_for, prompt, metadata):
             *(attributes if attributes else ["- none"]),
             "Ignore: " + ("; ".join(look_for["ignore"]) or "nothing listed"),
             "Decide:",
-            "- escalate: a visible person plausibly matches the brief; state visible support and differences.",
-            "- recheck: a person may match but size, occlusion, lighting or another ambiguity prevents a decision.",
-            "- discard: clearly not a person, or clearly visible evidence rules out the described target.",
+            "- escalate: a visible subject plausibly matches the requested target; state visible support and differences.",
+            "- recheck: the target may be present but size, occlusion, lighting or another ambiguity prevents a decision.",
+            "- discard: clearly not the requested target, or clearly visible evidence rules out the described target.",
             "An invisible or unclear attribute is cannot_tell, never evidence of a mismatch. "
             "Do not establish personal identity from appearance. Discard is the only result that "
             "authorizes disregard_and_continue for this review; other results notify Wonder. "

@@ -15,12 +15,13 @@ import httpx
 from PIL import Image
 
 from mission_planner.agents.models import Wonder
-from mission_planner.agents.tools import RESCUE_INSTRUCTIONS
+from mission_planner.agents.tools import AGENT_INSTRUCTIONS
 from mission_planner.environment import ROOT
+from mission_planner.gcs.geodesy import ORIGIN, fence_vertices
 from mission_planner.gcs.service import (
     Mission,
     compact_vehicle,
-    fence_summary,
+    flight_constraints,
     operator_error,
     planning_inspection,
     planning_instructions,
@@ -168,12 +169,13 @@ class AgentContext(unittest.TestCase):
         self.assertLess(len(json.dumps(result)), 400)
         self.assertTrue({"fence", "mission", "status_text"}.isdisjoint(result))
 
-    def test_fence_summary_uses_readback(self):
-        result = fence_summary(
-            [{"north_m": -844.676, "east_m": -25.004}, {"north_m": 804.674, "east_m": 804.671}]
-        )
-        self.assertEqual(result["vertex_count"], 2)
-        self.assertEqual(result["bounds"]["north_m"], [-844.676, 804.674])
+    def test_planning_constraints_preserve_exact_readback_polygon_and_limits(self):
+        points = [{"north_m": -844.676, "east_m": -25.004}, {"north_m": 804.674, "east_m": 804.671}]
+        result = flight_constraints([{"id": "Drone1", "fence": points}])
+        self.assertEqual(result["fences"]["Drone1"], points)
+        self.assertEqual(result["altitude_above_home_m"], [10, 100])
+        self.assertEqual(result["minimum_separation_m"], 0.1)
+        self.assertEqual(result["origin_altitude_msl_m"], ORIGIN["altitude_msl_m"])
 
     def test_every_request_contains_map_and_briefing(self):
         mission = object.__new__(Mission)
@@ -265,6 +267,7 @@ class AgentContext(unittest.TestCase):
             "climb_rate_mps": 1.6,
             "battery_percent": 90,
             "home": {"altitude_msl_m": 2632.73},
+            "fence": fence_vertices(),
         }
         mission.vehicles = lambda: [vehicle]
         mission.events = [
@@ -296,7 +299,7 @@ class AgentContext(unittest.TestCase):
         self.assertEqual(historical["sequence"], 1)
         self.assertGreater(context["telemetry_at_utc_ms"], historical["timestamp_ms"])
 
-    def test_general_context_has_map_and_no_rescue_prompt_or_fabricated_brief(self):
+    def test_general_context_has_flexible_observation_guidance_without_fabricated_brief(self):
         with tempfile.TemporaryDirectory(dir=ROOT / ".local") as directory:
             mission = object.__new__(Mission)
             mission.directory = Path(directory)
@@ -317,7 +320,9 @@ class AgentContext(unittest.TestCase):
             self.assertTrue(context["map"])
             self.assertIsNone(context["briefing"])
             self.assertNotIn("search", context)
-            self.assertNotIn(RESCUE_INSTRUCTIONS, instructions)
+            self.assertTrue(instructions.startswith(AGENT_INSTRUCTIONS))
+            self.assertIn("observe:true", instructions)
+            self.assertNotIn("{NORTH_MIN_M", instructions)
 
     def test_http_error_does_not_expose_exception_class(self):
         request = httpx.Request("POST", "https://api.meta.ai/v1/responses")

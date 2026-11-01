@@ -6,7 +6,7 @@ autopilots fly the Cosys vehicles. `quad` is retained only for the named
 and its recorded acceptance measurements. One Python process owns their
 MAVLink connections, Wonder, approvals and the event log. The browser receives actual
 telemetry, mission and fence readback, and each aircraft's forward-camera observations.
-General flights and Studio rescue briefings use the same versioned planner. Public map data is
+General flights and Studio rescue briefings use the same instructions, tools and versioned planner. Public map data is
 `state.landmarks`; the service does not read private target placements.
 
 ## Start and stop
@@ -20,8 +20,8 @@ Opening, reloading or leaving the planner neither flies an aircraft nor calls a 
 The service starts the fleet immediately because the coupled world blocks without motor replies.
 
 Studio cases use the same conversational flight planner. Wonder receives the saved
-briefing, asks for unresolved last-seen/appearance details and proposes the search
-perimeter and four assignments. Opening a case starts no sensor or inference job.
+briefing, asks for unresolved last-seen/appearance details and proposes the observation
+area, pattern and participating aircraft. Opening a case starts no sensor or inference job.
 
 Studio saves a real rescue briefing and sends `launch` with its `case_id` before navigating
 to `/missionplanner?case=<uuid>`. A `connect` containing a UUID only rejoins that active case;
@@ -94,10 +94,12 @@ longitude offset is east/(N cos(latitude)), in radians. Round trips are asserted
 X/Y/Z are **NED metres**; home elevation adds the world's `40−Z` metre spawn height.
 The settings generator asserts spawn/home consistency.
 
-The rectangle in `world/cosys/world.json` has the authorized southern launch corridor:
-east ±25 m, extending 40 m south of its southern search bound. One eight-vertex inclusion polygon contains all four homes.
-Every autopilot uploads and downloads it before enabling the fence. The map and command
-guards use this readback, including the concave corridor shoulders.
+The main rectangle in `world/cosys/world.json` contains the relocated command-post homes.
+Its fence also retains a southern extension, east ±25 m and 40 m beyond the main bound.
+Every autopilot uploads and downloads the eight-vertex inclusion polygon before enabling it.
+The map and command guards use this exact readback, including its concave shoulders.
+Departure and return are chosen from each measured home and the requested task; the southern
+extension is not a required route.
 
 Map aircraft arrows follow measured course of travel from `GLOBAL_POSITION_INT.vx/vy`
 (north/east centimetres per second). Below 0.2 m/s, the same threshold used to verify
@@ -173,7 +175,8 @@ to saturated throttle while descending against an upward demand in the autopilot
 They remain visible. See the pinned [Copter thrust-loss detector](https://github.com/ArduPilot/ardupilot/blob/fb773567896014da007bca58358704d4a0d8516f/ArduCopter/crash_check.cpp#L105).
 
 Flight commands require a healthy link/GPS/EKF and the appropriate armed/landed state.
-Limits are **10–100 m above home**, **0.5–15 m/s**, and **0.10 m minimum planned separation**.
+Limits are **10–100 m above home**, **0.5–15 m/s**, **10 m terrain/obstacle clearance**,
+and **0.10 m minimum planned separation**.
 Pure guards in `validation.py` are shared by the fleet and batch route validation.
 Checks include complete segments through the polygon, other aircraft positions, launch
 and landing columns, and the nominal RTL climb/return/descent. Reservations do not depend
@@ -197,6 +200,8 @@ reply prevents every AUTO start; aircraft already airborne remain held. Checks r
 the telemetry event loop. No command is retried.
 Planning and planner acceptance comparisons allow an absolute 1e-12 m arithmetic
 tolerance so translated coordinates do not reject the exact 0.10 m boundary.
+Polygon boundary inclusion uses a distance-scaled 1e-9 m roundoff tolerance; its regression
+rejects a 1e-7 m excursion. Physical clearance and separation limits remain unchanged.
 
 Launch requires one explicit approval. A change that launches another drone holds its
 airborne participants while approval is pending. Airborne changes and Hold, Stop, Return
@@ -214,8 +219,8 @@ RTL climbs to the higher of its current altitude and 80 m above home, returns di
 and lands. The logged terrain-envelope audit found **11.9816 m** clearance at 80 m above
 the recorded 11.13 m command-post home, using a 61.1484375 m terrain maximum and 18 m
 maximum landmark height. That bound applies to those recorded references; runtime checks
-use each aircraft's measured home. A path from the southern apron can still leave the
-concave fence. A planned return needs explicit corridor-entry waypoints when required.
+use each aircraft's measured home. A direct return must remain inside the read-back fence;
+planned returns need explicit intermediate waypoints wherever the direct segment is invalid.
 Code rejects unsafe operator RTL geometry; the autopilot battery failsafe does not use
 the planner. Simultaneous RTL paths are not collision avoidance. The source audit and
 installed parameter readback are in
@@ -237,9 +242,10 @@ survey uses an explicit polygon, exact line spacing and bearing; circle specifie
 radius, turns and direction. Land, return_home or indefinite hover must end each branch.
 `return_home` includes landing; appending another `land` is an explicit validation error.
 Conditions without a supported observation tool must be reported by the operator.
-The browser validates the structure of preview, active and previous plans. Initial
-four-sector search requirements belong to the backend's launch checks; a valid
-change to return, hover or remaining surveys must not disconnect telemetry.
+The browser validates the structure of preview, active and previous plans, including optional
+`observe: true` on finite fly/follow/survey/circle steps. It accepts one to four aircraft and
+arbitrary simple sensing polygons; route, circle, mixed and return-only changes retain telemetry.
+Flight geometry and execution authority remain backend checks.
 
 Wonder builds and previews a plan directly when the destination and objective are clear.
 The checked plan states any proposed details and goes straight to the single launch
@@ -260,13 +266,12 @@ Return_home expands the specified terrain-following trip to home and a landing. 
 does not reroute around hazards or raise a chosen height. Rejected previews return exact
 errors for Wonder to revise; commands and network requests never retry.
 
-The mission's search perimeter is independent of the world flight fence. Departure,
-transit and return may leave the perimeter and assigned sectors. They still require
+The mission's sensing perimeter is independent of the world flight fence. Unobserved departure,
+transit and return may leave the perimeter and survey areas. They still require
 mapped terrain, fence inclusion, clearance, altitude, battery and fleet separation.
-The compiler checks the world fence before sampling a transit leg; a diagonal home
-shortcut outside the narrow launch corridor reports its endpoints and required corridor
-entry instead of an ambiguous search-area error. `return_home` itself does not choose
-intermediate corridor points; Wonder supplies those as preceding `fly` steps.
+The compiler checks the world fence before sampling a transit leg. `return_home` flies a
+direct terrain-following leg and lands; Wonder supplies any needed intermediate points as
+preceding `fly` steps. Code never chooses a detour.
 
 Separation failures include both drones, the measured and required distances, both
 segment endpoints and their plan steps. Structured indices are zero-based; chat uses
@@ -276,15 +281,11 @@ launch authority; rejected previews leave active flights and inspections unchang
 Tool cards display the canonical submitted steps, including failed plans. Schema
 errors identify the field and limit without echoing the whole request.
 
-For the actual two-row launch pad, the tested west-to-east corridor ordering is
-Drone3, Drone1, Drone2, Drone4. Rear aircraft first move outward at their own pad
-northing; all four then use separate northbound lanes. Four west-to-east survey strips
-can follow that same assignment, with north/south scan lines. Return goes to the sector
-entry at the drone's transit height, then reverses its corridor legs and lands at its
-own home. Distinct transit heights help separate terrain-following paths from survey
-passes. These are visible planning choices, not automatic routing or fixed defaults.
-Full-flight regressions cover the recorded pad crossing and complete four-drone
-takeoff, transit, survey, return and landing over multiple perimeter locations.
+For a multi-aircraft departure, moving outward at each aircraft's own home northing into
+separate lanes is a useful proposal. The actual homes, fence and destination determine lane
+positions and return approaches. Different transit heights can separate horizontal paths but
+cannot remove crossings through another aircraft's takeoff or landing column. The complete
+outbound, task and homebound routes must pass preview; no pad ordering or detour is mandatory.
 
 `request_launch(version)` submits the successful preview for approval. Applying a change
 checks current state while the old mission flies, then BRAKEs the participants, waits for
@@ -417,8 +418,11 @@ The mission retains one ordered conversation across operator messages, including
 reasoning, assistant phases, function calls and results. Requests carry that history with
 `store=false` and `include=["reasoning.encrypted_content"]`; they do not depend on a
 server-stored response. Each turn receives public `landmarks`, the optional briefing,
-timestamped aircraft state and the logical plan with compact receipt metrics. Dense mission
-items remain in the operator stream and event log.
+timestamped aircraft state with measured homes, and the logical plan with compact receipt metrics.
+Every context and `get_mission` result includes `flight_constraints`: exact per-aircraft read-back
+fence vertices, origin MSL altitude, altitude/speed limits, clearance and the timing-independent
+complete-route separation rule. General and Studio sessions receive the same planning instructions.
+Dense mission items remain in the operator stream and event log.
 
 Context preparation and compilation run off the telemetry event loop. Original images
 accompany review, then leave unrelated requests; evidence IDs and observations remain.
@@ -511,8 +515,8 @@ terrain; it is not aircraft altitude. The operation changes no flight command. O
 `ForwardCapture` owner per drone serializes camera mutations and image capture, retaining
 the measured base FOV across inspections. Every image records its verified FOV and view
 revision. A failed setting invalidates old view authority before it can be reused.
-Inspection and survey release require an explicitly verified view after that failure.
-Ordinary flight permits camera control. An active survey owns its approved view; its
+Inspection and candidate release require an explicitly verified view after that failure.
+Ordinary flight permits camera control. An automatic observation step owns its approved view; its
 zoom/look-ahead change through a plan preview. During candidate following, Wonder may
 use `center_candidate(inspection_id, zoom)` to centre the selected subject's current
 position within the same temporal session. Old boxes
@@ -618,41 +622,53 @@ and does not establish forward-view detection accuracy. Live flight testing rema
 operator-controlled; settle inspection duration or stopping condition, viewing area,
 height, speed and afterwards in the test prompt.
 
-## Missing-person search and candidate lock
+## Automatic observation and candidate lock
 
-A Studio briefing uses the normal `preview_plan` and `request_launch` workflow.
-The operator-selected survey is **30 m above ground, 5 m/s, 2× zoom, 20 m line spacing
-and 20 m camera look-ahead**. Wonder states those values before launch approval.
-Preview requires at least one-third nominal horizontal overlap, using the flat-ground
-90° camera model: spacing ≤ 4 × survey height / (3 × zoom). This checks a planning
-constraint, not actual terrain visibility, capture gaps or recognition accuracy. Takeoff,
-transit and return heights remain visible choices; the converter never silently changes
-a height. A later operator instruction may request another survey height.
-Optional `plan.search` contains a rectangular `perimeter`, `detector_prompt`,
-`threshold`, the structured reviewer `look_for` brief, horizontal `stand_off_m`,
-tracking `speed_mps`, camera `zoom` and `look_ahead_m`, and `max_lock_seconds`. The latter is the total per-drone
-interruption allowance, including review and return to the saved route; preview
-reserves it in the existing battery estimate. No endurance guarantee is inferred.
-Automatic and explicitly acquired candidates share that plan-version budget;
-failed or cancelled acquisition time counts, and starting another inspection cannot reset it.
-The initial search gives each of Drone1–4 one survey step; those rectangles tile
-the perimeter without overlap or gaps. A later version can assign several remaining
-survey rectangles to an available drone and return-only steps to the others. Remaining
-rectangles must be disjoint and inside the perimeter; omitted coverage is not claimed
-searched. The map draws the survey polygons directly from the plan and approval
-displays the sensing policy.
-Survey bearing selects parallel-track or creeping-line coverage. The pattern
-descriptions come from [AMSA's 2026 National SAR Manual, Volume 2, §4.5](https://www.amsa.gov.au/sites/default/files/2026-03/NATSAR-Manual-February-2026-Volume-2.pdf).
-The perimeter is an operator-visible search choice, not a statistical containment claim.
+General tasks and Studio briefings use the normal `preview_plan` and `request_launch` workflow.
+Wonder chooses one to four aircraft, a pattern and a visible target. `observe: true` is optional
+on finite `fly`, `follow`, `survey` and `circle` steps; ordinary movement starts no automatic sensing.
+Observed steps require `plan.search`, whose `perimeter` is a simple polygon with 3–100 unique vertices
+and implicit closure. There is no rectangle, fixed aircraft count or tiling requirement.
+Observed survey polygons and their connectors must remain inside their observation area; a concave
+gap requires separate pattern pieces joined by explicit unobserved transit. The map draws the
+perimeter and only observed survey fills, preserving all routes. Approval shows the target,
+observing aircraft count and each step's observation mode. Return-only plans remain valid.
 
-Verified launch starts an inspection job for each drone with remaining surveys.
-Each waits for its next survey and samples only inside that survey's polygon, at a
-staggered target of 1 Hz. Transit between surveys does not count as searching.
-Inspection rows record the current survey step and completed survey frame counts. Camera aiming looks at terrain
-ahead by distance along the remaining survey route, projecting onto its active leg.
-Short terrain waypoints do not reset the view toward the ground; the final leg retains
-its forward bearing through arrival or overshoot. SAM supplies image masks through the shared Modal
-image endpoint. A candidate checkpoints and pauses only that drone and starts an independent
+The policy contains a Wonder-chosen SAM noun phrase in `detector_prompt`, `threshold`, the structured
+reviewer `look_for` brief, horizontal `stand_off_m`, tracking `speed_mps`, camera `zoom` and
+`look_ahead_m`, and `max_lock_seconds`. The latter is the total per-drone interruption allowance,
+including review and return to saved route progress; preview reserves it in the battery budget.
+Automatic and explicitly acquired candidates share that plan-version allowance. Failed or cancelled
+acquisition time counts, and a new inspection cannot reset it. The perimeter and detector score make
+no containment, identity or calibrated probability claim.
+
+For this operator's missing-person surveys, the disclosed defaults are **30 m AGL, 5 m/s, 2× zoom,
+20 m line spacing and 20 m camera look-ahead**. Other tasks use separately chosen settings.
+Observed surveys require one-third nominal horizontal overlap under the flat-ground 90° camera
+model: spacing ≤ 4 × survey height / (3 × zoom). This checks a planning constraint, not actual
+visibility or recognition accuracy. Takeoff, transit and return heights remain explicit choices;
+changed settings require a new previewed plan version.
+
+`survey` expresses parallel-track or creeping-line passes. Bearings run clockwise from north;
+rows start on the minimum cross-axis side, with cross = −north × sin(bearing) + east × cos(bearing).
+Using `(bearing_deg + 180) % 360` reverses the starting side. `follow` traces a chosen route.
+`expanding_square` returns an ordinary follow step around a reliable datum, including the scan lead-in;
+Wonder adds ingress, egress and optional observation before preview. It does not route around hazards
+or allocate aircraft. Pattern applicability follows [AMSA's 2026 National SAR Manual, Volume 2](https://www.amsa.gov.au/sites/default/files/2026-03/NATSAR-Manual-February-2026-Volume-2.pdf),
+§§4.5.6–30 and land-route guidance in §§4.13.58, 4.13.62–67. A finite route does not prove complete coverage.
+
+Verified application starts an inspection job for each drone with remaining observed steps.
+It samples during those steps, within the survey polygon or general sensing perimeter, at a
+staggered target of 1 Hz. `rescue.step_index` identifies the current step;
+`rescue.completed_steps` stores completed `{step_index, frames}` entries. Unobserved transit contributes
+no sensing completion. Fly/follow/survey cameras look at terrain ahead along the remaining route,
+across short terrain waypoints, and stop at its endpoint without extrapolating beyond it. Circle
+observation aims at the ground-level center; it does not survey the interior. Hover, building faces
+and elevated targets use ordinary flight steps with `set_camera_view`, `start_inspection` and
+`wait_for`; there is no automatic hover checkpoint.
+
+SAM supplies image masks through the shared Modal image endpoint.
+A candidate checkpoints and pauses only that drone and starts an independent
 evidence review. Its mask initializes a persistent visual tracker when possible. With several candidates, the largest mask supplies
 the initial track; Glimmer reviews every candidate and Wonder sees which one is
 being tracked. The system never silently switches tracks. During the initial brake,
@@ -691,23 +707,24 @@ reason while Glimmer reviews the captured evidence. Tracking loss likewise stops
 following without losing an already-started review. There is no reacquisition or
 substitution of another target, and no actor lookup.
 
-Camera aiming and Guided movement maintain the requested stand-off at survey AGL.
+Camera aiming and Guided movement maintain the requested stand-off at the observed step's AGL.
 Every flight segment passes the existing terrain, obstacles, fence and separation
 checks. Tracking stays inside the search perimeter. Glimmer reviews the exact source
-crop and context using `forward-analyst-v1` and the existing fixed model sampling;
-it operates independently of tracking. No forward observation earns calibrated
-search probability or negative-detection credit.
+crop and context using target-independent `forward-analyst-v2` and the fixed model sampling;
+it operates independently of tracking and evaluates the requested person, animal or object.
+Earlier template measurements remain preserved and do not transfer. No forward observation earns
+calibrated search probability or negative-detection credit.
 
 A clear negative authorizes the single `disregard_and_continue(review_id, reason)`
 action. All candidates in the review must be negative before Glimmer can release it.
 The tool first reports `release_requested`; `continued` is logged only after returning
-along the checked recorded path and resuming the same unfinished survey item. The
+along the checked recorded path and resuming the same unfinished navigation item. The
 autopilot must report `MIS_RESTART=0`; code verifies it without changing parameters.
-The checkpoint exists only for a survey navigation item, so no timer or circle is
-silently replayed. The same review-scoped tool is available to Wonder after it sees
+Checkpoints use finite waypoint items from observed fly/follow/survey/circle steps; release does not
+restart a whole pattern or replay a hover timer. The same review-scoped tool is available to Wonder after it sees
 the images. Operator overrides and plan replacement revoke old release authority. A validated
 plan swap invalidates its old inspection at `holding`, before BRAKE, so the deliberate
-mode transition cannot be reported as a failed old survey.
+mode transition cannot be reported as a failed old observation.
 
 Possible matches, uncertainty, completion and failures wake Wonder even without a
 voluntary `wait_for`. Evidence remains pending while another conversation is active.
@@ -715,22 +732,23 @@ Cards retain the source images, reviewer observations, selected candidate and la
 estimated ground point. A candidate is not a confirmed identity. Valid following can
 continue while Wonder reviews; unavailable tracking holds the aircraft. A clear negative
 can release either state through the same checked checkpoint restoration. Unsafe motion,
-exhausted allowance or capture/model/command failure remains terminal in BRAKE with the
-exact error; there is no retry or timeout resume.
-A required search-capture or SAM failure also holds the affected aircraft and wakes
-Wonder to explain the coverage gap and obtain operator direction. Successful slow
-discovery does not fail the search, but a positive older than the control freshness
-limit cannot authorize following stale coordinates. Operator overrides revoke old
-inspection authority, including delayed failure cleanup. Automatic holds recheck
-flight mode under the command lock and cannot interrupt an autopilot RTL or landing.
-Other aircraft retain their
-assignments. Private scenario placements are never read.
+exhausted allowance or capture/model/command failure ends the inspection with its exact error;
+there is no retry or timeout resume. While the inspection still owns the observed step or candidate
+lock, failure holds that aircraft in BRAKE. A failed inspection has no releasable lock;
+operator-directed continuation needs a checked remaining plan.
+Required-sensing failures wake Wonder to explain the observation gap and obtain operator direction.
+A late positive after its observed step ends preserves the evidence and Glimmer review with the exact
+failure, but cannot hold later transit, return or landing. Successful slow discovery does not itself
+fail the task; stale coordinates cannot authorize following. Automatic holds verify mission identity,
+control version, current waypoint and flight mode under the command lock. Operator overrides revoke
+old inspection authority, including delayed failure cleanup. Other aircraft retain their assignments.
+Private scenario placements are never read.
 
 Per-frame tracking records and every model review live in the mission's `inspections/`
 directory; registered original/masked JPEGs use the existing evidence endpoint.
-Offline checks and their source provenance are recorded in
-[`wonder-planner.json`](../measurements/wonder-planner.json). User-operated Studio
-flights establish live camera cadence, tracking robustness and recognition accuracy;
+The [release validation record](../measurements/release.json) records current checks and acceptance limits;
+earlier runs remain in [`wonder-planner.json`](../measurements/wonder-planner.json).
+User-operated flights establish live camera cadence, tracking robustness and recognition accuracy;
 offline mocks and synthetic moving images do not establish those outcomes.
 
 ## Planner live acceptance

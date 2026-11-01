@@ -197,7 +197,7 @@ test('an evidence image exposes loading and a local failure without re-requestin
   assert.ok(errors[0].includes(image.props.src));
 });
 
-test('an untrackable candidate remains visible for review with completed survey facts', () => {
+test('an untrackable candidate remains visible for review with completed observation facts', () => {
   const value = {
     ...inspection(),
     rescue: {
@@ -206,8 +206,8 @@ test('an untrackable candidate remains visible for review with completed survey 
       reports: [],
       track: null,
       tracking_error: 'Candidate has insufficient visible texture for a reliable lock',
-      survey_step: 3,
-      completed_surveys: [{ step_index: 1, frames: 12 }],
+      step_index: 3,
+      completed_steps: [{ step_index: 1, frames: 12 }],
       pending: false,
     },
   };
@@ -222,7 +222,7 @@ test('an untrackable candidate remains visible for review with completed survey 
   assert.ok(html.slice(html.indexOf('<details')).includes(value.rescue.tracking_error));
   assert.doesNotMatch(html, /<details[^>]* open/);
   assert.match(html, /Candidate could not be followed/);
-  assert.match(html, /1 survey pass completed/);
+  assert.match(html, /1 observation step completed/);
   assert.doesNotMatch(html, /Inspection failed|Tracking candidate|current lock|Live tracking/i);
   const held = renderEvidence([{ ...value, rescue: { ...value.rescue, phase: 'held' } }]);
   assert.match(
@@ -250,6 +250,8 @@ test('temporal candidate frames and camera changes preserve telemetry parsing', 
         track: null,
         tracking_error: null,
         live_frame: live,
+        step_index: 2,
+        completed_steps: [{ step_index: 0, frames: 4 }],
         pending: false,
       },
     };

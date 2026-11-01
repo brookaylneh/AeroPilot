@@ -72,7 +72,10 @@ class Conditions(unittest.TestCase):
         self.assertEqual(ready([STEP], self.planner, self.vehicles, [])["reason"], "condition")
 
     def test_survey_completion_waits_for_and_includes_final_inspection(self):
-        self.planner["active"]["plan"]["drones"][0]["steps"][1] = {"kind": "survey"}
+        self.planner["active"]["plan"]["drones"][0]["steps"][1] = {
+            "kind": "survey",
+            "observe": True,
+        }
         self.planner["progress"]["Drone1"]["completed_steps"].append(1)
         row = {
             "id": "survey",
@@ -82,28 +85,31 @@ class Conditions(unittest.TestCase):
             "rescue": {
                 "phase": "searching",
                 "pending": False,
-                "completed_surveys": [],
-                "survey_step": 1,
+                "completed_steps": [],
+                "step_index": 1,
             },
         }
         self.assertIsNone(ready([STEP], self.planner, self.vehicles, [row]))
-        row["rescue"]["completed_surveys"].append({"step_index": 1, "frames": 12})
+        row["rescue"]["completed_steps"].append({"step_index": 1, "frames": 12})
         self.assertIsNone(ready([STEP], self.planner, self.vehicles, [row]))
         row["status"] = "complete"
-        row["rescue"].update(phase="complete", pending=True, survey_step=None)
+        row["rescue"].update(phase="complete", pending=True, step_index=None)
         result = ready([STEP], self.planner, self.vehicles, [row])
         self.assertEqual(result["results"][0]["inspection"], row)
         self.assertTrue(row["rescue"]["pending"])
 
     def test_survey_wait_preserves_failure_instead_of_reporting_observation_completion(self):
-        self.planner["active"]["plan"]["drones"][0]["steps"][1] = {"kind": "survey"}
+        self.planner["active"]["plan"]["drones"][0]["steps"][1] = {
+            "kind": "survey",
+            "observe": True,
+        }
         self.planner["progress"]["Drone1"]["completed_steps"].append(1)
         row = {
             "id": "survey",
             "drone_id": "Drone1",
             "plan_version": 1,
             "status": "failed",
-            "rescue": {"phase": "failed", "pending": True, "completed_surveys": []},
+            "rescue": {"phase": "failed", "pending": True, "completed_steps": []},
         }
         result = ready([STEP], self.planner, self.vehicles, [row])
         self.assertEqual(result["results"][0]["inspection"], row)
@@ -224,10 +230,10 @@ class WakeLifecycle(unittest.IsolatedAsyncioTestCase):
         m.inspections.acknowledge.assert_called_once_with("inspection")
         m.agent.assert_awaited_once()
 
-    async def test_survey_step_and_inspection_completion_wake_once(self):
+    async def test_step_index_and_inspection_completion_wake_once(self):
         m = self.mission
         planner = m.planner_state.return_value
-        planner["active"]["plan"]["drones"][0]["steps"][1] = {"kind": "survey"}
+        planner["active"]["plan"]["drones"][0]["steps"][1] = {"kind": "survey", "observe": True}
         row = {
             "id": "survey",
             "drone_id": "Drone1",
@@ -236,8 +242,8 @@ class WakeLifecycle(unittest.IsolatedAsyncioTestCase):
             "rescue": {
                 "phase": "searching",
                 "pending": False,
-                "completed_surveys": [],
-                "survey_step": 1,
+                "completed_steps": [],
+                "step_index": 1,
             },
         }
         m.inspections = Inspections(m)
@@ -247,19 +253,17 @@ class WakeLifecycle(unittest.IsolatedAsyncioTestCase):
         planner["progress"]["Drone1"]["completed_steps"].append(1)
         await asyncio.sleep(0.15)
         m.agent.assert_not_awaited()
-        row["rescue"]["completed_surveys"].append({"step_index": 1, "frames": 12})
+        row["rescue"]["completed_steps"].append({"step_index": 1, "frames": 12})
         await asyncio.sleep(0.15)
         m.agent.assert_not_awaited()
         row["status"] = "complete"
-        row["rescue"].update(phase="complete", pending=True, survey_step=None)
+        row["rescue"].update(phase="complete", pending=True, step_index=None)
         await asyncio.wait_for(waiting, 1)
         await asyncio.sleep(0)
         m.agent.assert_awaited_once()
         observed = m.agent.call_args.kwargs["wake"]["results"][0]["inspection"]
         self.assertEqual(observed["id"], row["id"])
-        self.assertEqual(
-            observed["rescue"]["completed_surveys"], row["rescue"]["completed_surveys"]
-        )
+        self.assertEqual(observed["rescue"]["completed_steps"], row["rescue"]["completed_steps"])
         self.assertFalse(row["rescue"]["pending"])
         receipt = {"missions": {"Drone1": {}}}
         m.plan_active = receipt

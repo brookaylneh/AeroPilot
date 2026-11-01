@@ -5,6 +5,14 @@ versioned flight plan for up to four quadcopters, each flown by an ArduPilot aut
 The operator reviews the checked plan and approves launch from a browser ground control station.
 SAM 3.1 finds visual candidates and Muse Glimmer reviews their images; neither establishes identity.
 
+General missions and Studio briefings share the same tools and planning instructions. Wonder chooses
+one to four aircraft, the flight pattern and a visible target such as a person, animal or object.
+Selected fly, follow, survey and circle steps can observe automatically inside a chosen polygon.
+Hover and elevated views use explicit camera inspection. The complete trip is checked against each
+aircraft's measured home, the exact flight fence, terrain, obstacles, separation and battery limits.
+See [mission planning](mission_planner/gcs/README.md) and the
+[release validation record](mission_planner/measurements/release.json) for behavior, checks and limits.
+
 ```
 world/               the simulated world
   unreal/            Unreal Engine 5.8 project, build and streaming

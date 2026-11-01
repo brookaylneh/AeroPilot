@@ -655,7 +655,7 @@ class Fleet:
             or bool(vehicle["messages"]["HEARTBEAT"].base_mode & MAV.MAV_MODE_FLAG_SAFETY_ARMED)
         )
 
-    async def preview_plan(self, plan, *, initial_search=True):
+    async def preview_plan(self, plan):
         from mission_planner.gcs.planner import compile_plan
 
         states = self.snapshot()
@@ -666,12 +666,11 @@ class Fleet:
             {name: copy.deepcopy(vehicle["fence"]) for name, vehicle in self.vehicles.items()},
             self.landmarks,
             copy.deepcopy(self.reservations(states)),
-            initial_search=initial_search,
         )
 
-    async def apply_plan(self, plan, *, initial_search=True):
+    async def apply_plan(self, plan):
         async with self.command_lock:
-            receipt = await self.preview_plan(plan, initial_search=initial_search)
+            receipt = await self.preview_plan(plan)
             states = self.snapshot()
             for name in receipt["missions"]:
                 self.control_versions[name] += 1
@@ -701,7 +700,7 @@ class Fleet:
                         15,
                     )
             states = self.snapshot()
-            receipt = await self.preview_plan(plan, initial_search=initial_search)
+            receipt = await self.preview_plan(plan)
             self.on_event(
                 {
                     "kind": "plan_swap",
@@ -868,8 +867,8 @@ class Fleet:
         )
         assert reply.param_value == 0, f"{name}: MIS_RESTART must be 0 to preserve search progress"
 
-    async def tracking_start(self, name, survey_item_range):
-        first, last = survey_item_range
+    async def tracking_start(self, name, step_item_range):
+        first, last = step_item_range
         assert type(first) is int and type(last) is int and 1 <= first <= last
         async with self.command_lock:
             state = self._tracking_state(name)
@@ -879,13 +878,23 @@ class Fleet:
             mode = state["mode"]
             mission = copy.deepcopy(self.vehicles[name]["mission"])
             assert first <= state["mission_current"] <= last < len(mission), (
-                f"{name}: candidate arrived outside its survey step"
+                f"{name}: candidate arrived outside its observation step"
+            )
+            assert mission[state["mission_current"]]["command"] == MAV.MAV_CMD_NAV_WAYPOINT, (
+                f"{name}: candidate lock requires an unfinished observed waypoint"
             )
             route = copy.deepcopy(self.planned_routes[name])
             version = self.control_versions[name]
             await self._require_mission_resume(name)
-            assert self._tracking_state(name)["mode"] == mode, (
+            state = self._tracking_state(name)
+            assert state["mode"] == mode and self.control_versions[name] == version, (
                 f"{name}: search flight was superseded before candidate pause"
+            )
+            assert self.vehicles[name]["mission"] == mission and (
+                first <= state["mission_current"] <= last
+            ), f"{name}: observation step changed before candidate pause"
+            assert mission[state["mission_current"]]["command"] == MAV.MAV_CMD_NAV_WAYPOINT, (
+                f"{name}: candidate lock requires an unfinished observed waypoint"
             )
             if mode == "AUTO":
                 await self._mode(name, "BRAKE")
@@ -906,17 +915,17 @@ class Fleet:
             assert self.control_versions[name] == version, f"{name}: candidate pause was superseded"
             sequence = state["mission_current"]
             assert self.vehicles[name]["mission"] == mission and first <= sequence <= last, (
-                f"{name}: survey changed before the aircraft stopped"
+                f"{name}: observation step changed before the aircraft stopped"
             )
             assert mission[sequence]["command"] == MAV.MAV_CMD_NAV_WAYPOINT, (
-                f"{name}: candidate lock requires an unfinished survey waypoint"
+                f"{name}: candidate lock requires an unfinished observed waypoint"
             )
             speeds = [
                 m["param2"]
                 for m in mission[: sequence + 1]
                 if m["command"] == MAV.MAV_CMD_DO_CHANGE_SPEED
             ]
-            assert speeds, f"{name}: survey has no recorded speed"
+            assert speeds, f"{name}: observation step has no recorded speed"
             saved = {
                 "mission": mission,
                 "sequence": sequence,
@@ -1069,7 +1078,9 @@ class Fleet:
             self.planned_routes[name] = saved["route"]
             return next(s for s in self.snapshot() if s["id"] == name)
 
-    async def execute(self, name, args, *, expected_mode=None):
+    async def execute(self, name, args, *, expected_mode=None, expected_step=None):
+        assert expected_step is None or expected_mode == "AUTO"
+        version = None if expected_step is None else self.control_versions[args["drone_id"]]
         async with self.command_lock:
             drone = args["drone_id"]
             assert drone in NAMES, f"Unknown drone id: {drone}"
@@ -1091,6 +1102,24 @@ class Fleet:
                     f"(expected {expected_mode}, mode={state['mode']}, "
                     f"armed={state['armed']}, landed_state={state['landed_state']})"
                 )
+            if expected_step is not None:
+                assert self.control_versions[drone] == version, (
+                    f"{drone}: automatic hold authority was superseded"
+                )
+                items, first, last = expected_step
+                assert type(first) is int and type(last) is int and 1 <= first <= last
+                mission = self.vehicles[drone]["mission"]
+                assert len(mission) == len(items) and all(
+                    actual[key] == value
+                    for index, (sent, actual) in enumerate(zip(items, mission))
+                    for key, value in mission_readback(sent, home=index == 0).items()
+                ), f"{drone}: automatic hold mission was replaced"
+                sequence = state["mission_current"]
+                assert (
+                    sequence is not None
+                    and first <= sequence <= last < len(mission)
+                    and mission[sequence]["command"] == MAV.MAV_CMD_NAV_WAYPOINT
+                ), f"{drone}: automatic hold observation waypoint is no longer current"
             assert not state["link_lost"], f"{drone}: link lost"
             assert state["ekf_healthy"] and state["gps_fix"] >= 3, f"{drone}: GPS/EKF unhealthy"
             validate_position(drone, state, self.vehicles[drone]["fence"])

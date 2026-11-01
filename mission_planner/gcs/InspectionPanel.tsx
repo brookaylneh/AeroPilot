@@ -179,8 +179,8 @@ const rescueSchema = z
       .nullable(),
     tracking_error: z.string().min(1).nullable().optional(),
     live_frame: frameSchema.nullable().optional(),
-    survey_step: number.int().nonnegative().nullable().optional(),
-    completed_surveys: z
+    step_index: number.int().nonnegative().nullable().optional(),
+    completed_steps: z
       .array(
         z.object({ step_index: number.int().nonnegative(), frames: number.int().nonnegative() }).strict(),
       )
@@ -409,10 +409,10 @@ export function FindingCard({
         <p>
           {inspection.frames} {inspection.frames === 1 ? 'frame' : 'frames'} inspected
         </p>
-        {!!inspection.rescue?.completed_surveys?.length && (
+        {!!inspection.rescue?.completed_steps?.length && (
           <p>
-            {inspection.rescue.completed_surveys.length} survey{' '}
-            {inspection.rescue.completed_surveys.length === 1 ? 'pass' : 'passes'} completed; this does not
+            {inspection.rescue.completed_steps.length} observation{' '}
+            {inspection.rescue.completed_steps.length === 1 ? 'step' : 'steps'} completed; this does not
             establish absence.
           </p>
         )}

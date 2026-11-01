@@ -42,6 +42,14 @@ class GcsSafety(unittest.TestCase):
             for e in (EAST_MIN_M, 0, EAST_MAX_M):
                 self.assertLess(math.dist((n, e), to_local(*to_geodetic(n, e))), 1e-6)
 
+    def test_closed_boundary_tolerates_roundoff_but_rejects_real_excursions(self):
+        polygon = [point(0, 0), point(1000, 0), point(1000, 1000), point(0, 1000)]
+        for north, east in ((math.nextafter(1000, math.inf), 1000), (1000, -1e-12)):
+            self.assertTrue(point_in_polygon(point(north, east), polygon))
+        for north, east in ((1000 + 1e-7, 500), (500, -1e-7)):
+            self.assertFalse(point_in_polygon(point(north, east), polygon))
+        self.assertTrue(segment_in_polygon(point(1000, 0), point(1000, 1000), polygon))
+
     def test_concave_fence(self):
         self.assertTrue(point_in_polygon(point(-830, 24), fence_vertices()))
         self.assertFalse(point_in_polygon(point(-830, 26), fence_vertices()))

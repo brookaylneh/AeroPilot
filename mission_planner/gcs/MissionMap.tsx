@@ -105,7 +105,9 @@ export default function MissionMap({
   const showSearch =
     searchPolicy &&
     searchReceipt.plan.drones.some(
-      ({ drone_id }) => searchReceipt === planner?.preview || !returned.has(drone_id),
+      ({ drone_id, steps }) =>
+        steps.some((step) => 'observe' in step && step.observe) &&
+        (searchReceipt === planner?.preview || !returned.has(drone_id)),
     );
   const bounds = fitMapBounds(navigationBounds, size);
   const span = bounds.maxY - bounds.minY;
@@ -362,16 +364,16 @@ export default function MissionMap({
           {showSearch && (
             <g
               className="gcs-search-sectors"
-              aria-label={`Search perimeter and sectors for plan ${searchReceipt.plan.version}`}
+              aria-label={`Observation perimeter and survey areas for plan ${searchReceipt.plan.version}`}
             >
               <polygon className="gcs-search-perimeter" points={polygonPoints(searchPolicy.perimeter)}>
-                <title>Missing-person search perimeter</title>
+                <title>Observation perimeter</title>
               </polygon>
               {searchReceipt.plan.drones
                 .filter(({ drone_id }) => searchReceipt === planner?.preview || !returned.has(drone_id))
                 .flatMap(({ drone_id, steps }) =>
                   steps.flatMap((step, index) => {
-                    if (step.kind !== 'survey') return [];
+                    if (step.kind !== 'survey' || !step.observe) return [];
                     const sector = step.polygon;
                     const label = projection(
                       sector.reduce((sum, point) => sum + point.north_m, 0) / sector.length,
@@ -384,7 +386,7 @@ export default function MissionMap({
                         data-search-sector={drone_id}
                       >
                         <polygon className="gcs-search-sector" points={polygonPoints(sector)}>
-                          <title>{`${drone_id} search sector`}</title>
+                          <title>{`${drone_id} observed survey area`}</title>
                         </polygon>
                         <text className="gcs-search-sector-label" x={label.x} y={label.y} textAnchor="middle">
                           {drone_id}
@@ -772,7 +774,11 @@ export default function MissionMap({
             </span>
             <span className="gcs-fence-key">
               <i />
-              {active && fence.length ? `${active.id} fence · autopilot readback` : 'Fence not received'}
+              {!active
+                ? 'Select a drone to view its fence'
+                : fence.length
+                  ? `${active.id} fence · autopilot readback`
+                  : 'Fence not received'}
             </span>
           </div>
         </>

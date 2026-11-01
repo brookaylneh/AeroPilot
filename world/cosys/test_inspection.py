@@ -43,18 +43,19 @@ class CameraGeometryTests(unittest.TestCase):
         self.assertEqual(route_look_ahead(points, origin, 20), {"north_m": 10, "east_m": 10})
         self.assertEqual(route_look_ahead(points, origin, 8), points[2])
 
-    def test_short_remaining_route_retains_terminal_direction(self):
-        points = [{"north_m": 0, "east_m": 0}, {"north_m": 10, "east_m": 0}]
+    def test_short_remaining_route_stops_look_ahead_at_endpoint(self):
+        points = [
+            {"north_m": 0, "east_m": 0, "height_m": 35},
+            {"north_m": 10, "east_m": 0, "height_m": 35},
+        ]
         original = copy.deepcopy(points)
         for north in (9.9, 10, 10.1):
             position = {"north_m": north, "east_m": 3}
             target = route_look_ahead(points, position, 20)
-            self.assertAlmostEqual(target["north_m"], north + 20)
-            self.assertEqual(target["east_m"], 0)
+            self.assertEqual(target, {"north_m": 10, "east_m": 0})
             self.assertEqual(position, {"north_m": north, "east_m": 3})
         self.assertEqual(points, original)
-        with self.assertRaisesRegex(AssertionError, "nonzero route leg"):
-            route_look_ahead([position], position, 20)
+        self.assertEqual(route_look_ahead([position], position, 20), position)
         with self.assertRaisesRegex(AssertionError, "positive"):
             route_look_ahead([position], position, 0)
 
@@ -80,11 +81,17 @@ class CameraGeometryTests(unittest.TestCase):
         original = copy.deepcopy(points)
         self.assertEqual(
             route_look_ahead(points, {"north_m": 5, "east_m": 2}, 20),
-            {"north_m": 25, "east_m": 0},
+            end,
         )
         self.assertEqual(points, original)
-        with self.assertRaisesRegex(AssertionError, "nonzero route leg"):
-            route_look_ahead([origin, origin], origin, 20)
+        self.assertEqual(route_look_ahead([origin, origin], origin, 20), origin)
+
+    def test_vertical_route_aims_at_its_single_horizontal_endpoint(self):
+        points = [{"north_m": 10, "east_m": 20, "height_m": height} for height in (30, 40, 50)]
+        self.assertEqual(
+            route_look_ahead(points, {"north_m": 12, "east_m": 22}, 20),
+            {"north_m": 10, "east_m": 20},
+        )
 
 
 class ForwardCaptureTests(unittest.TestCase):

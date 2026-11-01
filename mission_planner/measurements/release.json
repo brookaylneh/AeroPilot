@@ -1,0 +1,675 @@
+{
+  "recorded_at_utc": "2026-11-01T21:10:44.582137+00:00",
+  "scope": "Retire the obsolete search system, integrate the current product, then make observation plans task-driven. No paid model calls or live flight acceptance in this task.",
+  "baseline_commit": "b4f101e9d9e9a158461bd6ca1d5f1942e3f320e0",
+  "cleanup_commit": "083c81244cc989c015be4f22b60e67a86c89207b",
+  "raw_evidence": ".local/evidence/release-cleanup/20261101T202427Z",
+  "source_archive": "source-before.tar.gz",
+  "source_archive_sha256": "e082503c5e5bc4653b7b001ebc4532911721175c215d62a16c2e1d574a26e8cc",
+  "cleanup": {
+    "removed": [
+      "Legacy Commander/probability/search runtime",
+      "Old search, ground-team and replay UI/routes",
+      "Nadir mission sensor and exclusive perception pipeline runners",
+      "Unused concurrently dependency"
+    ],
+    "retained_or_moved": [
+      "One logical plan for preview, launch, replacement and reporting",
+      "Terrain conversion and timing in gcs",
+      "Public landmarks in world/cosys with direct mission state ownership",
+      "Evidence owned by Inspections",
+      "Shared Glimmer contract in agents/review.py; offline calibration imports it",
+      "Redesigned UI, forward video, tracking, reviews, Studio and manual controls"
+    ],
+    "gate": {
+      "checks": [
+        {
+          "command": ["npm", "test"],
+          "started_at": "2026-11-01T20:35:53.276685+00:00",
+          "elapsed_s": 7.1297428159741685,
+          "exit_code": 0,
+          "log": ".local/evidence/release-cleanup/20261101T202427Z/cleanup-gate/npm-test.log"
+        },
+        {
+          "command": ["npm", "run", "typecheck"],
+          "started_at": "2026-11-01T20:35:53.272968+00:00",
+          "elapsed_s": 4.422803474008106,
+          "exit_code": 0,
+          "log": ".local/evidence/release-cleanup/20261101T202427Z/cleanup-gate/typecheck.log"
+        },
+        {
+          "command": ["npm", "run", "format:check"],
+          "started_at": "2026-11-01T20:35:53.275184+00:00",
+          "elapsed_s": 3.410809479013551,
+          "exit_code": 0,
+          "log": ".local/evidence/release-cleanup/20261101T202427Z/cleanup-gate/format.log"
+        },
+        {
+          "command": [".venv-cosys/bin/ruff", "check"],
+          "started_at": "2026-11-01T20:39:36.017695+00:00",
+          "elapsed_s": 0.012534514011349529,
+          "exit_code": 0,
+          "log": ".local/evidence/release-cleanup/20261101T202427Z/cleanup-gate/ruff-final.log"
+        },
+        {
+          "command": [".venv-cosys/bin/ruff", "format", "--check"],
+          "started_at": "2026-11-01T20:41:31.171141+00:00",
+          "elapsed_s": 0.010681410029064864,
+          "exit_code": 0,
+          "log": ".local/evidence/release-cleanup/20261101T202427Z/cleanup-gate/final-format.log"
+        },
+        {
+          "command": [".venv-cosys/bin/python", "-m", "unittest"],
+          "started_at": "2026-11-01T20:39:36.017298+00:00",
+          "elapsed_s": 189.96224030503072,
+          "exit_code": 0,
+          "log": ".local/evidence/release-cleanup/20261101T202427Z/cleanup-gate/python-tests-fixed.log"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "build",
+            "--",
+            "--outDir",
+            "../.local/staging/release-cleanup/cleanup-dist"
+          ],
+          "started_at": "2026-11-01T20:39:36.015007+00:00",
+          "elapsed_s": 6.525096135970671,
+          "exit_code": 0,
+          "log": ".local/evidence/release-cleanup/20261101T202427Z/cleanup-gate/build.log"
+        }
+      ],
+      "python_tests": 610,
+      "browser_tests": 232
+    }
+  },
+  "flexibility": {
+    "observation_steps": ["fly", "follow", "survey", "circle"],
+    "selection": "Optional observe:true on existing finite movement steps; unobserved steps are transit. One optional target/review policy and simple polygon. Wonder chooses one to four aircraft, shape, pattern and SAM prompt.",
+    "patterns": [
+      "Parallel track and creeping line via survey bearing/geometry",
+      "Route/track-line via follow",
+      "Expanding square via a pure tool returning an ordinary follow step",
+      "Point orbit via circle"
+    ],
+    "explicit_inspection": "Hover, building faces and elevated targets use set_camera_view, start_inspection and wait_for. No automatic hover checkpoint because timed loiter resumes by restarting its dwell timer.",
+    "limits": "Universal flight checks unchanged. Observed survey spacing and polygon/connector checks remain. Exact read-back fences, measured homes, altitude frame, spatial reservation semantics and numeric limits are supplied to Wonder.",
+    "race_checks": "Observation is rechecked after aim/capture; expired or replaced observed steps cannot acquire tracking or hold later flight. Late-positive source evidence and Glimmer review remain pending with exact error.",
+    "review_template": "forward-analyst-v2; generic target wording. Existing model build, provider and fixed sampling unchanged. Prior recognition measurements do not transfer to the changed template."
+  },
+  "final_gate": {
+    "checks": [
+      {
+        "command": ["npm", "test"],
+        "started_at": "2026-11-01T21:09:41.405054+00:00",
+        "elapsed_s": 6.965781068021897,
+        "exit_code": 0,
+        "log": ".local/evidence/release-cleanup/20261101T202427Z/label-final/npm-test.log"
+      },
+      {
+        "command": ["npm", "run", "typecheck"],
+        "started_at": "2026-11-01T20:58:47.915359+00:00",
+        "elapsed_s": 4.221839870035183,
+        "exit_code": 0,
+        "log": ".local/evidence/release-cleanup/20261101T202427Z/final-gate/typecheck.log"
+      },
+      {
+        "command": ["npm", "run", "format:check"],
+        "started_at": "2026-11-01T21:09:41.407864+00:00",
+        "elapsed_s": 3.138338588993065,
+        "exit_code": 0,
+        "log": ".local/evidence/release-cleanup/20261101T202427Z/label-final/format.log"
+      },
+      {
+        "command": [".venv-cosys/bin/ruff", "check"],
+        "started_at": "2026-11-01T21:02:06.824212+00:00",
+        "elapsed_s": 0.009286364016588777,
+        "exit_code": 0,
+        "log": ".local/evidence/release-cleanup/20261101T202427Z/final-gate/ruff.log"
+      },
+      {
+        "command": [".venv-cosys/bin/ruff", "format", "--check"],
+        "started_at": "2026-11-01T21:02:06.824431+00:00",
+        "elapsed_s": 0.009593907976523042,
+        "exit_code": 0,
+        "log": ".local/evidence/release-cleanup/20261101T202427Z/final-gate/ruff-format.log"
+      },
+      {
+        "command": [".venv-cosys/bin/python", "-m", "unittest"],
+        "started_at": "2026-11-01T21:02:06.824741+00:00",
+        "elapsed_s": 198.32268733903766,
+        "exit_code": 0,
+        "log": ".local/evidence/release-cleanup/20261101T202427Z/final-gate/python.log"
+      },
+      {
+        "command": [
+          "npm",
+          "run",
+          "build",
+          "--",
+          "--outDir",
+          "../.local/staging/release-cleanup/release-label-dist"
+        ],
+        "started_at": "2026-11-01T21:09:41.406923+00:00",
+        "elapsed_s": 7.76777931000106,
+        "exit_code": 0,
+        "log": ".local/evidence/release-cleanup/20261101T202427Z/label-final/build.log"
+      },
+      {
+        "command": [
+          ".venv-cosys/bin/python",
+          "-m",
+          "unittest",
+          "mission_planner.agents.test_tools",
+          "mission_planner.gcs.test_service"
+        ],
+        "started_at": "2026-11-01T21:03:04.716355+00:00",
+        "elapsed_s": 6.871587380999699,
+        "exit_code": 0,
+        "log": ".local/evidence/release-cleanup/20261101T202427Z/final-gate/prompt-contract.log"
+      },
+      {
+        "command": [".venv-cosys/bin/ruff", "check", "mission_planner/agents/tools.py"],
+        "started_at": "2026-11-01T21:05:43.284012+00:00",
+        "elapsed_s": 0.0087080710218288,
+        "exit_code": 0,
+        "log": ".local/evidence/release-cleanup/20261101T202427Z/final-gate/prompt-lint.log"
+      },
+      {
+        "command": [".venv-cosys/bin/ruff", "format", "--check", "mission_planner/agents/tools.py"],
+        "started_at": "2026-11-01T21:05:43.284821+00:00",
+        "elapsed_s": 0.009182391979265958,
+        "exit_code": 0,
+        "log": ".local/evidence/release-cleanup/20261101T202427Z/final-gate/prompt-format.log"
+      }
+    ],
+    "python_tests": 633,
+    "python_test_seconds": 197.429,
+    "javascript_tests": 235
+  },
+  "research": {
+    "sources": [
+      {
+        "id": "amsa2026",
+        "title": "National Search and Rescue Manual, 2026 Edition Version 1, Volume 2",
+        "issuer": "Australian National Search and Rescue Council",
+        "url": "https://www.amsa.gov.au/sites/default/files/2026-03/NATSAR-Manual-February-2026-Volume-2.pdf",
+        "local": "amsa-natsar-volume-2-2026.pdf",
+        "text": "amsa-natsar-volume-2-2026.txt",
+        "sha256": "216197f144b936913905db380fdb3770c6df4ff0c90290d82a4da52a28f69dab",
+        "retrieval": "Copied and inspected the previously retrieved primary document under .local/evidence/search/fair-baselines/sources-01. Fresh fetch returned HTTP 403 and was not retried.",
+        "scope": "Authoritative Australian aviation, maritime and land SAR procedure. Its principles inform the simulator; aircraft/ship altitudes, distances, formation procedures and probability values are not drone operating limits."
+      },
+      {
+        "id": "amsa_preliminaries",
+        "title": "National Search and Rescue Manual 2026 Preliminaries",
+        "url": "https://www.amsa.gov.au/sites/default/files/2026-03/NATSAR-Manual-February-2026-Preliminaries.pdf",
+        "local": "amsa-natsar-preliminaries-2026.pdf",
+        "sha256": "22cd1b7d761a9f2163ba4df049a3c1928021cacd3e0d45ed970a255edc8188ee",
+        "retrieval": "Previously retrieved primary document copied and inspected.",
+        "section": "Introduction, printed page 2",
+        "finding": "National SAR authority reference developed with due regard to IAMSAR. Do not attribute its verbatim pattern text to the original ICAO/IMO IAMSAR book."
+      },
+      {
+        "id": "imo",
+        "title": "IAMSAR Manual",
+        "issuer": "International Maritime Organization",
+        "url": "https://www.imo.org/en/OurWork/Safety/Pages/IAMSARManual.aspx",
+        "local": "imo-iamsar.html",
+        "sha256": "5d70eb9731a40829989b49034f20d085b8d5b6c16ff9e5638720a06de7bcfd4e",
+        "retrieval": "Fresh HTTP success; HTML inspected.",
+        "finding": "Confirms joint IMO/ICAO publication and Volume II mission coordination / Volume III mobile facilities scope. Original full book was not retrieved."
+      },
+      {
+        "id": "nps_hiking",
+        "title": "Hiking Safety",
+        "issuer": "National Park Service, Yosemite",
+        "url": "https://www.nps.gov/yose/planyourvisit/hikingsafety.htm",
+        "local": "nps-yosemite-hiking-safety.html",
+        "sha256": "ad79e8d8dc644538446ebdcbb161e682719b87b38334c74a31d21d78278737a3",
+        "retrieval": "Fresh HTTP success; HTML inspected.",
+        "finding": "Established trails, trip plans and expected return are relevant incident-brief context. This is visitor guidance, not a statistical model of where a missing person is."
+      },
+      {
+        "id": "nps_safety",
+        "title": "Safety",
+        "issuer": "National Park Service, Yosemite",
+        "url": "https://www.nps.gov/yose/planyourvisit/safety.htm",
+        "local": "nps-yosemite-safety.html",
+        "sha256": "b25acf2c02379a29c772e23585759bbbb2f5f97880964e09a71bfaa38d8c5074",
+        "retrieval": "Fresh HTTP success; HTML inspected.",
+        "finding": "Observe wildlife at distance; rivers, waterfalls, terrain and weather are relevant hazards. Public visitor drone operation from park lands/waters is prohibited. Simulator capabilities do not establish real Yosemite operating permission."
+      },
+      {
+        "id": "nps_bears",
+        "title": "Bears and Food Storage",
+        "issuer": "National Park Service, Yosemite",
+        "url": "https://www.nps.gov/yose/planyourvisit/bears.htm",
+        "local": "nps-yosemite-bear-safety.html",
+        "sha256": "377445d0ec197986c5de57906b47d881aa8aafd85feb31fd115a73ecaa2ffd51",
+        "retrieval": "Fresh HTTP success; HTML inspected.",
+        "finding": "Bear Encounters advises visitors to remain at least 50 yards away outside developed areas. That human-distance rule is not a validated drone stand-off."
+      },
+      {
+        "id": "nps_laws",
+        "title": "Laws & Policies",
+        "issuer": "National Park Service, Yosemite",
+        "url": "https://www.nps.gov/yose/learn/management/lawsandpolicies.htm",
+        "local": "nps-yosemite-laws.html",
+        "sha256": "07ca138931c926e85fcaaf4200b164ba347906196b4374714f919300d0e0c9c3",
+        "retrieval": "Fresh HTTP success; HTML inspected.",
+        "finding": "Links the May 2026 Superintendent's Compendium. The linked PDF was downloaded for the source archive, but its text was not inspected and is not the basis of any additional claim.",
+        "linked_pdf": "nps-yosemite-compendium-2026.pdf",
+        "linked_pdf_sha256": "e89746e1cf07e9c0f25e528dcae555a449dfa81928c2a122d34e91723af5611a"
+      }
+    ],
+    "failed_requests": [
+      {
+        "url": "https://www.amsa.gov.au/sites/default/files/2026-03/NATSAR-Manual-February-2026-Volume-2.pdf",
+        "http_status": 403
+      },
+      {
+        "url": "https://www.amsa.gov.au/national-search-and-rescue-council/manuals-and-publications/national-search-and-rescue-manual",
+        "http_status": 403
+      },
+      {
+        "url": "https://www.nps.gov/yose/planyourvisit/drones.htm",
+        "http_status": 404
+      },
+      {
+        "url": "https://www.nps.gov/yose/planyourvisit/keepbearswild.htm",
+        "http_status": 404
+      },
+      {
+        "url": "https://www.nps.gov/subjects/sound/sound-unmanned-aircraft.htm",
+        "http_status": 404
+      }
+    ],
+    "old_backend_finding": "No measured live benefit justified retaining probability optimization or introducing a second planner. Reused terrain conversion, timing and review contracts; pattern advice remains optional task guidance."
+  },
+  "encountered_failures": {
+    "failed_test_runs": [
+      {
+        "log": ".local/evidence/release-cleanup/20261101T202427Z/cleanup-gate/python-tests.log",
+        "cases": [
+          "test_late_image_write_cannot_restore_invalidated_live_observation (mission_planner.gcs.test_rescue_flow.RescueFlow)",
+          "test_negative_resumes_original_survey_without_candidate_wake (mission_planner.gcs.test_rescue_flow.RescueFlow)",
+          "test_acknowledged_candidate_does_not_repeatedly_wake_wonder (mission_planner.gcs.test_waiting.Conditions)",
+          "test_survey_step_and_inspection_completion_wake_once (mission_planner.gcs.test_waiting.WakeLifecycle)",
+          "test_all_drone_query_requires_json_null (mission_planner.agents.test_tools.ToolContracts)"
+        ]
+      },
+      {
+        "log": ".local/evidence/release-cleanup/20261101T202427Z/extraction-tests-01.log",
+        "cases": [
+          "test_candidate_review_runs_with_private_files_denied (mission_planner.gcs.test_truth_isolation.TruthIsolation)",
+          "test_uncertain_review_preserves_lock_and_evidence_until_wonder_releases (mission_planner.gcs.test_rescue_flow.RescueFlow)"
+        ]
+      },
+      {
+        "log": ".local/evidence/release-cleanup/20261101T202427Z/phase2/focused-corrected.log",
+        "cases": [
+          "test_four_grounded_drones_search_and_return_across_the_map (mission_planner.gcs.test_planner_flights.CompleteSearchFlights) (bounds=(-400, 500, -100, 800), bearing=90)"
+        ]
+      },
+      {
+        "log": ".local/evidence/release-cleanup/20261101T202427Z/phase2/focused-planner.log",
+        "cases": [
+          "test_planner_flights (unittest.loader._FailedTest)",
+          "test_current_telemetry_is_distinct_from_historical_acknowledgements (mission_planner.gcs.test_service.AgentContext)",
+          "test_planning_constraints_preserve_exact_readback_polygon_and_limits (mission_planner.gcs.test_service.AgentContext)"
+        ]
+      },
+      {
+        "log": ".local/evidence/release-cleanup/20261101T202427Z/phase2-backend/check-01.log",
+        "cases": [
+          "test_held_return_item_cannot_acquire_search_following (mission_planner.gcs.test_tracking_flight.TrackingFlight)"
+        ]
+      },
+      {
+        "log": ".local/evidence/release-cleanup/20261101T202427Z/phase2-backend/check-10.log",
+        "cases": [
+          "test_positive_after_step_ends_preserves_evidence_without_holding_later_flight (mission_planner.gcs.test_rescue_flow.RescueFlow)"
+        ]
+      }
+    ],
+    "resolutions": [
+      "Cleanup fixtures still referenced removed Search ownership, evidence directories and retired tools; updated retained behavior tests and removed exclusive obsolete-tool tests.",
+      "Private-truth isolation initially invoked an incomplete evidence fixture; corrected fixture without giving runtime private access.",
+      "Full cleanup checks exposed an unclosed performance CSV file; now read with a context manager.",
+      "Initial flexibility tests referenced removed rectangle_bounds and omitted exact-fence/origin fixture fields; fixtures updated.",
+      "A rotated survey hit floating-point polygon boundary roundoff; a distance-scaled 1e-9 m tolerance now accepts roundoff while tests reject a 1e-7 m excursion. No route clipping or physical limit relaxation.",
+      "Backend regression assertions used old survey-only wording; updated to observation-step wording.",
+      "Late-positive regression initially placed its candidate outside the permitted polygon; fixture corrected so the test isolates expired control authority.",
+      "Primary-source HTTP 403/404 responses were recorded without retries; existing archived AMSA primary document was inspected with its hash recorded.",
+      "Final README edits were unexpectedly reverted in the shared worktree during finalization; restored the reviewed docs, preserved copies, and checked formatting and local links.",
+      "Installed browser screenshots exposed a misleading Fence not received label when no drone was selected; changed it to Select a drone to view its fence, rebuilt, and repeated the affected checks and browser acceptance."
+    ]
+  },
+  "files": {
+    "added": [
+      "mission_planner/agents/perception/test_configuration.py",
+      "mission_planner/agents/review.py",
+      "mission_planner/agents/test_review.py",
+      "mission_planner/gcs/feedFocus.test.mjs",
+      "mission_planner/gcs/landmarks.test.mjs",
+      "mission_planner/gcs/landmarks.ts",
+      "mission_planner/gcs/terrain.py",
+      "mission_planner/gcs/test_feed.py",
+      "mission_planner/gcs/test_terrain.py",
+      "mission_planner/gcs/test_truth_isolation.py",
+      "mission_planner/gcs/timing.py",
+      "mission_planner/measurements/release.json"
+    ],
+    "modified": [
+      "README.md",
+      "deploy/README.md",
+      "mission_planner/README.md",
+      "mission_planner/agents/README.md",
+      "mission_planner/agents/accept_chat.py",
+      "mission_planner/agents/bench_tools.py",
+      "mission_planner/agents/perception/README.md",
+      "mission_planner/agents/perception/analyst.py",
+      "mission_planner/agents/perception/calibrate.py",
+      "mission_planner/agents/perception/configuration.py",
+      "mission_planner/agents/test_bench_tools.py",
+      "mission_planner/agents/test_tools.py",
+      "mission_planner/agents/tools.py",
+      "mission_planner/gcs/FlightPlan.test.mjs",
+      "mission_planner/gcs/FlightPlan.tsx",
+      "mission_planner/gcs/InspectionPanel.test.mjs",
+      "mission_planner/gcs/InspectionPanel.tsx",
+      "mission_planner/gcs/LandmarkLayer.tsx",
+      "mission_planner/gcs/MissionControl.test.mjs",
+      "mission_planner/gcs/MissionControl.tsx",
+      "mission_planner/gcs/MissionMap.test.mjs",
+      "mission_planner/gcs/MissionMap.tsx",
+      "mission_planner/gcs/README.md",
+      "mission_planner/gcs/accept_browser.mjs",
+      "mission_planner/gcs/accept_world.py",
+      "mission_planner/gcs/display.test.mjs",
+      "mission_planner/gcs/display.ts",
+      "mission_planner/gcs/fleet.py",
+      "mission_planner/gcs/geodesy.py",
+      "mission_planner/gcs/host.py",
+      "mission_planner/gcs/inspection.py",
+      "mission_planner/gcs/mission.css",
+      "mission_planner/gcs/missionState.test.mjs",
+      "mission_planner/gcs/missionState.ts",
+      "mission_planner/gcs/planner.py",
+      "mission_planner/gcs/service.py",
+      "mission_planner/gcs/test_inspection.py",
+      "mission_planner/gcs/test_lifecycle.py",
+      "mission_planner/gcs/test_planner.py",
+      "mission_planner/gcs/test_planner_flights.py",
+      "mission_planner/gcs/test_rescue_flow.py",
+      "mission_planner/gcs/test_safety.py",
+      "mission_planner/gcs/test_service.py",
+      "mission_planner/gcs/test_tracking_flight.py",
+      "mission_planner/gcs/test_waiting.py",
+      "mission_planner/gcs/tracking.py",
+      "mission_planner/gcs/waiting.py",
+      "package-lock.json",
+      "package.json",
+      "scenario_creator/README.md",
+      "web/README.md",
+      "web/main.tsx",
+      "web/server.ts",
+      "world/README.md",
+      "world/cosys/README.md",
+      "world/cosys/capture.py",
+      "world/cosys/inspection.py",
+      "world/cosys/terrain.py",
+      "world/cosys/test_capture.py",
+      "world/cosys/test_inspection.py",
+      "world/cosys/test_terrain.py",
+      "world/unreal/measure_performance.py"
+    ],
+    "deleted": [
+      "mission_planner/agents/perception/analyze_spacing.py",
+      "mission_planner/agents/perception/bench_commander.py",
+      "mission_planner/agents/perception/bench_prompt_equivalence.py",
+      "mission_planner/agents/perception/compare_prompts.py",
+      "mission_planner/agents/perception/evaluate_commander.py",
+      "mission_planner/agents/perception/ingestion.py",
+      "mission_planner/agents/perception/localization.py",
+      "mission_planner/agents/perception/pipeline.py",
+      "mission_planner/agents/perception/profile_pipeline.py",
+      "mission_planner/agents/perception/reduce_detection.py",
+      "mission_planner/agents/perception/test_bench_commander.py",
+      "mission_planner/agents/perception/test_compare_prompts.py",
+      "mission_planner/agents/perception/test_ingestion.py",
+      "mission_planner/agents/perception/test_localization.py",
+      "mission_planner/agents/perception/test_pipeline.py",
+      "mission_planner/agents/perception/test_profile_pipeline.py",
+      "mission_planner/gcs/CapturePanel.tsx",
+      "mission_planner/gcs/EvidenceCard.tsx",
+      "mission_planner/gcs/GroundChecks.tsx",
+      "mission_planner/gcs/PlaceApproval.tsx",
+      "mission_planner/gcs/RouteApproval.tsx",
+      "mission_planner/gcs/SearchApproval.tsx",
+      "mission_planner/gcs/SearchLayers.tsx",
+      "mission_planner/gcs/SearchPanel.tsx",
+      "mission_planner/gcs/Team.tsx",
+      "mission_planner/gcs/bench_world.py",
+      "mission_planner/gcs/commander.css",
+      "mission_planner/gcs/commanderState.ts",
+      "mission_planner/gcs/groundChecks.test.mjs",
+      "mission_planner/gcs/ground_team.py",
+      "mission_planner/gcs/placeState.test.mjs",
+      "mission_planner/gcs/placeState.ts",
+      "mission_planner/gcs/report_acceptance.py",
+      "mission_planner/gcs/review.py",
+      "mission_planner/gcs/search.css",
+      "mission_planner/gcs/searchState.ts",
+      "mission_planner/gcs/sensorFeed.test.mjs",
+      "mission_planner/gcs/sensorFeedState.ts",
+      "mission_planner/gcs/sensor_feed.py",
+      "mission_planner/gcs/test_ground_team.py",
+      "mission_planner/gcs/test_review.py",
+      "mission_planner/gcs/test_sensor_service.py",
+      "mission_planner/search/README.md",
+      "mission_planner/search/__init__.py",
+      "mission_planner/search/baselines.py",
+      "mission_planner/search/behavior.py",
+      "mission_planner/search/belief.py",
+      "mission_planner/search/commander.py",
+      "mission_planner/search/coverage.py",
+      "mission_planner/search/detection.py",
+      "mission_planner/search/detections.py",
+      "mission_planner/search/execution.py",
+      "mission_planner/search/footprint.py",
+      "mission_planner/search/grid.py",
+      "mission_planner/search/occlusion.py",
+      "mission_planner/search/places.py",
+      "mission_planner/search/planner.py",
+      "mission_planner/search/prior.py",
+      "mission_planner/search/relook.py",
+      "mission_planner/search/report_flight.py",
+      "mission_planner/search/state.py",
+      "mission_planner/search/subject.py",
+      "mission_planner/search/terrain.py",
+      "mission_planner/search/test_baselines.py",
+      "mission_planner/search/test_behavior.py",
+      "mission_planner/search/test_boundary_frames.json",
+      "mission_planner/search/test_capture_ingestion.py",
+      "mission_planner/search/test_commander.py",
+      "mission_planner/search/test_detection.py",
+      "mission_planner/search/test_detections.py",
+      "mission_planner/search/test_footprint.py",
+      "mission_planner/search/test_occlusion.py",
+      "mission_planner/search/test_places.py",
+      "mission_planner/search/test_planner.py",
+      "mission_planner/search/test_probability.py",
+      "mission_planner/search/test_relook.py",
+      "mission_planner/search/test_report_flight.py",
+      "mission_planner/search/test_subject.py",
+      "mission_planner/search/test_terrain.py",
+      "mission_planner/search/test_timing.py",
+      "mission_planner/search/test_truth_isolation.py",
+      "mission_planner/search/timing.py",
+      "mission_planner/search/tools.py",
+      "world/cosys/sensor.py"
+    ]
+  },
+  "line_totals": {
+    "added": 3543,
+    "removed": 18783,
+    "net_removed": 15240,
+    "basis": "Git numstat against preserved tested baseline, including tests/docs/lockfile and moved files; excludes this measurement file."
+  },
+  "dependency_versions": {
+    "httpx": "0.28.1",
+    "websockets": "15.0.1",
+    "pymavlink": "2.4.50",
+    "jsonschema": "4.26.0",
+    "numpy": "1.23.5",
+    "opencv-python-headless": "4.10.0.84",
+    "python": "3.10.12",
+    "vite": "6.4.5",
+    "typescript": "5.9.3",
+    "react": "19.3.1",
+    "zod": "4.6.7",
+    "@playwright/test": "1.64.1"
+  },
+  "acceptance_limits": [
+    "Zero paid calls and zero live flights in this task; model planning quality, latency, new-template recognition and live tracking require user acceptance.",
+    "Offline geometry and race tests establish code behavior, not complete visual coverage or missing-person identity.",
+    "Existing battery/RTL safety parameters and native Unreal world are unchanged; current values and limitations remain in gcs/README.md and historical measurements.",
+    "No project source license selected and no Git remote configured. Licensed native assets remain separately supplied; this is not a claim of public redistribution clearance."
+  ],
+  "installation": {
+    "status": "installed and idle acceptance passed",
+    "restart": {
+      "command": [".venv-cosys/bin/python", ".local/staging/release-cleanup/install.py"],
+      "started_at": "2026-11-01T21:07:06.335047+00:00",
+      "elapsed_s": 56.848355356021784,
+      "exit_code": 0,
+      "log": ".local/evidence/release-cleanup/20261101T202427Z/installed/install.log"
+    },
+    "final_web_artifact": {
+      "change": "Clarify fence selector label; web-only artifact replacement, no world or fleet restart",
+      "index_sha256": "929c6c04a20e015f0378cc112fd2fc82c463dbf915c9a9377704f3b18e82df10"
+    },
+    "public_and_telemetry": {
+      "public_health": {
+        "ok": true,
+        "services": {
+          "web": true,
+          "mission": true,
+          "signalling": true,
+          "unreal": true,
+          "turn": true,
+          "caddy": true
+        },
+        "renderer": "ready"
+      },
+      "pages": [
+        {
+          "route": "/home",
+          "status": 200,
+          "sha256": "929c6c04a20e015f0378cc112fd2fc82c463dbf915c9a9377704f3b18e82df10"
+        },
+        {
+          "route": "/studio",
+          "status": 200,
+          "sha256": "929c6c04a20e015f0378cc112fd2fc82c463dbf915c9a9377704f3b18e82df10"
+        },
+        {
+          "route": "/missionplanner",
+          "status": 200,
+          "sha256": "929c6c04a20e015f0378cc112fd2fc82c463dbf915c9a9377704f3b18e82df10"
+        }
+      ],
+      "assets": [
+        {
+          "path": "/assets/index-C3SHiN1r.js",
+          "sha256": "c067dc43445ce49648ed8384cbc5eacbbdf5260a39626b967aafe6281df87220"
+        },
+        {
+          "path": "/assets/index-BffmGrQV.css",
+          "sha256": "f2befe0cc5483c44479886ceb40ee3190f544715fa0eabf0fbdde9cd187da476"
+        }
+      ],
+      "renderer": "ready",
+      "telemetry_snapshots": 3,
+      "mission_id": "e9792aaf-224b-4038-afff-b89bf56466a2",
+      "model_response_files": 0,
+      "native_image": "sha256:d737ab3d1825f65286633211fbadc3c435d265b19d5d5ba3d39228544d310f78",
+      "native_release": "/home/brook_avionuas/snr/.local/unreal/releases/world-bear-port-20261101T143600Z-final",
+      "vehicles": [
+        {
+          "id": "Drone1",
+          "armed": false,
+          "landed_state": 1,
+          "heartbeat_age_s": 0.1819548869971186,
+          "gps_fix": 6,
+          "ekf_healthy": true,
+          "north_m": -735.2140815264829,
+          "east_m": -29.47317759134501
+        },
+        {
+          "id": "Drone2",
+          "armed": false,
+          "landed_state": 1,
+          "heartbeat_age_s": 0.1821873159497045,
+          "gps_fix": 6,
+          "ekf_healthy": true,
+          "north_m": -735.2140815264829,
+          "east_m": -24.47593434626104
+        },
+        {
+          "id": "Drone3",
+          "armed": false,
+          "landed_state": 1,
+          "heartbeat_age_s": 0.18224110105074942,
+          "gps_fix": 6,
+          "ekf_healthy": true,
+          "north_m": -740.2088178100531,
+          "east_m": -29.47317759134501
+        },
+        {
+          "id": "Drone4",
+          "armed": false,
+          "landed_state": 1,
+          "heartbeat_age_s": 0.20299018803052604,
+          "gps_fix": 6,
+          "ekf_healthy": true,
+          "north_m": -740.2088178100531,
+          "east_m": -24.47593434626104
+        }
+      ]
+    },
+    "browser_check": {
+      "command": [
+        "node",
+        "--import",
+        "tsx",
+        "mission_planner/gcs/accept_browser.mjs",
+        "capture",
+        "http://35.81.229.78/missionplanner",
+        ".local/evidence/release-cleanup/20261101T202427Z/installed-final-browser",
+        "release"
+      ],
+      "started_at": "2026-11-01T21:10:21.325923+00:00",
+      "elapsed_s": 5.888846468995325,
+      "exit_code": 0,
+      "log": ".local/evidence/release-cleanup/20261101T202427Z/label-final/browser.log"
+    },
+    "browser_page_errors": [],
+    "screenshots": [
+      ".local/evidence/release-cleanup/20261101T202427Z/installed-final-browser/release-map-1440.png",
+      ".local/evidence/release-cleanup/20261101T202427Z/installed-final-browser/release-map-1920.png",
+      ".local/evidence/release-cleanup/20261101T202427Z/installed-final-browser/release-video-1440.png",
+      ".local/evidence/release-cleanup/20261101T202427Z/installed-final-browser/release-video-1920.png"
+    ],
+    "native_world_and_model_deployments": "unchanged; only the existing coupled services were restarted, followed by a web-only label build"
+  },
+  "final_integrity": {
+    "links_checked": 45,
+    "missing": [],
+    "source_hashes_verified": 370,
+    "only_runtime_change_since_full_gate": ["mission_planner/gcs/MissionMap.tsx"]
+  }
+}

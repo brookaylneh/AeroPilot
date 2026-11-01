@@ -15,7 +15,7 @@ const text = (limit: number) =>
     .refine((value) => value.trim().length > 0);
 export const searchPolicySchema = z
   .object({
-    perimeter: z.array(point).length(4),
+    perimeter: z.array(point).min(3).max(100),
     detector_prompt: text(100),
     threshold: number.min(0).max(1),
     look_for: z
@@ -38,7 +38,14 @@ export const searchPolicySchema = z
   .strict();
 export const flightStepSchema = z.discriminatedUnion('kind', [
   z.object({ kind: z.literal('takeoff'), height_m: height }).strict(),
-  point.extend({ kind: z.literal('fly'), height_m: height, speed_mps: speed }).strict(),
+  point
+    .extend({
+      kind: z.literal('fly'),
+      height_m: height,
+      speed_mps: speed,
+      observe: z.literal(true).optional(),
+    })
+    .strict(),
   z.object({ kind: z.literal('hover'), seconds: number.int().min(1).max(65535).nullable() }).strict(),
   point
     .extend({
@@ -48,6 +55,7 @@ export const flightStepSchema = z.discriminatedUnion('kind', [
       speed_mps: speed,
       turns: number.positive().max(100),
       clockwise: z.boolean(),
+      observe: z.literal(true).optional(),
     })
     .strict(),
   z
@@ -58,6 +66,7 @@ export const flightStepSchema = z.discriminatedUnion('kind', [
       bearing_deg: number.min(0).lt(360),
       height_m: height,
       speed_mps: speed,
+      observe: z.literal(true).optional(),
     })
     .strict(),
   z
@@ -66,6 +75,7 @@ export const flightStepSchema = z.discriminatedUnion('kind', [
       points: z.array(point).min(2).max(1000),
       height_m: height,
       speed_mps: speed,
+      observe: z.literal(true).optional(),
     })
     .strict(),
   z.object({ kind: z.literal('land') }).strict(),
@@ -173,19 +183,25 @@ export function previewConflict(events: MissionEvent[]) {
 export function stepText(step: FlightStep): string {
   const flight = 'height_m' in step ? `${formatValue(step.height_m, 'm')} above ground` : '';
   const speed = 'speed_mps' in step ? ` at ${formatValue(step.speed_mps, 'm/s')}` : '';
+  const observation =
+    'observe' in step && step.observe
+      ? step.kind === 'circle'
+        ? ' · Observe ground at the circle center'
+        : ' · Observe ground ahead'
+      : '';
   switch (step.kind) {
     case 'takeoff':
       return `Take off to ${flight}`;
     case 'fly':
-      return `Fly to ${formatPosition(step.north_m, step.east_m)}, ${flight}${speed}`;
+      return `Fly to ${formatPosition(step.north_m, step.east_m)}, ${flight}${speed}${observation}`;
     case 'hover':
       return step.seconds === null ? 'Hover until instructed' : `Hover for ${formatValue(step.seconds, 's')}`;
     case 'circle':
-      return `Circle ${formatPosition(step.north_m, step.east_m)}, radius ${formatValue(step.radius_m, 'm')}, ${step.turns} turns ${step.clockwise ? 'clockwise' : 'counterclockwise'}, ${flight}${speed}`;
+      return `Circle ${formatPosition(step.north_m, step.east_m)}, radius ${formatValue(step.radius_m, 'm')}, ${step.turns} turns ${step.clockwise ? 'clockwise' : 'counterclockwise'}, ${flight}${speed}${observation}`;
     case 'survey':
-      return `Survey the mapped area, ${formatValue(step.spacing_m, 'm')} line spacing at ${formatValue(step.bearing_deg, '°')}, ${flight}${speed}`;
+      return `Survey the mapped area, ${formatValue(step.spacing_m, 'm')} line spacing at ${formatValue(step.bearing_deg, '°')}, ${flight}${speed}${observation}`;
     case 'follow':
-      return `Follow the mapped line in point order, ${flight}${speed}`;
+      return `Follow the mapped line in point order, ${flight}${speed}${observation}`;
     case 'land':
       return 'Land';
     case 'return_home':
@@ -198,11 +214,17 @@ export default function FlightPlan({
 }: {
   receipt: { plan: z.infer<typeof flightPlanSchema>; missions?: PlanReceipt['missions'] };
 }) {
+  const observations = receipt.plan.drones.flatMap(({ drone_id, steps }) =>
+    steps.filter((step) => 'observe' in step && step.observe).map(({ kind }) => ({ drone_id, kind })),
+  );
   return (
     <section className="gcs-flight-plan" aria-label={`Mission plan version ${receipt.plan.version}`}>
-      {receipt.plan.search && (
+      {receipt.plan.search && observations.length > 0 && (
         <div className="gcs-search-policy">
-          <strong>Four-drone missing-person search</strong>
+          <strong>
+            Observe {receipt.plan.search.look_for.target} ·{' '}
+            {new Set(observations.map(({ drone_id }) => drone_id)).size} aircraft
+          </strong>
           <p>
             Perimeter:{' '}
             {receipt.plan.search.perimeter.map((p) => formatPosition(p.north_m, p.east_m)).join('; ')}
@@ -210,10 +232,13 @@ export default function FlightPlan({
           <p>
             SAM: “{receipt.plan.search.detector_prompt}” · threshold {receipt.plan.search.threshold}
           </p>
-          <p>
-            Search camera: {receipt.plan.search.zoom}× zoom, looking{' '}
-            {formatValue(receipt.plan.search.look_ahead_m, 'm')} ahead along the route.
-          </p>
+          <p>Observation camera: {receipt.plan.search.zoom}× zoom.</p>
+          {observations.some(({ kind }) => kind !== 'circle') && (
+            <p>Ground view {formatValue(receipt.plan.search.look_ahead_m, 'm')} ahead along the route.</p>
+          )}
+          {observations.some(({ kind }) => kind === 'circle') && (
+            <p>Circle steps look at their ground-level center.</p>
+          )}
           <p>
             Glimmer: {receipt.plan.search.look_for.objective}. Target: {receipt.plan.search.look_for.target}.
           </p>

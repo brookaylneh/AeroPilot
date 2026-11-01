@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, Mock
 
 from mission_planner.gcs.fleet import MAV, Fleet
 from mission_planner.gcs.geodesy import ORIGIN, to_geodetic, to_local
+from mission_planner.gcs.planner import mission_home, mission_item, mission_readback
 from mission_planner.gcs.test_validation import readback
 
 
@@ -170,7 +171,7 @@ class TrackingFlight(unittest.IsolatedAsyncioTestCase):
 
     async def test_held_return_item_cannot_acquire_search_following(self):
         self.state.update(mode="BRAKE", mission_current=5)
-        with self.assertRaisesRegex(AssertionError, "outside its survey"):
+        with self.assertRaisesRegex(AssertionError, "outside its observation step"):
             await self.fleet.tracking_start("Drone1", (3, 4))
         self.fleet._mode.assert_not_awaited()
 
@@ -226,6 +227,56 @@ class TrackingFlight(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(self.state["mode"], "BRAKE")
         self.assertEqual(self.fleet._mode.await_count, 3)
 
+    async def test_observation_failure_hold_rechecks_mission_and_waypoint_after_queueing(self):
+        sent = [
+            mission_home({"north_m": -814, "east_m": 0, **self.state["home"]}),
+            mission_item({"north_m": -550, "east_m": 0}, 70, MAV.MAV_CMD_NAV_WAYPOINT),
+            mission_item({"north_m": -500, "east_m": 0}, 70, MAV.MAV_CMD_NAV_LOITER_TIME, 10),
+            mission_item({"north_m": -814, "east_m": 0}, 70, MAV.MAV_CMD_NAV_WAYPOINT),
+        ]
+        for change, message in (
+            ("completed", "observation waypoint is no longer current"),
+            ("loiter", "observation waypoint is no longer current"),
+            ("replaced", "mission was replaced"),
+            ("superseded", "authority was superseded"),
+            ("current", None),
+        ):
+            with self.subTest(change=change):
+                self.state.update(mode="AUTO", mission_current=1)
+                self.vehicle["mission"] = [
+                    {**mission_readback(point, home=index == 0), "seq": index}
+                    for index, point in enumerate(sent)
+                ]
+                self.fleet._mode.reset_mock()
+                await self.fleet.command_lock.acquire()
+                hold = asyncio.create_task(
+                    self.fleet.execute(
+                        "hold",
+                        {"drone_id": "Drone1"},
+                        expected_mode="AUTO",
+                        expected_step=(sent, 1, 2),
+                    )
+                )
+                await asyncio.sleep(0)
+                self.assertFalse(hold.done())
+                if change == "completed":
+                    self.state["mission_current"] = 3
+                elif change == "loiter":
+                    self.state["mission_current"] = 2
+                elif change == "replaced":
+                    self.vehicle["mission"][1]["z"] += 1
+                elif change == "superseded":
+                    self.fleet.control_versions["Drone1"] += 1
+                self.fleet.command_lock.release()
+                if message is None:
+                    await hold
+                    self.fleet._mode.assert_awaited_once_with("Drone1", "BRAKE")
+                else:
+                    with self.assertRaisesRegex(AssertionError, message):
+                        await hold
+                    self.fleet._mode.assert_not_awaited()
+                    self.assertEqual(self.state["mode"], "AUTO")
+
     async def test_operator_hold_remains_available_during_rtl(self):
         self.state["mode"] = "RTL"
         await self.fleet.execute("hold", {"drone_id": "Drone1"})
@@ -255,9 +306,24 @@ class TrackingFlight(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(predicate())
 
         self.fleet._until = AsyncMock(side_effect=until)
-        with self.assertRaisesRegex(AssertionError, "survey changed"):
+        with self.assertRaisesRegex(AssertionError, "observation step changed"):
             await self.fleet.tracking_start("Drone1", (3, 4))
         self.assertEqual(self.state["mode"], "BRAKE")
+        self.fleet._command.assert_not_awaited()
+
+    async def test_non_waypoint_command_is_rejected_before_candidate_brake(self):
+        for command in (
+            MAV.MAV_CMD_NAV_LOITER_TIME,
+            MAV.MAV_CMD_NAV_LOITER_UNLIM,
+            MAV.MAV_CMD_DO_CHANGE_SPEED,
+        ):
+            with self.subTest(command=command):
+                self.vehicle["mission"][3]["command"] = command
+                with self.assertRaisesRegex(AssertionError, "unfinished observed waypoint"):
+                    await self.fleet.tracking_start("Drone1", (3, 4))
+                self.assertEqual(self.state["mode"], "AUTO")
+        self.fleet._mode.assert_not_awaited()
+        self.fleet._expect.assert_not_awaited()
         self.fleet._command.assert_not_awaited()
 
     async def test_stale_telemetry_prevents_any_tracking_command(self):
@@ -294,6 +360,32 @@ class TrackingFlight(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(AssertionError, "superseded before candidate pause"):
             await self.fleet.tracking_start("Drone1", (3, 4))
         self.fleet._mode.assert_not_awaited()
+
+    async def test_parameter_read_cannot_pause_after_observation_step_ends(self):
+        async def expect(*args):
+            self.state["mission_current"] = 5
+            return SimpleNamespace(param_value=0)
+
+        self.fleet._expect = AsyncMock(side_effect=expect)
+        with self.assertRaisesRegex(
+            AssertionError, "observation step changed before candidate pause"
+        ):
+            await self.fleet.tracking_start("Drone1", (3, 4))
+        self.fleet._mode.assert_not_awaited()
+        self.assertEqual(self.state["mode"], "AUTO")
+
+    async def test_parameter_read_cannot_pause_on_an_unobserved_command(self):
+        self.vehicle["mission"][4]["command"] = MAV.MAV_CMD_NAV_LOITER_TIME
+
+        async def expect(*args):
+            self.state["mission_current"] = 4
+            return SimpleNamespace(param_value=0)
+
+        self.fleet._expect = AsyncMock(side_effect=expect)
+        with self.assertRaisesRegex(AssertionError, "unfinished observed waypoint"):
+            await self.fleet.tracking_start("Drone1", (3, 4))
+        self.fleet._mode.assert_not_awaited()
+        self.assertEqual(self.state["mode"], "AUTO")
 
     async def test_resume_accepts_forward_progress_but_rejects_rewinding(self):
         for sequence in (1, 4):

@@ -2,7 +2,7 @@
 
 One conversational flight planner, a four-aircraft ground control service, and visual evidence review.
 Wonder writes the plan; the compiler expands and validates it; the operator approves each new launch.
-General missions and Studio rescue briefings use the same plan and execution path.
+General missions and Studio rescue briefings use the same instructions, tools, plan and execution path.
 
 - [`gcs/`](gcs/README.md): ground control station. Four ArduPilot SITL autopilots over MAVLink, the mission
   service, terrain/timing helpers, forward observation and the `/missionplanner` browser UI.
@@ -15,9 +15,16 @@ General missions and Studio rescue briefings use the same plan and execution pat
 
 `gcs/planner.py` defines takeoff, fly, hover, circle, survey, follow, land and return-home steps. Preview
 checks the complete encoded trip, including terrain and obstacles, the world fence, altitude, battery
-and spatial reservations. Airborne revisions preserve one plan version history. Current automatic
-missing-person search adds an optional sensing policy to that plan; it does not use a probability
-optimizer. Public map data is exposed as `state.landmarks`; evaluator placements are private.
+and spatial reservations. Airborne revisions preserve one plan version history. Wonder chooses one to
+four aircraft and adds `observe: true` to selected finite fly, follow, survey or circle steps, with
+`plan.search` supplying a simple polygon perimeter, SAM noun phrase and reviewer brief. Ground views
+look ahead along routes or at a circle's center. Explicit camera inspection handles hover and elevated
+targets. `expanding_square` generates an ordinary follow step for the same preview path.
+
+Every model context includes exact `flight_constraints` and measured aircraft homes. Public map data
+is exposed as `state.landmarks`; evaluator placements are private. Glimmer's target-independent
+`forward-analyst-v2` review does not establish identity or calibrated search probability. The
+[release validation record](measurements/release.json) records the checked revision and acceptance limits.
 
 Wonder runs on Meta Model API. The fleet shares one SAM 3.1 H100 Server and one Glimmer H200 Server on
 Modal, both configured to stay warm. Glimmer is the official

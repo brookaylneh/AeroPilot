@@ -68,6 +68,31 @@ class ReviewTests(unittest.TestCase):
             self.prefix,
         )
 
+    def test_requested_bear_is_reviewed_as_bear_without_a_person_gate(self):
+        self.look_for = {
+            "objective": "Check the reported sighting",
+            "target": "bear",
+            "attributes": [],
+            "ignore": [],
+        }
+        text = instructions(self.look_for, "bear", self.metadata)
+        self.assertIn("Target: bear", text)
+        self.assertIn("requested target", text)
+        self.assertNotIn("not a person", text)
+        self.result["report"]["observations"] = []
+        self.result["report"]["decision"] = "escalate"
+        result = review_candidate(
+            self.glimmer,
+            self.look_for,
+            "bear",
+            self.metadata,
+            self.jpeg,
+            self.detection,
+            self.prefix,
+        )
+        self.assertEqual(result["report"]["decision"], "escalate")
+        self.assertIn("Target: bear", self.glimmer.report.call_args.args[2])
+
     def test_large_person_is_fully_inside_both_crops(self):
         images, boxes = candidate_images(self.jpeg, self.detection["box_xyxy"])
         for payload, box in zip(images, boxes):
@@ -93,7 +118,7 @@ class ReviewTests(unittest.TestCase):
         self.assertIn("cannot_tell, never evidence of a mismatch", text)
         self.assertIn("Do not establish personal identity", text)
         self.assertNotIn("View: nadir", text)
-        self.assertEqual(TEMPLATE, "forward-analyst-v1")
+        self.assertEqual(TEMPLATE, "forward-analyst-v2")
 
     def test_uncertainty_and_reasoning_counts_are_preserved_with_original_capture(self):
         before = copy.deepcopy(self.metadata)

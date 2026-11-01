@@ -150,9 +150,9 @@ def point_in_polygon(point, polygon):
         ax, ay, bx, by = a["north_m"], a["east_m"], b["north_m"], b["east_m"]
         cross = (x - ax) * (by - ay) - (y - ay) * (bx - ax)
         if (
-            abs(cross) < 1e-8
-            and min(ax, bx) <= x <= max(ax, bx)
-            and min(ay, by) <= y <= max(ay, by)
+            abs(cross) <= 1e-9 * math.hypot(bx - ax, by - ay)
+            and min(ax, bx) - 1e-9 <= x <= max(ax, bx) + 1e-9
+            and min(ay, by) - 1e-9 <= y <= max(ay, by) + 1e-9
         ):
             return True
         if (ay > y) != (by > y) and x < ax + (y - ay) * (bx - ax) / (by - ay):

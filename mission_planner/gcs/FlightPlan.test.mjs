@@ -72,13 +72,104 @@ const searchPlan = {
         speed_mps: 5,
         spacing_m: 10,
         bearing_deg: 0,
+        observe: true,
       },
       { kind: 'hover', seconds: null },
     ],
   })),
 };
+const observationPlans = {
+  route: {
+    ...searchPlan,
+    version: 2,
+    search: { ...searchPlan.search, perimeter: rectangle(0, 200).slice(0, 3) },
+    drones: [
+      {
+        drone_id: 'Drone1',
+        steps: [
+          {
+            kind: 'follow',
+            points: [
+              { north_m: 20, east_m: 10 },
+              { north_m: 80, east_m: 30 },
+            ],
+            height_m: 30,
+            speed_mps: 5,
+            observe: true,
+          },
+          { kind: 'return_home', height_m: 30, speed_mps: 5 },
+        ],
+      },
+    ],
+  },
+  bear: {
+    ...searchPlan,
+    version: 3,
+    search: {
+      ...searchPlan.search,
+      detector_prompt: 'bear',
+      look_for: { objective: 'Observe the reported bear', target: 'bear', attributes: [], ignore: [] },
+    },
+    drones: [
+      {
+        drone_id: 'Drone3',
+        steps: [
+          {
+            kind: 'circle',
+            north_m: 50,
+            east_m: 50,
+            radius_m: 20,
+            height_m: 30,
+            speed_mps: 3,
+            turns: 1,
+            clockwise: true,
+            observe: true,
+          },
+          { kind: 'return_home', height_m: 30, speed_mps: 5 },
+        ],
+      },
+    ],
+  },
+  mixed: {
+    ...searchPlan,
+    version: 4,
+    search: {
+      ...searchPlan.search,
+      perimeter: [
+        ...rectangle(0, 200).slice(0, 3),
+        { north_m: 50, east_m: 150 },
+        { north_m: 0, east_m: 200 },
+      ],
+    },
+    drones: [
+      {
+        drone_id: 'Drone1',
+        steps: [
+          searchPlan.drones[0].steps[0],
+          {
+            kind: 'survey',
+            polygon: rectangle(50, 100),
+            height_m: 30,
+            speed_mps: 5,
+            spacing_m: 10,
+            bearing_deg: 0,
+          },
+          { kind: 'fly', north_m: 50, east_m: 50, height_m: 30, speed_mps: 5, observe: true },
+          { kind: 'fly', north_m: 20, east_m: 10, height_m: 30, speed_mps: 5 },
+          { kind: 'return_home', height_m: 30, speed_mps: 5 },
+        ],
+      },
+      { drone_id: 'Drone2', steps: [{ kind: 'return_home', height_m: 30, speed_mps: 5 }] },
+    ],
+  },
+  returning: {
+    ...searchPlan,
+    version: 5,
+    drones: [{ drone_id: 'Drone1', steps: [{ kind: 'return_home', height_m: 30, speed_mps: 5 }] }],
+  },
+};
 
-test('complete mission states retain telemetry through search return and hover plan changes', () => {
+test('complete mission states retain telemetry through observed route, circle, mixed and return plans', () => {
   const initial = {
     plan: searchPlan,
     missions: Object.fromEntries(
@@ -143,7 +234,30 @@ test('complete mission states retain telemetry through search return and hover p
     agent_busy: false,
     agent_wait: null,
     chat_ready: false,
-    inspections: [],
+    inspections: [
+      {
+        id: '00000000-0000-4000-8000-000000000003',
+        drone_id: 'Drone1',
+        plan_version: 1,
+        prompt: 'person',
+        threshold: 0.3,
+        status: 'stopped',
+        started_at_ms: 1000,
+        deadline_ms: 2000,
+        frames: 12,
+        error: null,
+        latest: null,
+        rescue: {
+          phase: 'stopped',
+          review_id: null,
+          reports: [],
+          track: null,
+          step_index: null,
+          completed_steps: [{ step_index: 0, frames: 12 }],
+          pending: false,
+        },
+      },
+    ],
     approvals: [],
     map_focus: null,
     landmarks: [],
@@ -153,11 +267,48 @@ test('complete mission states retain telemetry through search return and hover p
     [changed, initial, null],
     [null, changed, initial],
     [null, { ...changed, plan: { ...changed.plan, version: 3 } }, changed],
+    ...Object.values(observationPlans).flatMap((plan) => {
+      const next = {
+        plan,
+        missions: Object.fromEntries(plan.drones.map(({ drone_id }) => [drone_id, receipt.missions.Drone2])),
+      };
+      return [
+        [next, initial, null],
+        [null, next, initial],
+      ];
+    }),
   ]) {
     const packet = { ...state, planner: { preview, active, previous, progress: {} } };
     const parsed = stateSchema.parse(packet);
     assert.deepEqual(parsed, packet);
     assert.equal(parsed.vehicles.filter((v) => v.camera_available && !linkLost(v, 0, true)).length, 4);
+  }
+});
+
+test('observation flags are optional literal true on finite waypoint steps only', () => {
+  for (const value of Object.values(observationPlans)) assert.deepEqual(flightPlanSchema.parse(value), value);
+  for (const kind of ['fly', 'follow', 'survey', 'circle']) {
+    const step = Object.values(observationPlans)
+      .flatMap(({ drones }) => drones.flatMap(({ steps }) => steps))
+      .find((step) => step.kind === kind && step.observe);
+    for (const observe of [false, 1, 'true', null]) {
+      const value = { version: 1, drones: [{ drone_id: 'Drone1', steps: [{ ...step, observe }] }] };
+      assert.equal(flightPlanSchema.safeParse(value).success, false, `${kind}: ${observe}`);
+    }
+  }
+  for (const step of [
+    { kind: 'takeoff', height_m: 30 },
+    { kind: 'hover', seconds: 10 },
+    { kind: 'land' },
+    { kind: 'return_home', height_m: 30, speed_mps: 5 },
+  ]) {
+    const value = { version: 1, drones: [{ drone_id: 'Drone1', steps: [{ ...step, observe: true }] }] };
+    assert.equal(flightPlanSchema.safeParse(value).success, false, step.kind);
+  }
+  for (const count of [2, 101]) {
+    const value = structuredClone(observationPlans.route);
+    value.search.perimeter = Array.from({ length: count }, (_, east_m) => ({ north_m: 0, east_m }));
+    assert.equal(flightPlanSchema.safeParse(value).success, false);
   }
 });
 
@@ -404,7 +555,7 @@ test('planner missions require a remaining-task instruction after hold; raw miss
   );
 });
 
-test('search approval retains the perimeter, four sectors, reviewer brief and follow authority', () => {
+test('observation approval shows task, participating aircraft, camera aim and follow authority', () => {
   const value = structuredClone(searchPlan);
   assert.deepEqual(flightPlanSchema.parse(value), value);
   const missing = structuredClone(value);
@@ -442,18 +593,38 @@ test('search approval retains the perimeter, four sectors, reviewer brief and fo
     module,
     exports: module.exports,
   });
-  const html = renderToStaticMarkup(
-    createElement(module.exports.default, {
-      receipt: {
-        plan: value,
-        missions: Object.fromEntries(value.drones.map(({ drone_id }) => [drone_id, receipt.missions.Drone2])),
-      },
-    }),
-  );
-  assert.match(html, /Four-drone missing-person search/);
+  const render = (plan) =>
+    renderToStaticMarkup(
+      createElement(module.exports.default, {
+        receipt: {
+          plan,
+          missions: Object.fromEntries(
+            plan.drones.map(({ drone_id }) => [drone_id, receipt.missions.Drone2]),
+          ),
+        },
+      }),
+    );
+  const html = render(value);
+  assert.match(html, /Observe person · 4 aircraft/);
   assert.match(html, /red jacket/);
-  assert.match(html, /Search camera: 2× zoom, looking 20.0 m ahead along the route/);
+  assert.match(html, /Observation camera: 2× zoom/);
+  assert.match(html, /Ground view 20.0 m ahead along the route/);
   assert.match(html, /15.0 m.*horizontal stand-off/);
   assert.match(html, /Total candidate-lock allowance per drone:.*90.0 s/);
   assert.match(html, /Possible matches and uncertainty go to Wonder/);
+  const route = render(observationPlans.route);
+  assert.match(route, /Observe person · 1 aircraft/);
+  assert.match(route, /Observe ground ahead/);
+  assert.doesNotMatch(route, /circle center|ground-level center/);
+  const bear = render(observationPlans.bear);
+  assert.match(bear, /Observe bear · 1 aircraft/);
+  assert.match(bear, /Circle steps look at their ground-level center/);
+  assert.match(bear, /Observe ground at the circle center/);
+  assert.doesNotMatch(bear, /Ground view .* ahead|missing-person/);
+  const mixed = render(observationPlans.mixed);
+  assert.match(mixed, /Observe person · 1 aircraft/);
+  assert.equal((mixed.match(/Observe ground ahead/g) ?? []).length, 2);
+  const returning = render(observationPlans.returning);
+  assert.match(returning, /Return home/);
+  assert.doesNotMatch(returning, /Observe |Observation camera|candidate-lock allowance/);
 });

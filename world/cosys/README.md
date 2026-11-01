@@ -23,13 +23,15 @@ Cosys-AirSim 3.5.0 (`5.8-v3.5.0`) provides the simulated aircraft and cameras in
 configured nadir camera without changing the gimbal or controlling the aircraft.
 
 The 14 m square launch port is in front of Incident Command at north −738 m,
-east −27 m. Its 0.30 m slab spans 10.63–10.93 m UE up; the four homes are
+east −27 m, inside the main map bounds. Its 0.30 m slab spans 10.63–10.93 m UE up; the four homes are
 11.13 m UE up on a 5 m grid. Exact bilinear terrain extrema under the slab are
 10.671875–10.821601076182525 m, so its bottom enters the terrain throughout.
 `world.json` owns these positions; settings generation validates the grid directly
 without depending on an older `settings.json`. The parking's raised footprint
 excludes this open launch area while the command-post and antenna footprints
 continue protecting the equipment.
+Flight planning uses each measured home and the exact read-back fence. Separate outward departure
+lanes are a planning suggestion; the retained southern fence extension is not a mandatory detour.
 
 The fetcher requires the shared `.env`, verifies release archive hashes, and applies
 `airsim-ue58.patch`, `airsim-geodesy.patch` and `airsim-sensor.patch`. The first avoids resetting an unchanged
@@ -73,7 +75,7 @@ the viewport for continuous Pixel Streaming video. Closing that viewer disables 
 viewport again. The stock camera follows the aircraft's position and attitude during hover,
 return, landing and disarm, independent of AUTO capture spacing. Offline calibration
 captures retain their separate stabilized nadir `front_center` camera. Conversational
-missing-person search aims `fpv` as described below; selecting a video feed itself changes
+automatic observation aims `fpv` as described below; selecting a video feed itself changes
 no camera pose or flight command.
 Cancellation is acknowledged only
 after native reset restores the Studio grass graph/source, viewport rendering, default
@@ -156,10 +158,10 @@ before raising. The calibrated nadir capture retains its strict shadow-fill chec
 Forward capture neither pauses physics nor selects the operator's video camera. Each inspection
 owns one RPC worker; cancellation drains its current acquisition before closing
 the client. These are observation poses, not inferred object coordinates or SAR
-calibration claims. Install regenerated release settings and restart the coupled
-world before enabling the new capture path.
+calibration claims. Changed camera settings require regenerated release settings and a coupled
+world restart.
 
-Missing-person search also uses that forward camera. `ForwardCapture.aim` computes
+Automatic `observe: true` steps also use that forward camera. `ForwardCapture.aim` computes
 the body-relative camera rotation from an observation-derived world point and the
 measured vehicle attitude, preserving the stock mount. The capture owner remembers
 that world target and reapplies its aim before each image, compensating for changes
@@ -168,8 +170,11 @@ not a native per-render-frame gimbal. Reset clears the target and restores the m
 `route_look_ahead` projects the
 aircraft onto its active leg, then follows the remaining route across short terrain
 waypoints. It receives the previous navigation point followed by current/future targets
-and extends the final tangent after arrival or overshoot, so a nearby conversion
-waypoint does not repeatedly point the camera straight down or backwards.
+and clamps look-ahead at the route endpoint after arrival or overshoot. Fly/follow/survey
+observation aims at terrain along this route; circle observation aims at its ground-level center.
+Hover and elevated views use the explicit `set_camera_view` and `start_inspection` workflow,
+scheduled with `wait_for`, rather than an automatic hover checkpoint. Capture metadata records
+the observation `step_index`; the mission's `rescue.completed_steps` retains per-step frame counts.
 The camera never reads a scenario character's position. Tracking uses the image-owned
 pose for every ray, so aircraft and camera rotations cannot be confused with target motion.
 
@@ -305,176 +310,25 @@ Primary references:
 - [GpsSimpleParams.hpp](https://github.com/Cosys-Lab/Cosys-AirSim/blob/5.8-v3.5.0/AirLib/include/sensors/gps/GpsSimpleParams.hpp): GPS frequency and latency settings.
 - [EarthUtils.hpp](https://github.com/Cosys-Lab/Cosys-AirSim/blob/5.8-v3.5.0/AirLib/include/common/EarthUtils.hpp) and [GeodeticConverter.hpp](https://github.com/Cosys-Lab/Cosys-AirSim/blob/5.8-v3.5.0/AirLib/include/common/GeodeticConverter.hpp): spherical spawn conversion versus WGS84 flight conversion.
 
-## Installed cutover after merge
+## Install and restart
 
-These are operator commands for the deployment window, not development commands.
-Run them as brook_avionuas only after the accepted revision is merged into a clean
-installed checkout. Land and disarm the installed fleet and release the authoring
-player first. Keep the intended saved case's Mission Control page ready to reload.
+Use the [installed-service workflow](../../deploy/README.md#installed-services) to stage a verified
+cooked release, its matching Cosys settings and the pinned SITL binary. Record the source revision,
+artifact digests, selected `Live` release and runtime configuration in a fresh evidence directory.
+Native plugin changes require a rebuilt game package; editing source or settings does not change
+a running world. Keep the fixed ports and instance assignments from `.local/runtime.env`.
 
-```sh
-cd /home/brook_avionuas/snr
-set -euo pipefail
-umask 077
-test -z "$(git status --porcelain)"
-export PATH="$PWD/.local/toolchains/bin:$PATH"
-export SNR_CUTOVER_SOURCE=/home/brook_avionuas/snr-coupling
-export SNR_CUTOVER_RELEASE="$PWD/.local/unreal/releases/coupling-sensor-20261028"
-export SNR_CUTOVER_EVIDENCE="$PWD/.local/evidence/coupling/cutover-20261028"
-mkdir "$SNR_CUTOVER_EVIDENCE"
-cp .local/runtime.env "$SNR_CUTOVER_EVIDENCE/runtime-before.env"
-readlink -f .local/unreal/Live > "$SNR_CUTOVER_EVIDENCE/previous-release.txt"
-git rev-parse HEAD > "$SNR_CUTOVER_EVIDENCE/installed-commit.txt"
-ss -lntup > "$SNR_CUTOVER_EVIDENCE/listeners-before.txt"
-sudo systemctl stop snr-mission
-sudo systemctl stop snr-unreal
-sudo systemctl stop snr-web snr-signalling
-```
+Land and disarm the fleet, release the viewer and use the world-first shutdown below before
+replacing binaries or settings. Start the installed signalling and web services and Unreal;
+after its loopback RPC listener is ready, start `snr-mission`. It starts all four controllers
+immediately because the world needs their motor replies. Do not start a second fleet or listener.
 
-That initial order applies to the currently installed built-in-physics fleet.
-Subsequent coupled shutdowns use the ordered procedure below. Stage the accepted
-release without modifying its source or cooked-content-recovery. Only the verified
-cooked Paks files are hardlinked; executable, libraries, settings and other runtime
-files receive independent copies. The accepted SITL executable is copied into the
-new release too.
+Verify startup homes, fence and 184 Hz parameter readback, real camera frames and persisted
+observation evidence. Live flight, camera cadence, tracking and isolated CPU/GPU/frame timing
+require their own recorded acceptance. See the [release validation record](../../mission_planner/measurements/release.json)
+for completed checks and remaining limits. A source-level check does not establish installed performance.
 
-```sh
-.venv-cosys/bin/python - <<'PY'
-import hashlib
-import json
-import os
-import shutil
-from pathlib import Path
-
-root = Path.cwd()
-source = Path(os.environ["SNR_CUTOVER_SOURCE"])
-destination = Path(os.environ["SNR_CUTOVER_RELEASE"])
-evidence = Path(os.environ["SNR_CUTOVER_EVIDENCE"])
-receipt_path = source / ".local/evidence/coupling/stage2/sensor-build-02/release.json"
-receipt = json.loads(receipt_path.read_text())
-release = Path(receipt["release"])
-assert release == source / ".local/unreal/releases/coupling-sensor"
-
-def digest(path):
-    value = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(8 * 1024 * 1024), b""):
-            value.update(chunk)
-    return value.hexdigest()
-
-files = receipt["files"]
-assert len(files) == len({item["path"] for item in files})
-assert {str(p.relative_to(release)) for p in release.rglob("*") if p.is_file()} == {
-    item["path"] for item in files
-}
-destination.mkdir()
-for item in files:
-    relative = Path(item["path"])
-    assert not relative.is_absolute() and ".." not in relative.parts
-    original, copied = release / relative, destination / relative
-    assert original.is_file() and not original.is_symlink()
-    assert original.stat().st_size == item["bytes"] and digest(original) == item["sha256"]
-    copied.parent.mkdir(parents=True, exist_ok=True)
-    if (item["method"] == "hardlink_unchanged_content"
-            and relative.parts[:3] == ("ScenarioStudio", "Content", "Paks")):
-        os.link(original, copied)
-    else:
-        shutil.copy2(original, copied)
-    assert digest(copied) == item["sha256"]
-shutil.copy2(receipt_path, evidence / "game-source-receipt.json")
-accepted = json.loads(
-    (source / ".local/evidence/coupling/stage2/accepted-stage1.json").read_text()
-)
-sitl = accepted["builds"]["SITL"]
-assert digest(Path(sitl["binary"])) == sitl["binary_after_sha256"]
-shutil.copy2(sitl["binary"], destination / "arducopter")
-assert digest(destination / "arducopter") == sitl["binary_after_sha256"]
-(evidence / "sitl-source-receipt.json").write_text(json.dumps(sitl, indent=2) + "\n")
-
-def environment(path):
-    rows = [line for line in path.read_text().splitlines() if line and not line.startswith("#")]
-    pairs = [line.split("=", 1) for line in rows]
-    assert all(len(pair) == 2 for pair in pairs)
-    assert len(pairs) == len({pair[0] for pair in pairs})
-    return dict(pairs)
-
-runtime = environment(root / ".local/runtime.env")
-example = environment(root / "deploy/runtime.env.example")
-for key in (
-    "SNR_SITL_MODEL", "SNR_SITL_INSTANCE_BASE", "SNR_SITL_PORT_STEP",
-    "SNR_COSYS_PORT", "SNR_MAVLINK_BASE_PORT", "SNR_SITL_RC_BASE_PORT",
-    "SNR_PIXEL_STREAMING", "SNR_UNREAL_IMAGE", "SNR_SIGNALLING_LOG_DIR",
-):
-    runtime[key] = example[key]
-runtime.update(
-    SNR_SITL_BINARY=str(destination / "arducopter"),
-    SNR_PACKAGE_ROOT=str(root / ".local/unreal/Live"),
-    SNR_COSYS_SETTINGS=str(destination / "cosys-settings.json"),
-    SNR_WORLD_CONFIG=str(destination / "world.json"),
-)
-assert not set(example).difference(runtime), "Required runtime fields are missing"
-next_env = root / ".local/runtime.env.coupling"
-with next_env.open("x") as stream:
-    stream.write("".join(f"{key}={value}\n" for key, value in runtime.items()))
-next_env.replace(root / ".local/runtime.env")
-PY
-.venv-cosys/bin/python -m world.cosys.configure-drones \
-  --rpc-port 41451 --instance-base 0 \
-  --output "$SNR_CUTOVER_RELEASE/cosys-settings.json"
-sha256sum "$SNR_CUTOVER_RELEASE/cosys-settings.json" \
-  > "$SNR_CUTOVER_EVIDENCE/deployment-settings.sha256"
-test ! -e .local/unreal/Live.coupling
-ln -s "$SNR_CUTOVER_RELEASE" .local/unreal/Live.coupling
-mv -Tf .local/unreal/Live.coupling .local/unreal/Live
-npm ci
-npm run build
-sudo bash deploy/install-services.sh
-sudo test ! -e /etc/systemd/system/snr-unreal.service.d/coupled-shutdown.conf
-sudo tee /etc/systemd/system/snr-unreal.service.d/coupled-shutdown.conf >/dev/null <<'UNIT'
-[Service]
-ExecStop=
-SuccessExitStatus=143
-UNIT
-sudo systemctl daemon-reload
-sudo systemd-analyze verify /etc/systemd/system/snr-unreal.service
-set -a
-. .local/runtime.env
-set +a
-```
-
-The environment update takes coupling fields from the installed profile in
-deploy/runtime.env.example; web, signalling, TURN, viewport and resource settings
-retain their installed values. Regeneration deliberately changes the copied
-settings to RPC 41451 and instances 0–3. The installer renders the actual systemd
-units/drop-ins, reloads systemd and enables the services without starting them.
-The additional drop-in accepts the measured container exit status 143 and clears
-Docker stop: the container removes itself after exit, so an ensuing ExecStop must
-not try to stop it again. Use the ordered coupled shutdown below instead of stopping
-the Unreal unit directly.
-
-```sh
-ss -lntup > "$SNR_CUTOVER_EVIDENCE/listeners-before-start.txt"
-.venv-cosys/bin/python - <<'PY'
-from mission_planner.gcs.sitl import check_ports
-check_ports([3001, 8080, 8888, 8765, 41451,
-             9002, 9012, 9022, 9032, 9003, 9013, 9023, 9033,
-             14600, 14601, 14602, 14603, 5501, 5511, 5521, 5531])
-PY
-sudo systemctl start snr-signalling snr-web
-sudo systemctl start snr-unreal
-timeout 120 bash -c 'until ss -H -ltn sport = :41451 | rg -q "127.0.0.1:41451"; do sleep 1; done'
-sudo systemctl start snr-mission
-```
-
-snr-mission starts all four controllers immediately; the world advances once they
-reply. Reload the intended saved case to select it. Verify the unchanged startup checks,
-184 Hz readback, real camera frames and persisted search coverage. Keep the
-mission's case selected across reconnects. With the editor and development worlds
-stopped by their owners, repeat the recorded flight/capture, feed and pan checks;
-record isolated process CPU, GPU and frame timing before accepting installed
-performance. Development coexistence is not the installed performance result.
-
-For subsequent coupled shutdowns, land and disarm first. Do not use the service's
+For coupled shutdowns, land and disarm first. Do not use the service's
 60-second Docker stop timeout while Unreal is still flushing caches. This sequence
 signals Unreal, observes only new log output, then stops Mission Control as soon as
 world EndPlay has stopped AirSim physics. The log follower is the only helper it
@@ -545,7 +399,8 @@ spacing, row/column orientation, encoding, release hash and the fixed sun.
 north/east heights.
 Rows increase east (+Y); columns increase north (+X). The planner, perception
 geometry, tool schemas, mission fence and browser maps derive their bounds from
-this file. The launch corridor and authored homes remain separate infrastructure.
+this file. The retained southern extension and relocated homes are explicit infrastructure;
+the homes lie inside the main heightfield bounds.
 
 Generate the current numeric valley terrain from the repository root:
 

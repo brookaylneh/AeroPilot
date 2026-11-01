@@ -16,10 +16,13 @@ import numpy as np
 
 from mission_planner.agents.segmentation import encode_mask
 from mission_planner.environment import ROOT
-from mission_planner.gcs.geodesy import ORIGIN
-from mission_planner.gcs.inspection import Inspections, close_track, inside_sector
-from mission_planner.gcs.planner import mission_item
+from mission_planner.gcs.geodesy import NAMES, ORIGIN, point_in_polygon
+from mission_planner.gcs.inspection import Inspections, close_track
+from mission_planner.gcs.planner import compile_plan, mission_item
+from mission_planner.gcs.test_planner import airborne, search_plan
+from mission_planner.gcs.test_validation import readback
 from mission_planner.gcs.tracking import ground_observation
+from world.cosys.landmarks import load
 from world.cosys.terrain import terrain_height
 
 
@@ -59,6 +62,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         ]
         survey = {
             "kind": "survey",
+            "observe": True,
             "polygon": polygon,
             "height_m": 35,
             "speed_mps": 5,
@@ -164,7 +168,11 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
                 "camera_id": "fpv",
                 "horizontal_fov_deg": 53.13010235415598,
                 "camera_view_revision": 1,
-                "camera_position_world_m": {"x": 0, "y": 0, "z": terrain_height(0, 0) + 35},
+                "camera_position_world_m": {
+                    "x": self.states["Drone1"]["north_m"],
+                    "y": self.states["Drone1"]["east_m"],
+                    "z": terrain_height(0, 0) + 35,
+                },
                 "camera_pose_local_ned": {
                     "orientation": {"x": 0, "y": -0.5, "z": 0, "w": 3**0.5 / 2}
                 },
@@ -320,6 +328,321 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.states["Drone2"]["mode"], "AUTO")
         self.review_ready.set()
         return next(iter(self.inspections.rows.values()))
+
+    async def test_unobserved_pattern_starts_no_capture_or_models(self):
+        del self.receipt["plan"]["drones"][0]["steps"][0]["observe"]
+        with patch("mission_planner.gcs.inspection.endpoint") as client:
+            self.assertEqual(await self.inspections.start_search(self.receipt), [])
+            client.assert_not_called()
+        self.assertFalse(self.inspections.tasks)
+        self.assertFalse(self.inspections.cameras)
+        self.capture.capture.assert_not_awaited()
+        self.sam.assert_not_called()
+        self.glimmer.assert_not_called()
+
+    async def test_observed_follow_reviews_and_restores_its_waypoint_route(self):
+        self.receipt["plan"]["drones"][0]["steps"] = [
+            {
+                "kind": "follow",
+                "observe": True,
+                "points": [{"north_m": 40, "east_m": 0}, {"north_m": 80, "east_m": 0}],
+                "height_m": 35,
+                "speed_mps": 5,
+            }
+        ]
+        row = await self.begin()
+        await asyncio.wait_for(self.inspections.tasks["Drone1"], 5)
+        self.assertEqual(row["status"], "complete")
+        self.assertEqual(row["rescue"]["completed_steps"], [{"step_index": 0, "frames": 1}])
+        self.assertEqual(self.sam.call_count, 1)
+        self.assertEqual(self.review_count, 1)
+        self.fleet.tracking_resume.assert_awaited_once()
+        target, zoom = self.capture.view.await_args_list[0].args
+        self.assertAlmostEqual(target["x"], 20)
+        self.assertAlmostEqual(target["y"], 0)
+        self.assertAlmostEqual(target["z"], terrain_height(20, 0))
+        self.assertEqual(zoom, 2)
+
+    async def test_observed_circle_aims_at_center_and_restores_its_waypoints(self):
+        self.receipt["plan"]["drones"][0]["steps"] = [
+            {
+                "kind": "circle",
+                "observe": True,
+                "north_m": 20,
+                "east_m": 40,
+                "radius_m": 40,
+                "turns": 1,
+                "clockwise": True,
+                "height_m": 35,
+                "speed_mps": 5,
+            }
+        ]
+        row = await self.begin()
+        await asyncio.wait_for(self.inspections.tasks["Drone1"], 5)
+        self.assertEqual(row["status"], "complete")
+        self.assertEqual(row["rescue"]["completed_steps"], [{"step_index": 0, "frames": 1}])
+        self.assertEqual(self.sam.call_count, 1)
+        self.assertEqual(self.review_count, 1)
+        self.fleet.tracking_resume.assert_awaited_once()
+        target, zoom = self.capture.view.await_args_list[0].args
+        self.assertEqual(target, {"x": 20, "y": 40, "z": terrain_height(20, 40)})
+        self.assertEqual(zoom, 2)
+
+    async def test_vertical_observed_fly_aims_at_its_ground_endpoint(self):
+        self.receipt["plan"]["drones"][0]["steps"] = [
+            {
+                "kind": "fly",
+                "observe": True,
+                "north_m": 0,
+                "east_m": 0,
+                "height_m": 45,
+                "speed_mps": 5,
+            }
+        ]
+        self.receipt["missions"]["Drone1"]["items"] = [
+            mission_item({"north_m": 0, "east_m": 0}, height, 16) for height in (35, 40, 45)
+        ]
+
+        def sam(*args):
+            self.states["Drone1"]["mission_current"] = 3
+            return {"width": 1920, "height": 1080, "detections": {"person": []}}
+
+        self.sam.side_effect = sam
+        await self.inspections.start_search(self.receipt)
+        await asyncio.wait_for(self.inspections.tasks["Drone1"], 5)
+        row = next(iter(self.inspections.rows.values()))
+        self.assertEqual((row["status"], row["frames"]), ("complete", 1))
+        target, zoom = self.capture.view.await_args_list[0].args
+        self.assertEqual(target, {"x": 0, "y": 0, "z": terrain_height(0, 0)})
+        self.assertEqual(zoom, 2)
+        self.fleet.execute.assert_not_awaited()
+
+    async def test_first_airborne_observed_step_aims_from_compiled_home_and_anchor(self):
+        fleet = airborne(-740, 0, 40)
+        plan = search_plan()
+        plan["drones"] = [
+            {
+                "drone_id": "Drone1",
+                "steps": [
+                    {
+                        "kind": "fly",
+                        "observe": True,
+                        "north_m": -720,
+                        "east_m": 0,
+                        "height_m": 40,
+                        "speed_mps": 5,
+                    },
+                    {"kind": "hover", "seconds": None},
+                ],
+            }
+        ]
+        self.receipt = compile_plan(plan, fleet, {name: readback() for name in NAMES}, load())
+        self.mission.plan_active = self.receipt
+        self.states["Drone1"].update(fleet[0], mission_current=1)
+        mission = self.receipt["missions"]["Drone1"]
+        self.assertEqual(mission["items"][0]["frame"], 0)
+        self.assertEqual(mission["items"][1]["command"], 16)
+
+        def sam(*args):
+            self.states["Drone1"]["mission_current"] = mission["step_ranges"][0]["last_seq"] + 1
+            return {"width": 1920, "height": 1080, "detections": {"person": []}}
+
+        self.sam.side_effect = sam
+        await self.inspections.start_search(self.receipt)
+        await asyncio.wait_for(self.inspections.tasks["Drone1"], 5)
+        row = next(iter(self.inspections.rows.values()))
+        self.assertEqual((row["status"], row["frames"]), ("complete", 1))
+        target, zoom = self.capture.view.await_args_list[0].args
+        self.assertAlmostEqual(target["x"], -720, delta=0.02)
+        self.assertAlmostEqual(target["y"], 0, delta=0.02)
+        self.assertEqual(target["z"], terrain_height(target["x"], target["y"]))
+        self.assertEqual(zoom, 2)
+        self.fleet.execute.assert_not_awaited()
+
+    async def test_step_transition_during_aim_skips_capture_and_inference(self):
+        set_view = self.capture.view.side_effect
+
+        async def view(*args):
+            result = set_view(*args)
+            self.states["Drone1"]["mission_current"] = 3
+            return result
+
+        self.capture.view.side_effect = view
+        await self.inspections.start_search(self.receipt)
+        await asyncio.wait_for(self.inspections.tasks["Drone1"], 5)
+        row = next(iter(self.inspections.rows.values()))
+        self.assertEqual((row["status"], row["frames"]), ("complete", 0))
+        self.capture.capture.assert_not_awaited()
+        self.sam.assert_not_called()
+        self.fleet.tracking_start.assert_not_awaited()
+        self.fleet.execute.assert_not_awaited()
+        record = json.loads(
+            next((self.directory / "inspections" / row["id"]).glob("*.json")).read_text()
+        )
+        self.assertEqual(record["skipped"], "selected observation waypoint is not current")
+        self.assertIsNone(record["response"])
+        self.assertIsNone(record["error"])
+
+    async def test_step_transition_during_capture_skips_inference_and_observation_count(self):
+        capture = self.capture.capture.side_effect
+
+        async def finish_step():
+            result = await capture()
+            self.states["Drone1"]["mission_current"] = 3
+            return result
+
+        self.capture.capture.side_effect = finish_step
+        await self.inspections.start_search(self.receipt)
+        await asyncio.wait_for(self.inspections.tasks["Drone1"], 5)
+        row = next(iter(self.inspections.rows.values()))
+        self.assertEqual((row["status"], row["frames"]), ("complete", 0))
+        self.assertEqual(row["rescue"]["completed_steps"], [{"step_index": 0, "frames": 0}])
+        self.capture.capture.assert_awaited_once()
+        self.sam.assert_not_called()
+        self.fleet.tracking_start.assert_not_awaited()
+        self.fleet.execute.assert_not_awaited()
+        record = json.loads(
+            next((self.directory / "inspections" / row["id"]).glob("*.json")).read_text()
+        )
+        self.assertEqual(record["skipped"], "selected observation waypoint is not current")
+        self.assertEqual(record["step_index"], 0)
+        self.assertIn("camera_position_world_m", record)
+        self.assertIsNone(record["response"])
+
+    async def test_capture_pose_outside_observation_area_is_not_counted_or_inferred(self):
+        capture = self.capture.capture.side_effect
+        event = self.mission.event.side_effect
+
+        async def outside_capture():
+            metadata, jpeg = await capture()
+            metadata["camera_position_world_m"]["x"] = 200
+            return metadata, jpeg
+
+        def finish_after_skip(kind, text, **fields):
+            if "captured camera position is outside" in text:
+                self.states["Drone1"]["mission_current"] = 3
+            return event(kind, text, **fields)
+
+        self.capture.capture.side_effect = outside_capture
+        self.mission.event.side_effect = finish_after_skip
+        await self.inspections.start_search(self.receipt)
+        await asyncio.wait_for(self.inspections.tasks["Drone1"], 5)
+        row = next(iter(self.inspections.rows.values()))
+        self.assertEqual((row["status"], row["frames"]), ("complete", 0))
+        self.sam.assert_not_called()
+        self.fleet.execute.assert_not_awaited()
+        record = json.loads(
+            next((self.directory / "inspections" / row["id"]).glob("*.json")).read_text()
+        )
+        self.assertEqual(
+            record["skipped"], "captured camera position is outside its observation area"
+        )
+        self.assertEqual(record["camera_position_world_m"]["x"], 200)
+        self.assertIsNone(record["response"])
+
+    async def test_unobserved_transit_waits_for_selected_follow_step(self):
+        self.receipt["plan"]["drones"][0]["steps"] = [
+            {"kind": "fly", "north_m": 20, "east_m": 0, "height_m": 35, "speed_mps": 5},
+            {
+                "kind": "follow",
+                "observe": True,
+                "points": [{"north_m": 40, "east_m": 0}, {"north_m": 80, "east_m": 0}],
+                "height_m": 35,
+                "speed_mps": 5,
+            },
+        ]
+        self.receipt["missions"]["Drone1"] = {
+            "step_ranges": [
+                {"first_seq": first, "last_seq": last, "duration_s": 20}
+                for first, last in ((1, 1), (2, 3))
+            ],
+            "items": [mission_item({"north_m": n, "east_m": 0}, 35, 16) for n in (0, 20, 40, 80)],
+        }
+
+        def sam(*args):
+            self.states["Drone1"]["mission_current"] = 4
+            return {"width": 1920, "height": 1080, "detections": {"person": []}}
+
+        self.sam.side_effect = sam
+        with patch.object(
+            self.inspections, "_search_state", wraps=self.inspections._search_state
+        ) as state:
+            await self.inspections.start_search(self.receipt)
+            await self.until(lambda: state.called)
+            row = next(iter(self.inspections.rows.values()))
+            self.assertEqual(row["rescue"]["step_index"], 1)
+            self.assertEqual(row["rescue"]["phase"], "waiting")
+            self.capture.capture.assert_not_awaited()
+            self.sam.assert_not_called()
+            self.states["Drone1"].update(mission_current=2, north_m=20)
+            await asyncio.wait_for(self.inspections.tasks["Drone1"], 5)
+        self.assertEqual(row["rescue"]["completed_steps"], [{"step_index": 1, "frames": 1}])
+        self.assertEqual(self.sam.call_count, 1)
+        self.fleet.tracking_start.assert_not_awaited()
+        self.fleet.execute.assert_not_awaited()
+
+    async def test_concave_observation_area_does_not_sample_its_bounding_box_gap(self):
+        polygon = [
+            {"north_m": north, "east_m": east}
+            for north, east in (
+                (-100, -100),
+                (100, -100),
+                (100, -20),
+                (-20, -20),
+                (-20, 20),
+                (100, 20),
+                (100, 100),
+                (-100, 100),
+            )
+        ]
+        self.receipt["plan"]["drones"][0]["steps"][0]["polygon"] = polygon
+
+        def sam(*args):
+            self.states["Drone1"]["mission_current"] = 3
+            return {"width": 1920, "height": 1080, "detections": {"person": []}}
+
+        self.sam.side_effect = sam
+        with patch(
+            "mission_planner.gcs.inspection.point_in_polygon", wraps=point_in_polygon
+        ) as inside:
+            await self.inspections.start_search(self.receipt)
+            await self.until(lambda: inside.called)
+            self.capture.capture.assert_not_awaited()
+            self.sam.assert_not_called()
+            self.states["Drone1"]["north_m"] = -50
+            await asyncio.wait_for(self.inspections.tasks["Drone1"], 5)
+        self.assertEqual(self.sam.call_count, 1)
+        self.fleet.execute.assert_not_awaited()
+
+    async def test_explicit_follow_cannot_bind_a_future_selected_step(self):
+        await self.inspections.set_camera_view("Drone1", 30, 0, 0, 2)
+        started = await self.inspections.start("Drone1", "person", 0.3, 2)
+        await self.inspections.tasks["Drone1"]
+        row = self.inspections.rows[started["id"]]
+        selected = self.receipt["plan"]["drones"][0]["steps"][0]
+        self.receipt["plan"]["drones"][0]["steps"] = [
+            {"kind": "fly", "north_m": 40, "east_m": 0, "height_m": 35, "speed_mps": 5},
+            selected,
+        ]
+        self.receipt["missions"]["Drone1"]["step_ranges"] = [
+            {"first_seq": first, "last_seq": last, "duration_s": 20}
+            for first, last in ((1, 1), (2, 2))
+        ]
+        for sequence in (None, 0, 1, 3):
+            with self.subTest(sequence=sequence):
+                self.states["Drone1"]["mission_current"] = sequence
+                with self.assertRaisesRegex(AssertionError, "current observed waypoint step"):
+                    await self.inspections.follow_candidate(
+                        row["id"], row["latest"]["frame_id"], 0, 6
+                    )
+                self.assertNotIn("rescue", row)
+        self.states["Drone1"]["mission_current"] = 2
+        self.receipt["missions"]["Drone1"]["items"][2]["command"] = 19
+        with self.assertRaisesRegex(AssertionError, "current observed waypoint step"):
+            await self.inspections.follow_candidate(row["id"], row["latest"]["frame_id"], 0, 6)
+        self.assertNotIn("rescue", row)
+        self.fleet.tracking_start.assert_not_awaited()
+        self.fleet.execute.assert_not_awaited()
 
     async def test_candidate_hold_does_not_wait_for_optional_ground_projection(self):
         entered, release = threading.Event(), threading.Event()
@@ -483,7 +806,9 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
 
     async def test_transit_outside_sector_waits_for_entry_before_searching(self):
         self.states["Drone1"]["north_m"] = -200
-        with patch("mission_planner.gcs.inspection.inside_sector", wraps=inside_sector) as inside:
+        with patch(
+            "mission_planner.gcs.inspection.point_in_polygon", wraps=point_in_polygon
+        ) as inside:
             await self.inspections.start_search(self.receipt)
             await self.until(lambda: inside.called)
             self.capture.capture.assert_not_awaited()
@@ -492,7 +817,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
             self.fleet.execute.assert_not_awaited()
             row = next(iter(self.inspections.rows.values()))
             self.assertEqual(row["rescue"]["phase"], "waiting")
-            with self.assertRaisesRegex(AssertionError, "survey owns its camera"):
+            with self.assertRaisesRegex(AssertionError, "observation step owns its camera"):
                 await self.inspections.set_camera_view("Drone1", 30, 0, 0, 4)
             self.capture.view.assert_not_awaited()
             self.states["Drone1"]["north_m"] = 0
@@ -935,7 +1260,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         self.sam.side_effect = sam
         await self.inspections.start_search(self.receipt)
         row = next(iter(self.inspections.rows.values()))
-        await self.until(lambda: row["rescue"]["survey_step"] == 2)
+        await self.until(lambda: row["rescue"]["step_index"] == 2)
         self.assertEqual(row["rescue"]["phase"], "waiting")
         self.assertEqual(row["frames"], 1)
         self.assertNotIn("Drone2", self.inspections.tasks)
@@ -943,12 +1268,12 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         await asyncio.wait_for(self.inspections.tasks["Drone1"], 5)
         self.assertEqual((row["status"], row["frames"]), ("complete", 2))
         self.assertEqual(
-            row["rescue"]["completed_surveys"],
+            row["rescue"]["completed_steps"],
             [{"step_index": 0, "frames": 1}, {"step_index": 2, "frames": 1}],
         )
         directory = self.directory / "inspections" / row["id"]
         records = [json.loads(path.read_text()) for path in directory.glob("*.json")]
-        self.assertEqual(sorted(record["survey_step"] for record in records), [0, 2])
+        self.assertEqual(sorted(record["step_index"] for record in records), [0, 2])
         before = copy.deepcopy(row)
         self.receipt["plan"]["version"] = 2
         await self.inspections.start_search(self.receipt)
@@ -993,11 +1318,69 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         self.assertEqual((row["status"], row["error"]), ("failed", "SAM request timed out"))
         self.assertTrue(row["rescue"]["pending"])
         self.fleet.execute.assert_awaited_once_with(
-            "hold", {"drone_id": "Drone1"}, expected_mode="AUTO"
+            "hold",
+            {"drone_id": "Drone1"},
+            expected_mode="AUTO",
+            expected_step=(self.receipt["missions"]["Drone1"]["items"], 1, 2),
         )
         self.assertEqual(self.states["Drone2"]["mode"], "AUTO")
         self.assertEqual(self.sam.call_count, 1)
         self.fleet.tracking_start.assert_not_awaited()
+
+    async def test_positive_after_step_ends_preserves_evidence_without_holding_later_flight(self):
+        self.decisions = ["escalate"]
+        self.receipt["plan"]["drones"][0]["steps"].append(
+            {"kind": "fly", "north_m": 150, "east_m": 0, "height_m": 35, "speed_mps": 5}
+        )
+        self.receipt["missions"]["Drone1"]["step_ranges"].append(
+            {"first_seq": 3, "last_seq": 3, "duration_s": 20}
+        )
+        self.receipt["missions"]["Drone1"]["items"].append(
+            mission_item({"north_m": 150, "east_m": 0}, 35, 16)
+        )
+        infer, report = self.sam.side_effect, self.glimmer.return_value.report
+        entered = threading.Event()
+
+        def sam(*args):
+            result = infer(*args)
+            self.states["Drone1"]["mission_current"] = 3
+            return result
+
+        def delayed_report(*args):
+            entered.set()
+            return report(*args)
+
+        async def reject_expired_step(name, sequences):
+            self.assertTrue(await asyncio.to_thread(entered.wait, 5))
+            self.assertEqual((name, sequences), ("Drone1", (1, 2)))
+            raise AssertionError("Drone1: candidate arrived outside its observation step")
+
+        self.sam.side_effect = sam
+        self.glimmer.return_value.report = delayed_report
+        self.fleet.tracking_start.side_effect = reject_expired_step
+        await self.inspections.start_search(self.receipt)
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "outside its observation step; hold not sent: flight control is no longer owned",
+        ):
+            await asyncio.wait_for(self.inspections.tasks["Drone1"], 5)
+        row = next(iter(self.inspections.rows.values()))
+        self.assertEqual((row["status"], row["frames"]), ("failed", 1))
+        self.assertTrue(row["rescue"]["pending"])
+        self.assertEqual(self.states["Drone1"]["mode"], "AUTO")
+        self.assertEqual(
+            self.inspections.evidence(row["id"])["metadata"]["camera_position_world_m"]["x"], 0
+        )
+        self.fleet.execute.assert_not_awaited()
+        self.fleet.tracking_follow.assert_not_awaited()
+        self.fleet.tracking_resume.assert_not_awaited()
+        self.review_ready.set()
+        await asyncio.wait_for(asyncio.gather(*self.inspections.reviews), 5)
+        self.assertEqual(row["rescue"]["reports"][0]["report"]["decision"], "escalate")
+        self.assertEqual(len(self.inspections.evidence(row["id"])["images"]), 4)
+        self.assertEqual(self.inspections.pending_events()[0]["id"], row["id"])
+        with self.assertRaisesRegex(AssertionError, "no longer available for release"):
+            self.inspections.disregard_and_continue(row["rescue"]["review_id"], "Do not resume")
 
     async def test_slow_rejected_track_processing_is_counted_before_scheduling_again(self):
         infer = self.sam.side_effect
@@ -1076,7 +1459,10 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(record["cycle"]["request_s"])
         self.assertTrue(row["rescue"]["pending"])
         self.fleet.execute.assert_awaited_once_with(
-            "hold", {"drone_id": "Drone1"}, expected_mode="AUTO"
+            "hold",
+            {"drone_id": "Drone1"},
+            expected_mode="AUTO",
+            expected_step=(self.receipt["missions"]["Drone1"]["items"], 1, 2),
         )
         self.sam.assert_not_called()
 
@@ -1715,7 +2101,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         await asyncio.wait_for(self.inspections.tasks["Drone1"], 5)
         self.assertEqual(row["status"], "complete")
         self.assertTrue(
-            any("expired during survey restoration" in event["text"] for event in self.events)
+            any("expired during observation restoration" in event["text"] for event in self.events)
         )
         self.tracks[0].close.assert_called_once()
         self.fleet.execute.assert_not_awaited()

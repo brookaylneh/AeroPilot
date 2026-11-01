@@ -20,6 +20,7 @@ immediate overrides need no approval unless another landed drone would launch.
 | --------------------------------------------------------------------------------- | ------------------------------------------------------------- |
 | `get_mission`, `get_fleet`, `get_drone`                                           | Current plan, mission facts and measured aircraft state       |
 | `find_place`, `describe_location`, `ground_height`, `ground_profile`              | Public map and terrain facts                                  |
+| `expanding_square`                                                                | Generate an ordinary follow step around a chosen datum        |
 | `preview_plan`, `request_launch`, `apply_plan_change`                             | One versioned plan through checking, approval and execution   |
 | `hold`, `stop`, `return_home`, `return_fleet`, `land`                             | Immediate flight overrides                                    |
 | `show_on_map`, `open_feed`                                                        | Operator map focus and live forward video                     |
@@ -31,7 +32,7 @@ immediate overrides need no approval unless another landed drone would launch.
 Raw takeoff/waypoint commands and QGC export remain available to operator controls;
 Wonder uses the plan tools. A command acknowledgement is not arrival. Flight progress,
 landing and video availability come from current telemetry. General and Studio sessions
-use the same planner. Images never reveal scenario placement or evaluator truth.
+use the same planning instructions and tools. Images never reveal scenario placement or evaluator truth.
 
 ## Wonder loop and measurement
 
@@ -75,7 +76,11 @@ allowance remain explicit costs; reported charge is not a direct percentage of u
 
 The service uses `muse-wonder-1.0`, high reasoning and flat Responses function definitions. Each request sends ordered local conversation history with `store=false` and `include=["reasoning.encrypted_content"]`; it does not depend on server-stored response IDs. The transcript preserves encrypted reasoning, assistant message phases, function calls and their results in order. Tool results use `function_call_output` with the original `call_id`. Missing encrypted reasoning, a missing summary list or a response ending in reasoning fails before any tool executes. Operator overrides cancel the pending conversation and clear its transcript; late HTTP responses cannot dispatch tools.
 
-Model context uses the logical plan, current progress and compact receipt metrics. Dense
+Every model context includes `flight_constraints`: each aircraft's exact read-back fence vertices,
+the origin MSL altitude, altitude/speed limits, minimum clearance and the complete-route separation rule.
+Aircraft rows supply their individual measured homes. Above-home altitude is terrain UE-up height
+plus requested AGL height minus `(home.altitude_msl_m - origin_altitude_msl_m)`.
+The logical plan, current progress and compact receipt metrics accompany these facts; dense
 mission encoding remains in the map and event log. Review images leave later unrelated
 turns; evidence identifiers and conclusions remain, and `wait_for` with the inspection ID
 supplies the original images again when needed. This does not alter encrypted reasoning
@@ -83,7 +88,7 @@ or the ordering of function calls and results.
 
 The output budget is 16,384 tokens for reasoning plus visible output; an incomplete response raises with its status and incomplete details. Meta supports high effort but prescribes no fixed numeric output budget. Every request supplies current aircraft state, the active version and progress, operator map points, briefing and the compact public map. The loop has no fixed tool-turn limit: it continues until Wonder finishes, a model request fails, or the operator cancels it. Execution and network failures never trigger a retry. Wonder may revise its own rejected preview after reading the exact safety error. `accept_chat.py` uses the same ordered transcript contract. The model client's existing stored-response interface remains available for the separate model benchmark.
 
-Flight results contain aircraft identity, mode, armed/landed state, north/east, altitude above home, mission progress and the acknowledged command. `get_fleet` adds link age/health to one compact row per drone. `get_drone` adds battery, GPS, EKF and the last five status texts; its full waypoint list remains available to the operator. Only `get_mission` provides fence summaries; raw fences and telemetry histories remain in the browser stream. Each model response logs input, output and reasoning tokens, request-body bytes and elapsed time. Credential-free request/response traces remain beside mission events.
+Flight results contain aircraft identity, mode, armed/landed state, north/east, altitude above home, mission progress and the acknowledged command. `get_fleet` adds link age/health to one compact row per drone. `get_drone` adds battery, GPS, EKF and the last five status texts; its full waypoint list remains available to the operator. `get_mission` includes the same exact `flight_constraints` supplied in every context. Telemetry histories remain in the browser stream. Each model response logs input, output and reasoning tokens, request-body bytes and elapsed time. Credential-free request/response traces remain beside mission events.
 
 Verified against Meta's primary [Responses protocol](https://dev.meta.ai/docs/protocols/responses) and [tool-calling documentation](https://dev.meta.ai/docs/tool-calling). The map and preview tools use `strict=false` for optional selectors and the optional search policy. Meta strict schemas require every object property to be mandatory; local validation still enforces the complete schema. Code enforces the exact fields for each target. The service validates every argument itself; Meta's `strict` flag validates schema definitions rather than guaranteeing generated argument correctness.
 
@@ -92,11 +97,12 @@ flight commands. `accept_chat.py` exercises scripted planning with pure previews
 recorded fleet state. Both send paid Wonder requests only when explicitly run, preserve
 request/response evidence and require a fresh output directory. Historical model and
 flight measurements remain in [measurements](../measurements/); they do not establish
-performance for a changed prompt or review template.
+performance for a changed prompt or review template. The current
+[release validation record](../measurements/release.json) separates completed checks from live acceptance limits.
 
 `set_camera_view(drone_id, north_m, east_m, height_m, zoom)` centres a world point
 and selects verified 1–4× render zoom for SAM and live video. Target height is above
-terrain, separate from flight altitude. It works in ordinary flight; approved surveys
+terrain, separate from flight altitude. It works in ordinary flight; automatic observation steps
 retain their planned camera view. Candidate camera adjustments keep the selected
 temporal session running. Old boxes are invalidated until a fresh matching-revision
 observation arrives. `center_candidate(inspection_id, zoom)` centres the moving
@@ -148,7 +154,7 @@ This records who identified the subject; it issues no flight or ground-team comm
 
 Wonder uses one-line landmark-relative flight updates and leads with the useful
 finding. Preparation, pending approval and verified departure have distinct wording;
-a departure is announced only after `request_launch` succeeds. A survey-step wake includes
+a departure is announced only after `request_launch` succeeds. An observation-step wake includes
 its finalized inspection result so step and sensing completion do not produce two
 announcements. Lost sessions list unavailable centre/get/follow tools; aiming at a
 last-seen point cannot revive their tracking. New observations require an explicit
@@ -157,49 +163,59 @@ their wording and live operation remain operator-tested.
 
 ## General mission plans
 
-Studio missing-person searches use this same plan model, with optional `plan.search`.
-Wonder proposes a rectangular perimeter and four rectangular survey assignments,
-including terrain-safe transit, height, speed, spacing and aftermath. The survey
-polygons initially tile the perimeter and are the map sectors. Later versions can assign
-multiple remaining surveys to available drones and send the others home. Inspection step
-indices and frame counts preserve which passes completed; omitted regions are not claimed
-searched. It receives short SAR pattern
-guidance grounded in the [2026 National SAR Manual](https://www.amsa.gov.au/sites/default/files/2026-03/NATSAR-Manual-February-2026-Volume-2.pdf):
-parallel-track, creeping-line, route, expanding-square, sector and contour search.
-The implemented four-rectangle workflow uses survey geometry; knowing another
-pattern does not imply an unimplemented flight command is available.
+Wonder chooses one to four aircraft, geometry, observation timing and aftermath from the task,
+supplied evidence and measured state. General and Studio sessions receive the same instructions.
+Optional `observe: true` enables automatic sensing on finite `fly`, `follow`, `survey` and `circle`
+steps. Other movement remains ordinary flight. `plan.search.perimeter` is a simple polygon of
+3–100 unique vertices with implicit closure; assignments need not be rectangles or tile the area.
+The map outlines the perimeter, fills only observed survey polygons and retains every flight route.
+Inspection `rescue.step_index` and `rescue.completed_steps` record the active step and completed
+`{step_index, frames}` entries without claiming unobserved regions were searched.
+
+Compact pattern guidance follows [AMSA's 2026 National SAR Manual, Volume 2](https://www.amsa.gov.au/sites/default/files/2026-03/NATSAR-Manual-February-2026-Volume-2.pdf),
+§§4.5.6–30 and land-route guidance in §§4.13.58, 4.13.62–67. `survey` supports parallel long-axis
+passes or short-axis creeping-line passes from the better-supported end. `follow` traces a credible
+route. `expanding_square(north_m, east_m, spacing_m, bearing_deg, leg_count, height_m, speed_mps)`
+returns an ordinary `follow` step, with a one-spacing lead-in before the datum and paired leg lengths
+S, S, 2S, 2S, and so on. Wonder supplies ingress and egress, adds `observe: true` when needed and
+previews the complete trip. The helper does not allocate aircraft, clip or reroute geometry, or fly.
+A finite pattern does not prove complete coverage; a circle observes its center from changing views.
+Terrain following alone does not provide a contour-search route.
 
 The operator selected **30 m AGL, 5 m/s, 2× zoom, 20 m line spacing and 20 m camera
-look-ahead for missing-person surveys**. Wonder states those values in the launch plan;
+look-ahead as defaults for this operator's missing-person surveys**. They do not govern other tasks.
+Wonder states the selected values in the launch plan;
 takeoff, transit and return heights remain explicit choices for safe route separation.
 An operator can change the survey height through a new previewed plan version. Survey
 spacing must satisfy one-third nominal camera overlap for the chosen height and zoom.
 Preview does not certify actual terrain visibility, capture coverage or recognition accuracy.
 
-The search perimeter constrains the survey, not the trip there or home. Transit is
-allowed throughout the world flight fence and mapped launch corridor. Wonder receives
-spatial separation rule: remaining flight paths and takeoff/landing columns reserve
-space independently of predicted arrival times. Completed AUTO items are released. RTL retains its corridor until explicit final-landing
-telemetry, then reserves only the descent.
+The sensing perimeter and world flight fence serve different purposes: unobserved transit and return
+may leave the perimeter while satisfying every flight check. The relocated homes are inside the
+main map. Wonder routes from each measured home and the exact read-back fence; there is no mandatory
+southern-corridor detour. Moving outward into separate lanes can help separate departures, but it is
+a proposal requiring a complete preview. Remaining paths and takeoff/landing columns reserve space
+independently of timing. Completed AUTO items are released. RTL retains its accepted return path
+until explicit final-landing telemetry, then reserves only the descent.
 `return_fleet(drone_ids)` queues compatible checked returns and reports aircraft waiting
 for another return path to clear; it sends each command once. Actual command/geometry
 failures stop pending returns and wake Wonder. Mixed requests execute their independent
-override portion before planning a new survey. The instructions retain the pad's west-to-east
-Drone3/Drone1/Drone2/Drone4 ordering, separate departure lanes, sector entries and reversed
-return legs. Transit/return heights and speeds remain proposals that Wonder must choose,
-disclose and preview for each task.
+override portion before planning a new observation task. Transit/return heights and speeds remain
+proposals that Wonder chooses, discloses and previews for each task.
 
 Strict tool schemas must follow [Meta's supported subset](https://dev.meta.ai/docs/structured-output#strict-mode).
 Duplicate drone IDs in return requests are rejected locally before any flight action; the schema
 omits `uniqueItems`, which Meta rejects before responding to any tool-equipped request.
 
-The policy contains `detector_prompt` (normally person/human), `threshold`, and
+The policy contains a Wonder-chosen visible SAM noun phrase in `detector_prompt`, `threshold`, and
 `look_for` with objective, target, visible attributes and ignore instructions.
 It also specifies horizontal `stand_off_m`, tracking `speed_mps`, camera `zoom`,
 `look_ahead_m` and total per-drone
 `max_lock_seconds`. One launch approval includes this provisional-follow authority.
-SAM discovery starts automatically during each survey; Wonder does not issue four
-manual inspection calls. A real required-sensing failure holds the affected drone and
+SAM discovery starts during the explicitly observed steps. Route steps look ahead along the ground,
+stopping at the route endpoint; circle steps look at their ground-level center. Hover, building faces
+and elevated targets use `set_camera_view`, `start_inspection` and `wait_for` with ordinary flight steps.
+There is no automatic hover checkpoint. A real required-sensing failure holds the affected drone and
 wakes Wonder to explain the coverage gap and obtain operator direction; other drones
 continue. This policy is stated in the launch plan. A plain go-to plan starts no inference.
 
@@ -207,14 +223,16 @@ Every SAM candidate receives a Glimmer review, including observations that canno
 support following. The aircraft checkpoints and holds; SAM 3.1 temporal memory maintains
 that candidate through camera aiming and bounded motion while review proceeds. Tracking
 loss holds the aircraft and preserves the review. A clear negative can release the held
-candidate to its checked unfinished survey without restarting detection or reacquiring it. The largest
+candidate to its checked unfinished route without reacquiring the lost track. The largest
 mask is initially tracked when a frame has several candidates; every candidate is
-reviewed, and the selected index is explicit. Glimmer's frozen `forward-analyst-v1`
+reviewed, and the selected index is explicit. Glimmer's frozen `forward-analyst-v2`
 uses the existing report schema with full-box and context crops, truthful forward
-view instructions and the client's fixed sampling. Unknown appearance remains
+view instructions and the client's fixed sampling. Its decisions apply to the requested target,
+including people, animals and objects. Unknown appearance remains
 `cannot_tell`; model output does not establish identity or search probability.
 An uncertain `recheck` report with `action: none` is valid evidence for Wonder;
-an advisory action is not required. Only an all-discard review authorizes release.
+an advisory action is not required. Only an all-discard review authorizes automatic release.
+Earlier template measurements remain preserved and do not transfer to this contract.
 
 Fresh model context includes deterministic landmark descriptions for observed points
 and the latest explicit operator instruction, including across automatic wakes. Wonder
@@ -232,7 +250,7 @@ and errors wake Wonder automatically, with the source images and current drone
 state. An acknowledged candidate does not repeatedly wake it. New commands and
 plan versions invalidate obsolete release authority.
 
-The [mission-control README](../gcs/README.md#missing-person-search-and-candidate-lock)
+The [mission-control README](../gcs/README.md#automatic-observation-and-candidate-lock)
 describes tracker freshness, checkpoint restoration and failure handling. These
 forward observations do not claim calibrated search probability.
 

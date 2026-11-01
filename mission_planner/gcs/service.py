@@ -20,15 +20,23 @@ from mission_planner.agents.tools import (
     AGENT_INSTRUCTIONS,
     CATEGORIES,
     INSPECTION_TOOLS,
-    RESCUE_INSTRUCTIONS,
     TOOLS,
     validate_arguments,
 )
 from mission_planner.environment import ROOT
 from mission_planner.gcs.fleet import Fleet
-from mission_planner.gcs.geodesy import BASE_RADIUS_M, NAMES, ORIGIN
+from mission_planner.gcs.geodesy import (
+    BASE_RADIUS_M,
+    MAX_ALTITUDE_M,
+    MAX_SPEED_MPS,
+    MIN_ALTITUDE_M,
+    MIN_SEPARATION_M,
+    MIN_SPEED_MPS,
+    NAMES,
+    ORIGIN,
+)
 from mission_planner.gcs.inspection import Inspections
-from mission_planner.gcs.validation import RouteConflict
+from mission_planner.gcs.validation import CLEARANCE_M, RouteConflict
 from mission_planner.gcs.waiting import ready, validate_conditions
 from world.cosys import client as sim
 from world.cosys.landmarks import directions, find, load
@@ -220,16 +228,19 @@ def retire_images(history):
             item["content"] = [part for part in item["content"] if part["type"] != "input_image"]
 
 
-def fence_summary(vertices):
-    assert vertices, "The autopilot fence has not been read back."
+def flight_constraints(vehicles):
     return {
-        "vertex_count": len(vertices),
-        "bounds": {
-            axis: [
-                round(min(p[axis] for p in vertices), 3),
-                round(max(p[axis] for p in vertices), 3),
+        "origin_altitude_msl_m": ORIGIN["altitude_msl_m"],
+        "altitude_above_home_m": [MIN_ALTITUDE_M, MAX_ALTITUDE_M],
+        "speed_mps": [MIN_SPEED_MPS, MAX_SPEED_MPS],
+        "minimum_clearance_m": CLEARANCE_M,
+        "minimum_separation_m": MIN_SEPARATION_M,
+        "separation": "Complete 3D routes and takeoff/landing columns, independent of timing",
+        "fences": {
+            vehicle["id"]: [
+                {key: point[key] for key in ("north_m", "east_m")} for point in vehicle["fence"]
             ]
-            for axis in ("north_m", "east_m")
+            for vehicle in vehicles
         },
     }
 
@@ -643,7 +654,6 @@ class Mission:
         }
 
     async def execute_plan(self, name, arguments, source, call_id):
-        initial_search = self.plan_active is None or "search" not in self.plan_active["plan"]
         assert self.fleet_ready, "MAVLink fleet is unavailable"
         assert self.plan_task is None, "A plan operation is already in progress"
         if name == "preview_plan":
@@ -677,7 +687,7 @@ class Mission:
                 )
             self.plan_task = asyncio.current_task()
             try:
-                receipt = await self.fleet.preview_plan(plan, initial_search=initial_search)
+                receipt = await self.fleet.preview_plan(plan)
             finally:
                 if self.plan_task is asyncio.current_task():
                     self.plan_task = None
@@ -705,7 +715,7 @@ class Mission:
                 "Use request_launch for a plan that launches a drone; otherwise use apply_plan_change"
             )
             if launches:
-                await self.fleet.preview_plan(receipt["plan"], initial_search=initial_search)
+                await self.fleet.preview_plan(receipt["plan"])
                 await self.cancel_returns(aircraft, "Flight launch awaiting approval")
                 if any(vehicle["armed"] for vehicle in states):
                     await self.inspections.close()
@@ -722,7 +732,7 @@ class Mission:
             assert self.plan_preview is receipt, (
                 "Plan changed or was overridden while approval was pending"
             )
-            applied = await self.fleet.apply_plan(receipt["plan"], initial_search=initial_search)
+            applied = await self.fleet.apply_plan(receipt["plan"])
             await self.inspections.close()
             if "search" in receipt["plan"]:
                 await self.inspections.start_search(self.plan_active)
@@ -865,6 +875,10 @@ class Mission:
                 return self.inspections.stop(arguments["drone_id"], "Stopped by " + source)
             assert source == "agent", "Only Wonder can schedule its next turn"
             return self.schedule_wait(**arguments)
+        if name == "expanding_square":
+            from mission_planner.gcs.planner import expanding_square
+
+            return expanding_square(**arguments)
         if name == "ground_height":
             return ground_height(**arguments)
         if name == "ground_profile":
@@ -879,7 +893,7 @@ class Mission:
                 "briefing": None
                 if self.case is None
                 else {key: self.case["report"][key] for key in ("brief",)},
-                "fences": {v["id"]: fence_summary(v["fence"]) for v in self.vehicles()},
+                "flight_constraints": flight_constraints(self.vehicles()),
             }
         if name == "show_on_map":
             if arguments["target"] == "drone":
@@ -1171,13 +1185,15 @@ class Mission:
         return result
 
     def context(self):
+        vehicles = self.vehicles()
         context = {
+            "flight_constraints": flight_constraints(vehicles),
             "map": self.landmarks,
             "briefing": None if self.case is None else {"brief": self.case["report"]["brief"]},
             "planner": planning_context(self.planner_state()),
             "inspections": self.inspections.snapshot(),
             "telemetry_at_utc_ms": time.time() * 1000,
-            "current_vehicles": [planning_vehicle(v) for v in self.vehicles()],
+            "current_vehicles": [planning_vehicle(v) for v in vehicles],
             "autopilot_alerts": list(self.autopilot_alerts.values()),
             "returns": list(self.return_rows.values()),
             "evidence": [
@@ -1236,10 +1252,7 @@ class Mission:
                 if event["source"] == "operator" and event["kind"] in ("tool_result", "mode")
             ][-8:],
         }
-        instructions = AGENT_INSTRUCTIONS
-        if self.case is not None:
-            instructions += RESCUE_INSTRUCTIONS
-        return instructions, copy.deepcopy(context)
+        return AGENT_INSTRUCTIONS, copy.deepcopy(context)
 
     def decision_state(self):
         inspections = []

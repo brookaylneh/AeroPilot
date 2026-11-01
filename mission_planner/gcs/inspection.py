@@ -21,7 +21,7 @@ from mission_planner.agents.models import Glimmer, endpoint, post
 from mission_planner.agents.review import review_candidate
 from mission_planner.agents.segmentation import decode_mask
 from mission_planner.agents.temporal import TemporalTrack
-from mission_planner.gcs.geodesy import NAMES
+from mission_planner.gcs.geodesy import NAMES, point_in_polygon, to_local
 from world.cosys.inspection import ForwardCapture, route_look_ahead
 
 
@@ -101,13 +101,6 @@ async def close_track(track):
         request.result()
 
 
-def inside_sector(state, polygon):
-    return all(
-        min(point[key] for point in polygon) <= state[key] <= max(point[key] for point in polygon)
-        for key in ("north_m", "east_m")
-    )
-
-
 def flight_identity(mission, drone_id):
     assert mission.plan_active is not None, "Inspection requires an active flight plan"
     plan = mission.plan_active["plan"]
@@ -182,10 +175,10 @@ class Inspections:
                 continue
             if "rescue" in row:
                 assert row["rescue"]["phase"] in ("reviewing", "tracking", "held"), (
-                    "The survey owns its camera; change plan.search to change the search view"
+                    "The observation step owns its camera; change the plan to change its view"
                 )
                 assert self.releases[row["rescue"]["review_id"]]["reason"] is None, (
-                    "The candidate has been released; its survey owns the camera"
+                    "The candidate has been released; its observation step owns the camera"
                 )
                 track = row["rescue"]["track"]
                 if track is not None:
@@ -469,7 +462,7 @@ class Inspections:
         policy = receipt["plan"]["search"]
         for branch in receipt["plan"]["drones"]:
             name = branch["drone_id"]
-            indices = [i for i, step in enumerate(branch["steps"]) if step["kind"] == "survey"]
+            indices = [i for i, step in enumerate(branch["steps"]) if "observe" in step]
             if not indices:
                 continue
             assert name not in self.tasks or self.tasks[name].done(), (
@@ -502,8 +495,8 @@ class Inspections:
                     "track": None,
                     "live_frame": None,
                     "tracking_error": None,
-                    "survey_step": indices[0],
-                    "completed_surveys": [],
+                    "step_index": indices[0],
+                    "completed_steps": [],
                     "pending": False,
                 },
             }
@@ -512,7 +505,7 @@ class Inspections:
             idle.set()
             self.control_idle[name] = idle
             self.tasks[name] = self.mission.launch(self._search(row, receipt, branch, indices))
-            self._event(row, name + ": search inspection scheduled for assigned surveys")
+            self._event(row, name + ": inspection scheduled for selected observation steps")
         return self.snapshot()
 
     async def follow_candidate(self, inspection_id, frame_id, candidate_index, duration_s):
@@ -552,14 +545,23 @@ class Inspections:
         state = next(v for v in self.mission.vehicles() if v["id"] == name)
         branch = next(d for d in receipt["plan"]["drones"] if d["drone_id"] == name)
         ranges = receipt["missions"][name]["step_ranges"]
-        indices = [
-            i
-            for i, step in enumerate(branch["steps"])
-            if step["kind"] == "survey" and ranges[i]["last_seq"] >= state["mission_current"]
-        ]
-        assert indices and ranges[indices[0]]["first_seq"] <= state["mission_current"], (
-            "Candidate following requires a saved unfinished survey waypoint"
+        sequence = state["mission_current"]
+        current = next(
+            (
+                i
+                for i, step in enumerate(branch["steps"])
+                if "observe" in step
+                and sequence is not None
+                and ranges[i]["first_seq"] <= sequence <= ranges[i]["last_seq"]
+            ),
+            None,
         )
+        assert current is not None and (
+            receipt["missions"][name]["items"][sequence]["command"] == 16
+        ), "Candidate following requires the current observed waypoint step"
+        indices = [
+            i for i, step in enumerate(branch["steps"]) if i >= current and "observe" in step
+        ]
         metadata = copy.deepcopy(self.metadata[frame_id])
         jpeg = (self.directory / (frame_id + "-frame.jpg")).read_bytes()
         row.update(status="running", error=None, deadline_ms=time.time() * 1000 + duration_s * 1000)
@@ -570,8 +572,8 @@ class Inspections:
             "track": None,
             "live_frame": None,
             "tracking_error": None,
-            "survey_step": indices[0],
-            "completed_surveys": [],
+            "step_index": indices[0],
+            "completed_steps": [],
             "pending": False,
         }
         idle = asyncio.Event()
@@ -705,10 +707,20 @@ class Inspections:
             "response": None,
             "error": None,
             "cancelled": False,
+            "skipped": None,
         }
         cycle = record["cycle"]
         buffered, buffering = [], None
         cycle["buffer_complete"] = True
+
+        def admitted(metadata=None):
+            if "rescue" not in row:
+                return True
+            record["skipped"] = self._observation_skip(row, metadata)
+            if record["skipped"] is not None:
+                self._event(row, row["drone_id"] + ": observation skipped · " + record["skipped"])
+                return False
+            return True
 
         async def buffer_frames(request):
             while not request.done() and len(buffered) < 16:
@@ -750,7 +762,11 @@ class Inspections:
             try:
                 if aim is not None:
                     async with self.camera_locks[row["drone_id"]]:
+                        if not admitted():
+                            return None
                         await aim()
+                    if not admitted():
+                        return None
             finally:
                 cycle["aim_s"] = time.monotonic() - tick
             tick = time.monotonic()
@@ -766,7 +782,10 @@ class Inspections:
                 0 if previous is None else previous["timestamp_ns"]
             ), "Forward camera returned a stale frame"
             if "rescue" in row:
-                metadata["survey_step"] = row["rescue"]["survey_step"]
+                metadata["step_index"] = row["rescue"]["step_index"]
+            record.update(metadata)
+            if not admitted(metadata):
+                return None
             if previous is not None:
                 cycle["interval_s"] = (
                     metadata["captured_at_ms"] - previous["captured_at_ms"]
@@ -890,23 +909,56 @@ class Inspections:
         )
         return state
 
-    async def _aim_search(self, row, capture, state, receipt, step_range, policy):
-        from mission_planner.gcs.planner import mission_point
+    def _observation_skip(self, row, metadata=None):
+        state = self._search_state(row)
+        name = row["drone_id"]
+        assert state["armed"], name + ": flight ended before its observation step completed"
+        assert state["mode"] == "AUTO", name + ": search route stopped outside a candidate lock"
+        receipt = self.mission.plan_active
+        branch = next(d for d in receipt["plan"]["drones"] if d["drone_id"] == name)
+        index = row["rescue"]["step_index"]
+        step = branch["steps"][index]
+        step_range = receipt["missions"][name]["step_ranges"][index]
+        sequence = state["mission_current"]
+        if (
+            sequence is None
+            or not step_range["first_seq"] <= sequence <= step_range["last_seq"]
+            or state["landed_state"] != 2
+            or receipt["missions"][name]["items"][sequence]["command"] != 16
+        ):
+            return "selected observation waypoint is not current"
+        area = (
+            step["polygon"] if step["kind"] == "survey" else receipt["plan"]["search"]["perimeter"]
+        )
+        if not point_in_polygon(state, area):
+            return "aircraft is outside its observation area"
+        if metadata is not None:
+            pose = metadata["camera_position_world_m"]
+            if not point_in_polygon({"north_m": pose["x"], "east_m": pose["y"]}, area):
+                return "captured camera position is outside its observation area"
+        return None
+
+    async def _aim_search(self, row, capture, state, receipt, step, step_range, policy):
         from world.cosys.terrain import terrain_height
 
-        items = receipt["missions"][state["id"]]["items"]
-        sequence = max(state["mission_current"], step_range["first_seq"])
-        previous = next(item for item in reversed(items[:sequence]) if item["command"] in (16, 22))
-        points = [
-            {key: mission_point(item)[key] for key in ("north_m", "east_m")}
-            for item in [previous, *items[sequence : step_range["last_seq"] + 1]]
-            if item["command"] in (16, 22)
-        ]
-        target = route_look_ahead(
-            points,
-            {key: state[key] for key in ("north_m", "east_m")},
-            policy["look_ahead_m"],
-        )
+        if step["kind"] == "circle":
+            target = {key: step[key] for key in ("north_m", "east_m")}
+        else:
+            items = receipt["missions"][state["id"]]["items"]
+            sequence = max(state["mission_current"], step_range["first_seq"])
+            previous = next(
+                item for item in reversed(items[:sequence]) if item["command"] in (16, 22)
+            )
+            points = []
+            for item in [previous, *items[sequence : step_range["last_seq"] + 1]]:
+                if item["command"] in (16, 22):
+                    north, east = to_local(item["x"] / 1e7, item["y"] / 1e7)
+                    points.append({"north_m": north, "east_m": east})
+            target = route_look_ahead(
+                points,
+                {key: state[key] for key in ("north_m", "east_m")},
+                policy["look_ahead_m"],
+            )
         north, east = target["north_m"], target["east_m"]
         world = {"x": north, "y": east, "z": terrain_height(north, east)}
         if "camera_view" not in row or row["camera_view"]["zoom"] != policy["zoom"]:
@@ -926,7 +978,8 @@ class Inspections:
         capture, client = None, None
         previous, rejected, association = None, None, None
         ranges = receipt["missions"][name]["step_ranges"]
-        survey_number, frames_before = 0, 0
+        items = copy.deepcopy(receipt["missions"][name]["items"])
+        step_number, frames_before = 0, 0
         next_slot = None
         try:
             directory = self.mission.directory / "inspections" / row["id"]
@@ -961,46 +1014,37 @@ class Inspections:
                 state = self._search_state(row)
                 sequence = state["mission_current"]
                 while (
-                    survey_number < len(indices)
+                    step_number < len(indices)
                     and sequence is not None
-                    and sequence > ranges[indices[survey_number]]["last_seq"]
+                    and sequence > ranges[indices[step_number]]["last_seq"]
                 ):
-                    index = indices[survey_number]
+                    index = indices[step_number]
                     observed = row["frames"] - frames_before
-                    row["rescue"]["completed_surveys"].append(
+                    row["rescue"]["completed_steps"].append(
                         {"step_index": index, "frames": observed}
                     )
                     self._event(
                         row,
-                        f"{name}: survey step {index} ended with {observed} observations; absence is not established",
+                        f"{name}: observation step {index} ended with {observed} observations; absence is not established",
                     )
-                    survey_number += 1
+                    step_number += 1
                     frames_before = row["frames"]
                     if rejected is not None:
                         closing, rejected = rejected, None
                         await close_track(closing)
                     next_slot = None
-                if survey_number == len(indices):
+                if step_number == len(indices):
                     row["status"] = row["rescue"]["phase"] = "complete"
-                    row["rescue"]["survey_step"] = None
+                    row["rescue"]["step_index"] = None
                     row["rescue"]["pending"] = True
                     self._event(
-                        row, name + ": survey observations complete; absence is not established"
+                        row, name + ": selected observations complete; absence is not established"
                     )
                     break
-                index = indices[survey_number]
-                survey, step_range = branch["steps"][index], ranges[index]
-                row["rescue"]["survey_step"] = index
-                assert state["armed"], name + ": search flight ended before its survey completed"
-                assert state["mode"] == "AUTO", (
-                    name + ": search route stopped outside a candidate lock"
-                )
-                if (
-                    sequence is None
-                    or sequence < step_range["first_seq"]
-                    or state["landed_state"] != 2
-                    or not inside_sector(state, survey["polygon"])
-                ):
+                index = indices[step_number]
+                step, step_range = branch["steps"][index], ranges[index]
+                row["rescue"]["step_index"] = index
+                if self._observation_skip(row) is not None:
                     next_slot = None
                     row["rescue"]["phase"] = "waiting"
                     await asyncio.sleep(0.2)
@@ -1012,7 +1056,7 @@ class Inspections:
                 if next_slot is None:
                     next_slot = sampling_start(name, time.monotonic())
                     continue
-                metadata, jpeg, response, overlay, detections, cycle, buffered = await self._sample(
+                sample = await self._sample(
                     row,
                     capture,
                     client,
@@ -1024,10 +1068,15 @@ class Inspections:
                         capture,
                         self._search_state(row),
                         receipt,
+                        step,
                         step_range,
                         policy,
                     ),
                 )
+                if sample is None:
+                    next_slot = None
+                    continue
+                metadata, jpeg, response, overlay, detections, cycle, buffered = sample
                 previous = metadata
                 row["frames"] += 1
                 suppressed = None
@@ -1094,7 +1143,7 @@ class Inspections:
                             jpeg,
                             candidates,
                             policy,
-                            survey,
+                            step,
                             step_range,
                             directory,
                             remaining,
@@ -1121,6 +1170,14 @@ class Inspections:
             try:
                 state = next(v for v in self.mission.vehicles() if v["id"] == name)
                 lock_owned = row["rescue"]["phase"] in ("reviewing", "tracking", "held", "resuming")
+                index = row["rescue"]["step_index"]
+                sequence = state["mission_current"]
+                current_step = (
+                    index is not None
+                    and sequence is not None
+                    and ranges[index]["first_seq"] <= sequence <= ranges[index]["last_seq"]
+                    and items[sequence]["command"] == 16
+                )
                 if (
                     row["status"] != "stopped"
                     and self.mission.plan_active is not None
@@ -1128,15 +1185,20 @@ class Inspections:
                     and state["armed"]
                     and state["landed_state"] in (2, 3, 4)
                     and (
-                        state["mode"] == "AUTO"
+                        (state["mode"] == "AUTO" and current_step)
                         or (lock_owned and state["mode"] in ("GUIDED", "BRAKE"))
                     )
                 ):
-                    await self.mission.fleet.execute(
-                        "hold", {"drone_id": name}, expected_mode=state["mode"]
-                    )
+                    guard = {"expected_mode": state["mode"]}
+                    if state["mode"] == "AUTO":
+                        guard["expected_step"] = (
+                            items,
+                            ranges[index]["first_seq"],
+                            ranges[index]["last_seq"],
+                        )
+                    await self.mission.fleet.execute("hold", {"drone_id": name}, **guard)
                 elif row["status"] != "stopped":
-                    message += f"; hold not sent: flight control is no longer owned (mode={state['mode']}, armed={state['armed']})"
+                    message += f"; hold not sent: flight control is no longer owned (mode={state['mode']}, armed={state['armed']}, mission_current={sequence})"
             except Exception as hold_error:
                 message += "; hold failed: " + str(hold_error)
                 raise RuntimeError(f"{name}: search inspection failed: {message}") from hold_error
@@ -1234,7 +1296,7 @@ class Inspections:
         jpeg,
         candidates,
         policy,
-        survey,
+        step,
         step_range,
         directory,
         allowance,
@@ -1258,7 +1320,7 @@ class Inspections:
                 jpeg,
                 candidates,
                 policy,
-                survey,
+                step,
                 step_range,
                 directory,
                 allowance,
@@ -1281,7 +1343,7 @@ class Inspections:
         jpeg,
         candidates,
         policy,
-        survey,
+        step,
         step_range,
         directory,
         allowance,
@@ -1513,7 +1575,8 @@ class Inspections:
                         row["rescue"]["phase"] = "resuming"
                         row["rescue"]["live_frame"] = None
                         self._event(
-                            row, name + ": candidate disregarded; restoring unfinished survey"
+                            row,
+                            name + ": candidate disregarded; restoring unfinished observation step",
                         )
                         rejected = await asyncio.wait_for(
                             self._resume_track(
@@ -1609,7 +1672,7 @@ class Inspections:
                         target,
                         policy["perimeter"],
                         policy["stand_off_m"],
-                        survey["height_m"],
+                        step["height_m"],
                     )
                     if checkpoint is None:
                         continue
@@ -1734,7 +1797,9 @@ class Inspections:
                 frame = await asyncio.to_thread(tracking_frame, frames, metadata, jpeg)
                 if metadata["timestamp_ns"] - track.timestamp_ns > 2_000_000_000:
                     self._event(
-                        row, name + ": rejected track association expired during survey restoration"
+                        row,
+                        name
+                        + ": rejected track association expired during observation restoration",
                     )
                     closing, track = track, None
                     await close_track(closing)

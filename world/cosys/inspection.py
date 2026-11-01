@@ -30,15 +30,15 @@ def route_look_ahead(points, position, distance_m):
     for point in points[1:]:
         if any(point[k] != vertices[-1][k] for k in keys):
             vertices.append(point)
-    assert len(vertices) >= 2, "Camera look-ahead requires a nonzero route leg"
+    if len(vertices) == 1:
+        return {k: vertices[0][k] for k in keys}
     before, after = vertices[:2]
     delta = [after[k] - before[k] for k in keys]
     length = math.hypot(*delta)
     fraction = max(
         0, sum((position[k] - before[k]) * delta[i] for i, k in enumerate(keys)) / length**2
     )
-    if len(vertices) > 2:
-        fraction = min(1, fraction)
+    fraction = min(1, fraction)
     distance_m += fraction * length
     for before, after in zip(vertices, vertices[1:]):
         delta = [after[k] - before[k] for k in keys]
@@ -47,7 +47,7 @@ def route_look_ahead(points, position, distance_m):
         if distance_m <= length:
             return {k: before[k] + distance_m * direction[i] for i, k in enumerate(keys)}
         distance_m -= length
-    return {k: after[k] + distance_m * direction[i] for i, k in enumerate(keys)}
+    return {k: vertices[-1][k] for k in keys}
 
 
 class ForwardCapture:

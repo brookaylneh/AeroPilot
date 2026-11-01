@@ -76,7 +76,7 @@ def ready(conditions, planner, vehicles, inspections):
                     for branch in active["plan"]["drones"]
                     if branch["drone_id"] == vehicle["id"]
                 )
-                if branch["steps"][condition["step_index"]]["kind"] == "survey":
+                if "observe" in branch["steps"][condition["step_index"]]:
                     inspection = next(
                         (
                             row
@@ -89,10 +89,10 @@ def ready(conditions, planner, vehicles, inspections):
                     )
                     if inspection is not None:
                         if inspection["status"] == "running" and (
-                            inspection["rescue"]["survey_step"] == condition["step_index"]
+                            inspection["rescue"]["step_index"] == condition["step_index"]
                             or not any(
                                 step["step_index"] == condition["step_index"]
-                                for step in inspection["rescue"]["completed_surveys"]
+                                for step in inspection["rescue"]["completed_steps"]
                             )
                         ):
                             continue

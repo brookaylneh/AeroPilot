@@ -8,6 +8,7 @@ import struct
 from jsonschema import Draft202012Validator
 from pymavlink.dialects.v20 import ardupilotmega as MAV
 
+from mission_planner.agents.review import check_look_for
 from mission_planner.gcs.battery import (
     CUTOFF_PERCENT,
     LOW_VOLTAGE_V,
@@ -61,7 +62,7 @@ SPEED = {"type": "number", "minimum": MIN_SPEED_MPS, "maximum": MAX_SPEED_MPS}
 TRAVEL = {"height_m": HEIGHT, "speed_mps": SPEED}
 SEARCH_SCHEMA = object_schema(
     {
-        "perimeter": {"type": "array", "items": POINT, "minItems": 4, "maxItems": 4},
+        "perimeter": {"type": "array", "items": POINT, "minItems": 3, "maxItems": 100},
         "detector_prompt": {"type": "string", "minLength": 1, "maxLength": 100},
         "threshold": {"type": "number", "minimum": 0, "maximum": 1},
         "look_for": object_schema(
@@ -147,80 +148,89 @@ PLAN_SCHEMA = object_schema(
 PLAN_SCHEMA["properties"]["search"] = SEARCH_SCHEMA
 
 
-def rectangle_bounds(points, label):
-    north = [point["north_m"] for point in points]
-    east = [point["east_m"] for point in points]
-    low_n, high_n, low_e, high_e = min(north), max(north), min(east), max(east)
-    assert low_n < high_n and low_e < high_e, f"{label}: rectangle has no area"
-    assert len(points) == 4 and set(zip(north, east)) == {
-        (n, e) for n in (low_n, high_n) for e in (low_e, high_e)
-    }, f"{label}: requires four axis-aligned rectangle corners"
-    assert all(
-        (a["north_m"] == b["north_m"]) != (a["east_m"] == b["east_m"])
-        for a, b in zip(points, [*points[1:], points[0]])
-    ), f"{label}: rectangle corners must follow the perimeter"
-    return low_n, high_n, low_e, high_e
+for step in PLAN_SCHEMA["properties"]["drones"]["items"]["properties"]["steps"]["items"]["anyOf"]:
+    if step["properties"]["kind"]["enum"][0] in ("fly", "follow", "survey", "circle"):
+        step["properties"]["observe"] = {"type": "boolean", "enum": [True]}
 
 
-def validate_search(plan, fences, *, initial_search=True):
-    assert type(initial_search) is bool
+def validate_polygon(points, label):
+    vertices = [(p["north_m"], p["east_m"]) for p in points]
+    assert len(vertices) >= 3 and len(set(vertices)) == len(vertices), (
+        f"{label}: vertices must be unique; closure is implicit"
+    )
+    edges = list(zip(vertices, [*vertices[1:], vertices[0]]))
+    for i, (a, b) in enumerate(edges):
+        for j, (c, d) in enumerate(edges):
+            if j > i + 1 and (i, j) != (0, len(edges) - 1):
+                assert not _intersects(a, b, c, d), f"{label}: polygon self-intersects"
+    assert abs(sum(a[0] * b[1] - b[0] * a[1] for a, b in edges)) > 1e-6, (
+        f"{label}: polygon has no area"
+    )
+
+
+def validate_search(plan, fences):
+    selected = [
+        (branch, index, step)
+        for branch in plan["drones"]
+        for index, step in enumerate(branch["steps"])
+        if "observe" in step
+    ]
+    assert not selected or "search" in plan, "Observed steps require plan.search"
     if "search" not in plan:
         return
     search = plan["search"]
     assert search["detector_prompt"].strip(), "Search detector prompt is empty"
-    brief = search["look_for"]
-    assert all(text.strip() for text in [brief["objective"], brief["target"], *brief["ignore"]]), (
-        "Search reviewer brief contains empty text"
-    )
-    attributes = brief["attributes"]
-    assert len({item["id"] for item in attributes}) == len(attributes), (
-        "Search reviewer attribute ids must be unique"
-    )
-    assert all(item["text"].strip() for item in attributes), "Search reviewer attribute is empty"
-    if initial_search:
-        assert {branch["drone_id"] for branch in plan["drones"]} == set(NAMES), (
-            "Initial search requires an assignment for all four drones"
-        )
+    check_look_for(search["look_for"])
     perimeter = search["perimeter"]
-    outer = rectangle_bounds(perimeter, "Search perimeter")
-    sectors = []
+    validate_polygon(perimeter, "Search perimeter")
     for branch in plan["drones"]:
         name = branch["drone_id"]
-        surveys = [
-            (index, step) for index, step in enumerate(branch["steps"]) if step["kind"] == "survey"
-        ]
-        if initial_search:
-            assert len(surveys) == 1, f"{name}: initial search requires exactly one survey sector"
-        if not surveys:
-            continue
-        for index, survey in surveys:
-            label = f"{name} step {index} search sector"
-            # A 90-degree nadir view is 2h/zoom wide; retain one-third nominal overlap.
-            maximum_spacing = 4 * survey["height_m"] / (3 * search["zoom"])
-            assert survey["spacing_m"] <= maximum_spacing, (
-                f"{label}: spacing {survey['spacing_m']:g} m exceeds {maximum_spacing:g} m "
-                f"at {survey['height_m']:g} m AGL and {search['zoom']:g}x zoom "
-                "for one-third nominal camera overlap"
-            )
-            sector = rectangle_bounds(survey["polygon"], label)
-            assert all(outer[i] <= sector[i] for i in (0, 2)) and all(
-                sector[i] <= outer[i] for i in (1, 3)
-            ), f"{label} is outside the perimeter"
-            for other_name, other in sectors:
-                assert min(sector[1], other[1]) <= max(sector[0], other[0]) or min(
-                    sector[3], other[3]
-                ) <= max(sector[2], other[2]), f"{label} overlaps {other_name}"
-            sectors.append((label, sector))
         fence = fence_polygon(fences[name])
         assert all(
             segment_in_polygon(a, b, fence)
             for a, b in zip(perimeter, [*perimeter[1:], perimeter[0]])
         ), f"{name}: search perimeter exits the fence"
-    if initial_search:
-        area = sum((b - a) * (d - c) for _, (a, b, c, d) in sectors)
-        assert math.isclose(area, (outer[1] - outer[0]) * (outer[3] - outer[2]), rel_tol=1e-12), (
-            "Search sectors do not cover the complete perimeter"
+    for branch, index, step in selected:
+        if step["kind"] != "survey":
+            continue
+        label = f"{branch['drone_id']} step {index} observation area"
+        validate_polygon(step["polygon"], label)
+        assert all(
+            segment_in_polygon(a, b, perimeter)
+            for a, b in zip(step["polygon"], [*step["polygon"][1:], step["polygon"][0]])
+        ), f"{label} is outside the perimeter"
+        # A 90-degree nadir view is 2h/zoom wide; retain one-third nominal overlap.
+        maximum_spacing = 4 * step["height_m"] / (3 * search["zoom"])
+        assert step["spacing_m"] <= maximum_spacing, (
+            f"{label}: spacing {step['spacing_m']:g} m exceeds {maximum_spacing:g} m "
+            f"at {step['height_m']:g} m AGL and {search['zoom']:g}x zoom "
+            "for one-third nominal camera overlap"
         )
+
+
+def expanding_square(north_m, east_m, spacing_m, bearing_deg, leg_count, height_m, speed_mps):
+    assert all(
+        math.isfinite(v) for v in (north_m, east_m, spacing_m, bearing_deg, height_m, speed_mps)
+    )
+    assert spacing_m > 0 and 0 <= bearing_deg < 360
+    assert type(leg_count) is int and 2 <= leg_count <= 100
+    assert 0 < height_m <= 150 and MIN_SPEED_MPS <= speed_mps <= MAX_SPEED_MPS
+    angle = math.radians(bearing_deg)
+    along = math.cos(angle), math.sin(angle)
+    points = [
+        {"north_m": north_m - spacing_m * along[0], "east_m": east_m - spacing_m * along[1]},
+        {"north_m": north_m, "east_m": east_m},
+    ]
+    for index in range(leg_count):
+        heading = angle + index * math.pi / 2
+        length = spacing_m * (index // 2 + 1)
+        points.append(
+            {
+                "north_m": points[-1]["north_m"] + length * math.cos(heading),
+                "east_m": points[-1]["east_m"] + length * math.sin(heading),
+            }
+        )
+    return {"kind": "follow", "points": points, "height_m": height_m, "speed_mps": speed_mps}
 
 
 def mission_item(point, altitude, command, param1=0):
@@ -283,6 +293,7 @@ def mission_point(item):
 
 
 def survey_points(step):
+    validate_polygon(step["polygon"], "Survey")
     angle = math.radians(step["bearing_deg"])
     along, cross = (math.cos(angle), math.sin(angle)), (-math.sin(angle), math.cos(angle))
     polygon = [
@@ -293,14 +304,7 @@ def survey_points(step):
         for p in step["polygon"]
     ]
     low, high = min(p[1] for p in polygon), max(p[1] for p in polygon)
-    assert len(set(polygon)) == len(polygon), "Survey vertices must be unique; closure is implicit"
     edges = list(zip(polygon, [*polygon[1:], polygon[0]]))
-    area = sum(a[0] * b[1] - b[0] * a[1] for a, b in edges)
-    assert high > low and abs(area) > 1e-6, "Survey polygon has no area"
-    for i, (a, b) in enumerate(edges):
-        for j, (c, d) in enumerate(edges):
-            if j > i + 1 and (i, j) != (0, len(edges) - 1):
-                assert not _intersects(a, b, c, d), "Survey polygon self-intersects"
     count = math.ceil((high - low) / step["spacing_m"])
     assert count <= 1000, "Survey exceeds 1000 scan lines"
     result = []
@@ -341,12 +345,12 @@ def movement_seconds(a, b, speed):
     )
 
 
-def compile_plan(plan, states, fences, landmarks, reservations=(), *, initial_search=True):
+def compile_plan(plan, states, fences, landmarks, reservations=()):
     Draft202012Validator(PLAN_SCHEMA).validate(plan)
     json.dumps(plan, allow_nan=False)
     names = [branch["drone_id"] for branch in plan["drones"]]
     assert len(set(names)) == len(names), "A drone appears twice in the plan"
-    validate_search(plan, fences, initial_search=initial_search)
+    validate_search(plan, fences)
     current = {state["id"]: state for state in states}
     assert set(current) == set(NAMES), "Live state must contain all four drones"
     missions = {}
@@ -513,6 +517,17 @@ def compile_plan(plan, states, fences, landmarks, reservations=(), *, initial_se
                     else:
                         assert kind == "return_home"
                         targets = [state["home"]]
+                    if "observe" in step:
+                        area = step["polygon"] if kind == "survey" else plan["search"]["perimeter"]
+                        assert all(point_in_polygon(point, area) for point in targets), (
+                            "Observed pattern leaves its observation area"
+                        )
+                        assert all(
+                            segment_in_polygon(a, b, area) for a, b in zip(targets, targets[1:])
+                        ), (
+                            "Observed pattern crosses outside its observation area; split the "
+                            "pattern and use unobserved transit between its parts"
+                        )
                     for target in targets:
                         duration += travel(target, step["height_m"], speed)
                     if kind == "return_home":
@@ -533,7 +548,7 @@ def compile_plan(plan, states, fences, landmarks, reservations=(), *, initial_se
             finite_time += duration
         lock_allowance = (
             plan["search"]["max_lock_seconds"]
-            if "search" in plan and any(step["kind"] == "survey" for step in steps)
+            if "search" in plan and any("observe" in step for step in steps)
             else 0
         )
         required = required_percent(finite_time + lock_allowance)
