@@ -14,7 +14,6 @@ from world.cosys.client import (
     WORLD,
     connect,
     distance,
-    entry_axis,
     native,
     origin,
     quat,
@@ -44,14 +43,18 @@ def run():
             < 1e-6
         )
     port = WORLD["port"]
-    axis = entry_axis()
-    gap = WORLD["searchBoundsCm"]["min"][axis] / 100 - (
-        port["centerUeCm"][axis] / 100 + port["dimensionsMetres"][0 if axis == "x" else 1] / 2
+    gap = min(
+        min(
+            port["centerUeCm"][axis] - WORLD["searchBoundsCm"]["min"][axis],
+            WORLD["searchBoundsCm"]["max"][axis] - port["centerUeCm"][axis],
+        )
+        / 100
+        - width / 2
+        for axis, width in zip("xy", port["dimensionsMetres"])
     )
-    assert abs(gap - 5) < 1e-6
+    assert gap > 0
     report.update(
         globalNedOriginUeCm=r["globalNedOriginUeCm"],
-        portBoundary=port["boundary"],
         portGapMetres=gap,
         infrastructureVersion=WORLD["infrastructureVersion"],
     )

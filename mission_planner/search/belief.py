@@ -13,6 +13,7 @@ from mission_planner.agents.perception.localization import (
     gaussian_cells,
 )
 from mission_planner.gcs.validation import footprint_intervals
+from mission_planner.search.detections import escalated
 from mission_planner.search.grid import area
 from mission_planner.search.occlusion import footprint_fraction
 
@@ -144,20 +145,20 @@ class Evidence:
         assert ((pod >= 0) & (pod <= 1)).all()
         before = self.probability.copy()
         records = [ledger.records[identity] for identity in ledger.frames[frame_id]]
-        qualified = [d for d in records if d["calibrated"] and d["qualified"]]
-        assert calibrated or not qualified
+        positive = [d for d in records if escalated(d)]
+        assert calibrated or not positive
         self.frames.add(frame_id)
         credited, kind = [], "uncalibrated"
-        if calibrated and not qualified:
+        if calibrated and not positive:
             self.maximum_pod = np.maximum(self.maximum_pod, pod)
             kind = "negative"
         elif calibrated:
-            hashes = {d["input_sha256"] for d in qualified}
+            hashes = {d["input_sha256"] for d in positive}
             assert len(hashes) == 1
             image_hash = next(iter(hashes))
             representatives = {}
             old = self.reserved.copy()
-            for record in qualified:
+            for record in positive:
                 cluster = ledger.clusters[record["cluster_id"]]
                 if cluster["reference_frame_id"] == frame_id:
                     if cluster["id"] not in representatives:

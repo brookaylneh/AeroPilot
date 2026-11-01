@@ -1,0 +1,24 @@
+{
+  "source": "https://opengameart.org/content/low-poly-bear",
+  "author": "Mathilde_Lea",
+  "license": "CC-BY-4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "files": {
+    "mesh": {
+      "path": ".local/vendor/wildlife/mathilde-lea-bear/Bear.fbx",
+      "sha256": "f6b8e5396b88e8ab1b3649ccd34e1dcaaf1f35408021847c432f527bca110e1f"
+    },
+    "color": {
+      "path": ".local/vendor/wildlife/mathilde-lea-bear/Bear Base Color.png",
+      "sha256": "48f6fe70647e52fe23592056ab1e569e9b2214be466494da018805c80412fd49"
+    }
+  },
+  "baseColorLinear": [0.07421356838014963, 0.04518620438567554, 0.043735029256973465],
+  "lengthM": 2.2,
+  "positionMetres": {
+    "north": -530,
+    "east": -230
+  },
+  "yawDegrees": 45,
+  "changes": "Uniformly scaled to 2.2 m length and placed on open ground; original geometry and UVs preserved. The supplied UVs mismatch the supplied texture, so the rendered material uses its measured dominant body color (sRGB 77, 60, 59) uniformly. Original FBX and PNG retained with hashes. Static pose; no animation supplied."
+}

@@ -17,10 +17,16 @@ from mission_planner.gcs.service import Mission
 from mission_planner.search.places import location_support, proposal
 from mission_planner.search.prior import initialize
 from mission_planner.search.state import Search
+from mission_planner.search.test_commander import HISTORICAL
 
 
 class Places(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
+        observation = patch(
+            "mission_planner.search.commander.load_observation_model", return_value=HISTORICAL
+        )
+        observation.start()
+        self.addCleanup(observation.stop)
         self.fence = [
             {"north_m": n, "east_m": e}
             for n, e in ((-100, -100), (-100, 100), (100, 100), (100, -100))
@@ -58,7 +64,6 @@ class Places(unittest.IsolatedAsyncioTestCase):
         self.mission.directory = Path(temporary.name)
         self.mission.approvals = {}
         self.mission.fleet_ready = True
-        self.mission.autonomy = "Autonomous"
         self.mission.event = Mock()
         self.mission.case = {"report": self.briefing}
         self.mission.fleet = SimpleNamespace(snapshot=lambda: [{"fence": self.fence}])

@@ -4,6 +4,7 @@ import unittest
 import numpy as np
 
 from world.cosys.terrain import WORLD
+from world.unreal.valley import lookup, surface_points
 from world.unreal.valley_dressing import (
     CAP_M,
     HOLDERS,
@@ -69,6 +70,19 @@ class DressingTests(unittest.TestCase):
         top = WORLD["port"]["centerUeCm"]["z"] / 100
         np.testing.assert_array_equal(self.rows["port-mats"]["z"], top)
 
+    def test_parking_notch_does_not_change_dressing(self):
+        document = copy.deepcopy(self.document)
+        parking = next(item for item in document["landmarks"] if item["kind"] == "parking")
+        rectangle = surface_points(parking)
+        parking["geometry"]["points"] = [
+            {"x": float(north * 100), "y": float(east * 100), "z": float(height * 100)}
+            for (north, east), height in zip(rectangle, lookup(self.site.elevation, rectangle))
+        ]
+        before = plan(self.dressing, document, self.receipt)
+        for name, placed in self.rows.items():
+            for key, value in placed.items():
+                np.testing.assert_array_equal(value, before[name][key], err_msg=f"{name}: {key}")
+
     def test_no_instance_tops_the_cap(self):
         for placed in self.rows.values():
             self.assertLessEqual(placed["top"].max(), CAP_M)
@@ -95,6 +109,13 @@ class DressingTests(unittest.TestCase):
     def test_explicit_footprints_outside_their_area_fail(self):
         row = copy.deepcopy(self.row("survey-hut"))
         row["at"][0][2] += 90
+        with self.assertRaises(AssertionError):
+            plan(dict(self.dressing, rows=[row]), self.document, self.receipt)
+
+    def test_parking_fixtures_cannot_occupy_the_launch_notch(self):
+        row = copy.deepcopy(self.row("lot-kiosk"))
+        centre = WORLD["port"]["centerUeCm"]
+        row["at"] = [[centre["x"] / 100, centre["y"] / 100, 0]]
         with self.assertRaises(AssertionError):
             plan(dict(self.dressing, rows=[row]), self.document, self.receipt)
 

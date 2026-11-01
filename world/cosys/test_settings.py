@@ -55,6 +55,19 @@ class SettingsTests(unittest.TestCase):
                     home["altitude_msl_m"],
                 )
 
+    def test_forward_capture_defaults_preserve_stock_mount_and_nadir_camera(self):
+        settings = configure.generate(self.world, 41451, 0)
+        scene = next(
+            c for c in settings["CameraDefaults"]["CaptureSettings"] if c["ImageType"] == 0
+        )
+        self.assertEqual((scene["Width"], scene["Height"]), (1920, 1080))
+        self.assertFalse(scene["ForceUpdate"])
+        for vehicle in settings["Vehicles"].values():
+            self.assertNotIn("fpv", vehicle["Cameras"])
+            nadir = vehicle["Cameras"]["front_center"]
+            self.assertEqual(nadir["Pitch"], -90)
+            self.assertEqual(nadir["CaptureSettings"][1]["Width"], 3840)
+
     def test_rejects_wrong_frame_or_player_start(self):
         changes = [
             ("coordinateSystem", "NED_METERS"),
@@ -83,6 +96,30 @@ class SettingsTests(unittest.TestCase):
         for rpc, instance in ((0, 20), (65536, 20), (41452, -1), (41452, 5651)):
             with self.subTest(rpc=rpc, instance=instance), self.assertRaises(AssertionError):
                 configure.generate(self.world, rpc, instance)
+
+    def test_relocated_manifest_generates_without_reading_old_settings(self):
+        world = copy.deepcopy(self.world)
+        world["port"]["centerUeCm"]["x"] += 100
+        for vehicle in world["vehicles"].values():
+            vehicle["spawnUeCm"]["x"] += 100
+        settings = configure.generate(world, 41451, 0)
+        for name, vehicle in settings["Vehicles"].items():
+            self.assertEqual(vehicle["X"], world["vehicles"][name]["spawnUeCm"]["x"] / 100)
+
+    def test_launch_columns_clear_the_parking_notch_but_command_post_is_protected(self):
+        from mission_planner.gcs.validation import validate_ground_column
+        from world.cosys.landmarks import load
+
+        landmarks = load()
+        for home in geodesy.homes().values():
+            validate_ground_column(home, landmarks)
+            self.assertAlmostEqual(home["altitude_msl_m"] - geodesy.ORIGIN["altitude_msl_m"], 11.13)
+        for north, east in ((-757.8, -29.5), (-753, -27.5), (-716, 98)):
+            with (
+                self.subTest(north=north, east=east),
+                self.assertRaisesRegex(AssertionError, "raised landmark"),
+            ):
+                validate_ground_column({"north_m": north, "east_m": east}, landmarks)
 
 
 if __name__ == "__main__":

@@ -4,10 +4,15 @@
 #include "RuntimeGen/GenSources/PCGGenSourceComponent.h"
 #include "Components/PrimitiveComponent.h"
 #include "Components/InstancedStaticMeshComponent.h"
+#include "Components/HierarchicalInstancedStaticMeshComponent.h"
 #include "UObject/UObjectIterator.h"
 #include "UObject/UnrealType.h"
 #include "EngineUtils.h"
 #include "Engine/World.h"
+#include "Engine/StaticMeshActor.h"
+#include "Engine/StaticMesh.h"
+#include "Engine/LevelStreamingDynamic.h"
+#include "Engine/Level.h"
 #include "Engine/TextureRenderTarget2D.h"
 #include "Misc/CommandLine.h"
 #include "Misc/Parse.h"
@@ -47,18 +52,128 @@ void Write(const FString &Path, const TSharedRef<FJsonObject> &J)
         !FPlatformFileManager::Get().GetPlatformFile().MoveFile(*Path, *Temporary))
         UE_LOG(LogTemp, Fatal, TEXT("Could not publish native telemetry: %s"), *Path);
 }
+TSharedRef<FJsonObject> PlaceInfrastructure(UWorld *World)
+{
+    FString Path, Text;
+    TSharedPtr<FJsonObject> Config;
+    checkf(FParse::Value(FCommandLine::Get(), TEXT("ScenarioWorldConfig="), Path) &&
+               FFileHelper::LoadFileToString(Text, *Path) &&
+               FJsonSerializer::Deserialize(TJsonReaderFactory<>::Create(Text), Config) && Config,
+           TEXT("The release world manifest is required"));
+    const auto Port = Config->GetObjectField(TEXT("port"));
+    const auto Position = Port->GetObjectField(TEXT("centerUeCm"));
+    FVector Top;
+    check(Position->Values.Num() == 3 && Position->TryGetNumberField(TEXT("x"), Top.X) &&
+          Position->TryGetNumberField(TEXT("y"), Top.Y) && Position->TryGetNumberField(TEXT("z"), Top.Z));
+    check(!Top.ContainsNaN());
+    const auto Dimensions = Port->GetArrayField(TEXT("dimensionsMetres"));
+    check(Dimensions.Num() == 3);
+    AStaticMeshActor *Pad = nullptr;
+    for (TActorIterator<AStaticMeshActor> It(World); It; ++It)
+        if (It->ActorHasTag(TEXT("drone.port")))
+        {
+            check(!Pad);
+            Pad = *It;
+        }
+    checkf(Pad, TEXT("The authored drone port is missing"));
+    FVector Center, Extent;
+    Pad->GetActorBounds(false, Center, Extent);
+    for (int32 Axis = 0; Axis != 3; ++Axis)
+        check(FMath::IsNearlyEqual(Extent[Axis], Dimensions[Axis]->AsNumber() * 50., .01));
+    const FVector Delta = Top - Center - FVector(0, 0, Extent.Z);
+    auto *Mesh = Pad->GetStaticMeshComponent();
+    Mesh->SetMobility(EComponentMobility::Movable);
+    check(Pad->SetActorLocation(Pad->GetActorLocation() + Delta, false, nullptr, ETeleportType::TeleportPhysics));
+    Mesh->SetMobility(EComponentMobility::Static);
+    FVector PadCenter, PadExtent;
+    Pad->GetActorBounds(false, PadCenter, PadExtent);
+    const FVector PadTop = PadCenter + FVector(0, 0, PadExtent.Z);
+    check(PadTop.Equals(Top, .01));
+    TArray<TSharedPtr<FJsonValue>> Mats;
+    for (TObjectIterator<UInstancedStaticMeshComponent> It; It; ++It)
+        if (It->GetWorld() == World && It->GetStaticMesh() &&
+            It->GetStaticMesh()->GetFName() == TEXT("SM_Landing_Mat"))
+        {
+            check(It->GetInstanceCount() == 4 && Mats.IsEmpty());
+            for (int32 Index = 0; Index != 4; ++Index)
+            {
+                FTransform Transform;
+                check(It->GetInstanceTransform(Index, Transform, true));
+                const FVector Original = Transform.GetLocation();
+                check(FMath::Abs(Original.X - Center.X) < Extent.X &&
+                      FMath::Abs(Original.Y - Center.Y) < Extent.Y);
+                Transform.AddToTranslation(Delta);
+                check(It->UpdateInstanceTransform(Index, Transform, true, true, true));
+                check(It->GetInstanceTransform(Index, Transform, true));
+                check(FMath::IsNearlyEqual(
+                    It->GetStaticMesh()->GetBoundingBox().TransformBy(Transform).Min.Z, Top.Z, .01));
+                Mats.Add(MakeShared<FJsonValueObject>(V(Transform.GetLocation())));
+            }
+            CastChecked<UHierarchicalInstancedStaticMeshComponent>(*It)->BuildTreeIfOutdated(false, false);
+        }
+    checkf(Mats.Num() == 4, TEXT("All four authored landing mats are required"));
+    const auto Vehicles = Config->GetObjectField(TEXT("vehicles"));
+    check(Vehicles->Values.Num() == 4);
+    for (const auto &Vehicle : Vehicles->Values)
+    {
+        const auto Spawn = Vehicle.Value->AsObject()->GetObjectField(TEXT("spawnUeCm"));
+        check(FMath::IsNearlyEqual(Spawn->GetNumberField(TEXT("z")), Top.Z + 20., .01));
+        check(Mats.ContainsByPredicate([&](const auto &Mat) {
+            const auto Point = Mat->AsObject();
+            return FMath::IsNearlyEqual(Point->GetNumberField(TEXT("x")), Spawn->GetNumberField(TEXT("x")), .01) &&
+                   FMath::IsNearlyEqual(Point->GetNumberField(TEXT("y")), Spawn->GetNumberField(TEXT("y")), .01);
+        }));
+    }
+    bool Loaded = false;
+    auto *Wildlife = ULevelStreamingDynamic::LoadLevelInstance(
+        World, TEXT("/Wildlife/BearHabitat"), FVector::ZeroVector, FRotator::ZeroRotator, Loaded);
+    checkf(Loaded && Wildlife, TEXT("The wildlife content package is missing"));
+    Wildlife->bShouldBlockOnLoad = true;
+    World->FlushLevelStreaming(EFlushLevelStreamingType::Full);
+    check(Wildlife->GetLoadedLevel() && Wildlife->IsLevelVisible());
+    AActor *Bear = nullptr;
+    for (AActor *Actor : Wildlife->GetLoadedLevel()->Actors)
+        if (Actor && Actor->ActorHasTag(TEXT("wildlife.bear")))
+        {
+            check(!Bear);
+            Bear = Actor;
+        }
+    check(Bear);
+    Bear->GetActorBounds(false, Center, Extent);
+    auto Report = MakeShared<FJsonObject>();
+    Report->SetStringField(TEXT("infrastructureVersion"), Config->GetStringField(TEXT("infrastructureVersion")));
+    Report->SetObjectField(TEXT("portTopUeCm"), V(PadTop));
+    Report->SetArrayField(TEXT("landingMatsUeCm"), Mats);
+    Report->SetObjectField(TEXT("bearCenterUeCm"), V(Center));
+    Report->SetObjectField(TEXT("bearExtentCm"), V(Extent));
+    return Report;
+}
 }
 ADroneFoundation::ADroneFoundation()
 {
     PrimaryActorTick.bCanEverTick = false;
 }
-void ADroneFoundation::BeginPlay()
+void ADroneFoundation::PostInitializeComponents()
 {
-    Super::BeginPlay();
+    Super::PostInitializeComponents();
+    if (!GetWorld()->IsGameWorld())
+        return;
     if (!FParse::Value(FCommandLine::Get(), TEXT("DroneFoundationDir="), Directory) || Directory.IsEmpty())
         return;
     Directory = FPaths::ConvertRelativePathToFull(Directory);
     IFileManager::Get().MakeDirectory(*Directory, true);
+    // AirSim creates the aircraft in BeginPlay, so their slab must already be in place.
+    GetWorld()->OnWorldPreBeginPlay.AddWeakLambda(this, [this]() {
+        Write(Directory / TEXT("infrastructure.json"), PlaceInfrastructure(GetWorld()));
+        bInfrastructureReady = true;
+    });
+}
+void ADroneFoundation::BeginPlay()
+{
+    Super::BeginPlay();
+    if (Directory.IsEmpty())
+        return;
+    checkf(bInfrastructureReady, TEXT("Infrastructure must be placed before aircraft initialization"));
     // A mission request belongs to the world that consumed it; every world starts in studio mode.
     checkf(IFileManager::Get().Delete(*(Directory / TEXT("mission-request.json")), false, false, true),
            TEXT("Cannot clear the previous mission request"));
@@ -198,10 +313,8 @@ void ADroneFoundation::Poll()
         FVector Center, Extent;
         It->GetActorBounds(true, Center, Extent);
         Item->SetObjectField(TEXT("collisionHalfExtentCm"), V(Extent));
-        // Keep the stock aircraft and its camera mounts. Only front_center is used
-        // as the RGB sensor. Other stock mounts remain inactive, at default size.
-        // Settings cameras replace the API entry, not the pawn's original
-        // embedded-camera map. Resolve through the same registry as RPC.
+        // Search uses configured front_center; the viewport uses stock fpv.
+        // Settings replace only named registry entries. Resolve through the RPC registry.
         APIPCamera *Camera =
             Mode->getCamera(msr::airlib::CameraDetails("front_center", TCHAR_TO_UTF8(*Name)));
         checkf(Camera, TEXT("Missing front_center camera for %s"), *Name);

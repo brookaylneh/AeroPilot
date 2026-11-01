@@ -42,7 +42,11 @@ cd "$destination"
 patch --batch --fuzz=0 -p1 <"$project/mission_planner/gcs/sitl-loopback.patch"
 patch --batch --fuzz=0 -p1 <"$project/mission_planner/gcs/sitl-airsim-liveness.patch"
 patch --batch --fuzz=0 -p1 <"$project/mission_planner/gcs/sitl-gps-cadence.patch"
+patch --batch --fuzz=0 -p1 <"$project/mission_planner/gcs/sitl-airsim-battery.patch"
+cp "$project/mission_planner/gcs/test_sitl_battery.cpp" libraries/SITL/tests/
 python modules/waf/waf-light configure --board sitl --no-submodule-update
 python modules/waf/waf-light copter -j"$jobs" --no-submodule-update
+python modules/waf/waf-light build --targets tests/test_sitl_battery -j"$jobs" --no-submodule-update
+build/sitl/tests/test_sitl_battery
 test -x build/sitl/bin/arducopter
 sha256sum build/sitl/bin/arducopter

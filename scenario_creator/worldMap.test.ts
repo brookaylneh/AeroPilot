@@ -3,7 +3,6 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   fitMapBounds,
-  fitMapView,
   insideMap,
   mapScale,
   mapToScreen,
@@ -55,7 +54,7 @@ test('scale bar uses readable ground distances at every map zoom', () => {
   for (const width of widths) assert(mapScale(width) / width <= 1 / 3);
 });
 
-test('mission and compact views contain the rectangle without stretching', () => {
+test('focused points stay visible and screen positions invert at every mission view size', () => {
   const region = {
     minX: world.searchBoundsCm.min.x / 100,
     maxX: world.searchBoundsCm.max.x / 100,
@@ -70,21 +69,13 @@ test('mission and compact views contain the rectangle without stretching', () =>
     minY: region.minY - east / 8,
     maxY: region.maxY + east / 8,
   };
-  for (const [width, height, expectedWidth, expectedHeight] of [
-    [1500, 1008, 1500, 1000],
-    [2140, 1368, 2052, 1368],
-    [230, 122, 183, 122],
-    [210, 140, 210, 140],
+  for (const [width, height] of [
+    [1500, 1008],
+    [2140, 1368],
+    [230, 122],
+    [210, 140],
   ]) {
-    const bounds = fitMapBounds(padded, { width, height }),
-      view = fitMapView(bounds, region);
-    const project = (x: number, y: number) => mapToScreen(worldToMap({ x, y }, bounds), view);
-    const northwest = project(region.maxX, region.minY),
-      southeast = project(region.minX, region.maxY);
-    assert(northwest.u >= -1e-12 && northwest.v >= -1e-12);
-    assert(southeast.u <= 1 + 1e-12 && southeast.v <= 1 + 1e-12);
-    assert(Math.abs((southeast.u - northwest.u) * width - expectedWidth) < 1e-9);
-    assert(Math.abs((southeast.v - northwest.v) * height - expectedHeight) < 1e-9);
+    const bounds = fitMapBounds(padded, { width, height });
     for (const [northFraction, eastFraction] of [
       [0.13, 0],
       [0.71, 1],

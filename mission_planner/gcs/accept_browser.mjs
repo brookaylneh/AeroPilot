@@ -10,8 +10,9 @@ import { execFileSync } from 'node:child_process';
 import { setTimeout as delay } from 'node:timers/promises';
 import { chromium } from '@playwright/test';
 import { missionPlanSchema } from './missionPlan.ts';
+import { plannerSchema } from './FlightPlan.tsx';
 import { port as configuredPort } from '../../web/runtime.ts';
-import { measureSensorFeed } from './accept_sensor_feed.mjs';
+import { measureDroneVideo } from './accept_drone_video.mjs';
 
 const sizes = [
   [1920, 1080],
@@ -86,20 +87,22 @@ async function screenshots(page, output, label, approval = false, focus = null) 
 
 async function observe(browser, url) {
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
-  const observation = { page, state: null, search: null, events: [], errors: [] };
+  const observation = { page, state: null, search: null, events: [], errors: [], messages: [] };
   page.on('pageerror', (error) => {
     observation.errors.push(error.message);
     console.error(error.message);
   });
-  page.on('websocket', (socket) =>
+  page.on('websocket', (socket) => {
+    if (!socket.url().endsWith('/api/mission')) return;
     socket.on('framereceived', ({ payload }) => {
       const value = JSON.parse(payload.toString());
       if (value.type === 'state') observation.state = value;
       if (value.type === 'search') observation.search = value.search;
       if (value.type === 'event') observation.events.push(value.event);
       if (value.type === 'history') observation.events.push(...value.events);
-    }),
-  );
+      if (value.type === 'idle' || value.type === 'error') observation.messages.push(value);
+    });
+  });
   await page.goto(url);
   return observation;
 }
@@ -160,6 +163,7 @@ async function states(browser, url, output) {
   await page.keyboard.press('1');
   await screenshots(page, output, 'video');
   await page.keyboard.press('v');
+  await page.locator('[data-drone-card="Drone1"] .gcs-vehicle-name').click();
   await page.getByRole('button', { name: 'Center Drone1', exact: true }).click();
   await screenshots(page, output, 'launch-labels');
   const boxes = await page.locator('[data-label] rect').evaluateAll((nodes) =>
@@ -235,11 +239,7 @@ async function states(browser, url, output) {
     process.kill(pid, 'SIGCONT');
   }
   await until(() => !o.state.vehicles.find((v) => v.id === 'Drone3').link_lost, 'Link restored');
-  await page.getByRole('button', { name: 'Autonomous', exact: true }).click();
-  await until(() => o.state.mission.autonomy === 'Autonomous', 'Autonomous mode');
-  await screenshots(page, output, 'autonomous');
-  await page.getByRole('button', { name: 'Supervised', exact: true }).click();
-  await until(() => o.state.mission.autonomy === 'Supervised', 'Supervised mode');
+  assert.equal(await page.getByRole('group', { name: 'Autonomy mode' }).count(), 0);
   assert.equal(o.errors.length, 0);
   await writeFile(
     `${output}/results.json`,
@@ -264,9 +264,9 @@ async function approvals(browser, url, output) {
   const { page } = o;
   await until(() => o.state?.vehicles.length === 4, 'Four aircraft', 90);
   assert(o.state.vehicles.every((v) => !v.armed && v.landed_state === 1));
-  assert.equal(o.state.mission.autonomy, 'Supervised');
   const missionsBefore = o.state.vehicles.map((v) => v.mission);
-  await page.getByRole('button', { name: 'Fit search area', exact: true }).click();
+  await page.getByRole('button', { name: 'Full-screen map', exact: true }).click();
+  await page.getByRole('button', { name: 'Show Mission Commander', exact: true }).click();
   const pad = page.locator('[data-members="Drone1,Drone2,Drone3,Drone4"]');
   await pad.waitFor();
   assert.equal(await pad.locator('text').textContent(), 'Drone1–4 · pad');
@@ -386,14 +386,11 @@ async function approvals(browser, url, output) {
 async function land(browser, url, output) {
   const o = await observe(browser, url);
   await until(() => o.state?.vehicles.length === 4, 'Four aircraft');
-  assert.equal(o.state.mission.autonomy, 'Supervised');
   const armed = o.state.vehicles.filter((v) => v.armed).map((v) => v.id);
   for (const id of armed) {
-    await o.page.getByRole('button', { name: `Land ${id}`, exact: true }).click();
-    await o.page.getByRole('button', { name: 'Approve flight', exact: true }).waitFor();
-    await screenshots(o.page, output, `land-${id}`, true);
     const index = o.events.length;
-    await o.page.getByRole('button', { name: 'Approve flight', exact: true }).click();
+    await o.page.getByRole('button', { name: `Land ${id}`, exact: true }).click();
+    await screenshots(o.page, output, `land-${id}`);
     await until(() => o.events.slice(index).some((e) => e.kind === 'tool_result'), `${id} land result`);
     assert(o.events.slice(index).find((e) => e.kind === 'tool_result').result.ok);
   }
@@ -518,18 +515,21 @@ async function flight(browser, url, output) {
   async function select(id) {
     await page.locator(`[data-drone-id="${id}"] .gcs-vehicle-name`).click();
   }
+  async function command(id, name) {
+    await page.getByRole('button', { name: `${id} commands`, exact: true }).click();
+    await page.getByRole('button', { name, exact: true }).click();
+  }
   await wait(() => observation.state?.vehicles.length === 4, 'Fleet ready');
   assert(
     observation.state.vehicles.every((v) => !v.armed && v.landed_state === 1),
     'UI test starts with four landed aircraft',
   );
-  assert.equal(observation.state.mission.autonomy, 'Supervised');
   await page.keyboard.press('1');
   await page.getByRole('button', { name: 'Expand map', exact: true }).click();
   await page.locator('.gcs-main-map').waitFor();
   for (const id of ['Drone1', 'Drone2', 'Drone3', 'Drone4']) {
     await select(id);
-    await page.getByRole('button', { name: 'Take off', exact: true }).click();
+    await command(id, `Take off ${id}`);
     await page.getByLabel('Altitude above home (m)').fill('30');
     await page.getByRole('button', { name: 'Request flight approval', exact: true }).click();
     await approve('take_off', id, id === 'Drone1' ? 'approval' : undefined);
@@ -544,7 +544,7 @@ async function flight(browser, url, output) {
     ['Drone2', 1],
   ]) {
     await select(id);
-    await page.getByRole('button', { name: 'Route', exact: true }).click();
+    await command(id, `Route ${id}`);
     const points = [
       [-790, sign * 2.5],
       [-700, sign * 100],
@@ -557,18 +557,22 @@ async function flight(browser, url, output) {
       await page.getByLabel('East (m)', { exact: true }).nth(i).fill(String(points[i][1]));
     }
     await page.getByLabel('Ground speed (m/s)').fill('5');
-    await page.getByRole('button', { name: 'Request flight approval', exact: true }).click();
-    await approve('fly_route', id, id === 'Drone1' ? 'route-approval' : undefined);
+    const index = events.length;
+    await page.getByRole('button', { name: 'Send flight command', exact: true }).click();
+    await wait(
+      () => events.slice(index).some((e) => e.kind === 'tool_result' && e.name === 'fly_route'),
+      `${id} route applied`,
+    );
+    assert(events.slice(index).find((e) => e.kind === 'tool_result' && e.name === 'fly_route').result.ok);
+    assert.equal(observation.state.approvals.length, 0);
   }
-  await page.getByRole('button', { name: 'Hold Drone1', exact: true }).click();
-  await approve('hold', 'Drone1', 'hold-approval');
+  await command('Drone1', 'Hold Drone1');
   await wait(() => drone('Drone1').mode === 'BRAKE', 'Drone1 BRAKE');
-  await page.getByRole('button', { name: 'Resume Drone1', exact: true }).click();
-  await approve('resume', 'Drone1', 'resume-approval');
+  await command('Drone1', 'Resume Drone1');
   await wait(() => drone('Drone1').mode === 'AUTO', 'Drone1 resumes AUTO');
   await select('Drone1');
   const downloadPromise = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export Drone1 plan', exact: true }).click();
+  await command('Drone1', 'Export Drone1 plan');
   const download = await downloadPromise;
   await download.saveAs(`${output}/Drone1.plan`);
   const plan = missionPlanSchema.parse(JSON.parse(await readFile(`${output}/Drone1.plan`, 'utf8')));
@@ -578,8 +582,7 @@ async function flight(browser, url, output) {
     await page.screenshot({ path: `${output}/routes-${width}.png` });
   }
   await page.setViewportSize({ width: 1920, height: 1080 });
-  await page.getByRole('button', { name: 'Return Drone1', exact: true }).click();
-  await approve('return_home', 'Drone1', 'return-approval');
+  await command('Drone1', 'Return Drone1');
   await wait(
     () => !drone('Drone1').armed && drone('Drone1').landed_state === 1,
     'Drone1 returns and lands',
@@ -587,7 +590,6 @@ async function flight(browser, url, output) {
   );
   for (const id of ['Drone2', 'Drone3', 'Drone4']) {
     await page.getByRole('button', { name: `Land ${id}`, exact: true }).click();
-    await approve('land', id, id === 'Drone2' ? 'landing-approval' : undefined);
   }
   await wait(
     () => observation.state.vehicles.every((v) => !v.armed && v.landed_state === 1),
@@ -657,11 +659,11 @@ async function worldViews(browser, url, output) {
     const stage = await surface.boundingBox(),
       terrain = await page.locator('.gcs-main-map .gcs-terrain').boundingBox();
     assert(stage && terrain);
-    assert(terrain.x >= stage.x - 0.1 && terrain.y >= stage.y - 0.1);
-    assert(terrain.x + terrain.width <= stage.x + stage.width + 0.1);
-    assert(terrain.y + terrain.height <= stage.y + stage.height + 0.1);
-    assert(Math.abs(terrain.width - Math.min(stage.width, stage.height * aspect)) < 0.1);
-    assert(Math.abs(terrain.height - Math.min(stage.height, stage.width / aspect)) < 0.1);
+    assert(terrain.x <= stage.x + 0.1 && terrain.y <= stage.y + 0.1);
+    assert(terrain.x + terrain.width >= stage.x + stage.width - 0.1);
+    assert(terrain.y + terrain.height >= stage.y + stage.height - 0.1);
+    assert(Math.abs(terrain.width - Math.max(stage.width, stage.height * aspect)) < 0.1);
+    assert(Math.abs(terrain.height - Math.max(stage.height, stage.width / aspect)) < 0.1);
     const image = await page.evaluate(async () => {
       const image = new Image();
       image.src = '/maps/valley-topographic.png';
@@ -725,7 +727,8 @@ async function worldViews(browser, url, output) {
     );
     focused.push({ point, marker, zoomed, panned });
   }
-  await page.getByRole('button', { name: 'Fit search area', exact: true }).click();
+  await page.getByRole('button', { name: 'Full-screen map', exact: true }).click();
+  await page.getByRole('button', { name: 'Show Mission Commander', exact: true }).click();
   assert.deepEqual(errors, []);
   await writeFile(
     `${output}/world-views.json`,
@@ -987,14 +990,13 @@ async function commanderLoop(browser, observation, output, beforeGrid) {
     (
       await sendTool(page, 'review_detection', {
         detection_id: cluster.representative_id,
-        model_review: false,
       })
     ).result.ok,
     true,
   );
   await until(() => observation.search.commander.review?.id === cluster.id, 'Evidence card data');
   const review = observation.search.commander.review;
-  const detection = review.members.find((member) => member.calibrated && member.qualified);
+  const detection = review.members.find((member) => member.calibrated && member.decision === 'escalate');
   assert(detection && detection.source === 'recorded' && detection.drone_id === 'Drone1');
   await page.getByRole('button', { name: `Review member ${detection.id}`, exact: true }).click();
   await page.getByRole('button', { name: 'Locate evidence on map', exact: true }).click();
@@ -1074,10 +1076,7 @@ async function commanderLoop(browser, observation, output, beforeGrid) {
       .find((event) => event.kind === 'tool_result' && event.name === 'resume').result.ok,
     true,
   );
-  assert.equal(
-    (await sendTool(page, 'review_detection', { detection_id: detection.id, model_review: false })).result.ok,
-    true,
-  );
+  assert.equal((await sendTool(page, 'review_detection', { detection_id: detection.id })).result.ok, true);
   await page
     .getByLabel('Operator review reason', { exact: true })
     .fill(
@@ -1338,12 +1337,109 @@ async function searchFlight(browser, url, output, manifestId, afterPlan) {
   }
 }
 
+async function plannerViews(browser, url, output, seconds) {
+  const observation = await observe(browser, url);
+  const { page } = observation;
+  const started = Date.now();
+  const snapshots = [];
+  let passed = false;
+  try {
+    await until(
+      () => {
+        assert.equal(observation.errors.length, 0, observation.errors.join('\n'));
+        assert.equal(observation.messages.length, 0, JSON.stringify(observation.messages));
+        return observation.state?.vehicles.length === 4;
+      },
+      'Planner fleet state',
+      90,
+    );
+    assert.equal(await page.getByRole('group', { name: 'Autonomy mode' }).count(), 0);
+    assert.equal(await page.getByRole('button', { name: 'Choose map point', exact: true }).count(), 1);
+    await writeFile(`${output}/ready.json`, JSON.stringify({ mission_id: observation.state.mission.id }));
+    let previousKey = '';
+    while (Date.now() - started < seconds * 1000) {
+      assert.equal(observation.errors.length, 0, observation.errors.join('\n'));
+      assert.equal(observation.messages.length, 0, JSON.stringify(observation.messages));
+      const planner = plannerSchema.parse(observation.state.planner);
+      const approval = observation.state.approvals.find((item) =>
+        ['request_launch', 'apply_plan_change'].includes(item.name),
+      );
+      const key = JSON.stringify([
+        planner.preview?.plan.version,
+        planner.active?.plan.version,
+        planner.previous?.plan.version,
+        approval?.id,
+      ]);
+      if (key !== previousKey && (planner.preview || planner.active || planner.previous)) {
+        previousKey = key;
+        for (const status of ['preview', 'active', 'previous']) {
+          const receipt = planner[status];
+          assert.equal(
+            await page.locator(`.gcs-plan-route.${status}`).count(),
+            receipt ? receipt.plan.drones.length : 0,
+          );
+        }
+        if (planner.previous) {
+          const opacity = await page
+            .locator('.gcs-plan-route.previous')
+            .first()
+            .evaluate((element) => Number(getComputedStyle(element).opacity));
+          assert(opacity < 0.5, 'Previous route must be faded');
+        }
+        if (approval) {
+          assert(planner.preview && planner.preview.plan.version === approval.arguments.version);
+          await page
+            .getByLabel(`Mission plan version ${approval.arguments.version}`, { exact: true })
+            .waitFor();
+          assert.equal(
+            await page.locator('.gcs-flight-plan li').count(),
+            planner.preview.plan.drones.reduce((count, drone) => count + drone.steps.length, 0),
+          );
+        }
+        const label = `planner-${snapshots.length + 1}`;
+        await screenshots(page, output, label, Boolean(approval));
+        snapshots.push({ label, at_ms: Date.now(), planner, approval: approval ?? null });
+        await writeFile(`${output}/snapshots.json`, JSON.stringify(snapshots, null, 2) + '\n');
+      }
+      await delay(200);
+    }
+    for (const status of ['preview', 'active', 'previous'])
+      assert(
+        snapshots.some((snapshot) => snapshot.planner[status]),
+        `No ${status} plan observed`,
+      );
+    assert(
+      snapshots.some((snapshot) => snapshot.approval),
+      'No launch review observed',
+    );
+    passed = true;
+  } finally {
+    await writeFile(
+      `${output}/results.json`,
+      JSON.stringify(
+        {
+          passed,
+          duration_s: (Date.now() - started) / 1000,
+          mission_id: observation.state?.mission.id,
+          snapshots,
+          events: observation.events,
+          errors: observation.errors,
+          messages: observation.messages,
+        },
+        null,
+        2,
+      ) + '\n',
+    );
+  }
+}
+
 const [command, url, output, ...options] = process.argv.slice(2);
 assert(
   [
     'search',
     'commander',
     'flight',
+    'planner',
     'feed',
     'capture',
     'world',
@@ -1357,7 +1453,7 @@ assert(
   ].includes(command) &&
     url &&
     output,
-  'Usage: node --import tsx mission_planner/gcs/accept_browser.mjs {commander|search|flight|feed|capture|world|states|approvals|review|performance|proxy|land|stop} URL NEW_DIRECTORY [commander: MANIFEST_ID [--after-plan]; feed: SECONDS; capture: LABEL; performance: SERVICE_PID SECONDS; stop: SERVICE_PID]',
+  'Usage: node --import tsx mission_planner/gcs/accept_browser.mjs {commander|search|flight|planner|feed|capture|world|states|approvals|review|performance|proxy|land|stop} URL NEW_DIRECTORY [planner: SECONDS; commander: MANIFEST_ID [--after-plan]; feed: SECONDS; capture: LABEL; performance: SERVICE_PID SECONDS; stop: SERVICE_PID]',
 );
 await mkdir(output, { recursive: false });
 if (command === 'proxy') await proxy(new URL(url).origin, output);
@@ -1379,7 +1475,12 @@ else {
       assert.equal(options.length, 1, 'feed requires seconds');
       const seconds = Number(options[0]);
       assert(Number.isFinite(seconds) && seconds >= 10 && seconds <= 1200);
-      await measureSensorFeed(browser, url, output, seconds, sendTool);
+      await measureDroneVideo(browser, url, output, seconds, sendTool);
+    } else if (command === 'planner') {
+      assert.equal(options.length, 1, 'planner requires seconds');
+      const seconds = Number(options[0]);
+      assert(Number.isFinite(seconds) && seconds >= 10 && seconds <= 1800);
+      await plannerViews(browser, url, output, seconds);
     } else if (command === 'flight') await flight(browser, url, output);
     else if (command === 'world') await worldViews(browser, url, output);
     else if (command === 'states') await states(browser, url, output);

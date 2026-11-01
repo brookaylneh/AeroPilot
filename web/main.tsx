@@ -1,6 +1,7 @@
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 import './base.css';
+const Home = React.lazy(() => import('./Home'));
 const ScenarioStudio = React.lazy(() => import('../scenario_creator/UnrealApp'));
 const MissionControl = React.lazy(() => import('../mission_planner/gcs/MissionControl'));
 const Team = React.lazy(() => import('../mission_planner/gcs/Team'));
@@ -9,7 +10,7 @@ window.addEventListener('pageshow', (event) => {
   if (event.persisted) location.reload();
 });
 createRoot(document.getElementById('root')!).render(
-  location.pathname === '/mission' ? (
+  location.pathname === '/missionplanner' ? (
     <React.Suspense fallback={<div className="loading">Opening mission control…</div>}>
       <MissionControl />
     </React.Suspense>
@@ -17,9 +18,13 @@ createRoot(document.getElementById('root')!).render(
     <React.Suspense fallback={<div className="loading">Opening ground-team page…</div>}>
       <Team />
     </React.Suspense>
-  ) : (
+  ) : location.pathname === '/studio' ? (
     <React.Suspense fallback={<div className="loading">Opening the world…</div>}>
       <ScenarioStudio />
+    </React.Suspense>
+  ) : (
+    <React.Suspense fallback={<div className="loading">Opening home…</div>}>
+      <Home />
     </React.Suspense>
   ),
 );

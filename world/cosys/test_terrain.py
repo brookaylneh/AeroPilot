@@ -23,11 +23,46 @@ from world.cosys.terrain import (
     ROWS,
     WORLD,
     heights,
+    launch_breaks,
+    launch_triangles,
     terrain_height,
 )
 
 
 class Terrain(unittest.TestCase):
+    def test_interior_slab_edges_are_checked_on_legs_inside_the_heightfield(self):
+        from mission_planner.gcs.validation import minimum_clearance
+
+        port = WORLD["port"]["centerUeCm"]
+        centre = {"north_m": port["x"] / 100, "east_m": port["y"] / 100}
+        for axis in ("north_m", "east_m"):
+            a = {**centre, axis: centre[axis] - 10, "altitude_above_home_m": 20.85}
+            b = {**centre, axis: centre[axis] + 10, "altitude_above_home_m": 20.85}
+            cuts = launch_breaks(a, b)
+            self.assertIn(0.15, cuts)
+            self.assertIn(0.85, cuts)
+            self.assertAlmostEqual(minimum_clearance(a, b, 0, 1, 0, 0), 9.92)
+        self.assertLess(terrain_height(centre["north_m"] - 7.001, centre["east_m"]), 10.93)
+        self.assertEqual(terrain_height(centre["north_m"] - 7, centre["east_m"]), 10.93)
+
+    def test_launch_slab_and_authored_apron_cover_the_corridor(self):
+        port = WORLD["port"]["centerUeCm"]
+        self.assertAlmostEqual(terrain_height(port["x"] / 100, port["y"] / 100), port["z"] / 100)
+        for north in (NORTH_MIN_M - 40, NORTH_MIN_M - 20, NORTH_MIN_M - 0.01):
+            for east in (-25, 0, 25):
+                self.assertTrue(np.isfinite(terrain_height(north, east)))
+        triangles = launch_triangles()
+        self.assertGreater(len(triangles), 2)
+        for triangle in triangles[:-2]:
+            north, east, height = np.mean(triangle, axis=0)
+            if NORTH_MIN_M - 40 <= north < NORTH_MIN_M and 7 < abs(east) <= 25:
+                self.assertAlmostEqual(terrain_height(north, east), height, places=8)
+        cuts = launch_breaks(
+            {"north_m": NORTH_MIN_M - 40, "east_m": 10},
+            {"north_m": NORTH_MIN_M, "east_m": 10},
+        )
+        self.assertGreater(len(cuts), 2)
+
     def test_grid_covers_both_axes(self):
         grid = make_grid(fence_vertices())
         low = np.array([NORTH_MIN_M, EAST_MIN_M])
@@ -60,6 +95,10 @@ class Terrain(unittest.TestCase):
             terrain_height(NORTH_MAX_M + FIELD["sampleSpacingMetres"], 0)
         with self.assertRaisesRegex(ValueError, "Outside"):
             terrain_height(0, EAST_MIN_M - FIELD["sampleSpacingMetres"])
+        with self.assertRaisesRegex(
+            ValueError, "Outside mapped terrain at north -820.000 m, east 50.000 m"
+        ):
+            terrain_height(-820, 50)
 
     def test_original_square_bit_identical(self):
         generator = importlib.import_module("world.unreal.scripts.generate-open-meadow")
@@ -107,7 +146,7 @@ class Terrain(unittest.TestCase):
         )
         allowed = {"world/cosys/world.json", "world/unreal/scripts/generate-open-meadow.py"}
         paths = (
-            subprocess.run(["git", "ls-files", "-z"], cwd=ROOT, check=True, capture_output=True)
+            subprocess.run(["rg", "--files", "--null"], cwd=ROOT, check=True, capture_output=True)
             .stdout.decode()
             .split("\0")
         )

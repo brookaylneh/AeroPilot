@@ -10,6 +10,7 @@ class SCENARIOSTUDIO_API ADroneFoundation : public AActor
     GENERATED_BODY()
   public:
     ADroneFoundation();
+    virtual void PostInitializeComponents() override;
     virtual void BeginPlay() override;
     virtual void EndPlay(const EEndPlayReason::Type Reason) override;
 
@@ -18,6 +19,7 @@ class SCENARIOSTUDIO_API ADroneFoundation : public AActor
     void EnterMission(class ASimModeBase *Mode);
     FString Directory, LastRequest, LastModeRequest;
     bool bMission = false;
+    bool bInfrastructureReady = false;
     FTimerHandle Timer;
     int32 CaptureHeight = 2160;
     TMap<FString, FVector> VehicleOrigins;

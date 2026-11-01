@@ -20,12 +20,52 @@ export function formatProbability(value: number) {
   return `${percent.toLocaleString('en-US', { maximumSignificantDigits: 3, useGrouping: false })}%`;
 }
 
+const pacific = new Intl.DateTimeFormat('en-US', {
+  timeZone: 'America/Los_Angeles',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
+  fractionalSecondDigits: 3,
+  hourCycle: 'h23',
+  timeZoneName: 'short',
+});
+function pacificParts(ms: number) {
+  return Object.fromEntries(pacific.formatToParts(ms).map((part) => [part.type, part.value]));
+}
+export function pacificClock(ms: number) {
+  const p = pacificParts(ms);
+  return `${p.hour}:${p.minute}:${p.second} ${p.timeZoneName}`;
+}
+export function pacificTimestamp(ms: number) {
+  const p = pacificParts(ms);
+  return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second}.${p.fractionalSecond} ${p.timeZoneName}`;
+}
+
 const titles: Record<string, string> = {
+  preview_plan: 'Preview mission plan',
+  request_launch: 'Launch mission plan',
+  apply_plan_change: 'Change mission plan',
+  ground_height: 'Ground height',
+  ground_profile: 'Ground profile',
+  start_inspection: 'Inspect forward camera',
+  set_camera_view: 'Centre and zoom camera',
+  get_candidate: 'Review current candidate',
+  center_candidate: 'Centre candidate camera',
+  follow_candidate: 'Follow selected candidate',
+  publish_evidence: 'Present evidence',
+  disregard_and_continue: 'Dismiss candidate and continue',
+  face_heading: 'Face heading',
+  stop_inspection: 'Stop inspection',
+  wait_for: 'Wait for mission event',
+  stop: 'Stop',
   get_mission: 'Mission briefing',
   get_fleet: 'Fleet status',
   get_drone: 'Aircraft status',
   show_on_map: 'Focus map',
-  open_feed: 'Sensor feed',
+  open_feed: 'Live camera',
   take_off: 'Take off',
   fly_route: 'Fly route',
   fly_to: 'Fly to',
@@ -63,6 +103,8 @@ export function actionTitle(name: string, args: Record<string, unknown>) {
 }
 
 export function approvalSentence(name: string, args: Record<string, unknown>) {
+  if (name === 'request_launch') return `Launch mission plan version ${args.version}`;
+  if (name === 'apply_plan_change') return `Launch additional aircraft for plan version ${args.version}`;
   if (name === 'set_last_known_place') return 'Set the last known location from the highlighted place';
   if (name === 'notify_ground_team') return `Deliver the confirmed lead to ground team ${args.team_id}`;
   if (name === 'hasty_check_structure')
@@ -88,6 +130,8 @@ export function argumentRows(args: Record<string, unknown>): [string, string][] 
   const units: Record<string, [string, string]> = {
     altitude_above_home_m: ['Altitude above home', 'm'],
     altitude_agl_m: ['Altitude above ground', 'm'],
+    height_m: ['Height above ground', 'm'],
+    zoom: ['Camera zoom', '×'],
     hold_seconds: ['Hold duration', 's'],
     speed_mps: ['Ground speed', 'm/s'],
     north_m: ['North', 'm'],
@@ -108,7 +152,11 @@ export function argumentRows(args: Record<string, unknown>): [string, string][] 
     } else if (key in units && typeof value === 'number') {
       const [label, unit] = units[key];
       rows.push([label, formatValue(value, unit)]);
-    } else rows.push([key === 'drone_id' ? 'Aircraft' : key.replaceAll('_', ' '), String(value)]);
+    } else
+      rows.push([
+        key === 'drone_id' ? 'Aircraft' : key.replaceAll('_', ' '),
+        value !== null && typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value),
+      ]);
   }
   return rows;
 }

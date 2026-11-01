@@ -39,68 +39,6 @@ CASES = [
         "Show a 100 metre radius area centred 200 metres north and 50 metres east.",
         [focus("area", north_m=200, east_m=50, radius_m=100)],
     ),
-    (
-        "Take off Drone1 to 30 metres above home.",
-        [call("take_off", drone_id="Drone1", altitude_above_home_m=30)],
-    ),
-    (
-        "Launch Drone4 to 40 metres above its home.",
-        [call("take_off", drone_id="Drone4", altitude_above_home_m=40)],
-    ),
-    (
-        "Send Drone2 in GUIDED to 120 metres north and 60 metres east, 30 metres above home, at 5 metres per second.",
-        [
-            call(
-                "fly_to",
-                drone_id="Drone2",
-                north_m=120,
-                east_m=60,
-                altitude_above_home_m=30,
-                speed_mps=5,
-            )
-        ],
-    ),
-    (
-        "Move Drone3 to 50 metres south, 100 metres west, at 45 metres above home and 4 metres per second.",
-        [
-            call(
-                "fly_to",
-                drone_id="Drone3",
-                north_m=-50,
-                east_m=-100,
-                altitude_above_home_m=45,
-                speed_mps=4,
-            )
-        ],
-    ),
-    (
-        "Fly Drone1 an AUTO route through (north 100, east 20) then (north 200, east 20), all at 30 metres above home and 5 metres per second.",
-        [
-            call(
-                "fly_route",
-                drone_id="Drone1",
-                waypoints=[
-                    {"north_m": 100, "east_m": 20, "altitude_above_home_m": 30},
-                    {"north_m": 200, "east_m": 20, "altitude_above_home_m": 30},
-                ],
-                speed_mps=5,
-            )
-        ],
-    ),
-    (
-        "Drone4 should follow waypoints north -200 east 100 then north -100 east 150. Use 50 metres above home at both and 6 metres per second.",
-        [
-            call(
-                "fly_route",
-                drone_id="Drone4",
-                waypoints=[
-                    {"north_m": -200, "east_m": 100, "altitude_above_home_m": 50},
-                    {"north_m": -100, "east_m": 150, "altitude_above_home_m": 50},
-                ],
-                speed_mps=6,
-            )
-        ],
-    ),
     ("Brake and hold Drone1 now.", [call("hold", drone_id="Drone1")]),
     ("Pause Drone2 in place.", [call("hold", drone_id="Drone2")]),
     (
@@ -111,7 +49,6 @@ CASES = [
     ("Land Drone4 where it is.", [call("land", drone_id="Drone4")]),
     ("Hold Drone1 and Drone2.", [call("hold", drone_id="Drone1"), call("hold", drone_id="Drone2")]),
     ("Thanks, that's helpful.", []),
-    ("Explain the difference between Supervised and Autonomous mode.", []),
     (
         "Fly Drone1 to 900 metres north, zero east, 30 metres above home, at 5 metres per second.",
         [],
@@ -179,12 +116,8 @@ CASES += [
         [call("list_detections", drone_id=None, status="unresolved")],
     ),
     (
-        "Open evidence detection person-17 with its saved frame and crop. Do not request a new Glimmer description.",
-        [call("review_detection", detection_id="person-17", model_review=False)],
-    ),
-    (
-        "Review detection person-17 and request the optional structured Glimmer description.",
-        [call("review_detection", detection_id="person-17", model_review=True)],
+        "Open evidence detection person-17 with its saved frame, crop and analyst report.",
+        [call("review_detection", detection_id="person-17")],
     ),
     (
         "I reviewed detection person-17. Call resolve_detection now to confirm it as a lead, reason 'Visible person'.",
@@ -299,7 +232,7 @@ CASES += [
         [],
     ),
 ]
-assert len(CASES) == 54
+assert len(CASES) == 46
 
 
 def run(output, first_case):

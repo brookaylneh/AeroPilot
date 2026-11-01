@@ -32,7 +32,7 @@ export const missionPlanSchema = z
         vehicleType: z.literal(2),
         globalPlanAltitudeMode: z.literal(1),
         cruiseSpeed: finite.positive(),
-        hoverSpeed: finite.positive(),
+        hoverSpeed: finite.nonnegative(),
         plannedHomePosition: z.tuple([latitude, longitude, finite]),
         items: z
           .array(
@@ -45,7 +45,7 @@ export const missionPlanSchema = z
                 autoContinue: z.boolean(),
                 command: z.number().int().positive(),
                 doJumpId: z.number().int().positive(),
-                frame: z.literal(3),
+                frame: z.union([z.literal(0), z.literal(3)]),
                 params: z.tuple([
                   finite.nullable(),
                   finite.nullable(),

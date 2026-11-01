@@ -27,12 +27,12 @@ class GcsSafety(unittest.TestCase):
     def test_rtl_climb_cruise_and_landing(self):
         state = {**point(20, 0, 10), "home": point(0, 0, 0)}
         route = rtl_route(state)
-        self.assertEqual([p["altitude_above_home_m"] for p in route], [10, 15, 15, 0])
+        self.assertEqual([p["altitude_above_home_m"] for p in route], [10, 80, 80, 0])
         self.assertEqual(route[1]["north_m"], 20)
         self.assertEqual(route[2]["north_m"], 0)
-        self.assertEqual(rtl_route({**state, "north_m": 1})[1]["altitude_above_home_m"], 10)
+        self.assertEqual(rtl_route({**state, "north_m": 1})[1]["altitude_above_home_m"], 80)
         self.assertEqual(
-            rtl_route({**state, "altitude_above_home_m": 30})[1]["altitude_above_home_m"], 30
+            rtl_route({**state, "altitude_above_home_m": 90})[1]["altitude_above_home_m"], 90
         )
 
     def test_spawn_and_fence_round_trip(self):

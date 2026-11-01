@@ -1,0 +1,30 @@
+--- a/tools/server/server.cpp
++++ b/tools/server/server.cpp
+@@ -655,13 +655,6 @@
+         llama_backend_free();
+     };
+ 
+-    // start the HTTP server before loading the model to be able to serve /health requests
+-    if (!ctx_http.start()) {
+-        clean_up();
+-        SRV_ERR("%s", "exiting due to HTTP server error\n");
+-        return 1;
+-    }
+-
+     // setup communication child --> router if necessary
+     if (role.is_managed_by_router()) {
+         ctx_server.set_state_callback([&](server_state state, json payload) {
+@@ -678,6 +671,13 @@
+ 
+     routes.update_meta(ctx_server);
+     ctx_http.is_ready.store(true);
++
++    if (!ctx_http.start()) {
++        clean_up();
++        SRV_ERR("%s", "exiting due to HTTP server error\n");
++        return 1;
++    }
++
+ 
+     SRV_INF("%s", "model loaded\n");
+ 

@@ -125,11 +125,8 @@ DEFINITIONS.extend(
         (
             "review_detection",
             "view",
-            "Open a detection's full frame, crop, all member frames, model numbers and location uncertainty on the evidence card. model_review explicitly requests an additional structured Glimmer opinion; it cannot resolve the lead.",
-            {
-                "detection_id": {"type": "string", "minLength": 1},
-                "model_review": {"type": "boolean"},
-            },
+            "Open a detection's full frame, crop and context, all member frames, Glimmer's analyst report and location uncertainty on the evidence card. The report cannot resolve the lead.",
+            {"detection_id": {"type": "string", "minLength": 1}},
         ),
         (
             "resolve_detection",

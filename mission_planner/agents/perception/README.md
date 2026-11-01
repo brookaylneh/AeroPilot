@@ -9,8 +9,11 @@ provenance. It is not a claim about other terrain, illumination or search altitu
 
 `configuration.py` validates camera-only records and reproduces the calibrated image
 transforms. Its numeric operating point is loaded from `measurements/commander.json`.
-`pipeline.py` saves each SAM response, linked Glimmer crop and decision before returning
-georeferenced detections. Briefing prompts remain uncalibrated leads. `ingestion.py`
+`pipeline.py` saves each SAM response, the linked crop, context crop and Glimmer analyst
+report (`analyst.py`) before returning georeferenced detections. The analyst receives a
+look-for brief (objective, target, up to eight attributes, up to four things to ignore),
+both crops and the view scale; it answers in the template's JSON schema with low reasoning
+strength and fixed sampling. Incomplete, schema-invalid or inconsistent reports fail the frame. Briefing prompts remain uncalibrated leads. `ingestion.py`
 accepts a metadata path, pipelines SAM independently of verification, commits each
 lane in order, and persists terminal failures
 without retry. The live adapter must check capture validation before copying the exact
@@ -22,18 +25,18 @@ and do not establish performance across four physical cameras. The offline
 `evaluate_commander` commands `export`, `prefix` and `score` create camera-only manifests
 and join saved pipeline outputs to private labels in separate condition episodes.
 `bench_prompt_equivalence` compares dedicated and combined requests over all 490
-frames: every person candidate must retain its qualified/unqualified decision,
+frames: every person candidate must retain its analyst decision,
 with matched box IoU at least 0.95 and score difference at most 0.01.
 `bench_commander throughput` requires a manifest, repeated `--prompt` arguments,
-`--profile`, `--sam-concurrency`, `--interval` and a fresh `--output` directory.
-The benchmark warms the task-owned apps, records every frame through the mission's
-belief callback, and saves backlog, latency, source versions and metered runner usage.
+`--profile`, `--interval` and a fresh `--output` directory.
+The benchmark uses the always-warm Modal Servers, records every frame through the
+mission's belief callback, and saves backlog, latency and source versions.
+Deployment and billing measurements are documented in [services](../services/README.md).
 SAM responses include decode, tiling, forward, postprocessing and total durations.
 Client request sidecars retain upload/round-trip timing even when a request fails.
 `profile_pipeline` reduces these clocks into utilization and latency summaries;
 its required `--request-source` distinguishes legacy result records from sidecars.
-`hosting.inference_session` owns cleanup to zero. Operator tools and receiving-page
-routes are documented in [search](../../search/README.md).
+Operator tools and receiving-page routes are documented in [search](../../search/README.md).
 
 ## Acquisition and session ownership
 
@@ -149,6 +152,9 @@ zero unmeasured tails. Negative offsets are not measured. A detected outermost
 pass leaves full sweep width undefined and reports only the truncated integral.
 Coverage for parallel tracks is W/S; the camera's 42 m swath is not itself W.
 
+The sections below describe the retired BF16 one-token gate measured in `calibration.json`;
+the analyst template needs its own measured escalation rates before belief can run.
+
 Glimmer consumes detection-centred 512 px crops in 4K pixel coordinates. Native
 1080p uses an equivalent 256 px crop, resized to 512; this adds no image detail.
 Off-image crop regions use Pillow's explicit black padding; crop boxes are saved.
@@ -213,7 +219,5 @@ phase or exact pixels.
 - [Cosys core APIs](https://cosys-lab.github.io/Cosys-AirSim/apis/), verified against
   installed 3.5.0 and the repository's native camera audit; [Meta Glimmer prompting](https://dev.meta.ai/docs/muse-glimmer/prompting)
   and the [official vLLM recipe](https://recipes.vllm.ai/meta-models/Muse-Glimmer-30B).
-- [fal metered serverless usage](https://fal.ai/docs/platform-apis/v1/serverless/usage).
-  Billing reports, runner states and scale commands are saved for each inference
-  window. The apps listing can count DEAD runners as active; runner states are
-  therefore recorded independently. No requests are retried.
+- Each inference window saves its billing report, container states and scale commands.
+  No requests are retried.

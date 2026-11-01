@@ -41,14 +41,14 @@ class FailedRun(unittest.IsolatedAsyncioTestCase):
                 for prompt in prompts
             }
 
-        def decide(images, question, timing):
+        def report(images, system, text, schema, max_tokens, timing):
             timing.update(status_code=503, roundtrip_s=0.02)
             raise RuntimeError("Glimmer failed")
 
         search = SimpleNamespace(
             commander=SimpleNamespace(), complete_capture=Mock(), changed=lambda: None
         )
-        config, _ = load_configuration()
+        config = load_configuration()
         with (
             tempfile.TemporaryDirectory() as temporary,
             patch(
@@ -60,9 +60,15 @@ class FailedRun(unittest.IsolatedAsyncioTestCase):
             processor = Processor(
                 directory / "evidence",
                 ["bag"],
+                {
+                    "objective": "Find the person.",
+                    "target": "a person",
+                    "attributes": [],
+                    "ignore": [],
+                },
                 config,
                 SimpleNamespace(detect=detect),
-                SimpleNamespace(decide=decide),
+                SimpleNamespace(report=report),
             )
             result = await replay(manifest, processor, search, directory, 0.01)
             self.assertEqual(json.loads((directory / "throughput.json").read_text()), result)

@@ -4,12 +4,14 @@ import hashlib
 import io
 import json
 import math
+import os
 from pathlib import Path
 
 from PIL import Image
 
+from mission_planner.agents.perception.analyst import TEMPLATE
 from mission_planner.agents.perception.geometry import Camera
-from mission_planner.environment import ROOT
+from mission_planner.environment import ROOT, load_env
 from world.cosys.terrain import terrain_height
 
 CAPTURE_FIELDS = frozenset(
@@ -59,18 +61,30 @@ def encode(value):
 
 def load_configuration():
     value = json.loads((ROOT / "mission_planner/measurements/commander.json").read_text())
-    config, model = value["calibrated_configuration"], value["observation_model"]
+    config = value["calibrated_configuration"]
     assert config["native_size"] == [3840, 2160] and config["sam_size"] == [1920, 1080]
     assert config["person_prompt"] == "person" and config["sam_threshold"] == 0.3
-    assert config["question"] == "Does this image show a person?"
-    assert config["glimmer_threshold"] == model["glimmer_threshold"]
     assert config["crop_native_pixels"] == 512 and config["jpeg_quality"] == 95
     assert config["jpeg_subsampling"] == 0 and config["resize"] == "Pillow Lanczos"
     assert config["person_batching"] in ("dedicated", "verified_decisions")
     if config["person_batching"] == "verified_decisions":
         prompts = config["person_batching_prompts"]
         assert len(prompts) == len(set(prompts)) == 4 and prompts[0] == "person"
-    return config, model
+    return config
+
+
+def load_observation_model():
+    load_env()
+    path = ROOT / "mission_planner/measurements/analyst.json"
+    assert path.is_file(), (
+        "Glimmer analyst escalation rates are not measured; search belief is unavailable"
+    )
+    value = json.loads(path.read_text())
+    assert value["template"] == TEMPLATE, "Escalation rates were measured for another template"
+    assert value["endpoint"] == os.environ["GLIMMER_URL"], (
+        "Escalation rates were measured on another Glimmer endpoint"
+    )
+    return value["observation_model"]
 
 
 def read_capture(path):
@@ -139,12 +153,13 @@ def prepare_frame(payload):
         return jpeg(image.resize((1920, 1080), Image.Resampling.LANCZOS))
 
 
-def crop(payload, box_xyxy):
+def crop(payload, box_xyxy, native_span=512):
+    assert native_span in (512, 1536)
     with Image.open(io.BytesIO(payload)) as image:
         scale = image.width / 1920
         x = (box_xyxy[0] + box_xyxy[2]) * scale / 2
         y = (box_xyxy[1] + box_xyxy[3]) * scale / 2
-        half = 256 * image.height / 2160
+        half = native_span / 2 * image.height / 2160
         box = [round(v) for v in (x - half, y - half, x + half, y + half)]
         padding = [
             max(0, -box[0]),

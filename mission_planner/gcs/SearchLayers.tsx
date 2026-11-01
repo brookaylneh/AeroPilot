@@ -3,9 +3,6 @@ import { memo } from 'react';
 import type { SearchState } from './searchState';
 import { droneColors, type DroneId } from './missionState';
 import { formatProbability } from './display';
-import LandmarkLayer from './LandmarkLayer';
-import type { Landmark } from './placeState';
-
 const Geometry = memo(function Geometry({ search }: { search: SearchState }) {
   const points = (rows: { north_m: number; east_m: number }[]) =>
     rows.map((p) => `${p.east_m},${-p.north_m}`).join(' ');
@@ -54,18 +51,10 @@ export default function SearchLayers({
   search,
   project,
   reviewDetection,
-  viewport,
-  obstacles,
-  pendingPlace,
-  showLandmarkLabels,
 }: {
   search: SearchState | null;
   project: (n: number, e: number) => { x: number; y: number };
   reviewDetection: (id: string) => void;
-  viewport: { width: number; height: number };
-  obstacles: { x: number; y: number; width: number; height: number }[];
-  pendingPlace: Landmark | null;
-  showLandmarkLabels: boolean;
 }) {
   if (!search) return null;
   const origin = project(0, 0),
@@ -76,14 +65,6 @@ export default function SearchLayers({
       <g transform={`translate(${origin.x},${origin.y}) scale(${scale})`}>
         <Geometry search={search} />
       </g>
-      <LandmarkLayer
-        landmarks={search.landmarks}
-        project={project}
-        viewport={viewport}
-        obstacles={obstacles}
-        pending={pendingPlace}
-        showLabels={showLandmarkLabels}
-      />
       {search.point?.geometry?.type === 'polyline' && (
         <polyline
           className="gcs-lkp-line"

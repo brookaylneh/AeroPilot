@@ -14,6 +14,53 @@ port and telemetry. The JSON files beside it are asset manifests and locks. [Ass
 Licensed content (`Content/`, `Plugins/`) and engine output are not tracked. Packaged builds, releases and the
 `Live` link live in `.local/unreal/`.
 
+## Wildlife and command-post port
+
+The wildlife demo uses [Low Poly Bear by Mathilde_Lea](https://opengameart.org/content/low-poly-bear),
+licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Its original geometry and UVs
+are preserved, uniformly scaled to a 2.2 m body length and placed at north −530 m,
+east −230 m on open ground southwest of Ranger Cabin. The supplied UVs mismatch the supplied
+texture in both Blender and Unreal. The material instead uses the texture's measured dominant
+body colour, sRGB (77, 60, 59), uniformly with roughness 0.85; the unused texture is not cooked.
+Original FBX/PNG hashes, attribution, linear material colour and placement are in `wildlife.json`.
+It is a static, faceted model; the requested Sketchfab asset could not be downloaded.
+The bear is not a public landmark or known detection in Wonder's context.
+
+`ScenarioStudio/Scripts/build-wildlife.py` imports the manifest's local mesh into
+the content-only `Wildlife` plugin and saves `/Wildlife/BearHabitat`. It requires a new
+asset destination and checks materials, bounds, ground contact and package dependencies.
+Invoke `UnrealEditor-Cmd` through `unreal-container.sh exec`, with `-run=pythonscript`,
+`-script=<absolute-path>/ScenarioStudio/Scripts/build-wildlife.py`, `-nullrhi`,
+`-EnablePlugins=PythonScriptPlugin,EditorScriptingUtilities`, and
+`-ExecCmds="Interchange.FeatureFlags.Import.FBX 0"` for the pinned legacy FBX importer.
+The operation writes its receipt under `SNR_EVIDENCE_DIR`.
+
+The installed scenery's accepted uncooked `Valley/Ground` and `Valley/Grass` assets are
+unavailable in this checkout. Do not replace that scenery with a cook of the older local
+Content tree. The release preserves the installed base containers and pipeline cache
+byte-for-byte, adds a `Wildlife` DLC cook, and uses the relinked game executable. UE 5.8.2
+`BuildCookRun` uses `-DLCName=Wildlife -BasedOnReleaseVersion=<base-release>` with
+`-AdditionalCookerOptions="-DlcPluginOnly -NoDefaultMaps -NoGameAlwaysCook -SkipZenStore -notraceserver"`.
+Keep every emitted plugin file, including `ScenarioStudio/Plugins/Wildlife.upluginmanifest`,
+the descriptor, asset registry, shader data and containers. The base plugin manifests
+disable recursive discovery; the DLC manifest is required. This cook stores the bear's
+material shaders inline. The base PSO cache remains unchanged and does not establish
+first-view performance for the new material.
+
+During component initialization `ScenarioSession` creates `DroneFoundation`, which reads
+the release's `world.json` at the world pre-BeginPlay event and relocates the existing
+14 × 14 × 0.30 m slab and four landing mats, and loads the wildlife level. Missing or
+mismatched actors fail startup; `BeginPlay` requires completed infrastructure setup.
+The obsolete editor port builder was removed. The port
+centre is north −738 m, east −27 m, in front of the command van and tent; its top is
+10.93 m UE up and the four home origins are 11.13 m UE up on a 5 m grid. Native
+`infrastructure.json` records the actual placement. The parking obstacle has a southern
+notch around the port; physical gravel grading and vegetation masks retain the original
+outer rectangle, and the command-post/mast obstacles remain protected. Character
+placement excludes the slab footprint plus the selected person's body margin.
+Release hashes, placement checks and installed visual evidence are recorded in
+[`world-bear-port.json`](../../mission_planner/measurements/world-bear-port.json).
+
 ## Run the packaged world
 
 A compatible NVIDIA driver, NVIDIA Container Toolkit and Docker are required; the editor is not.
@@ -54,6 +101,10 @@ bash world/unreal/scripts/unreal-container.sh build
 
 Package only after selecting the matching Content and explicit manifests described
 under [Rendering and packaging](#rendering-and-packaging).
+
+Run `bash world/cosys/verify-plugin.sh` before invoking `Build.sh` directly, including
+code-only game relinks. It verifies the required geodesy, sensor and UE 5.8 patches
+in the local plugin source; an installed release may have been built in another checkout.
 
 The `character-authoring` mode of `unreal-container.sh` adds a private X display:
 `docker build -t snr-unreal-authoring:5.8.2 - < world/unreal/docker/authoring.Dockerfile`.
@@ -180,8 +231,13 @@ without changing blade heights. Mission entry destroys the studio source, switch
 mission graph, and registers one source on each of the four front_center cameras. After mission
 cancellation and landing, Studio reset removes those sources, restores the Studio graph and
 camera source, and re-enables viewport rendering before acknowledging the reset. Texture
-streaming retains its sensor views. Mission mode keeps the viewport disabled but submits scene
-updates every frame so PCG compute and GPU Scene cleanup continue between sensor captures.
+streaming retains its sensor views. Mission mode keeps the viewport disabled until an admitted
+Pixel Streaming viewer selects a drone. That selection activates the existing forward `fpv`
+camera and enables the viewport; its game-window backbuffer supplies continuous WebRTC video.
+The stock camera follows the aircraft's position and attitude through AUTO, BRAKE, RTL, LAND
+and disarmed states. Closing the owning viewer disables mission viewport
+rendering. Scene updates continue every frame so PCG compute and GPU Scene cleanup continue
+between sensor captures.
 OpenMeadow does not need World Partition: UE 5.8 supports partitioned PCG components in ordinary
 levels, with a saved PCGWorldActor and explicit generation sources. The runtime scheduler ticks
 every frame, with 64 concurrent components and a 10 ms PCG frame budget. Nanite instance draw
@@ -199,6 +255,23 @@ before mask rejection, every band inside its cleanup radius, four independent mi
 64 in-flight cells, every authored primitive and foliage instance, and a 65,536-instance reserve
 for runtime actors. `grass_budget.py` bounds every possible camera position within a grid cell;
 mission uses 16 m cells to retain the original density and 160 m reach within that budget.
+
+`ScenarioSession` accepts only `{type: "drone-view", droneId: "Drone1"…"Drone4"}` for
+mission video. Its acknowledged state is exactly `{droneId}`. Studio authoring commands remain
+locked, and authoring packets and navigation-state messages are not sent to the mission viewer.
+Selection changes neither camera pose nor flight commands. Studio camera ticking is disabled
+during missions so it cannot replace the selected aircraft view. The existing single-peer
+signalling admission, video producer, encoder and TURN route are reused; search RGB acquisition
+keeps its configured nadir `front_center` camera and request-driven render targets.
+
+The native API checks use the installed Cosys-AirSim 3.5.0 `PIPCamera.cpp::showToScreen`
+(activate the camera component and select its actor), `FlyingPawn.cpp::getCameras` (stock `fpv`),
+`PawnSimApi.cpp::setupCamerasFromSettings` and `UniqueValueMap.hpp::insert_or_assign` (the configured
+`front_center` replaces only that registry key, preserving the stock `fpv` actor), and UE 5.8.2
+`PixelStreaming2Delegates.h::OnClosedConnectionNative`.
+`EpicRtcStreamer.cpp::DeletePlayerSession` dispatches that delegate on the game thread. These
+sources and their hashes are recorded with the drone-video evidence. This change requires a
+new native executable; cooked scene assets are unchanged.
 Near studio grass uses the original full density; larger density needs a visible coverage benefit.
 The 12 million budget is an authoring check, not a runtime crash threshold. UE 5.8 time-slices
 out-of-range cell cleanup while continuing to schedule generation, so registered component counts

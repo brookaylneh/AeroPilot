@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import landmarksDocument from '../../world/unreal/landmarks.json';
 
 const number = z.number().finite();
 export const placeGeometry = z
@@ -56,6 +57,7 @@ export const structureCheckArguments = z
   })
   .strict();
 export type Landmark = z.infer<typeof landmarkSchema>;
+export const worldLandmarks = landmarkSchema.array().min(1).parse(landmarksDocument.landmarks);
 
 export function placeAnchor(landmark: Landmark) {
   const points = landmark.geometry.points;

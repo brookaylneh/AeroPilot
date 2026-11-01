@@ -6,6 +6,7 @@ import json
 import unittest
 
 import numpy as np
+from PIL import Image
 from scipy.ndimage import label
 from scipy.spatial import ConvexHull
 
@@ -30,6 +31,7 @@ from world.unreal.valley import (
     line_field,
     lookup,
     points,
+    port_clearance,
     region,
     signed_distance,
     triangle_slopes,
@@ -178,12 +180,22 @@ class Valley(unittest.TestCase):
             self.assertLessEqual(measured[identifier]["maxSlopeDegrees"], TRAIL_SLOPE_DEGREES)
         self.assertLessEqual(measured["fire-road"]["maxGrade"], ROAD_GRADE)
 
-    def test_drone_pad_stays_clear(self):
+    def test_drone_pad_enters_ground_and_clears_raised_footprints(self):
         pad = self.report["pad"]
-        self.assertLessEqual(pad["terrainAbovePadWithin20M"], 0.3)
-        self.assertLessEqual(pad["terrainAbovePadWithin40M"], 4)
-        self.assertLessEqual(pad["tallestLandmarkWithin20M"], 0.3)
-        self.assertLessEqual(pad["tallestLandmarkWithin40M"], 4)
+        self.assertLess(pad["slabBottomM"], pad["groundMinimumM"])
+        self.assertLess(pad["groundMaximumM"], pad["padTopM"])
+        self.assertGreater(pad["nearestObstacleM"], 0)
+
+    def test_drone_pad_rejects_collision_and_floating_foundations(self):
+        port = copy.deepcopy(WORLD["port"])
+        port["centerUeCm"].update(x=-75500, y=-2700)
+        with self.assertRaisesRegex(AssertionError, "intersects raised landmark"):
+            port_clearance(self.elevation, self.document["landmarks"], port)
+        port = copy.deepcopy(WORLD["port"])
+        for dz in (-100, 100):
+            port["centerUeCm"]["z"] = WORLD["port"]["centerUeCm"]["z"] + dz
+            with self.assertRaisesRegex(AssertionError, "slab must enter the terrain"):
+                port_clearance(self.elevation, self.document["landmarks"], port)
 
     def test_dome_summit_is_at_most_60_m_above_the_meadow_on_a_steep_shoulder(self):
         vertices = points(self.named["granite-dome"])
@@ -216,6 +228,15 @@ class Valley(unittest.TestCase):
         window, x, y = region(cirque, 1)
         self.assertGreater(layers["granite"][window][inside(cirque, x, y)].mean(), 0.95)
         self.assertEqual(max(layers, key=lambda name: layers[name].mean()), "dry-meadow")
+
+    def test_parking_notch_preserves_the_installed_terrain_surface(self):
+        receipt = json.loads((ROOT / FIELD["path"]).with_name("terrain.json").read_text())
+        for name, layer in zip([*MASKS, "dry-meadow"], self.masks):
+            np.testing.assert_array_equal(
+                layer,
+                np.asarray(Image.open(ROOT / receipt["masks"]["files"][name]["path"])),
+                err_msg=name,
+            )
 
     def test_heroes_stay_clear_of_mission_map_panels(self):
         heroes = (

@@ -205,7 +205,7 @@ export function generateBrief(
     `Point Last Seen and direction of travel\n${p.reportingParty} last saw the subject at ${pls.landmark.name} at ${localTime(p.hoursMissing)}, travelling ${pls.direction}. This witnessed Point Last Seen (PLS) is the initial planning point (IPP); no later verified Last Known Position (LKP) has been reported.`,
     `Medical and behaviour\n${p.medicalNotes} ${p.experience}`,
     `Weather\n${weather}`,
-    'Tasking\nLocate the subject using the drone fleet operating from the launch port on the southern boundary. Search from the reported PLS and report confirmed sightings to the ground team with an observable landmark and approach information. Coordinate ground assistance through Mission Control.',
+    'Tasking\nLocate the subject using the drone fleet operating from the launch port in front of Incident Command. Search from the reported PLS and report confirmed sightings to the ground team with an observable landmark and approach information. Coordinate ground assistance through Mission Control.',
   ].join('\n\n');
   return briefingSchema.parse({ brief, portrait: '' });
 }

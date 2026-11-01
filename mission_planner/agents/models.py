@@ -3,7 +3,6 @@
 import base64
 import io
 import json
-import math
 import os
 import time
 from dataclasses import dataclass
@@ -65,9 +64,7 @@ def post(client, path, body, timing=None):
                 request_bytes=len(request.content),
                 events=events,
                 response_headers={
-                    k: v
-                    for k, v in response.headers.items()
-                    if k in ("date", "x-request-id", "x-fal-request-id", "x-fal-runner-id")
+                    k: v for k, v in response.headers.items() if k in ("date", "x-request-id")
                 }
                 if response is not None
                 else {},
@@ -80,16 +77,16 @@ def data_url(data):
     return f"data:{mime};base64," + base64.b64encode(data).decode()
 
 
-def fal_http(endpoint):
-    url = os.environ[endpoint]
-    assert url.startswith("https://fal.run/")
-    headers = {"Authorization": "Key " + os.environ["FAL_KEY"], "X-Fal-No-Retry": "1"}
+def endpoint(name):
+    url = os.environ[name + "_URL"]
+    assert url.startswith("https://"), f"{name}_URL must be an https endpoint"
+    headers = {"Authorization": os.environ[name + "_AUTHORIZATION"]}
     return httpx.Client(base_url=url.rstrip("/") + "/", headers=headers, timeout=1800)
 
 
 class Sam:
     def __init__(self):
-        self.http = fal_http("SAM_URL")
+        self.http = endpoint("SAM")
 
     def detect(
         self, jpeg: bytes, prompts: list[str], threshold: float, timing: dict | None = None
@@ -114,80 +111,55 @@ class Sam:
 
 
 class Glimmer:
+    """llama-server chat completions for the official 17 GB K-quant build."""
+
+    SAMPLING = dict(temperature=1.0, top_p=0.95, top_k=64, seed=0)
+
     def __init__(self):
-        self.http = fal_http("GLIMMER_URL")
-        self.prefix = "<|start|>assistant to=user<|message|>"
-        tokens = []
-        for value in ("", "yes", "no"):
-            body = dict(model="muse-glimmer", prompt=self.prefix + value, add_special_tokens=False)
-            tokens.append(post(self.http, "/tokenize", body)["tokens"])
-        assert all(t[:-1] == tokens[0] for t in tokens[1:])
-        assert len({t[-1] for t in tokens[1:]}) == 2
-        self.option_token_ids = {o: t[-1] for o, t in zip(("yes", "no"), tokens[1:])}
+        self.http = endpoint("GLIMMER")
 
-    def _body(self, images, text, system):
-        assert 1 <= len(images) <= 4 and text
+    def report(
+        self,
+        images: list[bytes],
+        system: str,
+        text: str,
+        schema: dict,
+        max_tokens: int,
+        timing: dict | None = None,
+    ) -> dict:
+        assert 1 <= len(images) <= 4 and system and text and max_tokens > 0
         content = [{"type": "image_url", "image_url": {"url": data_url(i)}} for i in images]
-        messages = [
-            {"role": "system", "content": system},
-            {"role": "user", "content": [*content, {"type": "text", "text": text}]},
-        ]
-        return dict(
+        body = dict(
             model="muse-glimmer",
-            messages=messages,
+            messages=[
+                {"role": "system", "content": system},
+                {"role": "user", "content": [*content, {"type": "text", "text": text}]},
+            ],
             chat_template_kwargs={"reasoning_strength": "low"},
-            temperature=1.0,
-            top_p=0.95,
-            top_k=64,
-        )
-
-    def decide(
-        self, images: list[bytes], question: str, timing: dict | None = None
-    ) -> dict[str, float]:
-        system = "Answer questions with exactly one lowercase word: yes or no."
-        body = self._body(images, question, system)
-        body["messages"][1:1] = [
-            {"role": "user", "content": "Is two plus two five?"},
-            {"role": "assistant", "content": "no"},
-        ]
-        body["messages"].append({"role": "assistant", "content": ""})
-        body.update(
-            add_generation_prompt=False,
-            continue_final_message=True,
-            max_tokens=1,
-            logprobs=True,
-            top_logprobs=20,
-            return_prompt_text=True,
-            top_p=1.0,
-            top_k=-1,
+            response_format=dict(type="json_schema", json_schema=dict(schema=schema)),
+            max_tokens=max_tokens,
+            **self.SAMPLING,
         )
         response = post(self.http, "/v1/chat/completions", body, timing)
-        rendered, usage = response["prompt_text"], response["usage"]
-        assert rendered.endswith(self.prefix) and "assistant to=self" not in rendered
+        assert len(response["choices"]) == 1
         choice = response["choices"][0]
-        assert usage["completion_tokens"] == 1
-        assert usage["completion_tokens_details"]["reasoning_tokens"] == 0
-        assert choice["message"]["reasoning"] in (None, "")
-        generated = choice["logprobs"]["content"]
-        assert len(generated) == 1
-        logs = {p["token"]: p["logprob"] for p in generated[0]["top_logprobs"]}
-        mass = {o: math.exp(logs[o]) for o in ("yes", "no")}
-        total = sum(mass.values())
-        assert 0 < total <= 1 and all(math.isfinite(p) for p in mass.values())
-        probabilities = {o: p / total for o, p in mass.items()}
-        assert math.isclose(sum(probabilities.values()), 1, abs_tol=1e-8)
-        return {**probabilities, "outside_mass": 1 - total}
-
-    def review(self, images: list[bytes], brief: str, schema: dict) -> dict:
-        text = brief + " Return only JSON matching this schema: " + json.dumps(schema)
-        body = self._body(images, text, "Review visual evidence.")
-        output = dict(name="verdict", strict=True, schema=schema)
-        body.update(max_tokens=2048, response_format=dict(type="json_schema", json_schema=output))
-        choice = post(self.http, "/v1/chat/completions", body)["choices"][0]
-        assert choice["finish_reason"] == "stop"
-        verdict = json.loads(choice["message"]["content"])
-        validate(verdict, schema)
-        return verdict
+        assert choice["finish_reason"] == "stop", (
+            f"Glimmer stopped with {choice['finish_reason']} before a complete report"
+        )
+        message = choice["message"]
+        assert message["content"], "Glimmer returned no report; the slot context may be exhausted"
+        value = json.loads(message["content"])
+        validate(value, schema)
+        reasoning = message["reasoning_content"]
+        assert isinstance(reasoning, str)
+        counted = post(self.http, "/tokenize", dict(content=reasoning, parse_special=False))
+        return {
+            "report": value,
+            "reasoning_content": reasoning,
+            "reasoning_tokens": len(counted["tokens"]),
+            "usage": response["usage"],
+            "timings": response["timings"],
+        }
 
 
 class Wonder:
@@ -206,26 +178,36 @@ class Wonder:
         tool_outputs: tuple[dict, ...] = (),
         instructions: str | None = None,
         trace_path: Path | None = None,
+        *,
+        history: tuple[dict, ...] | None = None,
     ) -> dict:
-        assert effort in ("low", "medium")
-        inputs = list(tool_outputs)
-        if text is not None:
-            assert text.strip()
-            content = [
-                {"type": "input_text", "text": text},
-                *[{"type": "input_image", "image_url": data_url(i)} for i in images],
-            ]
-            inputs.append({"role": "user", "content": content})
+        assert effort in ("low", "medium", "high")
+        if history is not None:
+            assert text is None and not images and not tool_outputs
+            assert previous_response_id is None, "Explicit history cannot use a response ID"
+            assert history, "Explicit history must contain input items"
+            inputs = list(history)
         else:
-            assert tool_outputs and not images and previous_response_id is not None
+            inputs = list(tool_outputs)
+            if text is not None:
+                assert text.strip()
+                content = [
+                    {"type": "input_text", "text": text},
+                    *[{"type": "input_image", "image_url": data_url(i)} for i in images],
+                ]
+                inputs.append({"role": "user", "content": content})
+            else:
+                assert tool_outputs and not images and previous_response_id is not None
         body = dict(
             model="muse-wonder-1.0",
             input=inputs,
             reasoning={"effort": effort},
             tools=tools,
-            store=True,
-            max_output_tokens=2048,
+            store=history is None,
+            max_output_tokens=16384,
         )
+        if history is not None:
+            body["include"] = ["reasoning.encrypted_content"]
         if previous_response_id is not None:
             body["previous_response_id"] = previous_response_id
         if instructions is not None:
@@ -249,5 +231,23 @@ class Wonder:
             trace_path.with_suffix(".response.json").write_bytes(reply.content)
         reply.raise_for_status()
         response = reply.json()
-        assert response["status"] == "completed"
+        assert response["status"] == "completed", (
+            f"Wonder response status={response['status']}; "
+            f"incomplete_details={response['incomplete_details']}"
+        )
+        if history is not None:
+            for item in response["output"]:
+                if item["type"] == "reasoning":
+                    assert (
+                        "encrypted_content" in item
+                        and isinstance(item["encrypted_content"], str)
+                        and item["encrypted_content"]
+                    ), "Wonder omitted encrypted reasoning content"
+                    assert "summary" in item and isinstance(item["summary"], list), (
+                        "Wonder omitted the reasoning summary list"
+                    )
+            assert response["output"] and response["output"][-1]["type"] in (
+                "message",
+                "function_call",
+            ), "Wonder response must end with an assistant message or function call"
         return response

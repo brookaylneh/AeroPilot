@@ -27,6 +27,34 @@ from mission_planner.agents.perception.ingestion import Ingestion
 from mission_planner.agents.perception.pipeline import Processor
 from mission_planner.environment import ROOT
 
+LOOK_FOR = {
+    "objective": "Find the missing hiker.",
+    "target": "a person",
+    "attributes": [{"id": "jacket", "text": "red jacket"}],
+    "ignore": [],
+}
+
+
+def analyst(decision):
+    def report(images, system, text, schema, max_tokens, timing):
+        assert len(images) == 2 and "red jacket" in text
+        timing.update(status_code=200, roundtrip_s=0.5)
+        return {
+            "report": {
+                "observations": [{"attribute_id": "jacket", "visible": "yes", "note": "red"}],
+                "reasoning": "A standing figure in a red jacket.",
+                "decision": decision,
+                "action": "none" if decision != "recheck" else "closer_look",
+                "reason": "Person visible.",
+            },
+            "reasoning_content": "brief",
+            "reasoning_tokens": 3,
+            "usage": {},
+            "timings": {},
+        }
+
+    return SimpleNamespace(report=report)
+
 
 def recorded():
     path = ROOT / ".local/data/calibration/adult-kelvin/frame-00-+00-Drone1.json"
@@ -39,7 +67,7 @@ def recorded():
 
 class Configuration(unittest.TestCase):
     def test_combined_calibration_requires_the_exact_verified_prompt_order(self):
-        config, _ = load_configuration()
+        config = load_configuration()
         prompts = ["red jacket", "blue trousers", "yellow daypack"]
         combined = {
             **config,
@@ -48,21 +76,28 @@ class Configuration(unittest.TestCase):
         }
         with tempfile.TemporaryDirectory() as temporary:
             with self.assertRaises(AssertionError):
-                Processor(temporary, prompts[::-1], combined, None, None)
+                Processor(temporary, prompts[::-1], LOOK_FOR, combined, None, None)
             with self.assertRaises(AssertionError):
-                Processor(temporary, ["red jacket", "blue trousers", "bag"], combined, None, None)
-            processor = Processor(temporary, prompts, combined, None, None)
+                Processor(
+                    temporary,
+                    ["red jacket", "blue trousers", "bag"],
+                    LOOK_FOR,
+                    combined,
+                    None,
+                    None,
+                )
+            processor = Processor(temporary, prompts, LOOK_FOR, combined, None, None)
             self.assertEqual(processor.prompts, combined["person_batching_prompts"])
 
     def test_later_failure_keeps_each_request_timing(self):
         record, payload = recorded()
-        config, _ = load_configuration()
+        config = load_configuration()
 
         def detect(image, prompts, threshold, timing):
             timing.update(status_code=200, roundtrip_s=0.25)
             return {p: [Detection((950, 500, 970, 550), 0.8, 50)] for p in prompts}
 
-        def decide(images, question, timing):
+        def report(images, system, text, schema, max_tokens, timing):
             timing.update(status_code=503, roundtrip_s=0.5)
             raise RuntimeError("Glimmer failed")
 
@@ -70,9 +105,10 @@ class Configuration(unittest.TestCase):
             processor = Processor(
                 temporary,
                 ["backpack"],
+                LOOK_FOR,
                 config,
                 SimpleNamespace(detect=detect),
-                SimpleNamespace(decide=decide),
+                SimpleNamespace(report=report),
             )
             with self.assertRaisesRegex(RuntimeError, "Glimmer failed"):
                 processor.process(record, payload, "fixture", "recorded", "Drone2", lambda s: None)
@@ -147,40 +183,38 @@ class Configuration(unittest.TestCase):
 
     def test_only_exact_person_configuration_is_calibrated(self):
         record, payload = recorded()
-        config, _ = load_configuration()
+        config = load_configuration()
         config = {**config, "person_batching": "dedicated"}
-        requests, questions = [], []
+        requests = []
 
         def detect(image, prompts, threshold, timing):
             requests.append(prompts)
             self.assertEqual(threshold, 0.3)
             return {p: [Detection((950, 500, 970, 550), 0.8, 50)] for p in prompts}
 
-        def decide(images, question, timing):
-            questions.append(question)
-            self.assertEqual(len(images), 1)
-            return {
-                "yes": config["glimmer_threshold"],
-                "no": 1 - config["glimmer_threshold"],
-                "outside_mass": 0.02,
-            }
-
         with tempfile.TemporaryDirectory() as temporary:
             processor = Processor(
                 temporary,
                 ["person wearing red", "backpack"],
+                LOOK_FOR,
                 config,
                 SimpleNamespace(detect=detect),
-                SimpleNamespace(decide=decide),
+                analyst("escalate"),
             )
             result = processor.process(
                 record, payload, "fixture", "recorded", "Drone2", lambda stage: None
             )
+            analysis = json.loads(Path(temporary, "fixture-0-0-analysis.json").read_text())
+            for name in ("fixture-0-0-crop.jpg", "fixture-0-0-context.jpg"):
+                with Image.open(Path(temporary, name)) as image:
+                    self.assertEqual(image.size, (512, 512))
         self.assertEqual(requests, [["person"], ["person wearing red", "backpack"]])
-        self.assertEqual(questions[0], "Does this image show a person?")
+        self.assertEqual(analysis["template"], "analyst-v1")
+        self.assertEqual(analysis["phrase"], "person")
+        self.assertGreater(analysis["view"]["context_m"], 2.9 * analysis["view"]["crop_m"])
         self.assertTrue(result["calibrated_complete"])
         self.assertEqual([d["calibrated"] for d in result["detections"]], [True, False, False])
-        self.assertTrue(all(d["qualified"] for d in result["detections"]))
+        self.assertTrue(all(d["decision"] == "escalate" for d in result["detections"]))
         self.assertTrue(all(d["drone_id"] == "Drone1" for d in result["detections"]))
 
 

@@ -164,6 +164,7 @@ async def run(output, shutdown_file, seconds, speed):
         report["local_ned_origins_ue_cm"] = origins
         routes = plans(initial)
         report["routes"] = routes
+        home_heights = {state["id"]: state["home"]["altitude_msl_m"] for state in initial}
         for state, altitude in zip(initial, ALTITUDES_M):
             start = {**state, "altitude_above_home_m": altitude}
             validate_route(
@@ -172,7 +173,9 @@ async def run(output, shutdown_file, seconds, speed):
                 state["home"]["altitude_msl_m"] - ORIGIN["altitude_msl_m"],
                 fleet.landmarks,
             )
-            validate_separation(state["id"], routes[state["id"]], list(routes.items()))
+            validate_separation(
+                state["id"], routes[state["id"]], list(routes.items()), home_heights
+            )
         client = await loop.run_in_executor(
             executor,
             lambda: airsim.MultirotorClient(

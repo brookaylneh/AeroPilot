@@ -15,7 +15,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 from mission_planner.gcs.geodesy import NAMES, ORIGIN
 from mission_planner.gcs.sensor_feed import sensor_message
-from mission_planner.gcs.service import Mission
+from mission_planner.gcs.service import Mission, planning_instructions
 from mission_planner.search.state import Search
 from world.cosys.capture import FrameCapture
 from world.cosys.sensor import MissionSensor
@@ -113,19 +113,41 @@ class SensorServiceTests(unittest.IsolatedAsyncioTestCase):
         mission.directory = Path(temporary.name)
         mission.log = io.StringIO()
         mission.id = str(uuid.uuid4())
+        mission.active = True
+        mission.operator_tasks = set()
+        mission.autopilot_alerts = {}
+        mission.return_rows = {}
+        mission.return_tasks = {}
+        mission.clearing = False
+        mission.admission_error = None
         mission.case = {
             "id": str(uuid.uuid4()),
             "name": "Sensor test",
             "report": {key: "Test briefing" for key in ("brief",)},
         }
         mission.started = time.monotonic()
-        mission.events, mission.event_sequence, mission.context_index = [], 0, 0
-        mission.autonomy, mission.approvals = "Supervised", {}
+        mission.events, mission.event_sequence = [], 0
+        mission.plan_preview = mission.plan_active = mission.plan_previous = None
+        mission.approvals = {}
+        mission.agent_wait = mission.wait_task = None
+        mission.inspections = Mock(
+            snapshot=Mock(return_value=[]), close=AsyncMock(), flight_stopped=AsyncMock()
+        )
         mission.agent_busy, mission.fleet_ready = False, False
         mission.fleet_error, mission.sensor_error = None, None
         mission.map_focus, mission.feed_focus = None, None
         mission.sensor_frames = {}
         mission.fleet = Mock()
+        mission.fleet.snapshot.return_value = [
+            {
+                "id": name,
+                "armed": True,
+                "camera_available": False,
+                "link_lost": False,
+                "ekf_healthy": True,
+            }
+            for name in NAMES
+        ]
         mission.fleet.execute = AsyncMock()
         mission.fleet.on_event = mission.fleet_event
         mission.ground_team = SimpleNamespace(deliveries={})
@@ -134,11 +156,20 @@ class SensorServiceTests(unittest.IsolatedAsyncioTestCase):
 
     async def connect(self):
         socket = MemorySocket()
-        enter_mission = patch("world.cosys.client.enter_mission")
+        enter_mission = patch(
+            "world.cosys.client.enter_mission",
+            side_effect=AssertionError("Browser connection must not change world mode"),
+        )
         enter_mission.start()
         self.addCleanup(enter_mission.stop)
         task = asyncio.create_task(
-            self.mission.connection(socket, {"type": "connect", "case_id": self.mission.case["id"]})
+            self.mission.connection(
+                socket,
+                {
+                    "type": "connect",
+                    "case_id": None if self.mission.case is None else self.mission.case["id"],
+                },
+            )
         )
 
         async def close():
@@ -148,7 +179,26 @@ class SensorServiceTests(unittest.IsolatedAsyncioTestCase):
         self.addAsyncCleanup(close)
         return socket
 
-    async def test_view_focus_without_frame_never_arms_or_asks_for_flight_approval(self):
+    async def test_general_session_publishes_frames_and_public_map_without_briefing(self):
+        self.mission.case = None
+        record = capture_record("Drone1", 1)
+        await self.mission.capture_received(record, PREVIEW)
+        self.assertFalse(self.mission.search.captures)
+        mission = await self.mission.execute("get_mission", {}, "operator", "mission")
+        self.assertIsNone(mission["briefing"])
+        self.assertIsNone(mission["case_id"])
+        socket = await self.connect()
+        await socket.states(2)
+        public_map = next(
+            message["search"] for message in socket.sent if message["type"] == "search"
+        )
+        self.assertTrue(public_map["landmarks"])
+        self.assertFalse(public_map["summary"]["profile_recorded"])
+        self.assertIn(self.mission.sensor_frames["Drone1"], socket.sent)
+
+    async def test_uploaded_camera_without_search_frame_opens_without_flight_command(self):
+        self.mission.fleet_ready = True
+        self.mission.fleet.snapshot.return_value[2]["camera_available"] = True
         result = await self.mission.invoke("open_feed", {"drone_id": "Drone3"}, "operator", "view")
         self.assertTrue(result["ok"])
         self.assertEqual(result["state"], {"drone_id": "Drone3", "opened": True})
@@ -163,6 +213,24 @@ class SensorServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             [m for m in socket.sent if m["type"] == "feed_focus"], [self.mission.feed_focus]
         )
+
+    async def test_unavailable_camera_rejects_focus_without_command_or_approval(self):
+        self.mission.fleet_ready = True
+        vehicle = self.mission.fleet.snapshot.return_value[2]
+        for available, lost, error in (
+            (False, False, "no active uploaded flight plan"),
+            (True, True, "telemetry link lost"),
+        ):
+            with self.subTest(available=available, lost=lost):
+                vehicle.update(camera_available=available, link_lost=lost)
+                result = await self.mission.invoke(
+                    "open_feed", {"drone_id": "Drone3"}, "operator", "view"
+                )
+                self.assertFalse(result["ok"])
+                self.assertIn(error, result["error"])
+                self.assertIsNone(self.mission.feed_focus)
+                self.assertFalse(self.mission.approvals)
+                self.mission.fleet.execute.assert_not_awaited()
 
     async def test_each_connection_replays_latest_frames_then_only_changed_drone(self):
         self.mission.sensor_frames = {
@@ -303,7 +371,6 @@ class SensorServiceTests(unittest.IsolatedAsyncioTestCase):
     async def test_images_stay_out_of_periodic_state_history_and_model_context(self):
         message = sensor_message(capture_record("Drone1", 1), PREVIEW)
         self.mission.sensor_frames["Drone1"] = message
-        await self.mission.invoke("open_feed", {"drone_id": "Drone1"}, "operator", "view")
         socket = await self.connect()
         await socket.states(2)
         non_images = [m for m in socket.sent if m["type"] != "sensor_frame"]
@@ -312,8 +379,7 @@ class SensorServiceTests(unittest.IsolatedAsyncioTestCase):
             json.dumps(non_images),
             json.dumps(self.mission.state()),
             self.mission.log.getvalue(),
-            self.mission.instructions(True),
-            self.mission.instructions(False),
+            planning_instructions(*self.mission.context()),
         ):
             self.assertNotIn("jpeg_base64", value)
             self.assertNotIn(PREVIEW["jpeg_base64"], value)

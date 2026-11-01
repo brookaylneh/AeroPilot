@@ -8,7 +8,7 @@ import {
   type UnrealCommand,
 } from './PixelStreamingTransport';
 import { briefingSchema } from './briefing';
-import { missionLifecycle } from './missionLifecycle';
+import { missionLifecycle, type MissionStatus } from './missionLifecycle';
 
 export const packetSchema = z.object({
   camera: cameraSchema,
@@ -88,6 +88,7 @@ export function useUnrealSession() {
   const [busy, setBusy] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
   const [retry, setRetry] = useState(0);
+  const [missionStatus, setMissionStatus] = useState<MissionStatus | null>(null);
   const [connectionStatus, setConnectionStatus] = useState({
     title: 'Opening the valley…',
     detail: 'Checking scene availability.',
@@ -100,6 +101,7 @@ export function useUnrealSession() {
     let connection: PixelStreamingTransport | null = null;
     const abort = new AbortController();
     setPacket(null);
+    setMissionStatus(null);
     setError('');
     setBusy(false);
     const fail = (title: string, detail: string) => {
@@ -117,10 +119,21 @@ export function useUnrealSession() {
       try {
         setConnectionStatus({
           title: 'Opening Studio…',
-          detail: 'A launched mission will be cancelled. Any airborne drones must return and land first.',
+          detail: 'Checking the current mission and fleet.',
         });
-        await missionLifecycle({ type: 'studio' }, abort.signal);
+        const status = await missionLifecycle({ type: 'status' }, abort.signal);
         if (!active) return;
+        if (status.type !== 'status') throw new Error('The mission service did not return its status.');
+        setMissionStatus(status);
+        if (status.mission !== null || !status.can_open_studio) {
+          setConnectionStatus({
+            title: status.mission ? 'Mission in progress' : 'Studio is unavailable',
+            detail: status.mission
+              ? `${status.mission.case_name} is active. End the mission to open Studio. The fleet must be healthy, landed and disarmed.`
+              : 'Studio requires a healthy, landed and disarmed fleet.',
+          });
+          return;
+        }
         const response = await fetch('/api/unreal/status', {
           cache: 'no-store',
           signal: AbortSignal.any([abort.signal, AbortSignal.timeout(5000)]),
@@ -258,6 +271,18 @@ export function useUnrealSession() {
       setBusy(false);
     }
   }
+  async function openStudio() {
+    setBusy(true);
+    setError('');
+    try {
+      await missionLifecycle({ type: 'studio' });
+      setRetry((value) => value + 1);
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
   return {
     container,
     transport,
@@ -268,6 +293,8 @@ export function useUnrealSession() {
     setError,
     send,
     connectionStatus,
+    missionStatus,
+    openStudio,
     videoStats,
     reconnect: () => setRetry((value) => value + 1),
   };

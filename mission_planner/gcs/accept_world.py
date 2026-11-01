@@ -24,7 +24,7 @@ from mission_planner.gcs.sitl import check_ports
 from mission_planner.gcs.validation import validate_route, validate_separation
 from world.cosys.terrain import BOUNDS
 
-ALTITUDES = (50, 60, 70, 80)
+ALTITUDES = (82, 87, 92, 97)
 
 
 def routes(states):
@@ -40,10 +40,10 @@ def routes(states):
         state["id"]: [
             {"north_m": n, "east_m": e, "altitude_above_home_m": altitude}
             for n, e in (
-                (south + 40, state["home"]["east_m"]),
+                (state["home"]["north_m"] + 40, state["home"]["east_m"]),
                 target,
                 (target[0] + 10, target[1]),
-                (south + 40, state["home"]["east_m"]),
+                (state["home"]["north_m"] + 40, state["home"]["east_m"]),
             )
         ]
         for state, altitude, target in zip(states, ALTITUDES, targets)
@@ -52,6 +52,7 @@ def routes(states):
 
 def validate_sortie(states, planned, readbacks, landmarks):
     assert [state["id"] for state in states] == list(NAMES)
+    home_heights = {state["id"]: state["home"]["altitude_msl_m"] for state in states}
     missions = {
         state["id"]: [{**state, "altitude_above_home_m": altitude}, *planned[state["id"]]]
         for state, altitude in zip(states, ALTITUDES)
@@ -65,7 +66,7 @@ def validate_sortie(states, planned, readbacks, landmarks):
         validate_route(missions[name], readbacks[name], home_z, landmarks)
         validate_route(returns[name][:-1], readbacks[name], home_z, landmarks)
         for route in (missions[name], columns[name], returns[name]):
-            validate_separation(name, route, reservations)
+            validate_separation(name, route, reservations, home_heights)
     return returns
 
 

@@ -30,8 +30,8 @@ class GroundDelivery(unittest.IsolatedAsyncioTestCase):
             "crop_ref": "/api/evidence/crop.jpg",
             "timestamp_ns": 1_000_000_000,
             "sam_confidence": 0.8,
-            "glimmer_yes": 0.9,
-            "outside_mass": 0.01,
+            "decision": "escalate",
+            "report": {"reason": "A person in a red jacket is visible."},
             "calibrated": True,
             "source": "recorded",
             "drone_id": "Drone1",
@@ -136,7 +136,7 @@ class StructureChecks(unittest.IsolatedAsyncioTestCase):
         mission = object.__new__(Mission)
         mission.__dict__.update(self.mission.__dict__)
         self.mission = mission
-        self.mission.autonomy = "Autonomous"
+        self.mission.clearing = False
         self.mission.approvals = {}
         self.mission.fleet_ready = False
         self.mission.search.landmarks = [
@@ -176,12 +176,11 @@ class StructureChecks(unittest.IsolatedAsyncioTestCase):
         self.team.report_negative(identity, "alpha", "Checked the full cabin; no person found")
         return identity
 
-    async def test_approval_is_required_in_both_modes_and_ground_task_needs_no_fleet(self):
-        for mode in ("Supervised", "Autonomous"):
-            self.mission.autonomy = mode
+    async def test_operator_and_agent_ground_tasks_need_approval_without_a_fleet(self):
+        for source in ("operator", "agent"):
             before = len(self.team.deliveries)
             action = asyncio.create_task(
-                self.mission.execute("hasty_check_structure", self.arguments, "agent", "call")
+                self.mission.execute("hasty_check_structure", self.arguments, source, "call")
             )
             await asyncio.sleep(0)
             self.assertEqual(len(self.team.deliveries), before)

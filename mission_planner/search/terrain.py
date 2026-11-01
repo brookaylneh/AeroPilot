@@ -14,26 +14,29 @@ ALTITUDE_STEP_M = 0.25
 PLANNED_AGL_TOLERANCE_M = 1.0
 
 
-def waypoint(north, east, home_z):
+def waypoint(north, east, home_z, height_m=AGL_M):
     return {
         "north_m": float(north),
         "east_m": float(east),
         "altitude_above_home_m": round(
-            (terrain_height(north, east) + AGL_M - home_z) / ALTITUDE_STEP_M
+            (terrain_height(north, east) + height_m - home_z) / ALTITUDE_STEP_M
         )
         * ALTITUDE_STEP_M,
     }
 
 
-def terrain_leg(a, b, home_z):
+def terrain_leg(a, b, home_z, height_m=AGL_M):
     length = math.hypot(b["north_m"] - a["north_m"], b["east_m"] - a["east_m"])
     assert length > 0
     t = np.linspace(0, 1, math.ceil(length) + 1)
     north = a["north_m"] + (b["north_m"] - a["north_m"]) * t
     east = a["east_m"] + (b["east_m"] - a["east_m"]) * t
-    target = np.array([terrain_height(n, e) + AGL_M - home_z for n, e in zip(north, east)])
+    target = np.array([terrain_height(n, e) + height_m - home_z for n, e in zip(north, east)])
     altitude = np.rint(target / ALTITUDE_STEP_M) * ALTITUDE_STEP_M
-    assert ((altitude >= MIN_ALTITUDE_M) & (altitude <= MAX_ALTITUDE_M)).all()
+    assert ((altitude >= MIN_ALTITUDE_M) & (altitude <= MAX_ALTITUDE_M)).all(), (
+        f"Terrain-following altitude spans {altitude.min():.3f}–{altitude.max():.3f} m; "
+        "must remain 10–100 m above home"
+    )
     count = len(target)
     direct_error = float(np.abs(np.linspace(altitude[0], altitude[-1], count) - target).max())
     if direct_error <= PLANNED_AGL_TOLERANCE_M:

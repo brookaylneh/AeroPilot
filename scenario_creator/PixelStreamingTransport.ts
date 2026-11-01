@@ -1,11 +1,14 @@
 import { Config, PixelStreaming, Logger, LogLevel } from '@epicgames-ps/lib-pixelstreamingfrontend-ue5.8';
 import { z } from 'zod';
 import { briefingSchema } from './briefing';
+import { droneIds } from '../mission_planner/gcs/droneIdentity';
 // A single-editor admission gateway MUST protect the signalling endpoint before enabling commands.
 export const creatorStageSchema = z.enum(['person', 'situation', 'placement', 'briefing']);
 export type CreatorStage = z.infer<typeof creatorStageSchema>;
 export const navigationProtocolVersion = 3;
+export const droneViewSchema = z.object({ droneId: z.enum(droneIds) }).strict();
 export const requestSchema = z.discriminatedUnion('type', [
+  droneViewSchema.extend({ type: z.literal('drone-view') }),
   z.object({ type: z.literal('viewport'), aspect: z.number().min(0.25).max(4) }).strict(),
   z.object({ type: z.literal('creator-stage'), stage: creatorStageSchema }).strict(),
   z.object({ type: z.literal('situation'), situationId: z.enum(['lost', 'waiting', 'injured']) }).strict(),
@@ -163,6 +166,7 @@ export class PixelStreamingTransport {
           MouseInput: false,
           TouchInput: false,
           GamepadInput: false,
+          XRControllerInput: false,
           UseMic: false,
           UseCamera: false,
         },
@@ -180,16 +184,14 @@ export class PixelStreamingTransport {
       onDisconnected(reason);
     };
     this.stream.addEventListener('webRtcDisconnected', () =>
-      disconnected('The scene connection was interrupted. Select Reconnect.'),
+      disconnected('The scene connection was interrupted.'),
     );
-    this.stream.addEventListener('webRtcFailed', () =>
-      disconnected('The video connection failed. Select Reconnect.'),
-    );
+    this.stream.addEventListener('webRtcFailed', () => disconnected('The video connection failed.'));
     this.stream.addEventListener('dataChannelClose', () =>
-      disconnected('The editing connection was interrupted. Select Reconnect.'),
+      disconnected('The data connection was interrupted.'),
     );
     this.stream.addEventListener('subscribeFailed', () =>
-      disconnected('The scene is in use in another browser. Select Reconnect when it is available.'),
+      disconnected('The scene is in use in another browser.'),
     );
     this.stream.addResponseEventListener('scenario', (raw) => {
       try {
@@ -228,12 +230,7 @@ export class PixelStreamingTransport {
     return new Promise<void>((resolve, reject) => {
       this.rejectConnect = reject;
       this.connectTimer = setTimeout(
-        () =>
-          reject(
-            new Error(
-              'The server is running, but the video connection could not be established. Select Reconnect.',
-            ),
-          ),
+        () => reject(new Error('The server is running, but the video connection could not be established.')),
         20000,
       );
       this.stream.addEventListener('dataChannelOpen', () => {
@@ -252,7 +249,7 @@ export class PixelStreamingTransport {
       if (video && video.videoWidth > 0 && video.getVideoPlaybackQuality().totalVideoFrames > 0) return;
       await new Promise((resolve) => setTimeout(resolve, 100));
     }
-    throw new Error('Waiting for the first scene image. Select Reconnect.');
+    throw new Error('No scene image arrived before the video timeout.');
   }
   command(input: z.infer<typeof requestSchema>) {
     if (this.disposed) return Promise.reject(new Error('Stream disconnected'));
@@ -267,7 +264,13 @@ export class PixelStreamingTransport {
         command.type === 'snapshot' ? 1500 : 20000,
       );
       this.pending.set(id, { resolve, reject, timer });
-      this.stream.emitUIInteraction({ protocolVersion: navigationProtocolVersion, requestId: id, command });
+      if (
+        !this.stream.emitUIInteraction({ protocolVersion: navigationProtocolVersion, requestId: id, command })
+      ) {
+        clearTimeout(timer);
+        this.pending.delete(id);
+        reject(new Error('The scene data channel is closed. Command was not sent.'));
+      }
     });
   }
   // Cumulative look belongs to the transport session, including across scene remounts.

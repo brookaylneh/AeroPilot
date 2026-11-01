@@ -47,6 +47,8 @@ export default function UnrealApp() {
     setError,
     send,
     connectionStatus,
+    missionStatus,
+    openStudio,
     videoStats,
     reconnect,
   } = useUnrealSession();
@@ -174,7 +176,7 @@ export default function UnrealApp() {
         )}
       </section>
       <header className="creator-header">
-        <a className="creator-brand" href="/">
+        <a className="creator-brand" href="/home" aria-label="Home">
           <TreePine size={25} />
           <span>SEARCH &amp; RESCUE</span>
         </a>
@@ -373,7 +375,7 @@ export default function UnrealApp() {
                     if (!saved.lastSavedId) throw new Error('Saved rescue case has no id');
                     await missionLifecycle({ type: 'launch', case_id: saved.lastSavedId });
                     transport.current?.dispose();
-                    location.assign(`/mission?case=${encodeURIComponent(saved.lastSavedId)}`);
+                    location.assign(`/missionplanner?case=${encodeURIComponent(saved.lastSavedId)}`);
                   }
                 } catch (error) {
                   setError((error as Error).message);
@@ -415,8 +417,22 @@ export default function UnrealApp() {
           <TreePine size={36} />
           <h2>{connectionStatus.title}</h2>
           <p>{connectionStatus.detail}</p>
-          <button className="creator-secondary" onClick={reconnect}>
-            Reconnect
+          {missionStatus?.mission && (
+            <>
+              <a className="creator-secondary" href="/missionplanner">
+                Resume mission
+              </a>
+              <button
+                className="creator-secondary"
+                disabled={busy || !missionStatus.can_open_studio}
+                onClick={() => void openStudio()}
+              >
+                End mission and open Studio
+              </button>
+            </>
+          )}
+          <button className="creator-secondary" disabled={busy} onClick={reconnect}>
+            {missionStatus?.mission || missionStatus?.can_open_studio === false ? 'Check again' : 'Reconnect'}
           </button>
         </div>
       )}

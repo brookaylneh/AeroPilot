@@ -55,12 +55,12 @@ class CoordinateTests(unittest.TestCase):
             for axis in "xyz":
                 self.assertAlmostEqual(restored[axis], local[axis])
 
-    def test_south_entry_and_full_world_validation(self):
-        self.assertEqual(client.entry_axis(), "x")
+    def test_port_and_full_world_validation(self):
         with patch.object(client, "terrain_height", return_value=10):
             client.validate_waypoint({"x": 790, "y": -790, "z": 20})
-            client.validate_waypoint({"x": -816, "y": 0, "z": 35})
+            client.validate_waypoint({"x": -738, "y": -27, "z": 35})
             for point in [
+                {"x": -816, "y": 0, "z": 35},
                 {"x": -816, "y": 50, "z": 35},
                 {"x": 900, "y": 0, "z": 20},
                 {"x": 0, "y": 0, "z": 10.5},

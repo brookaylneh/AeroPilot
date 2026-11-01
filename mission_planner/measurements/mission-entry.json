@@ -1,0 +1,180 @@
+{
+  "schema_version": 1,
+  "status": "deployed; both entry flows passed live acceptance; test session cleared before operator handoff",
+  "evidence_root": ".local/evidence/mission-entry/20261031T192401Z",
+  "checks": {
+    "python_unittest": {
+      "passed": true,
+      "tests": 448,
+      "duration_s": 93.608,
+      "log": ".local/evidence/mission-entry/20261031T192401Z/unittest.log"
+    },
+    "npm_test": {
+      "passed": true,
+      "tests": 80,
+      "duration_ms": 1495.299681,
+      "log": ".local/evidence/mission-entry/20261031T192401Z/npm-test-frontend-complete.log"
+    },
+    "typecheck": {
+      "passed": true,
+      "log": ".local/evidence/mission-entry/20261031T192401Z/frontend-typecheck-final.log"
+    },
+    "format_check": {
+      "passed": true,
+      "log": ".local/evidence/mission-entry/20261031T192401Z/format-check.log"
+    },
+    "ruff_check": {
+      "passed": true,
+      "log": ".local/evidence/mission-entry/20261031T192401Z/ruff-check-final.log"
+    },
+    "ruff_format": {
+      "passed": true,
+      "log": ".local/evidence/mission-entry/20261031T192401Z/ruff-format-final.log"
+    },
+    "build": {
+      "passed": true,
+      "log": ".local/evidence/mission-entry/20261031T192401Z/build.log"
+    },
+    "caddy_validate": {
+      "passed": true,
+      "log": ".local/evidence/mission-entry/20261031T192401Z/caddy-validate.log"
+    },
+    "home_layout": {
+      "passed": true,
+      "backend": "mocked",
+      "log": ".local/evidence/mission-entry/20261031T192401Z/home-layout/result.json"
+    },
+    "readme_format": {
+      "passed": true,
+      "log": ".local/evidence/mission-entry/20261031T192401Z/readme-format-final.log"
+    }
+  },
+  "changed_files": [
+    "web/README.md",
+    "web/server.ts",
+    "web/Home.tsx",
+    "web/accept_entry.mjs",
+    "web/home.css",
+    "web/main.tsx",
+    "scenario_creator/README.md",
+    "scenario_creator/missionLifecycle.ts",
+    "scenario_creator/useUnrealSession.test.ts",
+    "scenario_creator/useUnrealSession.ts",
+    "scenario_creator/missionLifecycle.test.ts",
+    "scenario_creator/UnrealApp.tsx",
+    "mission_planner/gcs/README.md",
+    "mission_planner/gcs/test_sensor_service.py",
+    "mission_planner/gcs/missionState.test.mjs",
+    "mission_planner/gcs/test_plan_execution.py",
+    "mission_planner/gcs/missionState.ts",
+    "mission_planner/gcs/test_ground_team.py",
+    "mission_planner/gcs/test_service.py",
+    "mission_planner/gcs/MissionControl.tsx",
+    "mission_planner/gcs/service.py",
+    "mission_planner/gcs/host.py",
+    "mission_planner/gcs/MissionControl.test.mjs",
+    "mission_planner/gcs/test_lifecycle.py",
+    "deploy/README.md",
+    "deploy/accept-browser.mjs",
+    "deploy/Caddyfile",
+    "mission_planner/search/test_commander.py",
+    "mission_planner/measurements/mission-entry.json"
+  ],
+  "deleted_files": [],
+  "removed_implementations": [
+    "case-required general planner entry",
+    "automatic mission cancellation and return flight on Studio navigation",
+    "duplicate root redirect in Caddy"
+  ],
+  "paid_calls": 0,
+  "flight_commands": 0,
+  "live_entry_acceptance": {
+    "passed": true,
+    "evidence": ".local/evidence/mission-entry/20261031T192401Z/browser/result.json",
+    "checkpoints": [
+      "home",
+      "general",
+      "general-rejoined",
+      "studio-transition",
+      "studio",
+      "scenario-briefing",
+      "scenario-planner",
+      "scenario-rejoined"
+    ],
+    "screenshots": 16,
+    "browser_errors": 0,
+    "telemetry_messages": 41,
+    "all_observed_aircraft_landed_and_disarmed": true,
+    "sent_message_counts": {
+      "status": 4,
+      "connect": 6,
+      "studio": 1,
+      "launch": 1
+    },
+    "missions": {
+      "general": "f1058375-9c85-441d-a599-4d5bcc0fdb58",
+      "rescue": "355deb4f-aff7-45c8-b8af-fcc30d7c18dc",
+      "case_id": "01A1937A-CE22-7A30-B2F3-E87FFE58B338"
+    },
+    "duration_s": 21.957,
+    "cleanup": ".local/evidence/mission-entry/20261031T192401Z/cleanup.json",
+    "deployment_health": {
+      "ok": true,
+      "services": {
+        "web": true,
+        "mission": true,
+        "signalling": true,
+        "unreal": true,
+        "turn": true,
+        "caddy": true
+      },
+      "renderer": "ready"
+    }
+  },
+  "failures": [
+    {
+      "kind": "command environment",
+      "detail": "Initial npm invocation lacked node on PATH. Subsequent checks used documented toolchain PATH.",
+      "log": ".local/evidence/mission-entry/20261031T192401Z/intermediate-typecheck.log"
+    },
+    {
+      "kind": "test bundling",
+      "detail": "New Studio test encountered WorldMap/worldMap filename resolution collision. Test now isolates its unused WorldNavigation dependency; full npm passes.",
+      "log": ".local/evidence/mission-entry/20261031T192401Z/npm-test.log"
+    },
+    {
+      "kind": "formatting",
+      "detail": "Ruff formatter caught host.py before final formatting; final check passes.",
+      "log": ".local/evidence/mission-entry/20261031T192401Z/ruff-format.log"
+    },
+    {
+      "kind": "existing warning",
+      "detail": "ResourceWarning at world/unreal/measure_performance.py:155 remains outside this change.",
+      "log": ".local/evidence/mission-entry/20261031T192401Z/unittest.log"
+    },
+    {
+      "kind": "deployment ordering",
+      "detail": "The first deployment script omitted the documented Cosys RPC readiness wait. All four autopilots exited on their first 1000 ms sensor timeout before Unreal had initialized its sensor interfaces. No flight commands were sent.",
+      "log": ".local/evidence/mission-entry/20261031T192401Z/failed-startup"
+    },
+    {
+      "kind": "failed-bootstrap shutdown",
+      "detail": "The controller-free world did not reach CleanupWorld within 60 seconds. That failed bootstrap was explicitly killed (exit 137), preserving logs. Corrected startup waits for RPC 41451 and all four native motor listeners before starting the fleet.",
+      "log": ".local/evidence/mission-entry/20261031T192401Z/startup-order-fix.log"
+    },
+    {
+      "kind": "auxiliary URL audit",
+      "detail": "The Python HTTP client did not follow HTTP 308. Live browser acceptance and explicit HEAD inspection verified both compatibility redirects; no application failure."
+    }
+  ],
+  "limits": [
+    "Continuous drone video is separate work; existing capture feeds are unchanged.",
+    "Home uses a topographic backdrop and real world-readiness status.",
+    "No real Wonder calls or flight acceptance in this entry-flow change."
+  ],
+  "deployment": {
+    "initial_failure": ".local/evidence/mission-entry/20261031T192401Z/deployment.json",
+    "shutdown_timeout": ".local/evidence/mission-entry/20261031T192401Z/startup-order-fix/deployment.json",
+    "corrected_start": ".local/evidence/mission-entry/20261031T192401Z/ordered-start/deployment.json"
+  }
+}

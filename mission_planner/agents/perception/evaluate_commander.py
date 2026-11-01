@@ -11,7 +11,6 @@ from mission_planner.agents.perception.configuration import (
     STATE_FIELDS,
     digest,
     encode,
-    load_configuration,
 )
 from mission_planner.agents.perception.ingestion import LANES, capture_id, load_replay
 from mission_planner.environment import ROOT, load_env
@@ -19,8 +18,9 @@ from mission_planner.environment import ROOT, load_env
 
 def export_replay(output):
     source = ROOT / ".local/data/calibration"
-    _, model = load_configuration()
-    cohort = model["cohort"]
+    cohort = json.loads((ROOT / "mission_planner/measurements/commander.json").read_text())[
+        "observation_model"
+    ]["cohort"]
     output.mkdir(parents=True, exist_ok=False)
     frames = output / "frames"
     frames.mkdir()
@@ -159,22 +159,22 @@ def score(manifest_path, run, episodes):
         )
         group = "full" if truth["contains"] else "empty" if truth["empty"] else "partial"
         values = [d for d in result["detections"] if d["prompt"] == "person"]
-        matched, qualified = [], []
+        matched, escalated = [], []
         for detection in values:
             box = np.array(detection["box_xyxy"]) * record["width"] / 1920
             true = bool(((pixel >= box[:2] - margin) & (pixel <= box[2:] + margin)).all())
-            matches[episode][detection["id"]] = true and detection["qualified"]
+            matches[episode][detection["id"]] = true and (detection["decision"] == "escalate")
             matched.append(true)
-            qualified.append(true and detection["qualified"])
+            escalated.append(true and (detection["decision"] == "escalate"))
             extent, crop = np.array(truth["personBoxPx"]), np.array(detection["crop_box_native"])
             crop_positive = not truth["empty"] and bool(
                 ((extent[:2] >= crop[:2]) & (extent[2:] <= crop[2:])).all()
             )
             positive_crops += crop_positive
-            retained_crops += crop_positive and detection["qualified"]
+            retained_crops += crop_positive and (detection["decision"] == "escalate")
             background_crops += not crop_positive
-            rejected_background += not crop_positive and not detection["qualified"]
-            if true and detection["qualified"]:
+            rejected_background += not crop_positive and not (detection["decision"] == "escalate")
+            if true and (detection["decision"] == "escalate"):
                 ground = detection["localization"]["ground"]
                 delta = np.array([ground["north_m"] - point["x"], ground["east_m"] - point["y"]])
                 errors.append(float(np.linalg.norm(delta)))
@@ -183,7 +183,7 @@ def score(manifest_path, run, episodes):
         cohorts[group]["trials"] += 1
         cohorts[group]["sam"] += bool(values) if group == "empty" else any(matched)
         cohorts[group]["joint"] += (
-            any(d["qualified"] for d in values) if group == "empty" else any(qualified)
+            any(d["decision"] == "escalate" for d in values) if group == "empty" else any(escalated)
         )
         records.append(
             {
@@ -191,7 +191,7 @@ def score(manifest_path, run, episodes):
                 "cohort": group,
                 "sam_candidates": len(values),
                 "matched": sum(matched),
-                "qualified_true": sum(qualified),
+                "escalated_true": sum(escalated),
             }
         )
         position = np.array([point["x"], point["y"]])
@@ -221,25 +221,27 @@ def score(manifest_path, run, episodes):
         clusters = []
         for cluster in ledger.clusters.values():
             selected = [
-                i for i in cluster["member_ids"] if i in truth and ledger.records[i]["qualified"]
+                i
+                for i in cluster["member_ids"]
+                if i in truth and ledger.records[i]["decision"] == "escalate"
             ]
             if selected:
                 true = sum(truth[i] for i in selected)
                 clusters.append(
                     {
                         "id": cluster["id"],
-                        "qualified_person_members": len(selected),
+                        "escalated_person_members": len(selected),
                         "true_members": true,
                         "false_members": len(selected) - true,
                         "purity": max(true, len(selected) - true) / len(selected),
                     }
                 )
-        total = sum(c["qualified_person_members"] for c in clusters)
+        total = sum(c["escalated_person_members"] for c in clusters)
         clustering[name] = {
             "all_detections": len(ledger.records),
             "retained_members": len(members),
-            "qualified_person_members": total,
-            "weighted_purity": sum(c["purity"] * c["qualified_person_members"] for c in clusters)
+            "escalated_person_members": total,
+            "weighted_purity": sum(c["purity"] * c["escalated_person_members"] for c in clusters)
             / total
             if total
             else None,
@@ -281,7 +283,7 @@ def score(manifest_path, run, episodes):
 
 def aggregate(result):
     clusters = [c for group in result["clustering"].values() for c in group["clusters"]]
-    total = sum(c["qualified_person_members"] for c in clusters)
+    total = sum(c["escalated_person_members"] for c in clusters)
     split = [v["clusters_containing_true_person"] for v in result["clustering"].values()]
     final = [values[-1] for values in result["posterior"]["episodes"].values()]
     return {
@@ -297,7 +299,7 @@ def aggregate(result):
             "method": result["clustering_labels"],
             "all_detections": sum(v["all_detections"] for v in result["clustering"].values()),
             "retained_members": sum(v["retained_members"] for v in result["clustering"].values()),
-            "qualified_person_members": total,
+            "escalated_person_members": total,
             "weighted_binary_purity": sum(
                 max(c["true_members"], c["false_members"]) for c in clusters
             )

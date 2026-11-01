@@ -1,5 +1,17 @@
 # Search commander
 
+`terrain.py` also serves the general mission planner. `waypoint` and `terrain_leg`
+accept an explicit `height_m` above ground; existing search calls retain their
+calibrated `AGL_M` default and 1 m tracking tolerance. Altitude-band failures report
+the converted above-home range. No search intent, allocation or belief logic changes.
+The runtime import audit includes the remote temporal-tracking client and checks its
+dependencies for private actor or evaluator access.
+
+Transit rows start north of each actual home, with the existing sector spacing and
+altitudes. This keeps departures and returns clear of the other launch columns
+after moving the port in front of Incident Command; rear pads retain the higher
+transit levels. Every complete route still passes the shared separation checks.
+
 The mission service owns profiles, plans, camera evidence and posterior. Use
 `/mission?case=<uuid>` in the assigned [slot](../../deploy/README.md).
 
@@ -102,6 +114,8 @@ cell splits and quadratic minima check continuous clearance between waypoints.
 Takeoff, landing and RTL ground columns cannot intersect raised footprints.
 Ground-contact phases permit zero-height surfaces. Missing catalogue data blocks
 clearance validation. Planning, execution and resumed routes share these checks.
+Batch separation supplies each aircraft's measured home altitude to the shared validator,
+so routes remain comparable after homes change at arming or differ in elevation.
 
 `start_search` is one fleet approval. Healthy links, GPS/EKF, read-back fences,
 altitude and separation remain required before takeoff and mission upload/readback.
@@ -139,14 +153,16 @@ calibration reducer. `pipeline.py` uses:
 - Native 3840×2160 to 1920×1080, Pillow Lanczos, JPEG95, subsampling0.
 - Pinned SAM3.1, `person`, strict confidence >0.3, four 1008px tiles and pinned NMS.
 - Native 512px box-centred crop with rounded bounds and explicit black padding.
-- Glimmer `Does this image show a person?`, normalized P(yes) at least
-  0.1329642298905696, retaining outside-option mass separately.
+- A 1536px native context crop around the same box, also resized to 512.
+- Glimmer analyst template `analyst-v1` (`perception/analyst.py`): a look-for brief,
+  both crops and the view scale produce a schema-checked report with per-attribute
+  observations, brief reasoning, `escalate`/`recheck`/`discard` and a suggested action.
 
 Briefing prompts produce **uncalibrated** leads with no likelihood or negative
 credit. The corpus comparison failed the required combined-prompt person-box IoU
 bound, so the calibrated person request stays separate. Lower visual looks earn
 no detection credit. Every detection retains source/drone/frame, prompt, box,
-mask area, scores, image references, timestamps and configuration hash.
+mask area, SAM score, analyst report, image references, timestamps and configuration hash.
 
 `localization.py` intersects the box bottom-centre ray with terrain and propagates
 calibrated pixel residuals and measured pose brackets through finite-difference
@@ -156,25 +172,26 @@ every member. A deterministic medoid locates the cluster; covariance is not divi
 by member count. No actor position enters these calculations.
 
 `belief.py` combines the prior, maximum-look negative survival and positive
-reference-frame factors. Only completed calibrated frames with no qualified person
+reference-frame factors. Belief requires `measurements/analyst.json`: escalation rates
+measured for the analyst template on the configured Glimmer endpoint; search fails
+until it exists. Only completed calibrated frames with no escalated person
 use the simultaneous-Wilson lower positional detection surface for negatives.
 Positive factors use mean TPR and a nonzero conservative false-alarm upper bound
-from separate operational-empty and grass cohorts; commander.json holds the inputs.
+from separate operational-empty and grass cohorts; analyst.json holds the inputs.
 A ground region receives at most one first-reference-frame positive factor, shared
 by new clusters in that frame. Repeated views earn no further credit. Dismissal
 removes the contribution while retaining the region reservation. Integrated spatial
 kernels include truncation mass; finite ranges and normalization are asserted.
-Qualified detections in zero-POD cells remain visible without a positive factor.
+Escalated detections in zero-POD cells remain visible without a positive factor.
 When every new lead lacks credit, the frame outcome is `no_detection_credit`.
 
 ## Evidence and operator actions
 
-Cards show full frame/box, crop, every member, model numbers, configuration/source,
+Cards show full frame/box, crop, context, every member, the analyst report, configuration/source,
 location, uncertainty, directions and likelihood details. Headlines sum
 probability over cells intersecting the closed 95% ellipse, including tangency.
 Ellipse-only mass and area fractions remain in details, assuming uniform density
 inside cells. The provisional posterior does not establish missing-subject identity.
-Optional structured Glimmer descriptions are labelled **Model opinion**.
 
 Only the operator dismisses with a reason or confirms a lead. Wonder may list,
 review and propose `relook_detection`, requiring operator approval in every mode.
@@ -199,7 +216,9 @@ The receiving WebSocket cannot execute tools or confirm its own negative report.
 
 ## Measurement and verification
 
-`hosting.inference_session` owns runner limits, metered usage and scale-to-zero cleanup.
+The two production Modal Servers stay warm at `min_containers=1`; opening or closing
+a search only opens or closes the model clients. Deployment and measurements are
+documented in [services](../agents/services/README.md).
 SAM uses eight async slots per runner with serialized model calls; separate verification
 pools keep Glimmer off dispatch. Precision stays pinned; preserve every run and failure.
 
@@ -211,3 +230,11 @@ scores. commander.json records cost/cadence; planner POS excludes processing del
 
 `evaluate_commander.py` scores the live pipeline offline; the Drone1 corpus does not prove cross-drone performance.
 `accept_browser.mjs commander` checks the operator flow; `report_flight.py` reduces flight logs. Run all six `AGENTS.md` checks, including truth isolation.
+The runtime import audit includes the GCS's pure simulation-battery budget; it grants
+no access to private scenario placements. The statistical search planner retains its
+existing endurance estimate.
+
+The recursive runtime dependency audit also checks the general-mission wait, forward
+capture, inspection and mask-codec modules imported by the shared service. They read
+camera observations and drone state, with no private target placement or evaluator
+labels. Their general-mission tools do not enter the calibrated SAR pipeline.

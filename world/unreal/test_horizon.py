@@ -1,7 +1,7 @@
 import math
 import unittest
 
-from world.cosys.terrain import BOUNDS, WORLD, terrain_height
+from world.cosys.terrain import BOUNDS, terrain_height
 from world.unreal.horizon import APRON_RINGS, CREST_LAYERS, CREST_ROWS, apron, crests
 
 
@@ -78,19 +78,3 @@ class ApronTests(unittest.TestCase):
         for triangle in self.triangles:
             a, b, c = (self.vertices[i] for i in triangle)
             self.assertGreater((b[0] - a[0]) * (c[1] - a[1]) - (b[1] - a[1]) * (c[0] - a[0]), 0)
-
-    def test_drone_port_slab_rests_on_the_apron(self):
-        centre, (north, east, thickness) = (
-            WORLD["port"]["centerUeCm"],
-            WORLD["port"]["dimensionsMetres"],
-        )
-        bottom = centre["z"] - thickness * 100
-        under = [
-            z
-            for x, y, z in self.vertices
-            if abs(x - centre["x"]) <= north * 50 and abs(y - centre["y"]) <= east * 50
-        ]
-        self.assertGreater(len(under), 10)
-        self.assertTrue(
-            all(bottom - 10 <= z <= bottom for z in under), (min(under), max(under), bottom)
-        )

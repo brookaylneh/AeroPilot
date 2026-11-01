@@ -56,7 +56,7 @@ The installer records executable hashes in `.local/toolchains/binaries.sha256`.
 | ------------------------------------ | -------------------------------------------------------------- |
 | `node`, `npm`, `npx`                 | Official Node Linux archive; web build and services            |
 | `uv`                                 | Astral release archive; Python environment tooling             |
-| `python3.12`                         | Astral standalone CPython; fal environment                     |
+| `python3.12`                         | Astral standalone CPython; model deployment environment        |
 | `python3.10`                         | Link to the system interpreter; Cosys environment              |
 | `vulkaninfo`                         | Binary from the LunarG SDK; current Vulkan feature enumeration |
 
@@ -119,7 +119,9 @@ bash deploy/fetch-browser.sh
 npm run build
 bash world/unreal/scripts/stage-live-release.sh .local/unreal/<new-build>/Linux
 sudo bash deploy/install-services.sh
-sudo systemctl start snr-turn snr-signalling snr-unreal snr-mission snr-web
+sudo systemctl start snr-turn snr-signalling snr-unreal
+timeout 120 bash -c 'until ss -H -ltn sport = :41451 | rg -q "127.0.0.1:41451"; do sleep 1; done'
+sudo systemctl start snr-mission snr-web
 # Start Caddy after the security group permits HTTP on TCP 80.
 sudo systemctl start snr-caddy
 ```
@@ -127,14 +129,20 @@ sudo systemctl start snr-caddy
 Acquisition scripts require new destinations; do not rerun them over installed toolchains.
 Units start at boot, fail visibly and do not restart automatically after errors.
 `journalctl -u snr-<service>` records their output. Restart only the affected installed unit after a fix.
+For the coupled simulator, follow the [world-first shutdown](../world/cosys/README.md#installed-cutover-after-merge)
+and wait for Unreal's Cosys listener before starting the mission service. Starting the
+autopilots before Unreal is ready exhausts their first sensor-message timeout.
 The rendering and encoding profile is documented in [streaming](../world/unreal/streaming.md);
 its startup values are defined in `runtime.env.example`.
 
 | Route or endpoint                  | Purpose                                                       | Listener / upstream                                             |
 | ---------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------- |
-| `http://35.81.229.78/`             | Redirect to `/studio`                                         | Caddy, 80 TCP                                                   |
+| `http://35.81.229.78/`             | Redirect to `/home`                                           | Caddy, 80 TCP                                                   |
+| `/home`                            | World readiness and planner/scenario entry                     | web, `127.0.0.1:3001`                                           |
 | `/studio`                          | Scenario Creator                                              | web, `127.0.0.1:3001`                                           |
-| `/mission?case=<uuid>`             | Mission Control                                               | web, `127.0.0.1:3001`                                           |
+| `/missionplanner`                 | General mission entry or active-session resume                 | web, `127.0.0.1:3001`                                           |
+| `/missionplanner?case=<uuid>`      | Mission Control with a launched rescue scenario                | web, `127.0.0.1:3001`                                           |
+| `/mission`                        | Compatibility redirect, preserving the query                   | web, `127.0.0.1:3001`                                           |
 | `/api/mission`                     | Mission WebSocket                                             | web origin check, then `127.0.0.1:8765`                         |
 | `/team?case=<uuid>&team=<id>`      | Receiving page with explicit lead acknowledgement             | same web origin                                                 |
 | `/api/team`                        | Team-limited delivery/acknowledgement WebSocket               | origin check, mission listener `/team`                          |
@@ -161,11 +169,13 @@ Epic's frontend `ForceTURN` flag is unused because it also rejects those remote 
 
 The Unreal world advances only while the four disarmed autopilots return motor outputs, so start
 `snr-mission` after `snr-unreal` and it starts the fleet immediately. Its health state is `starting`
-until the fleet is ready, then `idle` until Studio's Launch request selects a saved briefing.
-Mission connections only rejoin that case. Returning to Studio cancels it, returns and lands
-airborne aircraft, and resets native rendering to character selection while keeping the
-coupled fleet running. A later launch can select a new case. No model inference or autonomous
-flight starts merely by launching the briefing or connecting a browser.
+until the fleet is ready, then `idle` until general planner entry or Studio's Launch request
+opens a session. A general session has no rescue case; a Studio session retains its saved
+briefing. Reload and Home navigation preserve the session. Studio requires an explicit
+end-session action with every aircraft landed and disarmed before resetting native rendering
+to character selection; it never initiates a return flight. The coupled fleet remains running.
+A later launch can select a new case. No model inference or autonomous flight starts merely
+by opening the planner or launching the briefing. See [web entry acceptance](../web/README.md).
 
 Run development with `npm run dev`. Vite middleware and API/WebSocket handlers share the single fixed
 listener; reload the browser after changes. Tunnel it with:

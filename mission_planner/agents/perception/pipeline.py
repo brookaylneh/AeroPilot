@@ -1,9 +1,10 @@
-"""One recorded camera frame through SAM, linked Glimmer crops and saved evidence."""
+"""One recorded camera frame through SAM, Glimmer evidence analysis and saved evidence."""
 
 import time
 from dataclasses import asdict
 from pathlib import Path
 
+from mission_planner.agents.perception.analyst import analyze, check_look_for, view
 from mission_planner.agents.perception.configuration import (
     calibrated,
     crop,
@@ -14,15 +15,16 @@ from mission_planner.agents.perception.configuration import (
 
 
 class Processor:
-    def __init__(self, directory, prompts, configuration, sam, glimmer):
+    def __init__(self, directory, prompts, look_for, configuration, sam, glimmer):
         self.directory = Path(directory)
         self.directory.mkdir(parents=True, exist_ok=True)
-        assert prompts and all(p.strip() for p in prompts) and len(set(prompts)) == len(prompts)
+        assert all(p.strip() for p in prompts) and len(set(prompts)) == len(prompts)
         self.prompts = list(dict.fromkeys(["person", *prompts]))
         assert configuration["person_batching"] in ("dedicated", "verified_decisions")
         if configuration["person_batching"] == "verified_decisions":
             assert self.prompts == configuration["person_batching_prompts"]
             assert len(self.prompts) == 4
+        self.look_for = check_look_for(look_for)
         self.configuration, self.sam, self.glimmer = configuration, sam, glimmer
         self.configuration_sha256 = digest(encode(configuration).encode())
 
@@ -96,28 +98,33 @@ class Processor:
                 for index, detection in enumerate(candidates):
                     assert detection.confidence > config["sam_threshold"]
                     crop_bytes, crop_box, padding = crop(payload, detection.box_xyxy)
+                    context_bytes, context_box, _ = crop(payload, detection.box_xyxy, 1536)
                     identity = f"{frame_id}-{self.prompts.index(prompt)}-{index}"
-                    crop_ref = identity + "-crop.jpg"
+                    crop_ref, context_ref = identity + "-crop.jpg", identity + "-context.jpg"
+                    analysis_ref = identity + "-analysis.json"
                     self.directory.joinpath(crop_ref).write_bytes(crop_bytes)
+                    self.directory.joinpath(context_ref).write_bytes(context_bytes)
                     stage("Glimmer")
                     begin = time.monotonic()
-                    question = (
-                        config["question"]
-                        if prompt == "person"
-                        else f"Does this image show {prompt}?"
-                    )
                     timing = {}
                     try:
-                        decision = self.glimmer.decide([crop_bytes], question, timing=timing)
+                        analysis = analyze(
+                            self.glimmer,
+                            self.look_for,
+                            prompt,
+                            crop_bytes,
+                            context_bytes,
+                            view(record, crop_box, context_box),
+                            timing,
+                        )
                     finally:
                         glimmer_seconds.append(time.monotonic() - begin)
                         requests.append({"model": "glimmer", "candidate_id": identity, **timing})
                         self.directory.joinpath(frame_id + "-requests.json").write_text(
                             encode(requests) + "\n"
                         )
-                    self.directory.joinpath(identity + "-glimmer.json").write_text(
-                        encode(decision) + "\n"
-                    )
+                    self.directory.joinpath(analysis_ref).write_text(encode(analysis) + "\n")
+                    report = analysis["report"]
                     detections.append(
                         {
                             "id": identity,
@@ -129,13 +136,16 @@ class Processor:
                             "box_xyxy": list(detection.box_xyxy),
                             "mask_area_px": detection.mask_area_px,
                             "sam_confidence": detection.confidence,
-                            "glimmer_yes": decision["yes"],
-                            "outside_mass": decision["outside_mass"],
-                            "qualified": decision["yes"] >= config["glimmer_threshold"],
+                            "decision": report["decision"],
+                            "report": report,
+                            "analysis_template": analysis["template"],
+                            "reasoning_tokens": analysis["reasoning_tokens"],
                             "calibrated": is_calibrated and prompt == "person",
                             "frame_ref": frame_ref,
                             "frame_size": [record["width"], record["height"]],
                             "crop_ref": crop_ref,
+                            "context_ref": context_ref,
+                            "analysis_ref": analysis_ref,
                             "crop_box_native": crop_box,
                             "crop_padding_px": padding,
                             "input_sha256": digest(resized),

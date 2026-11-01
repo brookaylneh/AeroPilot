@@ -52,15 +52,14 @@ def nadir_error(orientation):
     return math.degrees(math.acos(float(np.clip(axis[2], -1, 1))))
 
 
-def shadow_floor(pixels, width, height):
-    """1st-percentile Rec. 709 luminance of an RGB8 frame sampled at every SHADOW_STRIDE-th pixel
-    of each axis, asserted above zero: exact-black shadows mean the capture lost its sky and
-    indirect fill."""
+def shadow_floor(pixels, width, height, *, require_fill=True):
+    """Sampled first-percentile luminance; calibration requires nonzero shadow fill."""
     rgb = np.frombuffer(pixels, dtype=np.uint8)
     assert rgb.size == width * height * 3, (rgb.size, width, height)
     grid = rgb.reshape(height, width, 3)[::SHADOW_STRIDE, ::SHADOW_STRIDE].reshape(-1, 3)
     p1 = float(np.percentile(grid.astype(np.float32) @ REC709_LUMA, 1))
-    assert p1 > 0, "Exact-black shadows: the capture has no sky or indirect fill"
+    if require_fill:
+        assert p1 > 0, "Exact-black shadows: the capture has no sky or indirect fill"
     return p1
 
 

@@ -11,9 +11,15 @@
 - Match the style of the surrounding domain before editing; Python follows `world/cosys/*.py`.
 - Verify APIs against primary documentation. A blocker stops only its affected
   item; continue independent work and report the evidence.
-- Python loads `.env` through `mission_planner.environment.load_env`; assert `FAL_KEY`,
-  `HF_TOKEN`, and `MODEL_API_KEY` at startup. Never print, log, or commit secrets.
-- No weight quantization. Glimmer uses BF16 and the official vLLM recipe.
+- Python loads `.env` through `mission_planner.environment.load_env`; assert `HF_TOKEN`,
+  `MODEL_API_KEY`, `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET` at startup. Never print, log, or commit secrets.
+- Glimmer is the official `meta-models/Muse-Glimmer-30B-GGUF` build
+  `Muse-Glimmer-30B-KQuant-17GB-Q4_K_M.gguf` with its published mmproj, served by llama.cpp
+  at the release the model card requires (b10353 or later). No other quantization or
+  re-quantization of any model.
+- No model is hosted on the mission host. The four drones share one SAM 3.1 H100 Server and one Glimmer H200 Server
+  on Modal, a hackathon partner. Clients are provider-neutral: they read the
+  endpoint from `.env` and send the same request contract to any provider.
 - Keep the repository clean: no phase reports, historical notes, one-off probes or scratch
   scripts. Code lives in its domain folder; documentation is that folder's `README.md`.
   Committed results go to `mission_planner/measurements/`; everything untracked goes to `.local/`.
@@ -25,9 +31,8 @@
 - `world/cosys/`: Cosys-AirSim settings (metres, NED) and the Python bridge.
 - `scenario_creator/`: browser studio and rescue briefings.
 - `mission_planner/gcs/`: ArduPilot SITL fleet, MAVLink mission service, `/mission` UI.
-- `mission_planner/agents/`: model clients, Wonder tools, `perception/` calibration,
-  `services/` fal deployments (SAM 3.1 on H100, Glimmer on H200). Wonder uses Meta Model
-  API; never route SAM to Meta API.
+- `mission_planner/agents/`: model clients, Wonder tools, `perception/` calibration.
+  Wonder uses Meta Model API; never route SAM to Meta API.
 - `web/`: server, page shell and static files for both browser applications.
 - `.local/`: `data/`, `evidence/`, `vendor/`, `staging/`, `dist/`, `unreal/` releases. Ignored.
 - Tests live beside their code (`test_*.py`, `*.test.ts`).
@@ -43,29 +48,32 @@
 
 # Running
 
-- `.venv-cosys` installs `requirements.txt`; fal deployment uses Python 3.12 `.venv-fal`
-  with `mission_planner/agents/services/glimmer/requirements.txt`.
+- `.venv-cosys` installs `requirements.txt`.
 - Calibration (`P=.venv-cosys/bin/python -m mission_planner.agents.perception`):
   `$P.calibrate --list`; `$P.calibrate --condition <name> --scenario-id <uuid>` (stream
   released; existing condition directories fail; archive a failed condition explicitly);
   `$P.infer_calibration --condition all --output .local/evidence/calibration/<new-run>`
-  (owns fal warm-up and cleanup; existing outputs fail); `$P.analyze_calibration`
+  (uses the always-warm Servers; existing outputs fail); `$P.analyze_calibration`
   (deterministic, from `.local/data/calibration/manifest.json`); `$P.plot_calibration`.
 - Benchmarks: `$P.bench_models --case <case> --output .local/evidence/models/<new>.json`.
 - Ground control: `mission_planner/gcs/README.md`. The mission service binds
   `127.0.0.1:8765`; the web server proxies `/api/mission`.
-- Set `SAM_URL` and `GLIMMER_URL` in `.env` to the deployed fal endpoints.
-- Before fal CLI commands: `set -a; . ./.env; set +a` and
-  `: "${FAL_KEY:?}" "${HF_TOKEN:?}" "${MODEL_API_KEY:?}"`.
-- Deploy from `mission_planner/agents/services/<sam|glimmer>` with
-  `../../../../.venv-fal/bin/fal deploy snr-<sam|glimmer>`.
+- Set `SAM_URL`, `GLIMMER_URL` and their full `*_AUTHORIZATION` header values in `.env`;
+  changing provider changes only `.env`.
+- Before Modal CLI commands: `set -a; . ./.env; set +a` and
+  `: "${MODAL_TOKEN_ID:?}" "${MODAL_TOKEN_SECRET:?}" "${HF_TOKEN:?}"`.
 - Never silently retry failed requests. New benchmarks use new output files; preserve
   accepted measurements.
-- Prove fast-mode prompt framing, one generated token, zero reasoning tokens,
-  single-token options, normalized probabilities, and outside-option mass.
+- Glimmer analyst requests use the frozen template and fixed sampling settings; prove
+  schema-valid reports and record reasoning-token counts. Belief uses only the measured
+  escalation rates for that template, model build and provider.
 - SAM requests contain exactly `jpeg`, `prompts`, and required `threshold` in [0, 1].
 - Record sources, exact dependency versions, image digest, and runner usage.
-- Scale task-owned fal runners to zero after experiments, including failures.
+- The two production Modal Servers stay warm at `min_containers=1`.
+- Deploy: `.venv-cosys/bin/modal deploy -m mission_planner.agents.services.app`
+  after loading `.env` as above.
+- Any extra deployment a task creates for an experiment scales to zero afterwards,
+  including after failures.
 
 # Checks
 

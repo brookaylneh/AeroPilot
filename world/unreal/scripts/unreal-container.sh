@@ -19,7 +19,7 @@ container_flags=(--rm --init "--cpus=$cpu_limit" "--memory=$memory_limit" --shm-
   --mount "type=bind,src=$PWD,dst=$PWD"
   --mount "type=bind,src=$cache_root,dst=/home/snr"
   --workdir "$PWD")
-for input in .local/vendor .local/vendor/* .local/evidence .venv-cosys .venv-fal .env; do
+for input in .local/vendor .local/vendor/* .local/evidence .venv-cosys .env; do
   if [[ -L "$input" ]]; then
     resolved_input=$(realpath "$input")
     container_flags+=(--mount "type=bind,src=$resolved_input,dst=$resolved_input,readonly")

@@ -104,6 +104,7 @@ class Search:
         assert self.vertices is not None, "Define the search area and statistical domain"
         assert self.mission.fleet_ready, "MAVLink fleet unavailable"
         if self.grid is None:
+            self.commander.load_model()
             category = self.profile["category"]["value"]
             assert self.domain == domain_for(category), (
                 "Statistical domain differs from Sierra source"
@@ -122,8 +123,8 @@ class Search:
             )
             self.pod = np.zeros_like(self.probability)
             self.aerial_visible = visible
-            self.model = self.commander.model
             self.commander.initialize_evidence()
+            self.model = self.commander.model
             self.render_heatmap()
 
     def render_heatmap(self):

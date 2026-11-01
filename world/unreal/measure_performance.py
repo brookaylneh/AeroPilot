@@ -39,7 +39,7 @@ MISSION_CAPTURES = 20
 STRESS_CAPTURES = 40
 SPIKE_WINDOW_S = 0.1
 SAMPLE_INTERVAL_S = 0.5
-PLAN_SHA256 = "8ea528fb4ebf46180ba395fbf2949bbdc96e61aa9efd135c876eb1683d7f419d"
+PLAN_SHA256 = "d26d578556cb38c72cdc95573fb5045c6ca98e361a4cf4d588663d50b76870f4"
 CONTAINER = "snr-unreal-valley-art-perf"
 CSV_NAME = "measure-performance"
 # Scalability cvars that switch Lumen off for every view, including the opted-in captures.

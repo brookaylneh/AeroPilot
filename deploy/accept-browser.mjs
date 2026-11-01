@@ -30,7 +30,8 @@ try {
   await observeScenario(page);
   const response = await page.goto(origin, { timeout: 30000 });
   assert(response.ok());
-  assert.equal(new URL(page.url()).pathname, '/studio');
+  assert.equal(new URL(page.url()).pathname, '/home');
+  await page.getByRole('link', { name: /Create Search and Rescue Scenario/ }).click();
   result.tls = await response.securityDetails();
   await waitForCreator(page);
   result.people = await page.evaluate(() =>
@@ -188,7 +189,7 @@ try {
     });
   });
   await page.getByRole('button', { name: 'Launch Search & Rescue Mission' }).click();
-  await page.waitForURL(`${origin}/mission?case=*`);
+  await page.waitForURL(`${origin}/missionplanner?case=*`);
   const deadline = Date.now() + 90000;
   while (!fleet || fleet.vehicles.length !== 4) {
     assert(Date.now() < deadline, 'Mission fleet did not become ready');

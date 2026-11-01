@@ -1,0 +1,137 @@
+.home-page {
+  min-height: 100dvh;
+  padding: 32px clamp(24px, 6vw, 100px);
+  color: #f4f3e9;
+  background:
+    linear-gradient(105deg, #142b27ed, #142b27bd),
+    url('/maps/valley-topographic.png') center / cover;
+}
+.home-header,
+.home-brand,
+.home-status,
+.home-choice-action,
+.home-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.home-brand {
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  font-size: 12px;
+}
+.home-status {
+  color: #d4bc7e;
+  font-size: 12px;
+}
+.home-status.ready {
+  color: #c5d5b6;
+}
+.home-intro {
+  margin: clamp(64px, 12vh, 150px) 0 40px;
+  max-width: 650px;
+}
+.home-eyebrow,
+.home-choice-number,
+.home-footer > span {
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  font-weight: 600;
+  color: #d4bc7e;
+}
+.home-intro h1 {
+  font:
+    500 clamp(38px, 5vw, 68px) / 1.1 'Manrope',
+    sans-serif;
+  letter-spacing: -0.04em;
+  margin: 18px 0;
+}
+.home-intro > p:last-child {
+  font-size: 17px;
+  color: #d0d8ce;
+  line-height: 1.6;
+}
+.home-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  max-width: 1020px;
+}
+.home-choice {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: clamp(24px, 3vw, 38px);
+  border: 1px solid #d5dec13d;
+  border-radius: 4px;
+  background: #193b33e8;
+  transition:
+    background 0.2s,
+    border-color 0.2s;
+}
+.home-choice:hover {
+  background: #244c40;
+  border-color: #d4bc7e;
+}
+.home-choice-number {
+  position: absolute;
+  top: 38px;
+  right: 38px;
+}
+.home-choice h2 {
+  font:
+    500 25px / 1.3 'Manrope',
+    sans-serif;
+  margin: 30px 0 10px;
+  max-width: 340px;
+}
+.home-choice p {
+  color: #c6d2c6;
+  font-size: 14px;
+  line-height: 1.7;
+  margin: 0 0 32px;
+  max-width: 360px;
+}
+.home-choice-action {
+  margin-top: auto;
+  padding-top: 20px;
+  border-top: 1px solid #d5dec12b;
+  color: #e1c989;
+  font-size: 12px;
+}
+.home-footer {
+  max-width: 1020px;
+  margin-top: 36px;
+  font-size: 12px;
+  color: #c6d2c6;
+}
+.home-footer button {
+  text-decoration: underline;
+  color: #e1c989;
+}
+@media (max-width: 680px) {
+  .home-page {
+    padding: 24px;
+  }
+  .home-header {
+    align-items: flex-start;
+  }
+  .home-status {
+    max-width: 140px;
+  }
+  .home-intro {
+    margin-top: 64px;
+  }
+  .home-choices {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  .home-choice-number {
+    top: 28px;
+    right: 24px;
+  }
+  .home-footer > span {
+    display: none;
+  }
+}

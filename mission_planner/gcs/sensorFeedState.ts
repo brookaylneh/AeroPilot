@@ -50,27 +50,3 @@ export function receiveSensorFrame(frames: SensorFrames, frame: SensorFrame, rec
     throw new Error(`${frame.drone_id} sensor frame is duplicated or out of order`);
   return { ...frames, [frame.drone_id]: { ...frame, received_at_ms: receivedAt } };
 }
-
-type SensorSample = {
-  drone_id: DroneId;
-  capture_id: string;
-  received_at_ms: number;
-  rendered_at_ms: number;
-};
-declare global {
-  interface Window {
-    missionSensorSamples: SensorSample[];
-  }
-}
-export function recordSensorRender(frame: ReceivedSensorFrame) {
-  requestAnimationFrame(() => {
-    if (!window.missionSensorSamples) window.missionSensorSamples = [];
-    window.missionSensorSamples.push({
-      drone_id: frame.drone_id,
-      capture_id: frame.capture_id,
-      received_at_ms: frame.received_at_ms,
-      rendered_at_ms: performance.timeOrigin + performance.now(),
-    });
-    if (window.missionSensorSamples.length > 2400) window.missionSensorSamples.shift();
-  });
-}

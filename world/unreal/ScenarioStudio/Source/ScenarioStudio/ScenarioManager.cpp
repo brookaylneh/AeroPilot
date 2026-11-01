@@ -1,5 +1,6 @@
 #include "ScenarioManager.h"
 #include "Engine/World.h"
+#include "EngineUtils.h"
 #include "CollisionQueryParams.h"
 #include "CollisionShape.h"
 #include "Components/PrimitiveComponent.h"
@@ -196,6 +197,13 @@ bool AScenarioManager::ValidateGround(FName Region, const FVector &Point, const 
         Error = TEXT("Outside search region");
         return false;
     }
+    for (TActorIterator<AActor> It(GetWorld()); It; ++It)
+        if (It->ActorHasTag(TEXT("drone.port")) &&
+            It->GetComponentsBoundingBox().ExpandBy(Margin).IsInsideXY(Point))
+        {
+            Error = TEXT("The drone port is reserved for aircraft");
+            return false;
+        }
     FCollisionQueryParams Query(SCENE_QUERY_STAT(ScenarioGround), true);
     if (Person)
     {

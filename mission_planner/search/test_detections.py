@@ -15,7 +15,7 @@ from mission_planner.search.detection import negative_model, positional_probabil
 from mission_planner.search.detections import Detections
 
 
-def record(identity, frame, north, east=0, calibrated=True, qualified=True, image=None):
+def record(identity, frame, north, east=0, calibrated=True, decision="escalate", image=None):
     return {
         "id": identity,
         "frame_id": frame,
@@ -24,10 +24,9 @@ def record(identity, frame, north, east=0, calibrated=True, qualified=True, imag
         "source": "recorded",
         "prompt": "person",
         "calibrated": calibrated,
-        "qualified": qualified,
+        "decision": decision,
+        "report": {"decision": decision},
         "sam_confidence": 0.8,
-        "glimmer_yes": 0.7,
-        "outside_mass": 0.01,
         "input_sha256": frame if image is None else image,
         "localization": {
             "ground": {"north_m": north, "east_m": east, "up_m": 0},
@@ -235,7 +234,7 @@ class EvidenceCaps(unittest.TestCase):
 
     def test_invalid_later_record_does_not_partially_commit_frame(self):
         invalid = record("b", "frame", 20)
-        invalid["outside_mass"] = math.nan
+        invalid["sam_confidence"] = math.nan
         with self.assertRaises(AssertionError):
             self.ledger.add_frame("frame", [record("a", "frame", 0), invalid])
         self.assertFalse(self.ledger.frames)

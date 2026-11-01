@@ -5,7 +5,12 @@ import math
 
 import numpy as np
 
+from mission_planner.agents.perception.analyst import DECISIONS
 from mission_planner.agents.perception.localization import ELLIPSE_99, covariance
+
+
+def escalated(record):
+    return record["calibrated"] and record["decision"] == "escalate"
 
 
 def position(record):
@@ -35,14 +40,11 @@ class Detections:
         for record in records:
             identity = record["id"]
             assert identity and identity not in self.records and record["frame_id"] == frame_id
-            assert isinstance(record["calibrated"], bool) and isinstance(record["qualified"], bool)
+            assert isinstance(record["calibrated"], bool)
+            assert record["decision"] in DECISIONS
+            assert record["decision"] == record["report"]["decision"]
             assert record["source"] in ("live", "recorded")
-            assert np.isfinite(
-                [record[k] for k in ("sam_confidence", "glimmer_yes", "outside_mass")]
-            ).all()
-            assert all(
-                0 <= record[k] <= 1 for k in ("sam_confidence", "glimmer_yes", "outside_mass")
-            )
+            assert math.isfinite(record["sam_confidence"]) and 0 <= record["sam_confidence"] <= 1
             covariance(record["localization"]["covariance_m2"])
             assert np.isfinite(position(record)).all()
         changed = set()
@@ -73,7 +75,7 @@ class Detections:
             self.records[identity] = record
             self.frames[frame_id].append(identity)
             cluster["member_ids"].append(identity)
-            if record["calibrated"] and record["qualified"]:
+            if escalated(record):
                 cluster["calibrated"] = True
                 if cluster["reference_frame_id"] is None:
                     cluster["reference_frame_id"] = frame_id

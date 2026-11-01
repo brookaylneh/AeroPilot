@@ -1,4 +1,4 @@
-import { placeLabels } from './mapLabels';
+import { nearbyLabels } from './mapLabels';
 import { placeAnchor, type Landmark } from './placeState';
 
 type Point = { x: number; y: number };
@@ -28,7 +28,13 @@ export default function LandmarkLayer({
       height: 18,
     };
   });
-  const labels = showLabels ? placeLabels(anchors, obstacles, viewport) : {};
+  const labels = showLabels
+    ? nearbyLabels(
+        [...anchors].sort((a, b) => Number(b.id === pending?.id) - Number(a.id === pending?.id)),
+        obstacles,
+        viewport,
+      )
+    : {};
   return (
     <g className="gcs-landmarks" aria-label="Named landmarks">
       {landmarks.map((place, index) => {

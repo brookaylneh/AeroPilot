@@ -101,7 +101,7 @@ def track_pod(centers, a, b, model, mask, detect):
 
 def transit(home, first, last, sector):
     h = TRANSIT_HEIGHTS_M[sector]
-    row = -795 + 12 * sector
+    row = home["north_m"] + 20 + 12 * sector
     launch = point(home["north_m"], home["east_m"], h)
     ingress = [
         launch,
@@ -275,6 +275,7 @@ def candidate(
 
 
 def validate_batch(routes, states, readbacks, landmarks):
+    home_heights = {name: state["home"]["altitude_msl_m"] for name, state in states.items()}
     reservations = [
         (name, [states[name], *route, point(states[name]["north_m"], states[name]["east_m"], 0)])
         for name, route in routes.items()
@@ -292,8 +293,11 @@ def validate_batch(routes, states, readbacks, landmarks):
             name,
             [states[name], *route, point(states[name]["north_m"], states[name]["east_m"], 0)],
             reservations,
+            home_heights,
         )
-        validate_separation(name, route, [(other, [state]) for other, state in states.items()])
+        validate_separation(
+            name, route, [(other, [state]) for other, state in states.items()], home_heights
+        )
 
 
 def materialize(result, states, readbacks, landmarks, path=terrain_leg):

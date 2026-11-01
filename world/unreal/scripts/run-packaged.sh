@@ -123,6 +123,7 @@ exec "$runtime_binary" ScenarioStudio "$world_map" \
   "-ResX=$stream_width" "-ResY=$stream_height" -ForceRes \
   -settings="$cosys_settings" \
   "-ScenarioSaveDir=$scenario_data_dir" \
+  "-ScenarioWorldConfig=$package_root/world.json" \
   "-PixelStreamingEncoderCodec=$stream_codec" "-PixelStreamingWebRTCFps=$stream_fps" \
   "-PixelStreamingWebRTCStartBitrate=$start_bitrate" "-PixelStreamingWebRTCMinBitrate=$min_bitrate" "-PixelStreamingWebRTCMaxBitrate=$max_bitrate" \
   -PixelStreamingWebRTCDisableTransmitAudio=true \

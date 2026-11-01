@@ -1,4 +1,4 @@
-"""The acceptance sorties reach both edges and return through the launch corridor."""
+"""The acceptance sorties reach both edges and return to the interior launch port."""
 
 import unittest
 
@@ -36,17 +36,16 @@ class WorldRoutes(unittest.TestCase):
             self.assertEqual(last["north_m"], state["home"]["north_m"])
             self.assertEqual(last["east_m"], state["home"]["east_m"])
 
-    def test_direct_rtl_from_far_edges_exits_corridor(self):
+    def test_direct_rtl_from_far_edges_stays_inside_fence(self):
         plans = routes(self.states)
         for state in self.states[:2]:
             edge = {**state, **plans[state["id"]][2]}
-            with self.assertRaisesRegex(AssertionError, "Route segment exits"):
-                validate_route(
-                    rtl_route(edge)[:-1],
-                    self.fence,
-                    state["home"]["altitude_msl_m"] - ORIGIN["altitude_msl_m"],
-                    load(),
-                )
+            validate_route(
+                rtl_route(edge)[:-1],
+                self.fence,
+                state["home"]["altitude_msl_m"] - ORIGIN["altitude_msl_m"],
+                load(),
+            )
 
     def test_route_assignment_rejects_reordered_vehicles(self):
         with self.assertRaises(AssertionError):

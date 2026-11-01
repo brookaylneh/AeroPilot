@@ -44,6 +44,7 @@ from mission_planner.gcs.service import Mission
 from mission_planner.agents.models import Detection
 from mission_planner.agents.perception.configuration import load_configuration, read_capture
 from mission_planner.agents.perception.pipeline import Processor
+from mission_planner.environment import ROOT
 from mission_planner.search.belief import Evidence
 from mission_planner.search.behavior import condition, domain_for
 from mission_planner.search.detections import Detections
@@ -57,13 +58,16 @@ class Sam:
         assert prompts == ['person'] and threshold == 0.3
         return {'person': [Detection((950, 500, 970, 550), 0.8, 800)]}
 class Glimmer:
-    def decide(self, images, question, *, timing):
-        assert len(images) == 1 and question == 'Does this image show a person?'
-        return {'yes': 0.9, 'no': 0.1, 'outside_mass': 0.01}
-config, model = load_configuration()
+    def report(self, images, system, text, schema, max_tokens, timing):
+        assert len(images) == 2 and 'Target: a person' in text
+        report = {'observations': [], 'reasoning': 'Upright figure.', 'decision': 'escalate', 'action': 'none', 'reason': 'Person visible.'}
+        return {'report': report, 'reasoning_content': 'brief', 'reasoning_tokens': 1, 'usage': {}, 'timings': {}}
+look_for = {'objective': 'Find the person.', 'target': 'a person', 'attributes': [], 'ignore': []}
+config = load_configuration()
+model = json.loads((ROOT / 'mission_planner/measurements/commander.json').read_text())['observation_model']
 record, payload = read_capture(sys.argv[1])
 directory = Path(sys.argv[1]).parent / 'processed'
-processor = Processor(directory, ['person'], config, Sam(), Glimmer())
+processor = Processor(directory, ['person'], look_for, config, Sam(), Glimmer())
 result = processor.process(record, payload, 'frame', 'recorded', 'Drone4', lambda _: None)
 assert result['calibrated_complete'] and len(result['detections']) == 1
 detection = result['detections'][0]

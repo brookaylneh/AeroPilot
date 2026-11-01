@@ -17,11 +17,6 @@ ROOT = Path(__file__).resolve().parents[2]
 WORLD = json.loads(
     Path(os.environ.get("SNR_WORLD_CONFIG", str(ROOT / "world/cosys/world.json"))).read_text()
 )
-# Explicit migration for the single released manifest predating boundary metadata.
-if WORLD["infrastructureVersion"] == "four-drone-port-1":
-    assert "boundary" not in WORLD["port"], "Unexpected v1 port metadata"
-    WORLD["port"]["boundary"] = "west"
-assert WORLD["port"]["boundary"] in ("south", "west"), "Unsupported launch boundary"
 NAMES = tuple(f"Drone{i}" for i in range(1, 5))
 assert set(WORLD["vehicles"]) == set(NAMES), "World must define exactly Drone1–Drone4"
 CAMERA_FORWARD = 0.6
@@ -176,10 +171,6 @@ def home(name):
     return {k: v / 100 for k, v in WORLD["vehicles"][name]["spawnUeCm"].items()}
 
 
-def entry_axis():
-    return {"south": "x", "west": "y"}[WORLD["port"]["boundary"]]
-
-
 def validate_waypoint(point):
     if set(point) != set("xyz") or not all(
         isinstance(v, (int, float)) and math.isfinite(v) for v in point.values()
@@ -188,15 +179,8 @@ def validate_waypoint(point):
     bounds = WORLD["searchBoundsCm"]
     x, y = point["x"], point["y"]
     inside = all(bounds["min"][k] / 100 <= point[k] <= bounds["max"][k] / 100 for k in "xy")
-    port = WORLD["port"]["centerUeCm"]
-    axis = entry_axis()
-    cross = "y" if axis == "x" else "x"
-    approach = (
-        abs(point[cross] - port[cross] / 100) <= 25
-        and port[axis] / 100 - 26 <= point[axis] <= bounds["min"][axis] / 100
-    )
-    if not inside and not approach:
-        raise ValueError("Waypoint is outside the full world and compact launch approach")
-    ground = terrain_height(x, y) if inside else port["z"] / 100
+    if not inside:
+        raise ValueError("Waypoint is outside the world bounds")
+    ground = terrain_height(x, y)
     if point["z"] < ground + 1:
         raise ValueError("Airborne waypoint lacks ground clearance")

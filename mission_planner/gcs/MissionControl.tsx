@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import {
-  Activity,
+  ArrowLeft,
   ArrowLeftRight,
   ArrowUp,
   ArrowUpRight,
@@ -9,16 +9,16 @@ import {
   ChevronRight,
   CircleHelp,
   Compass,
-  Download,
+  Ellipsis,
   Home,
   Map,
   Radio,
   Route,
-  Send,
   ShieldCheck,
+  SquarePen,
   X,
 } from 'lucide-react';
-import MissionMap from './MissionMap';
+import MissionMap, { mapAspect } from './MissionMap';
 import FleetStrip from './FleetStrip';
 import SearchPanel from './SearchPanel';
 import SearchApproval from './SearchApproval';
@@ -26,9 +26,11 @@ import PlaceApproval from './PlaceApproval';
 import { GroundCheckApproval } from './GroundChecks';
 import { placeArguments, structureCheckArguments } from './placeState';
 import EvidenceCard from './EvidenceCard';
+import InspectionPanel, { acceptedEvidence, FindingCard, GlimmerReview } from './InspectionPanel';
 import type { SearchPoint } from './searchState';
 import RouteApproval from './RouteApproval';
-import SensorFeed from './SensorFeed';
+import FlightPlan, { flightPlanSchema } from './FlightPlan';
+import DroneVideo from './DroneVideo';
 import {
   droneColors,
   droneIds,
@@ -45,6 +47,7 @@ import {
   argumentRows,
   flightLogText,
   formatValue,
+  pacificClock,
 } from './display';
 import './mission.css';
 
@@ -52,9 +55,6 @@ function clock(seconds: number) {
   return [Math.floor(seconds / 3600), Math.floor(seconds / 60) % 60, Math.floor(seconds) % 60]
     .map((v) => String(v).padStart(2, '0'))
     .join(':');
-}
-function timestamp(ms: number) {
-  return new Date(ms).toLocaleTimeString('en-GB', { hour12: false, timeZone: 'UTC' });
 }
 function DroneLabel({ value }: { value: unknown }) {
   const id = droneIds.find((id) => id === value);
@@ -78,10 +78,11 @@ function Arguments({ values }: { values: Record<string, unknown> }) {
   );
 }
 function ToolRow({ event, events }: { event: MissionEvent; events: MissionEvent[] }) {
-  const related = events.filter((e) => e.call_id === event.call_id);
-  const result = related.find((e) => e.kind === 'tool_result');
+  const related = event.call_id === null ? [event] : events.filter((e) => e.call_id === event.call_id);
+  const result = related.filter((e) => e.kind === 'tool_result').at(-1);
   const status = actionStatus(related);
   const drone = droneIds.find((id) => id === event.arguments?.drone_id);
+  const plan = event.name === 'preview_plan' ? flightPlanSchema.safeParse(event.arguments!.plan) : null;
   return (
     <details
       className={`gcs-tool ${status === 'Failed' ? 'failed' : ''}`}
@@ -95,7 +96,19 @@ function ToolRow({ event, events }: { event: MissionEvent; events: MissionEvent[
         <span className="gcs-tool-status">{status}</span>
       </summary>
       <div className="gcs-tool-detail">
-        <Arguments values={event.arguments!} />
+        <time>{pacificClock(event.timestamp_ms)}</time>
+        {plan ? (
+          plan.success ? (
+            <FlightPlan receipt={{ plan: plan.data }} />
+          ) : (
+            <>
+              <p className="gcs-result-error">Invalid mission plan; review the preview error below.</p>
+              <pre>{JSON.stringify(event.arguments!.plan, null, 2)}</pre>
+            </>
+          )
+        ) : (
+          <Arguments values={event.arguments!} />
+        )}
         {result && (
           <>
             <span>RESULT</span>
@@ -110,15 +123,187 @@ function ToolRow({ event, events }: { event: MissionEvent; events: MissionEvent[
     </details>
   );
 }
+function FailureGroup({ attempts, events }: { attempts: MissionEvent[]; events: MissionEvent[] }) {
+  const reasons = [
+    ...new Set(
+      attempts.map((event) => {
+        if (event.kind === 'error') return event.text;
+        const result = events
+          .filter((item) => item.kind === 'tool_result' && item.call_id === event.call_id)
+          .at(-1)!;
+        return String(result.result!.error);
+      }),
+    ),
+  ];
+  return (
+    <article className="gcs-message error" role="alert">
+      <header>
+        <strong>
+          {attempts[0].arguments?.inspection_id
+            ? 'Inspection action failed'
+            : attempts[0].name === 'preview_plan'
+              ? 'Plan preview blocked'
+              : 'Mission action failed'}
+        </strong>
+      </header>
+      {reasons.map((reason) => (
+        <p key={reason}>{reason}</p>
+      ))}
+      <details className="gcs-failure-details">
+        <summary>
+          {attempts.length} {attempts.length === 1 ? 'attempt' : 'attempts'} · details
+        </summary>
+        {attempts.map((event) =>
+          event.kind === 'tool_call' ? (
+            <ToolRow key={event.id} event={event} events={events} />
+          ) : (
+            <div key={event.id}>
+              <time>{pacificClock(event.timestamp_ms)}</time>
+              <pre>{JSON.stringify(event.result, null, 2)}</pre>
+            </div>
+          ),
+        )}
+      </details>
+    </article>
+  );
+}
+function chatSegments(events: MissionEvent[]) {
+  const chats: MissionEvent[][] = [[]];
+  for (const event of events) {
+    if (event.kind === 'chat_reset') chats.push([]);
+    else chats.at(-1)!.push(event);
+  }
+  return chats;
+}
+function conversationRows(
+  chat: MissionEvent[],
+  events: MissionEvent[],
+  approvalCall: string | null | undefined,
+  onError: (message: string) => void,
+) {
+  const turns: ReactNode[] = [];
+  let rows: ReactNode[] = [];
+  let operator: string | null = null;
+  const failures = new globalThis.Map<string, MissionEvent[]>();
+  const failed = new globalThis.Map(
+    events
+      .filter(
+        (event) =>
+          event.kind === 'tool_result' &&
+          event.result!.ok === false &&
+          event.result!.error !== 'Operator declined',
+      )
+      .map((event) => [event.call_id, String(event.result!.error)] as const),
+  );
+  let activity: MissionEvent[] = [];
+  function flush() {
+    if (!activity.length) return;
+    rows.push(
+      <details key={`activity-${activity[0].id}`} className="gcs-tool gcs-activity">
+        <summary>
+          <ChevronRight size={13} />
+          <span>
+            Activity · {activity.length} {activity.length === 1 ? 'action' : 'actions'}
+          </span>
+        </summary>
+        <div>
+          {activity.map((event) => (
+            <ToolRow key={event.id} event={event} events={events} />
+          ))}
+        </div>
+      </details>,
+    );
+    activity = [];
+  }
+  function endTurn() {
+    flush();
+    if (operator === null) turns.push(...rows);
+    else
+      turns.push(
+        <section key={`turn-${operator}`} className="gcs-turn">
+          {rows}
+        </section>,
+      );
+    rows = [];
+    failures.clear();
+  }
+  for (const event of chat) {
+    const call = event.kind === 'tool_call' && event.source !== 'glimmer' && event.call_id !== approvalCall;
+    if (call && !failed.has(event.call_id)) {
+      activity.push(event);
+      continue;
+    }
+    if (event.kind === 'error' || (call && failed.has(event.call_id))) {
+      flush();
+      const id =
+        typeof event.arguments?.inspection_id === 'string'
+          ? event.arguments.inspection_id
+          : call
+            ? JSON.stringify([event.name, failed.get(event.call_id)])
+            : event.id;
+      const attempts = failures.get(id);
+      if (attempts) attempts.push(event);
+      else {
+        const group = [event];
+        failures.set(id, group);
+        rows.push(<FailureGroup key={`failure-${id}`} attempts={group} events={events} />);
+      }
+    } else if (event.kind === 'evidence' && event.source === 'agent') {
+      flush();
+      rows.push(<FindingCard key={event.id} event={event} events={events} onError={onError} />);
+    } else if (event.kind === 'review' && event.source === 'glimmer') {
+      flush();
+      rows.push(<GlimmerReview key={event.id} event={event} onError={onError} />);
+    } else if (event.kind === 'agent' || event.kind === 'operator') {
+      if (event.kind === 'operator') {
+        endTurn();
+        operator = event.id;
+      } else flush();
+      rows.push(
+        <article key={event.id} id={`message-${event.id}`} className={`gcs-message ${event.kind}`}>
+          {event.kind === 'agent' && (
+            <header>
+              <strong>Wonder</strong>
+              <time>{pacificClock(event.timestamp_ms)}</time>
+            </header>
+          )}
+          <p>
+            {event.text
+              .split(/(\*\*[^*\n]+\*\*|`[^`\n]+`)/g)
+              .map((part, index) =>
+                part.startsWith('**') && part.endsWith('**') ? (
+                  <strong key={index}>{part.slice(2, -2)}</strong>
+                ) : part.startsWith('`') && part.endsWith('`') ? (
+                  <code key={index}>{part.slice(1, -1)}</code>
+                ) : (
+                  part
+                ),
+              )}
+          </p>
+        </article>,
+      );
+    }
+  }
+  endTurn();
+  return turns;
+}
 export default function MissionControl() {
   const caseId = new URLSearchParams(location.search).get('case');
-  const { state, search, sensorFrames, feedFocus, events, connection, error, setError, send, now, age } =
+  const { state, search, feedFocus, events, connection, error, setError, send, now, age } =
     useMission(caseId);
+  const activeCaseId = state ? state.mission.case_id : null;
+  const briefing = state ? state.mission.briefing : null;
   const [marking, setMarking] = useState(false);
+  const [markingPlan, setMarkingPlan] = useState(false);
   const [drawing, setDrawing] = useState(false);
   const [areaDraft, setAreaDraft] = useState<SearchPoint[] | null>(null);
   useEffect(() => setAreaDraft(null), [JSON.stringify(search?.vertices)]);
   const approval = state?.approvals[0];
+  const launchPreview =
+    approval && ['request_launch', 'apply_plan_change'].includes(approval.name)
+      ? state.planner.preview
+      : null;
+  const pendingPlan = launchPreview?.plan.version === approval?.arguments.version ? launchPreview : null;
   const pendingRoute = approval?.name === 'fly_route' ? routeArgumentsSchema.parse(approval.arguments) : null;
   const pendingPlaceId =
     approval?.name === 'set_last_known_place'
@@ -127,24 +312,28 @@ export default function MissionControl() {
         ? structureCheckArguments.parse(approval.arguments).place_id
         : null;
   const pendingPlace = search?.landmarks?.find((place) => place.id === pendingPlaceId) ?? null;
-  const [selected, setSelected] = useState<DroneId>('Drone1');
-  const [view, setView] = useState<'map' | 'video'>('map');
-  useEffect(() => {
-    if (!feedFocus) return;
-    setSelected(feedFocus.drone_id);
-    setView('video');
-  }, [feedFocus]);
+  const [selected, setSelected] = useState<DroneId | null>(null);
+  const [cameraView, setCameraView] = useState<DroneId | null>(null);
+  const handledFeedFocus = useRef<string | null>(null);
   const [panel, setPanel] = useState<'agent' | 'evidence' | 'log'>('agent');
+  const followConversation = useRef(true);
+  const shownFinding = useRef<string | null>(null);
+  const findingScrollTop = useRef<number | null>(null);
   const [text, setText] = useState('');
-  const promptCase = useRef<string | null>(null);
+  const [chatView, setChatView] = useState<number | null>(null);
+  const chatMenu = useRef<HTMLDivElement>(null);
+  const promptMission = useRef<string | null>(null);
   useEffect(() => {
     if (connection === 'idle') {
       setText('');
-      promptCase.current = null;
+      setChatView(null);
+      promptMission.current = null;
     }
-    if (state && promptCase.current !== state.mission.case_id) {
-      setText(state.mission.briefing.brief);
-      promptCase.current = state.mission.case_id;
+    if (state && promptMission.current !== state.mission.id) {
+      if (state.mission.briefing !== null && !events.some((event) => event.kind === 'operator'))
+        setText(state.mission.briefing.brief);
+      setChatView(null);
+      promptMission.current = state.mission.id;
     }
   }, [state, connection]);
   const [alertsOpen, setAlertsOpen] = useState(false);
@@ -154,8 +343,54 @@ export default function MissionControl() {
   const [speed, setSpeed] = useState(5);
   const [waypoints, setWaypoints] = useState([{ north_m: 0, east_m: 0 }]);
   const conversation = useRef<HTMLDivElement>(null);
+  const message = useRef<HTMLTextAreaElement>(null);
+  const body = useRef<HTMLDivElement>(null);
+  const [mapWidth, setMapWidth] = useState<number | null>(null);
+  const [mapOnly, setMapOnly] = useState(false);
+  useEffect(() => {
+    if (approval) setMapOnly(false);
+  }, [approval?.id]);
+  useEffect(() => {
+    const el = message.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = `${el.scrollHeight}px`;
+  }, [text]);
   const connected = connection === 'connected';
   const vehicles = state ? state.vehicles : [];
+  const cameras = droneIds.filter((id) =>
+    vehicles.some((v) => v.id === id && v.camera_available && !linkLost(v, age, connected)),
+  );
+  const cameraKey = cameras.join(',');
+  const activeView = cameraView !== null && cameras.includes(cameraView) ? cameraView : null;
+  const view = activeView === null ? 'map' : 'video';
+  const shownDrone = vehicles.some((v) => v.id === selected && !linkLost(v, age, connected))
+    ? selected
+    : null;
+  const cameraId = selected !== null && cameras.includes(selected) ? selected : cameras[0];
+  const nextCamera = cameras[(activeView === null ? -1 : cameras.indexOf(activeView)) + 1] ?? null;
+  function openCamera(id: DroneId) {
+    if (!cameras.includes(id)) return;
+    setSelected(id);
+    setCameraView(id);
+  }
+  function cycleView() {
+    if (cameras.length === 0) return;
+    if (nextCamera === null) setCameraView(null);
+    else openCamera(nextCamera);
+  }
+  function selectDrone(id: DroneId) {
+    setSelected(id);
+    setCameraView(cameras.includes(id) ? id : null);
+  }
+  useEffect(() => {
+    if (cameraView !== null && !cameras.includes(cameraView)) setCameraView(null);
+  }, [cameraView, cameraKey]);
+  useEffect(() => {
+    if (!feedFocus || handledFeedFocus.current === feedFocus.id) return;
+    handledFeedFocus.current = feedFocus.id;
+    openCamera(feedFocus.drone_id);
+  }, [feedFocus, cameraKey]);
   const live = vehicles.filter((v) => !linkLost(v, age, connected)).length;
   const missionAlerts = state ? state.mission.alerts : [];
   const lost = vehicles
@@ -169,6 +404,15 @@ export default function MissionControl() {
     ...lost,
   ];
   const enabled = connected && state !== null;
+  const inspections = state ? state.inspections : [];
+  const legacySearch = search !== null && search.profile !== null;
+  const legacyEvidenceCount = legacySearch ? search.commander.clusters.length : 0;
+  const published = acceptedEvidence(events);
+  const chats = chatSegments(events);
+  const currentChat = chats.at(-1)!;
+  const shownChat = chatView === null ? currentChat : chats[chatView];
+  const latestFinding = acceptedEvidence(shownChat).at(-1);
+  const canStartChat = enabled && state.chat_ready && currentChat.some((event) => event.kind === 'operator');
   const reviewed = events
     .filter(
       (event) =>
@@ -182,30 +426,70 @@ export default function MissionControl() {
     const key = (e: KeyboardEvent) => {
       if ((e.target as Element).closest('input,textarea,select') || e.ctrlKey || e.altKey || e.metaKey)
         return;
-      if (e.key.toLowerCase() === 'v') setView((v) => (v === 'map' ? 'video' : 'map'));
+      if (e.key.toLowerCase() === 'v') cycleView();
       if (['1', '2', '3', '4'].includes(e.key)) {
-        setSelected(droneIds[Number(e.key) - 1]);
-        setView('video');
+        openCamera(droneIds[Number(e.key) - 1]);
       }
     };
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
-  }, []);
+  }, [activeView, cameraKey]);
+  const visibleEvents = shownChat.filter((event) =>
+    [
+      'agent',
+      'operator',
+      'error',
+      'evidence',
+      'evidence_confirmation',
+      'review',
+      'tool_call',
+      'tool_result',
+    ].includes(event.kind),
+  );
+  const lastVisibleEvent = visibleEvents.at(-1)?.id;
   useEffect(() => {
     const el = conversation.current;
-    if (el && panel !== 'evidence') el.scrollTop = el.scrollHeight;
-  }, [events.length, state?.approvals.length, panel]);
+    const newFinding = latestFinding && latestFinding.id !== shownFinding.current;
+    shownFinding.current = latestFinding ? latestFinding.id : null;
+    if (!el || panel !== 'agent' || !followConversation.current) return;
+    if (newFinding) {
+      const card = Array.from(el.querySelectorAll<HTMLElement>('[data-evidence-id]')).find(
+        (node) => node.dataset.evidenceId === latestFinding.id,
+      );
+      if (!card) throw new Error('The accepted finding is missing from the conversation.');
+      const pinned = card.closest('.gcs-turn')?.querySelector<HTMLElement>('.gcs-message.operator');
+      const covered = pinned ? parseFloat(window.getComputedStyle(pinned).top) + pinned.offsetHeight : 0;
+      el.scrollTop += card.getBoundingClientRect().top - el.getBoundingClientRect().top - covered;
+      findingScrollTop.current = el.scrollTop;
+      followConversation.current = false;
+    } else el.scrollTop = el.scrollHeight;
+  }, [lastVisibleEvent, latestFinding?.id, panel]);
   function tool(name: string, id: DroneId) {
     setPanel('agent');
     send({ type: 'tool', name, arguments: { drone_id: id } });
   }
+  function openChat(index: number) {
+    shownFinding.current = acceptedEvidence(chats[index]).at(-1)?.id ?? null;
+    followConversation.current = true;
+    setChatView(index === chats.length - 1 ? null : index);
+    setPanel('agent');
+  }
+  function startChat() {
+    chatMenu.current!.hidePopover();
+    send({ type: 'new_chat' });
+    setChatView(null);
+    setPanel('agent');
+    setText('');
+  }
   function submitChat() {
     if (!text.trim()) return;
+    if (chatView !== null) openChat(chats.length - 1);
     send({ type: 'chat', text: text.trim() });
     setText('');
   }
   function submitFlight() {
     if (!flightForm) return;
+    if (selected === null) throw new Error('A flight command requires a selected drone.');
     const args =
       flightForm === 'take_off'
         ? { drone_id: selected, altitude_above_home_m: altitude }
@@ -218,55 +502,69 @@ export default function MissionControl() {
     setFlightForm(null);
     setPanel('agent');
   }
+  const viewSwitch = (
+    <button
+      className="gcs-inset-swap"
+      aria-label={
+        cameras.length === 0
+          ? 'No active drone camera'
+          : nextCamera
+            ? `Show ${nextCamera} camera`
+            : 'Show map'
+      }
+      disabled={cameras.length === 0}
+      onClick={cycleView}
+    >
+      <ArrowLeftRight size={13} />
+      {cameras.length === 0 ? 'Cameras inactive' : (nextCamera ?? 'Map')}
+      <kbd>V</kbd>
+    </button>
+  );
   return (
-    <div className="gcs-app" data-connection={connection} data-state-age-s={age}>
-      <header className="gcs-header">
-        <a className="gcs-brand" href="/mission" aria-label="Mission control">
-          <Compass size={14} strokeWidth={1.5} />
-          <strong>Search &amp; Rescue</strong>
-        </a>
-        <div className="gcs-case">
-          <h1>{state ? state.mission.case_name : 'Mission control'}</h1>
-        </div>
-        <div className="gcs-clock">
-          <span className="gcs-sr-only">Mission time</span>
-          <strong>{state ? clock(state.mission.elapsed_s + age) : '—:—:—'}</strong>
-        </div>
-        <div className="gcs-autonomy" role="group" aria-label="Autonomy mode">
-          {(['Supervised', 'Autonomous'] as const).map((mode) => (
-            <button
-              key={mode}
-              disabled={!enabled}
-              aria-pressed={state ? state.mission.autonomy === mode : mode === 'Supervised'}
-              onClick={() => send({ type: 'autonomy', mode })}
-            >
-              {mode === 'Supervised' && <ShieldCheck size={12} />}
-              {mode}
-            </button>
-          ))}
-        </div>
-        <div className={`gcs-link-summary ${live === 4 ? 'healthy' : ''}`}>
-          <Radio size={12} />
-          <strong>{live} / 4</strong>
-          <span>linked</span>
-        </div>
-        <button
-          className={`gcs-alert-button ${alerts.length ? 'has-alerts' : ''}`}
-          aria-label={`${alerts.length} alerts`}
-          aria-expanded={alertsOpen}
-          onClick={() => setAlertsOpen(!alertsOpen)}
-        >
-          <Bell size={12} />
-          <span>{alerts.length}</span>
-        </button>
-      </header>
-      <div className="gcs-body">
+    <div
+      className="gcs-app"
+      data-connection={connection}
+      data-state-age-s={age}
+      style={{ '--gcs-map-aspect': mapAspect } as CSSProperties}
+    >
+      <div
+        className={mapOnly ? 'gcs-body is-map-only' : 'gcs-body'}
+        ref={body}
+        style={mapWidth === null ? undefined : ({ '--gcs-map-width': `${mapWidth}px` } as CSSProperties)}
+      >
         <main className="gcs-main">
+          <header className="gcs-header">
+            <a className="gcs-brand" href="/home" aria-label="Home">
+              <Compass size={14} strokeWidth={1.5} />
+              <strong>Mission Planner</strong>
+            </a>
+            <div className="gcs-case">
+              <h1>Search and Rescue Mission</h1>
+            </div>
+            <div className="gcs-clock">
+              <span>Mission time</span>
+              <strong>{state ? clock(state.mission.elapsed_s + age) : '—:—:—'}</strong>
+            </div>
+            <div className={`gcs-link-summary ${live === 4 ? 'healthy' : ''}`}>
+              <Radio size={12} />
+              <strong>{live} / 4</strong>
+              <span>linked</span>
+            </div>
+            <button
+              className={`gcs-alert-button ${alerts.length ? 'has-alerts' : ''}`}
+              aria-label={`${alerts.length} alerts`}
+              aria-expanded={alertsOpen}
+              onClick={() => setAlertsOpen(!alertsOpen)}
+            >
+              <Bell size={12} />
+              <span>{alerts.length}</span>
+            </button>
+          </header>
           <nav className="gcs-tabs" aria-label="Mission views">
             <button
               className={view === 'map' ? 'active' : ''}
               aria-pressed={view === 'map'}
-              onClick={() => setView('map')}
+              onClick={() => setCameraView(null)}
             >
               <Map size={16} />
               Map
@@ -276,12 +574,10 @@ export default function MissionControl() {
               return (
                 <button
                   key={id}
-                  className={view === 'video' && selected === id ? 'active' : ''}
-                  aria-pressed={view === 'video' && selected === id}
-                  onClick={() => {
-                    setSelected(id);
-                    setView('video');
-                  }}
+                  className={activeView === id ? 'active' : ''}
+                  aria-pressed={activeView === id}
+                  disabled={!cameras.includes(id)}
+                  onClick={() => openCamera(id)}
                   style={{ '--drone': droneColors[id] } as CSSProperties}
                 >
                   <i
@@ -293,10 +589,12 @@ export default function MissionControl() {
               );
             })}
             <span className="gcs-tabs-spacer" />
-            <button className="gcs-briefing-button" onClick={() => setBriefingOpen(!briefingOpen)}>
-              <CircleHelp size={15} />
-              Briefing
-            </button>
+            {briefing && (
+              <button className="gcs-briefing-button" onClick={() => setBriefingOpen(!briefingOpen)}>
+                <CircleHelp size={15} />
+                Briefing
+              </button>
+            )}
           </nav>
           {error && (
             <div className="gcs-error" role="alert">
@@ -323,78 +621,89 @@ export default function MissionControl() {
                   send({
                     type: 'tool',
                     name: 'review_detection',
-                    arguments: { detection_id: id, model_review: false },
+                    arguments: { detection_id: id },
                   });
                 }}
                 onMark={
-                  marking
+                  markingPlan
                     ? (point) => {
-                        send({ type: 'search_point', ...point });
-                        setMarking(false);
+                        send({
+                          type: 'chat',
+                          text: `Use the map point at ${point.north_m.toFixed(2)} m north, ${point.east_m.toFixed(2)} m east.`,
+                        });
+                        setMarkingPlan(false);
                       }
-                    : undefined
+                    : marking
+                      ? (point) => {
+                          send({ type: 'search_point', ...point });
+                          setMarking(false);
+                        }
+                      : undefined
                 }
                 vehicles={vehicles}
-                selected={selected}
-                select={setSelected}
+                selected={shownDrone}
+                select={selectDrone}
                 focus={state ? state.map_focus : null}
                 pendingRoute={pendingRoute}
                 pendingPlace={pendingPlace}
+                planner={state ? state.planner : null}
+                events={events}
+                inspections={inspections}
                 age={age}
                 connected={connected}
+                mapOnly={mapOnly}
+                toggleMapOnly={() => setMapOnly(!mapOnly)}
                 inset={view !== 'map'}
               />
-              {view === 'map' && (
-                <SearchPanel
-                  search={search}
-                  caseId={caseId!}
-                  send={send}
-                  marking={marking}
-                  setMarking={(value) => {
-                    setDrawing(false);
-                    setMarking(value);
-                  }}
-                  drawing={drawing}
-                  draft={areaDraft}
-                  startDrawing={() => {
-                    setMarking(false);
-                    setAreaDraft(null);
-                    setDrawing(true);
-                  }}
-                  cancelDrawing={() => {
-                    setAreaDraft(null);
-                    setDrawing(false);
-                  }}
-                  enabled={connected && !state?.agent_busy && !approval}
-                  review={() => setPanel('evidence')}
-                />
-              )}
-              {view !== 'map' && (
-                <button className="gcs-inset-swap" aria-label="Expand map" onClick={() => setView('map')}>
-                  <ArrowLeftRight size={13} />
-                  Map<kbd>V</kbd>
-                </button>
-              )}
+              {view === 'map' &&
+                activeCaseId !== null &&
+                (search?.profile || search?.point || search?.plan) && (
+                  <SearchPanel
+                    search={search}
+                    caseId={activeCaseId}
+                    send={send}
+                    marking={marking}
+                    setMarking={(value) => {
+                      setDrawing(false);
+                      setMarkingPlan(false);
+                      setMarking(value);
+                    }}
+                    drawing={drawing}
+                    draft={areaDraft}
+                    startDrawing={() => {
+                      setMarking(false);
+                      setMarkingPlan(false);
+                      setAreaDraft(null);
+                      setDrawing(true);
+                    }}
+                    cancelDrawing={() => {
+                      setAreaDraft(null);
+                      setDrawing(false);
+                    }}
+                    enabled={connected && !state?.agent_busy && !approval}
+                    review={() => setPanel('evidence')}
+                  />
+                )}
+              {view !== 'map' && viewSwitch}
             </div>
             <div className={view === 'video' ? 'gcs-main-video' : 'gcs-inset gcs-inset-video'}>
-              <SensorFeed
-                droneId={selected}
-                frame={sensorFrames[selected]}
-                connected={connected}
-                inset={view === 'map'}
-                onError={setError}
-              />
-              {view === 'map' && (
-                <button
-                  className="gcs-inset-swap"
-                  aria-label={`Expand ${selected} video`}
-                  onClick={() => setView('video')}
-                >
-                  <ArrowLeftRight size={13} />
-                  {selected}
-                  <kbd>V</kbd>
-                </button>
+              {cameraId && state ? (
+                <DroneVideo
+                  key={state.mission.id}
+                  droneId={cameraId}
+                  inset={view === 'map'}
+                  onError={setError}
+                  inspection={inspections.filter((item) => item.drone_id === cameraId).at(-1)}
+                />
+              ) : (
+                <div className="gcs-video is-inset" data-video-state="inactive">
+                  <div className="gcs-video-empty">
+                    <strong>No active drone camera</strong>
+                    <p>Available after mission upload.</p>
+                  </div>
+                </div>
               )}
+              {view === 'map' && viewSwitch}
             </div>
             {view === 'map' && (
               <div className="gcs-stage-key">
@@ -412,7 +721,7 @@ export default function MissionControl() {
                 </span>
               </div>
             )}
-            {briefingOpen && (
+            {briefingOpen && briefing && (
               <section className="gcs-briefing">
                 <header>
                   <span className="gcs-eyebrow">INCIDENT BRIEFING</span>
@@ -421,11 +730,7 @@ export default function MissionControl() {
                   </button>
                 </header>
                 <h2>{state ? state.mission.case_name : 'No case loaded'}</h2>
-                <p>
-                  {state
-                    ? state.mission.briefing.brief
-                    : 'Open a saved rescue case to load the incident briefing.'}
-                </p>
+                <p>{briefing.brief}</p>
               </section>
             )}
             {alertsOpen && (
@@ -450,12 +755,18 @@ export default function MissionControl() {
             )}
             <FleetStrip
               vehicles={vehicles}
-              selected={selected}
-              select={setSelected}
+              selected={shownDrone}
+              select={selectDrone}
               age={age}
               connected={connected}
               enabled={enabled}
               tool={tool}
+              prepare={(form, id) => {
+                setSelected(id);
+                setFlightForm(form);
+              }}
+              exportPlan={(id) => send({ type: 'export_plan', drone_id: id })}
+              progress={state ? state.planner.progress : {}}
             />
           </section>
           <footer className="gcs-footer">
@@ -468,23 +779,89 @@ export default function MissionControl() {
                   : 'Mission service disconnected'}
             </span>
             <span>ArduPilot · MAVLink</span>
-            <span>{timestamp(now)} UTC</span>
+            <span>{pacificClock(now)}</span>
           </footer>
         </main>
         <aside className="gcs-agent-panel">
+          <div
+            className="gcs-divider"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize map and Mission Commander"
+            tabIndex={0}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              e.currentTarget.setPointerCapture(e.pointerId);
+            }}
+            onPointerMove={(e) => {
+              if (e.currentTarget.hasPointerCapture(e.pointerId))
+                setMapWidth(e.clientX - body.current!.getBoundingClientRect().left);
+            }}
+            onDoubleClick={() => setMapWidth(null)}
+            onKeyDown={(e) => {
+              if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+              e.preventDefault();
+              const width = body.current!.querySelector('.gcs-main')!.getBoundingClientRect().width;
+              setMapWidth(width + (e.key === 'ArrowLeft' ? -24 : 24));
+            }}
+          />
           <header className="gcs-agent-heading">
             <div className="gcs-agent-mark">
               <Compass size={16} />
             </div>
             <div>
-              <h2>Mission copilot</h2>
+              <h2>Mission commander</h2>
               <span>Powered by Wonder</span>
             </div>
             <span className={`gcs-agent-status ${enabled ? 'healthy' : ''}`}>
               <i className="gcs-status-dot" />
-              {state?.agent_busy ? 'Working' : enabled ? 'Ready' : 'Offline'}
+              {state?.agent_busy ? 'Working' : enabled ? (state.agent_wait ? 'Waiting' : 'Ready') : 'Offline'}
             </span>
+            <button
+              className="gcs-chat-menu-button"
+              aria-label="Chat history and new chat"
+              aria-haspopup="menu"
+              popoverTarget="gcs-chat-menu"
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                chatMenu.current!.style.top = `${r.bottom + 6}px`;
+                chatMenu.current!.style.right = `${innerWidth - r.right}px`;
+              }}
+            >
+              <Ellipsis size={16} />
+            </button>
           </header>
+          <div
+            id="gcs-chat-menu"
+            ref={chatMenu}
+            className="gcs-actions-menu gcs-chat-menu"
+            popover="auto"
+            role="menu"
+            aria-label="Chats"
+          >
+            <button role="menuitem" disabled={!canStartChat} onClick={startChat}>
+              <SquarePen size={14} />
+              New chat
+            </button>
+            {!state?.chat_ready && <p>Available when all drones are back at base.</p>}
+            <span>Chat history</span>
+            {chats
+              .map((chat, index) => (
+                <button
+                  key={chat.length ? chat[0].id : 'current'}
+                  role="menuitemradio"
+                  aria-checked={(chatView ?? chats.length - 1) === index}
+                  onClick={() => {
+                    chatMenu.current!.hidePopover();
+                    openChat(index);
+                  }}
+                >
+                  <span>{chat.find((event) => event.kind === 'operator')?.text ?? 'New chat'}</span>
+                  <time>{index === chats.length - 1 ? 'Current' : pacificClock(chat[0].timestamp_ms)}</time>
+                </button>
+              ))
+              .reverse()}
+          </div>
           <div className="gcs-panel-tabs">
             <button className={panel === 'agent' ? 'active' : ''} onClick={() => setPanel('agent')}>
               Conversation
@@ -493,114 +870,75 @@ export default function MissionControl() {
               Flight log
               <span>{events.filter((e) => ['statustext', 'mode', 'error'].includes(e.kind)).length}</span>
             </button>
-            <button className={panel === 'evidence' ? 'active' : ''} onClick={() => setPanel('evidence')}>
-              Evidence <span>{search?.commander.clusters.length ?? 0}</span>
-            </button>
+            {(activeCaseId !== null || inspections.length > 0 || published.length > 0) && (
+              <button className={panel === 'evidence' ? 'active' : ''} onClick={() => setPanel('evidence')}>
+                Evidence <span>{published.length + legacyEvidenceCount}</span>
+              </button>
+            )}
           </div>
-          <div className="gcs-conversation" ref={conversation} aria-live="polite">
+          {panel === 'agent' && chatView !== null && (
+            <div className="gcs-chat-history-bar">
+              <span>Previous chat · {pacificClock(shownChat[0].timestamp_ms)}</span>
+              <button onClick={() => openChat(chats.length - 1)}>
+                <ArrowLeft size={13} />
+                Current chat
+              </button>
+            </div>
+          )}
+          <div
+            className="gcs-conversation"
+            ref={conversation}
+            aria-live="polite"
+            onClick={(event) => {
+              if (panel === 'agent' && (event.target as Element).closest('summary'))
+                followConversation.current = false;
+            }}
+            onScroll={(event) => {
+              if (panel !== 'agent') return;
+              const { scrollHeight, scrollTop, clientHeight } = event.currentTarget;
+              if (findingScrollTop.current !== null) {
+                const aligned = scrollTop === findingScrollTop.current;
+                findingScrollTop.current = null;
+                if (aligned) return;
+              }
+              followConversation.current = scrollHeight - scrollTop - clientHeight <= 24;
+            }}
+          >
             {panel === 'agent' ? (
               <>
-                <div className="gcs-agent-context">
-                  <ShieldCheck size={16} />
-                  <span>
-                    {state?.mission.autonomy === 'Autonomous'
-                      ? 'Autonomous flight is enabled. Flight commands execute after safety checks.'
-                      : 'You are in command. Review and approve each flight action.'}
-                  </span>
-                </div>
-                {!events.some((e) => ['operator', 'agent', 'tool_call'].includes(e.kind)) && (
-                  <div className="gcs-conversation-empty">
-                    <span className="gcs-eyebrow">MISSION ASSISTANT</span>
-                    <h3>
-                      {!caseId || connection === 'idle'
-                        ? 'No active mission'
-                        : enabled
-                          ? 'Ready for your instructions'
-                          : connection === 'connecting'
-                            ? 'Connecting to your mission'
-                            : 'Mission service offline'}
-                    </h3>
-                    <p>
-                      {!caseId || connection === 'idle'
-                        ? 'Return to Studio and launch a mission from the rescue briefing.'
-                        : enabled
-                          ? 'Inspect the fleet, prepare a route, or coordinate the next flight action. Flight commands require your approval in Supervised mode.'
-                          : connection === 'connecting'
-                            ? 'Waiting for the mission service to load your saved rescue briefing and aircraft telemetry.'
-                            : 'Check that the mission service is running, then reload this page. Aircraft data will appear when the connection is established.'}
-                    </p>
-                    {(!caseId || connection === 'idle') && (
-                      <a href="/studio">Start from character selection</a>
-                    )}
-                    <button
-                      disabled={!enabled}
-                      onClick={() => setText('Give me the fleet status and any issues before takeoff.')}
-                    >
-                      <Activity size={16} />
-                      <span>Check fleet readiness</span>
-                      <ArrowUpRight size={16} />
-                    </button>
-                    <button
-                      disabled={!enabled}
-                      onClick={() =>
-                        setText('Summarize the rescue briefing and current mission constraints.')
-                      }
-                    >
-                      <Compass size={16} />
-                      <span>Review the mission</span>
-                      <ArrowUpRight size={16} />
-                    </button>
-                  </div>
-                )}
-                {events.map((event) =>
-                  event.kind === 'tool_call' && state?.approvals[0]?.call_id !== event.call_id ? (
-                    <ToolRow key={event.id} event={event} events={events} />
-                  ) : ['agent', 'operator', 'error'].includes(event.kind) ? (
-                    <article key={event.id} className={`gcs-message ${event.kind}`}>
-                      <header>
-                        <strong>
-                          {event.kind === 'operator'
-                            ? 'You'
-                            : event.kind === 'agent'
-                              ? 'Wonder'
-                              : 'Command error'}
-                        </strong>
-                        <time>{timestamp(event.timestamp_ms)}</time>
-                      </header>
-                      <p>
-                        {event.text
-                          .split(/(\*\*[^*\n]+\*\*|`[^`\n]+`)/g)
-                          .map((part, index) =>
-                            part.startsWith('**') && part.endsWith('**') ? (
-                              <strong key={index}>{part.slice(2, -2)}</strong>
-                            ) : part.startsWith('`') && part.endsWith('`') ? (
-                              <code key={index}>{part.slice(1, -1)}</code>
-                            ) : (
-                              part
-                            ),
-                          )}
-                      </p>
-                    </article>
-                  ) : null,
-                )}
-                {state?.agent_busy && (
+                {conversationRows(shownChat, events, state?.approvals[0]?.call_id, setError)}
+                {chatView === null && state?.agent_busy && (
                   <div className="gcs-working">
                     <i className="gcs-status-dot healthy" />
                     Wonder is working
                   </div>
                 )}
+                {chatView === null && state?.agent_wait && (
+                  <div className="gcs-working" role="status" data-agent-wait>
+                    <i className="gcs-status-dot healthy" />
+                    {state.agent_wait.description}
+                  </div>
+                )}
               </>
             ) : panel === 'evidence' ? (
-              search &&
-              caseId && (
-                <EvidenceCard
-                  key={`${reviewed?.id}:${search.commander.review?.selected_id}`}
-                  commander={search.commander}
-                  send={send}
-                  enabled={enabled && !state?.agent_busy && !approval}
-                  caseId={caseId}
-                />
-              )
+              <>
+                <InspectionPanel events={events} onError={setError} />
+                {published.length === 0 && !legacySearch && (
+                  <p className="gcs-evidence-empty">
+                    Evidence selected by Wonder will appear here. Glimmer’s reviews remain in the
+                    conversation.
+                  </p>
+                )}
+                {legacySearch && activeCaseId && (
+                  <EvidenceCard
+                    key={`${reviewed?.id}:${search.commander.review?.selected_id}`}
+                    commander={search.commander}
+                    send={send}
+                    enabled={enabled && !state?.agent_busy && !approval}
+                    caseId={activeCaseId}
+                  />
+                )}
+              </>
             ) : (
               <div className="gcs-log">
                 {events.length ? (
@@ -608,7 +946,7 @@ export default function MissionControl() {
                     .filter((e) => !['agent', 'operator', 'model_usage'].includes(e.kind))
                     .map((event) => (
                       <div className={event.kind === 'error' ? 'error' : ''} key={event.id}>
-                        <time>{timestamp(event.timestamp_ms)}</time>
+                        <time>{pacificClock(event.timestamp_ms)}</time>
                         <span>{flightLogText(event)}</span>
                       </div>
                     ))
@@ -634,7 +972,9 @@ export default function MissionControl() {
                   <header>
                     <ShieldCheck size={18} />
                     <strong>Awaiting approval</strong>
-                    {approval.name === 'start_search' ? (
+                    {pendingPlan ? (
+                      <span>Plan v{pendingPlan.plan.version}</span>
+                    ) : approval.name === 'start_search' ? (
                       <span>All aircraft</span>
                     ) : ['hasty_check_structure', 'notify_ground_team'].includes(approval.name) ? (
                       <span>Ground team {String(approval.arguments.team_id)}</span>
@@ -643,7 +983,18 @@ export default function MissionControl() {
                     )}
                   </header>
                   <p>{approvalSentence(approval.name, approval.arguments)}</p>
-                  {['set_last_known_place', 'hasty_check_structure'].includes(approval.name) ? (
+                  {pendingPlan ? (
+                    <>
+                      <FlightPlan receipt={pendingPlan} />
+                      {pendingPlan.plan.drones.some(({ drone_id }) =>
+                        state.vehicles.some((vehicle) => vehicle.id === drone_id && vehicle.armed),
+                      ) && (
+                        <p>Airborne aircraft in this change are holding while launch approval is pending.</p>
+                      )}
+                    </>
+                  ) : ['request_launch', 'apply_plan_change'].includes(approval.name) ? (
+                    <p role="alert">The matching plan preview is unavailable. Decline this request.</p>
+                  ) : ['set_last_known_place', 'hasty_check_structure'].includes(approval.name) ? (
                     pendingPlace ? (
                       approval.name === 'set_last_known_place' ? (
                         <PlaceApproval place={pendingPlace} arguments={approval.arguments} />
@@ -684,6 +1035,7 @@ export default function MissionControl() {
                       className="gcs-primary"
                       disabled={
                         !enabled ||
+                        (['request_launch', 'apply_plan_change'].includes(approval.name) && !pendingPlan) ||
                         (['set_last_known_place', 'hasty_check_structure'].includes(approval.name) &&
                           !pendingPlace)
                       }
@@ -703,28 +1055,6 @@ export default function MissionControl() {
               ))}
             </div>
           )}
-          <div className="gcs-command-bar">
-            <span style={{ color: droneColors[selected] }}>
-              <i />
-              {selected}
-            </span>
-            <button disabled={!enabled} onClick={() => setFlightForm('take_off')}>
-              <ArrowUp size={13} />
-              Take off
-            </button>
-            <button disabled={!enabled} onClick={() => setFlightForm('fly_route')}>
-              <Route size={13} />
-              Route
-            </button>
-            <button
-              disabled={!enabled}
-              onClick={() => send({ type: 'export_plan', drone_id: selected })}
-              aria-label={`Export ${selected} plan`}
-              title="Export QGroundControl plan"
-            >
-              <Download size={15} />
-            </button>
-          </div>
           <form
             className="gcs-composer"
             onSubmit={(e) => {
@@ -737,9 +1067,10 @@ export default function MissionControl() {
             </label>
             <textarea
               id="mission-message"
+              ref={message}
               placeholder={enabled ? 'Direct the mission…' : 'Connect a mission to get started'}
               value={text}
-              disabled={!enabled || !!state?.agent_busy}
+              disabled={!enabled}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
@@ -747,24 +1078,32 @@ export default function MissionControl() {
                   submitChat();
                 }
               }}
-              rows={3}
+              rows={1}
               maxLength={4000}
             />
             <div>
               <span>
                 <i className="gcs-status-dot" />
-                Wonder · Mission tools
+                Wonder
               </span>
               <button
-                className="gcs-send"
-                aria-label="Send message"
-                disabled={!enabled || !text.trim() || !!state?.agent_busy}
+                type="button"
+                disabled={!enabled || !!state?.agent_busy}
+                aria-pressed={markingPlan}
+                onClick={() => {
+                  setCameraView(null);
+                  setDrawing(false);
+                  setMarking(false);
+                  setMarkingPlan(!markingPlan);
+                }}
               >
-                <Send size={16} />
+                {markingPlan ? 'Cancel map point' : 'Choose map point'}
+              </button>
+              <button className="gcs-send" aria-label="Send message" disabled={!enabled || !text.trim()}>
+                <ArrowUp size={15} strokeWidth={2.5} />
               </button>
             </div>
           </form>
-          <p className="gcs-composer-note">Enter to send · Shift + Enter for a new line</p>
         </aside>
       </div>
       {flightForm && (
@@ -785,11 +1124,7 @@ export default function MissionControl() {
                 <X size={18} />
               </button>
             </header>
-            <p>
-              {state?.mission.autonomy === 'Supervised'
-                ? 'This command will appear as an approval card before flight.'
-                : 'This command will execute after safety checks.'}
-            </p>
+            <p>Launch requires approval. Commands for airborne aircraft execute after safety checks.</p>
             <div className="gcs-flight-fields">
               <label>
                 Altitude above home (m)
@@ -869,7 +1204,9 @@ export default function MissionControl() {
             )}
             <button className="gcs-primary" type="submit">
               <ArrowUpRight size={16} />
-              {state?.mission.autonomy === 'Supervised' ? 'Request flight approval' : 'Send flight command'}
+              {flightForm === 'take_off' || vehicles.find((v) => v.id === selected)?.landed_state === 1
+                ? 'Request flight approval'
+                : 'Send flight command'}
             </button>
           </form>
         </div>

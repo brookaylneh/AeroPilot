@@ -6,14 +6,47 @@ from mission_planner.gcs.geodesy import (
     MAX_ALTITUDE_M,
     MIN_ALTITUDE_M,
     MIN_SEPARATION_M,
+    SEPARATION_TOLERANCE_M,
     point_in_polygon,
     segment_distance,
     segment_in_polygon,
     to_local,
 )
-from world.cosys.terrain import COLUMNS, ROWS, WORLD, terrain_height
+from world.cosys.terrain import COLUMNS, ROWS, WORLD, launch_breaks, terrain_height
 
 CLEARANCE_M = 10.0
+
+
+class RouteConflict(AssertionError):
+    def __init__(self, conflict):
+        self.conflict = conflict
+        super().__init__(conflict)
+
+    def __str__(self):
+        def leg(prefix):
+            name = self.conflict[prefix + "drone_id"]
+            index = self.conflict[prefix + "step_index"]
+            if index is not None:
+                name += f" step {index + 1} ({self.conflict[prefix + 'step_kind']})"
+            return name
+
+        def position(point):
+            return (
+                f"N {point['north_m']:.3f}, E {point['east_m']:.3f}, "
+                f"{point['altitude_above_home_m']:.3f} m above home"
+            )
+
+        return (
+            f"{leg('')} conflicts with {leg('other_')}; "
+            f"minimum separation {self.conflict['minimum_m']:g} m, "
+            f"measured {self.conflict['distance_m']:.6f} m. "
+            + "; ".join(
+                f"{leg(prefix)}: "
+                + " → ".join(position(point) for point in self.conflict[prefix + "segment"])
+                for prefix in ("", "other_")
+            )
+            + ". Entire routes reserve space regardless of timing."
+        )
 
 
 def fence_polygon(readback):
@@ -56,6 +89,11 @@ def validate_route(route, readback, home_z, landmarks):
     assert type(home_z) in (int, float) and math.isfinite(home_z), "Invalid home UE-up metres"
     assert landmarks is not None, "Landmark data unavailable; obstacle clearance cannot be checked"
     assert isinstance(landmarks, list)
+    for a, b in zip(route, route[1:] or route):
+        clearance = minimum_clearance(a, b, 0, 1, home_z, 0)
+        assert clearance >= CLEARANCE_M, (
+            f"Route clearance above terrain is {clearance:.3f} m; requires {CLEARANCE_M:g} m"
+        )
     for landmark in landmarks:
         if landmark["geometry"]["type"] != "polygon":
             continue
@@ -114,7 +152,7 @@ def footprint_intervals(a, b, polygon):
 def minimum_clearance(a, b, low, high, home_z, height):
     assert all(type(count) is int and count > 1 for count in (ROWS, COLUMNS))
     bounds = WORLD["searchBoundsCm"]
-    cuts = {low, high}
+    cuts = {low, high, *(t for t in launch_breaks(a, b) if low < t < high)}
     for key, axis, count in (("north_m", "x", COLUMNS), ("east_m", "y", ROWS)):
         delta = b[key] - a[key]
         if delta == 0:
@@ -151,18 +189,58 @@ def minimum_clearance(a, b, low, high, home_z, height):
     return result
 
 
-def validate_separation(name, route, reservations):
+def separation_conflict(name, route, reservations, home_altitudes_msl_m):
     # Routes reserve their entire spatial corridor, independent of timing.
-    def segments(points):
+    def segments(points, home_offset_m):
+        assert points, "Separation requires a nonempty route"
         values = [
-            tuple(p[k] for k in ("north_m", "east_m", "altitude_above_home_m")) for p in points
+            (p["north_m"], p["east_m"], p["altitude_above_home_m"] + home_offset_m) for p in points
         ]
+        assert all(math.isfinite(v) for point in values for v in point), (
+            "Separation coordinates must be finite metres"
+        )
         return list(zip(values, values[1:])) if len(values) > 1 else [(values[0], values[0])]
 
+    home = home_altitudes_msl_m[name]
+    assert type(home) in (int, float) and math.isfinite(home), (
+        f"{name}: home altitude must be finite MSL metres"
+    )
+    route_segments = segments(route, 0)
     for other, reserved in reservations:
         if other != name:
-            for a, b in segments(route):
-                for c, d in segments(reserved):
-                    assert segment_distance(a, b, c, d) >= MIN_SEPARATION_M, (
-                        f"Route conflicts with {other}; minimum separation {MIN_SEPARATION_M} m"
-                    )
+            other_home = home_altitudes_msl_m[other]
+            assert type(other_home) in (int, float) and math.isfinite(other_home), (
+                f"{other}: home altitude must be finite MSL metres"
+            )
+            reserved_segments = segments(reserved, other_home - home)
+            distance, index, other_index = min(
+                (segment_distance(a, b, c, d), i, j)
+                for i, (a, b) in enumerate(route_segments)
+                for j, (c, d) in enumerate(reserved_segments)
+            )
+            assert math.isfinite(distance), "Separation distance must be finite metres"
+            if distance < MIN_SEPARATION_M - SEPARATION_TOLERANCE_M:
+                keys = ("north_m", "east_m", "altitude_above_home_m")
+                return {
+                    "drone_id": name,
+                    "other_drone_id": other,
+                    "distance_m": distance,
+                    "minimum_m": MIN_SEPARATION_M,
+                    "segment_index": index,
+                    "other_segment_index": other_index,
+                    "segment": [dict(zip(keys, p)) for p in route_segments[index]],
+                    "other_segment": [
+                        dict(zip(keys, p)) for p in segments(reserved, 0)[other_index]
+                    ],
+                    "step_index": None,
+                    "other_step_index": None,
+                    "step_kind": None,
+                    "other_step_kind": None,
+                }
+    return None
+
+
+def validate_separation(name, route, reservations, home_altitudes_msl_m):
+    conflict = separation_conflict(name, route, reservations, home_altitudes_msl_m)
+    if conflict is not None:
+        raise RouteConflict(conflict)

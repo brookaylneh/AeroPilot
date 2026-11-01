@@ -1,13 +1,14 @@
 """Expanding-square order, sector clipping and the shared terrain/endurance clock."""
 
 import copy
+import json
 import math
 import unittest
 from unittest.mock import patch
 
 import numpy as np
 
-from mission_planner.agents.perception.configuration import load_configuration
+from mission_planner.environment import ROOT
 from mission_planner.gcs.geodesy import fence_vertices, homes, to_geodetic
 from mission_planner.search.baselines import (
     expanding_square,
@@ -101,7 +102,9 @@ class OrderedEvaluation(unittest.TestCase):
         cls.probability = np.full(len(n.ravel()), 1 / len(n.ravel()))
         cls.vertices = rectangle(-790, -550, -120, 120)
         cls.homes = homes()
-        cls.model = load_configuration()[1]
+        cls.model = json.loads((ROOT / "mission_planner/measurements/commander.json").read_text())[
+            "observation_model"
+        ]
         cls.states = {
             name: {
                 "home": home,

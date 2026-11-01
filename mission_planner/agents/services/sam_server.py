@@ -1,11 +1,18 @@
+import argparse
 import asyncio
 import base64
+import importlib.metadata
 import io
+import json
 import time
 import uuid
+from contextlib import asynccontextmanager
 
-import fal
-from pydantic import BaseModel
+import uvicorn
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel, Field
+from sam_tracking import VideoTracks
+from segmentation import encode_mask
 
 TILE_SIZE, OVERLAP = 1008, 64
 
@@ -14,40 +21,24 @@ class Input(BaseModel):
     model_config = {"extra": "forbid"}
     jpeg: str
     prompts: list[str]
-    threshold: float
+    threshold: float = Field(ge=0, le=1)
 
 
-class Sam(fal.App):
-    machine_type = "GPU-H100"
-    requirements = [
-        "torch==2.10.0",
-        "torchvision==0.25.0",
-        "setuptools<81",
-        "git+https://github.com/facebookresearch/sam3.git@f1647e8d0c1d280991f4d1b7d974c2704537fe66",
-        "einops",
-        "decord",
-        "pycocotools",
-        "scipy",
-        "pillow",
-        "psutil",
-    ]
-
-    def setup(self):
+class Sam:
+    def __init__(self, compile_model):
         import torch
-        from huggingface_hub import hf_hub_download
         from PIL import Image
         from sam3.model_builder import build_sam3_image_model
         from sam3.train.transforms import basic_for_api as T
 
         self.instance_id = uuid.uuid4().hex
         self.inference_lock = asyncio.Lock()
-        checkpoint = hf_hub_download(
-            "facebook/sam3.1",
-            "sam3.1_multiplex.pt",
-            revision="daa63191845a41281374e725f4c9e51c7a824460",
-            cache_dir="/data/huggingface",
+        self.model = build_sam3_image_model(
+            checkpoint_path="/weights/sam3.1_multiplex.pt",
+            load_from_HF=False,
+            compile=compile_model,
         )
-        self.model = build_sam3_image_model(checkpoint_path=checkpoint, load_from_HF=False)
+        self.tracking = VideoTracks(self.instance_id)
         assert all(p.dtype == torch.float32 for p in self.model.parameters())
         torch.backends.cuda.matmul.allow_tf32 = torch.backends.cudnn.allow_tf32 = False
         resize = T.RandomResizeAPI(
@@ -56,29 +47,58 @@ class Sam(fal.App):
         self.transform = T.ComposeAPI(
             [resize, T.ToTensorAPI(), T.NormalizeAPI([0.5] * 3, [0.5] * 3)]
         )
-        buffer = io.BytesIO()
-        Image.new("RGB", (TILE_SIZE, TILE_SIZE), "green").save(buffer, format="JPEG")
-        warmup = base64.b64encode(buffer.getvalue()).decode()
-        self.infer(Input(jpeg=warmup, prompts=["person"], threshold=0.5))
+        for tiles in range(1, 5):
+            buffer = io.BytesIO()
+            width = TILE_SIZE + (tiles - 1) * (TILE_SIZE - OVERLAP)
+            Image.new("RGB", (width, TILE_SIZE), "green").save(buffer, format="JPEG")
+            warmup = base64.b64encode(buffer.getvalue()).decode()
+            for count in range(1, 5):
+                data = Input(
+                    jpeg=warmup, prompts=["person", "bag", "jacket", "hat"][:count], threshold=0.3
+                )
+                frame, decode_s = self.decode(data)
+                result = self.infer(data, frame, decode_s)
+                assert result["tiles"] == tiles
+                print(
+                    json.dumps(
+                        {
+                            "startup_batch_tiles": tiles,
+                            "prompts": count,
+                            "compile": compile_model,
+                            "timings": result["timings"],
+                        }
+                    ),
+                    flush=True,
+                )
 
-    @fal.endpoint("/")
     async def detect(self, data: Input) -> dict:
         started, started_at = time.perf_counter(), time.time()
-        context = self.current_request
-        assert context is not None and context.request_id
+        frame, decode_s = await asyncio.to_thread(self.decode, data)
+        waiting = time.perf_counter()
         async with self.inference_lock:
-            waiting = time.perf_counter() - started
-            result = await asyncio.to_thread(self.infer, data)
+            waiting = time.perf_counter() - waiting
+            result = await asyncio.to_thread(self.infer, data, frame, decode_s)
         result["timings"].update(
             dispatch_wait_s=waiting, handler_total_s=time.perf_counter() - started
         )
         result["server"]["handler_started_at_unix_s"] = started_at
-        result["server"]["request_id"] = context.request_id
+        result["server"]["request_id"] = uuid.uuid4().hex
         return result
 
-    def infer(self, data: Input) -> dict:
-        import torch
+    def decode(self, data):
         from PIL import Image
+
+        started = time.perf_counter()
+        assert data.prompts and len(set(data.prompts)) == len(data.prompts) <= 4
+        assert all(p.strip() for p in data.prompts)
+        frame = Image.open(io.BytesIO(base64.b64decode(data.jpeg, validate=True)))
+        assert frame.format == "JPEG"
+        frame = frame.convert("RGB")
+        assert 1 <= frame.width <= 3840 and 1 <= frame.height <= 2160
+        return frame, time.perf_counter() - started
+
+    def infer(self, data, frame, decode_s):
+        import torch
         from sam3.eval.postprocessors import PostProcessImage
         from sam3.model.utils.misc import copy_data_to_device
         from sam3.train.data import sam3_image_dataset as api
@@ -86,16 +106,8 @@ class Sam(fal.App):
         from torchvision.ops import nms
 
         started, started_at = time.perf_counter(), time.time()
-        timings = dict(decode_s=0.0, tiling_s=0.0, forward_s=0.0, postprocess_s=0.0)
-        assert 0 <= data.threshold <= 1
-        assert data.prompts and len(set(data.prompts)) == len(data.prompts) <= 4
-        assert all(p.strip() for p in data.prompts)
-        frame = Image.open(io.BytesIO(base64.b64decode(data.jpeg, validate=True)))
-        assert frame.format == "JPEG"
-        frame = frame.convert("RGB")
+        timings = dict(decode_s=decode_s, tiling_s=0.0, forward_s=0.0, postprocess_s=0.0)
         w, h = frame.size
-        assert 1 <= w <= 3840 and 1 <= h <= 2160
-        timings["decode_s"] = time.perf_counter() - started
         tiling_started = time.perf_counter()
 
         def starts(length):
@@ -153,12 +165,16 @@ class Sam(fal.App):
                         assert len(b) == 4 and b[0] < b[2] and b[1] < b[3]
                         area = int(mask.sum().item())
                         assert mask.dtype == torch.bool and 0 < area <= im.width * im.height
+                        assert tuple(mask.shape[-2:]) == (im.height, im.width)
+                        assert mask.numel() == im.width * im.height
                         assert 0 <= score.item() <= 1
                         x, y = positions[index]
                         detection = dict(
                             box_xyxy=[b[0] + x, b[1] + y, b[2] + x, b[3] + y],
                             confidence=score.item(),
                             mask_area_px=area,
+                            _mask=mask,
+                            _mask_origin=[x, y],
                         )
                         found[prompt].append(detection)
                 torch.cuda.synchronize()
@@ -172,8 +188,13 @@ class Sam(fal.App):
                         0.5,
                     )
                     found[prompt] = [detections[i] for i in keep.tolist()]
+                    for detection in found[prompt]:
+                        pixels = detection.pop("_mask").cpu().numpy()
+                        detection["mask"] = encode_mask(
+                            pixels.reshape(pixels.shape[-2:]), detection.pop("_mask_origin")
+                        )
             timings["postprocess_s"] += time.perf_counter() - post_started
-        timings["total_s"] = time.perf_counter() - started
+        timings["total_s"] = decode_s + time.perf_counter() - started
         return dict(
             detections=found,
             width=w,
@@ -186,3 +207,84 @@ class Sam(fal.App):
                 finished_at_unix_s=time.time(),
             ),
         )
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--compile", action="store_true")
+    args = parser.parse_args()
+    print(
+        json.dumps(
+            {
+                "packages": {
+                    d.metadata["Name"]: d.version for d in importlib.metadata.distributions()
+                }
+            }
+        ),
+        flush=True,
+    )
+    sam = Sam(args.compile)
+
+    async def expire_tracks():
+        while True:
+            await asyncio.sleep(1)
+            async with sam.inference_lock:
+                expired = sam.tracking.expire()
+            for session_id in expired:
+                print(json.dumps({"tracking_session_expired": session_id}), flush=True)
+
+    @asynccontextmanager
+    async def lifespan(app):
+        expiration = asyncio.create_task(expire_tracks())
+        try:
+            yield
+        finally:
+            expiration.cancel()
+            await asyncio.wait([expiration])
+            if not expiration.cancelled():
+                expiration.result()
+
+    app = FastAPI(lifespan=lifespan)
+    app.post("/")(sam.detect)
+
+    @app.post("/tracking/{action}")
+    async def track(action: str, body: dict):
+        submitted = time.monotonic()
+        try:
+            assert action in ("start", "frame", "close"), "Unknown tracking action"
+            operation = {
+                "start": sam.tracking.start,
+                "frame": sam.tracking.advance,
+                "close": sam.tracking.close,
+            }[action]
+            async with sam.inference_lock:
+                started = time.monotonic()
+                task = asyncio.create_task(asyncio.to_thread(operation, body))
+                try:
+                    result = await asyncio.shield(task)
+                except asyncio.CancelledError:
+                    await task
+                    raise
+            if action != "close":
+                result["timings"] = {
+                    "queue_s": started - submitted,
+                    "inference_s": time.monotonic() - started,
+                    "total_s": time.monotonic() - submitted,
+                }
+            return result
+        except (AssertionError, ValueError) as error:
+            raise HTTPException(status_code=400, detail=str(error)) from error
+        except Exception as error:
+            raise HTTPException(
+                status_code=500, detail=f"SAM video failed: {type(error).__name__}: {error}"
+            ) from error
+
+    @app.get("/health")
+    def health():
+        return {"status": "ok", "instance_id": sam.instance_id, "compile": args.compile}
+
+    uvicorn.run(app, host="0.0.0.0", port=8000, access_log=False)
+
+
+if __name__ == "__main__":
+    main()

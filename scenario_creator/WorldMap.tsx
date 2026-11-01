@@ -291,7 +291,7 @@ export default function WorldMap({
       </div>
       {openPort && !choosingLocation && (
         <button className="minimap-port" onClick={openPort}>
-          ↓ Launch port · outside southern boundary
+          Launch port · in front of Incident Command
         </button>
       )}
       <small id="map-instructions">

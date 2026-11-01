@@ -6,7 +6,6 @@ import unittest
 
 import numpy as np
 
-from mission_planner.agents.perception.configuration import load_configuration
 from mission_planner.agents.perception.geometry import Camera
 from mission_planner.environment import ROOT
 from mission_planner.search.belief import Evidence
@@ -115,7 +114,7 @@ class Occlusion(unittest.TestCase):
         )
         self.assertLess(self.evidence.probability[2], self.prior[2])
 
-    def test_qualified_protected_detection_is_retained_without_any_factor(self):
+    def test_escalated_protected_detection_is_retained_without_any_factor(self):
         result = self.apply("roof", [record("person", "roof", 2, 2)], [0, 0.8, 0.8])
         self.assertEqual(result["kind"], "no_detection_credit")
         self.assertEqual(result["credited_cluster_ids"], [])
@@ -202,7 +201,9 @@ class Occlusion(unittest.TestCase):
         frame = json.loads(
             (ROOT / ".local/data/calibration/adult-kelvin/frame-00-+00-Drone1.json").read_text()
         )
-        _, model = load_configuration()
+        model = json.loads((ROOT / "mission_planner/measurements/commander.json").read_text())[
+            "observation_model"
+        ]
         camera = Camera(frame)
         n, e = np.meshgrid(
             np.floor(camera.world["x"] / 4) * 4 + np.arange(-8, 8, 4),

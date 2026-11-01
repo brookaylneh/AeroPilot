@@ -1,9 +1,12 @@
 # Scenario creator
 
+The launch-port map control and generated mission briefing identify the port in
+front of Incident Command. Its four pad positions come from `world/cosys/world.json`.
+
 `/studio` supports named, saved Unreal scenarios. A saved scenario restores the
 person, appearance, situation, placement, movement state and mission brief together.
 Use Scenarios to save, load or begin a new scenario. Launch saves the reviewed brief
-and starts that case before opening `/mission?case=<saved-id>`.
+and starts that case before opening `/missionplanner?case=<saved-id>`.
 
 ## Authoring flow
 
@@ -19,17 +22,30 @@ and starts that case before opening `/mission?case=<saved-id>`.
    waiting for the visitor to press Send.
 
 Launch is the editing boundary. Before Launch, the four-step header remains editable.
-After Launch, returning to `/studio` cancels the active mission and resets the person,
-placement and brief to character selection. Studio waits for cancellation acknowledgement
-before opening the video stream. If aircraft are airborne, cancellation stops mission work,
-holds them, returns them home and waits for landing before resetting the world. Saved
-scenario files remain available in the library. Browser Forward to a cancelled case shows
-no active mission; it cannot launch the old case. A reload of an active mission rejoins it.
+After Launch, visiting `/studio` reads the active mission status before opening a stream.
+The visitor can resume the mission or explicitly choose **End mission and open Studio**.
+That action requires a healthy, landed and disarmed fleet; it ends mission work, clears
+uploaded missions and resets the person, placement and brief to character selection.
+It sends no flight commands. Idle Studio entry preserves the current draft. Saved scenarios
+remain available in the library. An old case link cannot relaunch an ended mission.
+
+`/home` navigation only closes browser sockets and preserves the mission. Opening
+`/missionplanner` resumes the active mission with its scenario attached, or starts a
+general mission when idle. Opening the planner sends no model request and launches no
+aircraft. A saved scenario's brief fills the chat composer once, waiting for Send.
 
 Page exit closes the video and mission sockets. A page restored from the browser's
 back/forward cache reloads to revalidate the launch boundary; it cannot revive the cached
 editing session. See [page lifecycle](https://developer.mozilla.org/en-US/docs/Web/API/Window/pageshow_event)
 and [pagehide](https://developer.mozilla.org/en-US/docs/Web/API/Window/pagehide_event).
+
+`PixelStreamingTransport.ts` also carries Mission Control's continuous forward-facing
+drone view. Its mission-only `{type: "drone-view", droneId}` command selects the existing
+`fpv` camera and acknowledges exactly `{droneId}`; it never returns an authoring snapshot.
+Camera switching reuses the connection and sends no flight command. The search capture
+camera remains nadir. Mouse, keyboard, touch, gamepad and XR input are disabled in the
+shared transport; application commands use acknowledged data-channel messages.
+Signalling permits one viewer per Unreal streamer, shared by Studio and Mission Control.
 
 The copy action uses a user-initiated `document.execCommand('copy')` because the
 installed HTTP origin cannot use the secure-context Clipboard API. A failed copy
@@ -86,9 +102,9 @@ with a 4,000-character brief. `/api/rescue-cases/:id` and the mission service re
 these public records. The private position, situation and movement state never enter
 the planner's record. The public world bounds still come from the authored world.
 
-The mission service owns one active saved case. Returning to Studio clears that selection
-while retaining the coupled fleet, so a new launch needs no service restart. Per-run logs
-remain separate from saved scenarios and are retained after cancellation.
+The mission service owns one active session with an optional saved case. Explicitly ending
+it for Studio clears that selection while retaining the coupled fleet. Per-run logs remain
+separate from saved scenarios and are retained after the session ends.
 
 `briefing.test.ts` checks every person's generated report across a placement grid,
 quoted evidence, landmark selection, local timestamps and the strict saved-record

@@ -24,6 +24,23 @@ export const localizationSchema = z.object({
   contact_pixel: z.array(number).length(2),
   ellipse95: z.object({ radii_m: z.array(number.positive()).length(2), angle_rad: number }),
 });
+export const analystReportSchema = z
+  .object({
+    observations: z.array(
+      z
+        .object({
+          attribute_id: z.string(),
+          visible: z.enum(['yes', 'no', 'cannot_tell']),
+          note: z.string(),
+        })
+        .strict(),
+    ),
+    reasoning: z.string().min(1),
+    decision: z.enum(['escalate', 'recheck', 'discard']),
+    action: z.enum(['none', 'closer_look', 'other_angle', 'hold_and_watch']),
+    reason: z.string().min(1),
+  })
+  .strict();
 export const detectionSchema = z.object({
   id: z.string(),
   frame_id: z.string(),
@@ -35,12 +52,14 @@ export const detectionSchema = z.object({
   frame_size: z.array(number.positive().int()).length(2),
   mask_area_px: number.positive().int(),
   sam_confidence: probability,
-  glimmer_yes: probability,
-  outside_mass: probability,
-  qualified: z.boolean(),
+  decision: z.enum(['escalate', 'recheck', 'discard']),
+  report: analystReportSchema,
+  analysis_template: z.string(),
+  reasoning_tokens: number.nonnegative().int(),
   calibrated: z.boolean(),
   frame_ref: z.string(),
   crop_ref: z.string(),
+  context_ref: z.string(),
   timestamp_ns: number.positive(),
   localization: localizationSchema,
   crop_box_native: z.array(number).length(4),
@@ -84,8 +103,8 @@ const leadDeliverySchema = z
     latitude_deg: number.min(-90).max(90),
     longitude_deg: number.min(-180).max(180),
     sam_confidence: probability,
-    glimmer_yes: probability,
-    glimmer_outside_mass: probability,
+    analyst_decision: z.enum(['escalate', 'recheck', 'discard']),
+    analyst_reason: z.string(),
     posterior_mass: probability,
     region_cell_count: number.nonnegative().int(),
     region_area_m2: number.nonnegative(),
@@ -170,9 +189,8 @@ export const commanderSchema = z
     review: clusterSchema
       .extend({
         selected_id: z.string(),
-        thresholds: z.object({ sam: probability, glimmer: probability }),
+        thresholds: z.object({ sam: probability }),
         members: z.array(detectionSchema),
-        model_review: z.record(z.string(), z.unknown()).nullable(),
         likelihood: z.array(
           z.object({
             frame_id: z.string(),

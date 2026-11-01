@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { ArrowLeft, MapPin, ScanEye, Send, Check, X } from 'lucide-react';
 import { droneIds } from './missionState';
-import { formatPosition, formatProbability as percent } from './display';
+import { formatPosition, formatProbability as percent, pacificTimestamp } from './display';
 import { sourceLabel, type CommanderState } from './commanderState';
 import './commander.css';
 
-const captureTime = (ns: number) => new Date(ns / 1e6).toISOString().replace('T', ' ').replace('Z', ' UTC');
+const captureTime = (ns: number) => pacificTimestamp(ns / 1e6);
 
 export default function EvidenceCard({
   commander,
@@ -44,7 +44,7 @@ export default function EvidenceCard({
           <span className="gcs-eyebrow">VISUAL EVIDENCE</span>
           <h3>{commander.clusters.length} ground clusters</h3>
         </header>
-        <p>Open a cluster to inspect its original frames, model scores and probability change.</p>
+        <p>Open a cluster to inspect its original frames, analyst report and probability change.</p>
         {commander.clusters.length === 0 && (
           <div className="gcs-evidence-empty">
             <ScanEye size={30} />
@@ -59,7 +59,7 @@ export default function EvidenceCard({
             disabled={!enabled}
             onClick={() => {
               if (review?.id === cluster.id) setShowList(false);
-              tool('review_detection', { detection_id: cluster.representative_id, model_review: false });
+              tool('review_detection', { detection_id: cluster.representative_id });
             }}
           >
             <span className={`gcs-evidence-status ${cluster.status}`}>
@@ -140,28 +140,27 @@ export default function EvidenceCard({
         <a href={selected.crop_ref} target="_blank" rel="noreferrer">
           <img src={selected.crop_ref} alt={`Verification crop for ${selected.prompt}`} />
         </a>
+        <a href={selected.context_ref} target="_blank" rel="noreferrer">
+          <img src={selected.context_ref} alt={`Surroundings of ${selected.prompt}`} />
+        </a>
         <dl>
           <div>
             <dt>SAM score</dt>
             <dd>{selected.sam_confidence.toFixed(4)}</dd>
           </div>
           <div>
-            <dt>Glimmer P(yes)</dt>
-            <dd>{selected.glimmer_yes.toFixed(4)}</dd>
+            <dt>Glimmer decision</dt>
+            <dd>{selected.decision}</dd>
           </div>
           <div>
-            <dt>Outside-option mass</dt>
-            <dd>{selected.outside_mass.toFixed(6)}</dd>
-          </div>
-          <div>
-            <dt>Qualified detection</dt>
-            <dd>{selected.qualified ? 'Yes' : 'No'}</dd>
+            <dt>Suggested action</dt>
+            <dd>{selected.report.action.replaceAll('_', ' ')}</dd>
           </div>
         </dl>
       </div>
       <p className="gcs-evidence-note">
-        SAM must be &gt; {Number(review.thresholds.sam.toPrecision(8))}; Glimmer P(yes) must be ≥{' '}
-        {Number(review.thresholds.glimmer.toPrecision(8))}.
+        SAM must be &gt; {Number(review.thresholds.sam.toPrecision(8))}. Glimmer reviews every candidate; only
+        escalated calibrated person evidence changes the search belief.
       </p>
       <details className="gcs-evidence-details">
         <summary>Detection and crop details</summary>
@@ -303,36 +302,23 @@ export default function EvidenceCard({
         </div>
       </section>
       <section className="gcs-evidence-opinion">
-        <h4>Model opinion</h4>
-        {review.model_review === null ? (
-          <p>No structured description requested.</p>
-        ) : (
-          <dl>
-            {Object.entries(review.model_review).map(([key, value]) => (
-              <div key={key}>
-                <dt>{key.replaceAll('_', ' ')}</dt>
-                <dd>
-                  {typeof value === 'string'
-                    ? value
-                    : Array.isArray(value)
-                      ? value.join('; ')
-                      : JSON.stringify(value)}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        )}
-        <button
-          disabled={!enabled || !commander.inference_ready}
-          title={
-            commander.inference_ready
-              ? 'Request an optional model opinion'
-              : 'Available while inference is running'
-          }
-          onClick={() => tool('review_detection', { detection_id: selected.id, model_review: true })}
-        >
-          Request Glimmer description
-        </button>
+        <h4>Glimmer analyst report</h4>
+        <p>{selected.report.reason}</p>
+        <dl>
+          {selected.report.observations.map((observation) => (
+            <div key={observation.attribute_id}>
+              <dt>{observation.attribute_id.replaceAll('_', ' ')}</dt>
+              <dd>
+                {observation.visible.replaceAll('_', ' ')}
+                {observation.note && ` · ${observation.note}`}
+              </dd>
+            </div>
+          ))}
+          <div>
+            <dt>Reasoning</dt>
+            <dd>{selected.report.reasoning}</dd>
+          </div>
+        </dl>
       </section>
       <details className="gcs-evidence-relook">
         <summary>Request a re-look</summary>

@@ -1,0 +1,53 @@
+--- a/libraries/SITL/SIM_AirSim.cpp
++++ b/libraries/SITL/SIM_AirSim.cpp
+@@ -414,10 +414,35 @@
+     // Receive sensor data
+     recv_fdm();
+ 
++    if (output_type == OutputType::Copter) {
++        update_battery(input);
++    }
++
+     // update magnetic field
+     update_mag_field_bf();
+ 
+     report_FPS();
++}
++
++void AirSim::update_battery(const sitl_input &input)
++{
++    if (!battery_initialized) {
++        const auto *params = AP::sitl();
++        if (params == nullptr || !is_positive(params->batt_capacity_ah) || !is_positive(params->batt_voltage)) {
++            AP_HAL::panic("AirSim requires positive SIM_BATT_CAP_AH and SIM_BATT_VOLTAGE");
++        }
++        // Same 50 A full-throttle / 0.7 V sag model as SITL_State_Common.
++        battery.setup(params->batt_capacity_ah, 0.7f / 50.0f, params->batt_voltage);
++        battery.init_voltage(params->batt_voltage);
++        battery_initialized = true;
++    }
++    motor_mask = 0x0f;
++    battery_current = 0;
++    for (uint8_t i = 0; i < 4; i++) {
++        battery_current += 12.5f * constrain_float((input.servos[i] - 1000) / 1000.0f, 0.0f, 1.0f);
++    }
++    battery.set_current(battery_current);
++    battery_voltage = battery.get_voltage();
+ }
+ 
+ /*
+--- a/libraries/SITL/SIM_AirSim.h
++++ b/libraries/SITL/SIM_AirSim.h
+@@ -46,7 +46,12 @@
+     /*  Create and set in/out socket for Airsim simulator */
+     void set_interface_ports(const char* address, const int port_in, const int port_out) override;
+ 
++protected:
++    void update_battery(const sitl_input &input);
++
+ private:
++    bool battery_initialized = false;
++
+     enum class OutputType {
+         Copter = 1,
+         Rover = 2

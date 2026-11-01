@@ -2,15 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { Check, Compass, ExternalLink, MapPin } from 'lucide-react';
 import { z } from 'zod';
 import { deliverySchema, sourceLabel, type Delivery, type StructureCheck } from './commanderState';
-import { formatProbability } from './display';
+import { formatProbability, pacificTimestamp } from './display';
 import './commander.css';
 
 const messageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('team'), team_id: z.string(), deliveries: z.array(deliverySchema) }),
   z.object({ type: z.literal('error'), message: z.string() }),
 ]);
-const utc = (ms: number) => new Date(ms).toISOString().replace('T', ' ').replace('Z', ' UTC');
-
 function StructureReport({
   task,
   disabled,
@@ -26,7 +24,7 @@ function StructureReport({
       <section className="team-report">
         <strong>Negative result confirmed by operator</strong>
         <p>{task.negative_confirmation.reason}</p>
-        <small>{utc(task.negative_confirmation.confirmed_at_ms)}</small>
+        <small>{pacificTimestamp(task.negative_confirmation.confirmed_at_ms)}</small>
       </section>
     );
   if (task.negative_report !== null)
@@ -210,21 +208,21 @@ export default function Team() {
                 <div>
                   <dt>Photo captured</dt>
                   <dd>
-                    {utc(delivery.timestamp_ms)}
+                    {pacificTimestamp(delivery.timestamp_ms)}
                     <br />
                     {delivery.drone_id}
                     {delivery.replay_lane === null ? '' : ` · replay lane ${delivery.replay_lane}`}
                   </dd>
                 </div>
                 <div>
-                  <dt>SAM score / Glimmer P(yes)</dt>
+                  <dt>SAM score / Glimmer decision</dt>
                   <dd>
-                    {delivery.sam_confidence.toFixed(4)} / {delivery.glimmer_yes.toFixed(4)}
+                    {delivery.sam_confidence.toFixed(4)} / {delivery.analyst_decision}
                   </dd>
                 </div>
                 <div>
-                  <dt>Glimmer outside-option mass</dt>
-                  <dd>{delivery.glimmer_outside_mass.toFixed(6)}</dd>
+                  <dt>Glimmer reason</dt>
+                  <dd>{delivery.analyst_reason}</dd>
                 </div>
                 <div>
                   <dt>Lead-region probability</dt>
@@ -240,7 +238,7 @@ export default function Team() {
             )}
             <div>
               <dt>Delivered</dt>
-              <dd>{utc(delivery.sent_at_ms)}</dd>
+              <dd>{pacificTimestamp(delivery.sent_at_ms)}</dd>
             </div>
           </dl>
           <p className="team-note">
@@ -255,7 +253,7 @@ export default function Team() {
             <p className="team-acknowledged">
               <Check size={19} /> Acknowledged by this receiving page
               <br />
-              <time>{utc(delivery.acknowledged_at_ms)}</time>
+              <time>{pacificTimestamp(delivery.acknowledged_at_ms)}</time>
             </p>
           ) : (
             <button

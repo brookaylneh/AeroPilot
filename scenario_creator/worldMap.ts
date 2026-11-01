@@ -32,18 +32,6 @@ export function mapView(u: number, v: number, zoom: number): MapView {
   return { u: Math.max(half, Math.min(1 - half, u)), v: Math.max(half, Math.min(1 - half, v)), zoom: z };
 }
 
-export function fitMapView(bounds: MapBounds, area: MapBounds): MapView {
-  const center = worldToMap({ x: (area.minX + area.maxX) / 2, y: (area.minY + area.maxY) / 2 }, bounds);
-  return mapView(
-    center.u,
-    center.v,
-    Math.min(
-      (bounds.maxX - bounds.minX) / (area.maxX - area.minX),
-      (bounds.maxY - bounds.minY) / (area.maxY - area.minY),
-    ),
-  );
-}
-
 export function mapToScreen(p: MapPoint, view: MapView): MapPoint {
   return { u: 0.5 + (p.u - view.u) * view.zoom, v: 0.5 + (p.v - view.v) * view.zoom };
 }

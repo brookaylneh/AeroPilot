@@ -15,7 +15,15 @@ os.environ["MAVLINK20"] = "1"
 from pymavlink import mavutil  # noqa: E402
 
 from mission_planner.environment import load_env  # noqa: E402
+from mission_planner.gcs.battery import (  # noqa: E402
+    CUTOFF_PERCENT,
+    LOW_VOLTAGE_V,
+    VOLTAGE_FLOOR_PERCENT,
+    available_seconds,
+)
 from mission_planner.gcs.geodesy import (  # noqa: E402
+    MAX_ALTITUDE_M,
+    MIN_ALTITUDE_M,
     NAMES,
     ORIGIN,
     fence_vertices,
@@ -23,17 +31,27 @@ from mission_planner.gcs.geodesy import (  # noqa: E402
     to_geodetic,
     to_local,
 )
+from mission_planner.gcs.planner import (  # noqa: E402
+    mission_home,
+    mission_item,
+    mission_readback,
+    validate_missions,
+)
 from mission_planner.gcs.sitl import check_ports, launches  # noqa: E402
 from mission_planner.gcs.validation import (  # noqa: E402
+    RouteConflict,
+    separation_conflict,
     validate_ground_column,
     validate_position,
     validate_route,
     validate_separation,
 )
 from world.cosys.landmarks import load as load_landmarks  # noqa: E402
+from world.cosys.terrain import terrain_height  # noqa: E402
 
 MAV = mavutil.mavlink
 RATES = {0: 2, 1: 5, 24: 5, 33: 10, 42: 5, 193: 5, 245: 5, 242: 1}
+STOPPED_SPEED_MPS = 0.2
 REQUIRED = (
     "HEARTBEAT",
     "SYS_STATUS",
@@ -45,6 +63,38 @@ REQUIRED = (
 )
 
 
+def course_degrees(north_cm_s, east_cm_s):
+    assert all(type(v) is int and -32768 <= v <= 32767 for v in (north_cm_s, east_cm_s)), (
+        "GLOBAL_POSITION_INT horizontal velocity must be int16 centimetres per second"
+    )
+    if math.hypot(north_cm_s, east_cm_s) / 100 < STOPPED_SPEED_MPS:
+        return None
+    return math.degrees(math.atan2(east_cm_s, north_cm_s)) % 360
+
+
+def remaining_route(state, route):
+    if not state["armed"] and state["landed_state"] == MAV.MAV_LANDED_STATE_ON_GROUND:
+        return [state]
+    mode = state["mode"]
+    if mode in ("BRAKE", "LOITER"):
+        return [state]
+    if mode == "AUTO":
+        sequence = state["mission_current"]
+        assert sequence is not None, state["id"] + ": mission progress is unavailable"
+        return [state, *(point for point in state["mission"] if point["seq"] >= sequence)]
+    assert mode in ("GUIDED", "RTL", "LAND"), state["id"] + ": untracked flight mode " + mode
+    assert route, state["id"] + ": active route reservation is unavailable"
+    if len(route) == 1:
+        return [state]
+    keys = ("north_m", "east_m", "altitude_above_home_m")
+    assert all(math.isfinite(point[key]) for point in [state, *route] for key in keys), (
+        state["id"] + ": reservation coordinates must be finite metres"
+    )
+    if mode == "RTL" and state["landed_state"] == MAV.MAV_LANDED_STATE_LANDING:
+        return [state, route[-1]]
+    return [state, *route]
+
+
 class Fleet:
     def __init__(self, directory, on_event, landmarks):
         self.directory = Path(directory).resolve()
@@ -53,6 +103,7 @@ class Fleet:
         self.tasks = []
         self.command_lock = asyncio.Lock()
         self.planned_routes = {}
+        self.control_versions = dict.fromkeys(NAMES, 0)
         self.landmarks = landmarks
 
     async def start(self):
@@ -86,6 +137,7 @@ class Fleet:
                 "positions": deque(maxlen=200),
                 "mission": [],
                 "mission_speed_mps": None,
+                "camera_available": False,
                 "fence": [],
                 "safety_parameters": {},
                 "expected_parameters": launch["expected_parameters"],
@@ -132,6 +184,13 @@ class Fleet:
                 if kind == "BAD_DATA":
                     raise ValueError(f"{name}: invalid MAVLink frame: {message.to_dict()}")
                 assert message.get_srcSystem() == vehicle["sysid"], f"Wrong SYSID on {name}"
+                if (
+                    kind == "HEARTBEAT"
+                    and "HEARTBEAT" in vehicle["messages"]
+                    and vehicle["messages"]["HEARTBEAT"].base_mode & MAV.MAV_MODE_FLAG_SAFETY_ARMED
+                    and not message.base_mode & MAV.MAV_MODE_FLAG_SAFETY_ARMED
+                ):
+                    vehicle["camera_available"] = False
                 vehicle["messages"][kind] = message
                 vehicle["times"][kind] = time.monotonic()
                 if kind == "GLOBAL_POSITION_INT":
@@ -150,6 +209,9 @@ class Fleet:
                 if kind == "HEARTBEAT":
                     mode = mavutil.mode_string_v10(message)
                     if "mode" not in vehicle or vehicle["mode"] != mode:
+                        if mode == "RTL":
+                            state = next(s for s in self.snapshot() if s["id"] == name)
+                            self.planned_routes[name] = rtl_route(state)
                         self.on_event({"kind": "mode", "drone_id": name, "mode": mode})
                     vehicle["mode"] = mode
                 for pending in list(vehicle["pending"]):
@@ -313,20 +375,7 @@ class Fleet:
             MAV.EKF_CONST_POS_MODE | MAV.EKF_UNINITIALIZED
         )
 
-    @staticmethod
-    def _item(point, altitude, command, param1=0):
-        latitude, longitude = to_geodetic(point["north_m"], point["east_m"])
-        return {
-            "frame": MAV.MAV_FRAME_GLOBAL_RELATIVE_ALT_INT,
-            "command": command,
-            "param1": param1,
-            "param2": 0,
-            "param3": 0,
-            "param4": 0,
-            "x": round(latitude * 1e7),
-            "y": round(longitude * 1e7),
-            "z": altitude,
-        }
+    _item = staticmethod(mission_item)
 
     async def _upload(self, name, items, mission_type):
         assert items
@@ -408,6 +457,7 @@ class Fleet:
                 assert items == [], f"{name}: mission clear readback is not empty"
                 vehicle["mission"] = items
                 vehicle["mission_speed_mps"] = None
+                vehicle["camera_available"] = False
             self.planned_routes = {state["id"]: [state] for state in self.snapshot()}
 
     def snapshot(self):
@@ -423,6 +473,7 @@ class Fleet:
             assert abs(north) < 10000 and abs(east) < 10000, f"{name}: position outside local frame"
             assert 0 <= gps.fix_type <= 8 and 0 <= gps.satellites_visible <= 255
             assert position.hdg == 65535 or 0 <= position.hdg < 36000
+            assert type(vehicle["camera_available"]) is bool
             assert -1 <= messages["SYS_STATUS"].battery_remaining <= 100
             samples = list(vehicle["positions"])
             hz = (len(samples) - 1) / (samples[-1][0] - samples[0][0]) if len(samples) >= 2 else 0
@@ -433,7 +484,16 @@ class Fleet:
             def points(items):
                 result = []
                 for item in items:
+                    if item["command"] == MAV.MAV_CMD_DO_CHANGE_SPEED:
+                        continue
                     n, e = to_local(item["x"] / 1e7, item["y"] / 1e7)
+                    altitude = item["z"]
+                    if item["frame"] == MAV.MAV_FRAME_GLOBAL:
+                        altitude -= home_message.altitude / 1000
+                    if item["command"] == MAV.MAV_CMD_NAV_LAND:
+                        altitude = terrain_height(n, e) - (
+                            home_message.altitude / 1000 - ORIGIN["altitude_msl_m"]
+                        )
                     result.append(
                         {
                             "seq": item["seq"],
@@ -441,7 +501,7 @@ class Fleet:
                             "east_m": e,
                             "latitude_deg": item["x"] / 1e7,
                             "longitude_deg": item["y"] / 1e7,
-                            "altitude_above_home_m": item["z"],
+                            "altitude_above_home_m": altitude,
                             "command": item["command"],
                         }
                     )
@@ -458,6 +518,7 @@ class Fleet:
                     "link_lost": age > 2
                     or time.monotonic() - vehicle["times"]["GLOBAL_POSITION_INT"] > 2,
                     "armed": bool(heartbeat.base_mode & MAV.MAV_MODE_FLAG_SAFETY_ARMED),
+                    "camera_available": vehicle["camera_available"],
                     "mode": vehicle["mode"],
                     "landed_state": messages["EXTENDED_SYS_STATE"].landed_state,
                     "latitude_deg": position.lat / 1e7,
@@ -466,6 +527,7 @@ class Fleet:
                     "east_m": east,
                     "altitude_above_home_m": position.relative_alt / 1000,
                     "heading_deg": None if position.hdg == 65535 else position.hdg / 100,
+                    "course_deg": course_degrees(position.vx, position.vy),
                     "ground_speed_mps": math.hypot(position.vx, position.vy) / 100,
                     "climb_rate_mps": -position.vz / 100,
                     "battery_percent": None
@@ -519,11 +581,495 @@ class Fleet:
         self._validate_separation(name, route)
 
     def _validate_separation(self, name, route):
-        reservations = list(self.planned_routes.items())
-        reservations.extend((state["id"], [state]) for state in self.snapshot())
-        validate_separation(name, route, reservations)
+        states = self.snapshot()
+        validate_separation(
+            name,
+            route,
+            self.reservations(states),
+            {state["id"]: state["home"]["altitude_msl_m"] for state in states},
+        )
 
-    async def execute(self, name, args):
+    def reservations(self, states):
+        return [
+            (state["id"], remaining_route(state, self.planned_routes[state["id"]]))
+            for state in states
+        ]
+
+    def check_return(self, state):
+        name = state["id"]
+        assert not state["link_lost"] and state["ekf_healthy"] and state["gps_fix"] >= 3, (
+            name + ": return requires healthy telemetry and GPS/EKF"
+        )
+        assert state["armed"] and state["landed_state"] == MAV.MAV_LANDED_STATE_IN_AIR, (
+            name + ": return requires airborne aircraft"
+        )
+        route = rtl_route(state)
+        validate_ground_column(route[-1], self.landmarks)
+        validate_route(
+            route[:-1],
+            self.vehicles[name]["fence"],
+            state["home"]["altitude_msl_m"] - ORIGIN["altitude_msl_m"],
+            self.landmarks,
+        )
+        return route
+
+    async def return_step(self, name):
+        async with self.command_lock:
+            states = self.snapshot()
+            state = next(state for state in states if state["id"] == name)
+            assert state["mode"] == "BRAKE", name + ": queued return was superseded"
+            route = self.check_return(state)
+            waiting = None
+            home_heights = {state["id"]: state["home"]["altitude_msl_m"] for state in states}
+            for reservation in self.reservations(states):
+                conflict = separation_conflict(name, route, [reservation], home_heights)
+                if conflict is not None:
+                    other = next(s for s in states if s["id"] == conflict["other_drone_id"])
+                    if other["mode"] != "RTL" or not other["armed"]:
+                        raise RouteConflict(conflict)
+                    if waiting is None:
+                        waiting = conflict
+            if waiting is not None:
+                return waiting
+            await self._mode(name, "RTL")
+            self.control_versions[name] += 1
+            self.planned_routes[name] = route
+            return None
+
+    async def upload_mission(self, name, items):
+        vehicle = self.vehicles[name]
+        was_armed = bool(
+            vehicle["messages"]["HEARTBEAT"].base_mode & MAV.MAV_MODE_FLAG_SAFETY_ARMED
+        )
+        await self._upload(name, items, MAV.MAV_MISSION_TYPE_MISSION)
+        received = await self._download(name, MAV.MAV_MISSION_TYPE_MISSION)
+        assert len(received) == len(items), f"{name}: mission readback count mismatch"
+        for index, (sent, actual) in enumerate(zip(items, received)):
+            for key, expected in mission_readback(sent, home=index == 0).items():
+                assert expected == actual[key], (
+                    f"{name}: mission item {index} {key} mismatch: {actual[key]} != {expected}"
+                )
+        vehicle["mission"] = received
+        vehicle["camera_available"] = len(received) > 1 and (
+            not was_armed
+            or bool(vehicle["messages"]["HEARTBEAT"].base_mode & MAV.MAV_MODE_FLAG_SAFETY_ARMED)
+        )
+
+    async def preview_plan(self, plan, *, initial_search=True):
+        from mission_planner.gcs.planner import compile_plan
+
+        states = self.snapshot()
+        return await asyncio.to_thread(
+            compile_plan,
+            copy.deepcopy(plan),
+            states,
+            {name: copy.deepcopy(vehicle["fence"]) for name, vehicle in self.vehicles.items()},
+            self.landmarks,
+            copy.deepcopy(self.reservations(states)),
+            initial_search=initial_search,
+        )
+
+    async def apply_plan(self, plan, *, initial_search=True):
+        async with self.command_lock:
+            receipt = await self.preview_plan(plan, initial_search=initial_search)
+            states = self.snapshot()
+            for name in receipt["missions"]:
+                self.control_versions[name] += 1
+            self.on_event(
+                {
+                    "kind": "plan_swap",
+                    "version": plan["version"],
+                    "stage": "holding",
+                    "drone_ids": list(receipt["missions"]),
+                }
+            )
+            timings = {}
+            for state in states:
+                name = state["id"]
+                if name not in receipt["missions"]:
+                    continue
+                timings[name] = {"brake_at_ms": None, "upload_at_ms": None, "auto_at_ms": None}
+                if state["armed"]:
+                    timings[name]["brake_at_ms"] = time.time() * 1000
+                    await self._mode(name, "BRAKE")
+                    await self._until(
+                        name,
+                        lambda name=name: (
+                            next(s for s in self.snapshot() if s["id"] == name)["ground_speed_mps"]
+                            < STOPPED_SPEED_MPS
+                        ),
+                        15,
+                    )
+            states = self.snapshot()
+            receipt = await self.preview_plan(plan, initial_search=initial_search)
+            self.on_event(
+                {
+                    "kind": "plan_swap",
+                    "version": plan["version"],
+                    "stage": "held",
+                    "states": states,
+                    "drone_ids": list(receipt["missions"]),
+                }
+            )
+            for name, mission in receipt["missions"].items():
+                timings[name]["upload_at_ms"] = time.time() * 1000
+                self.on_event(
+                    {
+                        "kind": "plan_swap",
+                        "version": plan["version"],
+                        "stage": "upload",
+                        "drone_id": name,
+                        "at_ms": timings[name]["upload_at_ms"],
+                    }
+                )
+                await self.upload_mission(name, mission["items"])
+                await self._command(name, MAV.MAV_CMD_DO_SET_MISSION_CURRENT, [1, 1, 0, 0, 0, 0, 0])
+            self.on_event(
+                {
+                    "kind": "plan_swap",
+                    "version": plan["version"],
+                    "stage": "uploaded",
+                    "receipt": receipt,
+                }
+            )
+            launching = []
+            for state in states:
+                name = state["id"]
+                if name not in receipt["missions"]:
+                    continue
+                if not state["armed"]:
+                    launching.append(name)
+                    await self._mode(name, "GUIDED")
+                    await self._command(
+                        name, MAV.MAV_CMD_COMPONENT_ARM_DISARM, [1, 0, 0, 0, 0, 0, 0]
+                    )
+                    await self._until(
+                        name,
+                        lambda name=name: bool(
+                            self.vehicles[name]["messages"]["HEARTBEAT"].base_mode
+                            & MAV.MAV_MODE_FLAG_SAFETY_ARMED
+                        ),
+                        10,
+                    )
+            try:
+                for name in launching:
+                    vehicle = self.vehicles[name]
+                    for kind, message_id in (("HOME_POSITION", 242), ("GLOBAL_POSITION_INT", 33)):
+                        before = vehicle["times"][kind]
+                        await self._command(
+                            name, MAV.MAV_CMD_REQUEST_MESSAGE, [message_id, 0, 0, 0, 0, 0, 0]
+                        )
+                        await self._until(name, lambda: vehicle["times"][kind] > before, 10)
+                states = self.snapshot()
+                await asyncio.to_thread(
+                    validate_missions,
+                    receipt,
+                    states,
+                    {
+                        name: copy.deepcopy(vehicle["fence"])
+                        for name, vehicle in self.vehicles.items()
+                    },
+                    self.landmarks,
+                    copy.deepcopy(self.reservations(states)),
+                )
+            except (AssertionError, TimeoutError) as error:
+                raise RuntimeError(
+                    f"Pre-AUTO safety check failed; no mission started: {error}"
+                ) from error
+            for name in receipt["missions"]:
+                await self._command(name, MAV.MAV_CMD_MISSION_START, [0, 0, 0, 0, 0, 0, 0])
+                await self._until(name, lambda name=name: self.vehicles[name]["mode"] == "AUTO", 10)
+                timings[name]["auto_at_ms"] = time.time() * 1000
+                self.planned_routes[name] = receipt["missions"][name]["route"]
+            return {"receipt": receipt, "states": states, "timings": timings}
+
+    async def face_heading(self, drone_id, heading_deg):
+        assert drone_id in NAMES, f"Unknown drone id: {drone_id}"
+        assert type(heading_deg) in (int, float) and math.isfinite(heading_deg), (
+            "Heading must be finite degrees"
+        )
+        assert 0 <= heading_deg < 360, "Heading must be in [0, 360) degrees"
+        vehicle = self.vehicles[drone_id]
+
+        def current():
+            state = next(s for s in self.snapshot() if s["id"] == drone_id)
+            assert not state["link_lost"], f"{drone_id}: link lost"
+            assert state["ekf_healthy"] and state["gps_fix"] >= 3, f"{drone_id}: GPS/EKF unhealthy"
+            assert state["armed"] and state["landed_state"] == MAV.MAV_LANDED_STATE_IN_AIR, (
+                f"{drone_id}: heading change requires airborne aircraft"
+            )
+            assert state["mode"] == "AUTO", f"{drone_id}: heading change requires AUTO flight"
+            assert state["camera_available"], (
+                f"{drone_id}: heading change requires a verified uploaded mission"
+            )
+            assert MIN_ALTITUDE_M <= state["altitude_above_home_m"] <= MAX_ALTITUDE_M, (
+                f"{drone_id}: Altitude outside {MIN_ALTITUDE_M:g}–{MAX_ALTITUDE_M:g} m above home"
+            )
+            assert (
+                state["heading_deg"] is not None
+                and math.isfinite(state["heading_deg"])
+                and 0 <= state["heading_deg"] < 360
+            ), f"{drone_id}: heading telemetry unavailable or invalid"
+            validate_position(drone_id, state, vehicle["fence"])
+            return state
+
+        async with self.command_lock:
+            state = current()
+            sequence, mission = state["mission_current"], vehicle["mission"]
+            assert sequence is not None and 0 <= sequence < len(mission), (
+                f"{drone_id}: current mission item unavailable"
+            )
+            await self._command(
+                drone_id, MAV.MAV_CMD_CONDITION_YAW, [heading_deg, 0, 0, 0, 0, 0, 0]
+            )
+
+        def aligned():
+            state = current()
+            assert vehicle["mission"] is mission and state["mission_current"] == sequence, (
+                f"{drone_id}: mission changed while facing the requested heading"
+            )
+            return abs((state["heading_deg"] - heading_deg + 180) % 360 - 180) <= 2
+
+        await self._until(drone_id, aligned, 30)
+        return current()
+
+    def _tracking_state(self, name):
+        assert name in NAMES, f"Unknown drone id: {name}"
+        state = next(s for s in self.snapshot() if s["id"] == name)
+        assert (
+            not state["link_lost"] and 0 <= time.time() * 1000 - state["received_at_ms"] <= 2000
+        ), f"{name}: tracking telemetry is stale"
+        assert state["ekf_healthy"] and state["gps_fix"] >= 3, f"{name}: tracking GPS/EKF unhealthy"
+        assert state["armed"] and state["landed_state"] == MAV.MAV_LANDED_STATE_IN_AIR, (
+            f"{name}: tracking requires airborne aircraft"
+        )
+        assert state["camera_available"], f"{name}: tracking requires a verified mission"
+        battery = state["battery_percent"]
+        assert battery is not None and math.isfinite(battery) and 0 <= battery <= 100, (
+            f"{name}: tracking battery telemetry is unavailable or invalid"
+        )
+        assert available_seconds(battery) > 0, (
+            f"{name}: tracking battery {battery:g}% has no usable time above the "
+            f"{CUTOFF_PERCENT:g}% charge floor and {VOLTAGE_FLOOR_PERCENT:.2f}% "
+            f"voltage threshold ({LOW_VOLTAGE_V:g} V)"
+        )
+        self._validate_route(name, [state])
+        return state
+
+    async def _require_mission_resume(self, name):
+        vehicle = self.vehicles[name]
+        reply = await self._expect(
+            name,
+            "PARAM_VALUE",
+            lambda m: m.param_id == "MIS_RESTART",
+            lambda: vehicle["connection"].mav.param_request_read_send(
+                vehicle["sysid"], 1, b"MIS_RESTART", -1
+            ),
+        )
+        assert reply.param_value == 0, f"{name}: MIS_RESTART must be 0 to preserve search progress"
+
+    async def tracking_start(self, name, survey_item_range):
+        first, last = survey_item_range
+        assert type(first) is int and type(last) is int and 1 <= first <= last
+        async with self.command_lock:
+            state = self._tracking_state(name)
+            assert state["mode"] in ("AUTO", "BRAKE"), (
+                f"{name}: candidate lock requires the active or held search route"
+            )
+            mode = state["mode"]
+            mission = copy.deepcopy(self.vehicles[name]["mission"])
+            assert first <= state["mission_current"] <= last < len(mission), (
+                f"{name}: candidate arrived outside its survey step"
+            )
+            route = copy.deepcopy(self.planned_routes[name])
+            version = self.control_versions[name]
+            await self._require_mission_resume(name)
+            assert self._tracking_state(name)["mode"] == mode, (
+                f"{name}: search flight was superseded before candidate pause"
+            )
+            if mode == "AUTO":
+                await self._mode(name, "BRAKE")
+
+        def stopped():
+            state = self._tracking_state(name)
+            assert state["mode"] == "BRAKE", f"{name}: candidate pause was superseded"
+            assert self.control_versions[name] == version, f"{name}: candidate pause was superseded"
+            return (
+                state["ground_speed_mps"] < STOPPED_SPEED_MPS
+                and abs(state["climb_rate_mps"]) < STOPPED_SPEED_MPS
+            )
+
+        await self._until(name, stopped, 15)
+        async with self.command_lock:
+            state = self._tracking_state(name)
+            assert state["mode"] == "BRAKE", f"{name}: candidate pause was superseded"
+            assert self.control_versions[name] == version, f"{name}: candidate pause was superseded"
+            sequence = state["mission_current"]
+            assert self.vehicles[name]["mission"] == mission and first <= sequence <= last, (
+                f"{name}: survey changed before the aircraft stopped"
+            )
+            assert mission[sequence]["command"] == MAV.MAV_CMD_NAV_WAYPOINT, (
+                f"{name}: candidate lock requires an unfinished survey waypoint"
+            )
+            speeds = [
+                m["param2"]
+                for m in mission[: sequence + 1]
+                if m["command"] == MAV.MAV_CMD_DO_CHANGE_SPEED
+            ]
+            assert speeds, f"{name}: survey has no recorded speed"
+            saved = {
+                "mission": mission,
+                "sequence": sequence,
+                "point": {k: state[k] for k in ("north_m", "east_m", "altitude_above_home_m")},
+                "route": route,
+                "speed_mps": speeds[-1],
+                "control_version": version,
+            }
+            self.planned_routes[name] = [saved["point"]]
+            return saved
+
+    def _candidate_state(self, name, saved):
+        state = self._tracking_state(name)
+        assert self.control_versions[name] == saved["control_version"], (
+            f"{name}: candidate control was superseded"
+        )
+        assert state["mode"] in ("BRAKE", "GUIDED"), f"{name}: candidate control was superseded"
+        assert self.vehicles[name]["mission"] == saved["mission"], (
+            f"{name}: saved search mission was replaced"
+        )
+        assert state["mission_current"] == saved["sequence"], (
+            f"{name}: saved search progress changed"
+        )
+        return state
+
+    async def tracking_follow(self, name, saved, speed_mps):
+        assert math.isfinite(speed_mps) and 0.5 <= speed_mps <= 15
+        async with self.command_lock:
+            state = self._candidate_state(name, saved)
+            assert state["mode"] == "BRAKE", f"{name}: candidate is already following"
+            await self._mode(name, "GUIDED")
+            await self._command(name, MAV.MAV_CMD_DO_CHANGE_SPEED, [1, speed_mps, -1, 0, 0, 0, 0])
+
+    async def tracking_target(self, name, point, yaw_deg, captured_at_ms=None):
+        assert math.isfinite(yaw_deg) and 0 <= yaw_deg < 360
+        async with self.command_lock:
+            state = self._tracking_state(name)
+            assert state["mode"] == "GUIDED", f"{name}: candidate control was superseded"
+            self._validate_route(name, [state, point])
+            if captured_at_ms is not None:
+                assert 0 <= time.time() * 1000 - captured_at_ms <= 1000, (
+                    f"{name}: candidate observation is too old at flight-command dispatch"
+                )
+            latitude, longitude = to_geodetic(point["north_m"], point["east_m"])
+            vehicle = self.vehicles[name]
+            vehicle["connection"].mav.set_position_target_global_int_send(
+                0,
+                vehicle["sysid"],
+                1,
+                MAV.MAV_FRAME_GLOBAL_RELATIVE_ALT_INT,
+                2552,
+                round(latitude * 1e7),
+                round(longitude * 1e7),
+                point["altitude_above_home_m"],
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                math.radians(yaw_deg),
+                0,
+            )
+            self.planned_routes[name] = [state, point]
+            return state
+
+    async def tracking_resume(self, name, saved, breadcrumbs, speed_mps):
+        assert 0.5 <= speed_mps <= 15 and math.isfinite(speed_mps)
+
+        def current():
+            return self._candidate_state(name, saved)
+
+        state = current()
+        points = [*reversed(breadcrumbs), saved["point"]]
+        self._validate_route(name, [state, *points])
+        if state["mode"] == "BRAKE":
+            await self.tracking_follow(name, saved, speed_mps)
+        for point in points:
+            state = current()
+            heading = (
+                math.degrees(
+                    math.atan2(
+                        point["east_m"] - state["east_m"], point["north_m"] - state["north_m"]
+                    )
+                )
+                % 360
+            )
+            await self.tracking_target(name, point, heading)
+
+            def arrived():
+                state = current()
+                return (
+                    math.dist(
+                        [state[k] for k in saved["point"]], [point[k] for k in saved["point"]]
+                    )
+                    < 0.8
+                )
+
+            distance = math.dist(
+                [state[k] for k in saved["point"]], [point[k] for k in saved["point"]]
+            )
+            await self._until(name, arrived, max(15, distance / speed_mps * 3))
+        async with self.command_lock:
+            state = current()
+            await self._require_mission_resume(name)
+            state = current()
+            remaining = [state]
+            for item in saved["mission"][saved["sequence"] :]:
+                if item["command"] == MAV.MAV_CMD_DO_CHANGE_SPEED:
+                    continue
+                north, east = to_local(item["x"] / 1e7, item["y"] / 1e7)
+                if item["command"] == MAV.MAV_CMD_NAV_LAND:
+                    validate_ground_column({"north_m": north, "east_m": east}, self.landmarks)
+                    break
+                assert item["command"] in (
+                    MAV.MAV_CMD_NAV_WAYPOINT,
+                    MAV.MAV_CMD_NAV_LOITER_TIME,
+                    MAV.MAV_CMD_NAV_LOITER_UNLIM,
+                ), f"{name}: unsupported remaining search command"
+                remaining.append(
+                    {"north_m": north, "east_m": east, "altitude_above_home_m": item["z"]}
+                )
+            self._validate_route(name, remaining)
+            await self._mode(name, "AUTO")
+            await self._command(
+                name, MAV.MAV_CMD_DO_CHANGE_SPEED, [1, saved["speed_mps"], -1, 0, 0, 0, 0]
+            )
+            vehicle = self.vehicles[name]
+            progress = await self._expect(
+                name,
+                "MISSION_CURRENT",
+                lambda m: True,
+                lambda: vehicle["connection"].mav.command_long_send(
+                    vehicle["sysid"],
+                    1,
+                    MAV.MAV_CMD_REQUEST_MESSAGE,
+                    0,
+                    42,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                    0,
+                ),
+            )
+            assert saved["sequence"] <= progress.seq < len(saved["mission"]), (
+                f"{name}: resumed mission rewound or lost its search progress"
+            )
+            self.planned_routes[name] = saved["route"]
+            return next(s for s in self.snapshot() if s["id"] == name)
+
+    async def execute(self, name, args, *, expected_mode=None):
         async with self.command_lock:
             drone = args["drone_id"]
             assert drone in NAMES, f"Unknown drone id: {drone}"
@@ -532,6 +1078,19 @@ class Fleet:
                 if parked["landed_state"] == MAV.MAV_LANDED_STATE_ON_GROUND and not parked["armed"]:
                     self.planned_routes[parked["id"]] = [parked]
             state = next(s for s in states if s["id"] == drone)
+            if expected_mode is None:
+                self.control_versions[drone] += 1
+            if expected_mode is not None:
+                assert name == "hold" and expected_mode in ("AUTO", "GUIDED", "BRAKE")
+                assert (
+                    state["mode"] == expected_mode
+                    and state["armed"]
+                    and state["landed_state"] in (2, 3, 4)
+                ), (
+                    f"{drone}: automatic hold was superseded "
+                    f"(expected {expected_mode}, mode={state['mode']}, "
+                    f"armed={state['armed']}, landed_state={state['landed_state']})"
+                )
             assert not state["link_lost"], f"{drone}: link lost"
             assert state["ekf_healthy"] and state["gps_fix"] >= 3, f"{drone}: GPS/EKF unhealthy"
             validate_position(drone, state, self.vehicles[drone]["fence"])
@@ -570,29 +1129,12 @@ class Fleet:
                     assert 0 < args["speed_mps"] <= 15, "Speed must be >0 and <=15 m/s"
                     self._validate_route(drone, [state, *route])
                     if name == "fly_route":
-                        items = [self._item(state["home"], 0, MAV.MAV_CMD_NAV_WAYPOINT)]
+                        items = [mission_home(state["home"])]
                         items.extend(
                             self._item(p, p["altitude_above_home_m"], MAV.MAV_CMD_NAV_WAYPOINT)
                             for p in route
                         )
-                        await self._upload(drone, items, MAV.MAV_MISSION_TYPE_MISSION)
-                        self.vehicles[drone]["mission"] = await self._download(
-                            drone, MAV.MAV_MISSION_TYPE_MISSION
-                        )
-                        assert len(self.vehicles[drone]["mission"]) == len(items)
-                        for sent, received in zip(items[1:], self.vehicles[drone]["mission"][1:]):
-                            for key in ("command", "x", "y"):
-                                assert sent[key] == received[key], (
-                                    f"Mission readback mismatch: {key}"
-                                )
-                            for key in ("param1", "param2", "param3", "param4", "z"):
-                                assert math.isclose(sent[key], received[key], abs_tol=1e-4), (
-                                    f"Mission readback mismatch: {key}"
-                                )
-                            assert received["frame"] in (
-                                MAV.MAV_FRAME_GLOBAL_RELATIVE_ALT,
-                                MAV.MAV_FRAME_GLOBAL_RELATIVE_ALT_INT,
-                            )
+                        await self.upload_mission(drone, items)
                         await self._command(
                             drone, MAV.MAV_CMD_DO_SET_MISSION_CURRENT, [1, 1, 0, 0, 0, 0, 0]
                         )
@@ -641,9 +1183,7 @@ class Fleet:
                             drone, [state, *state["mission"][max(1, state["mission_current"]) :]]
                         )
                     if name == "return_home":
-                        return_route = rtl_route(state)
-                        validate_ground_column(return_route[-1], self.landmarks)
-                        self._validate_route(drone, return_route[:-1])
+                        return_route = self.check_return(state)
                         self._validate_separation(drone, return_route)
                     await self._mode(
                         drone,
@@ -676,7 +1216,10 @@ class Fleet:
         vehicle = self.vehicles[drone_id]
         state = next(s for s in self.snapshot() if s["id"] == drone_id)
         assert len(vehicle["mission"]) > 1, "Cannot export an empty active mission"
-        assert vehicle["mission_speed_mps"] is not None, "Mission has no acknowledged flight speed"
+        speeds = [
+            m["param2"] for m in vehicle["mission"] if m["command"] == MAV.MAV_CMD_DO_CHANGE_SPEED
+        ]
+        speed = speeds[0] if speeds else vehicle["mission_speed_mps"]
         items = [
             {
                 "AMSLAltAboveTerrain": None,
@@ -722,7 +1265,7 @@ class Fleet:
                 "vehicleType": 2,
                 "globalPlanAltitudeMode": 1,
                 "cruiseSpeed": 15,
-                "hoverSpeed": vehicle["mission_speed_mps"],
+                "hoverSpeed": 0 if speed is None else speed,
                 "plannedHomePosition": [
                     home["latitude_deg"],
                     home["longitude_deg"],

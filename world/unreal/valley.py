@@ -275,6 +275,15 @@ def points(item):
     return np.array([[p["x"] / 100, p["y"] / 100] for p in item["geometry"]["points"]])
 
 
+def surface_points(item):
+    vertices = points(item)
+    if item["kind"] != "parking":
+        return vertices
+    # The gravel apron remains rectangular beneath the launch-port obstacle notch.
+    low, high = vertices.min(axis=0), vertices.max(axis=0)
+    return np.array([[low[0], low[1]], [low[0], high[1]], [high[0], high[1]], [high[0], low[1]]])
+
+
 def axes():
     return (
         np.linspace(BOUNDS["min"]["x"] / 100, BOUNDS["max"]["x"] / 100, COLUMNS),
@@ -791,8 +800,9 @@ def layers(elevation, named, creek, water, floors):
     # The trailhead lot and the command post are gravel to a 1 m noisy edge.
     for item in named.values():
         if item["kind"] in ("parking", "command_post"):
-            window, wx, wy = region(points(item), 4)
-            delta = signed_distance(inside(points(item), wx, wy))
+            footprint = surface_points(item)
+            window, wx, wy = region(footprint, 4)
+            delta = signed_distance(inside(footprint, wx, wy))
             lot = smoothstep(1, -1, delta + noise(wx.shape, 21, 2))
             cover["gravel-road"][window] = np.maximum(cover["gravel-road"][window], lot)
     cover["trail-tread"] = 1 - smoothstep(
@@ -816,6 +826,44 @@ def layers(elevation, named, creek, water, floors):
     quantized = np.diff(total, axis=0, prepend=0).astype(np.uint8)
     assert np.all(quantized.sum(axis=0, dtype=np.int64) == 255)
     return quantized
+
+
+def port_clearance(elevation, landmarks, port):
+    pad = np.array([port["centerUeCm"][axis] / 100 for axis in "xy"])
+    half = np.array(port["dimensionsMetres"][:2]) / 2
+    corners = pad + half * [[-1, -1], [-1, 1], [1, 1], [1, -1]]
+    edges = list(zip(corners, np.roll(corners, -1, axis=0)))
+    gaps = []
+    for item in landmarks:
+        if item["heightM"] <= 0:
+            continue
+        ring = points(item)
+        gap = min(
+            min(_nearest(item, p)[0] for p in corners),
+            float(np.linalg.norm(np.maximum(np.abs(ring - pad) - half, 0), axis=1).min()),
+        )
+        assert gap > 0 and not any(
+            _intersects(*a, *b) for a in edges for b in zip(ring, np.roll(ring, -1, axis=0))
+        ), f"Drone port intersects raised landmark {item['name']}"
+        gaps.append(gap)
+    # A bilinear cell reaches its rectangle extrema at the corners, including clipped cells.
+    stations = [
+        np.r_[low, axis[(axis > low) & (axis < high)], high]
+        for axis, low, high in zip(axes(), pad - half, pad + half)
+    ]
+    ground = lookup(elevation, np.stack(np.meshgrid(*stations), -1).reshape(-1, 2))
+    top = port["centerUeCm"]["z"] / 100
+    bottom = top - port["dimensionsMetres"][2]
+    assert bottom <= ground.min() <= ground.max() <= top, (
+        "Drone port slab must enter the terrain across its whole footprint"
+    )
+    return {
+        "padTopM": top,
+        "slabBottomM": bottom,
+        "groundMinimumM": float(ground.min()),
+        "groundMaximumM": float(ground.max()),
+        "nearestObstacleM": min(gaps),
+    }
 
 
 def build(document):
@@ -955,38 +1003,7 @@ def build(document):
         np.median(quantized[np.ix_((east >= e0) & (east <= e1), (north >= n0) & (north <= n1))])
     )
     assert summit - meadow <= 60, f"Dome summit {summit - meadow} m above the meadow"
-    port = WORLD["port"]
-    pad = np.array([port["centerUeCm"]["x"], port["centerUeCm"]["y"]]) / 100
-    half_pad = np.array(port["dimensionsMetres"][:2]) / 2
-    gap = np.hypot(
-        *np.maximum(np.abs(np.stack((x, y)) - pad[:, None, None]) - half_pad[:, None, None], 0)
-    )
-    top = port["centerUeCm"]["z"] / 100
-    perimeter = [
-        pad + half_pad * [np.cos(a), np.sin(a)] / max(abs(np.cos(a)), abs(np.sin(a)))
-        for a in np.linspace(0, 2 * np.pi, 400, endpoint=False)
-    ]
-    pad_report = {
-        "padTopM": top,
-        "terrainAbovePadWithin20M": float(quantized[gap <= 20].max() - top),
-        "terrainAbovePadWithin40M": float(quantized[gap <= 40].max() - top),
-        "tallestLandmarkWithin20M": max(
-            [i["heightM"] for i in landmarks if min(_nearest(i, p)[0] for p in perimeter) <= 20],
-            default=0,
-        ),
-        "tallestLandmarkWithin40M": max(
-            [i["heightM"] for i in landmarks if min(_nearest(i, p)[0] for p in perimeter) <= 40],
-            default=0,
-        ),
-    }
-    assert (
-        pad_report["terrainAbovePadWithin20M"] <= 0.3
-        and pad_report["terrainAbovePadWithin40M"] <= 4
-    )
-    assert (
-        pad_report["tallestLandmarkWithin20M"] <= 0.3
-        and pad_report["tallestLandmarkWithin40M"] <= 4
-    )
+    pad_report = port_clearance(quantized, landmarks, WORLD["port"])
     masks = layers(quantized, named, vertices, water, floors)
     creek_report["sampledFinalBedM"] = sampled.tolist()
     creek_report["sampledFinalBedMaximumDownstreamRiseM"] = float(rise.max())

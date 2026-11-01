@@ -12,7 +12,7 @@ world/               the simulated world
 scenario_creator/    browser studio: choose a person, situation and place; write the rescue briefing
 mission_planner/     the system that searches the world
   gcs/               ground control station: ArduPilot fleet, mission service, UI
-  agents/            model clients, Wonder tools, perception calibration, fal services
+  agents/            model clients, Wonder tools, perception calibration
   measurements/      committed results
 web/                 web server and page shell hosting both browser applications
 ```

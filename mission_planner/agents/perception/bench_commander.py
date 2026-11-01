@@ -8,7 +8,6 @@ import math
 import signal
 import sys
 import time
-from dataclasses import asdict
 from datetime import datetime, timezone
 from pathlib import Path
 from types import SimpleNamespace
@@ -20,13 +19,12 @@ from mission_planner.agents.perception.configuration import (
     digest,
     encode,
     load_configuration,
-    prepare_frame,
-    read_capture,
+    load_observation_model,
 )
-from mission_planner.agents.perception.hosting import inference_session, ready, usage
 from mission_planner.agents.perception.ingestion import Ingestion, load_replay
 from mission_planner.agents.perception.pipeline import Processor
 from mission_planner.environment import ROOT, load_env
+from mission_planner.search.commander import look_for
 
 
 def provenance(output, timing):
@@ -43,7 +41,6 @@ def provenance(output, timing):
             "compare_prompts",
             "configuration",
             "geometry",
-            "hosting",
             "ingestion",
             "localization",
             "pipeline",
@@ -55,8 +52,8 @@ def provenance(output, timing):
     )
     paths += [
         ROOT / "world/cosys/terrain.py",
-        ROOT / "mission_planner/agents/services/sam/app.py",
-        ROOT / "mission_planner/agents/services/sam/pyproject.toml",
+        ROOT / "mission_planner/agents/services/app.py",
+        ROOT / "mission_planner/agents/services/sam_server.py",
     ]
     hashes = {}
     for path in paths:
@@ -84,7 +81,7 @@ def provenance(output, timing):
             )
         },
         "source_sha256": hashes,
-        "service_provenance": "Actual revisions and runner IDs are in hosting/ready.json; checkpoint, SAM code and Glimmer image digest are in configuration.json. SAM's managed container image digest is not exposed by the apps API.",
+        "service_provenance": "Modal deployment and measurement provenance is in mission_planner/measurements/modal.json.",
     }
     (output / "provenance.json").write_text(encode(result) + "\n")
     return result
@@ -289,7 +286,6 @@ async def replay(manifest, processor, search, output, interval):
 
 def summarize(run):
     phases = json.loads(run.joinpath("phases.json").read_text())
-    hosting = json.loads(run.joinpath("hosting/hosting.json").read_text())
     throughput = json.loads(run.joinpath("throughput.json").read_text())
     states = json.loads(run.joinpath("evidence/frames.json").read_text())
     assert all(f["status"] in ("complete", "failed") for f in states)
@@ -348,15 +344,6 @@ def summarize(run):
     path = run / "capacity.json"
     assert not path.exists(), "Capacity reductions are immutable"
     path.write_text(encode(result) + "\n")
-    intervals = [
-        ("one_runner", hosting["startedAt"], phases["transition_requested_at"]),
-        ("transition", phases["transition_requested_at"], phases["two_ready_at"]),
-        ("two_runners", phases["two_ready_at"], hosting["endedAt"]),
-    ]
-    costs = {"whole_window": hosting["usage"], "intervals": {}}
-    for name, start, end in intervals:
-        costs["intervals"][name] = {"start": start, "end": end, "usage": usage(start, end)}
-        run.joinpath("phase-usage.json").write_text(encode(costs) + "\n")
     return {
         name: {
             k: row[k]
@@ -384,7 +371,6 @@ def main():
         child.add_argument("--manifest", type=Path, required=True)
         child.add_argument("--prompt", action="append", required=True)
         child.add_argument("--output", type=Path, required=True)
-        child.add_argument("--sam-concurrency", type=int, choices=(1, 2), required=True)
         child.add_argument("--interval", type=float, required=True)
         child.add_argument("--profile", type=Path, required=True)
     summary = commands.add_parser("summarize")
@@ -395,53 +381,25 @@ def main():
         return
     assert "person" not in args.prompt and len(set(args.prompt)) == len(args.prompt)
     args.output.mkdir(parents=True, exist_ok=False)
-    provenance(args.output, "Captured before clients, model warm-up and frame offering")
+    provenance(args.output, "Captured before clients and frame offering")
     manifest = load_replay(args.manifest)
     profile = json.loads(args.profile.read_text())
-    config, model = load_configuration()
+    config, model = load_configuration(), load_observation_model()
     (args.output / "configuration.json").write_text(encode(config) + "\n")
     (args.output / "observation-model.json").write_text(encode(model) + "\n")
     (args.output / "prompts.json").write_text(encode(["person", *args.prompt]) + "\n")
     search = search_for_benchmark(args.output, profile)
-    with inference_session(args.output / "hosting", args.sam_concurrency) as hosting_report:
-        sam, glimmer = Sam(), None
-        try:
-            started = time.monotonic()
-            try:
-                glimmer = Glimmer()
-            finally:
-                (args.output / "client-startup.json").write_text(
-                    encode(
-                        {
-                            "glimmer_tokenizer_startup_s": time.monotonic() - started,
-                            "complete": glimmer is not None,
-                        }
-                    )
-                    + "\n"
-                )
-            _, first = read_capture(manifest["records"][0]["record"])
-            started = time.monotonic()
-            warmup = sam.detect(prepare_frame(first), ["person"], config["sam_threshold"])
-            (args.output / "warmup.json").write_text(
-                encode(
-                    {
-                        "seconds": time.monotonic() - started,
-                        "frame_id": manifest["records"][0]["frame_id"],
-                        "detections": {
-                            p: [asdict(d) for d in values] for p, values in warmup.items()
-                        },
-                        "purpose": "Warm SAM before offering every manifest frame; no belief update",
-                    }
-                )
-                + "\n"
-            )
-            hosting_report["readyAt"] = ready(args.output / "hosting", args.sam_concurrency)
-            processor = Processor(args.output / "evidence", args.prompt, config, sam, glimmer)
-            result = asyncio.run(replay(manifest, processor, search, args.output, args.interval))
-        finally:
-            sam.http.close()
-            if glimmer is not None:
-                glimmer.http.close()
+    sam, glimmer = Sam(), None
+    try:
+        glimmer = Glimmer()
+        processor = Processor(
+            args.output / "evidence", args.prompt, look_for(profile), config, sam, glimmer
+        )
+        result = asyncio.run(replay(manifest, processor, search, args.output, args.interval))
+    finally:
+        sam.http.close()
+        if glimmer is not None:
+            glimmer.http.close()
     print(
         encode(
             {

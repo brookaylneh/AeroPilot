@@ -22,6 +22,15 @@ Cosys-AirSim 3.5.0 (`5.8-v3.5.0`) provides the simulated aircraft and cameras in
 `SNR_COSYS_PORT` matching that instance. It checks aircraft at rest at their pads and the
 configured nadir camera without changing the gimbal or controlling the aircraft.
 
+The 14 m square launch port is in front of Incident Command at north −738 m,
+east −27 m. Its 0.30 m slab spans 10.63–10.93 m UE up; the four homes are
+11.13 m UE up on a 5 m grid. Exact bilinear terrain extrema under the slab are
+10.671875–10.821601076182525 m, so its bottom enters the terrain throughout.
+`world.json` owns these positions; settings generation validates the grid directly
+without depending on an older `settings.json`. The parking's raised footprint
+excludes this open launch area while the command-post and antenna footprints
+continue protecting the equipment.
+
 The fetcher requires the shared `.env`, verifies release archive hashes, and applies
 `airsim-ue58.patch`, `airsim-geodesy.patch` and `airsim-sensor.patch`. The first avoids resetting an unchanged
 CustomDepth value during startup, which would invalidate Landscape PSO precaching in
@@ -58,7 +67,15 @@ readback completion.
 The local `mission-request.json` contains exactly `mode` (`mission` or `studio`) and a
 unique `id`. Native telemetry acknowledges both `mode` and `modeRequestId`; the bridge
 waits for its own request, not an old matching mode. Launch disables the Studio viewport
-and switches grass generation to the four drone sources. Cancellation is acknowledged only
+and switches grass generation to the four drone sources. A mission viewer's acknowledged
+`drone-view` command activates the selected drone's existing forward `fpv` camera and enables
+the viewport for continuous Pixel Streaming video. Closing that viewer disables the mission
+viewport again. The stock camera follows the aircraft's position and attitude during hover,
+return, landing and disarm, independent of AUTO capture spacing. Legacy calibrated search
+captures retain their separate stabilized nadir `front_center` camera. Conversational
+missing-person search aims `fpv` as described below; selecting a video feed itself changes
+no camera pose or flight command.
+Cancellation is acknowledged only
 after native reset restores the Studio grass graph/source, viewport rendering, default
 character, empty placement and blank brief. The mission owner must cancel its tasks and
 land/disarm the aircraft before requesting this reset. Saving and loading remain separate
@@ -76,8 +93,8 @@ trigger fails loudly. Network errors propagate without another request.
 The generator sets a 3840×2160 scene capture with 70° horizontal FOV. The documented
 camera `Gimbal` fixes world pitch at −90° and roll at 0° with stabilization 1. Yaw is
 deliberately omitted so heading can follow the aircraft; the pinned parser uses NaN
-for uncontrolled axes. Runtime `simSetCameraPose` changes these gimbal targets and
-must not be used during a sensor flight. Exposure is manual with no eye adaptation:
+for uncontrolled axes. Runtime `simSetCameraPose` must not change `front_center` during
+a calibrated sensor flight. Forward search aiming changes only `fpv`. Exposure is manual with no eye adaptation:
 with the physical camera off, manual exposure meters at EV100 0, so
 `AutoExposureCompensation` is minus the `exposureEv100` of
 `world/unreal/valley-lighting.json` (13). Motion blur amount/max and bloom intensity are zero.
@@ -130,6 +147,58 @@ Call its async `start()`/`close()` around a flight and `check()` from the superv
 to propagate failures. This measures turns and acceleration between image captures.
 
 ## Coupled settings
+
+Flight-plan inspections use `inspection.ForwardCapture` and the stock `fpv`
+camera. `CameraDefaults` configures request-driven 1920×1080 RGB with the same
+fixed exposure, white balance and Lumen settings. No named `fpv` entry is created:
+Cosys would replace the stock camera and its mount. The separately configured
+3840×2160 nadir camera and SAR capture validation remain unchanged.
+
+Forward capture records the image-owned pose and timestamp, measured horizontal
+field of view, vehicle origin and simulator/UTC brackets. Wrong camera identity,
+dimensions, an out-of-bracket timestamp or invalid image/pose rejects the frame.
+Shadow-floor luminance is recorded as an image-quality measurement: a dark percentile
+alone does not establish missing lighting. An entirely black forward frame is saved
+losslessly as `<timestamp>-rejected.png` with pose/quality JSON in the inspection directory
+before raising. The legacy calibrated nadir capture retains its strict shadow-fill check.
+Forward capture neither pauses physics nor selects the operator's video camera. Each inspection
+owns one RPC worker; cancellation drains its current acquisition before closing
+the client. These are observation poses, not inferred object coordinates or SAR
+calibration claims. Install regenerated release settings and restart the coupled
+world before enabling the new capture path.
+
+Missing-person search also uses that forward camera. `ForwardCapture.aim` computes
+the body-relative camera rotation from an observation-derived world point and the
+measured vehicle attitude, preserving the stock mount. The capture owner remembers
+that world target and reapplies its aim before each image, compensating for changes
+in aircraft position and attitude during braking. This is capture-time compensation,
+not a native per-render-frame gimbal. Reset clears the target and restores the mount.
+`route_look_ahead` projects the
+aircraft onto its active leg, then follows the remaining route across short terrain
+waypoints. It receives the previous navigation point followed by current/future targets
+and extends the final tangent after arrival or overshoot, so a nearby conversion
+waypoint does not repeatedly point the camera straight down or backwards.
+The camera never reads a scenario character's position. Tracking uses the image-owned
+pose for every ray, so aircraft and camera rotations cannot be confused with target motion.
+
+`ForwardCapture.view(target, zoom)` centres a world point and sets 1–4× focal zoom
+on the same serialized worker as capture and aiming. Zoom uses the original measured
+field of view: doubling focal length halves `tan(FOV/2)`, not the angle. The command
+reads the setting back, then returns its target, zoom, measured horizontal FOV and
+view revision. Each image records `camera_view_revision` and brackets capture with
+matching FOV reads. Callers retain one capture owner per drone and serialize view
+changes with capture. A selected temporal session survives a camera adjustment;
+old boxes are invalidated and only a fresh corresponding observation may guide flight.
+The original relative pose and FOV are
+restored when the owner resets or closes.
+
+Camera changes affect both SAM images and the existing Pixel Streaming view, without
+creating a new video connection or camera. The pinned Cosys
+[image API](https://github.com/Cosys-Lab/Cosys-AirSim/blob/5.8-v3.5.0/docs/image_apis.md#camera-apis)
+defines `simSetCameraPose` and `simSetCameraFov`;
+[PIPCamera.cpp](https://github.com/Cosys-Lab/Cosys-AirSim/blob/5.8-v3.5.0/Unreal/Plugins/AirSim/Source/PIPCamera.cpp)
+applies FOV to both the main camera and scene captures. Zoom narrows search coverage;
+the flight plan must choose overlapping passes for its height, angle and capture rate.
 
 Generate the tracked deployment settings with explicit port and instance choices:
 
@@ -468,6 +537,15 @@ PY
 ```
 
 ## Terrain dimensions and sampling
+
+`terrain_height` evaluates the bilinear heightfield and the launch slab top from
+`world.json`. The existing southern fence corridor retains the authored apron
+triangles from `world/unreal/horizon.py`. `launch_breaks` exposes slab and apron
+edges, including legs entirely inside the heightfield, so continuous clearance
+checks include the relocated slab. Unknown ground outside these domains raises an error.
+That error identifies the coordinates as outside **mapped terrain**. These ground-data
+limits are independent of a mission's search perimeter; transit and return can leave
+that perimeter while remaining inside the mapped world and its flight fence.
 
 `world.json` is the source of search bounds, heightfield path, per-axis sample counts,
 spacing, row/column orientation, encoding, release hash and the fixed sun.

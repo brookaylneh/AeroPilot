@@ -1,7 +1,7 @@
 """Source locking and operator boundaries without inference or flight."""
 
+import json
 import tempfile
-import threading
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -11,8 +11,14 @@ import numpy as np
 
 from mission_planner.agents.perception.localization import ELLIPSE_95
 from mission_planner.environment import ROOT
+from mission_planner.gcs.inspection import Inspections
 from mission_planner.gcs.service import Mission
 from mission_planner.search.commander import Commander
+
+# The retired one-token gate's measured model keeps the belief arithmetic exercised.
+HISTORICAL = json.loads((ROOT / "mission_planner/measurements/commander.json").read_text())[
+    "observation_model"
+]
 
 
 class Sources(unittest.IsolatedAsyncioTestCase):
@@ -34,6 +40,11 @@ class Sources(unittest.IsolatedAsyncioTestCase):
             directions=Mock(return_value=None),
         )
         self.commander = Commander(self.search)
+        observation = patch(
+            "mission_planner.search.commander.load_observation_model", return_value=HISTORICAL
+        )
+        observation.start()
+        self.addCleanup(observation.stop)
         self.live_path = mission.directory / "captures" / "capture.json"
         self.recorded_path = mission.directory / "recorded" / "capture.json"
         self.commander.manifests = {
@@ -76,7 +87,6 @@ class Sources(unittest.IsolatedAsyncioTestCase):
             {"record": "capture.json", "replay_lane": "Drone1", "frame_id": "frame"}
         ]
         self.commander.ingestion = SimpleNamespace(drain=AsyncMock(), frames={}, closed=False)
-        self.commander.session = object()
         self.commander.ingest = AsyncMock(side_effect=RuntimeError("Inference failed"))
         self.commander.close = AsyncMock()
         with self.assertRaisesRegex(RuntimeError, "Recorded replay failed: Inference failed"):
@@ -87,21 +97,18 @@ class Sources(unittest.IsolatedAsyncioTestCase):
             await self.commander.replay()
         self.commander.ingest.assert_awaited_once()
 
-    async def test_premature_replay_preserves_warming_source_and_can_start_when_ready(self):
+    async def test_premature_replay_preserves_source_and_can_start_when_ready(self):
         self.commander.select_source("recorded", "chosen")
-        session = object()
-        self.commander.session = session
         self.commander.close = AsyncMock()
         self.search.changed.reset_mock()
         with self.assertRaisesRegex(AssertionError, "source is not ready"):
             await self.commander.replay()
         self.assertEqual(self.commander.replay_status, "not_started")
         self.assertEqual(self.commander.source, "recorded")
-        self.assertIs(self.commander.session, session)
         self.commander.close.assert_not_awaited()
         self.search.changed.assert_not_called()
         self.commander.ingestion = SimpleNamespace(
-            drain=AsyncMock(), frames={"frame": {"status": "complete"}}
+            drain=AsyncMock(), frames={"frame": {"status": "complete"}}, closed=False
         )
         self.commander.ingest = AsyncMock(return_value="frame")
         await self.commander.replay()
@@ -118,12 +125,12 @@ class Sources(unittest.IsolatedAsyncioTestCase):
             "prompt": "person",
             "timestamp_ns": 1_500_000_000,
             "calibrated": True,
-            "qualified": True,
+            "decision": "escalate",
+            "report": {"decision": "escalate", "reason": "Person visible."},
             "sam_confidence": 0.8,
-            "glimmer_yes": 0.9,
-            "outside_mass": 0.01,
             "frame_ref": "frame.jpg",
             "crop_ref": "crop.jpg",
+            "context_ref": "context.jpg",
             "localization": {
                 "ground": {"north_m": 1.0, "east_m": 1.0},
                 "covariance_m2": [[0.1, 0], [0, 0.1]],
@@ -135,21 +142,19 @@ class Sources(unittest.IsolatedAsyncioTestCase):
         self.commander.evidence = SimpleNamespace(
             mass=lambda _: {"prior_mass": 0.1, "posterior_mass": 0.2}, detail=lambda _: []
         )
-        self.commander.assets.update(["frame.jpg", "crop.jpg"])
+        self.commander.assets.update(["frame.jpg", "crop.jpg", "context.jpg"])
         self.commander.directory.mkdir()
         self.commander.directory.joinpath("crop.jpg").write_bytes(b"crop")
         self.search.mission.case = {"report": {"brief": "Briefing text"}}
 
     async def test_unknown_review_preserves_selected_evidence_and_future_views(self):
         self.seed_review()
-        await self.commander.execute(
-            "review_detection", {"detection_id": "known", "model_review": False}, "operator"
-        )
+        await self.commander.execute("review_detection", {"detection_id": "known"}, "operator")
         previous = self.commander.view()
         self.search.changed.reset_mock()
         with self.assertRaisesRegex(AssertionError, "Unknown detection"):
             await self.commander.execute(
-                "review_detection", {"detection_id": "unknown", "model_review": False}, "operator"
+                "review_detection", {"detection_id": "unknown"}, "operator"
             )
         self.assertEqual(self.commander.selected, "known")
         self.assertEqual(self.commander.view(), previous)
@@ -164,8 +169,8 @@ class Sources(unittest.IsolatedAsyncioTestCase):
             "prompt": "backpack",
             "calibrated": False,
             "sam_confidence": 0.42,
-            "glimmer_yes": 0.31,
-            "outside_mass": 0.05,
+            "decision": "recheck",
+            "report": {"decision": "recheck", "reason": "Too small to tell."},
             "timestamp_ns": 2_500_000_000,
         }
         self.commander.ledger.add_frame("second", [member])
@@ -175,15 +180,15 @@ class Sources(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual(listed["clusters"][0]["detection_id"], "known")
         result = await self.commander.execute(
-            "review_detection", {"detection_id": "earlier", "model_review": False}, "agent"
+            "review_detection", {"detection_id": "earlier"}, "agent"
         )
         for key in (
             "prompt",
             "source",
             "timestamp_ns",
             "sam_confidence",
-            "glimmer_yes",
-            "outside_mass",
+            "decision",
+            "report",
             "calibrated",
         ):
             self.assertEqual(result[key], member[key])
@@ -194,70 +199,21 @@ class Sources(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.commander.review("earlier")["selected_id"], "earlier")
         self.assertEqual(len(self.commander.review("earlier")["members"]), 2)
 
-    async def test_session_close_waits_for_cancelled_model_review_thread(self):
-        import asyncio
-
-        self.seed_review()
-        entered, release = threading.Event(), threading.Event()
-
-        def opinion(images, brief, schema):
-            self.assertEqual(images, [b"crop"])
-            entered.set()
-            assert release.wait(2), "Test did not release model review"
-            return {"description": "Person"}
-
-        session = SimpleNamespace(__exit__=Mock(return_value=False))
-        self.commander.session = session
-        self.commander.glimmer = SimpleNamespace(
-            review=Mock(side_effect=opinion), http=SimpleNamespace(close=Mock())
-        )
-        review = asyncio.create_task(
-            self.commander.execute(
-                "review_detection", {"detection_id": "known", "model_review": True}, "operator"
-            )
-        )
-        close = None
-        try:
-            self.assertTrue(await asyncio.to_thread(entered.wait, 2))
-            close = asyncio.create_task(self.commander.close())
-            review.cancel()
-            await asyncio.sleep(0)
-            self.assertFalse(review.done())
-            self.assertFalse(close.done())
-            session.__exit__.assert_not_called()
-            self.commander.glimmer.http.close.assert_not_called()
-        finally:
-            release.set()
-            await asyncio.gather(
-                review, *([] if close is None else [close]), return_exceptions=True
-            )
-        self.assertTrue(review.cancelled())
-        close.result()
-        session.__exit__.assert_called_once_with(None, None, None)
-        self.commander.glimmer.review.assert_called_once()
-        self.commander.glimmer.http.close.assert_called_once()
-
-    async def test_failed_model_startup_closes_created_client_and_session(self):
+    async def test_failed_model_startup_closes_created_client(self):
         self.commander.select_source("live", None)
         self.commander.capacity = {"sam_runners": 2}
-        session = SimpleNamespace(__enter__=Mock(), __exit__=Mock(return_value=False))
         sam = SimpleNamespace(http=SimpleNamespace(close=Mock()))
         with (
-            patch(
-                "mission_planner.agents.perception.hosting.inference_session", return_value=session
-            ),
             patch("mission_planner.agents.models.Sam", return_value=sam),
             patch(
                 "mission_planner.agents.models.Glimmer",
-                side_effect=RuntimeError("Tokenizer unavailable"),
+                side_effect=KeyError("GLIMMER_URL"),
             ),
         ):
-            with self.assertRaisesRegex(RuntimeError, "Tokenizer unavailable"):
+            with self.assertRaisesRegex(KeyError, "GLIMMER_URL"):
                 await self.commander.open()
         sam.http.close.assert_called_once()
-        session.__enter__.assert_called_once()
-        session.__exit__.assert_called_once_with(None, None, None)
-        self.assertIsNone(self.commander.session)
+        self.assertIsNone(self.commander.sam)
 
     def test_capacity_applies_only_to_the_measured_prompt_configuration(self):
         self.commander.capacity = {
@@ -320,17 +276,17 @@ class Sources(unittest.IsolatedAsyncioTestCase):
             await self.commander.ingest(self.live_path, "Drone4")
         self.commander.ingestion.ingest.assert_not_awaited()
 
-    async def test_ingestion_close_failure_still_exits_owned_inference_session(self):
+    async def test_ingestion_close_failure_still_closes_clients(self):
         self.commander.ingestion = SimpleNamespace(
             closed=False, close=AsyncMock(side_effect=RuntimeError("Worker failed during drain"))
         )
-        session = SimpleNamespace(__exit__=Mock(return_value=False))
-        self.commander.session = session
+        sam = SimpleNamespace(http=SimpleNamespace(close=Mock()))
+        self.commander.sam = sam
         with self.assertRaisesRegex(RuntimeError, "Worker failed during drain"):
             await self.commander.close()
         self.commander.ingestion.close.assert_awaited_once()
-        session.__exit__.assert_called_once_with(None, None, None)
-        self.assertIsNone(self.commander.session)
+        sam.http.close.assert_called_once()
+        self.assertIsNone(self.commander.sam)
 
     async def test_recorded_frames_do_not_inherit_current_flight_visual_marker(self):
         self.commander.select_source("recorded", "chosen")
@@ -353,6 +309,7 @@ class Sources(unittest.IsolatedAsyncioTestCase):
         self.search.probability = np.full(4, 0.25)
         self.search.captures, self.search.footprints, self.search.negative_count = {}, [], 0
         self.search.render_heatmap = Mock()
+        self.commander.load_model()
         self.commander.initialize_evidence()
         detection = {
             "id": "person",
@@ -360,12 +317,12 @@ class Sources(unittest.IsolatedAsyncioTestCase):
             "drone_id": "Drone1",
             "source": "live",
             "calibrated": True,
-            "qualified": True,
+            "decision": "escalate",
+            "report": {"decision": "escalate", "reason": "Person visible."},
             "sam_confidence": 0.8,
-            "glimmer_yes": 0.9,
-            "outside_mass": 0.01,
             "input_sha256": "positive",
             "crop_ref": "crop.jpg",
+            "context_ref": "context.jpg",
             "localization": {
                 "ground": {"north_m": 1.0, "east_m": 1.0},
                 "covariance_m2": [[0.1, 0], [0, 0.1]],
@@ -395,11 +352,19 @@ class Sources(unittest.IsolatedAsyncioTestCase):
 class OperatorActions(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.mission = object.__new__(Mission)
+        self.mission.clearing = False
         self.mission.case = {"report": {"brief": "Test", "portrait": ""}}
         self.mission.search = SimpleNamespace(
-            execute=AsyncMock(return_value={"status": "confirmed_lead"}), paused={}
+            execute=AsyncMock(return_value={"status": "confirmed_lead"}),
+            paused={},
+            status="unplanned",
         )
-        self.mission.autonomy = "Autonomous"
+        self.mission.plan_task = self.mission.plan_preview = None
+        self.mission.return_rows = {}
+        self.mission.return_tasks = {}
+        self.mission.agent_task = None
+        self.mission.agent_wait = self.mission.wait_task = None
+        self.mission.inspections = Inspections(self.mission)
         self.mission.fleet_ready, self.mission.fleet_error = True, None
         self.mission.approvals = {}
         self.mission.active_flight = set()
@@ -480,6 +445,8 @@ class OperatorActions(unittest.IsolatedAsyncioTestCase):
             task = asyncio.create_task(
                 self.mission.execute("start_search", {"plan_id": "p" * 24}, "operator", None)
             )
+            await asyncio.sleep(0)
+            next(iter(self.mission.approvals.values()))["future"].set_result(True)
             await entered.wait()
             self.assertEqual(self.mission.active_flight, {"Drone1", "Drone2", "Drone3", "Drone4"})
             with self.assertRaisesRegex(AssertionError, "flight action in progress"):
@@ -489,7 +456,7 @@ class OperatorActions(unittest.IsolatedAsyncioTestCase):
             await task
         self.assertFalse(self.mission.active_flight)
 
-    async def test_agent_cannot_resolve_even_in_autonomous_mode(self):
+    async def test_only_operator_may_resolve_a_detection(self):
         arguments = {
             "detection_id": "detection",
             "disposition": "confirmed_lead",
@@ -580,9 +547,10 @@ class OperatorActions(unittest.IsolatedAsyncioTestCase):
     async def test_flight_availability_is_rechecked_after_operator_approval(self):
         import asyncio
 
-        self.mission.autonomy = "Supervised"
         task = asyncio.create_task(
-            self.mission.execute("hold", {"drone_id": "Drone1"}, "operator", None)
+            self.mission.execute(
+                "take_off", {"drone_id": "Drone1", "altitude_above_home_m": 30}, "operator", None
+            )
         )
         await asyncio.sleep(0)
         self.mission.search.paused["Drone1"] = {"kind": "relook", "status": "flying"}
@@ -591,7 +559,7 @@ class OperatorActions(unittest.IsolatedAsyncioTestCase):
             await task
         self.mission.fleet.execute.assert_not_awaited()
 
-    async def test_relook_requires_approval_in_autonomous_mode(self):
+    async def test_relook_requires_approval(self):
         import asyncio
 
         arguments = {

@@ -49,36 +49,65 @@ export function placeLabels(
   const placed: Record<string, Box> = {};
   for (const anchor of anchors) {
     if (anchor.x < 0 || anchor.y < 0 || anchor.x > viewport.width || anchor.y > viewport.height) continue;
-    const candidates: Box[] = [];
-    for (let radius = 28; radius < Math.max(viewport.width, viewport.height); radius += 28) {
-      for (const [dx, dy] of [
-        [1, -1],
-        [-1, -1],
-        [1, 1],
-        [-1, 1],
-        [1, 0],
-        [-1, 0],
-        [0, -1],
-        [0, 1],
-      ]) {
-        candidates.push({
-          x: anchor.x + dx * radius - (dx < 0 ? anchor.width : dx === 0 ? anchor.width / 2 : 0),
-          y: anchor.y + dy * radius - (dy < 0 ? anchor.height : 0),
-          width: anchor.width,
-          height: anchor.height,
-        });
+    const occupied = [...obstacles, ...Object.values(placed), { ...anchor, width: 0, height: 0 }];
+    const preferred = { x: anchor.x + 28, y: anchor.y - anchor.height - 28 };
+    const xs = new Set([
+      preferred.x,
+      4,
+      viewport.width - anchor.width - 4,
+      ...occupied.flatMap((box) => [box.x - anchor.width - 5, box.x + box.width + 5]),
+    ]);
+    const ys = new Set([
+      preferred.y,
+      4,
+      viewport.height - anchor.height - 4,
+      ...occupied.flatMap((box) => [box.y - anchor.height - 5, box.y + box.height + 5]),
+    ]);
+    let box: Box | undefined;
+    let nearest = Infinity;
+    for (const x of xs) {
+      if (x < 4 || x + anchor.width > viewport.width - 4) continue;
+      for (const y of ys) {
+        if (y < 4 || y + anchor.height > viewport.height - 4) continue;
+        const distance = (x - preferred.x) ** 2 + (y - preferred.y) ** 2;
+        if (distance >= nearest) continue;
+        const candidate = { x, y, width: anchor.width, height: anchor.height };
+        if (occupied.some((obstacle) => overlaps(candidate, obstacle))) continue;
+        box = candidate;
+        nearest = distance;
       }
     }
-    const box = candidates.find(
-      (candidate) =>
-        candidate.x >= 4 &&
-        candidate.y >= 4 &&
-        candidate.x + candidate.width <= viewport.width - 4 &&
-        candidate.y + candidate.height <= viewport.height - 4 &&
-        ![...obstacles, ...Object.values(placed)].some((obstacle) => overlaps(candidate, obstacle)),
-    );
     if (!box) throw new Error(`No collision-free map label position for ${anchor.id}`);
     placed[anchor.id] = box;
+  }
+  return placed;
+}
+
+// Place names are context, not alerts: a name without room beside its place is left off.
+export function nearbyLabels(
+  anchors: LabelAnchor[],
+  obstacles: Box[],
+  viewport: { width: number; height: number },
+) {
+  const placed: Record<string, Box> = {};
+  for (const anchor of anchors) {
+    const occupied = [...obstacles, ...Object.values(placed)];
+    const box = [
+      { x: anchor.x + 6, y: anchor.y - anchor.height / 2 },
+      { x: anchor.x - anchor.width - 6, y: anchor.y - anchor.height / 2 },
+      { x: anchor.x - anchor.width / 2, y: anchor.y - anchor.height - 6 },
+      { x: anchor.x - anchor.width / 2, y: anchor.y + 6 },
+    ]
+      .map((p) => ({ ...p, width: anchor.width, height: anchor.height }))
+      .find(
+        (c) =>
+          c.x >= 4 &&
+          c.y >= 4 &&
+          c.x + c.width <= viewport.width - 4 &&
+          c.y + c.height <= viewport.height - 4 &&
+          !occupied.some((o) => overlaps(c, o)),
+      );
+    if (box) placed[anchor.id] = box;
   }
   return placed;
 }

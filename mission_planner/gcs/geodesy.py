@@ -18,9 +18,13 @@ LAUNCH_SOUTH_M = NORTH_MIN_M - 40.0
 LAUNCH_HALF_WIDTH_M = 25.0
 MIN_ALTITUDE_M = 10.0
 MAX_ALTITUDE_M = 100.0
-MIN_SEPARATION_M = 3.5
+MIN_SEPARATION_M = 0.10
+SEPARATION_TOLERANCE_M = 1e-12
 MIN_SPEED_MPS = 0.5
 MAX_SPEED_MPS = 15.0
+RTL_ALTITUDE_M = 80.0
+# Half the 5 m spacing between neighbouring home pads.
+BASE_RADIUS_M = 2.5
 MIN_MAP_RADIUS_M = 1.0
 MAX_MAP_RADIUS_M = min(NORTH_MAX_M - NORTH_MIN_M, EAST_MAX_M - EAST_MIN_M) / 2
 _LAT = math.radians(ORIGIN["latitude_deg"])
@@ -85,13 +89,9 @@ def fence_vertices():
 
 
 def rtl_route(state):
-    # Fleet startup verifies the pinned RTL/fence defaults used by this nominal path.
+    # Fleet startup verifies RTL_ALT_M, zero cone slope and zero minimum climb.
     altitude = state["altitude_above_home_m"]
-    distance = math.hypot(
-        state["north_m"] - state["home"]["north_m"],
-        state["east_m"] - state["home"]["east_m"],
-    )
-    return_altitude = max(altitude, min(15, max(altitude, 0.3, distance * 3)))
+    return_altitude = max(altitude, RTL_ALTITUDE_M)
     return [
         state,
         {**state, "altitude_above_home_m": return_altitude},

@@ -11,6 +11,9 @@
 #include "IPixelStreaming2Module.h"
 #include "IPixelStreaming2Streamer.h"
 #include "IPixelStreaming2InputHandler.h"
+#include "PixelStreaming2Delegates.h"
+#include "SimMode/SimModeBase.h"
+#include "PIPCamera.h"
 #include "Serialization/MemoryReader.h"
 #include "Serialization/JsonReader.h"
 #include "Serialization/JsonSerializer.h"
@@ -76,10 +79,19 @@ AScenarioSession::AScenarioSession()
     Marker->SetRelativeRotation(FRotator(-90, 0, 0));
     Marker->SetVisibility(false);
 }
+void AScenarioSession::PostInitializeComponents()
+{
+    Super::PostInitializeComponents();
+    if (GetWorld()->IsGameWorld())
+        check(GetWorld()->SpawnActor<ADroneFoundation>());
+}
 void AScenarioSession::BeginPlay()
 {
     Super::BeginPlay();
-    GetWorld()->SpawnActor<ADroneFoundation>();
+    auto *Delegates = UPixelStreaming2Delegates::Get();
+    check(Delegates);
+    PlayerDisconnectedHandle = Delegates->OnClosedConnectionNative.AddUObject(
+        this, &AScenarioSession::PlayerDisconnected);
     if (!Manager)
     {
         TActorIterator<AScenarioManager> It(GetWorld());
@@ -91,8 +103,22 @@ void AScenarioSession::BeginPlay()
 void AScenarioSession::EndPlay(const EEndPlayReason::Type Reason)
 {
     GetWorldTimerManager().ClearTimer(BindTimer);
+    if (auto *Delegates = UPixelStreaming2Delegates::Get())
+        Delegates->OnClosedConnectionNative.Remove(PlayerDisconnectedHandle);
     BoundStreamer.Reset();
     Super::EndPlay(Reason);
+}
+
+void AScenarioSession::PlayerDisconnected(FString StreamerId, FString PlayerId)
+{
+    check(IsInGameThread());
+    auto Streamer = BoundStreamer.Pin();
+    if (Streamer && Streamer->GetId() == StreamerId && PlayerId == DroneViewPlayer)
+    {
+        DroneViewPlayer.Empty();
+        if (bMissionActive)
+            GetWorld()->GetGameViewport()->bDisableWorldRendering = true;
+    }
 }
 void AScenarioSession::BindStream()
 {
@@ -313,6 +339,8 @@ void AScenarioSession::DisableGrassSource()
     check(GrassSource);
     bMissionActive = true;
     StopNavigation();
+    NavigationPlayer.Empty();
+    SetActorTickEnabled(false);
     GrassSource->DestroyComponent();
     GrassSource = nullptr;
 }
@@ -320,6 +348,7 @@ void AScenarioSession::DisableGrassSource()
 void AScenarioSession::ResetSession()
 {
     bMissionActive = false;
+    DroneViewPlayer.Empty();
     FString Error;
     checkf(ResetScenario(Error), TEXT("Session reset failed: %s"), *Error);
     if (!GrassSource)
@@ -329,6 +358,7 @@ void AScenarioSession::ResetSession()
     }
     GetWorld()->GetGameViewport()->bDisableWorldRendering = false;
     UpdateCamera();
+    SetActorTickEnabled(true);
 }
 
 void AScenarioSession::CameraView(const FString &View)
@@ -452,8 +482,6 @@ bool AScenarioSession::SetCamera(const FString &View, FString &Error)
     }
     if (View == TEXT("port"))
     {
-        // Dedicated inspection camera outside the searchable world. Placement
-        // still uses the unchanged catalog bounds and ScenarioGround channel.
         AActor *Port = nullptr;
         for (TActorIterator<AActor> It(GetWorld()); It; ++It)
             if (It->ActorHasTag(TEXT("drone.port")))
@@ -787,14 +815,41 @@ void AScenarioSession::HandleCommand(const FString &Player, const FString &Messa
         !Root->TryGetNumberField(TEXT("protocolVersion"), Protocol) || Protocol != ScenarioNavigation::ProtocolVersion ||
         !Root->TryGetObjectField(TEXT("command"), Command))
         return;
-    NavigationPlayer = Player;
-    FString Type, Error;
+    if (!bMissionActive)
+        NavigationPlayer = Player;
+    FString Type, Error, DroneId;
     bool Ok = false;
     if ((*Command)->TryGetStringField(TEXT("type"), Type))
     {
         FString Value;
         double A, B, C;
-        if (bMissionActive)
+        if (Type == TEXT("drone-view"))
+        {
+            if (!Fields(*Command, {TEXT("type"), TEXT("droneId")}) ||
+                !(*Command)->TryGetStringField(TEXT("droneId"), DroneId) ||
+                (DroneId != TEXT("Drone1") && DroneId != TEXT("Drone2") &&
+                 DroneId != TEXT("Drone3") && DroneId != TEXT("Drone4")))
+                Error = TEXT("drone-view requires a droneId from Drone1 to Drone4");
+            else if (!bMissionActive)
+                Error = TEXT("Drone video requires an active mission");
+            else
+            {
+                TActorIterator<ASimModeBase> Mode(GetWorld());
+                auto *Viewport = GetWorld()->GetGameViewport();
+                APIPCamera *Sensor = Mode ? Mode->getCamera(
+                    msr::airlib::CameraDetails("fpv", TCHAR_TO_UTF8(*DroneId))) : nullptr;
+                if (!Sensor || !Viewport || !GetWorld()->GetFirstPlayerController())
+                    Error = TEXT("Drone camera is unavailable");
+                else
+                {
+                    Sensor->showToScreen();
+                    Viewport->bDisableWorldRendering = false;
+                    DroneViewPlayer = Player;
+                    Ok = true;
+                }
+            }
+        }
+        else if (bMissionActive)
             Error = TEXT("This scenario has launched. Return to Studio to cancel it and start over.");
         else if (Type == TEXT("viewport") && Fields(*Command, {TEXT("type"), TEXT("aspect")}) &&
             (*Command)->TryGetNumberField(TEXT("aspect"), A) && FMath::IsFinite(A) && A >= .25 && A <= 4.)
@@ -904,7 +959,7 @@ void AScenarioSession::HandleCommand(const FString &Player, const FString &Messa
                  (*Command)->TryGetStringField(TEXT("id"), Value))
             Ok = Load(Value, Error);
     }
-    if (Ok)
+    if (Ok && Type != TEXT("drone-view"))
     {
         if (Type == TEXT("travel-and-place"))
             bShowMarker = CreatorStage == TEXT("placement");
@@ -915,7 +970,16 @@ void AScenarioSession::HandleCommand(const FString &Player, const FString &Messa
     Reply->SetStringField(TEXT("requestId"), RequestId);
     Reply->SetBoolField(TEXT("ok"), Ok);
     if (Ok)
-        Reply->SetObjectField(TEXT("state"), Packet());
+    {
+        if (Type == TEXT("drone-view"))
+        {
+            auto State = MakeShared<FJsonObject>();
+            State->SetStringField(TEXT("droneId"), DroneId);
+            Reply->SetObjectField(TEXT("state"), State);
+        }
+        else
+            Reply->SetObjectField(TEXT("state"), Packet());
+    }
     else
         Reply->SetStringField(TEXT("error"),
                               Error.IsEmpty() ? TEXT("Unsupported or malformed command") : Error);

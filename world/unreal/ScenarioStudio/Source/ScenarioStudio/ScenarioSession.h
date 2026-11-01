@@ -50,6 +50,7 @@ class SCENARIOSTUDIO_API AScenarioSession : public AActor
     UFUNCTION(Exec) void CameraNavigation(const FString &Input);
     UPROPERTY(EditAnywhere) TObjectPtr<AScenarioManager> Manager;
     UPROPERTY(EditAnywhere) TObjectPtr<UMaterialInterface> MarkerMaterial;
+    virtual void PostInitializeComponents() override;
     virtual void BeginPlay() override;
     virtual void Tick(float DeltaSeconds) override;
     virtual void EndPlay(const EEndPlayReason::Type Reason) override;
@@ -61,6 +62,8 @@ class SCENARIOSTUDIO_API AScenarioSession : public AActor
     UPROPERTY() TObjectPtr<URectLightComponent> PreviewFill;
     TWeakPtr<IPixelStreaming2Streamer> BoundStreamer;
     FTimerHandle BindTimer;
+    FDelegateHandle PlayerDisconnectedHandle;
+    FString DroneViewPlayer;
     FVector CameraTarget = FVector::ZeroVector;
     double CameraYaw = -160, CameraPitch = 30, CameraDistance = 6000;
     double InspectionGroundClearanceCm = 100;
@@ -107,6 +110,7 @@ class SCENARIOSTUDIO_API AScenarioSession : public AActor
     TSharedRef<FJsonObject> NavigationSettings() const;
     void SendCameraState();
     void BindStream();
+    void PlayerDisconnected(FString StreamerId, FString PlayerId);
     void HandleCommand(const FString &Player, const FString &Message);
     void UpdateCamera();
     void UpdateMarker();

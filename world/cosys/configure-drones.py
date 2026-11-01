@@ -55,15 +55,32 @@ def generate(world, rpc_port, instance_base):
             "Longitude": geodesy.ORIGIN["longitude_deg"],
             "Altitude": geodesy.ORIGIN["altitude_msl_m"] + origin["z"] / 100,
         },
-        "CameraDefaults": {"CaptureSettings": [dict(ImageType=-1, **exposure)]},
+        "CameraDefaults": {
+            "CaptureSettings": [
+                dict(ImageType=-1, **exposure),
+                dict(ImageType=0, Width=1920, Height=1080, ForceUpdate=False, **exposure),
+            ]
+        },
         "Vehicles": {},
     }
-    homes = geodesy.homes()
+    port = world["port"]
+    centre = port["centerUeCm"]
+    assert all(math.isfinite(centre[axis]) for axis in "xyz")
+    assert len(port["dimensionsMetres"]) == 3
+    assert all(math.isfinite(value) and value > 0 for value in port["dimensionsMetres"])
+    for axis, width in zip("xy", port["dimensionsMetres"]):
+        assert world["searchBoundsCm"]["min"][axis] < centre[axis] - width * 50
+        assert centre[axis] + width * 50 < world["searchBoundsCm"]["max"][axis]
     for index, name in enumerate(geodesy.NAMES):
         item = world["vehicles"][name]
         p = item["spawnUeCm"]
         assert set(p) == {"x", "y", "z"}
         assert all(math.isfinite(p[axis]) for axis in "xyz")
+        assert p == {
+            "x": centre["x"] + (250 if index < 2 else -250),
+            "y": centre["y"] + (-250 if index % 2 == 0 else 250),
+            "z": centre["z"] + 20,
+        }, f"{name}: spawn must match the port's 5 m grid and 0.20 m top offset"
         assert 0 <= item["yawDegrees"] < 360
         instance = instance_base + index
         vehicle = {
@@ -113,17 +130,18 @@ def generate(world, rpc_port, instance_base):
                 }
             },
         }
-        home = homes[name]
-        assert (vehicle["X"], vehicle["Y"]) == (home["north_m"], home["east_m"])
         assert (
             math.dist(
                 (vehicle["X"], vehicle["Y"]),
-                geodesy.to_local(home["latitude_deg"], home["longitude_deg"]),
+                geodesy.to_local(*geodesy.to_geodetic(vehicle["X"], vehicle["Y"])),
             )
             < 1e-6
         )
-        assert settings["OriginGeopoint"]["Altitude"] - vehicle["Z"] == home["altitude_msl_m"]
-        assert vehicle["Yaw"] == home["heading_deg"]
+        assert math.isclose(
+            settings["OriginGeopoint"]["Altitude"] - vehicle["Z"],
+            geodesy.ORIGIN["altitude_msl_m"] + p["z"] / 100,
+            abs_tol=1e-9,
+        )
         settings["Vehicles"][name] = vehicle
     return settings
 

@@ -19,7 +19,7 @@ from scipy.spatial import cKDTree
 
 from world.cosys.landmarks import LANDMARKS_PATH
 from world.cosys.terrain import BOUNDS, FIELD, ROOT, WORLD
-from world.unreal.valley import catalogue, densify, lookup, points
+from world.unreal.valley import catalogue, densify, lookup, points, surface_points
 
 DRESSING_PATH = ROOT / "world/unreal/valley-dressing.json"
 TERRAIN = (ROOT / FIELD["path"]).parent
@@ -51,7 +51,7 @@ class Site:
         half = np.array(port["dimensionsMetres"][:2]) / 2
         corners = centre + half * [[-1, -1], [-1, 1], [1, 1], [1, -1]]
         self.areas = {
-            i: points(item)
+            i: surface_points(item)
             for i, item in self.landmarks.items()
             if item["geometry"]["type"] == "polygon"
         }
@@ -245,7 +245,9 @@ def footprint(bounds, north, east, yaw, scale):
 def explicit(site, row, meshes):
     poses = np.array(row["at"], dtype=float)
     assert poses.shape[1] == 3, row["name"]
-    ring = PolygonPath(site.areas[row["area"]])
+    ring = PolygonPath(
+        site.areas["port"] if row["area"] == "port" else points(site.landmarks[row["area"]])
+    )
     corners = [footprint(meshes[row["mesh"]]["boundsM"], *pose, row["scale"]) for pose in poses]
     for pose, box in zip(poses, corners):
         assert ring.contains_points(box).all(), (row["name"], pose)

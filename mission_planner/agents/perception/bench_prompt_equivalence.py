@@ -3,7 +3,6 @@
 import argparse
 import asyncio
 import json
-import time
 from pathlib import Path
 
 from mission_planner.agents.models import Glimmer, Sam
@@ -15,7 +14,6 @@ from mission_planner.agents.perception.configuration import (
     load_configuration,
     read_capture,
 )
-from mission_planner.agents.perception.hosting import inference_session, ready
 from mission_planner.agents.perception.ingestion import load_replay
 from mission_planner.agents.perception.pipeline import Processor
 
@@ -111,7 +109,6 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--manifest", type=Path, required=True)
     parser.add_argument("--prompt", action="append", required=True)
-    parser.add_argument("--sam-concurrency", type=int, choices=(1, 2), required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     manifest, (config, _) = load_replay(args.manifest), load_configuration()
@@ -120,30 +117,16 @@ def main():
     )
     assert config["person_batching"] == "dedicated"
     args.output.mkdir(parents=True, exist_ok=False)
-    provenance(args.output, "Captured before clients, warm-up and comparison requests")
+    provenance(args.output, "Captured before clients and comparison requests")
     args.output.joinpath("configuration.json").write_text(encode(config) + "\n")
-    with inference_session(args.output / "hosting", args.sam_concurrency) as hosting_report:
-        sam, glimmer = Sam(), None
-        try:
-            started = time.monotonic()
-            try:
-                glimmer = Glimmer()
-            finally:
-                args.output.joinpath("client-startup.json").write_text(
-                    encode(
-                        {
-                            "glimmer_tokenizer_startup_s": time.monotonic() - started,
-                            "complete": glimmer is not None,
-                        }
-                    )
-                    + "\n"
-                )
-            hosting_report["readyAt"] = ready(args.output / "hosting", args.sam_concurrency)
-            result = asyncio.run(run(manifest, args.prompt, config, sam, glimmer, args.output))
-        finally:
-            sam.http.close()
-            if glimmer is not None:
-                glimmer.http.close()
+    sam, glimmer = Sam(), None
+    try:
+        glimmer = Glimmer()
+        result = asyncio.run(run(manifest, args.prompt, config, sam, glimmer, args.output))
+    finally:
+        sam.http.close()
+        if glimmer is not None:
+            glimmer.http.close()
     print(
         encode(
             {

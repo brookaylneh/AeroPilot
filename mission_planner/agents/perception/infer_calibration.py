@@ -17,7 +17,6 @@ from mission_planner.agents.models import Glimmer, Sam
 from mission_planner.agents.perception.calibrate import ALONG, CONDITIONS, OFFSETS
 from mission_planner.agents.perception.geometry import Camera
 from mission_planner.agents.perception.glimmer_calibration import annotate
-from mission_planner.agents.perception.hosting import inference_session
 from mission_planner.environment import ROOT
 
 
@@ -174,7 +173,9 @@ def main():
     assert all(
         (p / "complete.json").exists() and not (p / "inference.json").exists() for p in selected
     )
-    with inference_session(args.output):
+    args.output.mkdir(parents=True, exist_ok=False)
+    sam, glimmer = Sam(), None
+    try:
 
         def record(response):
             response.read()
@@ -190,12 +191,17 @@ def main():
                     + "\n"
                 )
 
-        sam, glimmer = Sam(), Glimmer()
+        glimmer = Glimmer()
         for model in (sam, glimmer):
             model.http.event_hooks["response"].append(record)
         for directory in selected:
             run(directory, sam, glimmer)
             print(directory.name, "inference complete", flush=True)
+
+    finally:
+        sam.http.close()
+        if glimmer is not None:
+            glimmer.http.close()
 
 
 if __name__ == "__main__":

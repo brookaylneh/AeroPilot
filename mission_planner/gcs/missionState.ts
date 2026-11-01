@@ -3,6 +3,13 @@ import { z } from 'zod';
 import { briefingSchema } from '../../scenario_creator/briefing';
 import { searchSchema, type SearchState } from './searchState';
 import { missionPlanSchema } from './missionPlan';
+import { plannerSchema } from './FlightPlan';
+import {
+  agentWaitSchema,
+  inspectionSchema,
+  findingArgumentsSchema,
+  evidenceConfirmationSchema,
+} from './InspectionPanel';
 import { droneIds } from './droneIdentity';
 import {
   feedFocusMessageSchema,
@@ -31,6 +38,7 @@ const vehicleSchema = z.object({
   sysid: z.number().int().min(1).max(4),
   heartbeat_age_s: number.nonnegative(),
   link_lost: z.boolean(),
+  camera_available: z.boolean(),
   armed: z.boolean(),
   mode: z.string(),
   landed_state: z.number().int(),
@@ -40,6 +48,7 @@ const vehicleSchema = z.object({
   east_m: number,
   altitude_above_home_m: number,
   heading_deg: number.min(0).max(360).nullable(),
+  course_deg: number.min(0).lt(360).nullable(),
   ground_speed_mps: number.nonnegative(),
   climb_rate_mps: number,
   battery_percent: number.min(0).max(100).nullable(),
@@ -60,30 +69,92 @@ const vehicleSchema = z.object({
 });
 export type Vehicle = z.infer<typeof vehicleSchema>;
 const object = z.record(z.string(), z.unknown());
-const eventSchema = z.object({
-  id: z.string(),
-  timestamp_ms: number,
-  kind: z.enum([
-    'operator',
-    'agent',
-    'tool_call',
-    'tool_running',
-    'tool_result',
-    'approval',
-    'mode',
-    'statustext',
-    'error',
-    'model_usage',
-    'team_acknowledgement',
-    'perception',
-  ]),
-  text: z.string(),
-  name: z.string().nullable(),
-  arguments: object.nullable(),
-  result: object.nullable(),
-  call_id: z.string().nullable(),
-  source: z.string().nullable(),
-});
+export const eventSchema = z
+  .object({
+    id: z.string(),
+    timestamp_ms: number,
+    kind: z.enum([
+      'operator',
+      'agent',
+      'chat_reset',
+      'tool_call',
+      'tool_running',
+      'tool_result',
+      'approval',
+      'mode',
+      'statustext',
+      'error',
+      'model_usage',
+      'team_acknowledgement',
+      'perception',
+      'review',
+      'evidence',
+      'evidence_confirmation',
+      'plan_version',
+    ]),
+    text: z.string(),
+    name: z.string().nullable(),
+    arguments: object.nullable(),
+    result: object.nullable(),
+    call_id: z.string().nullable(),
+    source: z.string().nullable(),
+  })
+  .superRefine((event, context) => {
+    if (event.kind === 'evidence_confirmation') {
+      const confirmation = evidenceConfirmationSchema.safeParse(event.result);
+      if (!confirmation.success || event.source !== 'agent' || event.text !== confirmation.data.statement)
+        context.addIssue({
+          code: 'custom',
+          message: 'Confirmation requires the exact operator statement and event references',
+        });
+      return;
+    }
+    if (event.kind !== 'review' && event.kind !== 'evidence') return;
+    const inspection = inspectionSchema.safeParse(event.result);
+    if (!inspection.success) {
+      context.addIssue({
+        code: 'custom',
+        message: `Invalid ${event.kind} inspection: ${inspection.error.message}`,
+      });
+      return;
+    }
+    const row = inspection.data;
+    const frame = row.latest;
+    if (!frame || frame.detections.length === 0) {
+      context.addIssue({ code: 'custom', message: 'Evidence requires a captured candidate' });
+      return;
+    }
+    if (event.kind === 'evidence') {
+      const finding = findingArgumentsSchema.safeParse(event.arguments);
+      if (
+        !finding.success ||
+        event.source !== 'agent' ||
+        finding.data.inspection_id !== row.id ||
+        finding.data.frame_id !== frame.frame_id ||
+        finding.data.candidate_index >= frame.detections.length ||
+        finding.data.summary !== event.text
+      )
+        context.addIssue({
+          code: 'custom',
+          message:
+            'Published evidence requires Wonder’s assessment of the exact inspection, frame and candidate',
+        });
+    }
+    if (
+      event.kind === 'review' &&
+      (event.source !== 'glimmer' ||
+        !row.rescue?.review_id ||
+        !row.rescue.reports.length ||
+        row.rescue.reports.some(
+          ({ candidate_index, images }) =>
+            images.frame_id !== frame.frame_id || candidate_index >= frame.detections.length,
+        ))
+    )
+      context.addIssue({
+        code: 'custom',
+        message: 'Glimmer review must identify its exact candidate images',
+      });
+  });
 export type MissionEvent = z.infer<typeof eventSchema>;
 const focusSchema = z.discriminatedUnion('target', [
   z.object({ id: z.string().uuid(), target: z.literal('drone'), drone_id: z.enum(droneIds) }),
@@ -97,17 +168,20 @@ const focusSchema = z.discriminatedUnion('target', [
   }),
 ]);
 export type MapFocus = z.infer<typeof focusSchema>;
-const stateSchema = z.object({
+export const stateSchema = z.object({
   type: z.literal('state'),
-  mission: z.object({
-    id: z.string(),
-    case_id: z.string().uuid(),
-    case_name: z.string(),
-    briefing: briefingSchema,
-    elapsed_s: number.nonnegative(),
-    autonomy: z.enum(['Supervised', 'Autonomous']),
-    alerts: z.array(z.string()),
-  }),
+  mission: z
+    .object({
+      id: z.string(),
+      case_id: z.string().uuid().nullable(),
+      case_name: z.string(),
+      briefing: briefingSchema.nullable(),
+      elapsed_s: number.nonnegative(),
+      alerts: z.array(z.string()),
+    })
+    .refine((mission) => (mission.case_id === null) === (mission.briefing === null), {
+      message: 'A rescue case and its briefing must be supplied together',
+    }),
   vehicles: z
     .array(vehicleSchema)
     .refine(
@@ -115,6 +189,9 @@ const stateSchema = z.object({
       'Fleet must be empty during startup or contain Drone1–Drone4',
     ),
   agent_busy: z.boolean(),
+  agent_wait: agentWaitSchema.nullable(),
+  chat_ready: z.boolean(),
+  inspections: z.array(inspectionSchema),
   approvals: z.array(
     z.object({
       id: z.string(),
@@ -125,6 +202,7 @@ const stateSchema = z.object({
     }),
   ),
   map_focus: focusSchema.nullable(),
+  planner: plannerSchema,
 });
 export type MissionState = z.infer<typeof stateSchema>;
 const messageSchema = z.discriminatedUnion('type', [
@@ -148,7 +226,6 @@ declare global {
 export function useMission(caseId: string | null) {
   const [state, setState] = useState<MissionState | null>(null);
   const [search, setSearch] = useState<SearchState | null>(null);
-  const [sensorFrames, setSensorFrames] = useState<SensorFrames>({});
   const [feedFocus, setFeedFocus] = useState<FeedFocus | null>(null);
   const [events, setEvents] = useState<MissionEvent[]>([]);
   const [connection, setConnection] = useState<'connecting' | 'connected' | 'closed' | 'idle'>('connecting');
@@ -162,16 +239,15 @@ export function useMission(caseId: string | null) {
     return () => window.clearInterval(clock);
   }, []);
   useEffect(() => {
-    if (!caseId || !z.string().uuid().safeParse(caseId).success) {
+    if (caseId !== null && !z.string().uuid().safeParse(caseId).success) {
       setConnection('closed');
-      setError('A saved rescue case is required. Open a case from the rescue briefing.');
+      setError('The scenario id is invalid. Open Mission Planner from Home or a saved scenario.');
       return;
     }
     const ws = new WebSocket(
       `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/api/mission`,
     );
     frames.current = {};
-    setSensorFrames({});
     setFeedFocus(null);
     socket.current = ws;
     ws.onopen = () => {
@@ -189,7 +265,6 @@ export function useMission(caseId: string | null) {
       if (data.type === 'idle') {
         setState(null);
         setSearch(null);
-        setSensorFrames({});
         setFeedFocus(null);
         setEvents([]);
         setError('');
@@ -207,14 +282,13 @@ export function useMission(caseId: string | null) {
             data.frame,
             performance.timeOrigin + performance.now(),
           );
-          setSensorFrames(frames.current);
         } catch (error) {
           setError(`Mission protocol error: ${String(error)}`);
           ws.close(1002, 'Invalid sensor frame sequence');
         }
       } else if (data.type === 'feed_focus') setFeedFocus(data);
-      else if (data.type === 'event') setEvents((items) => [...items, data.event].slice(-1000));
-      else if (data.type === 'history') setEvents(data.events.slice(-1000));
+      else if (data.type === 'event') setEvents((items) => [...items, data.event]);
+      else if (data.type === 'history') setEvents(data.events);
       else if (data.type === 'error') setError(data.message);
       else if (data.type === 'plan') {
         const url = URL.createObjectURL(
@@ -264,7 +338,7 @@ export function useMission(caseId: string | null) {
     socket.current.send(JSON.stringify(message));
   }
   const age = state ? Math.max(0, (now - arrived.current) / 1000) : 0;
-  return { state, search, sensorFrames, feedFocus, events, connection, error, setError, send, now, age };
+  return { state, search, feedFocus, events, connection, error, setError, send, now, age };
 }
 
 export function linkLost(vehicle: Vehicle, age: number, connected: boolean) {

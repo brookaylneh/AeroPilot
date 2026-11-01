@@ -6,22 +6,33 @@ import subprocess
 import time
 from pathlib import Path
 
-from mission_planner.gcs.geodesy import NAMES, ROOT, homes
+from mission_planner.gcs.battery import CAPACITY_AH
+from mission_planner.gcs.geodesy import NAMES, ROOT, RTL_ALTITUDE_M, homes
 
 SAFETY_PARAMETERS = {
     "ARMING_SKIPCHK": 0,
     "FS_THR_ENABLE": 1,
     "FS_CRASH_CHECK": 1,
     "DISARM_DELAY": 10,
-    "RTL_ALT_M": 15,
+    "RTL_ALT_M": RTL_ALTITUDE_M,
     "RTL_ALT_FINAL_M": 0,
     "RTL_CLIMB_MIN_M": 0,
-    "RTL_CONE_SLOPE": 3,
+    "RTL_CONE_SLOPE": 0,
     "RTL_ALT_TYPE": 0,
     "FENCE_ALT_MAX": 100,
     "FENCE_MARGIN": 2,
+    "BATT_MONITOR": 4,
+    "BATT_LOW_VOLT": 10.5,
+    "BATT_LOW_TIMER": 10,
+    "BATT_FS_LOW_ACT": 2,
 }
-AIRSIM_PARAMETERS = {"SCHED_LOOP_RATE": 184}
+AIRSIM_PARAMETERS = {
+    "SCHED_LOOP_RATE": 184,
+    "ATC_ACC_Y_MAX": 20,
+    "BATT_CAPACITY": CAPACITY_AH * 1000,
+    "SIM_BATT_CAP_AH": CAPACITY_AH,
+    "SIM_BATT_VOLTAGE": 12.6,
+}
 
 
 def check_ports(ports):
@@ -55,15 +66,11 @@ def launches(directory):
         defaults.append(
             ROOT / ".local/vendor/ardupilot/Tools/autotest/default_params/airsim-quadX.parm"
         )
-        safety = Path(directory) / "safety.parm"
-        with safety.open("x") as stream:
-            stream.write(
-                "".join(
-                    f"{key} {value}\n"
-                    for key, value in (SAFETY_PARAMETERS | AIRSIM_PARAMETERS).items()
-                )
-            )
-        defaults.append(safety)
+    safety = Path(directory) / "safety.parm"
+    parameters = SAFETY_PARAMETERS | (AIRSIM_PARAMETERS if model == "airsim-copter" else {})
+    with safety.open("x") as stream:
+        stream.write("".join(f"{key} {value}\n" for key, value in parameters.items()))
+    defaults.append(safety)
     assert all(path.is_file() for path in defaults), defaults
     spawn_settings = json.loads((ROOT / "world/cosys/settings.json").read_text())
     assert settings["OriginGeopoint"] == spawn_settings["OriginGeopoint"], "OriginGeopoint mismatch"

@@ -7,39 +7,43 @@ from pathlib import Path
 
 import numpy as np
 
-from mission_planner.agents.perception.configuration import load_configuration
+from mission_planner.agents.perception.configuration import (
+    load_configuration,
+    load_observation_model,
+)
 from mission_planner.agents.perception.ingestion import Ingestion, load_replay
 from mission_planner.environment import ROOT
 from mission_planner.search.belief import Evidence
 from mission_planner.search.coverage import capture_pod
 from mission_planner.search.detection import CAPTURE_SPACING_M, negative_model
-from mission_planner.search.detections import Detections
+from mission_planner.search.detections import Detections, escalated
 from mission_planner.search.timing import SPEED_MPS
 
 
-async def blocking(function, *arguments):
-    task = asyncio.create_task(asyncio.to_thread(function, *arguments))
-    try:
-        return await asyncio.shield(task)
-    finally:
-        if not task.done():
-            await task
+def look_for(profile):
+    clothing = profile["clothing"]["value"]
+    return {
+        "objective": "Find the missing person described in the mission brief.",
+        "target": "a person",
+        "attributes": []
+        if clothing is None
+        else [{"id": f"clothing_{i + 1}", "text": text} for i, text in enumerate(clothing)],
+        "ignore": [],
+    }
 
 
 class Commander:
     def __init__(self, search):
         self.search = search
-        self.configuration, self.model = load_configuration()
+        self.configuration, self.model, self.negative_model = load_configuration(), None, None
         self.capacity = json.loads(
             (ROOT / "mission_planner/measurements/commander.json").read_text()
         )["pipeline_capacity"]
-        self.negative_model = negative_model(self.model)
         self.ledger, self.evidence = Detections(), None
         self.source, self.manifest = None, None
         self.replay_status = "not_started"
-        self.ingestion, self.session, self.sam, self.glimmer = None, None, None, None
-        self.selected, self.reviews = None, {}
-        self.review_lock = asyncio.Lock()
+        self.ingestion, self.sam, self.glimmer = None, None, None
+        self.selected = None
         self.visual_only = set()
         self.assets = set()
         self.directory = search.mission.directory / "evidence"
@@ -49,8 +53,12 @@ class Commander:
             assert manifest["id"] not in self.manifests, "Duplicate replay identity"
             self.manifests[manifest["id"]] = manifest
 
+    def load_model(self):
+        self.model = load_observation_model()
+        self.negative_model = negative_model(self.model)
+
     def initialize_evidence(self):
-        assert self.evidence is None
+        assert self.evidence is None and self.model is not None
         self.evidence = Evidence(
             self.search.probability, self.search.grid, self.model["false_alarm_rate"]
         )
@@ -103,25 +111,24 @@ class Commander:
 
     async def open(self):
         from mission_planner.agents.models import Glimmer, Sam
-        from mission_planner.agents.perception.hosting import inference_session
         from mission_planner.agents.perception.pipeline import Processor
 
-        assert self.source is not None and self.session is None and self.ingestion is None
+        assert self.source is not None and self.sam is None and self.ingestion is None
         assert self.capacity is not None, "Perception capacity has not been measured"
         self.search.initialize()
-        self.session = inference_session(
-            self.search.mission.directory / "inference-hosting",
-            sam_concurrency=self.capacity["sam_runners"],
-        )
         ready = False
         try:
-            await blocking(self.session.__enter__)
             self.sam = Sam()
-            self.glimmer = await blocking(Glimmer)
+            self.glimmer = Glimmer()
             profile = self.search.profile
             prompts = [p["text"] for p in profile["person_prompts"] + profile["clue_prompts"]]
             processor = Processor(
-                self.directory, prompts, self.configuration, self.sam, self.glimmer
+                self.directory,
+                prompts,
+                look_for(profile),
+                self.configuration,
+                self.sam,
+                self.glimmer,
             )
             self.ingestion = Ingestion(
                 self.directory,
@@ -164,7 +171,7 @@ class Commander:
 
     async def replay(self):
         assert self.source == "recorded" and self.replay_status == "not_started"
-        assert self.ingestion is not None and self.session is not None, (
+        assert self.ingestion is not None and not self.ingestion.closed, (
             "Selected inference source is not ready"
         )
         self.replay_status = "running"
@@ -196,15 +203,10 @@ class Commander:
             if self.ingestion is not None and not self.ingestion.closed:
                 await self.ingestion.close()
         finally:
-            async with self.review_lock:
-                if self.session is not None:
-                    try:
-                        for client in (self.sam, self.glimmer):
-                            if client is not None:
-                                client.http.close()
-                    finally:
-                        session, self.session = self.session, None
-                        await blocking(session.__exit__, None, None, None)
+            for client in (self.sam, self.glimmer):
+                if client is not None:
+                    client.http.close()
+            self.sam, self.glimmer = None, None
 
     def complete_capture(self, result):
         search = self.search
@@ -217,7 +219,7 @@ class Commander:
             for detection in result["detections"]:
                 detection["calibrated"] = False
         calibrated = result["calibrated_complete"]
-        positive = any(d["calibrated"] and d["qualified"] for d in result["detections"])
+        positive = any(escalated(d) for d in result["detections"])
         if calibrated:
             pod, footprint = capture_pod(
                 result["record"],
@@ -235,7 +237,9 @@ class Commander:
         search.negative_count += effect["kind"] == "negative"
         search.footprints.append({"id": frame_id, "vertices": footprint, "outcome": effect["kind"]})
         self.assets.update([result["frame_ref"], result["input_ref"]])
-        self.assets.update(d["crop_ref"] for d in result["detections"])
+        self.assets.update(
+            ref for d in result["detections"] for ref in (d["crop_ref"], d["context_ref"])
+        )
         self.directory.mkdir(parents=True, exist_ok=True)
         (self.directory / "assets.json").write_text(json.dumps(sorted(self.assets)) + "\n")
         self.save_ledger()
@@ -271,19 +275,16 @@ class Commander:
         value = self.ledger.review(detection_id)
         value = self.cluster_view(value)
         value["selected_id"] = detection_id
-        value["thresholds"] = {
-            "sam": self.configuration["sam_threshold"],
-            "glimmer": self.configuration["glimmer_threshold"],
-        }
+        value["thresholds"] = {"sam": self.configuration["sam_threshold"]}
         value["members"] = [
             {
                 **d,
                 "frame_ref": self.asset_url(d["frame_ref"]),
                 "crop_ref": self.asset_url(d["crop_ref"]),
+                "context_ref": self.asset_url(d["context_ref"]),
             }
             for d in value["members"]
         ]
-        value["model_review"] = self.reviews[value["id"]] if value["id"] in self.reviews else None
         value["likelihood"] = self.evidence.detail(value["id"])
         return value
 
@@ -302,10 +303,9 @@ class Commander:
                     "drone_id",
                     "prompt",
                     "calibrated",
-                    "qualified",
+                    "decision",
+                    "report",
                     "sam_confidence",
-                    "glimmer_yes",
-                    "outside_mass",
                     "timestamp_ns",
                 )
             },
@@ -332,12 +332,8 @@ class Commander:
                 ]
             identities = []
             for cluster in rows:
-                qualified = [
-                    i
-                    for i in cluster["member_ids"]
-                    if self.ledger.records[i]["calibrated"] and self.ledger.records[i]["qualified"]
-                ]
-                identities.append(qualified[0] if qualified else cluster["representative_id"])
+                positive = [i for i in cluster["member_ids"] if escalated(self.ledger.records[i])]
+                identities.append(positive[0] if positive else cluster["representative_id"])
             return {
                 "source": self.source,
                 "clusters": [self.brief(identity) for identity in identities],
@@ -358,31 +354,8 @@ class Commander:
         assert name == "review_detection"
         self.ledger.cluster(identity)
         self.selected = identity
-        if arguments["model_review"]:
-            async with self.review_lock:
-                assert self.session is not None, (
-                    "Structured review requires an active inference session"
-                )
-                record = self.ledger.records[identity]
-                schema = {
-                    "type": "object",
-                    "properties": {"description": {"type": "string"}},
-                    "required": ["description"],
-                    "additionalProperties": False,
-                }
-                review = await blocking(
-                    self.glimmer.review,
-                    [(self.directory / record["crop_ref"]).read_bytes()],
-                    json.dumps(
-                        {key: self.search.mission.case["report"][key] for key in ("brief",)}
-                    ),
-                    schema,
-                )
-                self.reviews[record["cluster_id"]] = {"label": "Model opinion", **review}
-
         self.search.changed()
-        value = self.review(identity)
-        return {**self.brief(identity), "model_review": value["model_review"]}
+        return self.brief(identity)
 
     def view(self):
         summary = (
@@ -390,7 +363,7 @@ class Commander:
         )
         return {
             "source": self.source,
-            "inference_ready": self.ingestion is not None and self.session is not None,
+            "inference_ready": self.ingestion is not None and not self.ingestion.closed,
             "manifests": [
                 {"id": m["id"], "label": m["label"], "frames": len(m["records"])}
                 for m in self.manifests.values()
