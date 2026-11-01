@@ -152,7 +152,8 @@ def capture(rpc, name, origin, path=None):
 
 def frames(path, start_rpc, stop_rpc):
     """Map CSV rows to host monotonic time through the timestamped STOP console event."""
-    rows = list(csv.reader(path.open()))
+    with path.open() as stream:
+        rows = list(csv.reader(stream))
     header, final, metadata = rows[0], rows[-2], rows[-1]
     assert header[0] == "EVENTS" and {"FrameTime", "GPUTime"} <= set(header), header
     # Columns first seen mid-capture are appended; the end header extends the first.

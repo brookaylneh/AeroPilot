@@ -114,3 +114,25 @@ test('session event history is retained beyond a thousand events', () => {
   assert.equal(socket.closed, false);
   client.close();
 });
+
+test('live feed focus remains valid while retired search and sensor payloads close the connection', () => {
+  const client = connect(null),
+    socket = client.sockets[0];
+  const focus = { type: 'feed_focus', id: '871bb2e7-8e63-4663-91df-32125d593a2c', drone_id: 'Drone4' };
+  socket.onmessage({ data: JSON.stringify(focus) });
+  assert.equal(socket.closed, false);
+  assert.equal(client.values.find((value) => value?.type === 'feed_focus').drone_id, 'Drone4');
+  client.close();
+  for (const message of [
+    { type: 'search', search: {} },
+    { type: 'sensor_frame', frame: {} },
+  ]) {
+    const old = connect(null);
+    old.sockets[0].onmessage({ data: JSON.stringify(message) });
+    assert.equal(old.sockets[0].closed, true);
+    assert(
+      old.values.some((value) => typeof value === 'string' && value.startsWith('Mission protocol error:')),
+    );
+    old.close();
+  }
+});

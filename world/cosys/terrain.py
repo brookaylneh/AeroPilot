@@ -50,6 +50,19 @@ def heights():
     return values
 
 
+@lru_cache(maxsize=1)
+def domain():
+    """Rectangular heightfield bounds and a conservative UE-up minimum, all in metres."""
+    low = NORTH_MIN_M, EAST_MIN_M
+    high = NORTH_MAX_M, EAST_MAX_M
+    minimum = min(
+        (min(heights()) - FIELD["zeroSample"]) / FIELD["samplesPerMetre"],
+        WORLD["port"]["centerUeCm"]["z"] / 100,
+    )
+    assert all(math.isfinite(value) for value in (*low, *high, minimum))
+    return low, high, minimum
+
+
 def terrain_height(x, y):
     port = WORLD["port"]
     if all(

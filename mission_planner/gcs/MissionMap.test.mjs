@@ -105,11 +105,8 @@ function map() {
     const props = {
       vehicles,
       selected: 'Drone1',
-      drawing: false,
-      areaDraft: null,
       focus: null,
-      pendingRoute: null,
-      pendingPlace: null,
+      landmarks: [],
       age: 0,
       connected: true,
       inset: true,
@@ -221,7 +218,7 @@ test('an approved plan stays dashed and only the flown part of its active versio
   );
 });
 
-test('a new preview and pending route remain visible after home landing', () => {
+test('a new preview remains visible after home landing', () => {
   const html = map()(
     [
       vehicle('Drone2', { ...home, north_m: home.north_m + 15, armed: false, landed_state: 1 }),
@@ -229,12 +226,10 @@ test('a new preview and pending route remain visible after home landing', () => 
     ],
     {
       planner: { active: receipt(2), previous: receipt(1), preview: receipt(3, ['Drone2']), progress: {} },
-      pendingRoute: { drone_id: 'Drone2', speed_mps: 5, waypoints: route },
     },
   );
   assert.doesNotMatch(html, /aria-label="Drone2 (active|previous) plan/);
   assert.match(html, /aria-label="Drone2 preview plan version 3"/);
-  assert.match(html, /aria-label="Drone2 route pending approval"/);
 });
 
 test('home landing clears trail history before the next takeoff', () => {

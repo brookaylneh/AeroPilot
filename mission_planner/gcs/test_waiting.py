@@ -160,7 +160,7 @@ class Conditions(unittest.TestCase):
 
     def test_acknowledged_candidate_does_not_repeatedly_wake_wonder(self):
         row = {"id": "search", "status": "candidate", "rescue": {"pending": False}}
-        inspections = Inspections(None)
+        inspections = Inspections(Mock(directory=Path(".")))
         inspections.rows[row["id"]] = row
         self.assertEqual(inspections.pending_events(), [])
         row["rescue"]["pending"] = True
@@ -171,6 +171,9 @@ class WakeLifecycle(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.mission = object.__new__(Mission)
         m = self.mission
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        m.directory = Path(directory.name)
         m.agent_wait = m.wait_task = m.agent_task = None
         m.agent_lock = asyncio.Lock()
         m.agent_busy = False

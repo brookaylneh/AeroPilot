@@ -21,7 +21,6 @@ run from the staging copy before the repository exists:
 sudo bash deploy/host.sh user
 sudo git clone --branch main --single-branch /path/to/main.bundle /home/brook_avionuas/snr
 sudo chown -R brook_avionuas:brook_avionuas /home/brook_avionuas/snr
-sudo -u brook_avionuas git -C /home/brook_avionuas/snr switch -c aws-migration
 ```
 
 Place the staged `deploy/` files in the checkout before the remaining stages. Verify the bundle with `git bundle verify` and the cloned history with `git fsck --full --strict`.
@@ -129,7 +128,7 @@ sudo systemctl start snr-caddy
 Acquisition scripts require new destinations; do not rerun them over installed toolchains.
 Units start at boot, fail visibly and do not restart automatically after errors.
 `journalctl -u snr-<service>` records their output. Restart only the affected installed unit after a fix.
-For the coupled simulator, follow the [world-first shutdown](../world/cosys/README.md#installed-cutover-after-merge)
+For the coupled simulator, follow the [world-first shutdown](../world/cosys/README.md)
 and wait for Unreal's Cosys listener before starting the mission service. Starting the
 autopilots before Unreal is ready exhausts their first sensor-message timeout.
 The rendering and encoding profile is documented in [streaming](../world/unreal/streaming.md);
@@ -138,14 +137,12 @@ its startup values are defined in `runtime.env.example`.
 | Route or endpoint                  | Purpose                                                       | Listener / upstream                                             |
 | ---------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------- |
 | `http://35.81.229.78/`             | Redirect to `/home`                                           | Caddy, 80 TCP                                                   |
-| `/home`                            | World readiness and planner/scenario entry                     | web, `127.0.0.1:3001`                                           |
+| `/home`                            | World readiness and planner/scenario entry                    | web, `127.0.0.1:3001`                                           |
 | `/studio`                          | Scenario Creator                                              | web, `127.0.0.1:3001`                                           |
-| `/missionplanner`                 | General mission entry or active-session resume                 | web, `127.0.0.1:3001`                                           |
-| `/missionplanner?case=<uuid>`      | Mission Control with a launched rescue scenario                | web, `127.0.0.1:3001`                                           |
-| `/mission`                        | Compatibility redirect, preserving the query                   | web, `127.0.0.1:3001`                                           |
+| `/missionplanner`                  | General mission entry or active-session resume                | web, `127.0.0.1:3001`                                           |
+| `/missionplanner?case=<uuid>`      | Mission Control with a launched rescue scenario               | web, `127.0.0.1:3001`                                           |
+| `/mission`                         | Compatibility redirect, preserving the query                  | web, `127.0.0.1:3001`                                           |
 | `/api/mission`                     | Mission WebSocket                                             | web origin check, then `127.0.0.1:8765`                         |
-| `/team?case=<uuid>&team=<id>`      | Receiving page with explicit lead acknowledgement             | same web origin                                                 |
-| `/api/team`                        | Team-limited delivery/acknowledgement WebSocket               | origin check, mission listener `/team`                          |
 | `/api/evidence/<mission>/<asset>`  | Registered immutable frame and crop JPEGs                     | same web origin, mission-owned registry                         |
 | `/api/unreal/status`               | Renderer readiness and occupancy                              | web, signalling health                                          |
 | `/api/stream`                      | Pixel Streaming player WebSocket                              | web origin check, then `127.0.0.1:8080`                         |
@@ -160,8 +157,8 @@ its startup values are defined in `runtime.env.example`.
 | Unreal WebRTC                      | Local media endpoint reached by TURN                          | `49160–49200` UDP; no public ingress required with forced relay |
 | Development                        | One server, reached by SSH tunnel                             | `127.0.0.1:5174`                                                |
 
-Caddy proxies to the web server so production and development share the existing same-origin WebSocket
-checks. The old `/pixel-streaming` path is removed. The root redirects explicitly; unknown paths return 404. TURN and its media endpoints are the network-facing exception to the loopback service rule.
+Caddy proxies to the web server so production and development share the same-origin WebSocket
+checks. The root redirects explicitly; unknown paths return 404. TURN and its media endpoints are the network-facing exception to the loopback service rule.
 Caddy serves the public IP over HTTP on TCP 80. Automatic HTTPS and the admin endpoint are disabled.
 WebSockets use `ws://` on the same origin; no DNS name or certificate is required.
 Signalling supplies `iceTransportPolicy: relay` to browsers. Unreal advertises its local candidates;
@@ -176,6 +173,8 @@ end-session action with every aircraft landed and disarmed before resetting nati
 to character selection; it never initiates a return flight. The coupled fleet remains running.
 A later launch can select a new case. No model inference or autonomous flight starts merely
 by opening the planner or launching the briefing. See [web entry acceptance](../web/README.md).
+General and rescue sessions use one versioned flight plan; the mission state exposes the public map
+as `landmarks`. SAM and Glimmer run remotely on the shared Modal Servers, never on this host.
 
 Run development with `npm run dev`. Vite middleware and API/WebSocket handlers share the single fixed
 listener; reload the browser after changes. Tunnel it with:
@@ -259,8 +258,7 @@ aws ec2 revoke-security-group-ingress --region us-west-2 --group-id sg-007dd0426
 
 GPU containers explicitly declare the NVIDIA device nodes in `unreal-container.sh`,
 in addition to requesting the NVIDIA runtime and driver libraries. This preserves
-GPU access when runc updates the cgroup. The legacy NVIDIA hook alone loses access
-when CPU limits change on this host; the disposable-container reproduction and the
-verified device-binding fix are recorded under `.local/evidence/render-quality/cpu12/`.
+GPU access when runc updates the cgroup. The NVIDIA hook alone does not preserve access
+when CPU limits change on this host.
 Set CPU limits in `runtime.env` before recreating the service container.
 See [NVIDIA's container-update diagnosis](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/troubleshooting.html#containers-losing-access-to-gpus-with-error-failed-to-initialize-nvml-unknown-error).

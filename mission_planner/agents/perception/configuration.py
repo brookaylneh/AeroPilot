@@ -1,62 +1,12 @@
-"""Truth-free capture contract and the exact calibrated image transformations."""
+"""Pinned calibration image transformations shared with model benchmarks."""
 
-import hashlib
 import io
 import json
-import math
-import os
-from pathlib import Path
 
 from PIL import Image
 
-from mission_planner.agents.perception.analyst import TEMPLATE
-from mission_planner.agents.perception.geometry import Camera
-from mission_planner.environment import ROOT, load_env
-from world.cosys.terrain import terrain_height
-
-CAPTURE_FIELDS = frozenset(
-    (
-        "schemaVersion",
-        "vehicleId",
-        "cameraId",
-        "imageType",
-        "file",
-        "width",
-        "height",
-        "timestampNs",
-        "cameraPoseLocalNed",
-        "cameraPositionWorldM",
-        "localNedOriginUeCm",
-        "coordinateSystem",
-        "horizontalFovDegrees",
-        "vehicleStateBefore",
-        "vehicleStateAfter",
-        "physicsPausedForCapture",
-        "vehiclePoseTiming",
-        "captureLatencySeconds",
-        "transportBytes",
-        "jpegBytes",
-        "sha256",
-    )
-)
-STATE_FIELDS = frozenset(
-    (
-        "id",
-        "timestampNs",
-        "positionLocalNedM",
-        "positionWorldM",
-        "orientationNed",
-        "velocityLocalNedMps",
-    )
-)
-
-
-def digest(data):
-    return hashlib.sha256(data).hexdigest()
-
-
-def encode(value):
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), allow_nan=False)
+from mission_planner.agents.review import jpeg
+from mission_planner.environment import ROOT
 
 
 def load_configuration():
@@ -71,80 +21,6 @@ def load_configuration():
         prompts = config["person_batching_prompts"]
         assert len(prompts) == len(set(prompts)) == 4 and prompts[0] == "person"
     return config
-
-
-def load_observation_model():
-    load_env()
-    path = ROOT / "mission_planner/measurements/analyst.json"
-    assert path.is_file(), (
-        "Glimmer analyst escalation rates are not measured; search belief is unavailable"
-    )
-    value = json.loads(path.read_text())
-    assert value["template"] == TEMPLATE, "Escalation rates were measured for another template"
-    assert value["endpoint"] == os.environ["GLIMMER_URL"], (
-        "Escalation rates were measured on another Glimmer endpoint"
-    )
-    return value["observation_model"]
-
-
-def read_capture(path):
-    path = Path(path).resolve()
-    record = json.loads(path.read_text())
-    assert set(record) == CAPTURE_FIELDS, "Capture metadata must contain only the camera contract"
-    for key in ("schemaVersion", "width", "height", "timestampNs", "transportBytes", "jpegBytes"):
-        assert type(record[key]) is int and record[key] > 0
-    assert type(record["physicsPausedForCapture"]) is bool
-    assert isinstance(record["cameraId"], str) and record["cameraId"].strip()
-    assert isinstance(record["vehicleId"], str) and record["vehicleId"].strip()
-    assert type(record["captureLatencySeconds"]) in (int, float)
-    assert math.isfinite(record["captureLatencySeconds"])
-
-    def coordinates(value, axes):
-        assert set(value) == set(axes), "Camera vectors must contain only their coordinate axes"
-        assert all(type(v) in (int, float) and math.isfinite(v) for v in value.values())
-        if axes == "xyzw":
-            assert abs(math.sqrt(sum(v * v for v in value.values())) - 1) < 1e-5
-
-    for key in ("cameraPositionWorldM", "localNedOriginUeCm"):
-        coordinates(record[key], "xyz")
-    assert set(record["cameraPoseLocalNed"]) == {"position", "orientation"}
-    coordinates(record["cameraPoseLocalNed"]["position"], "xyz")
-    coordinates(record["cameraPoseLocalNed"]["orientation"], "xyzw")
-    for key in ("vehicleStateBefore", "vehicleStateAfter"):
-        assert set(record[key]) == STATE_FIELDS
-        assert record[key]["id"] == record["vehicleId"]
-        assert type(record[key]["timestampNs"]) is int and record[key]["timestampNs"] > 0
-        for field in ("positionLocalNedM", "positionWorldM", "velocityLocalNedMps"):
-            coordinates(record[key][field], "xyz")
-        coordinates(record[key]["orientationNed"], "xyzw")
-    assert (
-        record["vehicleStateBefore"]["timestampNs"]
-        <= record["timestampNs"]
-        <= record["vehicleStateAfter"]["timestampNs"]
-    ), "Image timestamp must lie within the recorded vehicle-pose bracket"
-    assert (record["physicsPausedForCapture"], record["vehiclePoseTiming"]) in (
-        (True, "Frozen physics state"),
-        (False, "Ground-truth brackets; image pose and timestamp sampled together by Cosys"),
-    ), "Capture pose timing is unverified"
-    assert record["imageType"] == "RGB" and record["timestampNs"] > 0
-    assert record["captureLatencySeconds"] >= 0 and record["jpegBytes"] > 0
-    image = (path.parent / record["file"]).resolve()
-    assert image.parent == path.parent and image.is_file(), (
-        "Capture image must be adjacent to metadata"
-    )
-    payload = image.read_bytes()
-    assert len(payload) == record["jpegBytes"] and digest(payload) == record["sha256"]
-    with Image.open(io.BytesIO(payload)) as frame:
-        assert frame.format == "JPEG" and frame.mode == "RGB"
-        assert frame.size == (record["width"], record["height"])
-    Camera(record)
-    return record, payload
-
-
-def jpeg(image):
-    stream = io.BytesIO()
-    image.convert("RGB").save(stream, format="JPEG", quality=95, subsampling=0)
-    return stream.getvalue()
 
 
 def prepare_frame(payload):
@@ -172,13 +48,3 @@ def crop(payload, box_xyxy, native_span=512):
             box,
             padding,
         )
-
-
-def calibrated(record, config):
-    camera = Camera(record)
-    agl = camera.world["z"] - terrain_height(camera.world["x"], camera.world["y"])
-    return bool(
-        [record["width"], record["height"]] == config["native_size"]
-        and abs(agl - config["agl_m"]) <= config["flight_tolerance_m"]
-        and camera.rotation[2, 0] > 0.99
-    )

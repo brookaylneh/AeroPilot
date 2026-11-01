@@ -127,8 +127,6 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
             tracking_resume=AsyncMock(side_effect=resume),
             execute=AsyncMock(side_effect=execute),
         )
-        assets = SimpleNamespace(directory=self.directory / "evidence", assets=set())
-        assets.asset_url = lambda name: "/api/evidence/00000000-0000-4000-8000-000000000001/" + name
         self.events = []
 
         def event(kind, text, **fields):
@@ -137,9 +135,9 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
             return row
 
         self.mission = SimpleNamespace(
+            id="00000000-0000-4000-8000-000000000001",
             directory=self.directory,
             fleet=self.fleet,
-            search=SimpleNamespace(commander=assets),
             events=self.events,
             event=Mock(side_effect=event),
             launch=asyncio.create_task,
@@ -469,7 +467,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(report["candidate_index"], 0)
         for kind in ("crop", "context"):
             name = report["images"][kind + "_ref"].rsplit("/", 1)[1]
-            self.assertIn(name, self.mission.search.commander.assets)
+            self.assertIn(name, self.inspections.assets)
             self.assertTrue((self.directory / "evidence" / name).is_file())
         (call,) = [event for event in self.events if event["kind"] == "tool_call"]
         (result,) = [event for event in self.events if event["kind"] == "tool_result"]
@@ -1482,7 +1480,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.temporal.call_count, 1)
 
     async def test_late_image_write_cannot_restore_invalidated_live_observation(self):
-        self.mission.search.commander.directory.mkdir()
+        self.inspections.directory.mkdir()
         for invalidation in ("lost", "revision", "stopped", "stale"):
             with self.subTest(invalidation=invalidation):
                 metadata, image = await self.capture.capture()

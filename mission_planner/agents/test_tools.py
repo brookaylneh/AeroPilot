@@ -62,15 +62,6 @@ class ToolContracts(unittest.TestCase):
             "plan.drones[0].steps[0].radius_m: must be at least 3.5; received 2.",
         )
 
-    def test_legacy_clothing_errors_are_not_treated_as_plan_steps(self):
-        for invalid in ("red coat", {"kind": "person"}):
-            with self.subTest(invalid=invalid), self.assertRaises(AssertionError) as caught:
-                validate_arguments(
-                    "record_subject_profile", {"clothing": {"value": invalid, "evidence": []}}
-                )
-            self.assertIn("Invalid clothing.value", str(caught.exception))
-            self.assertNotIn("step object", str(caught.exception))
-
     def test_registry_has_only_available_subsystems(self):
         names = [tool["name"] for tool in TOOLS]
         self.assertIn("open_feed", names)
@@ -164,11 +155,6 @@ class ToolContracts(unittest.TestCase):
                     check(schema)
         self.assertFalse(next(t for t in TOOLS if t["name"] == "preview_plan")["strict"])
 
-    def test_all_drone_query_requires_json_null(self):
-        validate_arguments("list_detections", {"drone_id": None, "status": "unresolved"})
-        with self.assertRaisesRegex(AssertionError, "Unknown drone: null"):
-            validate_arguments("list_detections", {"drone_id": "null", "status": "unresolved"})
-
     def test_unknown_drone_is_explicit(self):
         with self.assertRaisesRegex(AssertionError, "Unknown drone: Drone9"):
             validate_arguments("take_off", {"drone_id": "Drone9", "altitude_above_home_m": 30})
@@ -226,18 +212,6 @@ class ToolContracts(unittest.TestCase):
             validate_arguments("take_off", {"drone_id": "Drone1", "altitude_above_home_m": 121})
         with self.assertRaisesRegex(AssertionError, "Unrecognized arguments"):
             validate_arguments("hold", {"drone_id": "Drone1", "force": True})
-
-    def test_structure_check_requires_exact_place_team_message_and_operator_reason(self):
-        validate_arguments(
-            "hasty_check_structure", {"place_id": "cabin", "team_id": "alpha", "message": "Check"}
-        )
-        validate_arguments(
-            "confirm_structure_negative", {"delivery_id": "task", "reason": "Complete check"}
-        )
-        with self.assertRaises(AssertionError):
-            validate_arguments("hasty_check_structure", {"place_id": "cabin", "message": "Check"})
-        with self.assertRaises(AssertionError):
-            validate_arguments("confirm_structure_negative", {"delivery_id": "task"})
 
 
 if __name__ == "__main__":

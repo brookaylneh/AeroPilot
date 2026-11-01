@@ -14,19 +14,6 @@ from mission_planner.gcs.service import MESSAGE_FIELDS, Mission, encode, operato
 
 
 async def connection(mission, websocket):
-    if websocket.request.path == "/team":
-        async with mission.lifecycle_lock:
-            assert mission.active and mission.case is not None and not mission.clearing, (
-                "No active rescue mission"
-            )
-            assert mission.admission_error is None, "Mission admission failed: " + str(
-                mission.admission_error
-            )
-            mission.sockets.add(websocket)
-        try:
-            return await mission.ground_team.connection(websocket)
-        finally:
-            mission.sockets.discard(websocket)
     first = json.loads(await asyncio.wait_for(websocket.recv(), timeout=10))
     kind = first["type"]
     assert kind in ("status", "launch", "studio", "connect") and set(first) == MESSAGE_FIELDS[kind]
@@ -94,11 +81,7 @@ async def run():
     def health(connection, request):
         if request.path != "/health":
             return None
-        healthy = (
-            mission.fleet_error is None
-            and mission.sensor_error is None
-            and mission.admission_error is None
-        )
+        healthy = mission.fleet_error is None and mission.admission_error is None
         state = (
             "cancelling"
             if mission.clearing

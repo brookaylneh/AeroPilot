@@ -1,5 +1,5 @@
 import { nearbyLabels } from './mapLabels';
-import { placeAnchor, type Landmark } from './placeState';
+import { landmarkAnchor, type Landmark } from './landmarks';
 
 type Point = { x: number; y: number };
 type Box = Point & { width: number; height: number };
@@ -9,18 +9,16 @@ export default function LandmarkLayer({
   project,
   viewport,
   obstacles,
-  pending,
   showLabels,
 }: {
   landmarks: Landmark[];
   project: (north: number, east: number) => Point;
   viewport: { width: number; height: number };
   obstacles: Box[];
-  pending: Landmark | null;
   showLabels: boolean;
 }) {
   const anchors = landmarks.map((place) => {
-    const anchor = placeAnchor(place);
+    const anchor = landmarkAnchor(place);
     return {
       id: place.id,
       ...project(anchor.x / 100, anchor.y / 100),
@@ -28,13 +26,7 @@ export default function LandmarkLayer({
       height: 18,
     };
   });
-  const labels = showLabels
-    ? nearbyLabels(
-        [...anchors].sort((a, b) => Number(b.id === pending?.id) - Number(a.id === pending?.id)),
-        obstacles,
-        viewport,
-      )
-    : {};
+  const labels = showLabels ? nearbyLabels(anchors, obstacles, viewport) : {};
   return (
     <g className="gcs-landmarks" aria-label="Named landmarks">
       {landmarks.map((place, index) => {
@@ -43,14 +35,10 @@ export default function LandmarkLayer({
         const label = labels[place.id];
         const anchor = anchors[index];
         return (
-          <g
-            key={place.id}
-            data-landmark-id={place.id}
-            className={`gcs-landmark ${place.kind}${pending?.id === place.id ? ' is-proposed' : ''}`}
-          >
+          <g key={place.id} data-landmark-id={place.id} className={`gcs-landmark ${place.kind}`}>
             <title>{`${place.name} · ${place.kind.replaceAll('_', ' ')}`}</title>
             {place.geometry.type === 'point' ? (
-              <circle cx={points[0].x} cy={points[0].y} r={pending?.id === place.id ? 9 : 3} />
+              <circle cx={points[0].x} cy={points[0].y} r={3} />
             ) : place.geometry.type === 'polyline' ? (
               <polyline points={coordinates} />
             ) : (

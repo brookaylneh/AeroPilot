@@ -1,4 +1,4 @@
-"""Capture geometry, timestamp and spacing rejection without simulator processes."""
+"""Capture geometry, timestamps and persisted calibration images without simulator processes."""
 
 import asyncio
 import copy
@@ -14,7 +14,6 @@ from unittest import mock
 
 from mission_planner.agents.perception.geometry import Camera
 from world.cosys.capture import FrameCapture, capture_time, nadir_error, shadow_floor, validate
-from world.cosys.sensor import GroundTrack, capture_ground_track
 
 
 def frame():
@@ -117,89 +116,6 @@ class CaptureValidationTests(unittest.TestCase):
             shadow_floor(lit, 8, 7)
 
 
-class GroundTrackTests(unittest.TestCase):
-    def sample(self, x, y, mode="AUTO"):
-        return {"north_m": x, "east_m": y, "mode": mode, "armed": True}
-
-    def test_turn_distance_uses_ground_track_not_chord(self):
-        track = GroundTrack()
-        self.assertFalse(track.update(self.sample(0, 0)))
-        self.assertFalse(track.update(self.sample(6, 0)))
-        self.assertTrue(track.update(self.sample(6, 6)))
-        self.assertEqual(track.auto_total, 12)
-        self.assertFalse(track.update(self.sample(6, 6)))
-
-    def test_brake_travel_is_excluded_when_auto_resumes(self):
-        track = GroundTrack()
-        track.update(self.sample(0, 0))
-        track.update(self.sample(7, 0))
-        self.assertFalse(track.update(self.sample(30, 0, "BRAKE")))
-        self.assertFalse(track.update(self.sample(31, 0)))
-        self.assertTrue(track.update(self.sample(36, 0)))
-        self.assertEqual(track.auto_total, 12)
-
-    def test_image_during_brake_and_resumed_image_share_physical_track(self):
-        track = GroundTrack()
-
-        def update(mode, north, ms):
-            state = {**self.sample(north, 0, mode), "received_at_ms": ms}
-            return state, track.update(state)
-
-        def record(timestamp, rows):
-            return {
-                "validation": {"captureUnixNs": timestamp},
-                "mavlinkSamples": [
-                    {
-                        "receivedAtUnixNs": ms * 1_000_000,
-                        "positionWorldM": {"x": north, "y": 0},
-                        "mode": mode,
-                    }
-                    for ms, north, mode in rows
-                ],
-            }
-
-        update("AUTO", 0, 0)
-        update("AUTO", 6, 500)
-        trigger, fired = update("AUTO", 12, 1000)
-        self.assertTrue(fired)
-        at_trigger = track.physical_total
-        self.assertFalse(update("BRAKE", 15, 2000)[1])
-        first = capture_ground_track(
-            record(2_000_000_000, [(1000, 12, "AUTO"), (2000, 15, "BRAKE")]),
-            trigger,
-            at_trigger,
-        )
-        self.assertEqual(first, 15)
-        self.assertFalse(update("BRAKE", 17, 2500)[1])
-        self.assertFalse(update("AUTO", 17, 3000)[1])
-        self.assertFalse(update("AUTO", 23, 3500)[1])
-        trigger, fired = update("AUTO", 29, 4000)
-        self.assertTrue(fired)
-        self.assertEqual(track.auto_total, 24)
-        self.assertEqual(track.physical_total, 29)
-        second = capture_ground_track(
-            record(4_001_000_000, [(4010, 29, "AUTO")]), trigger, track.physical_total
-        )
-        self.assertEqual(second - first, 14)
-
-    def test_large_sample_gap_fails_instead_of_skipping_frames(self):
-        track = GroundTrack()
-        track.update(self.sample(0, 0))
-        with self.assertRaisesRegex(AssertionError, "sample gap"):
-            track.update(self.sample(13, 0))
-
-    def test_acquired_spacing_includes_motion_between_trigger_and_image(self):
-        record = {
-            "validation": {"captureUnixNs": 1_500_000_000},
-            "mavlinkSamples": [
-                {"receivedAtUnixNs": 1_000_000_000, "positionWorldM": {"x": 2, "y": 0}},
-                {"receivedAtUnixNs": 2_000_000_000, "positionWorldM": {"x": 2, "y": 4}},
-            ],
-        }
-        trigger = {"north_m": 0, "east_m": 0, "received_at_ms": 0}
-        self.assertEqual(capture_ground_track(record, trigger, 12), 16)
-
-
 class AsyncCaptureTests(unittest.IsolatedAsyncioTestCase):
     async def test_slow_image_io_keeps_telemetry_loop_running_and_writes_camera_contract(self):
         ticks = []
@@ -243,11 +159,10 @@ class AsyncCaptureTests(unittest.IsolatedAsyncioTestCase):
                     mock.patch.object(capture, "_acquire", side_effect=acquire),
                     mock.patch("world.cosys.capture.mavlink_sample", side_effect=mavlink),
                 ):
-                    record, preview = await capture.capture("Drone1", "test")
+                    record = await capture.capture("Drone1", "test")
                 self.assertGreater(len(ticks), 2)
                 self.assertTrue(record["validation"]["accepted"], record["validation"])
                 self.assertEqual(Camera(record).width, 160)
-                self.assertEqual((preview["width"], preview["height"]), (960, 540))
                 path = Path(record["imagePath"])
                 self.assertTrue(path.exists())
                 self.assertEqual(json.loads(path.with_suffix(".json").read_text()), record)

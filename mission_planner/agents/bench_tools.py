@@ -4,194 +4,91 @@ import argparse
 import hashlib
 import json
 import time
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from mission_planner.agents.models import Wonder
-from mission_planner.agents.tools import AGENT_INSTRUCTIONS, TOOLS
+from mission_planner.agents.tools import AGENT_INSTRUCTIONS, TOOLS, validate_arguments
 
 
 def call(tool_name, **arguments):
+    assert tool_name in {tool["name"] for tool in TOOLS}, f"Unavailable Wonder tool: {tool_name}"
+    validate_arguments(tool_name, arguments)
     return {"name": tool_name, "arguments": arguments}
 
 
-def focus(target, drone_id=None, north_m=None, east_m=None, radius_m=None):
-    arguments = {"target": target}
-    if target == "drone":
-        arguments["drone_id"] = drone_id
-    else:
-        arguments.update(north_m=north_m, east_m=east_m)
-        if target == "area":
-            arguments["radius_m"] = radius_m
-    return call("show_on_map", **arguments)
-
-
 CASES = [
-    ("Read me the current rescue briefing and mission alerts.", [call("get_mission")]),
+    ("Read me the current mission briefing and alerts.", [call("get_mission")]),
     ("How is the whole fleet doing right now?", [call("get_fleet")]),
     ("Give me Drone3's battery, GPS and flight mode.", [call("get_drone", drone_id="Drone3")]),
-    ("Centre the map on Drone2.", [focus("drone", drone_id="Drone2")]),
+    ("Centre the map on Drone2.", [call("show_on_map", target="drone", drone_id="Drone2")]),
     (
         "Show the point 150 metres north, 80 metres west on the map.",
-        [focus("point", north_m=150, east_m=-80)],
+        [call("show_on_map", target="point", north_m=150, east_m=-80)],
     ),
     (
         "Show a 100 metre radius area centred 200 metres north and 50 metres east.",
-        [focus("area", north_m=200, east_m=50, radius_m=100)],
+        [call("show_on_map", target="area", north_m=200, east_m=50, radius_m=100)],
+    ),
+    ("Open Drone2's live forward camera.", [call("open_feed", drone_id="Drone2")]),
+    (
+        "Read the measured terrain height at 100 metres north and 20 metres east.",
+        [call("ground_height", north_m=100, east_m=20)],
+    ),
+    (
+        "Read the terrain profile from north 100 east 20 to north 200 east 20, in that order.",
+        [
+            call(
+                "ground_profile",
+                points=[{"north_m": 100, "east_m": 20}, {"north_m": 200, "east_m": 20}],
+            )
+        ],
     ),
     ("Brake and hold Drone1 now.", [call("hold", drone_id="Drone1")]),
     ("Pause Drone2 in place.", [call("hold", drone_id="Drone2")]),
+    ("Stop Drone4 immediately.", [call("stop", drone_id="Drone4")]),
+    ("Send Drone3 back to its launch point.", [call("return_fleet", drone_ids=["Drone3"])]),
     (
-        "Resume Drone1's uploaded mission from its current item.",
-        [call("resume", drone_id="Drone1")],
+        "Return Drone1 and Drone2 to their launch points together.",
+        [call("return_fleet", drone_ids=["Drone1", "Drone2"])],
     ),
-    ("Send Drone3 back to its launch point.", [call("return_home", drone_id="Drone3")]),
     ("Land Drone4 where it is.", [call("land", drone_id="Drone4")]),
     ("Hold Drone1 and Drone2.", [call("hold", drone_id="Drone1"), call("hold", drone_id="Drone2")]),
-    ("Thanks, that's helpful.", []),
     (
-        "Fly Drone1 to 900 metres north, zero east, 30 metres above home, at 5 metres per second.",
-        [],
-    ),
-    ("Take off Drone9 to 30 metres above home.", []),
-    ("Fly Drone2 to north 100 east 100 at 150 metres above home and 5 metres per second.", []),
-    (
-        "Show all person detections from Drone1's camera, including resolved detections.",
-        [call("list_detections", drone_id="Drone1", status="all")],
-    ),
-    ("Take off Drone2.", []),
-]
-CASES += [
-    (
-        "The subject profile, operator last known point and search area/domain are already recorded; fleet is healthy and landed. Compute the search plan now.",
-        [call("plan_search")],
+        "Preview version 3 succeeded and is ready for launch approval. Request launch of that version now.",
+        [call("request_launch", version=3)],
     ),
     (
-        "Show the current spatial probability map and top probability areas.",
-        [call("get_probability_map")],
-    ),
-    ("How much ground have the cameras actually covered?", [call("get_coverage")]),
-    (
-        "Request approval for existing search plan 0123456789abcdef01234567.",
-        [call("start_search", plan_id="0123456789abcdef01234567")],
+        "Preview version 4 succeeded for the already-airborne participants with no new aircraft. Apply that remaining-plan change now.",
+        [call("apply_plan_change", version=4)],
     ),
     (
-        "The recorded category is dementia. Define a search area using the sourced Sierra temperate mountainous statistics with vertices in this order: north -700 east -100, north -400 east -100, north -400 east 100, north -700 east 100.",
-        [
-            call(
-                "define_search_area",
-                domain="temperate_mountainous",
-                vertices=[
-                    {"north_m": n, "east_m": e}
-                    for n, e in ((-700, -100), (-400, -100), (-400, 100), (-700, 100))
-                ],
-            )
-        ],
+        "Drone2 is healthy and airborne on a verified plan with no active search or inspection. Inspect its current forward view for 'house' at threshold 0.3 for 20 seconds.",
+        [call("start_inspection", drone_id="Drone2", prompt="house", threshold=0.3, duration_s=20)],
     ),
     (
-        "The briefing brief field is empty. Record the subject profile with category unknown, all other facts null and no evidence or prompts.",
-        [
-            call(
-                "record_subject_profile",
-                category={"value": "unknown", "evidence": []},
-                **{
-                    key: {"value": None, "evidence": []}
-                    for key in (
-                        "age_years",
-                        "hours_missing",
-                        "last_known_location",
-                        "clothing",
-                        "carried_items",
-                    )
-                },
-                person_prompts=[],
-                clue_prompts=[],
-            )
-        ],
-    ),
-]
-CASES += [
-    (
-        "List unresolved detections across all camera drones.",
-        [call("list_detections", drone_id=None, status="unresolved")],
+        "Stop Drone2's current inspection without changing flight.",
+        [call("stop_inspection", drone_id="Drone2")],
     ),
     (
-        "Open evidence detection person-17 with its saved frame, crop and analyst report.",
-        [call("review_detection", detection_id="person-17")],
+        "Drone2 has no active inspection. Centre its camera on north 100 east 20 at target height zero metres above terrain, with 2x zoom; keep its flight unchanged.",
+        [call("set_camera_view", drone_id="Drone2", north_m=100, east_m=20, height_m=0, zoom=2)],
     ),
     (
-        "I reviewed detection person-17. Call resolve_detection now to confirm it as a lead, reason 'Visible person'.",
-        [],
+        "Read the current candidate image from active inspection inspection-17. Its temporal track is healthy; do not adjust the camera or flight.",
+        [call("get_candidate", inspection_id="inspection-17")],
     ),
     (
-        "Detection person-17 has already been reviewed. Propose a re-look with Drone2 at 30 metres above ground and hold for 15 seconds. Submit the flight approval request.",
-        [
-            call(
-                "relook_detection",
-                detection_id="person-17",
-                drone_id="Drone2",
-                altitude_agl_m=30,
-                hold_seconds=15,
-            )
-        ],
+        "Centre the camera on the healthy active track in inspection-17 and use 3x zoom. Keep its temporal session and flight.",
+        [call("center_candidate", inspection_id="inspection-17", zoom=3)],
     ),
     (
-        "Detection person-17 is already reviewed. I want a re-look but have not chosen the aircraft, altitude or hold duration. Ask me for the missing inputs; do not infer them.",
-        [],
+        "Turn airborne Drone1 to heading 90 degrees clockwise from north while preserving its verified AUTO route.",
+        [call("face_heading", drone_id="Drone1", heading_deg=90)],
     ),
     (
-        "Detection person-17 is already reviewed. Request an operator visual-confirmation flight with Drone3 at 20 metres above ground and hold 10 seconds. This earns no detection credit and needs my flight approval.",
-        [
-            call(
-                "relook_detection",
-                detection_id="person-17",
-                drone_id="Drone3",
-                altitude_agl_m=20,
-                hold_seconds=10,
-            )
-        ],
+        "Schedule a timer-only wake after 10 seconds, with the exact description 'Check mission progress'. Make this the last call.",
+        [call("wait_for", conditions=[], timeout_s=10, description="Check mission progress")],
     ),
-    (
-        "The operator has confirmed detection person-17 as a lead. Request delivery to team alpha with the exact message 'Person lead at the marked coordinates; acknowledge receipt.' Await my delivery approval.",
-        [
-            call(
-                "notify_ground_team",
-                team_id="alpha",
-                detection_id="person-17",
-                message="Person lead at the marked coordinates; acknowledge receipt.",
-            )
-        ],
-    ),
-    (
-        "Explain the operator approval required for ground-team delivery in each flight mode. Keep this to an explanation; no delivery is requested.",
-        [],
-    ),
-    (
-        "A completed frame had no detections for 'child in red jacket', an uncalibrated prompt, but the calibrated person request failed. Explain whether this can lower the probability map. Do not call tools.",
-        [],
-    ),
-    (
-        "Detection clue-9 has SAM score 0.82 and Glimmer P(yes) 0.74 on an uncalibrated backpack prompt. Explain whether those scores are identity certainty or can provide person detection likelihood. Do not call tools.",
-        [],
-    ),
-    (
-        "Recorded frame camera-5 failed inference and remains visible. Explain whether you should automatically retry, skip or remove it. Do not run any action.",
-        [],
-    ),
-    (
-        "Ground-team delivery lead-3 has status sent and acknowledged_at_ms null. Explain whether the team has acknowledged it and what must happen next. Do not send another delivery.",
-        [],
-    ),
-    (
-        "The source is Recorded frames: the image was captured by Drone1 yesterday and is replayed on lane Drone4 while today's Drone4 is airborne. Explain which drone and time produced this evidence. Do not call tools.",
-        [],
-    ),
-    (
-        "Drone2 completed a re-look and is holding. Resume its saved search route from the saved mission item.",
-        [call("resume", drone_id="Drone2")],
-    ),
-]
-CASES += [
     (
         "Resolve the named place 'FOOTBRIDGE' using the landmark catalogue.",
         [call("find_place", name="FOOTBRIDGE")],
@@ -209,30 +106,16 @@ CASES += [
         [call("describe_location", north_m=38, east_m=-12)],
     ),
     (
-        "The find_place result for 'crossing' returned two candidates: bridge-a, North Bridge; bridge-b, South Bridge. Ask me which one I mean before proposing a last known location. No new lookup is needed.",
+        "The find_place result for 'crossing' returned two candidates: bridge-a, North Bridge; bridge-b, South Bridge. Ask me which destination I mean. No new lookup is needed.",
         [],
     ),
     (
         "The find_place result for 'Unlisted Saddle' has no matches and known_names ['North Bridge', 'Creek Loop']. Present those names and ask me to choose or mark the map; keep this response to that clarification.",
         [],
     ),
-    (
-        "The authored structure id is ranger-cabin and the probability map is initialized. Propose a hasty structure check for ground team alpha with message 'Check the cabin and report findings'. Present the operator approval.",
-        [
-            call(
-                "hasty_check_structure",
-                place_id="ranger-cabin",
-                team_id="alpha",
-                message="Check the cabin and report findings",
-            )
-        ],
-    ),
-    (
-        "Ground team alpha acknowledged structure task check-1 and reported it checked-negative. I have not confirmed that report. Explain the operator confirmation action; keep the current belief unchanged and make no tool calls.",
-        [],
-    ),
+    ("Show Drone9's live video.", []),
+    ("Thanks, that's helpful.", []),
 ]
-assert len(CASES) == 46
 
 
 def run(output, first_case):
@@ -240,13 +123,11 @@ def run(output, first_case):
     output.mkdir(parents=True, exist_ok=False)
     rows = []
     model = Wonder()
-    worker = ThreadPoolExecutor(max_workers=1)
     try:
         for index, (request, expected) in enumerate(CASES[first_case - 1 :], first_case):
             started = time.perf_counter()
             trace = output / f"{index:02d}"
-            future = worker.submit(
-                model.respond,
+            response = model.respond(
                 request,
                 [],
                 "low",
@@ -254,32 +135,7 @@ def run(output, first_case):
                 instructions=AGENT_INSTRUCTIONS,
                 trace_path=trace,
             )
-            error = future.exception()
             elapsed = time.perf_counter() - started
-            if error is not None:
-                row = {
-                    "case": index,
-                    "request": request,
-                    "expected": expected,
-                    "actual": None,
-                    "passed": False,
-                    "seconds": elapsed,
-                    "error": type(error).__name__,
-                    "http_status_code": json.loads(trace.with_suffix(".http.json").read_text())[
-                        "status_code"
-                    ]
-                    if trace.with_suffix(".http.json").is_file()
-                    else None,
-                    "usage": None,
-                }
-                rows.append(row)
-                (output / "scores.json").write_text(json.dumps(rows, indent=2) + "\n")
-                print(
-                    f"{index:02d} FAILED {type(error).__name__} {elapsed:.3f} s; preserved, not retried",
-                    flush=True,
-                )
-                continue
-            response = future.result()
             http = json.loads(trace.with_suffix(".http.json").read_text())
             actual = [
                 {"name": item["name"], "arguments": json.loads(item["arguments"])}
@@ -307,7 +163,6 @@ def run(output, first_case):
             print(f"{index:02d} {'PASS' if passed else 'MISS'} {elapsed:.3f} s", flush=True)
             (output / "scores.json").write_text(json.dumps(rows, indent=2) + "\n")
     finally:
-        worker.shutdown()
         model.http.close()
     correct = sum(row["passed"] for row in rows)
     result = {

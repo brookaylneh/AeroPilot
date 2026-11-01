@@ -5,11 +5,10 @@ import math
 import numpy as np
 
 from mission_planner.gcs.geodesy import ORIGIN, point_in_polygon, segment_in_polygon
+from mission_planner.gcs.terrain import waypoint
 from mission_planner.gcs.validation import minimum_clearance
-from mission_planner.search.footprint import domain
-from mission_planner.search.terrain import waypoint
 from world.cosys.capture import rotation
-from world.cosys.terrain import terrain_height
+from world.cosys.terrain import domain, terrain_height
 
 
 def ground_point(metadata, box):
@@ -34,7 +33,7 @@ def ground_observation(metadata, box):
             "location_error": "Candidate ground-contact ray is too close to the horizon",
         }
     camera = metadata["camera_position_world_m"]
-    low, high, minimum, _, _, _ = domain()
+    low, high, minimum = domain()
     if not all(low[i] <= camera[key] <= high[i] for i, key in enumerate("xy")):
         return {"ground": None, "location_error": "Tracking camera is outside the terrain domain"}
     distance = (camera["z"] - minimum + 1) / -ray[2]

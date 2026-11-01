@@ -10,7 +10,7 @@ from unittest.mock import Mock
 
 from PIL import Image
 
-from mission_planner.gcs.review import TEMPLATE, candidate_images, instructions, review_candidate
+from mission_planner.agents.review import TEMPLATE, candidate_images, instructions, review_candidate
 
 
 class ReviewTests(unittest.TestCase):

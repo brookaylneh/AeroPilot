@@ -5,7 +5,6 @@ import {
   approvalSentence,
   formatValue,
   formatPosition,
-  formatProbability,
   flightLogText,
   argumentRows,
 } from './display.ts';
@@ -26,16 +25,8 @@ test('nested tool arguments remain readable instead of object coercion', () => {
   assert.deepEqual(JSON.parse(rows[0][1]), values.plan);
   assert.doesNotMatch(rows[0][1], /\[object Object\]/);
 });
-test('small positive posterior masses remain distinguishable from zero', () => {
-  assert.equal(formatProbability(0), '0%');
-  assert.equal(formatProbability(1), '100%');
-  assert.equal(formatProbability(0.12345), '12.3%');
-  assert.equal(formatProbability(3.14e-8), '0.00000314%');
-  assert.notEqual(formatProbability(Number.MIN_VALUE), formatProbability(0));
-  for (const value of [NaN, Infinity, -0.1, 1.1]) assert.throws(() => formatProbability(value));
-});
 test('one action progresses through approval, execution and result', () => {
-  const call = { kind: 'tool_call', name: 'land', arguments: { drone_id: 'Drone3' } };
+  const call = { kind: 'tool_call', name: 'take_off', arguments: { drone_id: 'Drone3' } };
   const pending = { kind: 'approval', result: { approval_id: 'one' } };
   const approved = { ...call, kind: 'approval', result: { approved: true } };
   assert.equal(actionStatus([call, pending]), 'Awaiting approval');
@@ -46,10 +37,10 @@ test('one action progresses through approval, execution and result', () => {
     actionStatus([call, { kind: 'tool_result', result: { ok: false, error: 'Operator declined' } }]),
     'Declined',
   );
-  assert.equal(flightLogText(approved), 'Drone3 · LAND approved by operator');
+  assert.equal(flightLogText(approved), 'Drone3 · Take off approved by operator');
   assert.equal(
     flightLogText({ ...approved, result: { approved: false } }),
-    'Drone3 · LAND declined by operator',
+    'Drone3 · Take off declined by operator',
   );
   assert.equal(
     approvalSentence('take_off', { drone_id: 'Drone1', altitude_above_home_m: 30 }),

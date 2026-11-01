@@ -132,7 +132,7 @@ class SamplingTests(unittest.TestCase):
 
 class InspectionTests(unittest.IsolatedAsyncioTestCase):
     async def test_failed_registry_write_preserves_published_assets(self):
-        assets = self.inspections.mission.search.commander
+        assets = self.inspections
         assets.directory.mkdir()
         self.inspections._register(("previous-frame.jpg",))
         registry = assets.directory / "assets.json"
@@ -174,6 +174,7 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
             return row
 
         self.mission = SimpleNamespace(
+            id="test",
             case=None,
             directory=self.directory,
             fleet=SimpleNamespace(face_heading=AsyncMock(), execute=AsyncMock()),
@@ -199,9 +200,6 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
                 for name in self.states
             }
         }
-        assets = SimpleNamespace(directory=self.directory / "evidence", assets=set())
-        assets.asset_url = lambda name: "/api/evidence/test/" + name
-        self.mission.search = SimpleNamespace(commander=assets)
         self.captures = {}
 
         def capture(name, directory):

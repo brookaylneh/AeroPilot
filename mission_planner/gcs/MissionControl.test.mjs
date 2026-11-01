@@ -41,7 +41,6 @@ function component(read, search, react, window) {
 function snapshot(state = null) {
   return {
     state,
-    search: null,
     feedFocus: null,
     events: [],
     connection: state ? 'connected' : 'connecting',
@@ -127,6 +126,7 @@ function state(caseId = null, vehicles = []) {
     inspections: [],
     approvals: [],
     map_focus: null,
+    landmarks: [],
     planner: { preview: null, active: null, previous: null, progress: {} },
   });
 }
@@ -246,6 +246,9 @@ function view(initial) {
     panels: () => nodes(tree).find((node) => node.props.className === 'gcs-panel-tabs'),
     camera: () => nodes(tree).find((node) => node.type.name === 'DroneVideo'),
     fleet: () => nodes(tree).find((node) => node.type.name === 'FleetStrip'),
+    map: () => nodes(tree).find((node) => node.type.name === 'MissionMap'),
+    approval: () => nodes(tree).find((node) => node.props.className === 'gcs-approval'),
+    flightForm: () => nodes(tree).find((node) => node.props.className === 'gcs-flight-form'),
     composer: () => nodes(tree).find((node) => node.props.className === 'gcs-composer'),
     chatMenu: () => nodes(tree).find((node) => node.props.id === 'gcs-chat-menu'),
     historyBar: () => nodes(tree).find((node) => node.props.className === 'gcs-chat-history-bar'),
@@ -907,4 +910,114 @@ test('a clicked drone card puts its camera on the main screen and only live dron
   assert.equal(value.fleet().props.selected, null);
   assert.equal(value.camera().props.droneId, 'Drone2');
   assert.equal(value.camera().props.inset, true);
+});
+
+test('map facts come from the mission state and remain required without a rescue case', () => {
+  const value = state();
+  const landmark = {
+    id: 'command-post',
+    name: 'Command post',
+    aliases: [],
+    heightM: 0,
+    kind: 'command_post',
+    geometry: { type: 'point', points: [{ x: -81400, y: 0, z: 263200 }] },
+  };
+  value.landmarks = [landmark];
+  const page = view(value);
+  assert.deepEqual(page.map().props.landmarks, [landmark]);
+  delete value.landmarks;
+  assert.equal(missionState.stateSchema.safeParse(value).success, false);
+});
+
+test('manual takeoff, routes, overrides and QGC export keep their command contracts', () => {
+  const page = view(state(null, [vehicle('Drone2')])),
+    sent = [];
+  page.render({ send: (message) => sent.push(message) });
+  for (const name of ['take_off', 'fly_route']) {
+    page.fleet().props.prepare(name, 'Drone2');
+    page.render();
+    const form = page.flightForm();
+    assert.match(
+      renderToStaticMarkup(form),
+      name === 'take_off' ? /Request flight approval/ : /Send flight command/,
+    );
+    form.props.onSubmit({ preventDefault() {} });
+    page.render();
+    assert.equal(page.flightForm(), undefined);
+  }
+  for (const name of ['hold', 'resume', 'return_home', 'land']) page.fleet().props.tool(name, 'Drone2');
+  page.fleet().props.exportPlan('Drone2');
+  assert.deepEqual(JSON.parse(JSON.stringify(sent)), [
+    { type: 'tool', name: 'take_off', arguments: { drone_id: 'Drone2', altitude_above_home_m: 30 } },
+    {
+      type: 'tool',
+      name: 'fly_route',
+      arguments: {
+        drone_id: 'Drone2',
+        waypoints: [{ north_m: 0, east_m: 0, altitude_above_home_m: 30 }],
+        speed_mps: 5,
+      },
+    },
+    ...['hold', 'resume', 'return_home', 'land'].map((name) => ({
+      type: 'tool',
+      name,
+      arguments: { drone_id: 'Drone2' },
+    })),
+    { type: 'export_plan', drone_id: 'Drone2' },
+  ]);
+});
+
+test('takeoff approval uses the exact request and plan launch requires its matching preview', () => {
+  const initial = state(),
+    sent = [];
+  initial.approvals = [
+    {
+      id: 'approval-1',
+      call_id: 'call-1',
+      name: 'take_off',
+      arguments: { drone_id: 'Drone2', altitude_above_home_m: 30 },
+      source: 'operator',
+    },
+  ];
+  const page = view(initial);
+  page.render({ send: (message) => sent.push(message) });
+  assert.match(renderToStaticMarkup(page.approval()), /Take off Drone2 to 30 m above home/);
+  const approve = () =>
+    nodes(page.approval()).find((node) => node.type === 'button' && node.props.className === 'gcs-primary');
+  page.click(approve());
+  assert.equal(sent[0].type, 'approval');
+  assert.equal(sent[0].id, 'approval-1');
+  assert.equal(sent[0].approved, true);
+  const plan = { version: 2, drones: [{ drone_id: 'Drone2', steps: [{ kind: 'takeoff', height_m: 30 }] }] };
+  const preview = {
+    plan,
+    missions: {
+      Drone2: {
+        route: [{ north_m: 0, east_m: 0, altitude_above_home_m: 30 }],
+        distance_m: 30,
+        duration_s: 10,
+        battery_required_percent: 1,
+        available_hover_s: 100,
+      },
+    },
+  };
+  for (const name of ['request_launch', 'apply_plan_change']) {
+    const updated = {
+      ...initial,
+      approvals: [{ ...initial.approvals[0], name, arguments: { version: 2 }, source: 'agent' }],
+    };
+    page.render({ state: updated });
+    assert.equal(approve().props.disabled, true);
+    assert.match(renderToStaticMarkup(page.approval()), /matching plan preview is unavailable/);
+    page.render({ state: { ...updated, planner: { ...updated.planner, preview } } });
+    assert.equal(approve().props.disabled, false);
+    assert.match(renderToStaticMarkup(page.approval()), /Mission plan version 2/);
+    page.render({
+      state: {
+        ...updated,
+        planner: { ...updated.planner, preview: { ...preview, plan: { ...plan, version: 3 } } },
+      },
+    });
+    assert.equal(approve().props.disabled, true);
+  }
 });

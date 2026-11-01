@@ -1,7 +1,6 @@
 """Unpaused RGB acquisition, pose validation and the shared capture record writer."""
 
 import asyncio
-import base64
 import hashlib
 import io
 import json
@@ -28,8 +27,6 @@ LIMITS = {
     "mavlinkBracketSeconds": 0.5,
     "actorMotionM": 0.01,
 }
-PREVIEW_SIZE = (960, 540)
-PREVIEW_QUALITY = 75
 REC709_LUMA = np.array([0.2126, 0.7152, 0.0722], dtype=np.float32)
 # A full 4K percentile costs 0.12 s, which would slow the harness's back-to-back captures.
 SHADOW_STRIDE = 4
@@ -272,27 +269,16 @@ class FrameCapture:
         image.save(encoded, format="JPEG", quality=quality, subsampling=0)
         encoded = encoded.getvalue()
         path.write_bytes(encoded)
-        preview = None
-        if frame["validation"]["accepted"]:
-            small = image.resize(PREVIEW_SIZE, Image.Resampling.LANCZOS)
-            output = io.BytesIO()
-            small.save(output, format="JPEG", quality=PREVIEW_QUALITY)
-            preview = {
-                "jpeg_base64": base64.b64encode(output.getvalue()).decode("ascii"),
-                "width": small.width,
-                "height": small.height,
-            }
         frame.update(
             file=path.name,
             imagePath=str(path),
             captureId=path.stem,
             jpegBytes=len(encoded),
             sha256=hashlib.sha256(encoded).hexdigest(),
-            previewBytes=0 if preview is None else len(preview["jpeg_base64"]),
             writeLatencySeconds=time.perf_counter() - start,
         )
         path.with_suffix(".json").write_text(json.dumps(frame, indent=2, allow_nan=False) + "\n")
-        return frame, preview
+        return frame
 
     async def capture(self, name, tag, *, observe=None, jpeg_quality=95):
         assert name in sim.NAMES and name not in self.active

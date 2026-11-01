@@ -19,9 +19,9 @@ from mission_planner.gcs.planner import (
     validate_missions,
     validate_search,
 )
+from mission_planner.gcs.terrain import ALTITUDE_STEP_M, PLANNED_AGL_TOLERANCE_M
 from mission_planner.gcs.test_validation import readback
 from mission_planner.gcs.validation import minimum_clearance
-from mission_planner.search.terrain import ALTITUDE_STEP_M, PLANNED_AGL_TOLERANCE_M
 from world.cosys.landmarks import load
 from world.cosys.terrain import terrain_height
 

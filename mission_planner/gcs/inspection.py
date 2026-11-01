@@ -11,16 +11,17 @@ import shutil
 import threading
 import time
 import uuid
+from pathlib import Path
 
 import httpx
 import numpy as np
 from PIL import Image
 
 from mission_planner.agents.models import Glimmer, endpoint, post
+from mission_planner.agents.review import review_candidate
 from mission_planner.agents.segmentation import decode_mask
 from mission_planner.agents.temporal import TemporalTrack
 from mission_planner.gcs.geodesy import NAMES
-from mission_planner.gcs.review import review_candidate
 from world.cosys.inspection import ForwardCapture, route_look_ahead
 
 
@@ -127,6 +128,8 @@ def flight_identity(mission, drone_id):
 class Inspections:
     def __init__(self, mission):
         self.mission = mission
+        self.directory = mission.directory / "evidence"
+        self.assets = set()
         self.rows = {}
         self.tasks = {}
         self.metadata = {}
@@ -558,7 +561,7 @@ class Inspections:
             "Candidate following requires a saved unfinished survey waypoint"
         )
         metadata = copy.deepcopy(self.metadata[frame_id])
-        jpeg = (self.mission.search.commander.directory / (frame_id + "-frame.jpg")).read_bytes()
+        jpeg = (self.directory / (frame_id + "-frame.jpg")).read_bytes()
         row.update(status="running", error=None, deadline_ms=time.time() * 1000 + duration_s * 1000)
         row["rescue"] = {
             "phase": "reviewing",
@@ -590,22 +593,24 @@ class Inspections:
         )
         return copy.deepcopy(row)
 
+    def asset_url(self, reference):
+        assert reference in self.assets and Path(reference).name == reference
+        return f"/api/evidence/{self.mission.id}/{reference}"
+
     def _register(self, names):
-        assets = self.mission.search.commander
-        updated = assets.assets | set(names)
-        registry = assets.directory / "assets.json"
+        updated = self.assets | set(names)
+        registry = self.directory / "assets.json"
         temporary = registry.with_suffix(".tmp")
         temporary.write_text(json.dumps(sorted(updated)) + "\n")
         temporary.replace(registry)
-        assets.assets = updated
+        self.assets = updated
 
     async def _publish(self, row, metadata, overlay, detections, live=False):
         from mission_planner.gcs.tracking import ground_observation
 
-        assets = self.mission.search.commander
         identity = metadata["frame_id"]
         original, annotated = identity + "-frame.jpg", identity + "-input.jpg"
-        await asyncio.to_thread((assets.directory / annotated).write_bytes, overlay)
+        await asyncio.to_thread((self.directory / annotated).write_bytes, overlay)
         self._check(row)
         self._register((original, annotated))
         self.metadata[identity] = copy.deepcopy(metadata)
@@ -620,8 +625,8 @@ class Inspections:
         frame = {
             "frame_id": identity,
             "captured_at_ms": metadata["captured_at_ms"],
-            "frame_ref": assets.asset_url(original),
-            "overlay_ref": assets.asset_url(annotated),
+            "frame_ref": self.asset_url(original),
+            "overlay_ref": self.asset_url(annotated),
             "width": metadata["width"],
             "height": metadata["height"],
             "horizontal_fov_deg": metadata["horizontal_fov_deg"],
@@ -647,7 +652,7 @@ class Inspections:
         latest = row["latest"] if frame_id is None else self._evidence_frame(row, frame_id)
         assert latest is not None, "Inspection has no completed evidence frame"
         identity = latest["frame_id"]
-        directory = self.mission.search.commander.directory
+        directory = self.directory
         result = {
             "metadata": copy.deepcopy(self.metadata[identity]),
             "images": [
@@ -718,7 +723,7 @@ class Inspections:
             try:
                 metadata.update(frame_id=identity, sha256=hashlib.sha256(jpeg).hexdigest())
                 record.update(metadata)
-                assets = self.mission.search.commander.directory
+                assets = self.directory
                 (assets / (identity + "-frame.jpg")).write_bytes(jpeg)
                 body = {"jpeg": base64.b64encode(jpeg).decode(), **record["request"]}
             finally:
@@ -832,7 +837,7 @@ class Inspections:
             capture = self._camera(name, directory)
             client = endpoint("SAM")
             client.timeout = httpx.Timeout(10)
-            assets = self.mission.search.commander.directory
+            assets = self.directory
             assets.mkdir(parents=True, exist_ok=True)
             while row["status"] == "running":
                 await asyncio.sleep(max(0, next_slot - time.monotonic()))
@@ -926,7 +931,7 @@ class Inspections:
         try:
             directory = self.mission.directory / "inspections" / row["id"]
             directory.mkdir(parents=True, exist_ok=acquisition is not None)
-            self.mission.search.commander.directory.mkdir(parents=True, exist_ok=True)
+            self.directory.mkdir(parents=True, exist_ok=True)
             if acquisition is not None:
                 metadata, jpeg, candidates, allowance = acquisition
                 capture = self._camera(name, directory)
@@ -1189,12 +1194,11 @@ class Inspections:
                     request.exception()
                     raise
                 images = result["images"]
-                assets = self.mission.search.commander
                 for kind in ("crop", "context"):
                     await asyncio.to_thread(
                         shutil.copyfile,
                         directory / images[kind],
-                        assets.directory / images[kind],
+                        self.directory / images[kind],
                     )
                 self._register((images["crop"], images["context"]))
                 reports.append(
@@ -1204,8 +1208,8 @@ class Inspections:
                         "reasoning_tokens": result["reasoning_tokens"],
                         "images": {
                             "frame_id": images["frame_id"],
-                            "crop_ref": assets.asset_url(images["crop"]),
-                            "context_ref": assets.asset_url(images["context"]),
+                            "crop_ref": self.asset_url(images["crop"]),
+                            "context_ref": self.asset_url(images["context"]),
                             "crop_box": images["crop_box"],
                             "context_box": images["context_box"],
                         },
@@ -1386,7 +1390,7 @@ class Inspections:
             return result
 
         async def publish(current, image, selected, target):
-            assets = self.mission.search.commander.directory
+            assets = self.directory
             await asyncio.to_thread(
                 (assets / (current["frame_id"] + "-frame.jpg")).write_bytes, image
             )

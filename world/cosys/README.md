@@ -71,7 +71,7 @@ and switches grass generation to the four drone sources. A mission viewer's ackn
 `drone-view` command activates the selected drone's existing forward `fpv` camera and enables
 the viewport for continuous Pixel Streaming video. Closing that viewer disables the mission
 viewport again. The stock camera follows the aircraft's position and attitude during hover,
-return, landing and disarm, independent of AUTO capture spacing. Legacy calibrated search
+return, landing and disarm, independent of AUTO capture spacing. Offline calibration
 captures retain their separate stabilized nadir `front_center` camera. Conversational
 missing-person search aims `fpv` as described below; selecting a video feed itself changes
 no camera pose or flight command.
@@ -83,18 +83,15 @@ from this runtime transition.
 
 ## Camera acquisition
 
-`capture.FrameCapture` is the unpaused image writer shared by missions and calibration.
-`sensor.MissionSensor` starts one worker per aircraft and triggers an image for every
-12 metres accumulated in armed AUTO flight. Ground track follows successive MAVLink
-positions, including turns; movement outside AUTO does not accumulate distance.
-Only one request per aircraft may be in flight. A request still running at the next
-trigger fails loudly. Network errors propagate without another request.
+`capture.FrameCapture` writes unpaused nadir images and pose evidence for offline
+calibration. Live missions use `inspection.ForwardCapture` on the forward camera,
+as described below. Camera acquisition never selects the operator's video view.
 
 The generator sets a 3840×2160 scene capture with 70° horizontal FOV. The documented
 camera `Gimbal` fixes world pitch at −90° and roll at 0° with stabilization 1. Yaw is
 deliberately omitted so heading can follow the aircraft; the pinned parser uses NaN
 for uncontrolled axes. Runtime `simSetCameraPose` must not change `front_center` during
-a calibrated sensor flight. Forward search aiming changes only `fpv`. Exposure is manual with no eye adaptation:
+calibration acquisition. Forward search aiming changes only `fpv`. Exposure is manual with no eye adaptation:
 with the physical camera off, manual exposure meters at EV100 0, so
 `AutoExposureCompensation` is minus the `exposureEv100` of
 `world/unreal/valley-lighting.json` (13). Motion blur amount/max and bloom intensity are zero.
@@ -122,15 +119,10 @@ samples supply flight state. Added fields include `imagePath`, `capturedAtUtc`,
 may pass an actor observation callback; actor translation above 0.01 m rejects the
 frame. Mission capture has no actor-placement access.
 
-JPEG images and JSON records are written under the supplied mission directory before
-the accepted-frame callback runs. That callback is the single search/perception
-ingestion path. Rejected images remain with `validation.accepted=false` and explicit
-reasons; they are excluded from ingestion and the feed. `sensor.jsonl` records every
-attempt, requested spacing, measured camera displacement, latency and encoded sizes.
-Acquired ground-track spacing integrates the MAVLink path up to each image time;
-it retains turn distance and includes travel between the trigger and acquisition.
-Accepted captures also produce a 960×540 JPEG preview at quality 75; only this preview
-is sent to the browser at capture cadence. Full images remain in the mission directory.
+Calibration saves each JPEG and JSON record before returning it. Rejected images
+retain `validation.accepted=false` and exact reasons; errors propagate without retry.
+The live forward path saves its own timestamped images and metadata under each
+mission's inspection directory; accepted evidence is registered for browser access.
 
 Camera settings and image timing are checked against the pinned
 [settings](https://github.com/Cosys-Lab/Cosys-AirSim/blob/5.8-v3.5.0/docs/settings.md),
@@ -152,7 +144,7 @@ Flight-plan inspections use `inspection.ForwardCapture` and the stock `fpv`
 camera. `CameraDefaults` configures request-driven 1920×1080 RGB with the same
 fixed exposure, white balance and Lumen settings. No named `fpv` entry is created:
 Cosys would replace the stock camera and its mount. The separately configured
-3840×2160 nadir camera and SAR capture validation remain unchanged.
+3840×2160 nadir camera and calibration capture validation remain unchanged.
 
 Forward capture records the image-owned pose and timestamp, measured horizontal
 field of view, vehicle origin and simulator/UTC brackets. Wrong camera identity,
@@ -160,7 +152,7 @@ dimensions, an out-of-bracket timestamp or invalid image/pose rejects the frame.
 Shadow-floor luminance is recorded as an image-quality measurement: a dark percentile
 alone does not establish missing lighting. An entirely black forward frame is saved
 losslessly as `<timestamp>-rejected.png` with pose/quality JSON in the inspection directory
-before raising. The legacy calibrated nadir capture retains its strict shadow-fill check.
+before raising. The calibrated nadir capture retains its strict shadow-fill check.
 Forward capture neither pauses physics nor selects the operator's video camera. Each inspection
 owns one RPC worker; cancellation drains its current acquisition before closing
 the client. These are observation poses, not inferred object coordinates or SAR

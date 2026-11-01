@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 import { briefingSchema } from '../../scenario_creator/briefing';
-import { searchSchema, type SearchState } from './searchState';
+import { landmarkSchema } from './landmarks';
 import { missionPlanSchema } from './missionPlan';
 import { plannerSchema } from './FlightPlan';
 import {
@@ -11,24 +11,17 @@ import {
   evidenceConfirmationSchema,
 } from './InspectionPanel';
 import { droneIds } from './droneIdentity';
-import {
-  feedFocusMessageSchema,
-  receiveSensorFrame,
-  sensorFrameMessageSchema,
-  type FeedFocus,
-  type SensorFrames,
-} from './sensorFeedState';
 import type { DroneId } from './droneIdentity';
 
 export { droneIds, droneColors, type DroneId } from './droneIdentity';
+export const feedFocusMessageSchema = z.strictObject({
+  type: z.literal('feed_focus'),
+  id: z.string().uuid(),
+  drone_id: z.enum(droneIds),
+});
+export type FeedFocus = z.infer<typeof feedFocusMessageSchema>;
 const number = z.number().finite();
 const point = z.object({ north_m: number, east_m: number });
-export const routeArgumentsSchema = z.object({
-  drone_id: z.enum(droneIds),
-  speed_mps: number,
-  waypoints: z.array(point.extend({ altitude_above_home_m: number })).min(1),
-});
-export type RouteArguments = z.infer<typeof routeArgumentsSchema>;
 const geoPoint = point.extend({
   latitude_deg: number.min(-90).max(90),
   longitude_deg: number.min(-180).max(180),
@@ -85,7 +78,6 @@ export const eventSchema = z
       'statustext',
       'error',
       'model_usage',
-      'team_acknowledgement',
       'perception',
       'review',
       'evidence',
@@ -203,14 +195,13 @@ export const stateSchema = z.object({
   ),
   map_focus: focusSchema.nullable(),
   planner: plannerSchema,
+  landmarks: z.array(landmarkSchema),
 });
 export type MissionState = z.infer<typeof stateSchema>;
 const messageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('idle') }).strict(),
   stateSchema,
-  sensorFrameMessageSchema,
   feedFocusMessageSchema,
-  z.object({ type: z.literal('search'), search: searchSchema }),
   z.object({ type: z.literal('event'), event: eventSchema }),
   z.object({ type: z.literal('history'), events: z.array(eventSchema) }),
   z.object({ type: z.literal('error'), message: z.string() }),
@@ -225,7 +216,6 @@ declare global {
 
 export function useMission(caseId: string | null) {
   const [state, setState] = useState<MissionState | null>(null);
-  const [search, setSearch] = useState<SearchState | null>(null);
   const [feedFocus, setFeedFocus] = useState<FeedFocus | null>(null);
   const [events, setEvents] = useState<MissionEvent[]>([]);
   const [connection, setConnection] = useState<'connecting' | 'connected' | 'closed' | 'idle'>('connecting');
@@ -233,7 +223,6 @@ export function useMission(caseId: string | null) {
   const [now, setNow] = useState(Date.now());
   const socket = useRef<WebSocket | null>(null);
   const arrived = useRef(0);
-  const frames = useRef<SensorFrames>({});
   useEffect(() => {
     const clock = window.setInterval(() => setNow(Date.now()), 250);
     return () => window.clearInterval(clock);
@@ -247,7 +236,6 @@ export function useMission(caseId: string | null) {
     const ws = new WebSocket(
       `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/api/mission`,
     );
-    frames.current = {};
     setFeedFocus(null);
     socket.current = ws;
     ws.onopen = () => {
@@ -264,7 +252,6 @@ export function useMission(caseId: string | null) {
       const data = parsed.data;
       if (data.type === 'idle') {
         setState(null);
-        setSearch(null);
         setFeedFocus(null);
         setEvents([]);
         setError('');
@@ -274,18 +261,6 @@ export function useMission(caseId: string | null) {
       } else if (data.type === 'state') {
         arrived.current = Date.now();
         setState(data);
-      } else if (data.type === 'search') setSearch(data.search);
-      else if (data.type === 'sensor_frame') {
-        try {
-          frames.current = receiveSensorFrame(
-            frames.current,
-            data.frame,
-            performance.timeOrigin + performance.now(),
-          );
-        } catch (error) {
-          setError(`Mission protocol error: ${String(error)}`);
-          ws.close(1002, 'Invalid sensor frame sequence');
-        }
       } else if (data.type === 'feed_focus') setFeedFocus(data);
       else if (data.type === 'event') setEvents((items) => [...items, data.event]);
       else if (data.type === 'history') setEvents(data.events);
@@ -338,7 +313,7 @@ export function useMission(caseId: string | null) {
     socket.current.send(JSON.stringify(message));
   }
   const age = state ? Math.max(0, (now - arrived.current) / 1000) : 0;
-  return { state, search, feedFocus, events, connection, error, setError, send, now, age };
+  return { state, feedFocus, events, connection, error, setError, send, now, age };
 }
 
 export function linkLost(vehicle: Vehicle, age: number, connected: boolean) {

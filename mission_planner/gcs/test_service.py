@@ -9,13 +9,13 @@ import tempfile
 import threading
 import unittest
 from pathlib import Path
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
 import httpx
 from PIL import Image
 
 from mission_planner.agents.models import Wonder
+from mission_planner.agents.tools import RESCUE_INSTRUCTIONS
 from mission_planner.environment import ROOT
 from mission_planner.gcs.service import (
     Mission,
@@ -27,6 +27,7 @@ from mission_planner.gcs.service import (
     planning_receipt,
     retire_images,
 )
+from world.cosys.landmarks import load
 
 
 class AgentContext(unittest.TestCase):
@@ -176,12 +177,10 @@ class AgentContext(unittest.TestCase):
 
     def test_every_request_contains_map_and_briefing(self):
         mission = object.__new__(Mission)
-        from mission_planner.search.state import Search
-
         temporary = tempfile.TemporaryDirectory(dir=ROOT / ".local")
         self.addCleanup(temporary.cleanup)
         mission.directory = Path(temporary.name)
-        mission.search = Search(mission)
+        mission.landmarks = load()
         mission.agent_wait = mission.wait_task = None
         mission.inspections = Mock(
             snapshot=Mock(return_value=[]), close=AsyncMock(), flight_stopped=AsyncMock()
@@ -237,14 +236,12 @@ class AgentContext(unittest.TestCase):
         )
 
     def test_current_telemetry_is_distinct_from_historical_acknowledgements(self):
-        from mission_planner.search.state import Search
-
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         mission = object.__new__(Mission)
         mission.case = None
         mission.directory = Path(directory.name)
-        mission.search = Search(mission)
+        mission.landmarks = load()
         mission.agent_wait = mission.wait_task = None
         mission.inspections = Mock(
             snapshot=Mock(return_value=[]), close=AsyncMock(), flight_stopped=AsyncMock()
@@ -300,14 +297,11 @@ class AgentContext(unittest.TestCase):
         self.assertGreater(context["telemetry_at_utc_ms"], historical["timestamp_ms"])
 
     def test_general_context_has_map_and_no_rescue_prompt_or_fabricated_brief(self):
-        from mission_planner.search.state import Search
-        from mission_planner.search.tools import INSTRUCTIONS
-
         with tempfile.TemporaryDirectory(dir=ROOT / ".local") as directory:
             mission = object.__new__(Mission)
             mission.directory = Path(directory)
             mission.case = None
-            mission.search = Search(mission)
+            mission.landmarks = load()
             mission.agent_wait = mission.wait_task = None
             mission.inspections = Mock(
                 snapshot=Mock(return_value=[]), close=AsyncMock(), flight_stopped=AsyncMock()
@@ -322,8 +316,8 @@ class AgentContext(unittest.TestCase):
             context = json.loads(instructions.split("Current mission context: ")[1])
             self.assertTrue(context["map"])
             self.assertIsNone(context["briefing"])
-            self.assertIsNone(context["search"])
-            self.assertNotIn(INSTRUCTIONS, instructions)
+            self.assertNotIn("search", context)
+            self.assertNotIn(RESCUE_INSTRUCTIONS, instructions)
 
     def test_http_error_does_not_expose_exception_class(self):
         request = httpx.Request("POST", "https://api.meta.ai/v1/responses")
@@ -419,7 +413,7 @@ class EvidenceIdentification(unittest.IsolatedAsyncioTestCase):
         from world.cosys.landmarks import load
 
         m = self.mission
-        m.search = Mock(landmarks=load())
+        m.landmarks = load()
         m.planner_state = Mock(
             return_value={"active": None, "preview": None, "previous": None, "progress": {}}
         )
@@ -769,7 +763,6 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
 
     async def test_evidence_pixels_stay_in_browser_state_and_images_not_model_text(self):
         from mission_planner.gcs.inspection import Inspections
-        from mission_planner.search.state import Search
 
         images = []
         for value in (10, 20, 30, 40):
@@ -809,7 +802,7 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
         }
         original = copy.deepcopy(row)
         mission = self.mission
-        mission.search = Search(mission)
+        mission.landmarks = load()
         mission.inspections = Inspections(mission)
         mission.inspections.rows[row["id"]] = row
         mission.inspections.evidence = Mock(
@@ -1378,7 +1371,6 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(AssertionError, "no operator message"):
             await m.handle({"type": "new_chat"}, None)
         m.fleet_ready, m.approvals = True, {}
-        m.search = SimpleNamespace(status="unplanned")
         m.fleet = Mock(preview_plan=AsyncMock())
         request = {
             "version": 1,

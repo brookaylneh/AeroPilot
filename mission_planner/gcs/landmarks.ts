@@ -1,8 +1,7 @@
 import { z } from 'zod';
-import landmarksDocument from '../../world/unreal/landmarks.json';
 
 const number = z.number().finite();
-export const placeGeometry = z
+const landmarkGeometry = z
   .object({
     type: z.enum(['point', 'polyline', 'polygon']),
     points: z.array(z.object({ x: number, y: number, z: number }).strict()),
@@ -34,7 +33,7 @@ export const landmarkSchema = z
       'parking',
       'command_post',
     ]),
-    geometry: placeGeometry,
+    geometry: landmarkGeometry,
   })
   .strict()
   .refine(
@@ -43,23 +42,9 @@ export const landmarkSchema = z
       (!['trail', 'road', 'creek', 'pond'].includes(kind) || heightM === 0),
     'Raised landmarks require polygon footprints; trails, roads, creeks and ponds have zero height',
   );
-export const placeArguments = z
-  .object({
-    place_id: z.string().min(1),
-    evidence: z.array(z.object({ field: z.string(), quote: z.string().min(1) }).strict()).min(1),
-  })
-  .strict();
-export const structureCheckArguments = z
-  .object({
-    place_id: z.string().min(1),
-    team_id: z.string().regex(/^[a-zA-Z0-9_-]{1,64}$/),
-    message: z.string().trim().min(1).max(1000),
-  })
-  .strict();
 export type Landmark = z.infer<typeof landmarkSchema>;
-export const worldLandmarks = landmarkSchema.array().min(1).parse(landmarksDocument.landmarks);
 
-export function placeAnchor(landmark: Landmark) {
+export function landmarkAnchor(landmark: Landmark) {
   const points = landmark.geometry.points;
   if (landmark.geometry.type === 'point') return points[0];
   if (landmark.geometry.type === 'polygon')

@@ -184,7 +184,7 @@ async def condition_flight(fleet, condition, scenario_id, directory):
                     point = dict(zip("xy", xy - forward * sim.CAMERA_FORWARD))
                     point["z"] = sim.terrain_height(*xy) + 30 + sim.CAMERA_DOWN
                     reached = await flight.move(fleet, name, point, 5)
-                    frame, _ = await capture.capture(
+                    frame = await capture.capture(
                         name,
                         f"frame-{offset:02d}-{along:+03d}",
                         observe=observe,

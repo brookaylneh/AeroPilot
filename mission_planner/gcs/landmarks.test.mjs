@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { landmarkSchema, placeAnchor, placeArguments } from './placeState.ts';
+import { landmarkSchema, landmarkAnchor } from './landmarks.ts';
 
 const line = {
   id: 'fixture-trail',
@@ -20,10 +20,10 @@ const line = {
 
 test('the line label uses its arclength midpoint, not a point outside the line', () => {
   const place = landmarkSchema.parse(line);
-  assert.deepEqual(placeAnchor(place), { x: 0, y: 200 });
+  assert.deepEqual(landmarkAnchor(place), { x: 0, y: 200 });
   assert.equal(place.geometry.points.length, 3);
   assert.deepEqual(
-    placeAnchor({
+    landmarkAnchor({
       ...place,
       geometry: { ...place.geometry, type: 'point', points: [line.geometry.points[1]] },
     }),
@@ -31,15 +31,13 @@ test('the line label uses its arclength midpoint, not a point outside the line',
   );
 });
 
-test('landmark and approval UI boundaries reject missing fields and private extras', () => {
+test('landmark UI boundaries reject missing fields and private extras', () => {
   assert.throws(() => landmarkSchema.parse({ ...line, subjectPlacement: { x: 0, y: 0 } }));
   assert.throws(() => landmarkSchema.parse({ ...line, aliases: undefined }));
   assert.throws(() => landmarkSchema.parse({ ...line, geometry: { type: 'point', points: [] } }));
   assert.throws(() =>
     landmarkSchema.parse({ ...line, geometry: { type: 'point', points: [{ x: NaN, y: 0, z: 0 }] } }),
   );
-  assert.throws(() => placeArguments.parse({ place_id: line.id, evidence: [] }));
-  assert.throws(() => placeArguments.parse({ place_id: line.id, evidence: [{ quote: 'test path' }] }));
 });
 
 test('landmark height is required and raised objects need an area footprint', () => {

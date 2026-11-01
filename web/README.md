@@ -41,3 +41,8 @@ Inspection evidence is served from the mission's registered image files at
 `/api/evidence/<mission>/<asset>`. Candidate reviews expose the same crop and
 context JPEGs sent to Glimmer, alongside the original frame and SAM overlay.
 Image cards show loading or failure locally and provide a direct file link.
+
+The browser connects to `/api/mission` for validated mission state, conversation,
+plan export and live camera focus. State includes public landmarks independently
+of the flight plan. `/api/stream` carries the existing Pixel Streaming connection;
+these are the only WebSocket proxy routes.

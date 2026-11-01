@@ -14,12 +14,6 @@ export function formatPosition(north_m: number, east_m: number) {
   return `${direction(north_m, 'north', 'south')} · ${direction(east_m, 'east', 'west')}`;
 }
 
-export function formatProbability(value: number) {
-  if (!Number.isFinite(value) || value < 0 || value > 1) throw new Error('Invalid probability');
-  const percent = value * 100;
-  return `${percent.toLocaleString('en-US', { maximumSignificantDigits: 3, useGrouping: false })}%`;
-}
-
 const pacific = new Intl.DateTimeFormat('en-US', {
   timeZone: 'America/Los_Angeles',
   year: 'numeric',
@@ -73,22 +67,8 @@ const titles: Record<string, string> = {
   resume: 'Resume',
   return_home: 'Return home',
   land: 'Land',
-  record_subject_profile: 'Subject profile',
   find_place: 'Find place',
   describe_location: 'Landmark directions',
-  set_last_known_place: 'Last known place',
-  define_search_area: 'Search area',
-  plan_search: 'Plan search',
-  start_search: 'Fleet search',
-  get_probability_map: 'Probability map',
-  get_coverage: 'Camera coverage',
-  list_detections: 'List evidence',
-  review_detection: 'Review evidence',
-  resolve_detection: 'Resolve evidence',
-  relook_detection: 'Re-look at evidence',
-  notify_ground_team: 'Deliver ground-team lead',
-  hasty_check_structure: 'Request structure check',
-  confirm_structure_negative: 'Confirm negative structure check',
 };
 function waypointCount(count: number) {
   return `${count} ${count === 1 ? 'waypoint' : 'waypoints'}`;
@@ -105,22 +85,9 @@ export function actionTitle(name: string, args: Record<string, unknown>) {
 export function approvalSentence(name: string, args: Record<string, unknown>) {
   if (name === 'request_launch') return `Launch mission plan version ${args.version}`;
   if (name === 'apply_plan_change') return `Launch additional aircraft for plan version ${args.version}`;
-  if (name === 'set_last_known_place') return 'Set the last known location from the highlighted place';
-  if (name === 'notify_ground_team') return `Deliver the confirmed lead to ground team ${args.team_id}`;
-  if (name === 'hasty_check_structure')
-    return `Ask ground team ${args.team_id} to check the highlighted structure`;
-  if (name === 'relook_detection')
-    return `Fly ${args.drone_id} to the evidence location at ${args.altitude_agl_m} m above ground and hold for ${args.hold_seconds} s`;
-  if (name === 'start_search') return 'Fly the approved search with all four aircraft';
   if (name === 'take_off' && typeof args.altitude_above_home_m === 'number')
     return `Take off ${args.drone_id} to ${formatValue(args.altitude_above_home_m, 'm', 0)} above home`;
-  if (name === 'fly_route' && Array.isArray(args.waypoints))
-    return `Fly ${args.drone_id} through ${waypointCount(args.waypoints.length)}`;
-  if (name === 'fly_to') return `Fly ${args.drone_id} to the selected destination`;
-  if (name === 'return_home') return `Return ${args.drone_id} home and land`;
-  if (name === 'land') return `Land ${args.drone_id} at its current position`;
-  if (name === 'hold') return `Brake and hold ${args.drone_id} in place`;
-  return `Resume ${args.drone_id}'s uploaded mission`;
+  throw new Error(`Unknown flight approval: ${name}`);
 }
 
 export function argumentRows(args: Record<string, unknown>): [string, string][] {

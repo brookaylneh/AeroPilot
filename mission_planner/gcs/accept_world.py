@@ -100,7 +100,6 @@ async def run(case_id, output):
             await fleet.start()
             mission.fleet_ready = True
             mission.event("mode", "Four autopilots connected; fences and missions read back.")
-            mission.launch(mission.run_sensor())
             states = fleet.snapshot()
             planned = routes(states)
             report["routes"] = planned
@@ -120,7 +119,6 @@ async def run(case_id, output):
             )
             (output / "ready.json").write_text(json.dumps(report, indent=2) + "\n")
             while not (output / "start-flight").exists():
-                assert mission.sensor_error is None, mission.sensor_error
                 fleet.snapshot()
                 await asyncio.sleep(0.1)
             native = json.loads(
@@ -187,7 +185,6 @@ async def run(case_id, output):
                         + "\n"
                     )
                     samples.flush()
-                    assert mission.sensor_error is None, mission.sensor_error
                     await asyncio.sleep(0.1)
 
             async def fly():

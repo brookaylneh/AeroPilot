@@ -12,7 +12,7 @@ from unittest.mock import AsyncMock, Mock, patch
 from mission_planner.gcs.fleet import MAV, Fleet
 from mission_planner.gcs.geodesy import NAMES
 from mission_planner.gcs.host import connection
-from mission_planner.gcs.service import CASE_TOOLS, Mission
+from mission_planner.gcs.service import Mission
 
 
 def saved_case(brief="A hiker, 34 years old, missing for about 3 hours."):
@@ -41,7 +41,19 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
             {"id": name, "armed": False, "landed_state": 1, "link_lost": False, "ekf_healthy": True}
             for name in NAMES
         ]
-        self.fleet.execute = AsyncMock()
+        self.fleet.execute = AsyncMock(
+            return_value={
+                "id": "Drone1",
+                "mode": "GUIDED",
+                "armed": True,
+                "landed_state": 2,
+                "north_m": -735.5,
+                "east_m": -29.5,
+                "altitude_above_home_m": 30,
+                "mission_current": 0,
+                "mission_total": 1,
+            }
+        )
         self.fleet.close = AsyncMock()
         self.fleet.clear_missions = AsyncMock()
         patches = [
@@ -54,19 +66,7 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
                     snapshot=Mock(return_value=[]), close=AsyncMock(), flight_stopped=AsyncMock()
                 ),
             ),
-            patch(
-                "mission_planner.gcs.service.Search",
-                side_effect=lambda mission: SimpleNamespace(
-                    landmarks=[], profile=None, commander=SimpleNamespace(close=AsyncMock())
-                ),
-            ),
             patch("mission_planner.gcs.service.Fleet", return_value=self.fleet),
-            patch(
-                "mission_planner.gcs.service.MissionSensor",
-                side_effect=lambda *args: SimpleNamespace(
-                    start=AsyncMock(), close=AsyncMock(), check=Mock()
-                ),
-            ),
             patch("mission_planner.gcs.service.sim.enter_mission"),
             patch("mission_planner.gcs.service.sim.reset_session"),
         ]
@@ -84,9 +84,7 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
         read_case.start()
         self.addCleanup(read_case.stop)
         for item in patches[:-2]:
-            mocked = item.start()
-            if item is patches[-3]:
-                self.sensor_factory = mocked
+            item.start()
             self.addCleanup(item.stop)
         self.mission = Mission(None)
         self.mission.fleet_ready = True
@@ -95,16 +93,14 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
     async def test_launch_rejects_second_and_reset_allows_distinct_run(self):
         first = await self.mission.begin(self.cases[0]["id"])
         directory = self.mission.directory
-        self.mission.sensor_frames["Drone1"] = {"private": "old frame"}
+        self.mission.feed_focus = {"drone_id": "Drone1"}
         self.mission.agent_busy = True
-        self.mission.ground_team.deliveries["old"] = {}
         with self.assertRaisesRegex(AssertionError, "already running"):
             await self.mission.begin(self.cases[1]["id"])
         await self.mission.clear()
         self.assertIsNone(self.mission.case)
-        self.assertEqual(self.mission.sensor_frames, {})
+        self.assertIsNone(self.mission.feed_focus)
         self.assertFalse(self.mission.agent_busy)
-        self.assertFalse(self.mission.ground_team.deliveries)
         self.fleet.close.assert_not_called()
         second = await self.mission.begin(self.cases[1]["id"])
         self.assertNotEqual(first, second)
@@ -196,8 +192,7 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(summary["case_name"], "General mission")
         self.assertIsNone(summary["case_id"])
         self.assertIsNone(summary["briefing"])
-        self.assertIsNone(self.mission.sensor)
-        self.sensor_factory.assert_not_called()
+        self.mission.inspections.start.assert_not_called()
         self.assertFalse(self.mission.tasks)
 
     async def test_null_connect_preserves_active_rescue_case(self):
@@ -210,47 +205,71 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
         self.enter_mission.assert_called_once_with()
         self.reset_session.assert_not_called()
 
-    async def test_legacy_preselected_case_enters_world_during_fleet_startup(self):
-        legacy = Mission(self.cases[0])
-        self.addAsyncCleanup(legacy.close)
-        legacy.fleet.start = AsyncMock()
-        await legacy.start_fleet()
-        self.assertTrue(legacy.active)
-        self.assertTrue(legacy.fleet_ready)
-        self.assertIsNone(legacy.sensor)
-        self.sensor_factory.assert_not_called()
+    async def test_preselected_case_enters_world_during_fleet_startup(self):
+        mission = Mission(self.cases[0])
+        self.addAsyncCleanup(mission.close)
+        mission.fleet.start = AsyncMock()
+        await mission.start_fleet()
+        self.assertTrue(mission.active)
+        self.assertTrue(mission.fleet_ready)
+        mission.inspections.start.assert_not_called()
         self.enter_mission.assert_called_once_with()
 
-    async def test_general_startup_enters_world_without_search_capture(self):
+    async def test_general_startup_enters_world_without_inspection(self):
         self.mission.active = True
         self.fleet.start = AsyncMock()
         await self.mission.start_fleet()
         self.assertTrue(self.mission.fleet_ready)
         self.enter_mission.assert_called_once_with()
-        self.assertIsNone(self.mission.sensor)
-        self.sensor_factory.assert_not_called()
+        self.mission.inspections.start.assert_not_called()
         self.assertFalse(self.mission.tasks)
 
-    async def test_rescue_admission_waits_for_a_search_plan_before_capture(self):
+    async def test_rescue_admission_waits_for_a_plan_before_inspection(self):
         await self.mission.begin(self.cases[0]["id"])
         await asyncio.sleep(0)
-        self.sensor_factory.assert_not_called()
-        self.assertIsNone(self.mission.sensor)
+        self.mission.inspections.start.assert_not_called()
+        self.mission.inspections.start_search.assert_not_called()
         self.assertFalse(self.mission.tasks)
 
-    async def test_studio_uses_plan_search_without_calibrated_profile_tools(self):
-        await self.mission.begin(self.cases[0]["id"])
-        tools = {tool["name"] for tool in self.mission.agent_tools()}
-        self.assertTrue(
-            {"preview_plan", "request_launch", "wait_for", "disregard_and_continue"} <= tools
-        )
-        self.assertTrue(CASE_TOOLS.isdisjoint(tools))
-        self.assertNotIn("resume", tools)
-        self.mission.search.profile = {"brief": "Explicit legacy profile"}
-        legacy = {tool["name"] for tool in self.mission.agent_tools()}
-        self.assertTrue(CASE_TOOLS <= legacy)
-        self.assertIn("resume", legacy)
-        self.assertNotIn("disregard_and_continue", legacy)
+    async def test_manual_takeoff_waits_for_operator_approval(self):
+        await self.mission.begin(None)
+        arguments = {"drone_id": "Drone1", "altitude_above_home_m": 30}
+        for approved in (False, True):
+            with self.subTest(approved=approved):
+                self.fleet.execute.reset_mock()
+                task = asyncio.create_task(
+                    self.mission.execute("take_off", arguments, "operator", "takeoff")
+                )
+                await asyncio.sleep(0)
+                self.assertEqual(len(self.mission.approvals), 1)
+                self.fleet.execute.assert_not_awaited()
+                approval_id = next(iter(self.mission.approvals))
+                await self.mission.handle(
+                    {"type": "approval", "id": approval_id, "approved": approved}, None
+                )
+                if approved:
+                    result = await asyncio.wait_for(task, 1)
+                    self.assertEqual(result["acknowledged_command"], "take_off")
+                    self.fleet.execute.assert_awaited_once_with("take_off", arguments)
+                else:
+                    with self.assertRaisesRegex(AssertionError, "Operator declined"):
+                        await asyncio.wait_for(task, 1)
+                    self.fleet.execute.assert_not_awaited()
+                self.assertFalse(self.mission.approvals)
+                self.assertFalse(self.mission.active_flight)
+
+    async def test_manual_resume_cannot_resume_a_versioned_plan_step(self):
+        await self.mission.begin(None)
+        arguments = {"drone_id": "Drone1"}
+        result = await self.mission.execute("resume", arguments, "operator", "resume")
+        self.assertEqual(result["acknowledged_command"], "resume")
+        self.fleet.execute.assert_awaited_once_with("resume", arguments)
+        self.assertFalse(self.mission.approvals)
+        self.fleet.execute.reset_mock()
+        self.mission.plan_active = {"missions": {"Drone1": {}}}
+        with self.assertRaisesRegex(AssertionError, "cannot resume a partial plan step"):
+            await self.mission.execute("resume", arguments, "operator", "resume")
+        self.fleet.execute.assert_not_awaited()
 
     async def test_case_rejoin_waits_for_owner_admission(self):
         entered, release = asyncio.Event(), asyncio.Event()
@@ -418,19 +437,12 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
             ],
         )
         self.enter_mission.assert_called_once_with()
-        self.assertIsNone(self.mission.sensor)
-        self.sensor_factory.assert_not_called()
+        self.mission.inspections.start.assert_not_called()
         self.reset_session.assert_not_called()
         self.fleet.execute.assert_not_awaited()
 
-    async def test_general_session_rejects_sar_tools_controls_and_team_connection(self):
+    async def test_removed_controls_are_rejected_without_flight(self):
         await self.mission.begin(None)
-        for name in CASE_TOOLS:
-            with (
-                self.subTest(tool=name),
-                self.assertRaisesRegex(AssertionError, "saved rescue case"),
-            ):
-                await self.mission.execute(name, {}, "operator", "case-gate")
         for message in (
             {"type": "search_point", "north_m": 0, "east_m": 0},
             {"type": "capture_source", "source": "live", "manifest_id": None},
@@ -438,16 +450,16 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
         ):
             with (
                 self.subTest(control=message["type"]),
-                self.assertRaisesRegex(AssertionError, "saved rescue case"),
+                self.assertRaisesRegex(AssertionError, "Unknown message type"),
             ):
                 await self.mission.handle(message, Mock())
         team = socket({"type": "connect", "case_id": None, "team_id": "alpha"})
         team.request.path = "/team"
-        with self.assertRaisesRegex(AssertionError, "No active rescue mission"):
+        with self.assertRaises(AssertionError):
             await connection(self.mission, team)
         self.fleet.execute.assert_not_awaited()
 
-    async def test_model_catalogue_keeps_map_tools_and_gates_only_rescue_tools(self):
+    async def test_model_catalogue_keeps_map_and_plan_tools_for_both_entries(self):
         def respond(*arguments, trace_path, **kwargs):
             trace_path.with_suffix(".request.json").write_text("{}")
             return {
@@ -472,7 +484,7 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
             await self.mission.agent("Hello")
             names = {tool["name"] for tool in self.mission.model.respond.call_args.args[3]}
             self.assertTrue({"find_place", "describe_location", "preview_plan"} <= names)
-            self.assertTrue(CASE_TOOLS.isdisjoint(names))
+            self.assertNotIn("resume", names)
             await self.mission.clear()
 
     async def test_disconnect_does_not_cancel_but_returning_to_studio_does(self):

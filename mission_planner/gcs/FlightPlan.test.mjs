@@ -146,6 +146,7 @@ test('complete mission states retain telemetry through search return and hover p
     inspections: [],
     approvals: [],
     map_focus: null,
+    landmarks: [],
   };
   for (const [preview, active, previous] of [
     [null, initial, null],

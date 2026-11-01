@@ -6,7 +6,6 @@ from collections import deque
 import numpy as np
 
 from mission_planner.gcs.geodesy import MAX_ALTITUDE_M, MIN_ALTITUDE_M
-from mission_planner.search.detection import AGL_M
 from world.cosys.terrain import terrain_height
 
 # Quarter metres survive MAVLink float32 and ArduPilot integer-centimetre storage exactly.
@@ -14,7 +13,7 @@ ALTITUDE_STEP_M = 0.25
 PLANNED_AGL_TOLERANCE_M = 1.0
 
 
-def waypoint(north, east, home_z, height_m=AGL_M):
+def waypoint(north, east, home_z, height_m):
     return {
         "north_m": float(north),
         "east_m": float(east),
@@ -25,7 +24,7 @@ def waypoint(north, east, home_z, height_m=AGL_M):
     }
 
 
-def terrain_leg(a, b, home_z, height_m=AGL_M):
+def terrain_leg(a, b, home_z, height_m):
     length = math.hypot(b["north_m"] - a["north_m"], b["east_m"] - a["east_m"])
     assert length > 0
     t = np.linspace(0, 1, math.ceil(length) + 1)
@@ -64,7 +63,7 @@ def minimum_links(altitude, target):
     predecessor[0] = 0
     queue = deque([0])
     while predecessor[-1] < 0:
-        assert queue, "No terrain segment satisfies the calibration flight tolerance"
+        assert queue, "No terrain segment satisfies the terrain-following tolerance"
         i = queue.popleft()
         offsets = np.arange(1, count - i)
         slopes = (altitude[i + 1 :] - altitude[i]) / offsets

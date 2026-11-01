@@ -5,38 +5,13 @@ camera/actor metadata and inference results stay under ignored `.local/data/cali
 `mission_planner/measurements/calibration.json` is the deterministic reduction, including its input
 provenance. It is not a claim about other terrain, illumination or search altitudes.
 
-## Commander capture processing
+## Calibration image processing
 
-`configuration.py` validates camera-only records and reproduces the calibrated image
-transforms. Its numeric operating point is loaded from `measurements/commander.json`.
-`pipeline.py` saves each SAM response, the linked crop, context crop and Glimmer analyst
-report (`analyst.py`) before returning georeferenced detections. The analyst receives a
-look-for brief (objective, target, up to eight attributes, up to four things to ignore),
-both crops and the view scale; it answers in the template's JSON schema with low reasoning
-strength and fixed sampling. Incomplete, schema-invalid or inconsistent reports fail the frame. Briefing prompts remain uncalibrated leads. `ingestion.py`
-accepts a metadata path, pipelines SAM independently of verification, commits each
-lane in order, and persists terminal failures
-without retry. The live adapter must check capture validation before copying the exact
-camera-field whitelist; neither actor records nor evaluation labels enter this path.
-
-Replay requires an explicit manifest and remains labelled **Recorded frames**. Original
-camera identity, pose and timestamp are preserved; the four replay lanes exercise load
-and do not establish performance across four physical cameras. The offline
-`evaluate_commander` commands `export`, `prefix` and `score` create camera-only manifests
-and join saved pipeline outputs to private labels in separate condition episodes.
-`bench_prompt_equivalence` compares dedicated and combined requests over all 490
-frames: every person candidate must retain its analyst decision,
-with matched box IoU at least 0.95 and score difference at most 0.01.
-`bench_commander throughput` requires a manifest, repeated `--prompt` arguments,
-`--profile`, `--interval` and a fresh `--output` directory.
-The benchmark uses the always-warm Modal Servers, records every frame through the
-mission's belief callback, and saves backlog, latency and source versions.
-Deployment and billing measurements are documented in [services](../services/README.md).
-SAM responses include decode, tiling, forward, postprocessing and total durations.
-Client request sidecars retain upload/round-trip timing even when a request fails.
-`profile_pipeline` reduces these clocks into utilization and latency summaries;
-its required `--request-source` distinguishes legacy result records from sidecars.
-Operator tools and receiving-page routes are documented in [search](../../search/README.md).
+`configuration.py` reproduces the pinned calibration image transforms used by model
+benchmarks. Its operating point comes from `measurements/commander.json`.
+`analyst.py` retains the frozen nadir review template for those measurements and imports
+the shared report schema from `agents/review.py`. Live missions use forward-camera
+review directly; calibration labels and actor metadata never enter that runtime.
 
 ## Acquisition and session ownership
 
@@ -153,7 +128,7 @@ pass leaves full sweep width undefined and reports only the truncated integral.
 Coverage for parallel tracks is W/S; the camera's 42 m swath is not itself W.
 
 The sections below describe the retired BF16 one-token gate measured in `calibration.json`;
-the analyst template needs its own measured escalation rates before belief can run.
+these historical probabilities are not used by live mission planning.
 
 Glimmer consumes detection-centred 512 px crops in 4K pixel coordinates. Native
 1080p uses an equivalent 256 px crop, resized to 512; this adds no image detail.

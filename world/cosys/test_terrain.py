@@ -8,8 +8,6 @@ import unittest
 
 import numpy as np
 
-from mission_planner.gcs.geodesy import fence_vertices
-from mission_planner.search.grid import CELL_M, make_grid
 from world.cosys.landmarks import validate
 from world.cosys.terrain import (
     BOUNDS,
@@ -22,6 +20,7 @@ from world.cosys.terrain import (
     ROOT,
     ROWS,
     WORLD,
+    domain,
     heights,
     launch_breaks,
     launch_triangles,
@@ -63,14 +62,23 @@ class Terrain(unittest.TestCase):
         )
         self.assertGreater(len(cuts), 2)
 
-    def test_grid_covers_both_axes(self):
-        grid = make_grid(fence_vertices())
-        low = np.array([NORTH_MIN_M, EAST_MIN_M])
-        high = np.array([NORTH_MAX_M, EAST_MAX_M])
-        np.testing.assert_array_equal(grid["low"].min(axis=0), low)
-        np.testing.assert_array_equal(grid["high"].max(axis=0), high)
-        np.testing.assert_array_equal(grid["shape"], np.ceil((high - low) / CELL_M).astype(int))
-        self.assertAlmostEqual(float(grid["areas"].sum()), float(np.prod(high - low)), delta=1e-6)
+    def test_domain_covers_heightfield_samples_and_bounds_the_surface(self):
+        low, high, minimum = domain()
+        self.assertEqual(low, (NORTH_MIN_M, EAST_MIN_M))
+        self.assertEqual(high, (NORTH_MAX_M, EAST_MAX_M))
+        np.testing.assert_allclose(
+            np.subtract(high, low),
+            np.array([COLUMNS - 1, ROWS - 1]) * FIELD["sampleSpacingMetres"],
+        )
+        samples = np.asarray(heights(), dtype=float).reshape(ROWS, COLUMNS)
+        self.assertTrue(
+            np.all((samples - FIELD["zeroSample"]) / FIELD["samplesPerMetre"] >= minimum)
+        )
+        for north in np.linspace(low[0], high[0], 11):
+            for east in np.linspace(low[1], high[1], 11):
+                self.assertGreaterEqual(terrain_height(north, east), minimum)
+        port = WORLD["port"]["centerUeCm"]
+        self.assertGreaterEqual(terrain_height(port["x"] / 100, port["y"] / 100), minimum)
 
     def test_asymmetric_sample_indices_and_edges(self):
         values = heights()

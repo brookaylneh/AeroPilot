@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 import numpy as np
 
-from mission_planner.search.terrain import (
+from mission_planner.gcs.terrain import (
     ALTITUDE_STEP_M,
     PLANNED_AGL_TOLERANCE_M,
     minimum_links,
@@ -23,8 +23,8 @@ class Terrain(unittest.TestCase):
             return float(np.interp(north, np.arange(len(heights)), heights))
 
         a, b = {"north_m": 0, "east_m": 0}, {"north_m": 8, "east_m": 0}
-        with patch("mission_planner.search.terrain.terrain_height", side_effect=ground):
-            route, error = terrain_leg(a, b, 0)
+        with patch("mission_planner.gcs.terrain.terrain_height", side_effect=ground):
+            route, error = terrain_leg(a, b, 0, 30)
         self.assertLessEqual(error, PLANNED_AGL_TOLERANCE_M)
         for count in range(2, len(route)):
             for middle in itertools.combinations(range(1, 8), count - 2):
@@ -37,9 +37,9 @@ class Terrain(unittest.TestCase):
         self.assertEqual(route[-1]["north_m"], 8)
 
     def test_constant_slope_has_only_endpoints(self):
-        with patch("mission_planner.search.terrain.terrain_height", lambda n, e: n / 10):
+        with patch("mission_planner.gcs.terrain.terrain_height", lambda n, e: n / 10):
             route, error = terrain_leg(
-                {"north_m": 0, "east_m": 0}, {"north_m": 300, "east_m": 0}, 0
+                {"north_m": 0, "east_m": 0}, {"north_m": 300, "east_m": 0}, 0, 30
             )
         self.assertEqual(len(route), 2)
         self.assertLess(error, 1e-12)
@@ -78,9 +78,9 @@ class Terrain(unittest.TestCase):
             sampled.append((north, east))
             return 2 * np.sin(north / 3)
 
-        with patch("mission_planner.search.terrain.terrain_height", side_effect=ground):
+        with patch("mission_planner.gcs.terrain.terrain_height", side_effect=ground):
             route, error = terrain_leg(
-                {"north_m": 0, "east_m": 0}, {"north_m": 12.4, "east_m": 9.3}, 0
+                {"north_m": 0, "east_m": 0}, {"north_m": 12.4, "east_m": 9.3}, 0, 30
             )
         self.assertLessEqual(np.linalg.norm(np.diff(sampled, axis=0), axis=1).max(), 1)
         self.assertEqual(route[0]["north_m"], 0)

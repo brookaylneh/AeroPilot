@@ -42,8 +42,8 @@ and [pagehide](https://developer.mozilla.org/en-US/docs/Web/API/Window/pagehide_
 `PixelStreamingTransport.ts` also carries Mission Control's continuous forward-facing
 drone view. Its mission-only `{type: "drone-view", droneId}` command selects the existing
 `fpv` camera and acknowledges exactly `{droneId}`; it never returns an authoring snapshot.
-Camera switching reuses the connection and sends no flight command. The search capture
-camera remains nadir. Mouse, keyboard, touch, gamepad and XR input are disabled in the
+Camera switching reuses the connection and sends no flight command. Automatic mission inspection also uses `fpv`; offline calibration
+uses the separate nadir camera. Mouse, keyboard, touch, gamepad and XR input are disabled in the
 shared transport; application commands use acknowledged data-channel messages.
 Signalling permits one viewer per Unreal streamer, shared by Studio and Mission Control.
 
@@ -85,9 +85,8 @@ The reporting structure follows these sources:
   PLS is where another person actually saw the subject; LKP is established by physical
   evidence; IPP is the initial PLS or LKP and stays fixed during planning.
 - [Robert J. Koester, _Lost Person Behavior_](https://www.dbs-sar.com/LPB/lpb.htm),
-  based on ISRID: explicit subject categories. This application maps them to the
-  validated keys in `mission_planner/search/prior.py`; category alone supplies no
-  invented behavioural probability or diagnosis.
+  based on ISRID: explicit subject categories. The briefing preserves them as operator-supplied facts; category alone supplies no
+  behavioural probability or diagnosis.
 - [ICS 201 Incident Briefing](https://training.fema.gov/icsresource/icsforms.aspx):
   situation, objectives, current actions and assigned resources. The prose document
   follows that briefing structure without claiming to be a completed ICS form.

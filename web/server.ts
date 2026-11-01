@@ -11,8 +11,7 @@ const app = express();
 app.disable('x-powered-by');
 app.use(compression());
 app.use('/api/rescue-cases', briefingRouter(path.resolve(required('SNR_SCENARIO_DATA_DIR'), 'briefings')));
-const missionOnly = process.argv.includes('--mission-only');
-const pixelPlayerPort = missionOnly ? null : configuredPort('PIXEL_PLAYER_PORT');
+const pixelPlayerPort = configuredPort('PIXEL_PLAYER_PORT');
 const missionPort = configuredPort('SNR_MISSION_PORT');
 const host = required('SNR_HOST');
 if (host !== '127.0.0.1') throw new Error('Internal web service must bind loopback');
@@ -38,20 +37,12 @@ app.get('/api/evidence/:mission/:asset', async (req, res) => {
   res.sendFile(asset, { root: directory });
 });
 app.get('/healthz', async (_req, res) => {
-  if (missionOnly) {
-    res.status(503).json({ ok: false, reason: 'Mission-only development slot has no renderer' });
-    return;
-  }
   const result = await health();
   res.setHeader('Cache-Control', 'no-store');
   res.status(result.ok ? 200 : 503).json(result);
 });
 app.get('/api/unreal/status', async (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
-  if (missionOnly) {
-    res.status(503).json({ state: 'unavailable', reason: 'No renderer in this slot' });
-    return;
-  }
   const result = await rendererHealth();
   res.status(result.state === 'unavailable' ? 503 : 200).json(result);
 });
@@ -64,9 +55,7 @@ if (development) {
   if (!existsSync(path.join(dist, 'index.html')))
     throw new Error('Missing browser build; run npm run build.');
   app.use(express.static(dist, { index: false }));
-  app.get(['/home', '/studio', '/missionplanner', '/team'], (_req, res) =>
-    res.sendFile('index.html', { root: dist }),
-  );
+  app.get(['/home', '/studio', '/missionplanner'], (_req, res) => res.sendFile('index.html', { root: dist }));
 }
 app.use((_req, res) => res.sendStatus(404));
 app.use((error: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -83,19 +72,15 @@ server.on('upgrade', (req, socket, head) => {
   } catch {
     /* rejected below */
   }
-  if (!['/api/stream', '/api/mission', '/api/team'].includes(req.url!) || !sameOrigin) {
+  if (!['/api/stream', '/api/mission'].includes(req.url!) || !sameOrigin) {
     socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
     return;
   }
   const upstreamPort = req.url === '/api/stream' ? pixelPlayerPort : missionPort;
-  if (upstreamPort === null) {
-    socket.end('HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n');
-    return;
-  }
   const upstream = request({
     hostname: '127.0.0.1',
     port: upstreamPort,
-    path: req.url === '/api/team' ? '/team' : '/',
+    path: '/',
     method: 'GET',
     headers: { ...req.headers, host: `127.0.0.1:${upstreamPort}` },
   });
@@ -121,5 +106,5 @@ server.on('upgrade', (req, socket, head) => {
   upstream.end();
 });
 server.listen(port, host, () =>
-  console.log(`Scenario studio: http://${host}:${port}; mission control: /mission`),
+  console.log(`Scenario studio: http://${host}:${port}; mission planner: /missionplanner`),
 );

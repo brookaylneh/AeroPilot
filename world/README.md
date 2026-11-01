@@ -15,7 +15,7 @@ commands. Private scenario truth is used only by authoring and explicitly reques
 
 - Unreal: left-handed centimetres, +X north, +Y east, +Z up.
 - Search bounds, PlayerStart and drone spawns come from `cosys/world.json`.
-- The drone port lies outside the southern search boundary and is not valid placement terrain.
+- The drone port is in front of Incident Command, centred at north −738 m, east −27 m.
 - Cosys returns flight, state and camera positions in each aircraft's local NED origin, not a shared world origin.
 - For native origin `O` in centimetres and vehicle-local NED point `p` in metres, world metres are
   `(O.x / 100 + p.x, O.y / 100 + p.y, O.z / 100 − p.z)`.

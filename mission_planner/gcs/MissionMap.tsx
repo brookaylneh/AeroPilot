@@ -16,19 +16,18 @@ import {
   type DroneId,
   type MapFocus,
   type Vehicle,
-  type RouteArguments,
   type MissionEvent,
 } from './missionState';
 import world from '../../world/cosys/world.json';
-import { formatValue, formatProbability } from './display';
+import { formatValue } from './display';
 import { groupPadLabels, placeLabels } from './mapLabels';
 
-import SearchLayers from './SearchLayers';
 import LandmarkLayer from './LandmarkLayer';
-import type { SearchState, SearchPoint } from './searchState';
-import { worldLandmarks, type Landmark } from './placeState';
+import type { Landmark } from './landmarks';
 import { previewConflict, type Planner } from './FlightPlan';
 import type { Inspection } from './InspectionPanel';
+
+type MapPoint = { north_m: number; east_m: number };
 
 const searchBounds = {
   minX: world.searchBoundsCm.min.x / 100,
@@ -60,19 +59,12 @@ function onHomePad(vehicle: Vehicle) {
   );
 }
 export default function MissionMap({
-  search = null,
+  landmarks,
   onMark,
-  drawing,
-  areaDraft,
-  onDraw,
-  finishDrawing,
-  reviewDetection,
   vehicles,
   selected,
   select,
   focus,
-  pendingRoute,
-  pendingPlace,
   planner = null,
   events = [],
   inspections = [],
@@ -82,19 +74,12 @@ export default function MissionMap({
   toggleMapOnly,
   inset = false,
 }: {
-  search?: SearchState | null;
-  onMark?: (point: SearchPoint) => void;
-  drawing: boolean;
-  areaDraft: SearchPoint[] | null;
-  onDraw: (vertices: SearchPoint[]) => void;
-  finishDrawing: () => void;
-  reviewDetection: (id: string) => void;
+  landmarks: Landmark[];
+  onMark?: (point: MapPoint) => void;
   vehicles: Vehicle[];
   selected: DroneId | null;
   select: (id: DroneId) => void;
   focus: MapFocus | null;
-  pendingRoute: RouteArguments | null;
-  pendingPlace: Landmark | null;
   planner?: Planner | null;
   events?: MissionEvent[];
   inspections?: Inspection[];
@@ -112,7 +97,6 @@ export default function MissionMap({
   );
   const [cursor, setCursor] = useState<{ north_m: number; east_m: number } | null>(null);
   const drag = useRef<{ x: number; y: number; view: MapView } | null>(null);
-  const rectangleStart = useRef<SearchPoint | null>(null);
   const trails = useRef<Record<string, { north_m: number; east_m: number }[]>>({});
   const returned = new Set(vehicles.filter((v) => !v.armed && onHomePad(v)).map((v) => v.id));
   const conflict = previewConflict(events);
@@ -148,7 +132,7 @@ export default function MissionMap({
     const p = mapToScreen(worldToMap({ x: north_m, y: east_m }, bounds), view);
     return { x: p.u * size.width, y: p.v * size.height };
   };
-  const polygonPoints = (points: SearchPoint[]) =>
+  const polygonPoints = (points: MapPoint[]) =>
     points
       .map((point) => {
         const p = projection(point.north_m, point.east_m);
@@ -159,7 +143,7 @@ export default function MissionMap({
     const p = worldToMap({ x: north_m, y: east_m }, bounds);
     setView(mapView(p.u, p.v, Math.max(fitView.zoom, zoom)));
   }
-  function unproject(clientX: number, clientY: number): SearchPoint {
+  function unproject(clientX: number, clientY: number): MapPoint {
     const rect = surface.current!.getBoundingClientRect();
     const p = screenToMap(
       { u: (clientX - rect.left) / rect.width, v: (clientY - rect.top) / rect.height },
@@ -167,19 +151,7 @@ export default function MissionMap({
     );
     return { north_m: bounds.maxX - p.v * (bounds.maxX - bounds.minX), east_m: bounds.minY + p.u * span };
   }
-  function rectangle(a: SearchPoint, b: SearchPoint): SearchPoint[] {
-    const north = Math.max(a.north_m, b.north_m),
-      south = Math.min(a.north_m, b.north_m);
-    const east = Math.max(a.east_m, b.east_m),
-      west = Math.min(a.east_m, b.east_m);
-    return [
-      { north_m: south, east_m: west },
-      { north_m: north, east_m: west },
-      { north_m: north, east_m: east },
-      { north_m: south, east_m: east },
-    ];
-  }
-  function fitSearch() {
+  function fitPlan() {
     const receipt = planner?.preview ?? planner?.active;
     const points = conflict
       ? [...conflict.segment, ...conflict.other_segment]
@@ -190,12 +162,7 @@ export default function MissionMap({
             ),
             ...(showSearch ? searchPolicy.perimeter : []),
           ]
-        : search?.vertices
-          ? [
-              ...search.vertices,
-              ...(search.plan ? Object.values(search.plan.routes).flatMap((r) => r.waypoints) : []),
-            ]
-          : [];
+        : [];
     if (!points.length) {
       setView('fit');
       return;
@@ -226,7 +193,7 @@ export default function MissionMap({
     const nodes = surface
       .current!.closest('.gcs-stage')!
       .querySelectorAll(
-        '.gcs-map-tools, .gcs-map-bottom, .gcs-probability-legend, .gcs-north, .gcs-pending-key, .gcs-stage-key, .gcs-inset, .gcs-search-panel, .gcs-fleet',
+        '.gcs-map-tools, .gcs-map-bottom, .gcs-north, .gcs-pending-key, .gcs-stage-key, .gcs-inset, .gcs-fleet',
       );
     setOverlayBoxes(
       Array.from(nodes, (node) => {
@@ -234,16 +201,7 @@ export default function MissionMap({
         return { x: box.x - rect.x, y: box.y - rect.y, width: box.width, height: box.height };
       }),
     );
-  }, [
-    size.width,
-    size.height,
-    inset,
-    search?.heatmap_scale?.method,
-    pendingRoute?.drone_id,
-    planner?.preview?.plan.version,
-    conflict?.event_id,
-    vehicles.length,
-  ]);
+  }, [size.width, size.height, inset, planner?.preview?.plan.version, conflict?.event_id, vehicles.length]);
   useEffect(() => {
     for (const v of vehicles) {
       if (returned.has(v.id)) {
@@ -278,12 +236,8 @@ export default function MissionMap({
       );
     }
   }, [focusKey]);
-  const searchFocusKey = JSON.stringify([search?.vertices, search?.plan?.plan_id]);
   useEffect(() => {
-    if (!inset && search?.vertices) fitSearch();
-  }, [searchFocusKey, size.width, size.height, inset]);
-  useEffect(() => {
-    if (!inset && (conflict || planner?.preview || planner?.active)) fitSearch();
+    if (!inset && (conflict || planner?.preview || planner?.active)) fitPlan();
   }, [
     planner?.preview?.plan.version,
     planner?.active?.plan.version,
@@ -292,20 +246,6 @@ export default function MissionMap({
     size.height,
     inset,
   ]);
-  useEffect(() => {
-    if (!pendingPlace || inset) return;
-    const north = pendingPlace.geometry.points.map((p) => p.x / 100);
-    const east = pendingPlace.geometry.points.map((p) => p.y / 100);
-    const height = bounds.maxX - bounds.minX;
-    center(
-      (Math.min(...north) + Math.max(...north)) / 2,
-      (Math.min(...east) + Math.max(...east)) / 2,
-      Math.min(
-        span / (Math.max(Math.max(...east) - Math.min(...east), span / 8) * 1.5),
-        height / (Math.max(Math.max(...north) - Math.min(...north), height / 8) * 1.5),
-      ),
-    );
-  }, [pendingPlace?.id, inset, size.width, size.height]);
   useEffect(() => {
     const el = surface.current!;
     const wheel = (e: WheelEvent) => {
@@ -352,7 +292,7 @@ export default function MissionMap({
     <div className={`gcs-map ${inset ? 'is-inset' : ''}`}>
       <div
         ref={surface}
-        className={`gcs-map-surface ${drawing || onMark ? 'is-drawing' : ''}`}
+        className={`gcs-map-surface ${onMark ? 'is-drawing' : ''}`}
         role="application"
         aria-label="Mission map. Drag to pan, scroll to zoom."
         tabIndex={0}
@@ -378,17 +318,12 @@ export default function MissionMap({
         onPointerDown={(e) => {
           if (onMark || e.button !== 0 || (e.target as Element).closest('[data-drone]')) return;
           e.currentTarget.setPointerCapture(e.pointerId);
-          if (drawing) {
-            rectangleStart.current = unproject(e.clientX, e.clientY);
-            return;
-          }
           drag.current = { x: e.clientX, y: e.clientY, view };
         }}
         onPointerMove={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
           const point = unproject(e.clientX, e.clientY);
           setCursor(point);
-          if (rectangleStart.current) onDraw(rectangle(rectangleStart.current, point));
           const d = drag.current;
           if (d)
             setView(
@@ -400,11 +335,6 @@ export default function MissionMap({
             );
         }}
         onPointerUp={(e) => {
-          if (rectangleStart.current) {
-            onDraw(rectangle(rectangleStart.current, unproject(e.clientX, e.clientY)));
-            rectangleStart.current = null;
-            finishDrawing();
-          }
           if (onMark && e.button === 0) {
             onMark(unproject(e.clientX, e.clientY));
           }
@@ -412,11 +342,9 @@ export default function MissionMap({
         }}
         onPointerCancel={() => {
           drag.current = null;
-          rectangleStart.current = null;
         }}
         onLostPointerCapture={() => {
           drag.current = null;
-          rectangleStart.current = null;
         }}
       >
         <svg
@@ -467,9 +395,8 @@ export default function MissionMap({
                 )}
             </g>
           )}
-          <SearchLayers search={search} project={projection} reviewDetection={reviewDetection} />
           <LandmarkLayer
-            landmarks={worldLandmarks}
+            landmarks={landmarks}
             project={projection}
             viewport={size}
             obstacles={[
@@ -479,34 +406,9 @@ export default function MissionMap({
                 const p = projection(v.north_m, v.east_m);
                 return { x: p.x - 20, y: p.y - 20, width: 40, height: 40 };
               }),
-              ...(search
-                ? search.commander.clusters.map((cluster) => {
-                    const p = projection(
-                      cluster.localization.ground.north_m,
-                      cluster.localization.ground.east_m,
-                    );
-                    return { x: p.x - 14, y: p.y - 18, width: 230, height: 36 };
-                  })
-                : []),
-              ...(search?.point
-                ? [{ ...projection(search.point.north_m, search.point.east_m), width: 280, height: 24 }]
-                : []),
             ]}
-            pending={pendingPlace}
             showLabels={!inset && size.inset === inset}
           />
-          {areaDraft && (
-            <polygon
-              className="gcs-search-draft"
-              aria-label="Drawn search rectangle"
-              points={areaDraft
-                .map((p) => {
-                  const q = projection(p.north_m, p.east_m);
-                  return `${q.x},${q.y}`;
-                })
-                .join(' ')}
-            />
-          )}
           {gridTicks(searchBounds.minX, searchBounds.maxX).map((north) => {
             const start = projection(north, searchBounds.minY),
               end = projection(north, searchBounds.maxY);
@@ -746,29 +648,6 @@ export default function MissionMap({
               </g>
             );
           })}
-          {pendingRoute && (
-            <g className="gcs-pending-route" aria-label={`${pendingRoute.drone_id} route pending approval`}>
-              <polyline
-                points={[vehicles.find((v) => v.id === pendingRoute.drone_id)!, ...pendingRoute.waypoints]
-                  .map((w) => {
-                    const p = projection(w.north_m, w.east_m);
-                    return `${p.x},${p.y}`;
-                  })
-                  .join(' ')}
-              />
-              {pendingRoute.waypoints.map((w, i) => {
-                const p = projection(w.north_m, w.east_m);
-                return (
-                  <g key={i} transform={`translate(${p.x},${p.y})`}>
-                    <circle r="11" />
-                    <text textAnchor="middle" dy="4">
-                      {i + 1}
-                    </text>
-                  </g>
-                );
-              })}
-            </g>
-          )}
           {groups.map((group) => {
             const label = labels[group.id];
             if (!label) return null;
@@ -837,12 +716,6 @@ export default function MissionMap({
               Plan v{planner.preview.plan.version} · Preview
             </div>
           )}
-          {pendingRoute && !planner?.preview && !conflict && (
-            <div className="gcs-pending-key">
-              <i />
-              Pending approval · {pendingRoute.drone_id} · {pendingRoute.waypoints.length} waypoints
-            </div>
-          )}
           <div className="gcs-map-tools">
             <button
               title="Zoom in"
@@ -866,7 +739,7 @@ export default function MissionMap({
               aria-pressed={mapOnly}
               onClick={() => {
                 toggleMapOnly();
-                fitSearch();
+                fitPlan();
               }}
             >
               {mapOnly ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
@@ -882,30 +755,6 @@ export default function MissionMap({
               <LocateFixed size={17} />
             </button>
           </div>
-          {search?.heatmap_scale && search.grid && (
-            <div className="gcs-probability-legend" aria-label="Probability colour scale">
-              <strong>
-                {search.heatmap_scale.method === 'log1p' ? 'Log probability' : 'Probability'} per{' '}
-                {search.grid.cell_m} m cell
-              </strong>
-              <div
-                style={{
-                  background: `linear-gradient(to right, ${search.heatmap_scale.colours.join(', ')})`,
-                }}
-              />
-              <span>
-                <b>0%</b>
-                <b>{formatProbability(search.heatmap_scale.midpoint)}</b>
-                <b>{formatProbability(search.heatmap_scale.maximum)}</b>
-              </span>
-              <small>
-                {search.heatmap_scale.method === 'log1p'
-                  ? 'Log colour spacing; labels are probabilities.'
-                  : 'Linear colour spacing.'}
-              </small>
-              <small>Conditional on presence in the world</small>
-            </div>
-          )}
           <div className="gcs-north">
             <b>N</b>
             <svg viewBox="0 0 24 30">

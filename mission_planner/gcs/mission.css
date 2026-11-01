@@ -1,3 +1,143 @@
+.gcs-map-surface.is-drawing {
+  cursor: crosshair;
+}
+.gcs-landmarks {
+  pointer-events: none;
+}
+.gcs-landmark > polyline,
+.gcs-landmark > polygon,
+.gcs-landmark > circle {
+  fill: none;
+  stroke: #c1cdc6;
+  stroke-width: 1.2;
+  opacity: 0.7;
+}
+.gcs-landmark > polygon {
+  fill: #c1cdc60b;
+  stroke-dasharray: 3 5;
+}
+.gcs-landmark.creek > polyline,
+.gcs-landmark.pond > polygon {
+  stroke: var(--gcs-cyan);
+}
+.gcs-landmark.trail > polyline {
+  stroke-dasharray: 4 3;
+}
+.gcs-landmark-label line {
+  stroke: #c1cdc6;
+  stroke-width: 0.6;
+  opacity: 0.5;
+}
+.gcs-landmark-label text {
+  fill: #dbe3df;
+  font: 10px var(--gcs-mono);
+  letter-spacing: 0.04em;
+  paint-order: stroke;
+  stroke: #191b1a;
+  stroke-width: 3.5px;
+  stroke-linejoin: round;
+}
+
+.gcs-evidence-card {
+  display: flex;
+  flex-direction: column;
+  gap: 13px;
+  padding: 16px 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.gcs-evidence-card h3 {
+  font-size: 19px;
+  margin: 3px 0;
+}
+.gcs-evidence-empty {
+  padding: 24px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+  color: var(--gcs-muted);
+}
+.gcs-evidence-status {
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--gcs-warn);
+  font-size: 9px;
+}
+.gcs-evidence-card button {
+  color: inherit;
+  padding: 8px;
+  background: var(--gcs-elevated);
+  border: 1px solid var(--gcs-line-strong);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font: 500 9px var(--gcs-mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+.gcs-evidence-provenance {
+  color: var(--gcs-muted);
+  font: 10px/1.6 var(--gcs-mono);
+}
+.gcs-evidence-note {
+  color: var(--gcs-muted);
+  font-size: 10px;
+}
+.gcs-evidence-frame {
+  margin: 0;
+}
+.gcs-evidence-frame svg {
+  display: block;
+  width: 100%;
+  background: #000;
+}
+.gcs-evidence-frame figcaption {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 5px;
+  color: var(--gcs-muted);
+  font-size: 10px;
+}
+.gcs-evidence-card a,
+.gcs-model-review a {
+  color: var(--gcs-glow);
+  text-decoration: underline;
+}
+.gcs-evidence-card dl {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+}
+.gcs-evidence-card dt {
+  font-size: 10px;
+  color: var(--gcs-muted);
+  text-transform: none;
+}
+.gcs-evidence-card dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.gcs-evidence-card h4 {
+  margin: 0 0 7px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.gcs-evidence-details {
+  border: 1px solid var(--gcs-line);
+  padding: 8px;
+}
+.gcs-evidence-details summary {
+  cursor: pointer;
+}
+.gcs-evidence-details dl {
+  margin-top: 8px;
+}
 @font-face {
   font-family: 'IBM Plex Mono';
   font-style: normal;
@@ -1746,91 +1886,6 @@
 }
 .gcs-approval-arguments .gcs-argument-values {
   overflow-wrap: anywhere;
-}
-.gcs-route-speed,
-.gcs-route-count {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  font-size: 10px;
-  padding: 8px 0;
-  color: #d6c7ac;
-}
-.gcs-route-speed strong {
-  font: 11px var(--gcs-mono);
-  color: #f2e7cf;
-}
-.gcs-route-table {
-  max-height: 176px;
-  overflow-y: scroll;
-  scrollbar-gutter: stable;
-  scrollbar-width: auto;
-  scrollbar-color: #b5a077 #120e06;
-  border: 1px solid #f2b43c55;
-  background: #0d0a05;
-}
-.gcs-route-table::-webkit-scrollbar {
-  width: 12px;
-}
-.gcs-route-table::-webkit-scrollbar-track {
-  background: #120e06;
-}
-.gcs-route-table::-webkit-scrollbar-thumb {
-  background: #b5a077;
-  border: 2px solid #120e06;
-}
-.gcs-route-table table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-}
-.gcs-route-table th {
-  position: sticky;
-  top: 0;
-  background: #1f1809;
-  color: #e4d5b9;
-  font: 9px var(--gcs-mono);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  text-align: left;
-  font-weight: 500;
-}
-.gcs-route-table th,
-.gcs-route-table td {
-  padding: 6px 4px;
-  border-bottom: 1px solid #f2b43c26;
-}
-.gcs-route-table th:first-child {
-  width: 24px;
-}
-.gcs-route-table th:last-child {
-  width: 68px;
-}
-.gcs-route-table td {
-  font: 10px/1.6 var(--gcs-mono);
-  vertical-align: top;
-}
-.gcs-route-table td:last-child {
-  white-space: nowrap;
-}
-.gcs-pending-route {
-  color: #f4c779;
-  pointer-events: none;
-}
-.gcs-pending-route polyline {
-  fill: none;
-  stroke: currentColor;
-  stroke-width: 2.5;
-  stroke-dasharray: 8 5;
-}
-.gcs-pending-route circle {
-  fill: #1a1408;
-  stroke: currentColor;
-  stroke-width: 1.5;
-}
-.gcs-pending-route text {
-  fill: #f4d69f;
-  font: 10px var(--gcs-mono);
 }
 .gcs-pending-key {
   position: absolute;
