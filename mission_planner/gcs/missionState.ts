@@ -4,6 +4,7 @@ import { briefingSchema } from '../../scenario_creator/briefing';
 import { landmarkSchema } from './landmarks';
 import { missionPlanSchema } from './missionPlan';
 import { plannerSchema } from './FlightPlan';
+import { fenceGeometrySchema, fenceResultSchema, fenceStateSchema, type FenceResult } from './FenceEditor';
 import {
   agentWaitSchema,
   inspectionSchema,
@@ -54,7 +55,7 @@ const vehicleSchema = z.object({
   mission: z.array(
     point.extend({ seq: z.number().int(), altitude_above_home_m: number, command: z.number().int() }),
   ),
-  fence: z.array(geoPoint),
+  fence: fenceGeometrySchema.nullable(),
   home: geoPoint.extend({ altitude_msl_m: number }),
   received_at_ms: number,
   update_rate_hz: number.nonnegative(),
@@ -180,6 +181,7 @@ export const stateSchema = z.object({
       (items) => items.length === 0 || (items.length === 4 && new Set(items.map((v) => v.id)).size === 4),
       'Fleet must be empty during startup or contain Drone1–Drone4',
     ),
+  fences: fenceStateSchema,
   agent_busy: z.boolean(),
   agent_wait: agentWaitSchema.nullable(),
   chat_ready: z.boolean(),
@@ -202,6 +204,7 @@ const messageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('idle') }).strict(),
   stateSchema,
   feedFocusMessageSchema,
+  fenceResultSchema,
   z.object({ type: z.literal('event'), event: eventSchema }),
   z.object({ type: z.literal('history'), events: z.array(eventSchema) }),
   z.object({ type: z.literal('error'), message: z.string() }),
@@ -217,6 +220,7 @@ declare global {
 export function useMission(caseId: string | null) {
   const [state, setState] = useState<MissionState | null>(null);
   const [feedFocus, setFeedFocus] = useState<FeedFocus | null>(null);
+  const [fenceResult, setFenceResult] = useState<FenceResult | null>(null);
   const [events, setEvents] = useState<MissionEvent[]>([]);
   const [connection, setConnection] = useState<'connecting' | 'connected' | 'closed' | 'idle'>('connecting');
   const [error, setError] = useState('');
@@ -262,6 +266,7 @@ export function useMission(caseId: string | null) {
         arrived.current = Date.now();
         setState(data);
       } else if (data.type === 'feed_focus') setFeedFocus(data);
+      else if (data.type === 'fence_result') setFenceResult(data);
       else if (data.type === 'event') setEvents((items) => [...items, data.event]);
       else if (data.type === 'history') setEvents(data.events);
       else if (data.type === 'error') setError(data.message);
@@ -308,12 +313,14 @@ export function useMission(caseId: string | null) {
   function send(message: Record<string, unknown>) {
     if (!socket.current || socket.current.readyState !== WebSocket.OPEN) {
       setError('Mission service is disconnected. Command was not sent.');
-      return;
+      return false;
     }
+    if (message.type === 'set_fences') setFenceResult(null);
     socket.current.send(JSON.stringify(message));
+    return true;
   }
   const age = state ? Math.max(0, (now - arrived.current) / 1000) : 0;
-  return { state, feedFocus, events, connection, error, setError, send, now, age };
+  return { state, feedFocus, fenceResult, events, connection, error, setError, send, now, age };
 }
 
 export function linkLost(vehicle: Vehicle, age: number, connected: boolean) {

@@ -26,6 +26,7 @@ import LandmarkLayer from './LandmarkLayer';
 import type { Landmark } from './landmarks';
 import { previewConflict, type Planner } from './FlightPlan';
 import type { Inspection } from './InspectionPanel';
+import FenceEditor, { type FenceConfig, type FenceResult, type FenceState } from './FenceEditor';
 
 type MapPoint = { north_m: number; east_m: number };
 
@@ -58,6 +59,41 @@ function onHomePad(vehicle: Vehicle) {
     Math.hypot(vehicle.north_m - vehicle.home.north_m, vehicle.east_m - vehicle.home.east_m) <= 15
   );
 }
+export function MapTools({
+  subject,
+  mapOnly,
+  toggleMapOnly,
+  zoomIn,
+  zoomOut,
+  centerLabel,
+  center,
+}: {
+  subject: 'map' | 'video';
+  mapOnly: boolean;
+  toggleMapOnly: () => void;
+  zoomIn?: () => void;
+  zoomOut?: () => void;
+  centerLabel: string;
+  center?: () => void;
+}) {
+  const expand = mapOnly ? 'Show Mission Commander' : `Full-screen ${subject}`;
+  return (
+    <div className="gcs-map-tools">
+      <button title="Zoom in" aria-label="Zoom in" disabled={!zoomIn} onClick={zoomIn}>
+        <Plus size={17} />
+      </button>
+      <button title="Zoom out" aria-label="Zoom out" disabled={!zoomOut} onClick={zoomOut}>
+        <Minus size={17} />
+      </button>
+      <button title={expand} aria-label={expand} aria-pressed={mapOnly} onClick={toggleMapOnly}>
+        {mapOnly ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
+      </button>
+      <button title={centerLabel} aria-label={centerLabel} disabled={!center} onClick={center}>
+        <LocateFixed size={17} />
+      </button>
+    </div>
+  );
+}
 export default function MissionMap({
   landmarks,
   onMark,
@@ -72,6 +108,9 @@ export default function MissionMap({
   connected,
   mapOnly,
   toggleMapOnly,
+  fences,
+  fenceResult,
+  saveFences,
   inset = false,
 }: {
   landmarks: Landmark[];
@@ -87,11 +126,15 @@ export default function MissionMap({
   connected: boolean;
   mapOnly: boolean;
   toggleMapOnly: () => void;
+  fences: FenceState | null;
+  fenceResult: FenceResult | null;
+  saveFences: (fences: FenceConfig) => boolean;
   inset?: boolean;
 }) {
   const surface = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ width: 1000, height: 700, inset });
   const [viewState, setView] = useState<MapView | 'fit'>('fit');
+  const [editingFence, setEditingFence] = useState(false);
   const [overlayBoxes, setOverlayBoxes] = useState<{ x: number; y: number; width: number; height: number }[]>(
     [],
   );
@@ -113,12 +156,16 @@ export default function MissionMap({
   const span = bounds.maxY - bounds.minY;
   const terrainMin = worldToMap({ x: searchBounds.maxX, y: searchBounds.minY }, bounds),
     terrainMax = worldToMap({ x: searchBounds.minX, y: searchBounds.maxY }, bounds);
-  const fitView = mapView(
-    (terrainMin.u + terrainMax.u) / 2,
-    (terrainMin.v + terrainMax.v) / 2,
-    1 / Math.min(terrainMax.u - terrainMin.u, terrainMax.v - terrainMin.v),
-  );
+  const fitView =
+    editingFence && !inset
+      ? mapView(0.5, 0.5, 1)
+      : mapView(
+          (terrainMin.u + terrainMax.u) / 2,
+          (terrainMin.v + terrainMax.v) / 2,
+          1 / Math.min(terrainMax.u - terrainMin.u, terrainMax.v - terrainMin.v),
+        );
   const onTerrain = (v: MapView): MapView => {
+    if (editingFence && !inset) return mapView(v.u, v.v, Math.max(1, v.zoom));
     const zoom = Math.max(fitView.zoom, v.zoom),
       half = 0.5 / zoom;
     const clamp = (c: number, lo: number, hi: number) =>
@@ -267,7 +314,6 @@ export default function MissionMap({
   const topLeft = projection(searchBounds.maxX, searchBounds.minY);
   const bottomRight = projection(searchBounds.minX, searchBounds.maxY);
   const active = vehicles.find((v) => v.id === selected);
-  const fence = active ? active.fence : [];
   const groups = groupPadLabels(
     vehicles.map((v) => ({
       ...projection(v.north_m, v.east_m),
@@ -318,7 +364,8 @@ export default function MissionMap({
           }
         }}
         onPointerDown={(e) => {
-          if (onMark || e.button !== 0 || (e.target as Element).closest('[data-drone]')) return;
+          if (onMark || e.button !== 0 || (e.target as Element).closest('[data-drone],[data-fence-editor]'))
+            return;
           e.currentTarget.setPointerCapture(e.pointerId);
           drag.current = { x: e.clientX, y: e.clientY, view };
         }}
@@ -337,7 +384,7 @@ export default function MissionMap({
             );
         }}
         onPointerUp={(e) => {
-          if (onMark && e.button === 0) {
+          if (onMark && e.button === 0 && !(e.target as Element).closest('[data-fence-editor]')) {
             onMark(unproject(e.clientX, e.clientY));
           }
           drag.current = null;
@@ -467,16 +514,20 @@ export default function MissionMap({
               })}
             </g>
           )}
-          {fence.length > 0 && (
-            <polygon
-              className="gcs-fence"
-              points={fence
-                .map((p) => {
-                  const q = projection(p.north_m, p.east_m);
-                  return `${q.x},${q.y}`;
-                })
-                .join(' ')}
-            />
+          {fences && (
+            <g
+              className={fences.verified ? 'gcs-fences' : 'gcs-fences unverified'}
+              aria-label="Fleet flight fences"
+            >
+              <polygon className="gcs-fence" points={polygonPoints(fences.inclusion)}>
+                <title>{fences.names.inclusion}</title>
+              </polygon>
+              {fences.exclusions.map((polygon, index) => (
+                <polygon key={index} className="gcs-fence exclusion" points={polygonPoints(polygon)}>
+                  <title>{`${fences.names.exclusions[index]} · No fly at any altitude`}</title>
+                </polygon>
+              ))}
+            </g>
           )}
           {vehicles.map((v) => {
             const p = projection(v.north_m, v.east_m),
@@ -702,6 +753,22 @@ export default function MissionMap({
             </g>
           )}
         </svg>
+        {!inset && (
+          <FenceEditor
+            fences={fences}
+            connected={connected && age <= 2}
+            result={fenceResult}
+            save={saveFences}
+            project={projection}
+            unproject={unproject}
+            size={size}
+            marking={!!onMark}
+            onEditing={(active) => {
+              setEditingFence(active);
+              setView('fit');
+            }}
+          />
+        )}
       </div>
       {!inset && (
         <>
@@ -718,45 +785,18 @@ export default function MissionMap({
               Plan v{planner.preview.plan.version} · Preview
             </div>
           )}
-          <div className="gcs-map-tools">
-            <button
-              title="Zoom in"
-              aria-label="Zoom in"
-              disabled={view.zoom === 16}
-              onClick={() => setView(zoomTo(view, view.zoom * 1.5))}
-            >
-              <Plus size={17} />
-            </button>
-            <button
-              title="Zoom out"
-              aria-label="Zoom out"
-              disabled={view.zoom <= fitView.zoom}
-              onClick={() => setView(zoomTo(view, view.zoom / 1.5))}
-            >
-              <Minus size={17} />
-            </button>
-            <button
-              title={mapOnly ? 'Show Mission Commander' : 'Full-screen map'}
-              aria-label={mapOnly ? 'Show Mission Commander' : 'Full-screen map'}
-              aria-pressed={mapOnly}
-              onClick={() => {
-                toggleMapOnly();
-                fitPlan();
-              }}
-            >
-              {mapOnly ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
-            </button>
-            <button
-              title={active ? `Center ${active.id}` : 'Select a drone to center'}
-              aria-label={active ? `Center ${active.id}` : 'Select a drone to center'}
-              disabled={!active}
-              onClick={() => {
-                if (active) center(active.north_m, active.east_m, 4);
-              }}
-            >
-              <LocateFixed size={17} />
-            </button>
-          </div>
+          <MapTools
+            subject="map"
+            mapOnly={mapOnly}
+            toggleMapOnly={() => {
+              toggleMapOnly();
+              fitPlan();
+            }}
+            zoomIn={view.zoom === 16 ? undefined : () => setView(zoomTo(view, view.zoom * 1.5))}
+            zoomOut={view.zoom <= fitView.zoom ? undefined : () => setView(zoomTo(view, view.zoom / 1.5))}
+            centerLabel={active ? `Center ${active.id}` : 'Select a drone to center'}
+            center={active ? () => center(active.north_m, active.east_m, 4) : undefined}
+          />
           <div className="gcs-north">
             <b>N</b>
             <svg viewBox="0 0 24 30">
@@ -771,14 +811,6 @@ export default function MissionMap({
               {cursor
                 ? `${formatValue(cursor.north_m, 'm N')} / ${formatValue(cursor.east_m, 'm E')}`
                 : 'Drag to pan · Scroll to zoom'}
-            </span>
-            <span className="gcs-fence-key">
-              <i />
-              {!active
-                ? 'Select a drone to view its fence'
-                : fence.length
-                  ? `${active.id} fence · autopilot readback`
-                  : 'Fence not received'}
             </span>
           </div>
         </>

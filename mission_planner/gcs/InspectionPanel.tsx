@@ -240,13 +240,13 @@ export const inspectionSchema = z
   );
 export type Inspection = z.infer<typeof inspectionSchema>;
 
-const reviewDecision = {
+export const reviewDecision = {
   escalate: 'Possible match',
   recheck: 'Uncertain',
   discard: 'Discarded',
 };
 
-function EvidenceImage({
+export function EvidenceImage({
   src,
   label,
   width,
@@ -471,7 +471,7 @@ export function FindingCard({
   );
 }
 
-function ReviewDetails({
+export function ReviewDetails({
   droneId,
   reports,
   onError,

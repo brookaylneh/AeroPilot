@@ -21,12 +21,19 @@ from mission_planner.gcs.battery import (  # noqa: E402
     VOLTAGE_FLOOR_PERCENT,
     available_seconds,
 )
+from mission_planner.gcs.fences import (  # noqa: E402
+    default_fences,
+    fence_items,
+    read_fences,
+    rtl_envelope,
+    validate_fences,
+)
 from mission_planner.gcs.geodesy import (  # noqa: E402
     MAX_ALTITUDE_M,
     MIN_ALTITUDE_M,
     NAMES,
     ORIGIN,
-    fence_vertices,
+    ROOT,
     rtl_route,
     to_geodetic,
     to_local,
@@ -39,6 +46,7 @@ from mission_planner.gcs.planner import (  # noqa: E402
 )
 from mission_planner.gcs.sitl import check_ports, launches  # noqa: E402
 from mission_planner.gcs.validation import (  # noqa: E402
+    CLEARANCE_M,
     RouteConflict,
     separation_conflict,
     validate_ground_column,
@@ -105,9 +113,15 @@ class Fleet:
         self.planned_routes = {}
         self.control_versions = dict.fromkeys(NAMES, 0)
         self.landmarks = landmarks
+        self.fences = default_fences()
+        self.fences_verified = False
+        self.fence_error = None
+        self.fences_path = ROOT / ".local/data/flight-fences.json"
 
     async def start(self):
         load_env()
+        if self.fences_path.exists():
+            self.fences = validate_fences(json.loads(self.fences_path.read_text()), {})
         self.directory.mkdir(parents=True, exist_ok=False)
         aircraft = launches(self.directory)
         preflight = check_ports([port for launch in aircraft for port in launch["ports"]])
@@ -160,6 +174,8 @@ class Fleet:
         for state in self.snapshot():
             assert state["update_rate_hz"] >= 5, (state["id"], state["update_rate_hz"])
             self.planned_routes[state["id"]] = [state]
+        validate_fences(self.fences, {s["id"]: s["home"] for s in self.snapshot()})
+        self.fences_verified = True
 
     async def _receive(self, name):
         vehicle = self.vehicles[name]
@@ -349,22 +365,74 @@ class Fleet:
                 "values": vehicle["safety_parameters"],
             }
         )
-        items = [
-            self._item(
-                point, 0, MAV.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION, len(fence_vertices())
-            )
-            for point in fence_vertices()
-        ]
-        await self._upload(name, items, MAV.MAV_MISSION_TYPE_FENCE)
-        vehicle["fence"] = await self._download(name, MAV.MAV_MISSION_TYPE_FENCE)
-        assert len(vehicle["fence"]) == len(fence_vertices())
-        for intended, actual in zip(items, vehicle["fence"]):
-            assert intended["x"] == actual["x"] and intended["y"] == actual["y"]
-            assert actual["command"] == MAV.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION
-            assert actual["param1"] == len(fence_vertices())
+        envelope = rtl_envelope({"altitude_msl_m": home.altitude / 1000}, self.landmarks)
+        assert envelope["clearance_m"] >= CLEARANCE_M, (
+            f"{name}: RTL terrain envelope clears only {envelope['clearance_m']:.3f} m"
+        )
+        self.on_event({"kind": "rtl_envelope_verified", "drone_id": name, **envelope})
+        await self._upload_fences(name, fence_items(self.fences))
         await self._parameter(name, "FENCE_TYPE", 5)
         await self._parameter(name, "FENCE_ENABLE", 1)
         vehicle["mission"] = await self._download(name, MAV.MAV_MISSION_TYPE_MISSION)
+
+    async def _upload_fences(self, name, items):
+        await self._upload(name, items, MAV.MAV_MISSION_TYPE_FENCE)
+        received = await self._download(name, MAV.MAV_MISSION_TYPE_FENCE)
+        read_fences(received)
+        self.vehicles[name]["fence"] = received
+        assert len(received) == len(items), f"{name}: fence readback count differs"
+        for index, (sent, actual) in enumerate(zip(items, received)):
+            for key in ("command", "param1", "x", "y"):
+                assert sent[key] == actual[key], f"{name}: fence vertex {index + 1} {key} differs"
+        assert read_fences(received) == read_fences(items), f"{name}: fence polygons differ"
+
+    async def set_fences(self, requested):
+        async with self.command_lock:
+            assert requested["version"] == self.fences["version"], (
+                "Flight fences changed in another session; reopen the editor"
+            )
+            states = self.snapshot()
+            assert len(states) == len(NAMES) and all(
+                not s["armed"]
+                and s["landed_state"] == MAV.MAV_LANDED_STATE_ON_GROUND
+                and not s["link_lost"]
+                and s["ekf_healthy"]
+                and s["gps_fix"] >= 3
+                for s in states
+            ), "Saving flight fences requires four healthy, landed and disarmed drones"
+            checked = validate_fences(requested, {s["id"]: s["home"] for s in states})
+            validate_fences(checked, {s["id"]: s for s in states})
+            self.fences = {**checked, "version": checked["version"] + 1}
+            self.fences_verified = False
+            self.fence_error = None
+            self.on_event({"kind": "fences", "stage": "uploading", "fences": self.fences})
+            try:
+                items = fence_items(checked)
+                for name in NAMES:
+                    await self._upload_fences(name, items)
+                temporary = self.fences_path.with_suffix(".new")
+                with temporary.open("x") as stream:
+                    json.dump(self.fences, stream, allow_nan=False, indent=2)
+                    stream.write("\n")
+                    stream.flush()
+                    os.fsync(stream.fileno())
+                temporary.replace(self.fences_path)
+            except Exception as error:
+                self.fence_error = (
+                    f"Flight fence save failed; launch is locked: {type(error).__name__}: {error}"
+                )
+                self.on_event(
+                    {
+                        "kind": "fences",
+                        "stage": "failed",
+                        "fences": self.fences,
+                        "error": self.fence_error,
+                    }
+                )
+                raise RuntimeError(self.fence_error) from error
+            self.fences_verified = True
+            self.on_event({"kind": "fences", "stage": "verified", "fences": self.fences})
+            return self.fences
 
     @staticmethod
     def _ekf_healthy(message):
@@ -544,7 +612,7 @@ class Fleet:
                     else None,
                     "mission_total": len(vehicle["mission"]),
                     "mission": points(vehicle["mission"]),
-                    "fence": points(vehicle["fence"]),
+                    "fence": read_fences(vehicle["fence"]) if vehicle["fence"] else None,
                     "home": {
                         "north_m": hn,
                         "east_m": he,
@@ -569,6 +637,9 @@ class Fleet:
         await self._until(name, lambda: self.vehicles[name]["mode"] == mode, 10)
 
     def _validate_route(self, name, route):
+        assert self.fences_verified, (
+            "Flight fences are not verified on all four drones; launch is locked"
+        )
         assert route
         assert self.landmarks is not None, "Landmark catalogue required for obstacle clearance"
         home = next(state["home"] for state in self.snapshot() if state["id"] == name)
@@ -596,6 +667,7 @@ class Fleet:
         ]
 
     def check_return(self, state):
+        assert self.fences_verified, "Flight fences are not verified on all four drones"
         name = state["id"]
         assert not state["link_lost"] and state["ekf_healthy"] and state["gps_fix"] >= 3, (
             name + ": return requires healthy telemetry and GPS/EKF"
@@ -658,8 +730,12 @@ class Fleet:
     async def preview_plan(self, plan):
         from mission_planner.gcs.planner import compile_plan
 
+        assert self.fences_verified, (
+            "Flight fences are not verified on all four drones; launch is locked"
+        )
+        version = self.fences["version"]
         states = self.snapshot()
-        return await asyncio.to_thread(
+        receipt = await asyncio.to_thread(
             compile_plan,
             copy.deepcopy(plan),
             states,
@@ -667,6 +743,10 @@ class Fleet:
             self.landmarks,
             copy.deepcopy(self.reservations(states)),
         )
+        assert self.fences_verified and self.fences["version"] == version, (
+            "Flight fences changed during preview; preview the plan again"
+        )
+        return receipt
 
     async def apply_plan(self, plan):
         async with self.command_lock:
@@ -1082,6 +1162,9 @@ class Fleet:
         assert expected_step is None or expected_mode == "AUTO"
         version = None if expected_step is None else self.control_versions[args["drone_id"]]
         async with self.command_lock:
+            assert self.fences_verified, (
+                "Flight fences are not verified on all four drones; launch is locked"
+            )
             drone = args["drone_id"]
             assert drone in NAMES, f"Unknown drone id: {drone}"
             states = self.snapshot()
@@ -1282,9 +1365,14 @@ class Fleet:
                 "polygons": [
                     {
                         "version": 1,
-                        "inclusion": True,
-                        "polygon": [[m["x"] / 1e7, m["y"] / 1e7] for m in vehicle["fence"]],
+                        "inclusion": inclusion,
+                        "polygon": [list(to_geodetic(p["north_m"], p["east_m"])) for p in polygon],
                     }
+                    for inclusion, polygons in (
+                        (True, [state["fence"]["inclusion"]]),
+                        (False, state["fence"]["exclusions"]),
+                    )
+                    for polygon in polygons
                 ],
             },
             "rallyPoints": {"version": 2, "points": []},

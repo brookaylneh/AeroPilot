@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import {
   ArrowLeft,
   ArrowLeftRight,
@@ -18,9 +18,15 @@ import {
   SquarePen,
   X,
 } from 'lucide-react';
-import MissionMap, { mapAspect } from './MissionMap';
+import MissionMap, { MapTools, mapAspect } from './MissionMap';
 import FleetStrip from './FleetStrip';
-import InspectionPanel, { acceptedEvidence, FindingCard, GlimmerReview } from './InspectionPanel';
+import InspectionPanel, {
+  acceptedEvidence,
+  FindingCard,
+  GlimmerReview,
+  type Inspection,
+} from './InspectionPanel';
+import { SubagentLaunch, subagentLogs, SubagentStrip, SubagentTab } from './Subagents';
 import FlightPlan, { flightPlanSchema } from './FlightPlan';
 import DroneVideo from './DroneVideo';
 import { droneColors, droneIds, linkLost, useMission, type DroneId, type MissionEvent } from './missionState';
@@ -32,6 +38,8 @@ import {
   flightLogText,
   formatValue,
   pacificClock,
+  pacificTimestamp,
+  relativeTime,
 } from './display';
 import './mission.css';
 
@@ -164,10 +172,15 @@ function conversationRows(
   events: MissionEvent[],
   approvalCall: string | null | undefined,
   onError: (message: string) => void,
+  agents: globalThis.Map<string, Inspection>,
+  openAgent: (id: string) => void,
+  now: number,
 ) {
   const turns: ReactNode[] = [];
   let rows: ReactNode[] = [];
   let operator: string | null = null;
+  const launched = new Set<string>();
+  let launch: string[] | null = null;
   const failures = new globalThis.Map<string, MissionEvent[]>();
   const failed = new globalThis.Map(
     events
@@ -181,6 +194,7 @@ function conversationRows(
   );
   let activity: MissionEvent[] = [];
   function flush() {
+    launch = null;
     if (!activity.length) return;
     rows.push(
       <details key={`activity-${activity[0].id}`} className="gcs-tool gcs-activity">
@@ -212,6 +226,18 @@ function conversationRows(
     failures.clear();
   }
   for (const event of chat) {
+    const agent = event.kind === 'perception' && event.result?.rescue ? String(event.result.id) : null;
+    if (agent !== null && !launched.has(agent)) {
+      launched.add(agent);
+      if (launch) launch.push(agent);
+      else {
+        flush();
+        const group = [agent];
+        rows.push(<SubagentLaunch key={`subagents-${agent}`} ids={group} rows={agents} onOpen={openAgent} />);
+        launch = group;
+      }
+      continue;
+    }
     const call = event.kind === 'tool_call' && event.source !== 'glimmer' && event.call_id !== approvalCall;
     if (call && !failed.has(event.call_id)) {
       activity.push(event);
@@ -248,7 +274,9 @@ function conversationRows(
           {event.kind === 'agent' && (
             <header>
               <strong>Wonder</strong>
-              <time>{pacificClock(event.timestamp_ms)}</time>
+              <time title={pacificTimestamp(event.timestamp_ms)}>
+                {relativeTime(event.timestamp_ms, now)}
+              </time>
             </header>
           )}
           <p>
@@ -273,7 +301,8 @@ function conversationRows(
 }
 export default function MissionControl() {
   const caseId = new URLSearchParams(location.search).get('case');
-  const { state, feedFocus, events, connection, error, setError, send, now, age } = useMission(caseId);
+  const { state, feedFocus, fenceResult, events, connection, error, setError, send, now, age } =
+    useMission(caseId);
   const activeCaseId = state ? state.mission.case_id : null;
   const briefing = state ? state.mission.briefing : null;
   const [markingPlan, setMarkingPlan] = useState(false);
@@ -286,7 +315,10 @@ export default function MissionControl() {
   const [selected, setSelected] = useState<DroneId | null>(null);
   const [cameraView, setCameraView] = useState<DroneId | null>(null);
   const handledFeedFocus = useRef<string | null>(null);
-  const [panel, setPanel] = useState<'agent' | 'evidence' | 'log'>('agent');
+  const [panel, setPanel] = useState<'agent' | 'evidence' | 'log' | 'subagent'>('agent');
+  const [agentTabs, setAgentTabs] = useState<string[]>([]);
+  const [agentTab, setAgentTab] = useState<string | null>(null);
+  const followAgent = useRef(true);
   const followConversation = useRef(true);
   const shownFinding = useRef<string | null>(null);
   const findingScrollTop = useRef<number | null>(null);
@@ -298,12 +330,18 @@ export default function MissionControl() {
     if (connection === 'idle') {
       setText('');
       setChatView(null);
+      setAgentTabs([]);
+      setAgentTab(null);
+      setPanel((current) => (current === 'subagent' ? 'agent' : current));
       promptMission.current = null;
     }
     if (state && promptMission.current !== state.mission.id) {
       if (state.mission.briefing !== null && !events.some((event) => event.kind === 'operator'))
         setText(state.mission.briefing.brief);
       setChatView(null);
+      setAgentTabs([]);
+      setAgentTab(null);
+      setPanel((current) => (current === 'subagent' ? 'agent' : current));
       promptMission.current = state.mission.id;
     }
   }, [state, connection]);
@@ -377,6 +415,29 @@ export default function MissionControl() {
   const enabled = connected && state !== null;
   const inspections = state ? state.inspections : [];
   const published = acceptedEvidence(events);
+  const agentLogs = useMemo(() => subagentLogs(events), [events]);
+  const agents = new globalThis.Map(
+    [...agentLogs].map(([id, log]) => [id, inspections.find((row) => row.id === id) ?? log.at(-1)!.row]),
+  );
+  const agentLog = agentTab === null ? undefined : agentLogs.get(agentTab);
+  const shownAgent = panel === 'subagent' && agentTab !== null ? agents.get(agentTab)! : null;
+  function openAgent(id: string) {
+    setAgentTabs((tabs) => (tabs.includes(id) ? tabs : [...tabs, id]));
+    if (panel !== 'subagent' || agentTab !== id) followAgent.current = true;
+    setAgentTab(id);
+    setPanel('subagent');
+  }
+  function closeAgent(id: string) {
+    setAgentTabs((tabs) => tabs.filter((tab) => tab !== id));
+    if (agentTab === id) {
+      setAgentTab(null);
+      setPanel('agent');
+    }
+  }
+  useEffect(() => {
+    const el = conversation.current;
+    if (el && shownAgent && followAgent.current) el.scrollTop = el.scrollHeight;
+  }, [agentTab, panel, agentLog?.length, shownAgent?.frames]);
   const chats = chatSegments(events);
   const currentChat = chats.at(-1)!;
   const shownChat = chatView === null ? currentChat : chats[chatView];
@@ -404,6 +465,7 @@ export default function MissionControl() {
       'review',
       'tool_call',
       'tool_result',
+      'perception',
     ].includes(event.kind),
   );
   const lastVisibleEvent = visibleEvents.at(-1)?.id;
@@ -594,10 +656,21 @@ export default function MissionControl() {
                 connected={connected}
                 mapOnly={mapOnly}
                 toggleMapOnly={() => setMapOnly(!mapOnly)}
+                fences={state ? state.fences : null}
+                fenceResult={fenceResult}
+                saveFences={(fences) => send({ type: 'set_fences', fences })}
                 inset={view !== 'map'}
               />
               {view !== 'map' && viewSwitch}
             </div>
+            {view === 'video' && (
+              <MapTools
+                subject="video"
+                mapOnly={mapOnly}
+                toggleMapOnly={() => setMapOnly(!mapOnly)}
+                centerLabel="Centering is available in map view"
+              />
+            )}
             <div className={view === 'video' ? 'gcs-main-video' : 'gcs-inset gcs-inset-video'}>
               {cameraId && state ? (
                 <DroneVideo
@@ -617,22 +690,6 @@ export default function MissionControl() {
               )}
               {view === 'map' && viewSwitch}
             </div>
-            {view === 'map' && (
-              <div className="gcs-stage-key">
-                <span>
-                  <i className="gcs-fence-swatch" />
-                  Inclusion fence
-                </span>
-                <span>
-                  <Home size={12} />
-                  Home
-                </span>
-                <span>
-                  <Route size={12} />
-                  Uploaded route
-                </span>
-              </div>
-            )}
             {briefingOpen && briefing && (
               <section className="gcs-briefing">
                 <header>
@@ -787,6 +844,26 @@ export default function MissionControl() {
                 Evidence <span>{published.length}</span>
               </button>
             )}
+            {agentTabs
+              .filter((id) => agents.has(id))
+              .map((id) => {
+                const row = agents.get(id)!;
+                return (
+                  <div
+                    key={id}
+                    className={`gcs-subagent-tab ${panel === 'subagent' && agentTab === id ? 'active' : ''}`}
+                    style={{ '--drone': droneColors[row.drone_id] } as CSSProperties}
+                  >
+                    <button aria-label={`Glimmer · ${row.drone_id} subagent`} onClick={() => openAgent(id)}>
+                      <i className="gcs-drone-dot" />
+                      {row.drone_id}
+                    </button>
+                    <button aria-label={`Close Glimmer · ${row.drone_id}`} onClick={() => closeAgent(id)}>
+                      <X size={11} />
+                    </button>
+                  </div>
+                );
+              })}
           </div>
           {panel === 'agent' && chatView !== null && (
             <div className="gcs-chat-history-bar">
@@ -806,8 +883,9 @@ export default function MissionControl() {
                 followConversation.current = false;
             }}
             onScroll={(event) => {
-              if (panel !== 'agent') return;
               const { scrollHeight, scrollTop, clientHeight } = event.currentTarget;
+              if (panel === 'subagent') followAgent.current = scrollHeight - scrollTop - clientHeight <= 24;
+              if (panel !== 'agent') return;
               if (findingScrollTop.current !== null) {
                 const aligned = scrollTop === findingScrollTop.current;
                 findingScrollTop.current = null;
@@ -818,7 +896,15 @@ export default function MissionControl() {
           >
             {panel === 'agent' ? (
               <>
-                {conversationRows(shownChat, events, state?.approvals[0]?.call_id, setError)}
+                {conversationRows(
+                  shownChat,
+                  events,
+                  state?.approvals[0]?.call_id,
+                  setError,
+                  agents,
+                  openAgent,
+                  now,
+                )}
                 {chatView === null && state?.agent_busy && (
                   <div className="gcs-working">
                     <i className="gcs-status-dot healthy" />
@@ -832,6 +918,15 @@ export default function MissionControl() {
                   </div>
                 )}
               </>
+            ) : shownAgent ? (
+              <SubagentTab
+                key={shownAgent.id}
+                row={shownAgent}
+                log={agentLog!}
+                events={events}
+                now={now}
+                onError={setError}
+              />
             ) : panel === 'evidence' ? (
               <>
                 <InspectionPanel events={events} onError={setError} />
@@ -872,7 +967,7 @@ export default function MissionControl() {
                 data-status="Awaiting approval"
               >
                 <header>
-                  <ShieldCheck size={18} />
+                  <ShieldCheck size={11} />
                   <strong>Awaiting approval</strong>
                   {pendingPlan ? (
                     <span>Plan v{pendingPlan.plan.version}</span>
@@ -924,6 +1019,7 @@ export default function MissionControl() {
               </section>
             </div>
           )}
+          <SubagentStrip rows={[...agents.values()]} onOpen={openAgent} />
           <form
             className="gcs-composer"
             onSubmit={(e) => {

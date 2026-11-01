@@ -61,19 +61,24 @@ export default function FleetStrip({
       <div className="gcs-fleet-cards">
         {droneIds.map((id) => {
           const v = vehicles.find((item) => item.id === id),
-            isLost = v ? linkLost(v, age, connected) : true;
+            isLost = v ? linkLost(v, age, connected) : true,
+            active = !isLost && v!.camera_available;
           const step = progress[id];
           return (
             <article
               key={id}
-              className={`gcs-vehicle ${selected === id ? 'selected' : ''} ${isLost ? 'link-lost' : ''}`}
+              className={`gcs-vehicle ${active ? 'active' : ''} ${active && selected === id ? 'selected' : ''} ${isLost ? 'link-lost' : ''}`}
               style={{ '--drone': droneColors[id] } as CSSProperties}
               data-drone-card={id}
               data-drone-id={id}
               data-mode={v ? v.mode : 'unknown'}
+              onClick={(e) => {
+                if (active && !(e.target as Element).closest('.gcs-actions-toggle, .gcs-actions-menu'))
+                  select(id);
+              }}
             >
               <header>
-                <button className="gcs-vehicle-name" onClick={() => select(id)}>
+                <button className="gcs-vehicle-name" disabled={!active}>
                   <Navigation size={11} fill="currentColor" />
                   <strong>{id}</strong>
                 </button>

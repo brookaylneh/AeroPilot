@@ -64,6 +64,7 @@ class TrackingFlight(unittest.IsolatedAsyncioTestCase):
             "connection": SimpleNamespace(mav=self.mav),
         }
         self.fleet = Fleet("unused", Mock(), [])
+        self.fleet.fences_verified = True
         self.fleet.vehicles = {"Drone1": self.vehicle}
 
         def snapshot():

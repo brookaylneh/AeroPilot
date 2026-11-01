@@ -24,6 +24,7 @@ from mission_planner.agents.tools import (
     validate_arguments,
 )
 from mission_planner.environment import ROOT
+from mission_planner.gcs.fences import BOUNDARY_CLEARANCE_M, validate_fences
 from mission_planner.gcs.fleet import Fleet
 from mission_planner.gcs.geodesy import (
     BASE_RADIUS_M,
@@ -52,6 +53,7 @@ MESSAGE_FIELDS = {
     "tool": {"type", "name", "arguments"},
     "approval": {"type", "id", "approved"},
     "export_plan": {"type", "drone_id"},
+    "set_fences": {"type", "fences"},
 }
 
 
@@ -234,14 +236,10 @@ def flight_constraints(vehicles):
         "altitude_above_home_m": [MIN_ALTITUDE_M, MAX_ALTITUDE_M],
         "speed_mps": [MIN_SPEED_MPS, MAX_SPEED_MPS],
         "minimum_clearance_m": CLEARANCE_M,
+        "boundary_clearance_m": BOUNDARY_CLEARANCE_M,
         "minimum_separation_m": MIN_SEPARATION_M,
         "separation": "Complete 3D routes and takeoff/landing columns, independent of timing",
-        "fences": {
-            vehicle["id"]: [
-                {key: point[key] for key in ("north_m", "east_m")} for point in vehicle["fence"]
-            ]
-            for vehicle in vehicles
-        },
+        "fences": {vehicle["id"]: vehicle["fence"] for vehicle in vehicles},
     }
 
 
@@ -318,6 +316,7 @@ class Mission:
         self.step_clock = {}
         self.conversation = []
         self.plan_task = None
+        self.fence_change = False
         self.agent_wait = None
         self.wait_task = None
         self.inspections = Inspections(self)
@@ -452,6 +451,10 @@ class Mission:
             text = item["drone_id"] + " firmware verified"
         elif kind == "safety_parameters_verified":
             text = item["drone_id"] + " safety parameters verified"
+        elif kind == "rtl_envelope_verified":
+            text = f"{item['drone_id']} RTL terrain envelope: {item['clearance_m']:.3f} m clearance"
+        elif kind == "fences":
+            text = f"Flight fences v{item['fences']['version']} · {item['stage']}"
         elif kind == "sitl_ports_verified":
             text = "SITL listener ports verified"
         elif kind == "home_comparison":
@@ -540,6 +543,8 @@ class Mission:
         ]
         if self.admission_error is not None:
             alerts.append("Mission admission failed: " + self.admission_error)
+        if self.fleet.fence_error is not None:
+            alerts.append(self.fleet.fence_error)
         if self.fleet_error is not None:
             alerts.append("Fleet startup failed: " + self.fleet_error)
         elif not self.fleet_ready:
@@ -563,6 +568,12 @@ class Mission:
             "type": "state",
             "mission": self.summary(),
             "vehicles": self.vehicles(),
+            "fences": {
+                **self.fleet.fences,
+                "verified": self.fleet.fences_verified,
+                "error": self.fleet.fence_error,
+                "editable": self.fences_editable(),
+            },
             "agent_busy": self.agent_busy,
             "agent_wait": self.agent_wait,
             "chat_ready": self.chat_ready(),
@@ -572,6 +583,56 @@ class Mission:
             "landmarks": self.landmarks,
             "planner": self.planner_state(),
         }
+
+    def fences_editable(self):
+        vehicles = self.vehicles()
+        return (
+            self.fleet_ready
+            and not self.clearing
+            and not self.fence_change
+            and not self.fleet.command_lock.locked()
+            and (not self.active_flight or bool(self.approvals))
+            and len(vehicles) == len(NAMES)
+            and all(
+                not v["armed"]
+                and v["landed_state"] == 1
+                and not v["link_lost"]
+                and v["ekf_healthy"]
+                and v["gps_fix"] >= 3
+                for v in vehicles
+            )
+        )
+
+    async def set_fences(self, requested):
+        async with self.lifecycle_lock:
+            assert self.fences_editable(), (
+                "Save flight fences when all four drones are healthy, landed and disarmed"
+            )
+            assert requested["version"] == self.fleet.fences["version"], (
+                "Flight fences changed in another session; reopen the editor"
+            )
+            validate_fences(requested, {v["id"]: v["home"] for v in self.vehicles()})
+            self.fence_change = True
+            try:
+                self.cancel_wait("Flight fences changed")
+                await self.interrupt_agent("flight fence edit")
+                for item in self.approvals.values():
+                    if not item["future"].done():
+                        item["future"].set_exception(
+                            RuntimeError("Flight fences changed; preview again")
+                        )
+                if self.operator_tasks:
+                    await asyncio.wait(list(self.operator_tasks))
+                self.plan_preview = self.plan_active = self.plan_previous = None
+                self.step_clock.clear()
+                await self.inspections.close()
+                await self.fleet.clear_missions()
+                self.event(
+                    "mode", "Operator saved flight fences", source="operator", result=requested
+                )
+                return await self.fleet.set_fences(requested)
+            finally:
+                self.fence_change = False
 
     def chat_ready(self):
         vehicles = self.vehicles()
@@ -654,6 +715,7 @@ class Mission:
         }
 
     async def execute_plan(self, name, arguments, source, call_id):
+        assert not self.fence_change, "Flight fences are being saved; wait for verification"
         assert self.fleet_ready, "MAVLink fleet is unavailable"
         assert self.plan_task is None, "A plan operation is already in progress"
         if name == "preview_plan":
@@ -778,6 +840,7 @@ class Mission:
         assert approved, "Operator declined"
 
     async def execute(self, name, arguments, source, call_id):
+        assert not self.fence_change, "Flight fences are being saved; wait for verification"
         if name in ("preview_plan", "request_launch", "apply_plan_change"):
             return await self.execute_plan(name, arguments, source, call_id)
         validate_arguments(name, arguments)
@@ -1187,6 +1250,7 @@ class Mission:
     def context(self):
         vehicles = self.vehicles()
         context = {
+            "fence_version": self.fleet.fences["version"],
             "flight_constraints": flight_constraints(vehicles),
             "map": self.landmarks,
             "briefing": None if self.case is None else {"brief": self.case["report"]["brief"]},
@@ -1264,6 +1328,7 @@ class Mission:
                     phase = "survey"
             inspections.append((row["id"], row["status"], phase))
         return (
+            self.fleet.fences["version"],
             sorted((v["id"], v["mode"], v["armed"], v["landed_state"]) for v in self.vehicles()),
             sorted(inspections),
             sorted(self.autopilot_alerts),
@@ -1681,6 +1746,7 @@ class Mission:
                 self.invoke(message["name"], message["arguments"], "operator", str(uuid.uuid4()))
             )
         elif kind == "approval":
+            assert not self.fence_change, "Flight fences changed; the earlier approval is invalid"
             assert type(message["approved"]) is bool
             assert message["id"] in self.approvals, "Unknown or already resolved approval"
             item = self.approvals[message["id"]]
@@ -1696,6 +1762,11 @@ class Mission:
                 source="operator",
             )
             item["future"].set_result(message["approved"])
+        elif kind == "set_fences":
+            fences = await self.set_fences(message["fences"])
+            await websocket.send(
+                encode({"type": "fence_result", "version": fences["version"], "error": None})
+            )
         elif kind == "export_plan":
             assert message["drone_id"] in NAMES, "Unknown drone: " + message["drone_id"]
             assert self.fleet_ready, "MAVLink fleet is unavailable"
@@ -1737,13 +1808,28 @@ class Mission:
 
         async def consume():
             async for raw in websocket:
-                task = asyncio.create_task(self.handle(json.loads(raw), websocket))
+                message = json.loads(raw)
+                task = asyncio.create_task(self.handle(message, websocket))
                 await asyncio.wait([task])
                 error = task.exception()
                 if error is not None:
                     text = operator_error(error)
-                    self.event("error", text)
-                    await websocket.send(encode({"type": "error", "message": text}))
+                    if message["type"] == "set_fences":
+                        self.event(
+                            "mode", "Flight fences were not applied: " + text, source="operator"
+                        )
+                        await websocket.send(
+                            encode(
+                                {
+                                    "type": "fence_result",
+                                    "version": self.fleet.fences["version"],
+                                    "error": text,
+                                }
+                            )
+                        )
+                    else:
+                        self.event("error", text)
+                        await websocket.send(encode({"type": "error", "message": text}))
 
         tasks = [asyncio.create_task(publish()), asyncio.create_task(consume())]
         try:

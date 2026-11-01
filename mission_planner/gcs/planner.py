@@ -17,6 +17,7 @@ from mission_planner.gcs.battery import (
     available_seconds,
     required_percent,
 )
+from mission_planner.gcs.fences import read_fences, validate_fence_segment
 from mission_planner.gcs.geodesy import (
     MAX_SPEED_MPS,
     MIN_SPEED_MPS,
@@ -26,6 +27,7 @@ from mission_planner.gcs.geodesy import (
     segment_in_polygon,
     to_geodetic,
     to_local,
+    validate_polygon,
 )
 from mission_planner.gcs.terrain import terrain_leg, waypoint
 from mission_planner.gcs.timing import (
@@ -42,7 +44,6 @@ from mission_planner.gcs.validation import (
     validate_route,
     validate_separation,
 )
-from world.cosys.landmarks import _intersects
 from world.cosys.terrain import terrain_height
 
 
@@ -151,21 +152,6 @@ PLAN_SCHEMA["properties"]["search"] = SEARCH_SCHEMA
 for step in PLAN_SCHEMA["properties"]["drones"]["items"]["properties"]["steps"]["items"]["anyOf"]:
     if step["properties"]["kind"]["enum"][0] in ("fly", "follow", "survey", "circle"):
         step["properties"]["observe"] = {"type": "boolean", "enum": [True]}
-
-
-def validate_polygon(points, label):
-    vertices = [(p["north_m"], p["east_m"]) for p in points]
-    assert len(vertices) >= 3 and len(set(vertices)) == len(vertices), (
-        f"{label}: vertices must be unique; closure is implicit"
-    )
-    edges = list(zip(vertices, [*vertices[1:], vertices[0]]))
-    for i, (a, b) in enumerate(edges):
-        for j, (c, d) in enumerate(edges):
-            if j > i + 1 and (i, j) != (0, len(edges) - 1):
-                assert not _intersects(a, b, c, d), f"{label}: polygon self-intersects"
-    assert abs(sum(a[0] * b[1] - b[0] * a[1] for a, b in edges)) > 1e-6, (
-        f"{label}: polygon has no area"
-    )
 
 
 def validate_search(plan, fences):
@@ -363,6 +349,7 @@ def compile_plan(plan, states, fences, landmarks, reservations=()):
         assert 0 <= state["battery_percent"] <= 100, f"{name}: battery outside 0–100%"
         validate_position(name, state, fences[name])
         fence = fence_polygon(fences[name])
+        boundaries = read_fences(fences[name])
         airborne = state["armed"] and state["landed_state"] == MAV.MAV_LANDED_STATE_IN_AIR
         landed = not state["armed"] and state["landed_state"] == MAV.MAV_LANDED_STATE_ON_GROUND
         assert airborne or landed, f"{name}: aircraft is neither ready on ground nor airborne"
@@ -398,6 +385,7 @@ def compile_plan(plan, states, fences, landmarks, reservations=()):
                 "connects to the world only through the read-back launch corridor. "
                 "Specify an intermediate fly point inside that corridor."
             )
+            validate_fence_segment(start, target, boundaries, "Flight leg")
             level = waypoint(start["north_m"], start["east_m"], home_z, height)
             path = [level]
             if (start["north_m"], start["east_m"]) != (target["north_m"], target["east_m"]):

@@ -32,7 +32,7 @@ function vehicle(id, values = {}) {
     home,
     mission: route,
     mission_current: 1,
-    fence: [],
+    fence: null,
     heading_deg: 0,
     course_deg: null,
     mode: 'AUTO',
@@ -109,6 +109,9 @@ function map() {
       landmarks: [],
       age: 0,
       connected: true,
+      fences: null,
+      fenceResult: null,
+      saveFences: () => true,
       inset: true,
       ...values,
     };
@@ -121,6 +124,29 @@ function map() {
     return renderToStaticMarkup(render());
   };
 }
+
+test('shared inclusion and exclusion fences remain visible without a selected drone', () => {
+  const polygon = [
+    { north_m: 0, east_m: 0 },
+    { north_m: 100, east_m: 0 },
+    { north_m: 100, east_m: 100 },
+  ];
+  const html = map()([vehicle('Drone1')], {
+    selected: null,
+    fences: {
+      version: 2,
+      names: { inclusion: 'Park boundary', exclusions: ['Bear habitat'] },
+      inclusion: polygon,
+      exclusions: [polygon],
+      verified: true,
+      error: null,
+      editable: false,
+    },
+  });
+  assert.match(html, /Park boundary/);
+  assert.match(html, /Bear habitat · No fly at any altitude/);
+  assert.match(html, /class="gcs-fence exclusion"/);
+});
 
 test('moving marker follows measured travel direction even when body yaw differs', () => {
   for (const [course, yaw] of [

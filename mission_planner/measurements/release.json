@@ -671,5 +671,136 @@
     "missing": [],
     "source_hashes_verified": 370,
     "only_runtime_change_since_full_gate": ["mission_planner/gcs/MissionMap.tsx"]
+  },
+  "post_merge_integration": {
+    "recorded_at_utc": "2026-11-01T23:14:35.227374+00:00",
+    "baseline_commit": "deef56d866070063d806b708f5f579cda2881120",
+    "scope": [
+      "Named editable inclusion/exclusion fences and planner return guidance",
+      "Current Glimmer tabs, timestamps, camera and fleet/map UI",
+      "Fix selected Glimmer tab crashing when mission history is replaced"
+    ],
+    "raw_evidence": ".local/evidence/repo-integration/20261101T225946Z",
+    "branch_audit": {
+      "branches_checked": 17,
+      "unmerged_commits": [],
+      "patch_equivalent_branch": "mission-brief",
+      "existing_stash": "Preserved; no missing changes to replay"
+    },
+    "verified_snapshot": {
+      "manifest": ".local/evidence/repo-integration/20261101T225946Z/source-after-checks.json",
+      "excluded_concurrent_paths": [
+        "mission_planner/agents/services/sam_tracking.py",
+        "mission_planner/agents/temporal.py",
+        "mission_planner/agents/test_temporal.py"
+      ],
+      "javascript_tests": 252,
+      "python_tests": 654,
+      "checks": [
+        {
+          "command": ["npm", "test"],
+          "exit_code": 0,
+          "elapsed_s": 6.9876391110010445,
+          "log": ".local/evidence/repo-integration/20261101T225946Z/javascript.log"
+        },
+        {
+          "command": ["npm", "run", "typecheck"],
+          "exit_code": 0,
+          "elapsed_s": 4.4995284950127825,
+          "log": ".local/evidence/repo-integration/20261101T225946Z/types.log"
+        },
+        {
+          "command": ["npm", "run", "format:check"],
+          "exit_code": 0,
+          "elapsed_s": 3.432671152986586,
+          "log": ".local/evidence/repo-integration/20261101T225946Z/format.log"
+        },
+        {
+          "command": [".venv-cosys/bin/ruff", "check"],
+          "exit_code": 0,
+          "elapsed_s": 0.009047943982295692,
+          "log": ".local/evidence/repo-integration/20261101T225946Z/ruff.log"
+        },
+        {
+          "command": [".venv-cosys/bin/ruff", "format", "--check"],
+          "exit_code": 0,
+          "elapsed_s": 0.0099060790380463,
+          "log": ".local/evidence/repo-integration/20261101T225946Z/ruff-format.log"
+        },
+        {
+          "command": [".venv-cosys/bin/python", "-m", "unittest"],
+          "exit_code": 0,
+          "elapsed_s": 200.97084187698783,
+          "log": ".local/evidence/repo-integration/20261101T225946Z/python.log"
+        },
+        {
+          "command": [
+            "npm",
+            "run",
+            "build",
+            "--",
+            "--outDir",
+            "../.local/staging/repo-integration/release-dist"
+          ],
+          "exit_code": 0,
+          "elapsed_s": 6.554708699986804,
+          "log": ".local/evidence/repo-integration/20261101T225946Z/build.log"
+        },
+        {
+          "command": [
+            ".local/toolchains/bin/node",
+            "--env-file=.local/runtime.env",
+            "--import",
+            "tsx",
+            ".local/staging/repo-integration/browser.mjs",
+            "staged"
+          ],
+          "exit_code": 0,
+          "elapsed_s": 2.1882455269806087,
+          "log": ".local/evidence/repo-integration/20261101T225946Z/browser-staged.log"
+        },
+        {
+          "command": [
+            ".local/toolchains/bin/node",
+            "--env-file=.local/runtime.env",
+            "--import",
+            "tsx",
+            ".local/staging/repo-integration/browser.mjs",
+            "installed"
+          ],
+          "exit_code": 0,
+          "elapsed_s": 2.6863452150137164,
+          "log": ".local/evidence/repo-integration/20261101T225946Z/browser-installed.log"
+        }
+      ]
+    },
+    "browser_checks": [
+      "One functional Inclusion/Exclusion legend; inclusion naming popup remains integrated",
+      "Two Glimmer jobs open independently and refocus with their live details",
+      "Replacing history while a Glimmer tab is selected removes stale tabs without crashing",
+      "A new mission returns to Conversation without stale Glimmer tabs"
+    ],
+    "deployment": {
+      "mode": "Frontend assets only; prior assets retained; no service restart",
+      "index_sha256": "a2b2b7c71d1feba8e839fc1514d0e2c7ca20db9218d80e5ce58344492bd4569b",
+      "public_pages_verified": 3,
+      "public_assets_verified": 13,
+      "health": {
+        "ok": true,
+        "services": {
+          "web": true,
+          "mission": true,
+          "signalling": true,
+          "unreal": true,
+          "turn": true,
+          "caddy": true
+        },
+        "renderer": "ready"
+      }
+    },
+    "verification_limits": [
+      "Browser lifecycle checks used an intercepted mission WebSocket; no live flight commands or paid calls",
+      "Tracking and inspection edits that arrived during verification remain a separate in-progress change; their partial-source check failures are retained in the raw evidence"
+    ]
   }
 }

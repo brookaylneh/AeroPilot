@@ -9,6 +9,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
+from mission_planner.gcs.fences import default_fences
 from mission_planner.gcs.geodesy import NAMES
 from mission_planner.gcs.service import Mission
 
@@ -52,7 +53,12 @@ class FeedTests(unittest.IsolatedAsyncioTestCase):
         mission.clearing = False
         mission.fleet_ready = False
         mission.fleet_error = None
-        mission.fleet = Mock()
+        mission.fleet = Mock(
+            fences=default_fences(),
+            fences_verified=True,
+            fence_error=None,
+            command_lock=asyncio.Lock(),
+        )
         mission.fleet.snapshot.return_value = [
             {
                 "id": name,

@@ -22,7 +22,7 @@ from mission_planner.gcs.geodesy import (
     segment_distance,
     segment_in_polygon,
 )
-from mission_planner.gcs.validation import minimum_clearance
+from mission_planner.gcs.validation import footprint_intervals, minimum_clearance
 from world.cosys.terrain import terrain_height
 
 CABIN = (-498.0, -189.0)
@@ -124,8 +124,16 @@ def measure(samples, receipts, changes):
         for name, vehicle in fleet.items():
             xyz = neu(vehicle)
             ground.append(xyz[2] - terrain_height(*xyz[:2]))
-            if not point_in_polygon(vehicle, vehicle["fence"]) or (
-                name in old and not segment_in_polygon(old[name], vehicle, vehicle["fence"])
+            if (
+                not point_in_polygon(vehicle, vehicle["fence"]["inclusion"])
+                or (
+                    name in old
+                    and not segment_in_polygon(old[name], vehicle, vehicle["fence"]["inclusion"])
+                )
+                or any(
+                    footprint_intervals(old[name] if name in old else vehicle, vehicle, polygon)
+                    for polygon in vehicle["fence"]["exclusions"]
+                )
             ):
                 fence_violations.append({"at_ms": sample["at_ms"], "drone_id": name})
             if name in old:
@@ -263,9 +271,10 @@ class Acceptance:
             assert not message["mission"]["alerts"], message["mission"]["alerts"]
             for vehicle in message["vehicles"]:
                 assert not vehicle["link_lost"] and vehicle["ekf_healthy"], vehicle["id"]
-                assert point_in_polygon(vehicle, vehicle["fence"]), (
-                    f"{vehicle['id']}: actual fence violation"
-                )
+                assert point_in_polygon(vehicle, vehicle["fence"]["inclusion"]) and all(
+                    not point_in_polygon(vehicle, polygon)
+                    for polygon in vehicle["fence"]["exclusions"]
+                ), f"{vehicle['id']}: actual fence violation"
                 if vehicle["armed"] and not ground_column(vehicle):
                     assert (
                         neu(vehicle)[2] - terrain_height(vehicle["north_m"], vehicle["east_m"])

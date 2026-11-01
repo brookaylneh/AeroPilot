@@ -37,6 +37,12 @@ export function pacificTimestamp(ms: number) {
   const p = pacificParts(ms);
   return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second}.${p.fractionalSecond} ${p.timeZoneName}`;
 }
+export function relativeTime(ms: number, now: number) {
+  const minutes = Math.floor((now - ms) / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes} min ago`;
+  return pacificClock(ms);
+}
 
 const titles: Record<string, string> = {
   preview_plan: 'Preview mission plan',

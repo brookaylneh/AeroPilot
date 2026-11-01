@@ -106,10 +106,10 @@ async def run(case_id, output):
             report["fences"] = {s["id"]: s["fence"] for s in states}
             expected = fence_vertices()
             for state in states:
-                assert len(state["fence"]) == len(expected)
+                assert len(state["fence"]["inclusion"]) == len(expected)
                 assert all(
                     math.dist((a["north_m"], a["east_m"]), (b["north_m"], b["east_m"])) < 0.02
-                    for a, b in zip(state["fence"], expected)
+                    for a, b in zip(state["fence"]["inclusion"], expected)
                 )
             report["nominalRtlRoutes"] = validate_sortie(
                 states,

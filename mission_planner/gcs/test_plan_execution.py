@@ -22,6 +22,7 @@ from world.cosys.landmarks import load
 
 def fleet(current):
     value = Fleet("unused", Mock(), load())
+    value.fences_verified = True
     value.snapshot = lambda: copy.deepcopy(current)
     value.vehicles = {
         state["id"]: {
@@ -64,6 +65,7 @@ def fleet(current):
 
 def mission(current):
     owner = object.__new__(Mission)
+    owner.fence_change = False
     owner.case = None
     owner.fleet = fleet(current)
     owner.fleet_ready, owner.fleet_error = True, None

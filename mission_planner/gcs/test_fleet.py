@@ -213,6 +213,7 @@ class CameraLifetime(unittest.IsolatedAsyncioTestCase):
     async def test_startup_retained_missions_do_not_enable_cameras(self):
         with tempfile.TemporaryDirectory(dir=ROOT / ".local") as directory:
             fleet = Fleet(Path(directory) / "fleet", Mock(), [])
+            fleet.fences_path = Path(directory) / "fences.json"
             aircraft = [
                 {
                     "name": name,
@@ -231,7 +232,10 @@ class CameraLifetime(unittest.IsolatedAsyncioTestCase):
             fleet._initialize = AsyncMock(side_effect=initialize)
             fleet._receive = AsyncMock()
             fleet.snapshot = Mock(
-                return_value=[{"id": name, "update_rate_hz": 10} for name in NAMES]
+                return_value=[
+                    {"id": name, "update_rate_hz": 10, "home": home}
+                    for name, home in homes().items()
+                ]
             )
             with (
                 patch("mission_planner.gcs.fleet.load_env"),

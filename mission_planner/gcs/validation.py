@@ -2,6 +2,7 @@
 
 import math
 
+from mission_planner.gcs.fences import read_fences, validate_fence_segment
 from mission_planner.gcs.geodesy import (
     MAX_ALTITUDE_M,
     MIN_ALTITUDE_M,
@@ -10,7 +11,6 @@ from mission_planner.gcs.geodesy import (
     point_in_polygon,
     segment_distance,
     segment_in_polygon,
-    to_local,
 )
 from world.cosys.terrain import COLUMNS, ROWS, WORLD, launch_breaks, terrain_height
 
@@ -50,15 +50,14 @@ class RouteConflict(AssertionError):
 
 
 def fence_polygon(readback):
-    return [
-        dict(zip(("north_m", "east_m"), to_local(m["x"] / 1e7, m["y"] / 1e7))) for m in readback
-    ]
+    return read_fences(readback)["inclusion"]
 
 
 def validate_position(name, state, readback):
     assert point_in_polygon(state, fence_polygon(readback)), (
         f"{name}: current position is outside the search fence; launch position conflicts with required fence"
     )
+    validate_fence_segment(state, state, read_fences(readback), name + " position", clearance=0)
 
 
 def validate_ground_column(point, landmarks):
@@ -86,6 +85,9 @@ def validate_route(route, readback, home_z, landmarks):
 
     for a, b in zip(route, route[1:]):
         assert segment_in_polygon(a, b, polygon), "Route segment exits the launch corridor fence"
+    fences = read_fences(readback)
+    for index, (a, b) in enumerate(zip(route, route[1:] or route), 1):
+        validate_fence_segment(a, b, fences, f"Route segment {index}")
     assert type(home_z) in (int, float) and math.isfinite(home_z), "Invalid home UE-up metres"
     assert landmarks is not None, "Landmark data unavailable; obstacle clearance cannot be checked"
     assert isinstance(landmarks, list)

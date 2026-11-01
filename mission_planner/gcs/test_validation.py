@@ -4,8 +4,9 @@ import copy
 import unittest
 from unittest.mock import AsyncMock, Mock, patch
 
+from mission_planner.gcs.fences import default_fences, fence_items
 from mission_planner.gcs.fleet import MAV, Fleet
-from mission_planner.gcs.geodesy import NAMES, ORIGIN, fence_vertices, to_geodetic
+from mission_planner.gcs.geodesy import NAMES, ORIGIN
 from mission_planner.gcs.validation import (
     RouteConflict,
     fence_polygon,
@@ -25,14 +26,12 @@ def point(north, east, altitude=30):
 
 
 def readback():
-    return [
-        dict(zip(("x", "y"), (round(v * 1e7) for v in to_geodetic(p["north_m"], p["east_m"]))))
-        for p in fence_vertices()
-    ]
+    return fence_items(default_fences())
 
 
 def fleet(states, planned):
     value = Fleet("unused", lambda event: None, [])
+    value.fences_verified = True
     value.vehicles = {state["id"]: {"fence": readback()} for state in states}
     value.planned_routes = {state["id"]: [state] for state in states} | planned
     value.snapshot = Mock(
@@ -104,10 +103,9 @@ class RouteValidation(unittest.TestCase):
             validate_route([point(300, -690, 10), point(300, -680, 10)], readback(), 11.45, [])
 
     def test_readback_uses_integer_geodetic_coordinates(self):
-        self.assertEqual(
-            fence_polygon([{"x": 378764320, "y": -1193934210}]),
-            [{"north_m": 0, "east_m": 0}],
-        )
+        items = readback()
+        items[0].update(x=378764320, y=-1193934210)
+        self.assertEqual(fence_polygon(items)[0], {"north_m": 0, "east_m": 0})
 
     def test_altitude_and_launch_corridor_boundaries(self):
         for altitude in (10, 100):

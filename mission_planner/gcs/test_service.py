@@ -130,6 +130,8 @@ class AgentContext(unittest.TestCase):
 
     def test_coupled_startup_events_reach_the_mission_log(self):
         mission = object.__new__(Mission)
+        mission.fence_change = False
+        mission.fleet = Mock(fences={"version": 0}, fence_error=None)
         mission.event = Mock()
         port_event = {"kind": "sitl_ports_verified", "ports": [14620, 5701, 9203]}
         home_event = {"kind": "home_comparison", "drone_id": "Drone1", "home_error_m": 2.372}
@@ -171,14 +173,18 @@ class AgentContext(unittest.TestCase):
 
     def test_planning_constraints_preserve_exact_readback_polygon_and_limits(self):
         points = [{"north_m": -844.676, "east_m": -25.004}, {"north_m": 804.674, "east_m": 804.671}]
-        result = flight_constraints([{"id": "Drone1", "fence": points}])
-        self.assertEqual(result["fences"]["Drone1"], points)
+        fence = {"inclusion": points, "exclusions": [points]}
+        result = flight_constraints([{"id": "Drone1", "fence": fence}])
+        self.assertEqual(result["fences"]["Drone1"], fence)
+        self.assertEqual(result["boundary_clearance_m"], 10)
         self.assertEqual(result["altitude_above_home_m"], [10, 100])
         self.assertEqual(result["minimum_separation_m"], 0.1)
         self.assertEqual(result["origin_altitude_msl_m"], ORIGIN["altitude_msl_m"])
 
     def test_every_request_contains_map_and_briefing(self):
         mission = object.__new__(Mission)
+        mission.fence_change = False
+        mission.fleet = Mock(fences={"version": 0}, fence_error=None)
         temporary = tempfile.TemporaryDirectory(dir=ROOT / ".local")
         self.addCleanup(temporary.cleanup)
         mission.directory = Path(temporary.name)
@@ -241,6 +247,8 @@ class AgentContext(unittest.TestCase):
         directory = tempfile.TemporaryDirectory()
         self.addCleanup(directory.cleanup)
         mission = object.__new__(Mission)
+        mission.fence_change = False
+        mission.fleet = Mock(fences={"version": 0}, fence_error=None)
         mission.case = None
         mission.directory = Path(directory.name)
         mission.landmarks = load()
@@ -267,7 +275,7 @@ class AgentContext(unittest.TestCase):
             "climb_rate_mps": 1.6,
             "battery_percent": 90,
             "home": {"altitude_msl_m": 2632.73},
-            "fence": fence_vertices(),
+            "fence": {"inclusion": fence_vertices(), "exclusions": []},
         }
         mission.vehicles = lambda: [vehicle]
         mission.events = [
@@ -298,10 +306,27 @@ class AgentContext(unittest.TestCase):
         self.assertEqual(historical["timestamp_ms"], 1000)
         self.assertEqual(historical["sequence"], 1)
         self.assertGreater(context["telemetry_at_utc_ms"], historical["timestamp_ms"])
+        exclusion = [
+            {"north_m": 0, "east_m": 0},
+            {"north_m": 20, "east_m": 0},
+            {"north_m": 20, "east_m": 20},
+            {"north_m": 0, "east_m": 20},
+        ]
+        mission.fleet.fences["version"] = 1
+        vehicle["fence"]["exclusions"].append(exclusion)
+        updated = json.loads(
+            planning_instructions(*mission.context()).split("Current mission context: ")[1]
+        )
+        self.assertEqual(updated["fence_version"], 1)
+        self.assertEqual(updated["flight_constraints"]["fences"]["Drone1"], vehicle["fence"])
+        self.assertEqual(updated["flight_constraints"]["boundary_clearance_m"], 10)
+        self.assertEqual(context["flight_constraints"]["fences"]["Drone1"]["exclusions"], [])
 
     def test_general_context_has_flexible_observation_guidance_without_fabricated_brief(self):
         with tempfile.TemporaryDirectory(dir=ROOT / ".local") as directory:
             mission = object.__new__(Mission)
+            mission.fence_change = False
+            mission.fleet = Mock(fences={"version": 0}, fence_error=None)
             mission.directory = Path(directory)
             mission.case = None
             mission.landmarks = load()
@@ -343,11 +368,13 @@ class AgentContext(unittest.TestCase):
 class EvidenceIdentification(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.mission = object.__new__(Mission)
+        self.mission.fence_change = False
+        self.mission.fleet = Mock(fences={"version": 0}, fence_error=None)
         m = self.mission
         m.case = None
         m.events, m.event_sequence = [], 0
         m.log = io.StringIO()
-        m.fleet = Mock()
+        m.fleet = Mock(fences={"version": 0}, fence_error=None)
         m.inspections = Mock()
         self.evidence = m.event(
             "evidence",
@@ -451,6 +478,8 @@ class AutopilotAlerts(unittest.TestCase):
         root.start()
         self.addCleanup(root.stop)
         self.mission = object.__new__(Mission)
+        self.mission.fence_change = False
+        self.mission.fleet = Mock(fences={"version": 0}, fence_error=None)
         self.mission.initialize_run(None, active=True)
         self.addCleanup(lambda: self.mission.log.close())
         self.mission.fleet_ready = True
@@ -623,7 +652,10 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
         directory = tempfile.TemporaryDirectory(dir=ROOT / ".local")
         self.addCleanup(directory.cleanup)
         self.mission = object.__new__(Mission)
+        self.mission.fence_change = False
+        self.mission.fleet = Mock(fences={"version": 0}, fence_error=None)
         self.mission.directory = Path(directory.name)
+        self.mission.fleet_ready = False
         self.mission.case = None
         self.mission.plan_active = None
         self.mission.agent_lock = asyncio.Lock()

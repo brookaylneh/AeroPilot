@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Camera } from 'lucide-react';
 import { PixelStreamingTransport, droneViewSchema } from '../../scenario_creator/PixelStreamingTransport';
-import type { DroneId } from './droneIdentity';
+import { droneColors, type DroneId } from './droneIdentity';
 import type { Inspection } from './InspectionPanel';
 import VideoBoxes from './VideoBoxes';
 import './droneVideo.css';
@@ -191,12 +191,16 @@ export default function DroneVideo({
           onError={onError}
         />
       )}
-      <div className="gcs-video-top">
-        <span>
-          <Camera size={inset ? 11 : 14} />
-          {droneId} · FORWARD
+      <div className="gcs-video-top" style={{ '--drone': droneColors[droneId] } as CSSProperties}>
+        <span className="gcs-vehicle-name">
+          <Camera size={11} />
+          <strong>{droneId}</strong>
         </span>
-        <span>{status.toUpperCase()}</span>
+        <span className="gcs-mode-pill">FORWARD</span>
+        <span className="gcs-video-status">
+          <i className={`gcs-status-dot ${status === 'live' ? 'healthy' : ''}`} />
+          {status.toUpperCase()}
+        </span>
       </div>
       {status !== 'live' && (
         <div

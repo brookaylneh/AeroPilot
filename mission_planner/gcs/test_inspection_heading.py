@@ -37,6 +37,7 @@ class InspectionHeading(unittest.IsolatedAsyncioTestCase):
             ],
         }
         self.fleet = Fleet("unused", Mock(), [])
+        self.fleet.fences_verified = True
         self.fleet.vehicles = {"Drone1": self.vehicle}
         self.fleet.snapshot = lambda: [copy.deepcopy(self.state)]
         self.fleet._command = AsyncMock()

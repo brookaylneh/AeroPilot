@@ -181,3 +181,20 @@ def segment_in_polygon(a, b, polygon):
         )
         for u, v in zip(cuts, cuts[1:])
     )
+
+
+def validate_polygon(points, label):
+    from world.cosys.landmarks import _intersects
+
+    vertices = [(p["north_m"], p["east_m"]) for p in points]
+    assert len(vertices) >= 3 and len(set(vertices)) == len(vertices), (
+        f"{label}: vertices must be unique; closure is implicit"
+    )
+    edges = list(zip(vertices, [*vertices[1:], vertices[0]]))
+    for i, (a, b) in enumerate(edges):
+        for j, (c, d) in enumerate(edges):
+            if j > i + 1 and (i, j) != (0, len(edges) - 1):
+                assert not _intersects(a, b, c, d), f"{label}: polygon self-intersects"
+    assert abs(sum(a[0] * b[1] - b[0] * a[1] for a, b in edges)) > 1e-6, (
+        f"{label}: polygon has no area"
+    )

@@ -394,7 +394,7 @@ test('both video layouts start masked with the requested drone and explicit conn
     assert.match(page, /data-drone-id="Drone2" data-video-state="connecting"/);
     assert.match(page, /gcs-drone-video-mask/);
     assert.match(page, /Loading Drone2 camera/);
-    assert.match(page, /Drone2 · FORWARD/);
+    assert.match(page, /<strong>Drone2<\/strong><\/span><span class="gcs-mode-pill">FORWARD<\/span>/);
     assert.doesNotMatch(page, /NADIR/);
   }
   value.viewer.dispose();

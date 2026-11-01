@@ -7,6 +7,7 @@ import time
 from pathlib import Path
 
 from mission_planner.gcs.battery import CAPACITY_AH
+from mission_planner.gcs.fences import BOUNDARY_CLEARANCE_M
 from mission_planner.gcs.geodesy import NAMES, ROOT, RTL_ALTITUDE_M, homes
 
 SAFETY_PARAMETERS = {
@@ -21,6 +22,11 @@ SAFETY_PARAMETERS = {
     "RTL_ALT_TYPE": 0,
     "FENCE_ALT_MAX": 100,
     "FENCE_MARGIN": 2,
+    "FENCE_ACTION": 1,
+    "OA_TYPE": 2,
+    "OA_MARGIN_MAX": BOUNDARY_CLEARANCE_M,
+    "OA_OPTIONS": 4,
+    "WP_RADIUS_M": 1,
     "BATT_MONITOR": 4,
     "BATT_LOW_VOLT": 10.5,
     "BATT_LOW_TIMER": 10,

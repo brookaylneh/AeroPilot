@@ -78,6 +78,13 @@ The service uses `muse-wonder-1.0`, high reasoning and flat Responses function d
 
 Every model context includes `flight_constraints`: each aircraft's exact read-back fence vertices,
 the origin MSL altitude, altitude/speed limits, minimum clearance and the complete-route separation rule.
+Fence readbacks contain one `inclusion` polygon and an `exclusions` list. Complete flight legs
+must remain inside inclusion and outside every exclusion at every altitude, with the supplied
+10 m boundary clearance. Transit, sensing, target following and return share this rule.
+Wonder chooses explicit detour/approach points and preserves the operator's task; the compiler
+rejects crossings without rerouting. Fence edits belong to the operator's map controls and
+require a landed fleet. Every context includes the current fence version; saving invalidates
+earlier previews, launch approvals and in-flight model responses.
 Aircraft rows supply their individual measured homes. Above-home altitude is terrain UE-up height
 plus requested AGL height minus `(home.altitude_msl_m - origin_altitude_msl_m)`.
 The logical plan, current progress and compact receipt metrics accompany these facts; dense
@@ -198,7 +205,15 @@ a proposal requiring a complete preview. Remaining paths and takeoff/landing col
 independently of timing. Completed AUTO items are released. RTL retains its accepted return path
 until explicit final-landing telemetry, then reserves only the descent.
 `return_fleet(drone_ids)` queues compatible checked returns and reports aircraft waiting
-for another return path to clear; it sends each command once. Actual command/geometry
+for another return's occupied path. It and the `return_home` tool execute direct RTL;
+neither accepts detour waypoints. Every Wonder request includes the exact saved
+inclusion/exclusion polygons, their revision and required boundary clearance. Wonder
+uses an immediate hold and a checked return plan whenever exclusions are saved: explicit
+fly points around the restrictions, a final `return_home` step and `apply_plan_change`
+without another launch approval. A moving drone can invalidate a sampled direct home
+leg during reasoning. Without exclusions, direct RTL still requires a clear inclusion
+path; blocked or uncertain boundaries use the checked plan workflow too.
+The coordinator waits only for another return path to clear; it sends each command once. Actual command/geometry
 failures stop pending returns and wake Wonder. Mixed requests execute their independent
 override portion before planning a new observation task. Transit/return heights and speeds remain
 proposals that Wonder chooses, discloses and previews for each task.

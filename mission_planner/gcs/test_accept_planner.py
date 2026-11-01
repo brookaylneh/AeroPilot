@@ -55,7 +55,7 @@ class LivePlannerAcceptance(unittest.TestCase):
                 mode="STABILIZE",
                 mission=[{"seq": 1, "command": 17}],
                 mission_current=1,
-                fence=fence_vertices(),
+                fence={"inclusion": fence_vertices(), "exclusions": []},
             )
         fleet[0]["mode"] = "BRAKE"
         second = copy.deepcopy(fleet)

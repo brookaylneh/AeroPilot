@@ -42,6 +42,7 @@ function snapshot(state = null) {
   return {
     state,
     feedFocus: null,
+    fenceResult: null,
     events: [],
     connection: state ? 'connected' : 'connecting',
     error: '',
@@ -104,6 +105,20 @@ test('preview tool cards display the canonical plan even when conversion rejects
 function state(caseId = null, vehicles = []) {
   return missionState.stateSchema.parse({
     type: 'state',
+    fences: {
+      version: 0,
+      names: { inclusion: 'Inclusion', exclusions: [] },
+      inclusion: [
+        { north_m: -800, east_m: -1200 },
+        { north_m: -800, east_m: 1200 },
+        { north_m: 800, east_m: 1200 },
+        { north_m: 800, east_m: -1200 },
+      ],
+      exclusions: [],
+      verified: true,
+      editable: false,
+      error: null,
+    },
     mission: {
       id: '00000000-0000-4000-8000-000000000002',
       case_id: caseId,
@@ -156,7 +171,7 @@ function vehicle(id, values = {}) {
     mission_current: 0,
     mission_total: 1,
     mission: [],
-    fence: [],
+    fence: null,
     home: { ...point, altitude_msl_m: 2632 },
     received_at_ms: 0,
     update_rate_hz: 10,
@@ -201,6 +216,7 @@ function view(initial) {
           },
         ];
       },
+      useMemo: (callback) => callback(),
       useRef(initial) {
         const index = refIndex++;
         if (!(index in refs)) refs[index] = { current: initial };
@@ -242,6 +258,7 @@ function view(initial) {
   render();
   return {
     render,
+    tree: () => tree,
     content: () => nodes(tree).find((node) => node.props.className === 'gcs-conversation'),
     panels: () => nodes(tree).find((node) => node.props.className === 'gcs-panel-tabs'),
     camera: () => nodes(tree).find((node) => node.type.name === 'DroneVideo'),
@@ -626,6 +643,81 @@ test('the chat menu starts a new chat only with the fleet at base and reopens pr
   assert.equal(JSON.stringify(shown()), JSON.stringify([]));
 });
 
+test('launched Glimmer subagents open, refocus, close and clear with mission history', () => {
+  const agent = (drone, frames) => ({
+    id: `00000000-0000-4000-8000-00000000002${drone.at(-1)}`,
+    drone_id: drone,
+    plan_version: 1,
+    prompt: 'person',
+    threshold: 0.3,
+    status: 'running',
+    started_at_ms: 1000,
+    deadline_ms: 90000,
+    frames,
+    error: null,
+    latest: null,
+    rescue: { phase: 'searching', review_id: null, reports: [], track: null, pending: false },
+  });
+  const scheduled = (drone) =>
+    event(`scheduled-${drone}`, 'perception', {
+      source: 'inspection',
+      text: `${drone}: search inspection scheduled`,
+      result: { ...agent(drone, 0), rescue: { ...agent(drone, 0).rescue, phase: 'waiting' } },
+    });
+  const [three, four] = [agent('Drone3', 7), agent('Drone4', 9)];
+  const page = view({ ...state(), inspections: [three, four] });
+  page.render({
+    events: [
+      event('ask', 'operator', { source: 'operator', text: 'Search the meadow.' }),
+      scheduled('Drone3'),
+      scheduled('Drone4'),
+      event('reply', 'agent', { text: 'Both drones are searching.' }),
+    ],
+  });
+  const launch = nodes(page.content()).find((node) => node.type.name === 'SubagentLaunch');
+  assert.equal(JSON.stringify(launch.props.ids), JSON.stringify([three.id, four.id]));
+  assert.equal(launch.props.rows.get(four.id).frames, 9, 'launch rows show live state');
+  const tabs = () =>
+    nodes(page.panels()).filter((node) => node.props.className?.startsWith('gcs-subagent-tab'));
+  const shown = () => nodes(page.content()).find((node) => node.type.name === 'SubagentTab');
+
+  launch.props.onOpen(four.id);
+  page.render();
+  assert.equal(shown().props.row.id, four.id);
+  assert.equal(tabs().length, 1);
+  assert.match(tabs()[0].props.className, /active/);
+  page.click(page.panels().props.children[0]);
+  assert.equal(shown(), undefined);
+  assert.doesNotMatch(tabs()[0].props.className, /active/);
+  launch.props.onOpen(three.id);
+  page.render();
+  launch.props.onOpen(four.id);
+  page.render();
+  assert.equal(tabs().length, 2, 'opening an open subagent refocuses its tab');
+  assert.equal(shown().props.row.id, four.id);
+  page.click(tabs()[1].props.children[1]);
+  assert.equal(tabs().length, 1, 'closing a background tab keeps the shown subagent');
+  assert.equal(shown().props.row.id, four.id);
+  page.click(tabs()[0].props.children[1]);
+  assert.equal(tabs().length, 0);
+  assert.equal(shown(), undefined);
+  assert.ok(nodes(page.content()).some((node) => node.type.name === 'SubagentLaunch'));
+
+  launch.props.onOpen(four.id);
+  page.render();
+  page.render({ events: [] });
+  assert.equal(tabs().length, 0, 'replaced history cannot retain tabs for absent subagents');
+  assert.equal(shown(), undefined);
+  page.render({ state: null, connection: 'idle' });
+  page.render({ state: state(), connection: 'connected' });
+  assert.equal(tabs().length, 0);
+  assert.equal(shown(), undefined);
+  assert.equal(
+    nodes(page.panels()).find((node) => node.props.className === 'active').props.children,
+    'Conversation',
+  );
+});
+
 test('new conversation content follows only a reader already at the bottom; telemetry never scrolls', () => {
   const page = view(state());
   const viewport = { scrollTop: 100, scrollHeight: 1000, clientHeight: 300 };
@@ -910,6 +1002,26 @@ test('a clicked drone card puts its camera on the main screen and only live dron
   assert.equal(value.fleet().props.selected, null);
   assert.equal(value.camera().props.droneId, 'Drone2');
   assert.equal(value.camera().props.inset, true);
+});
+
+test('the drone video keeps full screen while map zoom and centering are disabled', () => {
+  const value = view(state(null, [vehicle('Drone2', { camera_available: true })]));
+  const tools = () => nodes(value.tree()).filter((node) => node.type.name === 'MapTools');
+  const body = () => nodes(value.tree()).find((node) => node.props.className?.startsWith('gcs-body'));
+  assert.equal(tools().length, 0);
+  value.fleet().props.select('Drone2');
+  value.render();
+  assert.equal(value.camera().props.inset, false);
+  const [video] = tools();
+  const buttons = video.type(video.props).props.children;
+  assert.equal(
+    buttons.map((button) => `${button.props['aria-label']}: ${!!button.props.disabled}`).join('; '),
+    'Zoom in: true; Zoom out: true; Full-screen video: false; Centering is available in map view: true',
+  );
+  value.click(buttons[2]);
+  assert.equal(body().props.className, 'gcs-body is-map-only');
+  assert.equal(tools()[0].props.mapOnly, true);
+  assert.equal(value.camera().props.inset, false);
 });
 
 test('map facts come from the mission state and remain required without a rescue case', () => {

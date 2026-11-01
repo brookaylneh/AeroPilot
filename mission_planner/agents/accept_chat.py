@@ -12,10 +12,10 @@ from pathlib import Path
 from mission_planner.agents.map_context import compact_map, ground_height, ground_profile
 from mission_planner.agents.models import Wonder
 from mission_planner.agents.tools import AGENT_INSTRUCTIONS, TOOLS, validate_arguments
-from mission_planner.gcs.geodesy import NAMES, fence_vertices, homes, to_geodetic
+from mission_planner.gcs.fences import default_fences, fence_items, read_fences
+from mission_planner.gcs.geodesy import NAMES, homes
 from mission_planner.gcs.planner import compile_plan, expanding_square
 from mission_planner.gcs.service import flight_constraints
-from mission_planner.gcs.validation import fence_polygon
 from world.cosys.landmarks import directions, find, load
 
 CHANGE = "Go to the Granite Dome instead. Keep Drone1, 40 m above ground, 5 m/s and hover until I instruct you; no return yet, zero stand-off over its centre."
@@ -154,10 +154,7 @@ def fixture(recorded, airborne, landmarks):
         progress = {
             "Drone1": {"current_step": 2, "completed_steps": [0, 1], "time_remaining_s": None}
         }
-    fence = [
-        dict(zip(("x", "y"), (round(v * 1e7) for v in to_geodetic(p["north_m"], p["east_m"]))))
-        for p in fence_vertices()
-    ]
+    fence = fence_items(default_fences())
     return (
         states,
         {name: fence for name in NAMES},
@@ -171,7 +168,7 @@ async def conversation(model, script, recorded, directory):
     landmarks = load()
     states, fences, planner = fixture(recorded, airborne, landmarks)
     constraints = flight_constraints(
-        [{**state, "fence": fence_polygon(fences[state["id"]])} for state in states]
+        [{**state, "fence": read_fences(fences[state["id"]])} for state in states]
     )
     context = {
         "flight_constraints": constraints,

@@ -7,7 +7,16 @@ import {
   formatPosition,
   flightLogText,
   argumentRows,
+  relativeTime,
 } from './display.ts';
+
+test('response times read relative for the first hour, then as the exact Pacific clock', () => {
+  const sent = Date.UTC(2026, 10, 1, 21, 0, 0);
+  assert.equal(relativeTime(sent, sent + 59_999), 'just now');
+  assert.equal(relativeTime(sent, sent + 60_000), '1 min ago');
+  assert.equal(relativeTime(sent, sent + 59 * 60_000), '59 min ago');
+  assert.equal(relativeTime(sent, sent + 60 * 60_000), '13:00:00 PST');
+});
 
 test('telemetry normalizes rounded negative zero and prints one unit', () => {
   assert.equal(formatValue(-0.04, 'm'), '0.0 m');

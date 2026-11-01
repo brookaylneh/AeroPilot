@@ -36,7 +36,7 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
-        self.fleet = Mock()
+        self.fleet = Mock(fence_error=None, fences={"version": 0})
         self.fleet.snapshot.return_value = [
             {"id": name, "armed": False, "landed_state": 1, "link_lost": False, "ekf_healthy": True}
             for name in NAMES

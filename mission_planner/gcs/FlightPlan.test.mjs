@@ -12,7 +12,7 @@ import {
   previewConflict,
   stepText,
 } from './FlightPlan.tsx';
-import { linkLost, stateSchema } from './missionState.ts';
+import { droneIds, linkLost, stateSchema } from './missionState.ts';
 
 const plan = {
   version: 2,
@@ -194,6 +194,20 @@ test('complete mission states retain telemetry through observed route, circle, m
   const point = { latitude_deg: 37.87, longitude_deg: -119.39, north_m: 0, east_m: 0 };
   const state = {
     type: 'state',
+    fences: {
+      version: 0,
+      names: { inclusion: 'Inclusion', exclusions: [] },
+      inclusion: [
+        { north_m: -800, east_m: -1200 },
+        { north_m: -800, east_m: 1200 },
+        { north_m: 800, east_m: 1200 },
+        { north_m: 800, east_m: -1200 },
+      ],
+      exclusions: [],
+      verified: true,
+      editable: false,
+      error: null,
+    },
     mission: {
       id: '00000000-0000-4000-8000-000000000001',
       case_id: '00000000-0000-4000-8000-000000000002',
@@ -225,7 +239,7 @@ test('complete mission states retain telemetry through observed route, circle, m
       mission_current: 1,
       mission_total: 2,
       mission: [{ seq: 1, north_m: 0, east_m: 0, altitude_above_home_m: 30, command: 16 }],
-      fence: [],
+      fence: null,
       home: { ...point, altitude_msl_m: 2632 },
       received_at_ms: 1000,
       update_rate_hz: 10,
@@ -553,6 +567,75 @@ test('planner missions require a remaining-task instruction after hold; raw miss
     render({ Drone1: { version: 2, current_step: null, completed_steps: [0, 1], time_remaining_s: 0 } }),
     /Complete/,
   );
+});
+
+test('only an active drone card is clickable, anywhere except its command controls', () => {
+  const { outputFiles } = buildSync({
+    entryPoints: [new URL('./FleetStrip.tsx', import.meta.url).pathname],
+    bundle: true,
+    platform: 'node',
+    format: 'cjs',
+    packages: 'external',
+    write: false,
+  });
+  const require = createRequire(import.meta.url);
+  const module = { exports: {} };
+  runInNewContext(outputFiles[0].text, {
+    require: (name) =>
+      name === 'react' ? { ...require('react'), useState: (v) => [v, () => {}] } : require(name),
+    module,
+    exports: module.exports,
+  });
+  const selected = [];
+  const vehicle = (id, camera_available, link_lost = false) => ({
+    id,
+    camera_available,
+    link_lost,
+    heartbeat_age_s: 0,
+    mode: 'AUTO',
+    armed: camera_available,
+    landed_state: camera_available ? 2 : 1,
+    battery_percent: 90,
+    altitude_above_home_m: 0,
+    ground_speed_mps: 0,
+    mission_current: null,
+    mission_total: 1,
+    update_rate_hz: 10,
+  });
+  const tree = module.exports.default({
+    vehicles: [
+      vehicle('Drone1', false),
+      vehicle('Drone2', true, true),
+      vehicle('Drone3', true),
+      vehicle('Drone4', false),
+    ],
+    selected: 'Drone1',
+    select: (id) => selected.push(id),
+    age: 0,
+    connected: true,
+    enabled: true,
+    tool() {},
+    prepare() {},
+    exportPlan() {},
+    progress: {},
+  });
+  const nodes = (node) =>
+    Array.isArray(node)
+      ? node.flatMap(nodes)
+      : node && typeof node === 'object' && node.props
+        ? [node, ...nodes(node.props.children)]
+        : [];
+  const card = (id) => nodes(tree).find((node) => node.props['data-drone-card'] === id);
+  const click = (id, selector) =>
+    card(id).props.onClick({
+      target: { closest: (s) => (selector && s.includes(selector) ? {} : null) },
+    });
+  for (const id of droneIds) click(id, null);
+  click('Drone3', '.gcs-actions-toggle');
+  click('Drone3', '.gcs-actions-menu');
+  assert.deepEqual(selected, ['Drone3']);
+  assert.doesNotMatch(card('Drone1').props.className, /selected|active/);
+  assert.match(card('Drone3').props.className, /\bactive\b/);
 });
 
 test('observation approval shows task, participating aircraft, camera aim and follow authority', () => {

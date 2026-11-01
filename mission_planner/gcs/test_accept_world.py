@@ -3,7 +3,8 @@
 import unittest
 
 from mission_planner.gcs.accept_world import routes, validate_sortie
-from mission_planner.gcs.geodesy import NAMES, ORIGIN, fence_vertices, homes, rtl_route, to_geodetic
+from mission_planner.gcs.fences import default_fences, fence_items
+from mission_planner.gcs.geodesy import NAMES, ORIGIN, homes, rtl_route
 from mission_planner.gcs.validation import validate_route
 from world.cosys.landmarks import load
 from world.cosys.terrain import BOUNDS
@@ -15,13 +16,7 @@ class WorldRoutes(unittest.TestCase):
             {"id": name, "home": home, "altitude_above_home_m": 0, **home}
             for name, home in homes().items()
         ]
-        self.fence = [
-            {
-                "x": round(to_geodetic(p["north_m"], p["east_m"])[0] * 1e7),
-                "y": round(to_geodetic(p["north_m"], p["east_m"])[1] * 1e7),
-            }
-            for p in fence_vertices()
-        ]
+        self.fence = fence_items(default_fences())
 
     def test_full_sorties_reserve_takeoff_auto_and_rtl_paths(self):
         plans = routes(self.states)

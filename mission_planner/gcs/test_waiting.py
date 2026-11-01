@@ -436,6 +436,8 @@ class AgentWake(unittest.IsolatedAsyncioTestCase):
         m.directory = Path(temporary.name)
         m.case = None
         m.plan_active = None
+        m.fleet = Mock(fences={"version": 0})
+        m.fence_change = False
         m.conversation = []
         m.event = Mock()
         from world.cosys.landmarks import load

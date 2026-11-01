@@ -95,11 +95,69 @@ X/Y/Z are **NED metres**; home elevation adds the world's `40−Z` metre spawn h
 The settings generator asserts spawn/home consistency.
 
 The main rectangle in `world/cosys/world.json` contains the relocated command-post homes.
-Its fence also retains a southern extension, east ±25 m and 40 m beyond the main bound.
-Every autopilot uploads and downloads the eight-vertex inclusion polygon before enabling it.
-The map and command guards use this exact readback, including its concave shoulders.
+The initial fence also retains a southern extension, east ±25 m and 40 m beyond the main bound.
+Every autopilot uploads and downloads the saved fence polygons before enabling them.
+The map and command guards use this exact readback, including concave boundaries.
 Departure and return are chosen from each measured home and the requested task; the southern
 extension is not a required route.
+
+The bottom map legend contains **Inclusion** (yellow, Edit) and **Exclusion**
+(red, Draw or select a saved zone). Click corners, then click the first corner to close the
+shape. Drag corners, click an edge to insert a corner, or select a corner to remove it.
+Undo and Cancel affect only the draft. Save remains disabled for an open line, repeated
+corners, a crossing, zero area or a redundant corner on a straight edge. Delete zone is
+also a draft change until Save. Terrain remains visible beneath the fills; both fence
+types remain visible without selecting an aircraft and in the video map inset.
+The legend's editing controls remain visible at both tested desktop widths, 1440 and 1920 pixels.
+Saving a closed area opens a [native name dialog](https://html.spec.whatwg.org/multipage/interactive-elements.html#the-dialog-element).
+Confirm or edit its name before saving; Back to editing or Escape keeps the drawing.
+Names are 1–60 characters, persist across reloads and appear in the area menu and map
+tooltips. Open an existing area and Save to rename it without moving its corners.
+Deleting a zone needs no name. The bottom legend is the only fence legend.
+
+`fences.py` owns the shared `{version, names, inclusion, exclusions}` configuration, polygon
+encoding and continuous segment checks. Coordinates are metres north/east; serialization
+closes each polygon implicitly. There is one inclusion polygon and zero or more exclusion
+polygons, with a product limit of 70 vertices in total. `names` contains an `inclusion`
+string and an `exclusions` string list in polygon order; its count must match the areas.
+Names are application metadata; ArduPilot readback verifies geometry.
+`FenceEditor.tsx` owns drawing and its immediate geometry feedback. The server rechecks
+every edit. Boundary containment
+uses the encoded integer coordinates uploaded to ArduPilot, avoiding false rejections
+from sub-centimetre map projection rounding. Inclusion must remain inside the supported world, exclusions must
+remain inside inclusion, and all four homes and aircraft positions must remain accessible.
+
+`set_fences` is an operator WebSocket message containing `fences`; Wonder cannot edit or
+waive flight boundaries. Saving requires four healthy, landed, disarmed drones and the
+current fence version. It cancels old launch approvals and previews, ends old observation
+tasks, clears uploaded missions, then uploads and reads back all four fence lists. The
+verified configuration persists in `.local/data/flight-fences.json` across reloads, Studio
+sessions and service restarts. Failed upload/readback/persistence locks flight; telemetry
+continues and the editor displays the exact error. There is no retry or rollback. A
+separate browser editing an old version must reopen its editor before saving.
+
+When installing name support over an unnamed configuration, stop the coupled services
+using the documented world-first sequence, back up `flight-fences.json`, and add
+`names: {"inclusion": "Inclusion", "exclusions": ["Exclusion 1", ...]}` for its existing
+polygons. Preserve version and geometry. Old schemas are rejected; startup does not
+silently migrate or reset operator areas.
+
+Every planned or manually commanded flight leg, hold location and target-follow movement
+must remain inside yellow and outside red, **10 m from every boundary**. Position-only
+checks for immediate hold/land confirm inclusion and exclusion without requiring an
+already drifting aircraft to regain the planning margin. Red exclusions apply at every
+height, including departure and return. Search perimeters describe observation tasks and
+do not grant permission to enter an exclusion. Wonder receives these numerical constraints
+and chooses explicit detour points. Preview reports the excluded zone or boundary clearance
+failure; conversion never invents a detour. QGC exports preserve both polygon types.
+
+The fence protocol and commands were checked against ArduPilot's primary
+[inclusion/exclusion fence documentation](https://ardupilot.org/copter/docs/common-polygon_fence.html)
+and [MAVLink fence upload/readback](https://ardupilot.org/dev/docs/mavlink-mission-upload-download.html).
+The editor sends polygon inclusion/exclusion vertices with each polygon's vertex count;
+it uses the existing `MAV_MISSION_TYPE_FENCE` transport independently of mission items.
+Offline and installed acceptance evidence is recorded in
+[`fence-editor.json`](../measurements/fence-editor.json).
 
 Map aircraft arrows follow measured course of travel from `GLOBAL_POSITION_INT.vx/vy`
 (north/east centimetres per second). Below 0.2 m/s, the same threshold used to verify
@@ -112,26 +170,31 @@ the [pinned MAVLink definition](https://github.com/mavlink/mavlink/blob/288b907c
 The official `Tools/autotest/default_params/copter.parm` is the SITL baseline. Its complete
 values and reasons are in the fleet measurements. Additional changes are:
 
-| Parameter         | Value | Reason                                              |
-| ----------------- | ----- | --------------------------------------------------- |
-| `MAV_SYSID`       | 1–4   | Unique aircraft identities                          |
-| `FENCE_TYPE`      | 5     | Maximum altitude plus inclusion polygon             |
-| `FENCE_ENABLE`    | 1     | Enforce the downloaded fence                        |
-| `RTL_ALT_M`       | 80    | Clear the measured terrain/obstacle height envelope |
-| `RTL_CONE_SLOPE`  | 0     | Do not reduce return altitude near home             |
-| `RTL_ALT_FINAL_M` | 0     | Land at the end of RTL                              |
-| `RTL_CLIMB_MIN_M` | 0     | Use the checked current/return altitude             |
-| `RTL_ALT_TYPE`    | 0     | Return altitude is relative to home                 |
-| `FENCE_ALT_MAX`   | 100   | Maximum above-home altitude, metres                 |
-| `FENCE_MARGIN`    | 2     | Autopilot fence margin, metres                      |
-| `ARMING_SKIPCHK`  | 0     | Retain arming checks                                |
-| `FS_THR_ENABLE`   | 1     | Retain throttle failsafe                            |
-| `FS_CRASH_CHECK`  | 1     | Retain crash checks                                 |
-| `DISARM_DELAY`    | 10    | Disarm after landing, seconds                       |
-| `BATT_MONITOR`    | 4     | Voltage/current monitor                             |
-| `BATT_LOW_VOLT`   | 10.5  | Existing low-voltage threshold, volts               |
-| `BATT_LOW_TIMER`  | 10    | Continuous low-voltage time, seconds                |
-| `BATT_FS_LOW_ACT` | 2     | Enable automatic RTL on low battery                 |
+| Parameter         | Value | Reason                                                      |
+| ----------------- | ----- | ----------------------------------------------------------- |
+| `MAV_SYSID`       | 1–4   | Unique aircraft identities                                  |
+| `FENCE_TYPE`      | 5     | Maximum altitude plus inclusion polygon                     |
+| `FENCE_ENABLE`    | 1     | Enforce the downloaded fence                                |
+| `RTL_ALT_M`       | 80    | Clear the measured terrain/obstacle height envelope         |
+| `RTL_CONE_SLOPE`  | 0     | Do not reduce return altitude near home                     |
+| `RTL_ALT_FINAL_M` | 0     | Land at the end of RTL                                      |
+| `RTL_CLIMB_MIN_M` | 0     | Use the checked current/return altitude                     |
+| `RTL_ALT_TYPE`    | 0     | Return altitude is relative to home                         |
+| `FENCE_ALT_MAX`   | 100   | Maximum above-home altitude, metres                         |
+| `FENCE_MARGIN`    | 2     | Autopilot fence margin, metres                              |
+| `FENCE_ACTION`    | 1     | Preserve autopilot RTL/land breach action                   |
+| `OA_TYPE`         | 2     | Dijkstra avoidance of polygon fences, including battery RTL |
+| `OA_MARGIN_MAX`   | 10    | Offset avoidance vertices from fence corners, metres        |
+| `OA_OPTIONS`      | 4     | Keep fast waypoint navigation during avoidance processing   |
+| `WP_RADIUS_M`     | 1     | Waypoint radius below the 2 m autopilot fence margin        |
+| `ARMING_SKIPCHK`  | 0     | Retain arming checks                                        |
+| `FS_THR_ENABLE`   | 1     | Retain throttle failsafe                                    |
+| `FS_CRASH_CHECK`  | 1     | Retain crash checks                                         |
+| `DISARM_DELAY`    | 10    | Disarm after landing, seconds                               |
+| `BATT_MONITOR`    | 4     | Voltage/current monitor                                     |
+| `BATT_LOW_VOLT`   | 10.5  | Existing low-voltage threshold, volts                       |
+| `BATT_LOW_TIMER`  | 10    | Continuous low-voltage time, seconds                        |
+| `BATT_FS_LOW_ACT` | 2     | Enable automatic RTL on low battery                         |
 
 Coupled launches additionally set and verify `SCHED_LOOP_RATE=184`,
 `BATT_CAPACITY=50000` mAh, `SIM_BATT_CAP_AH=50` Ah and `SIM_BATT_VOLTAGE=12.6` V.
@@ -222,9 +285,24 @@ maximum landmark height. That bound applies to those recorded references; runtim
 use each aircraft's measured home. A direct return must remain inside the read-back fence;
 planned returns need explicit intermediate waypoints wherever the direct segment is invalid.
 Code rejects unsafe operator RTL geometry; the autopilot battery failsafe does not use
-the planner. Simultaneous RTL paths are not collision avoidance. The source audit and
+the mission planner. Simultaneous RTL paths are not collision avoidance. The source audit and
 installed parameter readback are in
 [`world-bear-port.json`](../measurements/world-bear-port.json).
+
+Editable fences enable ArduPilot's documented
+[Dijkstra avoidance](https://ardupilot.org/copter/docs/common-oa-dijkstras.html), including
+RTL. Normal missions still require completely checked geometry before upload. The
+fast-waypoint option preserves progress during its background calculations; the documented
+10 m planning clearance and a waypoint radius below `FENCE_MARGIN` apply. A blocked
+operator RTL still fails before its command; Wonder can submit a checked plan with an
+explicit home approach. Autonomous battery RTL can route around polygons at the verified
+return altitude. The pinned `AC_WPNav_OA.cpp` interpolates avoidance heights between the
+original endpoints, so a level RTL detour remains at its return height. Startup checks a
+conservative whole-world terrain-plus-obstacle envelope against every measured home,
+including the apron triangles, and records each result. Avoidance errors in the pinned
+controller stop at a stopping point. No Unreal terrain following is enabled. Geometry,
+parameters and source checks do not establish live failsafe performance; flight acceptance
+remains necessary. Exact new parameter readbacks belong to `fence-editor.json`.
 
 The coupled airframe uses `ATC_ACC_Y_MAX=20` degrees/s² to limit yaw demand on collective
 thrust at this world's altitude. The pinned ArduPilot version uses degrees/s² for this
@@ -309,7 +387,14 @@ to home remains reserved. Position drift near home cannot release a future climb
 aircraft; an obstruction with no clearing return, invalid geometry or command failure raises
 and stops pending returns. A direct override or replacement plan cancels affected queued
 returns. No failed command is resent, and the operation does not invent a different route.
-Mixed requests execute their independent return/hold/land instruction before replanning.
+Wonder receives the exact saved fence geometry on every turn. With saved exclusions it
+holds the requested aircraft, previews explicit fly points around the restrictions followed
+by a `return_home` plan step, and applies that plan without another launch approval. This
+avoids assuming a moving drone's sampled home leg will remain clear during reasoning.
+Without exclusions, direct RTL still requires the whole leg to clear inclusion; blocked
+or uncertain boundaries also use a checked plan. The final home leg must clear every zone.
+Mixed requests execute their independent
+return/hold/land instruction before unrelated search replanning.
 
 The browser uses the receipt directly: preview and active plans dashed, previous faded,
 with canonical steps in the launch card. The flown part of the active plan is solid: its
@@ -536,6 +621,10 @@ mission/plan camera owner restores the original pose/FOV. See the verified
 Wonder gives concise commander updates relative to named landmarks. Detailed visible
 attributes and uncertainty go in accepted evidence and expandable reviewer cards.
 The launch summary still states chosen values and aftermath; real failures stay explicit.
+Observation launch cards and the running-agent strip open a Glimmer tab for each observation
+job. `Subagents.tsx` shows that job's SAM frame, reviewed crops, Glimmer decisions and actions.
+Completed logs remain available within the session. Replaced history hides absent jobs;
+an ended or new session clears the open tabs and returns to Conversation.
 
 The separate `face_heading(drone_id, heading_deg)` tool turns during airborne AUTO
 flight using `MAV_CMD_CONDITION_YAW` in `COMMAND_LONG`: absolute degrees clockwise
