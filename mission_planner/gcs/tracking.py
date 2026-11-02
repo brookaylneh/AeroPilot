@@ -66,18 +66,25 @@ def ground_observation(metadata, box):
 
 def follow_target(state, target, perimeter, stand_off_m, height_m):
     assert all(math.isfinite(v) and v > 0 for v in (stand_off_m, height_m))
-    assert point_in_polygon(target, perimeter), "Candidate left the authorized search perimeter"
     north, east = (target[key] - state[key] for key in ("north_m", "east_m"))
     distance = math.hypot(north, east)
-    assert distance > 0.1, "Candidate bearing is unresolved directly below the aircraft"
-    desired = {
-        "north_m": target["north_m"] - north / distance * stand_off_m,
-        "east_m": target["east_m"] - east / distance * stand_off_m,
-    }
-    assert point_in_polygon(desired, perimeter), "Required stand-off leaves the search perimeter"
-    assert segment_in_polygon(state, desired, perimeter), (
-        "Following path leaves the search perimeter"
-    )
-    home_z = state["home"]["altitude_msl_m"] - ORIGIN["altitude_msl_m"]
-    point = waypoint(desired["north_m"], desired["east_m"], home_z, height_m)
-    return point, math.degrees(math.atan2(east, north)) % 360
+    assert math.isfinite(distance), "Candidate bearing must use finite mission metres"
+    point, yaw, error = None, None, None
+    if not point_in_polygon(target, perimeter):
+        error = "Candidate left the authorized search perimeter"
+    elif distance <= 0.1:
+        error = "Candidate bearing is unresolved directly below the aircraft"
+    else:
+        desired = {
+            "north_m": target["north_m"] - north / distance * stand_off_m,
+            "east_m": target["east_m"] - east / distance * stand_off_m,
+        }
+        if not point_in_polygon(desired, perimeter):
+            error = "Required stand-off leaves the search perimeter"
+        elif not segment_in_polygon(state, desired, perimeter):
+            error = "Following path leaves the search perimeter"
+        else:
+            home_z = state["home"]["altitude_msl_m"] - ORIGIN["altitude_msl_m"]
+            point = waypoint(desired["north_m"], desired["east_m"], home_z, height_m)
+            yaw = math.degrees(math.atan2(east, north)) % 360
+    return {"point": point, "yaw_deg": yaw, "error": error}

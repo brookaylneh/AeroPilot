@@ -1566,6 +1566,90 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         finally:
             finish.set()
 
+    async def test_review_boxes_refresh_before_the_aircraft_pause_completes(self):
+        self.decisions = ["recheck"]
+        self.review_ready.set()
+        entered, finish = asyncio.Event(), asyncio.Event()
+        start = self.fleet.tracking_start.side_effect
+
+        async def pause(*args):
+            checkpoint = await start(*args)
+            entered.set()
+            await finish.wait()
+            return checkpoint
+
+        self.fleet.tracking_start.side_effect = pause
+        try:
+            await self.inspections.start_search(self.receipt)
+            await asyncio.wait_for(entered.wait(), 1)
+            row = next(iter(self.inspections.rows.values()))
+            seed = row["latest"]["frame_id"]
+            announcement = next(e for e in self.events if "pausing on visual track" in e["text"])
+            self.assertEqual(announcement["result"]["rescue"]["live_frame"]["frame_id"], seed)
+            await self.until(
+                lambda: (
+                    row["status"] == "candidate" and row["rescue"]["live_frame"]["frame_id"] != seed
+                )
+            )
+            self.assertEqual(row["rescue"]["phase"], "reviewing")
+            frame = row["rescue"]["live_frame"]
+            self.assertLess(time.time() * 1000 - frame["captured_at_ms"], 1000)
+            self.assertTrue(frame["detections"][0]["mask"]["ref"].endswith("-mask.png"))
+            self.assertEqual(row["latest"]["frame_id"], seed)
+            self.assertEqual(self.states["Drone1"]["mode"], "BRAKE")
+            self.fleet.tracking_follow.assert_not_awaited()
+            self.fleet.tracking_target.assert_not_awaited()
+        finally:
+            finish.set()
+
+    async def test_stand_off_refusal_keeps_fresh_masks_and_rejects_unsafe_relock(self):
+        self.decisions = ["recheck"]
+        self.receipt["plan"]["search"]["stand_off_m"] = 150
+        await self.inspections.start_search(self.receipt)
+        row = next(iter(self.inspections.rows.values()))
+        await self.until(lambda: row["rescue"]["held_frame"] is not None)
+        reason = "Required stand-off leaves the search perimeter"
+        self.assertEqual(row["rescue"]["tracking_error"], reason)
+        first = row["rescue"]["held_frame"]["frame_id"]
+        await self.until(lambda: row["rescue"]["held_frame"]["frame_id"] != first)
+        frame = row["rescue"]["held_frame"]
+        self.assertLess(time.time() * 1000 - frame["captured_at_ms"], 1000)
+        mask = self.inspections.directory / Path(frame["detections"][0]["mask"]["ref"]).name
+        self.assertGreater(np.count_nonzero(cv2.imread(str(mask), cv2.IMREAD_GRAYSCALE)), 0)
+        self.review_ready.set()
+        await self.until(lambda: row["status"] == "candidate")
+        self.assertEqual(row["rescue"]["phase"], "held")
+        self.assertEqual(row["rescue"]["reports"][0]["report"]["decision"], "recheck")
+        observed = await self.inspections.get_candidate(row["id"])
+        with self.assertRaisesRegex(AssertionError, "Re-lock failed: " + reason):
+            await self.inspections.relock_candidate(row["id"], observed["frame"]["frame_id"], 0)
+        self.assertIsNone(row["error"])
+        self.assertEqual(self.states["Drone1"]["mode"], "BRAKE")
+        self.fleet.tracking_follow.assert_not_awaited()
+        self.fleet.tracking_target.assert_not_awaited()
+        self.fleet.tracking_resume.assert_not_awaited()
+        self.tracks[0].close.assert_not_called()
+
+        self.inspections.invalidate("Operator hold", "Drone1")
+        with self.assertRaises(asyncio.CancelledError):
+            await self.inspections.tasks["Drone1"]
+        self.assertIsNone(row["rescue"]["held_frame"])
+
+    async def test_negative_review_releases_a_stand_off_refusal_through_its_checkpoint(self):
+        self.receipt["plan"]["search"]["stand_off_m"] = 150
+        await self.inspections.start_search(self.receipt)
+        row = next(iter(self.inspections.rows.values()))
+        await self.until(lambda: row["rescue"]["held_frame"] is not None)
+        self.assertEqual(
+            row["rescue"]["tracking_error"], "Required stand-off leaves the search perimeter"
+        )
+        self.review_ready.set()
+        await asyncio.wait_for(self.inspections.tasks["Drone1"], 5)
+        self.assertEqual(row["status"], "complete")
+        self.fleet.tracking_resume.assert_awaited_once()
+        self.fleet.tracking_follow.assert_not_awaited()
+        self.fleet.tracking_target.assert_not_awaited()
+
     async def test_slow_live_publication_does_not_delay_fresh_flight_commands(self):
         entered, finish = asyncio.Event(), asyncio.Event()
         publish = self.inspections._publish
@@ -1599,7 +1683,10 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
                     for r in (json.loads(line) for line in record.read_text().splitlines())
                     if "command_at_ms" in r
                 ]
-                self.assertIsNone(row["rescue"]["live_frame"])
+                self.assertEqual(row["rescue"]["live_frame"]["frame_id"], row["latest"]["frame_id"])
+                self.assertGreater(
+                    time.time() * 1000 - row["rescue"]["live_frame"]["captured_at_ms"], 1000
+                )
                 self.assertTrue(all(0 <= r["source_age_s"] <= 1 for r in dispatches))
                 self.assertTrue(all(0 < r["command_interval_s"] < 1 for r in dispatches[1:]))
                 self.inspections.invalidate("Operator hold", "Drone1")

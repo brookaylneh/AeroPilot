@@ -451,8 +451,10 @@ and [video frame callback specification](https://wicg.github.io/video-rvfc/).
 It uses original 4K coordinates and the displayed aspect ratio. Each side is padded
 by the larger of half the projected dimension and 12 CSS pixels, then clipped to
 the displayed image, including on high-DPI screens. Searching
-uses the latest detection frame, following uses the selected live track, and a lost
-lock uses the latest held frame. Labels distinguish reviewing, locked and held.
+uses the latest detection frame. Review starts with that same candidate frame and
+refreshes while the aircraft pauses; following uses the selected live track and a held
+lock uses fresh held frames. Visual publication does not wait for a following command.
+Labels distinguish reviewing, locked and held.
 The overlay clears after one second, on a camera revision change, hidden/stalled video,
 or inspection termination. An incompatible video aspect ratio reports an error.
 Browser optical flow, mask decoding and the old tracking worker are removed.
@@ -711,6 +713,10 @@ reviewable. That calculation cannot delay the initial pause or authorize movemen
 from an old sighting. Following preserves the policy's stand-off and the observed
 step's AGL, with all existing terrain, obstacle, fence, altitude and separation checks.
 It stays inside the observation perimeter and never reads private actor positions.
+An unavailable bearing, an outside candidate, or a stand-off/path outside that perimeter
+reports its exact reason and keeps the candidate session held. Fresh boxes and masks
+continue while movement is refused. Re-lock succeeds only after a fresh matched target
+passes movement checks and its following command completes.
 
 Loss holds the aircraft and retains the review. The held session continues detecting.
 Wonder may explicitly select an observed ID from a reviewed frame no older than
@@ -739,7 +745,7 @@ voluntary `wait_for`. Evidence remains pending while another conversation is act
 Cards retain the source images, reviewer observations, selected candidate and latest
 estimated ground point. A candidate is not a confirmed identity. Valid following can
 continue while Wonder reviews; unavailable tracking holds the aircraft. A clear negative
-can release either state through the same checked checkpoint restoration. Unsafe motion,
+can release either state through the same checked checkpoint restoration. Invalid data,
 exhausted allowance or capture/model/command failure ends the inspection with its exact error;
 there is no retry or timeout resume. While the inspection still owns the observed step or candidate
 lock, failure holds that aircraft in BRAKE. A failed inspection has no releasable lock;
@@ -752,7 +758,8 @@ control version, current waypoint and flight mode under the command lock. Operat
 old inspection authority, including delayed failure cleanup. Other aircraft retain their assignments.
 Private scenario placements are never read.
 
-Per-frame tracking records and every model review live in the mission's `inspections/`
+Per-frame tracking records include visual publication timestamps, accepted/expired status
+and held state. They and every model review live in the mission's `inspections/`
 directory; registered original 4K JPEGs use the existing evidence endpoint.
 The [release validation record](../measurements/release.json) records current checks and acceptance limits;
 earlier runs remain in [`wonder-planner.json`](../measurements/wonder-planner.json).

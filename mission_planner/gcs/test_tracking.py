@@ -77,11 +77,17 @@ class GroundFollowing(unittest.TestCase):
             {"north_m": n, "east_m": e}
             for n, e in ((-100, -100), (100, -100), (100, 100), (-100, 100))
         ]
-        first, heading = follow_target(state, {"north_m": 30, "east_m": 0}, perimeter, 15, 35)
-        second, _ = follow_target(state, {"north_m": 35, "east_m": 0}, perimeter, 15, 35)
-        self.assertEqual((first["north_m"], second["north_m"], heading), (15, 20, 0))
+        first = follow_target(state, {"north_m": 30, "east_m": 0}, perimeter, 15, 35)
+        second = follow_target(state, {"north_m": 35, "east_m": 0}, perimeter, 15, 35)
+        self.assertIsNone(first["error"])
+        self.assertIsNone(second["error"])
+        self.assertEqual(
+            (first["point"]["north_m"], second["point"]["north_m"], first["yaw_deg"]),
+            (15, 20, 0),
+        )
         self.assertLess(
-            abs(second["altitude_above_home_m"] + 11.45 - terrain_height(20, 0) - 35), 0.126
+            abs(second["point"]["altitude_above_home_m"] + 11.45 - terrain_height(20, 0) - 35),
+            0.126,
         )
 
     def test_following_rejects_outside_target_or_unachievable_stand_off(self):
@@ -93,10 +99,39 @@ class GroundFollowing(unittest.TestCase):
         perimeter = [
             {"north_m": n, "east_m": e} for n, e in ((-10, -10), (10, -10), (10, 10), (-10, 10))
         ]
-        with self.assertRaisesRegex(AssertionError, "Candidate left"):
-            follow_target(state, {"north_m": 20, "east_m": 0}, perimeter, 5, 35)
-        with self.assertRaisesRegex(AssertionError, "stand-off leaves"):
-            follow_target(state, {"north_m": 5, "east_m": 0}, perimeter, 30, 35)
+        for north, stand_off, reason in (
+            (20, 5, "Candidate left the authorized search perimeter"),
+            (5, 30, "Required stand-off leaves the search perimeter"),
+            (0, 5, "Candidate bearing is unresolved directly below the aircraft"),
+        ):
+            with self.subTest(reason=reason):
+                result = follow_target(
+                    state, {"north_m": north, "east_m": 0}, perimeter, stand_off, 35
+                )
+                self.assertEqual(result, {"point": None, "yaw_deg": None, "error": reason})
+
+    def test_recorded_twenty_metre_test_area_refuses_movement_without_losing_detection(self):
+        state = {
+            "north_m": 144,
+            "east_m": -349,
+            "home": {"altitude_msl_m": ORIGIN["altitude_msl_m"] + 11.45},
+        }
+        perimeter = [
+            {"north_m": n, "east_m": e}
+            for n, e in ((144, -349), (144, -329), (164, -329), (164, -349))
+        ]
+        target = {"north_m": 155.23981277107208, "east_m": -340.5492331556043}
+        result = follow_target(state, target, perimeter, 20, 15)
+        self.assertEqual(
+            result,
+            {
+                "point": None,
+                "yaw_deg": None,
+                "error": "Required stand-off leaves the search perimeter",
+            },
+        )
+        with self.assertRaisesRegex(AssertionError, "finite mission metres"):
+            follow_target(state, {"north_m": float("nan"), "east_m": 0}, perimeter, 20, 15)
 
 
 if __name__ == "__main__":

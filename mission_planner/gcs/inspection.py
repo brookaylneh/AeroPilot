@@ -441,6 +441,7 @@ class Inspections:
         row = self.rows[release["inspection_id"]]
         self._check(row)
         assert row["status"] in ("running", "candidate") and row["rescue"]["phase"] in (
+            "reviewing",
             "tracking",
             "held",
         ), "The candidate lock is no longer available for release"
@@ -1205,6 +1206,7 @@ class Inspections:
         reviewed_ids = {selected_id}
         client = self.vision[name]
         review_id = str(uuid.uuid4())
+        assert row["latest"]["frame_id"] == metadata["frame_id"], "Candidate seed frame changed"
         row["rescue"].update(
             phase="reviewing",
             review_id=review_id,
@@ -1212,7 +1214,7 @@ class Inspections:
             pending=False,
             tracking_error=None,
             track=None,
-            live_frame=None,
+            live_frame=row["latest"],
             held_frame=None,
         )
         self.releases[review_id] = {
@@ -1254,6 +1256,8 @@ class Inspections:
             row["rescue"].update(
                 tracking_error=reason, track=None, live_frame=None, phase="held", pending=True
             )
+            if review_id in self.relocks and not self.relocks[review_id]["future"].done():
+                self.relocks[review_id]["future"].set_result({"status": "lost", "error": reason})
             last_success = None
             if following:
                 following = False
@@ -1283,13 +1287,31 @@ class Inspections:
 
         async def publish(current, detections, held):
             await self._publish(row, current, detections, live=not held, held=held)
+            frame = row["rescue"]["held_frame" if held else "live_frame"]
+            record(
+                {
+                    "phase": "visual",
+                    "frame_id": current["frame_id"],
+                    "captured_at_ms": current["captured_at_ms"],
+                    "published_at_ms": time.time() * 1000,
+                    "held": held,
+                    "published": frame is not None and frame["frame_id"] == current["frame_id"],
+                    "track_ids": [d["track_id"] for d in detections],
+                }
+            )
 
         def queue_publish(current, detections, held):
             nonlocal publication, queued
             if publication is None:
                 publication = asyncio.create_task(publish(current, detections, held))
+                self.control_tasks[name].add(publication)
+                publication.add_done_callback(self.control_tasks[name].discard)
             else:
                 queued = (current, detections, held)
+
+        def queue_held(current, detections):
+            self.held_buffers[review_id].append({"metadata": current, "detections": detections})
+            queue_publish(current, detections, True)
 
         async def stop(task):
             task.cancel()
@@ -1330,7 +1352,13 @@ class Inspections:
                     if review.done() and not review_processed:
                         row["rescue"]["reports"] = review.result()
                         review_processed = True
-                        row["rescue"]["phase"] = "tracking" if following else "held"
+                        row["rescue"]["phase"] = (
+                            "held"
+                            if row["rescue"]["tracking_error"] is not None
+                            else "tracking"
+                            if following
+                            else "reviewing"
+                        )
                         if all(
                             r["report"]["decision"] == "discard" for r in row["rescue"]["reports"]
                         ):
@@ -1421,6 +1449,7 @@ class Inspections:
                         await lose("Candidate observation is too old for flight control")
                         continue
                     detections = observation["detections"]
+                    pending_relock = None
                     if review_id in self.relocks:
                         relock = self.relocks[review_id]
                         matches = [
@@ -1430,6 +1459,7 @@ class Inspections:
                         ]
                         if not relock["future"].done():
                             if len(matches) == 1:
+                                pending_relock = relock
                                 selected_id = relock["track_id"]
                                 reviewed_ids.add(selected_id)
                                 row["rescue"].update(
@@ -1437,16 +1467,6 @@ class Inspections:
                                     held_frame=None,
                                     pending=False,
                                     phase="reviewing" if not review_processed else "tracking",
-                                )
-                                relock["future"].set_result(
-                                    {"status": "tracking", "track_id": selected_id}
-                                )
-                                record(
-                                    {
-                                        "phase": "relocked",
-                                        "track_id": selected_id,
-                                        "frame_id": current["frame_id"],
-                                    }
                                 )
                             else:
                                 relock["future"].set_result(
@@ -1459,10 +1479,7 @@ class Inspections:
                     if selected is None:
                         await lose(f"SAM track {selected_id} is not visible in the current frame")
                     if row["rescue"]["tracking_error"] is not None:
-                        self.held_buffers[review_id].append(
-                            {"metadata": current, "detections": detections}
-                        )
-                        queue_publish(current, detections, True)
+                        queue_held(current, detections)
                         continue
                     location = await asyncio.to_thread(
                         ground_observation, current, selected["box_xyxy"]
@@ -1472,6 +1489,7 @@ class Inspections:
                         continue
                     if location["ground"] is None:
                         await lose(location["location_error"])
+                        queue_held(current, detections)
                         continue
                     target = location["ground"]
                     aim["target"] = {
@@ -1486,6 +1504,7 @@ class Inspections:
                             else dict(aim["target"])
                         )
                     if checkpoint is None:
+                        queue_publish(current, [{**selected, **location}], False)
                         continue
                     if time.time() * 1000 - current["captured_at_ms"] > 1000:
                         await lose("Candidate observation is too old for flight control")
@@ -1493,9 +1512,15 @@ class Inspections:
                     if row["rescue"]["tracking_error"] is not None:
                         continue
                     state = self._search_state(row)
-                    point, yaw = follow_target(
+                    movement = follow_target(
                         state, target, policy["perimeter"], policy["stand_off_m"], step["height_m"]
                     )
+                    if movement["error"] is not None:
+                        await lose(movement["error"])
+                        queue_held(current, detections)
+                        continue
+                    queue_publish(current, [{**selected, **location}], False)
+                    point, yaw = movement["point"], movement["yaw_deg"]
                     if not following:
                         await self.mission.fleet.tracking_follow(
                             name, checkpoint, policy["speed_mps"]
@@ -1510,6 +1535,17 @@ class Inspections:
                     self._search_state(row)
                     if row["rescue"]["tracking_error"] is not None:
                         continue
+                    if pending_relock is not None and not pending_relock["future"].done():
+                        pending_relock["future"].set_result(
+                            {"status": "tracking", "track_id": selected_id}
+                        )
+                        record(
+                            {
+                                "phase": "relocked",
+                                "track_id": selected_id,
+                                "frame_id": current["frame_id"],
+                            }
+                        )
                     now = time.monotonic()
                     interval = None if last_success is None else now - last_success
                     if interval is not None and interval <= 1:
@@ -1538,7 +1574,6 @@ class Inspections:
                     }
                     if review_processed:
                         row["rescue"]["phase"] = "tracking"
-                    queue_publish(current, [{**selected, **location}], False)
                     record(
                         {
                             "phase": "command",
