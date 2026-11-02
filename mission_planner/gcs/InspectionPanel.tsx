@@ -224,12 +224,18 @@ export const inspectionSchema = z
           .object({
             yaw_rad: number,
             pitch_rad: number,
+            roll_rad: number,
             yaw_delta_deg: number,
             pitch_delta_deg: number,
+            roll_delta_deg: number,
             error_x_px: number,
             error_y_px: number,
             centered: z.boolean(),
-            limited: z.boolean(),
+            readback_error_deg: number.nonnegative(),
+            readback_body_motion_deg: number.nonnegative(),
+            camera_q: z
+              .tuple([number, number, number, number])
+              .refine((q) => Math.abs(Math.hypot(...q) - 1) < 1e-3, 'Camera quaternion must be normalized'),
           })
           .strict()
           .nullable(),

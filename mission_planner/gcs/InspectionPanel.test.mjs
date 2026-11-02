@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
+import { execFileSync } from 'node:child_process';
 import test from 'node:test';
 import { runInNewContext } from 'node:vm';
 import { buildSync } from 'esbuild';
@@ -106,6 +107,42 @@ function renderEvidence(values) {
     createElement(InspectionPanel, { events: values.map((value) => event(value)), onError() {} }),
   );
 }
+
+test('Python camera diagnostics pass browser validation and render without the removed gimbal fields', () => {
+  const tracking = JSON.parse(
+    execFileSync(
+      '.venv-cosys/bin/python',
+      [
+        '-c',
+        `
+import json, time
+from pathlib import Path
+import cosysairsim as airsim
+from world.cosys.inspection import ForwardCapture
+from world.cosys.test_camera_follow import CameraRPC
+camera = ForwardCapture('Drone1', Path('.local'))
+rpc = camera.follow_rpc = CameraRPC()
+camera.original_pose = airsim.Pose(airsim.Vector3r(*rpc.mount), airsim.Quaternionr(*rpc.relative.as_quat()))
+observed = (rpc.attitude * rpc.relative).as_quat()[[3, 0, 1, 2]].tolist()
+try:
+    result, diagnostic = camera._follow([440, 240, 480, 300], camera.begin_follow(), time.monotonic() + 2, observed)
+    print(json.dumps({'source': 'onboard_csrt', 'track_id': 1, 'status': result['status'], 'sequence': 1,
+        'box': [440, 240, 480, 300], 'frame_age_ms': 100, 'error': None, 'centering': diagnostic}, allow_nan=False))
+finally:
+    camera.follow_executor.shutdown(wait=True)
+    camera.executor.shutdown(wait=True)
+`,
+      ],
+      { encoding: 'utf8' },
+    ),
+  );
+  const value = { ...inspection(), camera_tracking: tracking };
+  assert.deepEqual(inspectionSchema.parse(value).camera_tracking, tracking);
+  assert.match(renderEvidence([value]), /Possible person near the lake/);
+  const invalid = structuredClone(value);
+  invalid.camera_tracking.centering.camera_q = [0, 0, 0, 0];
+  assert.equal(inspectionSchema.safeParse(invalid).success, false);
+});
 
 test('finding publication requires a selected candidate and bounded factual assessment', () => {
   const valid = event(inspection()).arguments;
