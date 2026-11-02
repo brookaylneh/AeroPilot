@@ -19,6 +19,7 @@ from mission_planner.agents.models import Glimmer
 from mission_planner.agents.review import review_candidate
 from mission_planner.agents.vision import VisionTrack, check_target, decode_mask, vision_http
 from mission_planner.gcs.geodesy import NAMES, point_in_polygon, to_local
+from mission_planner.gcs.tracking import MAX_TRACKING_AGE_S, gentle_target
 from mission_planner.gcs.visual_follow import VisualFollow, held
 from world.cosys.inspection import ForwardCapture, route_look_ahead
 
@@ -156,9 +157,11 @@ class Inspections:
                 )
                 track = row["rescue"]["track"]
                 if track is not None:
-                    assert 0 <= time.time() * 1000 - track["captured_at_ms"] <= 1000, (
-                        "The candidate position is stale; obtain fresh evidence before centering"
-                    )
+                    assert (
+                        0
+                        <= time.time() * 1000 - track["captured_at_ms"]
+                        <= MAX_TRACKING_AGE_S * 1000
+                    ), "The candidate position is stale; obtain fresh evidence before centering"
                     assert (
                         math.hypot(
                             north_m - track["ground"]["north_m"],
@@ -235,7 +238,7 @@ class Inspections:
                 frame is not None
                 and view is not None
                 and frame["camera_view_revision"] == view["revision"]
-                and 0 <= time.time() * 1000 - frame["captured_at_ms"] <= (2000 if held else 1000)
+                and 0 <= time.time() * 1000 - frame["captured_at_ms"] <= MAX_TRACKING_AGE_S * 1000
             ):
                 self.requested_frames[frame["frame_id"]] = (inspection_id, copy.deepcopy(frame))
                 return {
@@ -367,6 +370,7 @@ class Inspections:
             "error": None,
             "latest": None,
             "camera_changing": False,
+            "camera_tracking": None,
             "sampling": {"missed_slots": 0, "last_interval_s": None, "last_cycle_s": None},
         }
         self.rows[row["id"]] = row
@@ -523,6 +527,7 @@ class Inspections:
                 "error": None,
                 "latest": None,
                 "camera_changing": False,
+                "camera_tracking": None,
                 "sampling": {"missed_slots": 0, "last_interval_s": None, "last_cycle_s": None},
                 "rescue": {
                     "phase": "waiting",
@@ -638,7 +643,7 @@ class Inspections:
                 row["status"] in ("running", "candidate")
                 and view is not None
                 and frame["camera_view_revision"] == view["revision"]
-                and 0 <= time.time() * 1000 - frame["captured_at_ms"] <= 1000
+                and 0 <= time.time() * 1000 - frame["captured_at_ms"] <= MAX_TRACKING_AGE_S * 1000
                 and (
                     rescue["tracking_error"] is not None
                     if held
@@ -1315,8 +1320,8 @@ class Inspections:
         async def watchdog():
             while True:
                 await asyncio.sleep(0.05)
-                if following and time.monotonic() - last_command > 1:
-                    await lose("No fresh tracking command for one second")
+                if following and time.monotonic() - last_command > MAX_TRACKING_AGE_S:
+                    await lose("No fresh tracking command for two seconds")
 
         async def produce():
             while True:
@@ -1490,7 +1495,7 @@ class Inspections:
                         continue
                     age = (time.time() * 1000 - current["captured_at_ms"]) / 1000
                     assert age >= 0, "Tracking capture timestamp is in the future"
-                    if age > 1:
+                    if age > MAX_TRACKING_AGE_S:
                         await lose("Candidate observation is too old for flight control")
                         continue
                     detections = observation["detections"]
@@ -1552,7 +1557,7 @@ class Inspections:
                     if checkpoint is None:
                         queue_publish(current, [{**selected, **location}], False)
                         continue
-                    if time.time() * 1000 - current["captured_at_ms"] > 1000:
+                    if time.time() * 1000 - current["captured_at_ms"] > MAX_TRACKING_AGE_S * 1000:
                         await lose("Candidate observation is too old for flight control")
                         continue
                     if row["rescue"]["tracking_error"] is not None:
@@ -1566,7 +1571,27 @@ class Inspections:
                         queue_held(current, detections)
                         continue
                     queue_publish(current, [{**selected, **location}], False)
-                    point, yaw = movement["point"], movement["yaw_deg"]
+                    camera = row["camera_tracking"]
+                    if camera is not None and camera["status"] == "failed":
+                        raise RuntimeError("Camera centering failed: " + camera["error"])
+                    if (
+                        camera is None
+                        or camera["status"] != "moved"
+                        or camera["centering"] is None
+                        or camera["frame_age_ms"] > MAX_TRACKING_AGE_S * 1000
+                    ):
+                        continue
+                    centering = camera["centering"]
+                    tolerance = 0.15 if following else 0.05
+                    if (
+                        abs(centering["error_x_px"]) > 960 * tolerance
+                        or abs(centering["error_y_px"]) > 540 * tolerance
+                    ):
+                        continue
+                    elapsed = 0.2 if last_success is None else time.monotonic() - last_success
+                    point, yaw = gentle_target(
+                        state, movement["point"], movement["yaw_deg"], elapsed, policy["speed_mps"]
+                    )
                     if not following:
                         await self.mission.fleet.tracking_follow(
                             name, checkpoint, policy["speed_mps"]
@@ -1594,12 +1619,12 @@ class Inspections:
                         )
                     now = time.monotonic()
                     interval = None if last_success is None else now - last_success
-                    if interval is not None and interval <= 1:
+                    if interval is not None and interval <= MAX_TRACKING_AGE_S:
                         row["rescue"]["healthy_s"] += interval
                     last_command = last_success = now
                     position = {k: state[k] for k in ("north_m", "east_m", "altitude_above_home_m")}
                     distance = math.dist(
-                        tuple(position.values()), tuple(point[k] for k in position)
+                        tuple(position.values()), tuple(movement["point"][k] for k in position)
                     )
                     if (
                         motion is None

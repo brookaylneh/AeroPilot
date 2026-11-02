@@ -219,6 +219,37 @@ test('lost tracking clears the box and requires a newer SAM detection before ano
   v.controller.dispose();
 });
 
+test('a fresh SAM frame without the selected person clears a surviving visual box', async () => {
+  const v = fixture();
+  await v.seed();
+  v.reply();
+  v.current.frame = { ...v.current.frame, frame_id: '33333333-3333-4333-8333-333333333333', detections: [] };
+  v.tick();
+  assert.equal(v.changes.at(-1).visible, false);
+  assert.equal(v.changes.at(-1).state, 'lost');
+  assert.equal(v.guidance.at(-1).box, null);
+  v.controller.dispose();
+});
+
+test('a newer SAM observation invalidates visual tracking on a distant background patch', async () => {
+  const v = fixture();
+  await v.seed();
+  const request = v.messages.at(-1);
+  v.worker.reply({
+    type: 'tracked',
+    sequence: request.sequence,
+    presentedAt: request.presentedAt,
+    processingMs: 20,
+    box: [750, 420, 790, 500],
+  });
+  v.current.frame = { ...v.current.frame, frame_id: '33333333-3333-4333-8333-333333333333' };
+  v.tick();
+  assert.equal(v.changes.at(-1).visible, false);
+  assert.equal(v.messages.at(-1).type, 'seed');
+  assert.equal(v.messages.at(-1).seed.frameId, v.current.frame.frame_id);
+  v.controller.dispose();
+});
+
 test('hidden or disposed viewers reject pending tracking results', async () => {
   const v = fixture();
   await v.seed();

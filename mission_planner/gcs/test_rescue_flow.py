@@ -53,6 +53,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
                 "battery_percent": 100,
                 "mission_current": 1,
                 "mode": "AUTO",
+                "heading_deg": 0,
                 "north_m": 0,
                 "east_m": 0 if name == "Drone1" else 80,
                 "altitude_above_home_m": terrain_height(0, 0) + 35 - 11.45,
@@ -292,7 +293,17 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
         self.inspections = Inspections(self.mission)
-        self.inspections.visual.observe = AsyncMock()
+
+        async def centered(row, metadata, detections):
+            if "rescue" in row and row["rescue"]["phase"] in ("reviewing", "tracking", "held"):
+                row["camera_tracking"] = {
+                    "status": "moved",
+                    "centering": {"error_x_px": 0, "error_y_px": 0, "centered": True},
+                    "frame_age_ms": 0,
+                    "error": None,
+                }
+
+        self.inspections.visual.observe = AsyncMock(side_effect=centered)
 
     async def asyncTearDown(self):
         self.review_ready.set()
@@ -325,7 +336,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         self.capture.capture_inflight = 1
         self.capture.video_sample = None
         self.capture.follow_generation = 1
-        self.capture.follow_diagnostic = None
+        self.capture.follow_diagnostic = {"error_x_px": 0, "error_y_px": 0, "centered": True}
         self.capture.begin_follow = Mock(return_value=1)
         self.capture.follow = AsyncMock(return_value={"status": "moved"})
         self.capture.cancel_follow = Mock()
@@ -345,6 +356,25 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(row["camera_tracking"]["status"], "moved")
         self.fleet.tracking_start.assert_awaited_once()
         self.assertIsNone(row["error"])
+
+    async def test_aircraft_waits_for_camera_centering_before_following(self):
+        centered = self.inspections.visual.observe.side_effect
+
+        async def off_center(row, metadata, detections):
+            await centered(row, metadata, detections)
+            if row["camera_tracking"] is not None:
+                row["camera_tracking"]["centering"]["error_x_px"] = 240
+
+        self.inspections.visual.observe.side_effect = off_center
+        await self.inspections.start_search(self.receipt)
+        await self.until(
+            lambda: next(iter(self.inspections.rows.values()))["camera_tracking"] is not None
+        )
+        await asyncio.sleep(0.3)
+        self.fleet.tracking_follow.assert_not_awaited()
+        self.fleet.tracking_target.assert_not_awaited()
+        self.inspections.visual.observe.side_effect = centered
+        await self.until(lambda: self.fleet.tracking_target.await_count > 0)
 
     async def test_unobserved_pattern_starts_no_capture_or_models(self):
         del self.receipt["plan"]["drones"][0]["steps"][0]["observe"]
@@ -1502,22 +1532,22 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
 
         def delayed(*args):
             entered.set()
-            assert finish.wait(3), "Test did not complete pending detector request"
+            assert finish.wait(5), "Test did not complete pending detector request"
             return advance(*args)
 
         track.advance.side_effect = delayed
         try:
             await self.until(entered.is_set)
-            await asyncio.wait_for(self.until(lambda: self.fleet.execute.await_count == 1), 1.3)
+            await asyncio.wait_for(self.until(lambda: self.fleet.execute.await_count == 1), 2.4)
             self.assertFalse(finish.is_set())
             track.close.assert_not_called()
             self.assertEqual(row["rescue"]["phase"], "held")
             self.assertIsNone(row["rescue"]["live_frame"])
             self.assertEqual(self.states["Drone1"]["mode"], "BRAKE")
-            self.assertGreaterEqual(holds[0] - commands[-1], 1)
-            self.assertLess(holds[0] - commands[-1], 1.2)
+            self.assertGreaterEqual(holds[0] - commands[-1], 2)
+            self.assertLess(holds[0] - commands[-1], 2.3)
             self.assertIn(
-                "No fresh tracking command for one second", row["rescue"]["tracking_error"]
+                "No fresh tracking command for two seconds", row["rescue"]["tracking_error"]
             )
             command_count = self.fleet.tracking_target.await_count
         finally:
@@ -1530,7 +1560,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         records = [json.loads(line) for line in record.read_text().splitlines()]
         holds = [r for r in records if r["phase"] == "held"]
         self.assertEqual(len(holds), 1)
-        self.assertIn("one second", holds[0]["reason"])
+        self.assertIn("two seconds", holds[0]["reason"])
 
     async def test_valid_delayed_observations_keep_checked_position_following_active(self):
         self.decisions = ["recheck"]

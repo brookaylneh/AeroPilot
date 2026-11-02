@@ -8,12 +8,32 @@ from scipy.spatial.transform import Rotation
 
 from mission_planner.gcs.geodesy import ORIGIN
 from mission_planner.gcs.service import planning_inspection
-from mission_planner.gcs.tracking import follow_target, ground_observation
+from mission_planner.gcs.tracking import follow_target, gentle_target, ground_observation
 from world.cosys.landmarks import load
 from world.cosys.terrain import terrain_height
 
 
 class GroundFollowing(unittest.TestCase):
+    def test_large_stand_off_and_heading_changes_are_applied_in_small_steps(self):
+        state = {
+            "north_m": 161.5,
+            "east_m": -329.4,
+            "altitude_above_home_m": 18.25,
+            "heading_deg": 90,
+        }
+        desired = {"north_m": 164.9, "east_m": -322.2, "altitude_above_home_m": 25}
+        point, yaw = gentle_target(state, desired, 245, 0.6, 2)
+        self.assertLessEqual(
+            math.hypot(point["north_m"] - state["north_m"], point["east_m"] - state["east_m"]),
+            0.500001,
+        )
+        self.assertAlmostEqual(yaw, 92.5)
+        self.assertAlmostEqual(point["altitude_above_home_m"], 18.5)
+        near = {k: state[k] for k in desired}
+        near["north_m"] += 0.5
+        point, _ = gentle_target(state, near, 90, 0.5, 2)
+        self.assertEqual(point, {k: state[k] for k in desired})
+
     def metadata(self, north, east, target):
         camera = np.array([north, east, terrain_height(north, east) + 35])
         vector = np.array([target[0], target[1], terrain_height(*target)]) - camera

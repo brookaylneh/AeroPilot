@@ -87,7 +87,6 @@ class CosysGimbal:
             self.active = (
                 message.primary_control_sysid == self.connection.mav.srcSystem
                 and message.primary_control_compid == self.connection.mav.srcComponent
-                and bool(message.flags & MAV.GIMBAL_MANAGER_FLAGS_YAW_LOCK)
             )
         elif kind == "COMMAND_LONG" and message.target_component == MAV.MAV_COMP_ID_GIMBAL:
             assert message.target_system == self.sysid, "Gimbal request targets another aircraft"

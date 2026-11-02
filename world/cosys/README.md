@@ -198,6 +198,8 @@ applies ArduPilot's `GIMBAL_DEVICE_SET_ATTITUDE` targets to that camera. No addi
 camera, flight-control RPC or network listener is created. Unowned startup/neutral
 targets do not overwrite the mission's existing camera view. Releasing ownership
 allows explicit mission view/reset operations again.
+Manager ownership enables the bridge; each device command supplies its yaw-frame
+flags. ArduPilot's manager-status RC yaw flag is not used to enable device motion.
 
 The bridge runs on its own RPC worker with a requested 50 ms period and a 3-second
 RPC deadline. It transforms an earth-frame optical target through the aircraft's

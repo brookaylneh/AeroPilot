@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from mission_planner.gcs.gimbal import visible_box
 from mission_planner.gcs.live_tracker import LiveTracker
+from mission_planner.gcs.tracking import MAX_TRACKING_AGE_S
 
 
 def airborne_camera(vehicle):
@@ -67,11 +68,15 @@ class VisualFollow:
             return
         rescue = row["rescue"]
         selected = [d for d in detections if d["track_id"] == rescue["selected_track_id"]]
-        if not selected or row["camera_changing"] or row["camera_view"] is None:
+        if row["camera_changing"] or row["camera_view"] is None:
             return
         if metadata["camera_view_revision"] != row["camera_view"]["revision"]:
             return
         name = row["drone_id"]
+        if not selected:
+            if name in self.sessions:
+                self.sessions[name].update(seed=None, latest=None, visible=False)
+            return
         identity = (
             row["id"],
             rescue["review_id"],
@@ -86,6 +91,7 @@ class VisualFollow:
                 "row": row,
                 "seed": None,
                 "latest": None,
+                "visible": True,
                 "last_seed": 0.0,
                 "task": None,
             }
@@ -94,6 +100,7 @@ class VisualFollow:
         session = self.sessions[name]
         if session["task"].done():
             return
+        session["visible"] = True
         if session["latest"] is None or time.monotonic() - session["last_seed"] >= 2:
             path = self.inspections.directory / (metadata["frame_id"] + "-frame.jpg")
             jpeg = await asyncio.to_thread(path.read_bytes)
@@ -108,6 +115,11 @@ class VisualFollow:
 
         async def produce():
             while True:
+                if not session["visible"]:
+                    tracker.tracker = None
+                    session["latest"] = None
+                    await asyncio.sleep(0.02)
+                    continue
                 seed = session["seed"]
                 if seed is not None:
                     session["seed"] = None
@@ -153,7 +165,7 @@ class VisualFollow:
                     producer_observed = True
                     producer.result()
                     raise RuntimeError(name + ": main-camera frame producer stopped")
-                latest = session["latest"]
+                latest = session["latest"] if session["visible"] else None
                 sequence += 1
                 message = {
                     "type": "camera_follow",
@@ -276,7 +288,7 @@ class VisualFollow:
             if name in self.owners and self.owners[name]["socket"] is socket:
                 self._release_camera(name)
             return result
-        if age > 1000:
+        if age > MAX_TRACKING_AGE_S * 1000:
             return {**result, "status": "stale"}
         camera = inspections.cameras[name]
         if name in self.owners:
@@ -295,7 +307,10 @@ class VisualFollow:
         owner = self.owners[name]
         owner["sequence"] = sequence
         moved = await camera.follow(
-            box, owner["generation"], received + (1000 - age) / 1000, message["observed_q"]
+            box,
+            owner["generation"],
+            received + MAX_TRACKING_AGE_S - age / 1000,
+            message["observed_q"],
         )
         with (mission.directory / "camera-follow.jsonl").open("a") as stream:
             stream.write(

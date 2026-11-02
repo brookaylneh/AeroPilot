@@ -100,7 +100,7 @@ class VirtualGimbalTests(unittest.IsolatedAsyncioTestCase):
     def test_earth_target_remains_stable_while_vehicle_moves_without_mount_drift(self):
         self.gimbal._sample()
         self.gimbal._receive(
-            wire(MAV.MAVLink_gimbal_manager_status_message(1, LOCK_FLAGS, 1, 255, 190, 0, 0))
+            wire(MAV.MAVLink_gimbal_manager_status_message(1, 12, 1, 255, 190, 0, 0))
         )
         target = quat(math.radians(170), math.radians(-60))
         for yaw in (82, 100, 130, 179, -140):

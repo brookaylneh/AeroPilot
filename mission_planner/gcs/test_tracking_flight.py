@@ -179,7 +179,7 @@ class TrackingFlight(unittest.IsolatedAsyncioTestCase):
     async def test_target_expiring_in_command_queue_is_never_sent(self):
         self.state["mode"] = "GUIDED"
         target = {"north_m": -590, "east_m": 2, "altitude_above_home_m": 70}
-        captured = time.time() * 1000 - 950
+        captured = time.time() * 1000 - 1950
         await self.fleet.command_lock.acquire()
         request = asyncio.create_task(self.fleet.tracking_target("Drone1", target, 90, captured))
         await asyncio.sleep(0.1)
@@ -290,9 +290,25 @@ class TrackingFlight(unittest.IsolatedAsyncioTestCase):
             await self.fleet.tracking_resume("Drone1", saved, [], 2)
         self.mav.set_position_target_global_int_send.assert_not_called()
 
+    async def test_position_mode_is_initialized_before_setting_follow_speed(self):
+        saved = await self.fleet.tracking_start("Drone1", (3, 4))
+
+        async def speed(name, command, parameters):
+            self.assertEqual(command, MAV.MAV_CMD_DO_CHANGE_SPEED)
+            self.assertEqual(parameters[1], 2)
+            self.mav.set_position_target_global_int_send.assert_called_once()
+            args = self.mav.set_position_target_global_int_send.call_args.args
+            self.assertAlmostEqual(args[7], saved["point"]["altitude_above_home_m"])
+            self.assertEqual(args[14], 0)
+
+        self.fleet._command.side_effect = speed
+        await self.fleet.tracking_follow("Drone1", saved, 2)
+        self.fleet._command.assert_awaited_once()
+
     async def test_unsafe_follow_target_is_rejected_before_sending(self):
         saved = await self.fleet.tracking_start("Drone1", (3, 4))
         await self.fleet.tracking_follow("Drone1", saved, 2)
+        self.mav.set_position_target_global_int_send.reset_mock()
         for target in (
             {"north_m": 5000, "east_m": 0, "altitude_above_home_m": 70},
             {"north_m": -500, "east_m": 0, "altitude_above_home_m": 9},

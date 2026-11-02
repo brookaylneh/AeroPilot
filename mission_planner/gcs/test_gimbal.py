@@ -1,5 +1,6 @@
 """Image-based centering and real MAVLink encoding without a running simulator."""
 
+import asyncio
 import io
 import json
 import math
@@ -33,15 +34,15 @@ class CenteringTests(unittest.TestCase):
                     initial = quat(math.radians(heading), math.radians(pitch))
                     current = initial
                     previous_yaw, previous_pitch = math.radians(heading), math.radians(pitch)
-                    for tick in range(200):
+                    for tick in range(400):
                         result = controller.step(
                             [690, 300, 750, 390], fov, current, initial, 10 + tick * 0.1
                         )
                         self.assertLessEqual(
-                            abs(wrapped(result["yaw_rad"] - previous_yaw)), math.radians(1.2) + 1e-8
+                            abs(wrapped(result["yaw_rad"] - previous_yaw)), math.radians(0.6) + 1e-8
                         )
                         self.assertLessEqual(
-                            abs(result["pitch_rad"] - previous_pitch), math.radians(1.2) + 1e-8
+                            abs(result["pitch_rad"] - previous_pitch), math.radians(0.6) + 1e-8
                         )
                         previous_yaw, previous_pitch = result["yaw_rad"], result["pitch_rad"]
                         current = quat(previous_yaw, previous_pitch)
@@ -86,6 +87,15 @@ class GimbalProtocolTests(unittest.TestCase):
         )
         for message in (info, status, pose):
             self.gimbal.receive(wire(message))
+
+    def test_acquisition_accepts_ardupilot_manager_rc_flags_and_device_yaw_lock(self):
+        self.gimbal.claimed = False
+        self.gimbal.receive(
+            wire(MAV.MAVLink_gimbal_manager_status_message(1, 12, 1, 255, 190, 0, 0))
+        )
+        self.gimbal.until.side_effect = lambda predicate, timeout: self.assertTrue(predicate())
+        asyncio.run(self.gimbal.acquire(quat(0, -0.5)))
+        self.assertTrue(self.gimbal.claimed)
 
     def test_camera_control_emits_radians_and_finite_angles_not_unbounded_rate_commands(self):
         pose = quat(0, -0.5)

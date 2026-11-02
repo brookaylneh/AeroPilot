@@ -47,6 +47,7 @@ from mission_planner.gcs.planner import (  # noqa: E402
 )
 from mission_planner.gcs.rejection import separation
 from mission_planner.gcs.sitl import check_ports, launches  # noqa: E402
+from mission_planner.gcs.tracking import MAX_TRACKING_AGE_S
 from mission_planner.gcs.validation import (  # noqa: E402
     CLEARANCE_M,
     separation_conflict,
@@ -1095,7 +1096,31 @@ class Fleet:
             state = self._candidate_state(name, saved)
             assert state["mode"] == "BRAKE", f"{name}: candidate is already following"
             await self._mode(name, "GUIDED")
+            # The first position target resets ArduPilot's GUIDED speed limits.
+            self._send_tracking_target(name, state, state["heading_deg"])
             await self._command(name, MAV.MAV_CMD_DO_CHANGE_SPEED, [1, speed_mps, -1, 0, 0, 0, 0])
+
+    def _send_tracking_target(self, name, point, yaw_deg):
+        latitude, longitude = to_geodetic(point["north_m"], point["east_m"])
+        vehicle = self.vehicles[name]
+        vehicle["connection"].mav.set_position_target_global_int_send(
+            0,
+            vehicle["sysid"],
+            1,
+            MAV.MAV_FRAME_GLOBAL_RELATIVE_ALT_INT,
+            2552,
+            round(latitude * 1e7),
+            round(longitude * 1e7),
+            point["altitude_above_home_m"],
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            math.radians(yaw_deg),
+            0,
+        )
 
     async def tracking_target(self, name, point, yaw_deg, captured_at_ms=None):
         assert math.isfinite(yaw_deg) and 0 <= yaw_deg < 360
@@ -1104,29 +1129,10 @@ class Fleet:
             assert state["mode"] == "GUIDED", f"{name}: candidate control was superseded"
             self._validate_route(name, [state, point])
             if captured_at_ms is not None:
-                assert 0 <= time.time() * 1000 - captured_at_ms <= 1000, (
+                assert 0 <= time.time() * 1000 - captured_at_ms <= MAX_TRACKING_AGE_S * 1000, (
                     f"{name}: candidate observation is too old at flight-command dispatch"
                 )
-            latitude, longitude = to_geodetic(point["north_m"], point["east_m"])
-            vehicle = self.vehicles[name]
-            vehicle["connection"].mav.set_position_target_global_int_send(
-                0,
-                vehicle["sysid"],
-                1,
-                MAV.MAV_FRAME_GLOBAL_RELATIVE_ALT_INT,
-                2552,
-                round(latitude * 1e7),
-                round(longitude * 1e7),
-                point["altitude_above_home_m"],
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                math.radians(yaw_deg),
-                0,
-            )
+            self._send_tracking_target(name, point, yaw_deg)
             self.planned_routes[name] = [state, point]
             return state
 

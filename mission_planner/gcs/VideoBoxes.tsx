@@ -206,6 +206,27 @@ export function followVideo(
       const current = source();
       if (document.hidden) clear();
       else {
+        if (tracking && current.frame && current.frame.frame_id !== lastSource) {
+          lastSource = current.frame.frame_id;
+          const detection = current.frame.detections.find((item) => item.track_id === current.trackId);
+          const reference = detection?.box_xyxy.map((v) => v / 4);
+          const box = image?.detections[0]?.box_xyxy;
+          const contradicted =
+            reference &&
+            box &&
+            (box[2] < reference[0] - 96 ||
+              box[0] > reference[2] + 96 ||
+              box[3] < reference[1] - 96 ||
+              box[1] > reference[3] + 96);
+          if (!detection || contradicted) {
+            epoch++;
+            seeded = false;
+            image = null;
+            state = 'lost';
+            onTrack?.(null, presentedAt);
+            clear();
+          }
+        }
         if (tracking && ready && !busy) {
           const detection = current.frame?.detections.find((item) => item.track_id === current.trackId);
           if (

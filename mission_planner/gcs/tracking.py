@@ -10,6 +10,28 @@ from mission_planner.gcs.validation import minimum_clearance
 from world.cosys.capture import rotation
 from world.cosys.terrain import domain, terrain_height
 
+MAX_TRACKING_AGE_S = 2.0
+
+
+def gentle_target(state, point, yaw_deg, elapsed_s, speed_mps):
+    assert all(math.isfinite(v) and v > 0 for v in (elapsed_s, speed_mps))
+    dt = min(elapsed_s, 0.5)
+    keys = ("north_m", "east_m")
+    delta = [point[k] - state[k] for k in keys]
+    distance = math.hypot(*delta)
+    fraction = 0 if distance <= 1 else min(1, min(speed_mps, 1) * dt / distance)
+    result = {k: state[k] + delta[i] * fraction for i, k in enumerate(keys)}
+    height = "altitude_above_home_m"
+    vertical = point[height] - state[height]
+    result[height] = state[height] + (
+        0 if abs(vertical) <= 0.25 else max(-0.5 * dt, min(0.5 * dt, vertical))
+    )
+    heading = state["heading_deg"]
+    assert all(math.isfinite(v) for v in (*result.values(), heading, yaw_deg))
+    yaw_error = (yaw_deg - heading + 180) % 360 - 180
+    yaw = (heading + max(-5 * dt, min(5 * dt, yaw_error))) % 360
+    return result, yaw
+
 
 def ground_observation(metadata, box):
     assert len(box) == 4 and all(math.isfinite(v) for v in box)

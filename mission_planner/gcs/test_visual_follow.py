@@ -115,7 +115,7 @@ class VisualFollowTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(self.control.owners, {})
 
     async def test_old_frames_and_invalid_boxes_never_move_the_camera(self):
-        self.message["frame_age_ms"] = 1001
+        self.message["frame_age_ms"] = 2001
         self.assertEqual((await self.control.update(self.message, self.socket))["status"], "stale")
         self.camera.follow.assert_not_awaited()
         for box in ([1, 1, 0, 100], [1, 1, 1, 100], [0, 0, float("nan"), 100]):
@@ -214,3 +214,13 @@ class VisualFollowTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertIs(self.control.sessions["Drone1"]["task"], task)
         self.camera.follow.assert_not_awaited()
+
+    async def test_missing_selected_person_stops_native_camera_guidance(self):
+        fixture = test_live_tracker.NativeTrackerTests()
+        fixture.setUp()
+        metadata = await self.native_seed(fixture.jpeg(1600, 900))
+        await self.until(lambda: self.camera.follow.await_count >= 1)
+        await self.control.observe(self.row, metadata, [])
+        await self.until(lambda: self.row["camera_tracking"]["status"] == "stopped")
+        self.assertIsNone(self.row["camera_tracking"]["box"])
+        self.assertFalse(self.control.sessions["Drone1"]["visible"])

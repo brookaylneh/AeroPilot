@@ -489,10 +489,13 @@ manager ownership, checks fresh gimbal feedback and converts reported yaw frames
 explicitly. Commands contain finite pitch/yaw angles in radians and NaN rates. Thus
 a stopped controller leaves a finite last target rather than a continuing rotation.
 Capture-time camera orientation compensates for camera motion between video frames.
-The requested control period is 100 ms; observations older than one second cannot
-steer. The controller has a 1% image-centre tolerance, 12°/s slew cap, 1.5/s gain and
-0.12 s smoothing. These are settings, not measured flight accuracy or throughput.
+The requested control period is 100 ms; observations older than two seconds cannot
+steer. The controller has a 1% image-centre tolerance, 6°/s slew cap, 1/s gain and
+0.3 s smoothing. These are settings, not measured flight accuracy or throughput.
 Mechanical pitch/yaw limits are enforced and reported as `centering.limited`.
+Acquisition checks manager ownership and the device's yaw-lock flag. ArduPilot's
+manager yaw-lock flag describes its RC policy and need not match an active
+earth-frame MAVLink target.
 
 Guidance is permitted in a validated candidate hold or its active GUIDED follow,
 including Glimmer review. Plan changes, release, departure and manual camera changes
@@ -502,6 +505,12 @@ status and failures independently of SAM and the browser overlay. Camera failure
 do not stop aircraft telemetry or remove the operator's flight controls.
 
 Flight following retains the existing terrain-checked GUIDED position/yaw updates.
+The aircraft waits for fresh camera centering within 5% of the image before moving;
+active following permits 15% error while the camera corrects. Position requests
+advance at most 0.5 m horizontally and 0.25 m vertically per update, with a 1 m
+horizontal deadband and heading changes capped at 5°/s. A current-position target
+initializes GUIDED position mode before applying the requested speed limit, because
+ArduPilot resets that limit when the position controller starts.
 This is the mechanism documented by ArduPilot's
 [GCS Follow Me](https://ardupilot.org/copter/docs/ac2_followme.html), with the target
 position derived from camera observations instead of a GPS dongle. ArduPilot handles
@@ -528,6 +537,9 @@ the aircraft is held. SAM/Glimmer retain identification and review
 authority; only the checked backend controller can move an aircraft. Capture and
 WebRTC delivery remain separate: the first live frame can be newer than the SAM seed,
 and processing lag or visual drift must still be checked during operator acceptance.
+A fresh SAM frame missing the selected ID invalidates native and browser tracking.
+The browser also invalidates a visual box outside the latest SAM box plus a
+96-pixel margin in its 960×540 tracking image, then seeds from that new evidence.
 
 Build the packaged browser runtime before `npm run build`:
 
@@ -782,8 +794,8 @@ session, allowing other candidates to be reviewed after continuation. Discard cl
 guidance immediately, while the same SAM state continues through review, hold and
 verified route resumption. Delayed inference/publication cannot restore a released lock.
 
-Every target dispatch requires a source image no older than one second, checked
-again inside the MAVLink command lock. A separate watchdog holds after one second
+Every target dispatch requires a source image no older than two seconds, checked
+again inside the MAVLink command lock. A separate watchdog holds after two seconds
 without a fresh command, including during a pending model request. No velocity
 extrapolation or predicted track is sent to the aircraft. Capture, inference and
 publication overlap without an unbounded queue. Publication failures remain terminal.
@@ -803,7 +815,7 @@ passes movement checks and its following command completes.
 
 Loss holds the aircraft and retains the review. The held session continues detecting.
 Wonder may explicitly select an observed ID from a reviewed frame no older than
-30 seconds; re-lock requires that ID in a new frame under one second old. There is
+30 seconds; re-lock requires that ID in a new frame under two seconds old. There is
 no automatic reacquisition or target substitution. A camera adjustment must retain
 observed correspondence before movement resumes.
 

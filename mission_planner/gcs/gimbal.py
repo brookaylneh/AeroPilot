@@ -64,10 +64,8 @@ class Centering:
             ]
         )
         centered = bool(abs(error[0]) <= 960 * 0.01 and abs(error[1]) <= 540 * 0.01)
-        wanted = (
-            np.zeros(2) if centered else np.clip(desired * 1.5, -math.radians(12), math.radians(12))
-        )
-        self.rates += (1 - math.exp(-dt / 0.12)) * (wanted - self.rates)
+        wanted = np.zeros(2) if centered else np.clip(desired, -math.radians(6), math.radians(6))
+        self.rates += (1 - math.exp(-dt / 0.3)) * (wanted - self.rates)
         if centered:
             self.rates[:] = 0
         delta = self.rates * dt
@@ -160,7 +158,6 @@ class Gimbal:
         await self.until(
             lambda: (
                 self.owns()
-                and self.messages["GIMBAL_MANAGER_STATUS"].flags & MAV.GIMBAL_MANAGER_FLAGS_YAW_LOCK
                 and "GIMBAL_DEVICE_ATTITUDE_STATUS" in self.messages
                 and bool(
                     self.messages["GIMBAL_DEVICE_ATTITUDE_STATUS"].flags
