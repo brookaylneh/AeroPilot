@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { z } from 'zod';
 import { ChevronRight } from 'lucide-react';
 import { droneIds } from './droneIdentity';
@@ -6,6 +6,19 @@ import type { MissionEvent } from './missionState';
 import { formatPosition, pacificTimestamp } from './display';
 
 const number = z.number().finite();
+const maskSchema = z
+  .object({
+    origin_xy: z.tuple([number.int().nonnegative(), number.int().nonnegative()]),
+    width: number.int().positive(),
+    height: number.int().positive(),
+    ref: z.string().regex(/^\/api\/evidence\/[a-f0-9-]+\/[a-f0-9-]+-track-[1-9][0-9]*-mask\.png$/),
+    sha256: z.string().regex(/^[a-f0-9]{64}$/),
+  })
+  .strict()
+  .refine(
+    (mask) => mask.origin_xy[0] + mask.width <= 3840 && mask.origin_xy[1] + mask.height <= 2160,
+    'Evidence mask exceeds its original 4K frame',
+  );
 export const findingArgumentsSchema = z
   .object({
     inspection_id: z.string().uuid(),
@@ -58,31 +71,26 @@ const frameSchema = z
     frame_id: z.string().uuid(),
     captured_at_ms: number.nonnegative(),
     frame_ref: z.string().regex(/^\/api\/evidence\/[a-f0-9-]+\/[a-f0-9-]+-frame\.jpg$/),
-    overlay_ref: z.string().regex(/^\/api\/evidence\/[a-f0-9-]+\/[a-f0-9-]+-input\.jpg$/),
-    width: number.int().positive(),
-    height: number.int().positive(),
-    horizontal_fov_deg: number.gt(1).lt(179).optional(),
-    camera_view_revision: number.int().nonnegative().optional(),
+    sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    width: z.literal(3840),
+    height: z.literal(2160),
+    horizontal_fov_deg: number.gt(1).lt(179),
+    camera_view_revision: number.int().nonnegative(),
     detections: z.array(
       z
         .object({
           box_xyxy: z.tuple([number, number, number, number]),
           confidence: number.min(0).max(1),
-          mask_area_px: number.int().positive(),
+          track_id: number.int().positive(),
+          class_name: z.string().min(1).max(100),
+          observations: number.int().positive(),
+          mask: maskSchema,
           ground: z
             .object({ north_m: number, east_m: number, ground_m: number })
             .strict()
             .nullable()
             .optional(),
           location_error: z.string().min(1).nullable().optional(),
-          mask: z
-            .object({
-              origin_xy: z.tuple([number.int().nonnegative(), number.int().nonnegative()]),
-              png_base64: z
-                .string()
-                .regex(/^(?:[A-Za-z0-9+/]{4})+(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/),
-            })
-            .strict(),
         })
         .strict(),
     ),
@@ -90,50 +98,49 @@ const frameSchema = z
   .strict()
   .refine(
     (frame) =>
-      frame.frame_ref.replace(/-frame\.jpg$/, '-input.jpg') === frame.overlay_ref &&
       frame.frame_ref.endsWith(`/${frame.frame_id}-frame.jpg`) &&
+      new Set(frame.detections.map((detection) => detection.track_id)).size === frame.detections.length &&
       frame.detections.every(
-        ({ box_xyxy: [x1, y1, x2, y2], mask, mask_area_px }) =>
+        ({ box_xyxy: [x1, y1, x2, y2], mask, track_id }) =>
           0 <= x1 &&
           x1 < x2 &&
           x2 <= frame.width &&
           0 <= y1 &&
           y1 < y2 &&
           y2 <= frame.height &&
-          mask.origin_xy[0] < frame.width &&
-          mask.origin_xy[1] < frame.height &&
-          mask_area_px <= frame.width * frame.height,
+          mask.ref === frame.frame_ref.replace('-frame.jpg', `-track-${track_id}-mask.png`),
       ),
     'Inspection images must identify the same frame with detections inside it',
   );
-const cropBox = z
-  .tuple([number.int(), number.int(), number.int(), number.int()])
-  .refine(([x1, y1, x2, y2]) => x1 < x2 && y1 < y2, 'Crop must have positive source dimensions');
 const reviewImages = z
   .object({
     frame_id: z.string().uuid(),
-    crop_ref: z.string().regex(/^\/api\/evidence\/[a-f0-9-]+\/[a-f0-9-]+-crop\.jpg$/),
-    context_ref: z.string().regex(/^\/api\/evidence\/[a-f0-9-]+\/[a-f0-9-]+-context\.jpg$/),
-    crop_box: cropBox,
-    context_box: cropBox,
+    frame_ref: z.string().regex(/^\/api\/evidence\/[a-f0-9-]+\/[a-f0-9-]+-frame\.jpg$/),
+    sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    track_id: number.int().positive(),
+    box_xyxy: z.tuple([number, number, number, number]),
+    mask: maskSchema,
   })
   .strict()
-  .refine(
-    (images) =>
-      images.crop_ref.replace(/-crop\.jpg$/, '-context.jpg') === images.context_ref &&
-      images.context_box[0] <= images.crop_box[0] &&
-      images.context_box[1] <= images.crop_box[1] &&
-      images.context_box[2] >= images.crop_box[2] &&
-      images.context_box[3] >= images.crop_box[3],
-    'Review images must be a matching crop and wider context pair',
-  );
+  .refine((images) => {
+    const [x1, y1, x2, y2] = images.box_xyxy;
+    return (
+      images.frame_ref.endsWith(`/${images.frame_id}-frame.jpg`) &&
+      images.mask.ref === images.frame_ref.replace('-frame.jpg', `-track-${images.track_id}-mask.png`) &&
+      0 <= x1 &&
+      x1 < x2 &&
+      x2 <= 3840 &&
+      0 <= y1 &&
+      y1 < y2 &&
+      y2 <= 2160
+    );
+  }, 'Review image must identify its original frame');
 const rescueSchema = z
   .object({
     phase: z.enum([
       'waiting',
       'searching',
       'reviewing',
-      'locked',
       'tracking',
       'held',
       'resuming',
@@ -170,21 +177,21 @@ const rescueSchema = z
     ),
     track: z
       .object({
-        candidate_index: number.int().nonnegative(),
+        track_id: number.int().positive(),
         box_xyxy: z.tuple([number, number, number, number]),
         captured_at_ms: number.nonnegative(),
         ground: z.object({ north_m: number, east_m: number, ground_m: number }).strict(),
       })
       .strict()
       .nullable(),
-    tracking_error: z.string().min(1).nullable().optional(),
-    live_frame: frameSchema.nullable().optional(),
-    step_index: number.int().nonnegative().nullable().optional(),
-    completed_steps: z
-      .array(
-        z.object({ step_index: number.int().nonnegative(), frames: number.int().nonnegative() }).strict(),
-      )
-      .optional(),
+    tracking_error: z.string().min(1).nullable(),
+    live_frame: frameSchema.nullable(),
+    held_frame: frameSchema.nullable(),
+    healthy_s: number.nonnegative(),
+    step_index: number.int().nonnegative().nullable(),
+    completed_steps: z.array(
+      z.object({ step_index: number.int().nonnegative(), frames: number.int().nonnegative() }).strict(),
+    ),
     pending: z.boolean(),
   })
   .strict();
@@ -193,8 +200,8 @@ export const inspectionSchema = z
     id: z.string().uuid(),
     drone_id: z.enum(droneIds),
     plan_version: number.int().positive(),
-    prompt: z.string().min(1),
-    threshold: number.min(0).max(1),
+    prompt: z.string().min(1).max(100),
+    threshold: number.min(0.1).max(1),
     status: z.enum(['running', 'candidate', 'complete', 'stopped', 'failed']),
     started_at_ms: number.nonnegative(),
     deadline_ms: number.nonnegative(),
@@ -230,7 +237,6 @@ export const inspectionSchema = z
         (inspection.latest !== null && inspection.latest.detections.length > 0)) &&
       (!inspection.rescue?.track ||
         (inspection.latest !== null &&
-          inspection.rescue.track.candidate_index < inspection.latest.detections.length &&
           inspection.rescue.track.box_xyxy.every((value) => value >= 0) &&
           inspection.rescue.track.box_xyxy[0] < inspection.rescue.track.box_xyxy[2] &&
           inspection.rescue.track.box_xyxy[1] < inspection.rescue.track.box_xyxy[3] &&
@@ -252,6 +258,7 @@ export function EvidenceImage({
   width,
   height,
   selection,
+  mask,
   onError,
 }: {
   src: string;
@@ -259,9 +266,11 @@ export function EvidenceImage({
   width: number;
   height: number;
   selection?: [number, number, number, number];
+  mask?: z.infer<typeof maskSchema>;
   onError: (message: string) => void;
 }) {
   const [state, setState] = useState<'loading' | 'loaded' | 'failed'>('loading');
+  const maskId = useId();
   return (
     <>
       {state === 'loading' && <p role="status">Loading evidence image…</p>}
@@ -284,18 +293,45 @@ export function EvidenceImage({
               onError(`${label} unavailable: ${src}`);
             }}
           />
-          {selection && (
+          {(selection || mask) && (
             <svg
               className="gcs-finding-selection"
               viewBox={`0 0 ${width} ${height}`}
               aria-label="Selected candidate outline"
             >
-              <rect
-                x={selection[0]}
-                y={selection[1]}
-                width={selection[2] - selection[0]}
-                height={selection[3] - selection[1]}
-              />
+              {mask && (
+                <>
+                  <defs>
+                    <mask id={maskId} maskUnits="userSpaceOnUse" x="0" y="0" width={width} height={height}>
+                      <image
+                        href={mask.ref}
+                        x={mask.origin_xy[0]}
+                        y={mask.origin_xy[1]}
+                        width={mask.width}
+                        height={mask.height}
+                        onError={() => {
+                          setState('failed');
+                          onError(`Evidence mask unavailable: ${mask.ref}`);
+                        }}
+                      />
+                    </mask>
+                  </defs>
+                  <rect
+                    className="gcs-evidence-mask"
+                    width={width}
+                    height={height}
+                    mask={`url(#${maskId})`}
+                  />
+                </>
+              )}
+              {selection && (
+                <rect
+                  x={selection[0]}
+                  y={selection[1]}
+                  width={selection[2] - selection[0]}
+                  height={selection[3] - selection[1]}
+                />
+              )}
             </svg>
           )}
         </div>
@@ -318,16 +354,11 @@ export function FindingCard({
 }) {
   const inspection = inspectionSchema.parse(event.result);
   const finding = findingArgumentsSchema.parse(event.arguments);
-  const [showMask, setShowMask] = useState(false);
   const frame = inspection.latest;
   if (!frame || frame.frame_id !== finding.frame_id || inspection.id !== finding.inspection_id)
     throw new Error('Finding does not identify its recorded inspection frame.');
   const candidate = frame.detections[finding.candidate_index];
   if (!candidate) throw new Error('Finding does not identify a recorded candidate.');
-  const review = inspection.rescue?.reports.find(
-    ({ candidate_index, images }) =>
-      candidate_index === finding.candidate_index && images.frame_id === frame.frame_id,
-  );
   const confirmation = events
     .filter((item) => item.kind === 'evidence_confirmation')
     .map((item) => evidenceConfirmationSchema.parse(item.result))
@@ -337,7 +368,6 @@ export function FindingCard({
     : null;
   if (confirmation && (!operator || operator.text !== confirmation.statement))
     throw new Error('Evidence confirmation does not match its recorded operator message.');
-  const hero = review ? review.images.crop_ref : frame.frame_ref;
   return (
     <article
       className={`gcs-evidence-card gcs-finding ${finding.assessment}`}
@@ -363,19 +393,16 @@ export function FindingCard({
       </header>
       <figure className="gcs-evidence-frame gcs-finding-image" data-frame-id={frame.frame_id}>
         <EvidenceImage
-          key={hero}
-          src={hero}
-          width={review ? 512 : frame.width}
-          height={review ? 512 : frame.height}
-          selection={review ? undefined : candidate.box_xyxy}
-          label={`${inspection.drone_id} selected candidate ${finding.candidate_index + 1}${review ? ', exact Glimmer crop' : ', original frame'}`}
+          key={frame.frame_ref}
+          src={frame.frame_ref}
+          width={frame.width}
+          height={frame.height}
+          selection={candidate.box_xyxy}
+          mask={candidate.mask}
+          label={`${inspection.drone_id} selected candidate ${finding.candidate_index + 1}, original 4K frame`}
           onError={onError}
         />
-        <figcaption>
-          {review
-            ? 'Exact crop reviewed by Glimmer'
-            : `Original frame · candidate ${finding.candidate_index + 1} outlined`}
-        </figcaption>
+        <figcaption>Original 4K frame · candidate {finding.candidate_index + 1} mask and outline</figcaption>
       </figure>
       <p className="gcs-evidence-provenance">Captured {pacificTimestamp(frame.captured_at_ms)}</p>
       {inspection.rescue?.tracking_error && (
@@ -428,7 +455,7 @@ export function FindingCard({
         )}
         {inspection.rescue?.track && (
           <p className="gcs-evidence-provenance">
-            Recorded track for candidate {inspection.rescue.track.candidate_index + 1} at{' '}
+            Recorded track {inspection.rescue.track.track_id} at{' '}
             {pacificTimestamp(inspection.rescue.track.captured_at_ms)}.
           </p>
         )}
@@ -437,28 +464,6 @@ export function FindingCard({
             Candidate could not be followed: {inspection.rescue.tracking_error}
           </p>
         )}
-        <>
-          <p className="gcs-evidence-provenance">
-            Forward camera · captured {pacificTimestamp(frame.captured_at_ms)}
-          </p>
-          <figure className="gcs-evidence-frame" data-frame-id={frame.frame_id}>
-            <EvidenceImage
-              key={showMask ? frame.overlay_ref : frame.frame_ref}
-              src={showMask ? frame.overlay_ref : frame.frame_ref}
-              width={frame.width}
-              height={frame.height}
-              label={`${inspection.drone_id} inspection of ${inspection.prompt}${showMask ? ' with SAM masks' : ', original image'}`}
-              onError={onError}
-            />
-            <figcaption>
-              Recorded inspection frame · {frame.detections.length}{' '}
-              {frame.detections.length === 1 ? 'candidate' : 'candidates'}
-            </figcaption>
-          </figure>
-          <button onClick={() => setShowMask(!showMask)}>
-            {showMask ? 'Show original image' : 'Show SAM masks'}
-          </button>
-        </>
         {inspection.rescue && (
           <ReviewDetails
             droneId={inspection.drone_id}
@@ -486,28 +491,19 @@ export function ReviewDetails({
         Candidate {candidate_index + 1} · {reviewDecision[report.decision]}
       </h4>
       <p>{report.reason}</p>
-      <p className="gcs-evidence-provenance">
-        Exact images reviewed by Glimmer · source frame {images.frame_id}
-      </p>
-      {(['crop', 'context'] as const).map((kind) => {
-        const src = images[`${kind}_ref`];
-        const [x1, y1, x2, y2] = images[`${kind}_box`];
-        return (
-          <figure key={src} className="gcs-evidence-frame" data-frame-id={images.frame_id}>
-            <EvidenceImage
-              src={src}
-              width={512}
-              height={512}
-              label={`${droneId} candidate ${candidate_index + 1} ${kind === 'crop' ? 'detail' : 'wider context'}`}
-              onError={onError}
-            />
-            <figcaption>
-              {kind === 'crop' ? 'Candidate detail' : 'Wider context'} · source region ({x1}, {y1}) to ({x2},{' '}
-              {y2}); {x2 - x1} × {y2 - y1} pixels resized to 512 × 512.
-            </figcaption>
-          </figure>
-        );
-      })}
+      <p className="gcs-evidence-provenance">Original 4K frame reviewed by Glimmer</p>
+      <figure className="gcs-evidence-frame" data-frame-id={images.frame_id}>
+        <EvidenceImage
+          src={images.frame_ref}
+          width={3840}
+          height={2160}
+          selection={images.box_xyxy}
+          mask={images.mask}
+          label={`${droneId} candidate ${candidate_index + 1}, full frame reviewed by Glimmer`}
+          onError={onError}
+        />
+        <figcaption>Original forward camera · 3840 × 2160</figcaption>
+      </figure>
       <dl className="gcs-argument-values">
         {report.observations.map((observation) => (
           <div key={observation.attribute_id}>

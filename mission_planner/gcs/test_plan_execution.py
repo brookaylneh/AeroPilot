@@ -13,11 +13,14 @@ from unittest.mock import AsyncMock, Mock
 from mission_planner.environment import ROOT
 from mission_planner.gcs.fleet import MAV, Fleet
 from mission_planner.gcs.planner import mission_readback
+from mission_planner.gcs.rejection import PlanRejected
 from mission_planner.gcs.service import Mission
-from mission_planner.gcs.test_planner import airborne, fly, hover, plan, states
+from mission_planner.gcs.test_planner import airborne, fly, hover, plan, search_plan, states
 from mission_planner.gcs.test_validation import HOME_HEIGHTS, readback
-from mission_planner.gcs.validation import RouteConflict, validate_separation
+from mission_planner.gcs.validation import validate_separation
 from world.cosys.landmarks import load
+
+TRIGGER = {"source": "agent", "event_id": "operator-1", "text": "Go to the new destination"}
 
 
 def fleet(current):
@@ -70,7 +73,7 @@ def mission(current):
     owner.fleet = fleet(current)
     owner.fleet_ready, owner.fleet_error = True, None
     owner.search = SimpleNamespace(status="unplanned", paused={})
-    owner.events = [{"kind": "operator", "text": "Go to the new destination"}]
+    owner.events = [{"id": "operator-1", "kind": "operator", "text": "Go to the new destination"}]
     owner.event = Mock()
     owner.autopilot_alerts = {}
     owner.fleet.on_event = owner.fleet_event
@@ -106,6 +109,46 @@ async def pending_approval(owner):
 
 
 class PlanApplication(unittest.IsolatedAsyncioTestCase):
+    async def test_survey_progress_preserves_absolute_pattern_index_across_changes(self):
+        current = airborne(-745, -55, 40)
+        owner = mission(current)
+        request = search_plan()
+        request["drones"] = request["drones"][:1]
+        owner.plan_active = await owner.fleet.preview_plan(request)
+        first = owner.plan_active["missions"]["Drone1"]["step_ranges"][0]
+        current[0]["mission_current"] = first["survey_seqs"][1] + 1
+        progress = owner.planner_state()["progress"]["Drone1"]
+        self.assertEqual(progress["survey_start_at"], 2)
+        self.assertEqual(progress["completed_steps"], [])
+        request["version"] = 2
+        request["search"]["zoom"] = 1
+        request["drones"][0]["steps"][0].update(start_at=progress["survey_start_at"], speed_mps=10)
+        owner.plan_active = await owner.fleet.preview_plan(request)
+        updated = owner.plan_active["missions"]["Drone1"]["step_ranges"][0]
+        current[0]["mission_current"] = updated["survey_seqs"][0] + 1
+        self.assertEqual(owner.planner_state()["progress"]["Drone1"]["survey_start_at"], 3)
+        owner.fleet._command.assert_not_awaited()
+
+    async def test_divide_survey_is_a_read_tool_with_no_flight_side_effects(self):
+        owner = mission(states())
+        request = search_plan()
+        step = request["drones"][0]["steps"][0]
+        result = await owner.execute(
+            "divide_survey",
+            {
+                "drone_ids": [d["drone_id"] for d in request["drones"]],
+                **{k: v for k, v in step.items() if k not in ("kind", "observe")},
+                "polygon": request["search"]["perimeter"],
+            },
+            "agent",
+            "divide",
+        )
+        self.assertEqual(len(result["drones"]), 4)
+        self.assertTrue(all(d["steps"][0]["kind"] == "survey" for d in result["drones"]))
+        self.assertIsNone(owner.plan_preview)
+        self.assertFalse(owner.approvals)
+        owner.fleet._command.assert_not_awaited()
+
     async def test_all_launches_arm_before_fresh_references_and_auto_without_rewriting_upload(self):
         current = states()
         value = fleet(current)
@@ -252,7 +295,7 @@ class PlanApplication(unittest.IsolatedAsyncioTestCase):
                 self.assertFalse(result["ok"])
                 self.assertIsNone(owner.plan_preview)
                 self.assertIs(owner.plan_active, active)
-                self.assertEqual(owner.plan_trigger, "Go to the new destination")
+                self.assertEqual(owner.plan_trigger, TRIGGER)
                 with self.assertRaisesRegex(AssertionError, "Preview this plan version"):
                     await owner.execute("request_launch", {"version": 1}, "agent", "stale")
                 owner.inspections.close.assert_not_awaited()
@@ -262,19 +305,21 @@ class PlanApplication(unittest.IsolatedAsyncioTestCase):
     async def test_conflict_geometry_reaches_wonder_and_the_event_log(self):
         owner = mission(airborne())
         point = {"north_m": -750, "east_m": -2.5, "altitude_above_home_m": 40}
-        with self.assertRaises(RouteConflict) as caught:
+        with self.assertRaises(PlanRejected) as caught:
             validate_separation("Drone1", [point], [("Drone3", [point])], HOME_HEIGHTS)
         owner.fleet.preview_plan = AsyncMock(side_effect=caught.exception)
         result = await owner.invoke(
             "preview_plan", {"plan": plan([fly(-730, -2.5), hover()])}, "agent", "p"
         )
         self.assertFalse(result["ok"])
-        self.assertEqual(result["conflict"], caught.exception.conflict)
+        self.assertEqual(result["rejection"]["conflict"], caught.exception.rejection["conflict"])
+        self.assertEqual(result["rejection"]["rule"], "separation")
+        self.assertEqual(result["rejection"]["version"], 1)
         self.assertIn("measured 0.000000 m", result["error"])
         logged = owner.event.call_args_list[-1]
         self.assertEqual(logged.args[0], "plan_version")
-        self.assertEqual(logged.kwargs["result"]["conflict"], result["conflict"])
-        self.assertEqual(logged.kwargs["result"]["trigger"], "Go to the new destination")
+        self.assertEqual(logged.kwargs["result"]["rejection"], result["rejection"])
+        self.assertEqual(logged.kwargs["result"]["trigger"], TRIGGER)
         owner.fleet._upload.assert_not_awaited()
 
     async def test_fresh_plan_rejection_keeps_the_existing_inspection_active(self):
@@ -289,7 +334,7 @@ class PlanApplication(unittest.IsolatedAsyncioTestCase):
     async def test_tracking_ownership_blocks_competing_yaw_and_raw_flight(self):
         owner = mission(airborne())
         owner.inspections.snapshot.return_value = [
-            {"drone_id": "Drone1", "rescue": {"phase": "locked"}}
+            {"drone_id": "Drone1", "rescue": {"phase": "tracking"}}
         ]
         with self.assertRaisesRegex(AssertionError, "tracking owns"):
             await owner.execute(
@@ -297,17 +342,28 @@ class PlanApplication(unittest.IsolatedAsyncioTestCase):
             )
         with self.assertRaisesRegex(AssertionError, "tracking owns"):
             await owner.execute(
-                "fly_to",
+                "fly_route",
                 {
                     "drone_id": "Drone1",
-                    "north_m": 0,
-                    "east_m": 0,
-                    "altitude_above_home_m": 30,
+                    "waypoints": [{"north_m": 0, "east_m": 0, "altitude_above_home_m": 30}],
                     "speed_mps": 5,
                 },
                 "operator",
                 "fly",
             )
+
+    async def test_relock_candidate_dispatches_to_the_held_session(self):
+        owner = mission(airborne())
+        arguments = {"inspection_id": "inspection", "frame_id": "hold-frame", "candidate_index": 1}
+        outcome = {"inspection_id": "inspection", "frame": {"frame_id": "locked-frame"}}
+        owner.inspections.relock_candidate = AsyncMock(return_value=outcome)
+        result = await owner.execute("relock_candidate", arguments, "agent", "relock")
+        self.assertEqual(result, outcome)
+        owner.inspections.relock_candidate.assert_awaited_once_with(**arguments)
+        owner.fleet._mode.assert_not_awaited()
+        owner.plan_task = object()
+        with self.assertRaisesRegex(AssertionError, "already in progress"):
+            await owner.execute("relock_candidate", arguments, "agent", "relock-busy")
 
     async def test_inspection_dispatch_does_not_point_or_hold_the_drone(self):
         owner = mission(airborne())

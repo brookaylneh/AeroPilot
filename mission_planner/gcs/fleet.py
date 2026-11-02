@@ -44,10 +44,10 @@ from mission_planner.gcs.planner import (  # noqa: E402
     mission_readback,
     validate_missions,
 )
+from mission_planner.gcs.rejection import separation
 from mission_planner.gcs.sitl import check_ports, launches  # noqa: E402
 from mission_planner.gcs.validation import (  # noqa: E402
     CLEARANCE_M,
-    RouteConflict,
     separation_conflict,
     validate_ground_column,
     validate_position,
@@ -443,8 +443,6 @@ class Fleet:
             MAV.EKF_CONST_POS_MODE | MAV.EKF_UNINITIALIZED
         )
 
-    _item = staticmethod(mission_item)
-
     async def _upload(self, name, items, mission_type):
         assert items
         vehicle = self.vehicles[name]
@@ -698,7 +696,7 @@ class Fleet:
                 if conflict is not None:
                     other = next(s for s in states if s["id"] == conflict["other_drone_id"])
                     if other["mode"] != "RTL" or not other["armed"]:
-                        raise RouteConflict(conflict)
+                        raise separation(conflict)
                     if waiting is None:
                         waiting = conflict
             if waiting is not None:
@@ -1243,7 +1241,7 @@ class Fleet:
                     if name == "fly_route":
                         items = [mission_home(state["home"])]
                         items.extend(
-                            self._item(p, p["altitude_above_home_m"], MAV.MAV_CMD_NAV_WAYPOINT)
+                            mission_item(p, p["altitude_above_home_m"], MAV.MAV_CMD_NAV_WAYPOINT)
                             for p in route
                         )
                         await self.upload_mission(drone, items)

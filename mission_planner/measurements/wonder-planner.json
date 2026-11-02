@@ -1,5 +1,45 @@
 {
   "schema_version": 1,
+  "search_coverage_update": {
+    "status": "deployed; offline checks passed; operator live test pending",
+    "evidence_root": ".local/evidence/wonder-planner/20261102T031005Z-coverage",
+    "checks": {
+      "python": {
+        "tests": 634,
+        "elapsed_s": 180.975,
+        "log": ".local/evidence/wonder-planner/20261102T031005Z-coverage/unittest.log"
+      },
+      "web": {
+        "tests": 188,
+        "elapsed_ms": 3527.798986,
+        "log": ".local/evidence/wonder-planner/20261102T031005Z-coverage/npm-test-final.log"
+      },
+      "typecheck": ".local/evidence/wonder-planner/20261102T031005Z-coverage/typecheck.log",
+      "format_check": ".local/evidence/wonder-planner/20261102T031005Z-coverage/format-check-final.log",
+      "ruff_check": ".local/evidence/wonder-planner/20261102T031005Z-coverage/ruff-check-final.log",
+      "ruff_format": ".local/evidence/wonder-planner/20261102T031005Z-coverage/ruff-format-final.log",
+      "build": ".local/evidence/wonder-planner/20261102T031005Z-coverage/build.log",
+      "diff_check": ".local/evidence/wonder-planner/20261102T031005Z-coverage/diff-check.log"
+    },
+    "source_mission": "08730c37-e843-4817-adc0-ede7f9044b08",
+    "recorded_perimeter": {
+      "area_m2": 360000.0,
+      "original_assigned_percent": 18.75,
+      "divided_assigned_percent": 100.0,
+      "divided_unassigned_m2": 0.0,
+      "replay": ".local/evidence/wonder-planner/20261102T031005Z-coverage/recorded-perimeter.json"
+    },
+    "shapely_version": "2.1.2",
+    "deployment": ".local/evidence/wonder-planner/20261102T031005Z-coverage/deployment.json",
+    "readiness": ".local/evidence/wonder-planner/20261102T031005Z-coverage/ready.json",
+    "paid_model_calls": 0,
+    "live_flights": 0,
+    "limits": [
+      "Assignment area is not measured camera visibility or detection recall.",
+      "Recorded-perimeter replay starts each synthetic aircraft at its first survey point and includes survey and return; complete grounded launch/search/return cases are covered by test_planner_flights.",
+      "Capture cadence was not changed; live model adherence and flight are for operator testing."
+    ]
+  },
   "status": "implementation and testing completed; live acceptance failed on camera-quality and browser errors, with browser correction verified by recorded replay",
   "evidence_root": ".local/evidence/wonder-planner/20261031T165235Z",
   "offline_safety": {

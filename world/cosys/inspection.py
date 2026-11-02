@@ -171,8 +171,8 @@ class ForwardCapture:
         response = responses[0]
         assert not response.message, response.message
         assert response.camera_name == "fpv", "Forward capture returned the wrong camera"
-        assert (response.width, response.height) == (1920, 1080), (
-            "Forward capture requires the installed 1920x1080 camera settings"
+        assert (response.width, response.height) == (3840, 2160), (
+            "Forward capture requires the installed 3840x2160 camera settings"
         )
         assert len(response.image_data_uint8) == response.width * response.height * 3
         fraction, unix_ns = capture_time(response.time_stamp, before, after)

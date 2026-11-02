@@ -60,7 +60,7 @@ class SettingsTests(unittest.TestCase):
         scene = next(
             c for c in settings["CameraDefaults"]["CaptureSettings"] if c["ImageType"] == 0
         )
-        self.assertEqual((scene["Width"], scene["Height"]), (1920, 1080))
+        self.assertEqual((scene["Width"], scene["Height"]), (3840, 2160))
         self.assertFalse(scene["ForceUpdate"])
         for vehicle in settings["Vehicles"].values():
             self.assertNotIn("fpv", vehicle["Cameras"])

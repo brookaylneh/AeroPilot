@@ -7,10 +7,11 @@ from unittest.mock import AsyncMock
 
 from mission_planner.gcs.fleet import remaining_route
 from mission_planner.gcs.geodesy import NAMES, rtl_route
+from mission_planner.gcs.rejection import PlanRejected
 from mission_planner.gcs.test_plan_execution import mission
 from mission_planner.gcs.test_planner import states
 from mission_planner.gcs.test_validation import HOME_HEIGHTS
-from mission_planner.gcs.validation import RouteConflict, validate_separation
+from mission_planner.gcs.validation import validate_separation
 
 
 def returning_fleet():
@@ -64,7 +65,7 @@ class RemainingReservations(unittest.TestCase):
         drifting = {**start, "north_m": 0.4, "altitude_above_home_m": 45}
         remaining = remaining_route(drifting, route)
         climb_point = {"north_m": 1, "east_m": 0, "altitude_above_home_m": 60}
-        with self.assertRaises(RouteConflict):
+        with self.assertRaises(PlanRejected):
             validate_separation("Drone4", [climb_point], [("Drone1", remaining)], HOME_HEIGHTS)
         self.assertEqual(remaining, [drifting, *route])
 
@@ -72,7 +73,7 @@ class RemainingReservations(unittest.TestCase):
         fleet = returning_fleet()
         two, four = fleet[1], fleet[3]
         route = rtl_route(copy.deepcopy(two))
-        with self.assertRaises(RouteConflict):
+        with self.assertRaises(PlanRejected):
             validate_separation("Drone4", rtl_route(four), [("Drone2", route)], HOME_HEIGHTS)
         two.update(
             mode="RTL",
@@ -80,7 +81,7 @@ class RemainingReservations(unittest.TestCase):
             east_m=two["home"]["east_m"],
             altitude_above_home_m=70,
         )
-        with self.assertRaises(RouteConflict):
+        with self.assertRaises(PlanRejected):
             validate_separation(
                 "Drone4", rtl_route(four), [("Drone2", remaining_route(two, route))], HOME_HEIGHTS
             )
@@ -273,7 +274,7 @@ class CoordinatedReturn(unittest.IsolatedAsyncioTestCase):
             east_m=(route[1]["east_m"] + route[2]["east_m"]) / 2,
             altitude_above_home_m=80,
         )
-        with self.assertRaisesRegex(RouteConflict, "conflicts with Drone2"):
+        with self.assertRaisesRegex(PlanRejected, "conflicts with Drone2"):
             await self.owner.fleet.return_step("Drone4")
         self.assertFalse(self.rtl_calls("Drone4"))
 

@@ -17,7 +17,7 @@ from mission_planner.gcs.geodesy import (
     NORTH_MAX_M,
     NORTH_MIN_M,
 )
-from mission_planner.gcs.planner import PLAN_SCHEMA
+from mission_planner.gcs.planner import PLAN_SCHEMA, STEP_FIELDS
 
 DRONE = {"type": "string", "enum": list(NAMES)}
 POSITION = {"type": "number", "minimum": EAST_MIN_M, "maximum": EAST_MAX_M}
@@ -48,6 +48,7 @@ INSPECTION_TOOLS = {
     "get_candidate",
     "center_candidate",
     "follow_candidate",
+    "relock_candidate",
 }
 WAIT_CONDITION = {
     "anyOf": [
@@ -73,11 +74,11 @@ DEFINITIONS = [
         "set_camera_view",
         "vision",
         "Centre a drone's forward camera on a world point and set 1–4x render zoom. "
-        "height_m is the target's height above terrain, not flight altitude. Affects SAM and "
+        "height_m is the target's height above terrain, not flight altitude. Affects detection and "
         "live video, without flying the aircraft. Works while flying; set the view before "
         "start_inspection. Stop an ongoing general inspection first. The observed step owns "
         "its camera while searching; change plan.search to change its view. Candidate camera "
-        "adjustments preserve the selected temporal track; do not use Hold to get a closer look. "
+        "adjustments preserve the SAM session; do not use Hold to get a closer look. "
         "Returns verified FOV and camera revision. Read get_candidate after adjustment to review "
         "the current image. Use an image-derived target point, not the drone position.",
         {
@@ -91,21 +92,25 @@ DEFINITIONS = [
     (
         "get_candidate",
         "vision",
-        "Read the current image of an actively tracked candidate, including its exact frame ID, "
-        "mask and image-derived location. Supplies the images for your review without starting "
-        "another inspection or changing flight. Fails if the live observation is stale or lost. "
-        "Use after a camera adjustment to inspect the closer view; do not repeatedly poll it. "
-        "Unavailable when rescue.tracking_error is non-null; camera aiming cannot restore that session.",
+        "Read the original 4K image of a candidate session, with its frame ID, source-pixel "
+        "boxes, track IDs and image-derived locations. While tracking it returns the selected "
+        "track; while held (rescue.tracking_error non-null) it returns all observed tracks. "
+        "candidate_index is the zero-based position in that frame's detections list, not track_id. "
+        "Supplies the original image without crops or overlays for "
+        "your review without starting another inspection or changing flight. Fails if no fresh "
+        "frame arrives. Use after a camera adjustment or before relock_candidate; do not "
+        "repeatedly poll it.",
         {"inspection_id": {"type": "string", "minLength": 1}},
     ),
     (
         "center_candidate",
         "vision",
         "Centre the camera on the actively tracked subject and set 1–4x zoom without ending "
-        "its temporal session or changing flight. Uses the selected subject's fresh location "
+        "its SAM session or changing flight. Uses the selected subject's fresh location "
         "at application time, so you need not copy an ageing coordinate. Waits for and supplies "
-        "the next verified camera frame for review. Unavailable when rescue.tracking_error "
-        "is non-null; do not try get_candidate or follow_candidate on that same lost session.",
+        "the next verified camera frame for review. Automatic following already centres on "
+        "its subject. A camera change must retain observed correspondence before movement. "
+        "Unavailable when rescue.tracking_error is non-null; use relock_candidate instead.",
         {
             "inspection_id": {"type": "string", "minLength": 1},
             "zoom": {"type": "number", "minimum": 1, "maximum": 4},
@@ -114,21 +119,33 @@ DEFINITIONS = [
     (
         "follow_candidate",
         "flight",
-        "Explicitly acquire and follow the selected candidate from an inspection frame using "
-        "SAM video tracking. Requires an airborne participant in the active search plan and "
-        "uses that plan's perimeter, height, stand-off and speed limits. duration_s bounds a new "
-        "acquisition within its approved candidate allowance; an existing session keeps its "
-        "original deadline. Current image correspondence must be established "
-        "before movement; the seed frame's recorded position never authorizes flight. A lost "
-        "track holds and reports failure without automatic reacquisition. An existing valid "
-        "search candidate already follows and does not need this tool merely to keep watching. "
-        "For an existing rescue session, rescue.tracking_error must be null; this tool cannot "
-        "restart a lost session. New acquisition requires a distinct completed inspection.",
+        "Set a duration_s deadline on the currently observed candidate's automatic follow, "
+        "then hold. Requires an active observed-plan lock with rescue.tracking_error null "
+        "and the same track_id as the selected evidence. Uses the approved perimeter, "
+        "height, stand-off and speed. Does not acquire a historical or one-shot inspection "
+        "candidate. Automatic following already runs while Glimmer and Wonder review; "
+        "this tool is needed only to set an explicit follow duration. A lost track holds; "
+        "use relock_candidate to select a currently visible track.",
         {
             "inspection_id": {"type": "string", "minLength": 1},
             "frame_id": {"type": "string", "minLength": 1},
             "candidate_index": {"type": "integer", "minimum": 0},
             "duration_s": {"type": "number", "minimum": 1, "maximum": 65535},
+        },
+    ),
+    (
+        "relock_candidate",
+        "flight",
+        "Re-lock a held session on a detection from an original 4K hold frame you reviewed. "
+        "candidate_index selects that frame's zero-based detections entry. SAM must "
+        "still observe its track_id in a fresh frame with at least two observations before "
+        "following resumes. Fails without retry if the frame left the 30-second buffer, "
+        "the camera revision changed or the selected ID is no longer observed. Never infer "
+        "identity from a detector label alone. Returns the first locked frame for review.",
+        {
+            "inspection_id": {"type": "string", "minLength": 1},
+            "frame_id": {"type": "string", "minLength": 1},
+            "candidate_index": {"type": "integer", "minimum": 0},
         },
     ),
     (
@@ -179,16 +196,17 @@ DEFINITIONS = [
     (
         "start_inspection",
         "vision",
-        "Inspect a requested visible subject with the forward camera at one frame per second. "
+        "Inspect a requested visible subject with SAM 3.1 at a target of five frames per second. "
         "Requires a healthy airborne drone with a verified flight plan and no active search job. "
         "Samples the camera's actual view while flying, turning, climbing or hovering; "
-        "does not change flight, speed or heading. Start SAM with your prompt and threshold. "
-        "Stops at the first candidate, duration_s deadline, or error. Returns an inspection ID; "
-        "use wait_for to receive exact images for your review. This does not identify or locate a target.",
+        "does not change flight, speed or heading. Inference is 1080p; evidence is the original "
+        "4K JPEG. Stops at the first stable track above threshold, duration_s deadline, or error. "
+        "Returns an inspection ID; use wait_for to receive its image. For automatic pause/follow "
+        "and Glimmer review use observe:true on a plan step instead.",
         {
             "drone_id": DRONE,
-            "prompt": {"type": "string", "minLength": 1, "maxLength": 500},
-            "threshold": {"type": "number", "minimum": 0, "maximum": 1},
+            "prompt": {"type": "string", "minLength": 1, "maxLength": 100},
+            "threshold": {"type": "number", "minimum": 0.1, "maximum": 1},
             "duration_s": {"type": "number", "minimum": 1, "maximum": 65535},
         },
     ),
@@ -196,7 +214,7 @@ DEFINITIONS = [
         "face_heading",
         "flight",
         "Explicitly turn an airborne drone to heading_deg clockwise from north during its "
-        "verified AUTO mission. Preserves flight path, speed and mode; does not start SAM. "
+        "verified AUTO mission. Preserves flight path, speed and mode; does not start detection. "
         "Returns measured heading after alignment. A subsequent navigation item may reset yaw; "
         "a mission/item change while aligning returns an error. Inspection can proceed without "
         "this tool when the existing camera view suits the task.",
@@ -284,12 +302,6 @@ DEFINITIONS = [
         },
     ),
     (
-        "fly_to",
-        "flight",
-        "Use for one destination in GUIDED. Requires healthy armed airborne drone, inside-fence destination, 10–100 m altitude and route separation.",
-        {"drone_id": DRONE, **POINT["properties"], "speed_mps": SPEED},
-    ),
-    (
         "hold",
         "flight",
         "Use to brake and hold position in BRAKE. Requires healthy armed airborne drone inside its read-back fence.",
@@ -361,6 +373,21 @@ DEFINITIONS.extend(
             },
         ),
         (
+            "divide_survey",
+            "read",
+            "Divide your chosen perimeter into adjoining observed zigzag survey sectors, one "
+            "per supplied drone, without gaps. Aircraft order runs from minimum to maximum "
+            "cross-track coordinate for bearing_deg. Returns ordinary survey steps; add your "
+            "own takeoff, ingress and aftermath, then preview the complete plan. This tool "
+            "does not fly, choose bounds, avoid fences or certify camera visibility. Prefer "
+            "all four available drones for a missing-person area search; other counts and "
+            "patterns remain your choices when justified by the task.",
+            {
+                "drone_ids": {"type": "array", "items": DRONE, "minItems": 1, "maxItems": 4},
+                **STEP_FIELDS["survey"],
+            },
+        ),
+        (
             "expanding_square",
             "read",
             "Construct one ordinary follow step around a reliable datum: a one-spacing lead-in before the datum, then clockwise leg pairs S,S,2S,2S. You choose extent, bearing, height and speed. Add observe:true only when automatic search is wanted, choose ingress/egress, and preview the complete plan. This tool neither flies nor clips unsafe points nor guarantees coverage.",
@@ -377,7 +404,7 @@ DEFINITIONS.extend(
         (
             "preview_plan",
             "view",
-            "Compile a complete remaining plan, check all safety constraints and draw the mission without flying. Version must exceed the active version, including after landing or a new chat. Returns route, distance, duration and battery budget; separation errors identify both drones, steps and conflicting segments. Transit/return may leave the search perimeter but must stay inside the world flight fence. Entire routes reserve space regardless of arrival time. Revise only plan choices implicated by a rejection; preserve the agreed task.",
+            "Compile a complete remaining plan, check safety and draw it without flying. Version must exceed the active version. Returns route, timing, battery and coverage: the union of assigned survey areas and unassigned perimeter area, not measured visibility. Inspect coverage before approval; a safe route alone does not cover a search area. Separation errors identify both drones, steps and segments. Entire routes reserve space regardless of timing. Transit/return may leave the search perimeter but must satisfy all flight fences. Revise implicated choices while preserving the task.",
             {"plan": PLAN_SCHEMA},
         ),
         (
@@ -427,9 +454,7 @@ next(tool for tool in TOOLS if tool["name"] == "preview_plan")["strict"] = False
 CATEGORIES = {name: category for name, category, _, _ in DEFINITIONS}
 SCHEMAS = {tool["name"]: Draft202012Validator(tool["parameters"]) for tool in TOOLS}
 assert len(SCHEMAS) == len(TOOLS)
-TOOLS = [
-    tool for tool in TOOLS if tool["name"] not in ("take_off", "fly_to", "fly_route", "resume")
-]
+TOOLS = [tool for tool in TOOLS if tool["name"] not in ("take_off", "fly_route", "resume")]
 AGENT_INSTRUCTIONS = """You are Wonder, the operator's four-drone mission commander.
 Speak like a calm field commander. During flight, give one short status line: drone or fleet, action, location relative to a named landmark, and next action or remaining time when measured. Use the supplied landmark_location for an observation; call describe_location only when that description is absent. Do not invent a landmark relation. Avoid coordinate dumps, repeated plans, model plumbing and narrating each tool call. Put visible attributes, uncertainty and exact image details in publish_evidence summaries and the expandable review cards. For example, a supported observation can be reported as: "Drone1 has a possible match south of Meadow Creek; centring the camera for a closer look." Never turn a possible match into confirmed identity. Launch summaries must still state the agreed flight/camera values and aftermath. Real command or sensing failures get a concise action-oriented status; exact errors remain in the tool/log detail. Answer direct operator questions clearly. Carry out already authorized changes without asking for another confirmation; only a new drone launch needs approval.
 Use only supplied briefing and measured telemetry; never infer private target truth or claim an action without its tool result. Telemetry is a timestamped observation: state when it was observed rather than presenting an old sample as current. Context contains the logical plan, compact mission metrics and current progress; dense mission encoding remains on the map and in the log. Relevant control, inspection and severe-alert changes invalidate decisions made from earlier state; immediate override-only calls still run against fresh safety checks.
@@ -437,38 +462,38 @@ The flight plan is the proposal. When the destination and objective are clear, c
 Ambiguous names such as 'the trail' or 'the sign' require a question. An unnamed spot requires asking the operator to click the map; use the supplied planner point after the click.
 Write the full ordered steps for each selected drone using the single plan schema. Plan step height_m is metres above ground, not above home. Code converts heights and expands terrain-following, circle, survey and follow steps mechanically. Code never chooses a new transit route, stand-off or avoidance manoeuvre. Transit and return are free to leave the mission's search perimeter and sectors; only searching is assigned to those areas. All flight remains inside the read-back world fence. Plan departures and returns from measured homes, with separate lanes when several drones launch. Use the narrow southern corridor only when a route actually enters that fence extension. The return_home plan step flies a direct terrain-following leg home and lands; add explicit approach points to avoid other paths. It must be the last step; never append land after it. Indefinite hover is seconds=null and is the last step; later operator instructions replace it. If a condition cannot be observed by an available tool, explain that the operator must report it.
 Call preview_plan as soon as you can write a meaningful plan. For a rejected plan, correct only choices implicated by the exact error; preserve the agreed destination, task, aircraft, aftermath and constraints. Explain any revised proposal. Separation diagnostics identify both drones, zero-based step/segment indices, endpoints and measured versus required distance. Correct the named legs; compare outbound paths against every other drone's outbound, return and takeoff/landing columns. An invalid or unavailable aircraft/home reference, unhealthy telemetry, or service failure is a state blocker: report the exact reason and current aircraft state, then stop that planning attempt. Home altitude is a measured reference, not a takeoff height. Do not change flight heights, substitute a shorter task, reset versions or repeatedly query unchanged state to repair it. A new chat and a completed flight retain the active plan version; use a greater version. A rejected preview invalidates its predecessor for launch and leaves active flights unchanged. A successful preview draws the mission. For a launch, state the short checked plan once and immediately call request_launch for its version in the same response; never stop at "shall I proceed?" or wait for "yes, go ahead" in chat. Say preparing before preview, awaiting approval while approval is pending, and departing only after request_launch succeeds. A declined approval ends the request.
-After launch, keep the agreed plan flying while discussing changes. Read live state including active version, current/completed steps, position and battery. A change is a complete remaining plan for every airborne participant: no takeoff or replay of completed steps. Replacement requests change the destination; additions retain existing remaining work and append the new work. Preview a newer version, then apply_plan_change without approval. Code rejoins the actual application-time positions. If adding a landed drone, use request_launch; affected airborne drones hover pending approval. Confirm a successful change in one line with destination and remaining time from the tool result.
+After launch, keep the agreed plan flying while discussing changes. Read active version, current/completed steps, position and battery. A change is a complete remaining plan for every airborne participant: no takeoff or replay of completed steps. For a speed/zoom-only change, retain the survey polygons, bearing and spacing; copy each active survey's progress.survey_start_at into that step's start_at to continue its unfinished pass, and keep later surveys. Do not restart whole sectors for a camera adjustment. Replacement requests change the destination; additions retain unfinished work and append the new work. Preview a newer version, then apply_plan_change without approval. Code rejoins actual application-time positions. If adding a landed drone, use request_launch; affected airborne drones hover pending approval. Confirm the change in one line with destination and remaining time from the tool result.
 Hold, return, land and stop requests need no approval. Before choosing a return command, check flight_constraints.fences. With any saved exclusion, hold the requested aircraft immediately, then preview a remaining plan with explicit fly points around the restrictions and a final return_home step; apply_plan_change after a successful preview. A moving aircraft can turn a clear sampled home leg into a blocked one while you think. The final return_home step must also clear every fence from its preceding waypoint to home with boundary_clearance_m spacing. return_fleet and the return_home tool execute direct RTL and accept no detour points. Use return_fleet when there are no exclusions and the complete straight home legs clear inclusion; use the checked plan workflow for a blocked or uncertain inclusion boundary too. Execute the clear override portion of a mixed request before unrelated search reassignment. A queued return is not an RTL acknowledgement; use its measured status and wait_for landing. Command or network failure is final for that request: report its exact error and never retry or invent an automatic recovery. A historical result acknowledges only its original request.
 Only Drone1, Drone2, Drone3 and Drone4 exist. Reject unknown drone identities without substituting another drone.
 open_feed selects the drone's live video in the operator's browser. Its result acknowledges selection, not video delivery or image inspection; never claim to have inspected an image from its tool result.
 For flight plans, stay responsible until the agreed task is complete. Use wait_for for arrivals, inspection results, deadlines and landing instead of repeatedly polling tools. It wakes on ANY listed condition, not all. Check completed_steps and current drone states after each wake, then wait only on unfinished steps or drones still airborne. It must be the last call in a response and ends that turn. At every automatic wake, reconcile latest_operator_instruction with actual tool results and complete its unfinished parts before waiting. An automatic observation does not replace an operator instruction. For an explicitly requested continuation after failed sensing, preview and apply a safe remaining plan; do not use a failed candidate release or legacy resume. Report any blocker directly instead of quietly leaving the request unfinished. When the returning group has landed, acknowledge completion and the remaining airborne task once; do not repeat a completion already reported in chat. Severe autopilot alerts wake you automatically and remain in context after acknowledgement. Report their exact text and affected drones promptly, distinguish the warning from a confirmed diagnosis, and do not describe the flight as healthy while unresolved alerts remain.
-set_camera_view centres the actual forward camera on a world point and selects 1–4x zoom; height_m is target height above terrain, not drone altitude. Set the view before starting an inspection; captures compensate for aircraft motion by re-aiming at the remembered world target immediately before each frame. This does not promise continuous native-gimbal stabilization between frames. Centre first, then zoom: magnification alone can remove an off-centre subject from view. Prefer a camera close-up before proposing lower flight. Keep an active candidate session running through review and camera close-ups. Use center_candidate with the inspection ID and zoom for a moving selected subject; it centres the fresh application-time observation without copying an old coordinate. The tool supplies the resulting image; use get_candidate for a later observation. A non-null rescue.tracking_error makes every tool in rescue.unavailable_tools unavailable for that inspection. Do not chain center_candidate, get_candidate and follow_candidate against the same lost session. Aiming at its saved location does not restore tracking; review the saved evidence or choose a distinct new observation within the agreed task. set_camera_view remains available for explicit world points. To acquire a selected candidate from fresh evidence, use follow_candidate with an explicit duration within the search policy. Hold ends movement authority; a one-shot inspection does not satisfy a request to stay with a moving subject. An uncertain image is an observation result, not a failed request. If a search candidate cannot be followed, use its timestamped image-derived ground estimate (when available) for aiming; never substitute the aircraft position for the subject. This is a last-seen estimate, not a live target position. Say following or locked only when the current tracking state and fresh observation support it. Otherwise say holding at the last-seen position, with the observation age. A published image or completed Glimmer review does not establish a live track. A new inspection is an explicitly chosen observation, never a retry of a failed request.
+set_camera_view centres the actual forward camera on a world point and selects 1–4x zoom; height_m is target height above terrain, not drone altitude. Set the view before starting an inspection; captures compensate for aircraft motion by re-aiming at the remembered world target immediately before each frame. This does not promise continuous native-gimbal stabilization between frames. Centre first, then zoom: magnification alone can remove an off-centre subject from view. Prefer a camera close-up before proposing lower flight. Keep an active candidate session running through review and camera close-ups. Use center_candidate with the inspection ID and zoom for a moving selected subject; it centres the fresh application-time observation without copying an old coordinate. The tool supplies the resulting image; use get_candidate for a later observation. Every tool in rescue.unavailable_tools is unavailable for that inspection. A non-null rescue.tracking_error means the lock is held; get_candidate then returns numbered hold frames. Aiming at a saved location does not restore tracking; only relock_candidate on an observed track from a frame you reviewed does. set_camera_view remains available for explicit world points. To bound an existing automatic follow, use follow_candidate with an explicit duration. To acquire automatically, preview and apply an observed plan step with the agreed search policy. Hold ends movement authority; a one-shot inspection does not satisfy a request to stay with a moving subject. An uncertain image is an observation result, not a failed request. If a search candidate cannot be followed, use its timestamped image-derived ground estimate (when available) for aiming; never substitute the aircraft position for the subject. This is a last-seen estimate, not a live target position. Say following or locked only when the current tracking state and fresh observation support it. Otherwise say holding at the last-seen position, with the observation age. A published image or completed Glimmer review does not establish a live track. A new inspection is an explicitly chosen observation, never a retry of a failed request.
 After reviewing actual images, publish_evidence selects the accepted frame and candidate_index. Choose assessment=unresolved for a fragment that may be a person, observed for a visible requested subject without a supported match, or matching for visible attributes consistent with the brief. The headline gives the finding and nearest supplied landmark, for example "Person spotted south-west of Aspen Bend", with the strongest visible support when space allows. Put detailed attributes, uncertainty and location in the expandable summary; do not use raw coordinate dumps or invent a landmark relation. A visible person matching clothing is a stronger lead than an unidentified fragment; neither confirms personal identity. The finding is displayed directly to the operator; do not repeat its summary in chat. Glimmer-discarded and unaccepted images remain in their expandable review cards. Do not narrate each rejected rock or signpost. Acknowledge an operator-reported sighting explicitly. When the operator identifies an accepted finding as the intended subject, call confirm_evidence with that finding's id from evidence and latest_operator_instruction.id; its record attributes identification to the operator and preserves their exact statement. Do not infer identification from launch approval or a model score. For an ambiguous report, acknowledge the sighting without recording identification. Report the observation age and current holding/tracking state separately; confirmation does not establish a fresh track.
-Use start_inspection only when the operator asks to look for or check something visible; an ordinary go-to request needs no SAM. Settle the viewing location/stand-off, inspection duration or stopping condition and afterwards before launch. Choose how and when to observe according to the task: inspect during flight, along a line, around a circle, or from a hover when useful. Start on the approach or schedule a wake at a relevant step/time; arrival and hovering are not prerequisites. start_inspection samples the actual forward view at a target of 1 Hz without changing motion or heading; slow successful samples reduce the measured rate, and missed slots are reported. Use face_heading separately if a requested viewing direction requires it; the flight continues and later navigation items may change yaw. Its threshold is a segmentation score cutoff, not a probability of identity.
-A candidate ends that observation job for your review. Wait for its inspection ID to receive the original and masked source images. Review the actual images, not just scores: report supported observations, reject unsupported candidates, or request a distinct further viewpoint within the agreed task. Never retry failed capture/inference. A no-detection deadline supports only 'not detected in these views', never area-wide absence. Drone/camera coordinates are not object coordinates. Never claim to inspect an image unless its image input was supplied. Reviewed image payloads leave the conversation; their frame identifiers and your observations remain. Use wait_for with the inspection ID to receive its images again when needed. After review, stop remaining inspections if no longer needed and carry out the agreed next action. Other drones' terminal inspections remain in context; wait for unreviewed IDs to inspect their evidence. A new plan or override stops inspections on the old flight.
+Use start_inspection only when the operator asks to look for or check something visible; an ordinary go-to request needs no detector. Settle the viewing location/stand-off, inspection duration or stopping condition and afterwards before launch. Choose how and when to observe according to the task: inspect during flight, along a line, around a circle, or from a hover when useful. Start on the approach or schedule a wake at a relevant step/time; arrival and hovering are not prerequisites. start_inspection samples the actual forward view at a target of 5 Hz without changing motion or heading; slow successful samples reduce the measured rate, and missed slots are reported. Use face_heading separately if a requested viewing direction requires it; the flight continues and later navigation items may change yaw. Its threshold is a detector confidence cutoff, not a probability of identity.
+A candidate ends that observation job for your review. Wait for its inspection ID to receive the original full 4K source image, with boxes and track IDs described in metadata. Glimmer and you receive exactly that JPEG without crops, resizing or overlays. Review the actual images, not just scores: report supported observations, reject unsupported candidates, or request a distinct further viewpoint within the agreed task. Never retry failed capture/inference. A no-detection deadline supports only 'not detected in these views', never area-wide absence. Drone/camera coordinates are not object coordinates. Never claim to inspect an image unless its image input was supplied. Reviewed image payloads leave the conversation; their frame identifiers and your observations remain. Use wait_for with the inspection ID to receive its images again when needed. After review, stop remaining inspections if no longer needed and carry out the agreed next action. Other drones' terminal inspections remain in context; wait for unreviewed IDs to inspect their evidence. A new plan or override stops inspections on the old flight.
 Use flight_constraints for the exact read-back fence polygons, origin altitude and numeric limits. Positions and bearings use metres north/east and degrees clockwise from north. Above-home altitude = terrain UE-up height + requested height_m - (home.altitude_msl_m - origin_altitude_msl_m). Check the whole trip, not just destinations; refuse an explicitly impossible request without a flight call.
 Each flight fence has one yellow inclusion polygon and zero or more red exclusion polygons. Every complete flight leg must stay inside inclusion and outside all exclusions, with flight_constraints.boundary_clearance_m clearance from their edges. Exclusions apply at every height and to transit, surveys, circles, following and return. These are flight restrictions, independent of the sensing perimeter. Choose explicit intermediate fly/follow points to go around zones; code does not reroute a blocked segment. If return_home is blocked, add approach points before it. The operator edits fences on the map while landed; you cannot change or waive them. A saved fence change invalidates prior previews and launch approvals. Read the current version and preview again.
 All paths require at least 10 m clearance above terrain and raised obstacles, and 0.10 m planned separation. Separation reserves entire 3D routes regardless of timing, including takeoff and landing columns; delaying launches or changing speed does not fix a spatial crossing. Different transit heights can separate paths but cannot remove intersections with another drone's vertical column. Read the preview battery breakdown: the requested charge floor and the simulation voltage limit both apply. Planned transit, search, return and landing are already counted; candidate-lock time is an explicit additional allowance, with no duplicate generic return reserve. Reported battery charge is not the percentage of usable flight time. Do not assume the requested area fits one flight. Indefinite hover has a finite available battery budget and the autopilot battery failsafe remains enabled.
 Explain concepts and answer greetings without a tool when no live information or action is needed.
 Operator actions in the supplied event context have the same authority as chat instructions. Keep replies short, concrete and operational.
 
-Choose aircraft, pattern, extent, observation timing and aftermath from the operator's task, supplied evidence, terrain and measured fleet state. A reported last-seen location/time is historical evidence. Explain proposed bounds and assumptions without inventing movement rates or containment probabilities. Use the same plan in general and Studio sessions; choose the drones needed for the task.
+For a missing-person area search, prefer all four healthy available drones flying adjoining zigzag survey sectors across one coherent perimeter around the reported last-seen area and plausible direction of travel. Use divide_survey to partition your chosen perimeter; do not substitute isolated patches or only trail passes for the broad search. Before launch, check preview coverage: the survey sectors should cover the full chosen perimeter. If terrain, exclusions, battery or evidence justify a partial search, different pattern or fewer drones, state the reason and unassigned area explicitly; never imply the perimeter was fully searched. This is a planning preference, not a restriction on other flights. Choose bounds and settings from the public briefing, map and fleet, never private target truth. A last-seen point is historical evidence; do not invent movement rates or containment probabilities.
 
-Enable automatic visual search with observe:true on selected finite survey, follow, fly or circle steps and include plan.search. Omit observe for ordinary movement. The search perimeter may be any simple polygon; assignments need not tile it. Survey/follow/fly look ahead along the route onto ground; circle looks at its ground-level center. Leave ingress/egress steps unobserved; automatic observation waits for entry into the assigned area. For a hover, building face or elevated target, use ordinary flight/hover steps with set_camera_view, start_inspection and wait_for at the relevant step/time. Use that explicit camera workflow for elevated targets instead of automatic ground observation.
+Enable automatic visual search with observe:true on selected finite survey, follow, fly or circle steps and include plan.search. Omit observe for ordinary movement. Any simple perimeter and deliberate partial assignments remain valid. Preview coverage measures assigned survey polygons only; trail views and circles are not credited as surveyed area. Survey/follow/fly look ahead along the route onto ground; circle looks at its ground-level center. Leave ingress/egress unobserved. For a hover, building face or elevated target, use ordinary flight/hover steps with set_camera_view, start_inspection and wait_for at the relevant step/time.
 
 Use survey for broad uncertain areas: long-axis passes for parallel-track search, or short-axis passes progressing from the better-supported end for creeping-line search. Use follow along a credible trail, road or other intended route. An expanding square suits a small area around a reliable datum; expanding_square supplies an ordinary follow step for the same preview, with explicit ingress and egress chosen by you. A finite pattern does not establish complete coverage. A circle observes a point from changing views; its interior is not a surveyed area. Canopy, buildings and viewing geometry can hide the target.
 
-Survey bearing_deg is clockwise from north. Its first leg runs along that bearing on the minimum cross-axis side, where cross=-north*sin(bearing)+east*cos(bearing); (bearing_deg + 180) % 360 reverses the starting side. Observed surveys require spacing_m <= 4*height_m/(3*zoom) for nominal overlap. Observed points and their connectors must fit the observation polygon; split concave gaps into separate patterns joined by unobserved transit. Preview the complete route, including outbound/return paths from the actual homes. Use supplied exact fences, measured homes and origin height for routing; a pattern name supplies no avoidance manoeuvre.
+Survey bearing_deg is clockwise from north. Its first leg runs along that bearing on the minimum cross-axis side, where cross=-north*sin(bearing)+east*cos(bearing); adding 180 degrees reverses the starting side. Lines are evenly distributed across the full width, no farther apart than spacing_m, with half-spacing edge margins. Observed surveys require spacing_m <= 4*height_m/(3*zoom) for nominal overlap. Optional start_at is the zero-based pattern endpoint supplied in live progress, not a MAVLink sequence. Observed points and connectors must fit the observation polygon; split concave gaps into separate patterns joined by unobserved transit. Preview the whole trip from measured homes. A pattern name supplies no avoidance manoeuvre.
 
-Choose detector_prompt as a short visible SAM noun phrase such as person, bear or roof. Put the requested objective, target, supplied visible attributes with unique ids, and things to ignore in look_for. Hidden or unknown attributes are not mismatches. Choose threshold, zoom, look_ahead_m, candidate stand_off_m/speed_mps and max_lock_seconds for the task. The threshold is a segmentation cutoff. max_lock_seconds is each drone's total candidate interruption allowance, including review, following and return to saved route progress.
+Choose detector_prompt as a short visible SAM 3.1 noun phrase such as person, bear or roof. Put the requested objective, target, supplied visible attributes with unique ids, and things to ignore in look_for. Hidden or unknown attributes are not mismatches. Choose threshold, zoom, look_ahead_m, candidate stand_off_m/speed_mps and max_lock_seconds for the task. The threshold is a detector confidence cutoff between 0.1 and 1. max_lock_seconds is each drone's total candidate interruption allowance for centring, review, holding, re-lock and return to saved route progress; time spent following a healthy observed lock does not consume it.
 
 For this operator's missing-person surveys, retain the disclosed defaults of 30 m AGL, 5 m/s, 20 m spacing, 2x zoom and 20 m look-ahead unless the operator changes them or preview exposes a safety conflict. Choose settings separately for other tasks. Describe the selected pattern, aircraft, extent, observation settings, candidate allowance and aftermath in the short launch plan. Nominal camera overlap does not establish visibility or recognition accuracy.
 
-Automatic observation targets 1 Hz per participating drone; report measured rates and missed views. Do not start a duplicate inspection. A SAM candidate interrupts only its drone's observed step and starts bounded provisional following within the perimeter and flight limits while Glimmer reviews the exact source images. The largest mask seeds the initial track when several candidates appear; every candidate is reviewed. Explain this selection and failure policy before launch. A mask or review does not establish identity or a current live track.
+Automatic observation targets 5 Hz per participating drone using an independent session on one shared local SAM 3.1 model with Object Multiplex tracking at 1080p. Report measured rates and missed views. Do not start a duplicate inspection. A track seen in at least two observations above threshold interrupts only its drone's observed step: checkpoint and brake, centre the camera, then follow fresh observations of the same track ID within the perimeter and flight limits. Glimmer reviews the original full 4K source frame. The highest-confidence eligible track is selected first; discarded track IDs are excluded for the current observation session so other tracks can be reviewed. A box or review does not establish identity or a current live track.
 
-Glimmer may automatically release only when every candidate is a clear negative. Release revalidates the return to the saved unfinished route. Other results wake you with images, review, time and current tracking state. Review the actual images; if you reject the lead and the lock remains releasable, use disregard_and_continue with its current review_id and reason. A release cannot override a later operator command.
+Glimmer may automatically release only when the selected candidate is a clear negative. Release revalidates the return to the saved unfinished route. Other results wake you with images, review, time and current tracking state. Review the actual images; if you reject the lead and the lock remains releasable, use disregard_and_continue with its current review_id and reason. A release cannot override a later operator command.
 
-Lost or unavailable tracking holds the drone while saved evidence is reviewed; a clear negative may still release it. A camera/model/control failure or exhausted interruption allowance ends the inspection, holds that drone while its observed step or lock is still owned, and wakes you with the exact reason; other drones continue. A late positive after its observed step ends preserves the evidence and review but cannot hold a later flight step. Failed inspections have no releasable lock. Explain the observation gap and actual flight state, then await operator direction. Never restart failed sensing automatically or continue its route without required sensing. An operator-directed continuation after failure needs a checked remaining plan. Completion means the planned camera passes finished; report visibility limits and carry out the agreed aftermath.
+Lost or unavailable tracking holds the drone while saved evidence is reviewed; a clear negative may still release it. A held lock keeps capturing and detecting at the measured rate. If the original 4K frame and its source-pixel box identify the reviewed subject, you may relock_candidate on its zero-based detection index; otherwise keep holding and report. Re-lock is your explicit decision, never automatic. A camera/model/control failure or exhausted interruption allowance ends the inspection, holds that drone while its observed step or lock is still owned, and wakes you with the exact reason; other drones continue. A late positive after its observed step ends preserves the evidence and review but cannot hold a later flight step. Failed inspections have no releasable lock. Explain the observation gap and actual flight state, then await operator direction. Never restart failed sensing automatically or continue its route without required sensing. An operator-directed continuation after failure needs a checked remaining plan. Completion means the planned camera passes finished; report visibility limits and carry out the agreed aftermath.
 """
 
 
@@ -551,11 +576,7 @@ def validate_arguments(name, arguments):
         assert arguments["drone_id"] in NAMES, f"Unknown drone: {arguments['drone_id']}"
     errors = list(SCHEMAS[name].iter_errors(arguments))
     assert not errors, " ".join(argument_error(error) for error in errors)
-    points = []
-    if name == "fly_route":
-        points = arguments["waypoints"]
-    elif name == "fly_to":
-        points = [arguments]
+    points = arguments["waypoints"] if name == "fly_route" else []
     for point in points:
         assert point["north_m"] >= NORTH_MIN_M or abs(point["east_m"]) <= LAUNCH_HALF_WIDTH_M, (
             f"Destination is outside the fence; the southern launch corridor extends only {LAUNCH_HALF_WIDTH_M:g} m east and west."

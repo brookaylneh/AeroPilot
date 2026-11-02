@@ -101,8 +101,7 @@ def ready(conditions, planner, vehicles, inspections):
             elif any(
                 row["drone_id"] == vehicle["id"]
                 and "rescue" in row
-                and row["rescue"]["phase"]
-                in ("reviewing", "tracking", "held", "locked", "resuming")
+                and row["rescue"]["phase"] in ("reviewing", "tracking", "held", "resuming")
                 and row["plan_version"] == condition["version"]
                 for row in inspections
             ):

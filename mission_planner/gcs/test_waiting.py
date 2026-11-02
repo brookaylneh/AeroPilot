@@ -57,7 +57,7 @@ class Conditions(unittest.TestCase):
         row = {
             "id": "candidate",
             "status": "candidate",
-            "rescue": {"pending": False, "phase": "locked"},
+            "rescue": {"pending": False, "phase": "tracking"},
         }
         condition = {"kind": "inspection", "inspection_id": "candidate"}
         validate_conditions([condition], self.planner, self.vehicles, [row])
@@ -156,8 +156,8 @@ class Conditions(unittest.TestCase):
 
     def test_search_lock_does_not_misreport_an_interrupted_survey(self):
         self.vehicles[0]["mode"] = "GUIDED"
-        row = {"drone_id": "Drone1", "plan_version": 1, "rescue": {"phase": "locked"}}
-        for phase in ("reviewing", "locked", "tracking", "held", "resuming"):
+        row = {"drone_id": "Drone1", "plan_version": 1, "rescue": {"phase": "tracking"}}
+        for phase in ("reviewing", "tracking", "held", "resuming"):
             with self.subTest(phase=phase):
                 row["rescue"]["phase"] = phase
                 self.assertIsNone(ready([STEP], self.planner, self.vehicles, [row]))

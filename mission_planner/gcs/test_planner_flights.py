@@ -5,18 +5,11 @@ import unittest
 from pymavlink.dialects.v20 import ardupilotmega as MAV
 
 from mission_planner.gcs.geodesy import NAMES, point_in_polygon, to_geodetic
-from mission_planner.gcs.planner import compile_plan, survey_points
-from mission_planner.gcs.test_planner import fly, search_plan, states
+from mission_planner.gcs.planner import compile_plan, divide_survey, survey_points
+from mission_planner.gcs.rejection import PlanRejected
+from mission_planner.gcs.test_planner import fly, rectangle, search_plan, states
 from mission_planner.gcs.test_validation import readback
-from mission_planner.gcs.validation import RouteConflict
 from world.cosys.landmarks import load
-
-
-def rectangle(south, north, west, east):
-    return [
-        {"north_m": n, "east_m": e}
-        for n, e in ((south, west), (north, west), (north, east), (south, east))
-    ]
 
 
 def recorded_pad():
@@ -39,31 +32,16 @@ def recorded_pad():
 
 
 def complete_search(fleet, bounds, spacing, bearing):
-    south, north, west, east = bounds
     value = search_plan()
     value["search"]["perimeter"] = rectangle(*bounds)
     value["search"]["max_lock_seconds"] = 180
-    value["drones"] = []
-    for i, name in enumerate(("Drone3", "Drone1", "Drone2", "Drone4")):
+    value["drones"] = divide_survey(
+        ["Drone3", "Drone1", "Drone2", "Drone4"], rectangle(*bounds), spacing, bearing, 40, 10
+    )["drones"]
+    for i, branch in enumerate(value["drones"]):
+        name = branch["drone_id"]
         state = next(state for state in fleet if state["id"] == name)
-        if bearing == 0:
-            sector = rectangle(
-                south, north, west + (east - west) * i / 4, west + (east - west) * (i + 1) / 4
-            )
-        else:
-            assert bearing == 90
-            sector = rectangle(
-                north - (north - south) * (i + 1) / 4, north - (north - south) * i / 4, west, east
-            )
-        survey = {
-            "kind": "survey",
-            "observe": True,
-            "polygon": sector,
-            "spacing_m": spacing,
-            "bearing_deg": bearing,
-            "height_m": 40,
-            "speed_mps": 10,
-        }
+        survey = branch["steps"][0]
         entry = survey_points(survey)[0]
         lane, height = -15 + i * 10, 44 + i * 2
         transit = [
@@ -71,18 +49,13 @@ def complete_search(fleet, bounds, spacing, bearing):
             fly(-790, lane, height, 15),
             fly(entry["north_m"], entry["east_m"], height, 15),
         ]
-        value["drones"].append(
-            {
-                "drone_id": name,
-                "steps": [
-                    {"kind": "takeoff", "height_m": 40},
-                    *transit,
-                    survey,
-                    *reversed(transit),
-                    {"kind": "return_home", "height_m": height, "speed_mps": 5},
-                ],
-            }
-        )
+        branch["steps"] = [
+            {"kind": "takeoff", "height_m": 40},
+            *transit,
+            survey,
+            *reversed(transit),
+            {"kind": "return_home", "height_m": height, "speed_mps": 5},
+        ]
     return value
 
 
@@ -91,40 +64,29 @@ class CompleteSearchFlights(unittest.TestCase):
         fleet = states()
         value = search_plan()
         value["search"]["perimeter"] = rectangle(-710, -650, -70, 30)
-        value["drones"] = []
-        for index, (name, lane) in enumerate(
-            zip(("Drone3", "Drone1", "Drone2", "Drone4"), (-65, -40, -15, 10))
-        ):
+        value["drones"] = divide_survey(
+            ["Drone3", "Drone1", "Drone2", "Drone4"], value["search"]["perimeter"], 20, 0, 30, 5
+        )["drones"]
+        for index, (branch, lane) in enumerate(zip(value["drones"], (-65, -40, -15, 10))):
+            name = branch["drone_id"]
             state = next(state for state in fleet if state["id"] == name)
-            survey = {
-                "kind": "survey",
-                "observe": True,
-                "polygon": rectangle(-710, -650, -70 + index * 25, -45 + index * 25),
-                "spacing_m": 20,
-                "bearing_deg": 0,
-                "height_m": 30,
-                "speed_mps": 5,
-            }
+            survey = branch["steps"][0]
             entry = survey_points(survey)[0]
             height = 40 + index * 2
             transit = [
                 fly(state["north_m"], lane, height, 5),
                 fly(entry["north_m"], entry["east_m"], height, 5),
             ]
-            value["drones"].append(
-                {
-                    "drone_id": name,
-                    "steps": [
-                        {"kind": "takeoff", "height_m": 30},
-                        *transit,
-                        survey,
-                        *reversed(transit),
-                        {"kind": "return_home", "height_m": height, "speed_mps": 5},
-                    ],
-                }
-            )
+            branch["steps"] = [
+                {"kind": "takeoff", "height_m": 30},
+                *transit,
+                survey,
+                *reversed(transit),
+                {"kind": "return_home", "height_m": height, "speed_mps": 5},
+            ]
         receipt = compile_plan(value, fleet, {name: readback() for name in NAMES}, load())
         self.assertEqual(receipt["plan"], value)
+        self.assertEqual(receipt["coverage"]["survey_percent"], 100)
         self.assertEqual(set(receipt["missions"]), set(NAMES))
         for mission in receipt["missions"].values():
             self.assertEqual(mission["items"][-1]["command"], MAV.MAV_CMD_NAV_LAND)
@@ -144,6 +106,7 @@ class CompleteSearchFlights(unittest.TestCase):
                     value["search"]["zoom"] = zoom
                     receipt = compile_plan(value, fleet, fences, landmarks)
                     self.assertEqual(receipt["plan"], value)
+                    self.assertEqual(receipt["coverage"]["survey_percent"], 100)
                     self.assertEqual(set(receipt["missions"]), set(NAMES))
                     for branch in value["drones"]:
                         mission = receipt["missions"][branch["drone_id"]]
@@ -181,9 +144,9 @@ class CompleteSearchFlights(unittest.TestCase):
                 for name, lane in (("Drone2", -5), ("Drone3", 5))
             ],
         }
-        with self.assertRaisesRegex(RouteConflict, "conflicts with Drone3") as caught:
+        with self.assertRaisesRegex(PlanRejected, "conflicts with Drone3") as caught:
             compile_plan(value, fleet, {name: readback() for name in NAMES}, load())
-        conflict = caught.exception.conflict
+        conflict = caught.exception.rejection["conflict"]
         self.assertEqual((conflict["drone_id"], conflict["other_drone_id"]), ("Drone2", "Drone3"))
         self.assertEqual((conflict["step_index"], conflict["other_step_index"]), (1, 1))
         self.assertEqual((conflict["step_kind"], conflict["other_step_kind"]), ("fly", "fly"))

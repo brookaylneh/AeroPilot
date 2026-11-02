@@ -1,7 +1,7 @@
 [Unit]
 Description=SNR mission owner and ArduPilot fleet
-After=network-online.target
-Wants=network-online.target
+After=network-online.target snr-vision.service
+Wants=network-online.target snr-vision.service
 
 [Service]
 Type=simple

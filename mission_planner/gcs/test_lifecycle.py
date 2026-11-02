@@ -108,6 +108,10 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.mission.case["report"]["brief"], "Second visitor's edited text")
         self.assertIn("Mission cancelled", (directory / "events.jsonl").read_text())
         self.assertIn("Rescue mission launched", self.mission.events[0]["text"])
+        self.assertEqual(
+            self.mission.events[0]["result"],
+            {"case_id": self.cases[1]["id"], "case_name": self.cases[1]["name"]},
+        )
 
     async def test_airborne_studio_rejection_leaves_session_and_flight_untouched(self):
         await self.mission.begin(self.cases[0]["id"])

@@ -11,12 +11,6 @@ from world.cosys.capture import rotation
 from world.cosys.terrain import domain, terrain_height
 
 
-def ground_point(metadata, box):
-    result = ground_observation(metadata, box)
-    assert result["ground"] is not None, result["location_error"]
-    return result["ground"]
-
-
 def ground_observation(metadata, box):
     assert len(box) == 4 and all(math.isfinite(v) for v in box)
     width, height = metadata["width"], metadata["height"]

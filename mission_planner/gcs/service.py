@@ -37,7 +37,9 @@ from mission_planner.gcs.geodesy import (
     ORIGIN,
 )
 from mission_planner.gcs.inspection import Inspections
-from mission_planner.gcs.validation import CLEARANCE_M, RouteConflict
+from mission_planner.gcs.planner import divide_survey, expanding_square
+from mission_planner.gcs.rejection import PlanRejected
+from mission_planner.gcs.validation import CLEARANCE_M
 from mission_planner.gcs.waiting import ready, validate_conditions
 from world.cosys import client as sim
 from world.cosys.landmarks import directions, find, load
@@ -55,6 +57,19 @@ MESSAGE_FIELDS = {
     "export_plan": {"type", "drone_id"},
     "set_fences": {"type", "fences"},
 }
+
+
+PLAN_TOOLS = ("preview_plan", "request_launch", "apply_plan_change")
+
+
+def requested_version(name, arguments):
+    """The plan version a plan tool asked for, when the request carried one."""
+    holder = arguments
+    if name == "preview_plan":
+        holder = arguments["plan"] if isinstance(arguments, dict) and "plan" in arguments else None
+    if isinstance(holder, dict) and "version" in holder and type(holder["version"]) is int:
+        return holder["version"]
+    return None
 
 
 def encode(value):
@@ -119,10 +134,16 @@ def planning_receipt(receipt):
     if receipt is None:
         return None
     return {
-        "plan": receipt["plan"],
+        **{key: value for key, value in receipt.items() if key != "missions"},
         "missions": {
             name: {
-                **{key: value for key, value in mission.items() if key not in ("items", "route")},
+                **{
+                    key: [{k: v for k, v in step.items() if k != "survey_seqs"} for step in value]
+                    if key == "step_ranges"
+                    else value
+                    for key, value in mission.items()
+                    if key not in ("items", "route")
+                },
                 "route_points": len(mission["route"]),
             }
             for name, mission in receipt["missions"].items()
@@ -160,17 +181,16 @@ def planning_inspection(row, landmarks):
     if "rescue" in row:
         rescue = result["rescue"] = dict(row["rescue"])
         rescue["unavailable_tools"] = (
-            ["center_candidate", "get_candidate", "follow_candidate"]
-            if rescue["tracking_error"] is not None
-            else []
+            ["center_candidate", "follow_candidate"] if rescue["tracking_error"] is not None else []
         )
         if rescue["track"] is not None:
             rescue["track"] = located(rescue["track"])
-        if "live_frame" in rescue and rescue["live_frame"] is not None:
-            rescue["live_frame"] = {
-                **rescue["live_frame"],
-                "detections": [located(item) for item in rescue["live_frame"]["detections"]],
-            }
+        for key in ("live_frame", "held_frame"):
+            if key in rescue and rescue[key] is not None:
+                rescue[key] = {
+                    **rescue[key],
+                    "detections": [located(item) for item in rescue[key]["detections"]],
+                }
     return result
 
 
@@ -179,7 +199,7 @@ def planning_instructions(instructions, context):
     return (
         instructions
         + "\nCurrent mission context: "
-        + planning_text(
+        + encode(
             {
                 **context,
                 "map": compact_map(landmarks),
@@ -189,17 +209,6 @@ def planning_instructions(instructions, context):
             }
         )
     )
-
-
-def planning_text(value):
-    def metadata(item):
-        if isinstance(item, dict):
-            return {key: metadata(value) for key, value in item.items() if key != "png_base64"}
-        if isinstance(item, (list, tuple)):
-            return [metadata(value) for value in item]
-        return item
-
-    return encode(metadata(value))
 
 
 def planning_result(name, result):
@@ -344,6 +353,7 @@ class Mission:
                 "General mission opened"
                 if case is None
                 else "Rescue mission launched: " + case["name"],
+                result=None if case is None else {"case_id": case["id"], "case_name": case["name"]},
             )
             return case_id
 
@@ -707,6 +717,10 @@ class Mission:
                     "completed_steps": completed,
                     "time_remaining_s": remaining,
                 }
+                if current is not None and "survey_seqs" in current:
+                    progress[name]["survey_start_at"] = current["survey_start_at"] + sum(
+                        sequence > target for target in current["survey_seqs"]
+                    )
         return {
             "preview": self.plan_preview,
             "active": self.plan_active,
@@ -723,20 +737,33 @@ class Mission:
                 card["card"]["name"] == "request_launch" for card in self.approvals.values()
             ), "Resolve the pending launch approval before replacing its preview"
             self.plan_preview = None
-            self.plan_trigger = next(
-                (e["text"] for e in reversed(self.events) if e["kind"] == "operator"),
-                f"Operator tool {name}",
-            )
+            operator = next((e for e in reversed(self.events) if e["kind"] == "operator"), None)
+            if source == "agent":
+                assert operator is not None, "Wonder planning requires a preceding operator message"
+                self.plan_trigger = {
+                    "source": source,
+                    "event_id": operator["id"],
+                    "text": operator["text"],
+                }
+            else:
+                self.plan_trigger = {"source": source, "event_id": call_id, "text": None}
         validate_arguments(name, arguments)
         if name == "preview_plan":
             plan = arguments["plan"]
-            assert (
-                self.plan_active is None or plan["version"] > self.plan_active["plan"]["version"]
-            ), (
-                f"Plan version must exceed the active version: requested {plan['version']}, "
-                f"active {self.plan_active['plan']['version']}. "
-                "Landing or starting a new chat does not reset the plan version."
-            )
+            if (
+                self.plan_active is not None
+                and plan["version"] <= self.plan_active["plan"]["version"]
+            ):
+                raise PlanRejected(
+                    "version",
+                    f"Plan version must exceed the active version: requested {plan['version']}, "
+                    f"active {self.plan_active['plan']['version']}. "
+                    "Landing or starting a new chat does not reset the plan version.",
+                    detail={
+                        "requested": plan["version"],
+                        "active": self.plan_active["plan"]["version"],
+                    },
+                )
             participants = {p["drone_id"] for p in plan["drones"]}
             if self.plan_active is not None:
                 flying = {
@@ -744,9 +771,12 @@ class Mission:
                     for v in self.vehicles()
                     if v["armed"] and v["id"] in self.plan_active["missions"]
                 }
-                assert flying <= participants, (
-                    "Change must include every active drone's remaining plan"
-                )
+                if not flying <= participants:
+                    raise PlanRejected(
+                        "participants",
+                        "Change must include every active drone's remaining plan",
+                        detail={"missing": sorted(flying - participants)},
+                    )
             self.plan_task = asyncio.current_task()
             try:
                 receipt = await self.fleet.preview_plan(plan)
@@ -755,7 +785,7 @@ class Mission:
                     self.plan_task = None
             self.plan_preview = receipt
             return {
-                "plan": receipt["plan"],
+                **receipt,
                 "missions": {
                     drone: {key: value for key, value in mission.items() if key != "items"}
                     for drone, mission in receipt["missions"].items()
@@ -896,6 +926,10 @@ class Mission:
                 return await self.inspections.get_candidate(**arguments)
             if name == "center_candidate":
                 return await self.inspections.center_candidate(**arguments)
+            if name == "relock_candidate":
+                assert self.fleet_ready, "MAVLink fleet is unavailable"
+                assert self.plan_task is None, "A flight plan action is already in progress"
+                return await self.inspections.relock_candidate(**arguments)
             if name == "follow_candidate":
                 assert self.fleet_ready, "MAVLink fleet is unavailable"
                 assert self.plan_task is None, "A flight plan action is already in progress"
@@ -910,8 +944,7 @@ class Mission:
                 assert not any(
                     row["drone_id"] == drone
                     and "rescue" in row
-                    and row["rescue"]["phase"]
-                    in ("reviewing", "tracking", "held", "locked", "resuming")
+                    and row["rescue"]["phase"] in ("reviewing", "tracking", "held", "resuming")
                     for row in self.inspections.snapshot()
                 ), (
                     "Candidate tracking owns this drone's heading; release the lock or use an override"
@@ -939,9 +972,9 @@ class Mission:
             assert source == "agent", "Only Wonder can schedule its next turn"
             return self.schedule_wait(**arguments)
         if name == "expanding_square":
-            from mission_planner.gcs.planner import expanding_square
-
             return expanding_square(**arguments)
+        if name == "divide_survey":
+            return divide_survey(**arguments)
         if name == "ground_height":
             return ground_height(**arguments)
         if name == "ground_profile":
@@ -1049,8 +1082,7 @@ class Mission:
             assert not any(
                 row["drone_id"] in aircraft
                 and "rescue" in row
-                and row["rescue"]["phase"]
-                in ("reviewing", "tracking", "held", "locked", "resuming")
+                and row["rescue"]["phase"] in ("reviewing", "tracking", "held", "resuming")
                 for row in self.inspections.snapshot()
             ), "Candidate tracking owns this drone; release the lock or use an override"
         assert aircraft.isdisjoint(self.active_flight), (
@@ -1220,8 +1252,16 @@ class Mission:
                 result = {"ok": True, "state": task.result()}
             else:
                 result = {"ok": False, "error": operator_error(error)}
-                if isinstance(error, RouteConflict):
-                    result["conflict"] = error.conflict
+                if name in PLAN_TOOLS and isinstance(error, AssertionError):
+                    rejected = (
+                        error
+                        if isinstance(error, PlanRejected)
+                        else PlanRejected("compile", operator_error(error))
+                    )
+                    result["rejection"] = {
+                        **rejected.rejection,
+                        "version": requested_version(name, arguments),
+                    }
             self.event(
                 "tool_result",
                 name,
@@ -1231,7 +1271,7 @@ class Mission:
                 call_id=call_id,
                 source=source,
             )
-            if name in ("preview_plan", "request_launch", "apply_plan_change"):
+            if name in PLAN_TOOLS:
                 self.event(
                     "plan_version",
                     name,
@@ -1402,7 +1442,7 @@ class Mission:
                     {
                         "type": "function_call_output",
                         "call_id": call["call_id"],
-                        "output": planning_text(
+                        "output": encode(
                             {
                                 "ok": False,
                                 "error": f"Interrupted by {reason} before the agent received this tool "
@@ -1478,8 +1518,7 @@ class Mission:
             content = [
                 {
                     "type": "input_text",
-                    "text": "Automatic mission event; continue the agreed task. "
-                    + planning_text(wake),
+                    "text": "Automatic mission event; continue the agreed task. " + encode(wake),
                 }
             ]
             if wake["reason"] in ("condition", "rescue"):
@@ -1490,9 +1529,9 @@ class Mission:
                             {
                                 "type": "input_text",
                                 "text": "Sensor evidence; images follow the listed order. "
-                                "Glimmer crops are its exact review inputs, resized to 512 × 512; "
-                                "source boxes are original pixels. Enlargement adds no detail. "
-                                + planning_text(
+                                "Each image is the original full 4K camera frame. "
+                                "Detector boxes use its original pixels. "
+                                + encode(
                                     {
                                         "metadata": evidence["metadata"],
                                         "image_order": evidence["image_order"],
@@ -1670,7 +1709,7 @@ class Mission:
                     {
                         "type": "function_call_output",
                         "call_id": call["call_id"],
-                        "output": planning_text(planning_result(call["name"], result)),
+                        "output": encode(planning_result(call["name"], result)),
                     }
                 )
                 if call["name"] in ("get_candidate", "center_candidate") and result["ok"]:
@@ -1684,7 +1723,7 @@ class Mission:
                                 {
                                     "type": "input_text",
                                     "text": "Requested candidate observation. "
-                                    + planning_text(
+                                    + encode(
                                         {
                                             "metadata": evidence["metadata"],
                                             "image_order": evidence["image_order"],

@@ -7,8 +7,8 @@ from unittest.mock import AsyncMock, Mock, patch
 from mission_planner.gcs.fences import default_fences, fence_items
 from mission_planner.gcs.fleet import MAV, Fleet
 from mission_planner.gcs.geodesy import NAMES, ORIGIN
+from mission_planner.gcs.rejection import PlanRejected
 from mission_planner.gcs.validation import (
-    RouteConflict,
     fence_polygon,
     footprint_intervals,
     minimum_clearance,
@@ -60,11 +60,11 @@ class RouteValidation(unittest.TestCase):
         reserved = [point(0, -10, 20.05), point(0, 10, 20.05)]
         homes = {"Drone1": 2632.43, "Drone2": 2642.43}
         original = copy.deepcopy((route, reserved, homes))
-        with self.assertRaises(RouteConflict) as caught:
+        with self.assertRaises(PlanRejected) as caught:
             validate_separation("Drone1", route, [("Drone2", reserved)], homes)
-        self.assertAlmostEqual(caught.exception.conflict["distance_m"], 0.05)
-        self.assertEqual(caught.exception.conflict["segment"], route)
-        self.assertEqual(caught.exception.conflict["other_segment"], reserved)
+        self.assertAlmostEqual(caught.exception.rejection["conflict"]["distance_m"], 0.05)
+        self.assertEqual(caught.exception.rejection["conflict"]["segment"], route)
+        self.assertEqual(caught.exception.rejection["conflict"]["other_segment"], reserved)
         self.assertEqual((route, reserved, homes), original)
 
         for point_ in reserved:
@@ -81,7 +81,7 @@ class RouteValidation(unittest.TestCase):
                 if delta == 0.1:
                     validate_separation("Drone1", route, reserved, homes)
                 else:
-                    with self.assertRaises(RouteConflict):
+                    with self.assertRaises(PlanRejected):
                         validate_separation("Drone1", route, reserved, homes)
 
     def test_each_home_reference_must_be_present_and_finite(self):
@@ -184,11 +184,11 @@ class RouteValidation(unittest.TestCase):
         route = [point(0, 0), point(10, 0), point(20, 0)]
         reserved = [point(0, 0.08), point(10, 0.08), point(20, 0)]
         original = copy.deepcopy((route, reserved))
-        with self.assertRaises(RouteConflict) as caught:
+        with self.assertRaises(PlanRejected) as caught:
             validate_separation("Drone1", route, [("Drone2", reserved)], HOME_HEIGHTS)
         error = caught.exception
         self.assertEqual(
-            error.conflict,
+            error.rejection["conflict"],
             {
                 "drone_id": "Drone1",
                 "other_drone_id": "Drone2",
@@ -211,11 +211,11 @@ class RouteValidation(unittest.TestCase):
         self.assertEqual((route, reserved), original)
 
     def test_point_conflict_keeps_degenerate_segment_for_map(self):
-        with self.assertRaises(RouteConflict) as caught:
+        with self.assertRaises(PlanRejected) as caught:
             validate_separation(
                 "Drone1", [point(1, 2)], [("Drone2", [point(1.04, 2)])], HOME_HEIGHTS
             )
-        conflict = caught.exception.conflict
+        conflict = caught.exception.rejection["conflict"]
         self.assertAlmostEqual(conflict["distance_m"], 0.04)
         self.assertEqual(conflict["segment"], [point(1, 2), point(1, 2)])
         self.assertEqual(conflict["other_segment"], [point(1.04, 2), point(1.04, 2)])
@@ -318,10 +318,10 @@ class RouteValidation(unittest.TestCase):
         ]
         value = fleet(current, {"Drone2": [point(0, -10, 20.05), point(0, 10, 20.05)]})
         value.snapshot.return_value[1]["home"]["altitude_msl_m"] += 10
-        with self.assertRaises(RouteConflict):
+        with self.assertRaises(PlanRejected):
             value._validate_separation("Drone1", [point(-10, 0), point(10, 0)])
         value.snapshot.return_value[1].update(mode="BRAKE", north_m=0, east_m=0)
-        with self.assertRaises(RouteConflict):
+        with self.assertRaises(PlanRejected):
             value._validate_separation("Drone1", [point(-10, 0), point(10, 0)])
         value.snapshot.return_value[1]["altitude_above_home_m"] = 30
         value._validate_separation("Drone1", [point(-10, 0), point(10, 0)])
@@ -337,7 +337,7 @@ class FlightGuardIntegration(unittest.IsolatedAsyncioTestCase):
         value.snapshot.return_value[1]["home"]["altitude_msl_m"] += 10
         value.check_return = Mock(return_value=[point(-10, 0), point(10, 0)])
         value._mode = AsyncMock()
-        with self.assertRaises(RouteConflict):
+        with self.assertRaises(PlanRejected):
             await value.return_step("Drone1")
         value._mode.assert_not_awaited()
         value.snapshot.return_value[1]["home"]["altitude_msl_m"] += 1

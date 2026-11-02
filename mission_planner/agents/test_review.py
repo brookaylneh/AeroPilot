@@ -1,6 +1,7 @@
 """Forward evidence preserves full candidates and makes uncertainty explicit."""
 
 import copy
+import hashlib
 import io
 import json
 import tempfile
@@ -10,13 +11,13 @@ from unittest.mock import Mock
 
 from PIL import Image
 
-from mission_planner.agents.review import TEMPLATE, candidate_images, instructions, review_candidate
+from mission_planner.agents.review import TEMPLATE, instructions, review_candidate
 
 
 class ReviewTests(unittest.TestCase):
     def setUp(self):
         output = io.BytesIO()
-        Image.new("RGB", (1920, 1080), (120, 30, 90)).save(output, format="JPEG")
+        Image.new("RGB", (3840, 2160), (120, 30, 90)).save(output, format="JPEG")
         self.jpeg = output.getvalue()
         self.look_for = {
             "objective": "Find the missing hiker",
@@ -29,12 +30,13 @@ class ReviewTests(unittest.TestCase):
         }
         self.metadata = {
             "frame_id": "00000000-0000-4000-8000-000000000001",
+            "sha256": hashlib.sha256(self.jpeg).hexdigest(),
             "drone_id": "Drone2",
             "captured_at_ms": 123456789,
             "camera_id": "fpv",
             "camera_position_world_m": {"x": 20, "y": 30, "z": 40},
         }
-        self.detection = {"box_xyxy": [800, 200, 1000, 900], "confidence": 0.8}
+        self.detection = {"track_id": 17, "box_xyxy": [800, 200, 1000, 900], "confidence": 0.8}
         self.result = {
             "report": {
                 "observations": [
@@ -75,7 +77,7 @@ class ReviewTests(unittest.TestCase):
             "attributes": [],
             "ignore": [],
         }
-        text = instructions(self.look_for, "bear", self.metadata)
+        text = instructions(self.look_for, "bear", self.metadata, self.detection)
         self.assertIn("Target: bear", text)
         self.assertIn("requested target", text)
         self.assertNotIn("not a person", text)
@@ -93,32 +95,31 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(result["report"]["decision"], "escalate")
         self.assertIn("Target: bear", self.glimmer.report.call_args.args[2])
 
-    def test_large_person_is_fully_inside_both_crops(self):
-        images, boxes = candidate_images(self.jpeg, self.detection["box_xyxy"])
-        for payload, box in zip(images, boxes):
-            self.assertEqual(Image.open(io.BytesIO(payload)).size, (512, 512))
-            self.assertLessEqual(box[0], 800)
-            self.assertLessEqual(box[1], 200)
-            self.assertGreaterEqual(box[2], 1000)
-            self.assertGreaterEqual(box[3], 900)
-        self.assertGreater(boxes[1][2] - boxes[1][0], boxes[0][2] - boxes[0][0])
+    def test_only_the_byte_identical_original_4k_frame_is_sent(self):
+        self.review()
+        self.assertEqual(self.glimmer.report.call_args.args[0], [self.jpeg])
+        self.assertEqual(list(self.prefix.parent.iterdir()), [self.prefix.with_suffix(".json")])
+        text = self.glimmer.report.call_args.args[2]
+        self.assertIn("selected track 17", text)
+        self.assertIn(str(self.detection["box_xyxy"]), text)
 
-    def test_edge_crops_retain_padding_instead_of_moving_the_candidate(self):
-        images, boxes = candidate_images(self.jpeg, [0, 0, 100, 200])
-        self.assertLess(boxes[0][0], 0)
-        image = Image.open(io.BytesIO(images[0]))
-        self.assertEqual(image.getpixel((0, 0)), (0, 0, 0))
-        self.assertGreater(sum(image.getpixel((256, 256))), 0)
+    def test_lower_resolution_review_is_rejected_before_request(self):
+        stream = io.BytesIO()
+        Image.new("RGB", (1920, 1080)).save(stream, format="JPEG")
+        self.jpeg = stream.getvalue()
+        with self.assertRaisesRegex(AssertionError, "original 3840x2160"):
+            self.review()
+        self.glimmer.report.assert_not_called()
 
     def test_forward_template_never_claims_nadir_scale_or_target_identity(self):
-        text = instructions(self.look_for, "human", self.metadata)
+        text = instructions(self.look_for, "human", self.metadata, self.detection)
         self.assertIn("forward camera on Drone2", text)
         self.assertIn("123456789", text)
         self.assertIn("backpack: Blue backpack", text)
         self.assertIn("cannot_tell, never evidence of a mismatch", text)
         self.assertIn("Do not establish personal identity", text)
         self.assertNotIn("View: nadir", text)
-        self.assertEqual(TEMPLATE, "forward-analyst-v2")
+        self.assertEqual(TEMPLATE, "forward-analyst-v3-full-frame")
 
     def test_uncertainty_and_reasoning_counts_are_preserved_with_original_capture(self):
         before = copy.deepcopy(self.metadata)
@@ -131,7 +132,7 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(log["result"], self.result)
         self.assertIsNone(log["error"])
         self.assertEqual(len(log["images"]), 2)
-        self.assertTrue(all((self.prefix.parent / name).is_file() for name in log["images"]))
+        self.assertEqual(log["images"]["sha256"], hashlib.sha256(self.jpeg).hexdigest())
         self.glimmer.report.assert_called_once()
 
     def test_manifest_identifies_exact_review_images_without_changing_model_result(self):
@@ -143,10 +144,9 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(manifest["frame_id"], self.metadata["frame_id"])
         log = json.loads(self.prefix.with_suffix(".json").read_text())
         self.assertEqual(log["result"], before)
-        self.assertEqual([manifest["crop_box"], manifest["context_box"]], log["crop_boxes"])
-        submitted = self.glimmer.report.call_args.args[0]
-        for name, payload in zip((manifest["crop"], manifest["context"]), submitted):
-            self.assertEqual((self.prefix.parent / name).read_bytes(), payload)
+        self.assertEqual(manifest, log["images"])
+        self.assertEqual(manifest["sha256"], hashlib.sha256(self.jpeg).hexdigest())
+        self.assertEqual(self.glimmer.report.call_args.args[0], [self.jpeg])
 
     def test_missing_attribute_is_a_logged_failure_without_retry(self):
         self.result["report"]["observations"].pop()

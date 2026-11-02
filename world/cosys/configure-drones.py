@@ -58,7 +58,7 @@ def generate(world, rpc_port, instance_base):
         "CameraDefaults": {
             "CaptureSettings": [
                 dict(ImageType=-1, **exposure),
-                dict(ImageType=0, Width=1920, Height=1080, ForceUpdate=False, **exposure),
+                dict(ImageType=0, Width=3840, Height=2160, ForceUpdate=False, **exposure),
             ]
         },
         "Vehicles": {},

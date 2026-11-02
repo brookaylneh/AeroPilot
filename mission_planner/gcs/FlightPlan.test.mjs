@@ -9,8 +9,9 @@ import {
   flightPlanSchema,
   planReceiptSchema,
   plannerSchema,
-  previewConflict,
+  planRejection,
   stepText,
+  surveyCoverageText,
 } from './FlightPlan.tsx';
 import { droneIds, linkLost, stateSchema } from './missionState.ts';
 
@@ -195,8 +196,8 @@ test('complete mission states retain telemetry through observed route, circle, m
   const state = {
     type: 'state',
     fences: {
-      version: 0,
       names: { inclusion: 'Inclusion', exclusions: [] },
+      version: 0,
       inclusion: [
         { north_m: -800, east_m: -1200 },
         { north_m: -800, east_m: 1200 },
@@ -262,6 +263,10 @@ test('complete mission states retain telemetry through observed route, circle, m
         error: null,
         latest: null,
         rescue: {
+          live_frame: null,
+          held_frame: null,
+          healthy_s: 0,
+          tracking_error: null,
           phase: 'stopped',
           review_id: null,
           reports: [],
@@ -383,17 +388,27 @@ test('rejected geometry belongs only to the current failed preview', () => {
     step_kind: 'fly',
     other_step_kind: 'fly',
   };
+  const rejection = {
+    rule: 'separation',
+    version: 2,
+    drone_id: 'Drone2',
+    step_index: 1,
+    step_kind: 'fly',
+    message: 'Drone2 step 2 (fly) conflicts with Drone3 step 2 (fly)',
+    detail: null,
+    conflict,
+  };
   const rejected = {
     id: 'preview-2',
     kind: 'tool_result',
     name: 'preview_plan',
     arguments: { plan },
-    result: { ok: false, error: 'Route conflict', conflict },
+    result: { ok: false, error: rejection.message, rejection },
   };
-  assert.equal(previewConflict([]), null);
-  assert.deepEqual(previewConflict([rejected]), { event_id: 'preview-2', version: 2, ...conflict });
+  assert.equal(planRejection([]), null);
+  assert.deepEqual(planRejection([rejected]), { event_id: 'preview-2', ...rejection });
   assert.equal(
-    previewConflict([rejected, { kind: 'tool_result', name: 'get_fleet', result: { ok: true } }]).version,
+    planRejection([rejected, { kind: 'tool_result', name: 'get_fleet', result: { ok: true } }]).version,
     2,
   );
   for (const name of [
@@ -405,14 +420,33 @@ test('rejected geometry belongs only to the current failed preview', () => {
     'return_home',
     'land',
   ]) {
-    assert.equal(previewConflict([rejected, { kind: 'tool_call', name }]), null);
+    assert.equal(planRejection([rejected, { kind: 'tool_call', name }]), null);
   }
   for (const result of [{ ok: true }, { ok: false, error: 'Battery insufficient' }]) {
-    assert.equal(previewConflict([rejected, { ...rejected, result }]), null);
+    assert.equal(planRejection([rejected, { ...rejected, result }]), null);
   }
+  const battery = {
+    ...rejection,
+    rule: 'battery',
+    step_index: null,
+    step_kind: null,
+    message: 'Drone2: battery needs 91.57%, available 89%',
+    detail: { required_percent: 91.57, battery_percent: 89 },
+    conflict: null,
+  };
+  assert.deepEqual(
+    planRejection([{ ...rejected, result: { ok: false, error: battery.message, rejection: battery } }]),
+    { event_id: 'preview-2', ...battery },
+  );
   assert.throws(() =>
-    previewConflict([
-      { ...rejected, result: { ...rejected.result, conflict: { ...conflict, distance_m: -1 } } },
+    planRejection([
+      {
+        ...rejected,
+        result: {
+          ...rejected.result,
+          rejection: { ...rejection, conflict: { ...conflict, distance_m: -1 } },
+        },
+      },
     ]),
   );
 });
@@ -431,6 +465,40 @@ test('plan receipts keep partial fleets and require matching aircraft', () => {
     },
   });
   assert.deepEqual(Object.keys(state.progress), ['Drone2']);
+});
+
+test('coverage receipts expose gaps and survey continuation survives state parsing', () => {
+  const plan = structuredClone(searchPlan);
+  plan.drones[0].steps[0].start_at = 3;
+  const coverage = {
+    perimeter_area_m2: 360000,
+    survey_area_m2: 67500,
+    unassigned_area_m2: 292500,
+    survey_percent: 18.75,
+  };
+  const value = {
+    plan,
+    coverage,
+    missions: Object.fromEntries(plan.drones.map(({ drone_id }) => [drone_id, receipt.missions.Drone2])),
+  };
+  assert.deepEqual(planReceiptSchema.parse(value), value);
+  const state = {
+    active: value,
+    preview: null,
+    previous: null,
+    progress: {
+      Drone1: { version: 1, current_step: 0, completed_steps: [], time_remaining_s: 100, survey_start_at: 3 },
+    },
+  };
+  assert.deepEqual(plannerSchema.parse(state), state);
+  assert.equal(surveyCoverageText(coverage), 'Survey assigned: 18.75% · 292500 m² unassigned');
+  assert.match(stepText(plan.drones[0].steps[0]), /^Continue surveying/);
+  plan.drones[0].steps[0].start_at = -1;
+  assert.equal(flightPlanSchema.safeParse(plan).success, false);
+  assert.equal(
+    planReceiptSchema.safeParse({ ...value, coverage: { ...coverage, survey_percent: 101 } }).success,
+    false,
+  );
 });
 
 test('every mission step describes the operator choices without inventing completion', () => {

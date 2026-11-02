@@ -8,7 +8,7 @@ from scipy.spatial.transform import Rotation
 
 from mission_planner.gcs.geodesy import ORIGIN
 from mission_planner.gcs.service import planning_inspection
-from mission_planner.gcs.tracking import follow_target, ground_observation, ground_point
+from mission_planner.gcs.tracking import follow_target, ground_observation
 from world.cosys.landmarks import load
 from world.cosys.terrain import terrain_height
 
@@ -33,7 +33,7 @@ class GroundFollowing(unittest.TestCase):
             with self.subTest(north=north, east=east):
                 target = (north + 20, east + 10)
                 metadata = self.metadata(north, east, target)
-                point = ground_point(metadata, [950, 400, 970, 540])
+                point = ground_observation(metadata, [950, 400, 970, 540])["ground"]
                 self.assertLess(math.dist([point["north_m"], point["east_m"]], target), 0.01)
                 self.assertAlmostEqual(
                     point["ground_m"], terrain_height(point["north_m"], point["east_m"])
@@ -42,10 +42,11 @@ class GroundFollowing(unittest.TestCase):
     def test_horizon_and_invalid_boxes_fail(self):
         metadata = self.metadata(0, 0, (20, 0))
         metadata["camera_pose_local_ned"]["orientation"] = {"x": 0, "y": 0, "z": 0, "w": 1}
-        with self.assertRaisesRegex(AssertionError, "horizon"):
-            ground_point(metadata, [950, 400, 970, 540])
+        observation = ground_observation(metadata, [950, 400, 970, 540])
+        self.assertIsNone(observation["ground"])
+        self.assertIn("horizon", observation["location_error"])
         with self.assertRaisesRegex(AssertionError, "Invalid tracked box"):
-            ground_point(metadata, [-1, 0, 10, 20])
+            ground_observation(metadata, [-1, 0, 10, 20])
 
     def test_projected_candidate_enters_wonder_context_without_serialization(self):
         observation = ground_observation(self.metadata(32, 228, (52, 238)), [950, 400, 970, 540])

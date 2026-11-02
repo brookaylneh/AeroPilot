@@ -163,7 +163,16 @@ export default function DroneVideo({
   useEffect(() => viewer.current?.select(droneId), [droneId]);
   const status = state.type === 'live' && state.droneId !== droneId ? 'connecting' : state.type;
   const video = parent.current?.querySelector('video');
-  const frame = inspection?.rescue ? inspection.rescue.live_frame : inspection?.latest;
+  const rescue = inspection?.rescue;
+  const frame = rescue
+    ? rescue.phase === 'searching'
+      ? rescue.reports.some((report) => report.images.frame_id === inspection?.latest?.frame_id)
+        ? null
+        : inspection?.latest
+      : rescue.phase === 'held'
+        ? rescue.held_frame
+        : rescue.live_frame
+    : inspection?.latest;
   const showBoxes =
     status === 'live' &&
     video &&
@@ -174,7 +183,7 @@ export default function DroneVideo({
     (!inspection.camera_view || frame.camera_view_revision === inspection.camera_view.revision) &&
     frame.detections.length > 0 &&
     ['running', 'candidate'].includes(inspection.status) &&
-    (!inspection.rescue || ['reviewing', 'tracking'].includes(inspection.rescue.phase));
+    (!rescue || ['searching', 'reviewing', 'tracking', 'held'].includes(rescue.phase));
   return (
     <section
       className={`gcs-video gcs-drone-video ${inset ? 'is-inset' : ''}`}
@@ -188,6 +197,15 @@ export default function DroneVideo({
           key={`${droneId}:${inspection.id}:${inspection.rescue?.review_id}`}
           video={video}
           frame={frame}
+          lock={
+            rescue?.phase === 'reviewing'
+              ? 'reviewing'
+              : rescue?.phase === 'tracking'
+                ? 'locked'
+                : rescue?.phase === 'held'
+                  ? 'held'
+                  : undefined
+          }
           onError={onError}
         />
       )}

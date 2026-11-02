@@ -5,8 +5,13 @@ import json
 
 from PIL import Image
 
-from mission_planner.agents.review import jpeg
 from mission_planner.environment import ROOT
+
+
+def jpeg(image):
+    buffer = io.BytesIO()
+    image.convert("RGB").save(buffer, format="JPEG", quality=95, subsampling=0)
+    return buffer.getvalue()
 
 
 def load_configuration():

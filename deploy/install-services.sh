@@ -24,5 +24,5 @@ for unit in deploy/systemd/*.service; do
 done
 systemctl daemon-reload
 systemd-analyze verify /etc/systemd/system/snr-*.service
-systemctl enable snr-web snr-mission snr-signalling snr-unreal snr-turn snr-caddy
+systemctl enable snr-web snr-mission snr-vision snr-signalling snr-unreal snr-turn snr-caddy
 printf 'Units installed and enabled. Start them explicitly after verifying the runtime configuration.\n'

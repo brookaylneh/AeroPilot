@@ -23,7 +23,10 @@ app.get('/mission', (req, res) =>
 );
 app.get('/api/evidence/:mission/:asset', async (req, res) => {
   const { mission, asset } = req.params;
-  if (!/^[a-f0-9-]{36}$/.test(mission) || !/^[a-f0-9-]+-(?:frame|input|crop|context)\.jpg$/.test(asset)) {
+  if (
+    !/^[a-f0-9-]{36}$/.test(mission) ||
+    !/^[a-f0-9-]+-(?:(?:frame|input|crop|context)\.jpg|track-[1-9][0-9]*-mask\.png)$/.test(asset)
+  ) {
     res.sendStatus(400);
     return;
   }

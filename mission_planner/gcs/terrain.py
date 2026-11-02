@@ -6,6 +6,7 @@ from collections import deque
 import numpy as np
 
 from mission_planner.gcs.geodesy import MAX_ALTITUDE_M, MIN_ALTITUDE_M
+from mission_planner.gcs.rejection import PlanRejected
 from world.cosys.terrain import terrain_height
 
 # Quarter metres survive MAVLink float32 and ArduPilot integer-centimetre storage exactly.
@@ -32,10 +33,17 @@ def terrain_leg(a, b, home_z, height_m):
     east = a["east_m"] + (b["east_m"] - a["east_m"]) * t
     target = np.array([terrain_height(n, e) + height_m - home_z for n, e in zip(north, east)])
     altitude = np.rint(target / ALTITUDE_STEP_M) * ALTITUDE_STEP_M
-    assert ((altitude >= MIN_ALTITUDE_M) & (altitude <= MAX_ALTITUDE_M)).all(), (
-        f"Terrain-following altitude spans {altitude.min():.3f}–{altitude.max():.3f} m; "
-        "must remain 10–100 m above home"
-    )
+    if not ((altitude >= MIN_ALTITUDE_M) & (altitude <= MAX_ALTITUDE_M)).all():
+        raise PlanRejected(
+            "altitude",
+            f"Terrain-following altitude spans {altitude.min():.3f}–{altitude.max():.3f} m; "
+            f"must remain {MIN_ALTITUDE_M:g}–{MAX_ALTITUDE_M:g} m above home",
+            detail={
+                "segment": [a, b],
+                "minimum_m": float(altitude.min()),
+                "maximum_m": float(altitude.max()),
+            },
+        )
     count = len(target)
     direct_error = float(np.abs(np.linspace(altitude[0], altitude[-1], count) - target).max())
     if direct_error <= PLANNED_AGL_TOLERANCE_M:

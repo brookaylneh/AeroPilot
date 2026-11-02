@@ -75,13 +75,13 @@ class AgentContext(unittest.TestCase):
             "rescue": {
                 "track": None,
                 "live_frame": None,
-                "tracking_error": "SAM target is leaving the camera view",
+                "tracking_error": "SAM track 1 is not visible in the current frame",
             },
         }
         result = planning_inspection(row, load())
         self.assertEqual(
             result["rescue"]["unavailable_tools"],
-            ["center_candidate", "get_candidate", "follow_candidate"],
+            ["center_candidate", "follow_candidate"],
         )
         self.assertNotIn("unavailable_tools", row["rescue"])
 
@@ -89,6 +89,12 @@ class AgentContext(unittest.TestCase):
         plan = {"version": 1, "drones": [{"drone_id": "Drone1", "steps": [{"kind": "land"}]}]}
         receipt = {
             "plan": plan,
+            "coverage": {
+                "perimeter_area_m2": 1000,
+                "survey_area_m2": 250,
+                "unassigned_area_m2": 750,
+                "survey_percent": 25,
+            },
             "missions": {
                 "Drone1": {
                     "items": [{"command": 16}] * 500,
@@ -96,7 +102,9 @@ class AgentContext(unittest.TestCase):
                     "distance_m": 1200,
                     "duration_s": 300,
                     "battery_required_percent": 70,
-                    "step_ranges": [{"step_index": 0, "duration_s": 300}],
+                    "step_ranges": [
+                        {"step_index": 0, "duration_s": 300, "survey_seqs": list(range(500))}
+                    ],
                 }
             },
         }
@@ -106,6 +114,8 @@ class AgentContext(unittest.TestCase):
         self.assertEqual(result["missions"]["Drone1"]["battery_required_percent"], 70)
         self.assertNotIn("items", result["missions"]["Drone1"])
         self.assertNotIn("route", result["missions"]["Drone1"])
+        self.assertEqual(result["coverage"], receipt["coverage"])
+        self.assertNotIn("survey_seqs", result["missions"]["Drone1"]["step_ranges"][0])
         self.assertEqual(len(receipt["missions"]["Drone1"]["items"]), 500)
 
     def test_retiring_images_preserves_evidence_identifiers_and_typed_history(self):
@@ -798,43 +808,33 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
         self.assertIn("No command was issued from this Wonder request", error.args[1])
         self.assertEqual(error.kwargs["result"]["status_code"], 400)
 
-    async def test_evidence_pixels_stay_in_browser_state_and_images_not_model_text(self):
+    async def test_original_4k_evidence_reaches_wonder_without_pixels_in_model_text(self):
         from mission_planner.gcs.inspection import Inspections
+        from mission_planner.gcs.test_inspection import image_bytes
 
-        images = []
-        for value in (10, 20, 30, 40):
-            output = io.BytesIO()
-            Image.new("RGB", (8, 8), (value, value, value)).save(output, format="JPEG")
-            images.append(output.getvalue())
-        order = [
-            {"kind": kind}
-            for kind in ("original", "SAM overlay", "Glimmer crop", "Glimmer context")
-        ]
+        images = [image_bytes()]
+        order = [{"kind": "original 4K frame", "frame_id": "source-frame"}]
         metadata = {"frame_id": "source-frame", "captured_at_ms": 1234, "drone_id": "Drone3"}
-        png = io.BytesIO()
-        Image.new("L", (2, 2), 255).save(png, format="PNG")
-        pixels = base64.b64encode(png.getvalue()).decode()
         row = {
             "id": "review",
             "status": "candidate",
             "latest": {
                 "frame_ref": "/api/evidence/mission/source-frame.jpg",
                 "detections": [
-                    {"mask_area_px": 4, "mask": {"origin_xy": [1, 2], "png_base64": pixels}}
+                    {
+                        "track_id": 1,
+                        "class_name": "person",
+                        "box_xyxy": [100, 200, 300, 400],
+                        "observations": 2,
+                        "confidence": 0.8,
+                    }
                 ],
             },
             "rescue": {
-                "phase": "locked",
+                "phase": "tracking",
                 "tracking_error": None,
                 "track": None,
-                "reports": [
-                    {
-                        "images": {
-                            "crop_ref": "candidate-crop.jpg",
-                            "context_ref": "candidate-context.jpg",
-                        }
-                    }
-                ],
+                "reports": [{"images": {"frame_ref": "/api/evidence/mission/source-frame.jpg"}}],
             },
         }
         original = copy.deepcopy(row)
@@ -882,9 +882,9 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
             wake={"reason": "rescue", "results": [{"inspection": row}]},
         )
         content = self.requests[0]["input"][0]["content"]
-        self.assertIn("exact review inputs", content[1]["text"])
+        self.assertIn("original full 4K camera frame", content[1]["text"])
         self.assertEqual(
-            json.loads(content[1]["text"].split("Enlargement adds no detail. ")[1]),
+            json.loads(content[1]["text"].split("original pixels. ")[1]),
             {"metadata": metadata, "image_order": order},
         )
         self.assertEqual(
@@ -892,22 +892,23 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
         )
         self.mission.inspections.evidence.assert_called_once_with("review")
         await mission.agent("Explain the evidence")
+        pixels = base64.b64encode(images[0]).decode()
         for request in self.requests:
-            self.assertNotIn(pixels, json.dumps(request))
-            self.assertNotIn("png_base64", json.dumps(request))
+            self.assertNotIn(pixels, request["instructions"])
             context = json.loads(request["instructions"].split("Current mission context: ")[1])
-            detection = context["inspections"][0]["latest"]["detections"][0]
-            self.assertEqual(detection, {"mask_area_px": 4, "mask": {"origin_xy": [1, 2]}})
+            self.assertEqual(
+                context["inspections"][0]["latest"]["detections"], row["latest"]["detections"]
+            )
             self.assertEqual(
                 context["inspections"][0]["rescue"]["reports"], original["rescue"]["reports"]
             )
+        self.assertNotIn(pixels, json.dumps(self.requests[-1]))
         output = self.requests[1]["input"][-1]
         self.assertEqual(output["type"], "function_call_output")
-        self.assertNotIn("png_base64", output["output"])
+        self.assertNotIn(pixels, output["output"])
         self.assertEqual(mission.state()["inspections"], [original])
         self.assertEqual(row, original)
-        self.assertIn(pixels, mission.log.getvalue())
-        self.assertIn(pixels, json.dumps(mission.events))
+        self.assertNotIn(pixels, mission.log.getvalue())
 
     async def test_plan_replacement_discards_a_delayed_automatic_review(self):
         entered, release = threading.Event(), threading.Event()
@@ -1027,7 +1028,7 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
         row = {
             "id": "inspection",
             "status": "candidate",
-            "rescue": {"phase": "locked", "tracking_error": "Too few features"},
+            "rescue": {"phase": "held", "tracking_error": "Too few features"},
         }
         self.mission.inspections.snapshot.return_value = [row]
         before = self.mission.decision_state()

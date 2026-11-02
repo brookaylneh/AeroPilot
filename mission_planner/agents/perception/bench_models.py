@@ -11,6 +11,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+from mission_planner.agents import review
 from mission_planner.agents.models import Glimmer, Sam, Wonder
 from mission_planner.environment import ROOT
 
@@ -50,13 +51,35 @@ CASES = (
     "wonder_low",
     "wonder_medium",
     "wonder_tool_roundtrip",
+    "glimmer_frame_2160",
 )
+EVIDENCE_SAMPLE = ".local/data/calibration/adult-kelvin-forest/frame-00-+00-Drone1.jpg"
+LOOK_FOR = {
+    "objective": "Find the missing person.",
+    "target": "a person",
+    "attributes": [],
+    "ignore": [],
+}
 
 
 def jpeg(image):
     buffer = io.BytesIO()
     image.convert("RGB").save(buffer, format="JPEG", quality=90, subsampling=0)
     return buffer.getvalue()
+
+
+def evidence():
+    frame = (ROOT / EVIDENCE_SAMPLE).read_bytes()
+    with Image.open(io.BytesIO(frame)) as native:
+        assert native.size == (3840, 2160) and native.format == "JPEG"
+    sam = Sam()
+    try:
+        detections = sam.detect(frame, ["person"], 0.5)["person"]
+    finally:
+        sam.http.close()
+    assert detections, "The evidence sample must contain a person detection"
+    best = max(detections, key=lambda d: d.confidence)
+    return frame, {"track_id": 1, "box_xyxy": list(best.box_xyxy)}
 
 
 def save(path, report):
@@ -82,7 +105,28 @@ def main():
         model.http.event_hooks["response"].append(record)
         return model
 
-    if args.case.startswith("wonder"):
+    if args.case == "glimmer_frame_2160":
+        frame, source = evidence()
+        model = attach(Glimmer())
+        text = review.instructions(
+            LOOK_FOR, "person", {"drone_id": "Drone1", "captured_at_ms": 0}, source
+        )
+
+        def operation():
+            timing = {}
+            result = model.report(
+                [frame], review.SYSTEM, text, review.schema(LOOK_FOR), review.MAX_TOKENS, timing
+            )
+            return {
+                "frame_bytes": len(frame),
+                "source": source,
+                "request_bytes": timing["request_bytes"],
+                "decision": result["report"]["decision"],
+                "reasoning_tokens": result["reasoning_tokens"],
+                "usage": result["usage"],
+                "timings": result["timings"],
+            }
+    elif args.case.startswith("wonder"):
         model = attach(Wonder())
         map_image = (ROOT / "web/public/maps/valley-topographic.png").read_bytes()
         text = (

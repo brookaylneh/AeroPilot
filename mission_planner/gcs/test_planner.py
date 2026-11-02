@@ -9,17 +9,27 @@ from jsonschema import Draft202012Validator, ValidationError
 from pymavlink.dialects.v20 import ardupilotmega as MAV
 
 from mission_planner.gcs.battery import VOLTAGE_FLOOR_PERCENT, available_seconds, required_percent
-from mission_planner.gcs.geodesy import NAMES, ORIGIN, homes, to_geodetic, to_local
+from mission_planner.gcs.geodesy import (
+    NAMES,
+    ORIGIN,
+    homes,
+    point_in_polygon,
+    to_geodetic,
+    to_local,
+)
 from mission_planner.gcs.planner import (
     PLAN_SCHEMA,
     compile_plan,
+    divide_survey,
     expanding_square,
     mission_item,
     mission_readback,
+    survey_coverage,
     survey_points,
     validate_missions,
     validate_search,
 )
+from mission_planner.gcs.rejection import PlanRejected
 from mission_planner.gcs.terrain import ALTITUDE_STEP_M, PLANNED_AGL_TOLERANCE_M
 from mission_planner.gcs.test_validation import readback
 from mission_planner.gcs.validation import minimum_clearance
@@ -86,13 +96,14 @@ def compile_steps(steps, fleet=None):
     )["missions"]["Drone1"]
 
 
-def search_plan():
-    def rectangle(south, north, west, east):
-        return [
-            {"north_m": n, "east_m": e}
-            for n, e in ((south, west), (north, west), (north, east), (south, east))
-        ]
+def rectangle(south, north, west, east):
+    return [
+        {"north_m": n, "east_m": e}
+        for n, e in ((south, west), (north, west), (north, east), (south, east))
+    ]
 
+
+def search_plan():
     return {
         "version": 1,
         "search": {
@@ -270,8 +281,19 @@ class SearchPlan(unittest.TestCase):
         survey.update(height_m=15, spacing_m=10)
         self.check(value)
         survey["spacing_m"] = 10.01
-        with self.assertRaisesRegex(AssertionError, "Drone4 step 0.*exceeds 10 m.*15 m AGL"):
+        with self.assertRaisesRegex(PlanRejected, "Drone4 step 1 .*exceeds 10 m.*15 m AGL") as c:
             self.check(value)
+        rejection = c.exception.rejection
+        self.assertEqual(
+            {k: rejection[k] for k in ("rule", "drone_id", "step_index", "step_kind")},
+            {
+                "rule": "spacing_overlap",
+                "drone_id": "Drone4",
+                "step_index": 0,
+                "step_kind": "survey",
+            },
+        )
+        self.assertEqual(rejection["detail"]["maximum_m"], 10)
 
     def test_return_only_branch_has_no_candidate_lock_allowance(self):
         value = search_plan()
@@ -375,6 +397,123 @@ class SearchPlan(unittest.TestCase):
             self.check(value)
 
 
+class SurveyCoverage(unittest.TestCase):
+    def test_recorded_disconnected_sectors_report_the_unassigned_area(self):
+        value = search_plan()
+        value["search"]["perimeter"] = rectangle(30, 480, -130, 670)
+        bounds = [
+            (40, 130, 460, 660),
+            (170, 260, 180, 380),
+            (270, 355, 20, 200),
+            (380, 470, -120, 60),
+        ]
+        for branch, area in zip(value["drones"], bounds):
+            branch["steps"][0]["polygon"] = rectangle(*area)
+        original = copy.deepcopy(value)
+        self.assertEqual(
+            survey_coverage(value),
+            {
+                "perimeter_area_m2": 360000,
+                "survey_area_m2": 67500,
+                "unassigned_area_m2": 292500,
+                "survey_percent": 18.75,
+            },
+        )
+        self.assertEqual(value, original)
+        validate_search(value, {name: readback() for name in NAMES})
+
+    def test_overlap_and_repeated_passes_do_not_double_count(self):
+        value = search_plan()
+        value["drones"] = value["drones"][:1]
+        step = value["drones"][0]["steps"][0]
+        step["polygon"] = rectangle(-750, -700, -60, 0)
+        other = {**step, "polygon": rectangle(-750, -700, -30, 30)}
+        value["drones"][0]["steps"] = [step, copy.deepcopy(step), other, hover()]
+        self.assertEqual(survey_coverage(value)["survey_percent"], 75)
+        self.assertEqual(survey_coverage(value)["unassigned_area_m2"], 1500)
+        for branch in value["drones"]:
+            branch["steps"] = [{"kind": "return_home", "height_m": 40, "speed_mps": 5}]
+        self.assertIsNone(survey_coverage(value))
+        self.assertIsNone(survey_coverage(plan([hover()])))
+
+    def test_divided_surveys_cover_the_chosen_polygon_at_other_bearings_and_fleet_sizes(self):
+        for count in (1, 2, 3, 4):
+            for bearing in (0, 90, 180, 217):
+                with self.subTest(count=count, bearing=bearing):
+                    value = search_plan()
+                    perimeter = value["search"]["perimeter"]
+                    result = divide_survey(NAMES[:count], perimeter, 10, bearing, 30, 5)
+                    self.assertEqual(result["perimeter"], perimeter)
+                    value["drones"] = result["drones"]
+                    self.assertEqual([d["drone_id"] for d in value["drones"]], list(NAMES[:count]))
+                    self.assertAlmostEqual(survey_coverage(value)["survey_area_m2"], 6000)
+                    self.assertAlmostEqual(survey_coverage(value)["unassigned_area_m2"], 0)
+                    sectors = [d["steps"][0]["polygon"] for d in value["drones"]]
+                    for north in range(-750, -699, 5):
+                        for east in range(-60, 61, 5):
+                            point = {"north_m": north, "east_m": east}
+                            self.assertTrue(
+                                any(point_in_polygon(point, sector) for sector in sectors)
+                            )
+                    validate_search(value, {name: readback() for name in NAMES})
+
+    def test_disconnected_split_and_duplicate_aircraft_fail_without_repair(self):
+        perimeter = rectangle(-750, -700, -60, 60)
+        with self.assertRaisesRegex(AssertionError, "appears twice in survey division"):
+            divide_survey(["Drone1", "Drone1"], perimeter, 10, 0, 30, 5)
+        disconnected = [
+            {"north_m": n, "east_m": e}
+            for n, e in (
+                (0, 0),
+                (100, 0),
+                (100, 100),
+                (80, 100),
+                (80, 20),
+                (20, 20),
+                (20, 100),
+                (0, 100),
+            )
+        ]
+        original = copy.deepcopy(disconnected)
+        with self.assertRaisesRegex(AssertionError, "disconnected survey sector"):
+            divide_survey(list(NAMES), disconnected, 10, 0, 30, 5)
+        self.assertEqual(disconnected, original)
+
+    def test_edge_passes_cover_short_and_non_divisible_sector_widths(self):
+        for width in (1, 10, 20, 21, 40, 80, 85, 90, 100):
+            step = {"polygon": rectangle(-750, -710, 0, width), "spacing_m": 20, "bearing_deg": 0}
+            rows = [p["east_m"] for p in survey_points(step)[::2]]
+            self.assertEqual(len(rows), math.ceil(width / 20))
+            self.assertLessEqual(rows[0], 10)
+            self.assertLessEqual(width - rows[-1], 10)
+            self.assertAlmostEqual(rows[0], width - rows[-1])
+            self.assertTrue(all(b - a <= 20 for a, b in zip(rows, rows[1:])))
+
+    def test_continuation_keeps_unfinished_endpoints_without_replaying_old_rows(self):
+        step = search_plan()["drones"][0]["steps"][0]
+        points = survey_points(step)
+        n = (points[2]["north_m"] + points[3]["north_m"]) / 2
+        e = points[2]["east_m"]
+        remaining = {**step, "start_at": 3, "speed_mps": 10}
+        value = search_plan()
+        value["drones"] = [{"drone_id": "Drone1", "steps": [remaining, hover()]}]
+        original = copy.deepcopy(value)
+        receipt = compile_plan(
+            value, airborne(n, e, 40), {name: readback() for name in NAMES}, load()
+        )
+        route = receipt["missions"]["Drone1"]["route"]
+        self.assertEqual((route[0]["north_m"], route[0]["east_m"]), (n, e))
+        coordinates = [(p["north_m"], p["east_m"]) for p in route]
+        for point in points[:3]:
+            self.assertNotIn(encoded_coordinates(point["north_m"], point["east_m"]), coordinates)
+        for point in points[3:]:
+            self.assertIn(encoded_coordinates(point["north_m"], point["east_m"]), coordinates)
+        self.assertEqual(value, original)
+        remaining["start_at"] = len(points)
+        with self.assertRaisesRegex(AssertionError, "start_at.*outside"):
+            compile_plan(value, airborne(n, e, 40), {name: readback() for name in NAMES}, load())
+
+
 class ExpandingSquare(unittest.TestCase):
     def test_leadin_and_successive_leg_pairs_rotate_about_explicit_datum(self):
         for bearing in (0, 90, 217):
@@ -435,6 +574,7 @@ class Planner(unittest.TestCase):
         fleet[0]["north_m"] += 1
         north, east = fleet[0]["north_m"], fleet[0]["east_m"]
         obstacle = {
+            "id": "moved-takeoff-column",
             "name": "Moved takeoff column",
             "heightM": 2,
             "geometry": {
@@ -522,9 +662,10 @@ class Planner(unittest.TestCase):
 
     def test_return_home_explains_that_a_following_land_is_redundant(self):
         with self.assertRaisesRegex(
-            AssertionError,
-            "Drone1 step 1: return_home returns home and lands; it must be the last step",
-        ):
+            PlanRejected,
+            "Drone1 step 2 \\(return_home\\): return_home returns home and lands; "
+            "it must be the last step",
+        ) as caught:
             compile_steps(
                 [
                     {"kind": "takeoff", "height_m": 40},
@@ -532,6 +673,36 @@ class Planner(unittest.TestCase):
                     {"kind": "land"},
                 ]
             )
+        rejection = caught.exception.rejection
+        self.assertEqual(rejection["rule"], "aftermath")
+        self.assertEqual((rejection["drone_id"], rejection["step_index"]), ("Drone1", 1))
+        self.assertEqual(str(caught.exception), rejection["message"])
+
+    def test_every_rejection_is_structured_with_zero_based_fields(self):
+        fleet = airborne()
+        fleet[0]["battery_percent"] = 1
+        with self.assertRaises(PlanRejected) as battery:
+            compile_steps([hover()], fleet)
+        self.assertEqual(battery.exception.rejection["rule"], "battery")
+        self.assertEqual(battery.exception.rejection["drone_id"], "Drone1")
+        self.assertEqual(battery.exception.rejection["detail"]["battery_percent"], 1)
+        self.assertGreater(battery.exception.rejection["detail"]["required_percent"], 1)
+        with self.assertRaises(PlanRejected) as state:
+            compile_steps([hover()], states())
+        self.assertEqual(state.exception.rejection["rule"], "aircraft_state")
+        self.assertEqual(state.exception.rejection["detail"]["armed"], False)
+        with self.assertRaises(PlanRejected) as fence:
+            compile_steps([{"kind": "takeoff", "height_m": 30}, fly(900, 0), hover()])
+        rejection = fence.exception.rejection
+        self.assertEqual(rejection["rule"], "fence")
+        self.assertEqual((rejection["drone_id"], rejection["step_index"]), ("Drone1", 1))
+        self.assertEqual(rejection["step_kind"], "fly")
+        self.assertTrue(rejection["message"].startswith("Drone1 step 2 (fly): "))
+        self.assertIsNone(rejection["conflict"])
+        with self.assertRaises(PlanRejected) as hover_step:
+            compile_steps([{"kind": "takeoff", "height_m": 30}, hover(), fly(-700, 0), hover()])
+        self.assertEqual(hover_step.exception.rejection["rule"], "aftermath")
+        self.assertEqual(hover_step.exception.rejection["step_index"], 2)
 
     def test_land_here_uses_local_ground_column(self):
         mission = compile_steps([{"kind": "land"}], airborne())

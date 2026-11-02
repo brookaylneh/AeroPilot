@@ -67,6 +67,26 @@ class ToolContracts(unittest.TestCase):
         self.assertIn("open_feed", names)
         self.assertTrue({"preview_plan", "request_launch", "apply_plan_change"} <= set(names))
         self.assertTrue({"take_off", "fly_to", "fly_route"}.isdisjoint(names))
+        self.assertIn("divide_survey", names)
+
+    def test_survey_division_accepts_operator_choices_and_continuation_stays_on_survey_steps(self):
+        value = search_plan()
+        step = value["drones"][0]["steps"][0]
+        arguments = {
+            "drone_ids": ["Drone1", "Drone2", "Drone3", "Drone4"],
+            **{k: v for k, v in step.items() if k not in ("kind", "observe")},
+        }
+        validate_arguments("divide_survey", arguments)
+        validate_arguments("divide_survey", {**arguments, "drone_ids": ["Drone1"]})
+        step["start_at"] = 3
+        validate_arguments("preview_plan", {"plan": value})
+        step["start_at"] = -1
+        with self.assertRaisesRegex(AssertionError, "start_at"):
+            validate_arguments("preview_plan", {"plan": value})
+        del step["start_at"]
+        value["drones"][0]["steps"][-1]["start_at"] = 1
+        with self.assertRaisesRegex(AssertionError, "start_at"):
+            validate_arguments("preview_plan", {"plan": value})
 
     def test_feed_requires_one_known_drone(self):
         validate_arguments("open_feed", {"drone_id": "Drone3"})
@@ -173,12 +193,10 @@ class ToolContracts(unittest.TestCase):
     def test_corridor_corners_are_not_rectangular_expansion(self):
         with self.assertRaisesRegex(AssertionError, "outside the fence"):
             validate_arguments(
-                "fly_to",
+                "fly_route",
                 {
                     "drone_id": "Drone1",
-                    "north_m": -820,
-                    "east_m": 50,
-                    "altitude_above_home_m": 30,
+                    "waypoints": [{"north_m": -820, "east_m": 50, "altitude_above_home_m": 30}],
                     "speed_mps": 5,
                 },
             )

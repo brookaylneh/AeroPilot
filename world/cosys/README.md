@@ -143,10 +143,12 @@ to propagate failures. This measures turns and acceleration between image captur
 ## Coupled settings
 
 Flight-plan inspections use `inspection.ForwardCapture` and the stock `fpv`
-camera. `CameraDefaults` configures request-driven 1920×1080 RGB with the same
+camera. `CameraDefaults` configures request-driven 3840×2160 RGB with the same
 fixed exposure, white balance and Lumen settings. No named `fpv` entry is created:
 Cosys would replace the stock camera and its mount. The separately configured
-3840×2160 nadir camera and calibration capture validation remain unchanged.
+3840×2160 nadir camera and calibration capture validation remain unchanged. The original
+forward JPEG is retained for Glimmer and Wonder; the local detector alone resizes its
+inference copy to 1920×1080. Live video uses the existing Pixel Streaming connection.
 
 Forward capture records the image-owned pose and timestamp, measured horizontal
 field of view, vehicle origin and simulator/UTC brackets. Wrong camera identity,
@@ -184,12 +186,12 @@ field of view: doubling focal length halves `tan(FOV/2)`, not the angle. The com
 reads the setting back, then returns its target, zoom, measured horizontal FOV and
 view revision. Each image records `camera_view_revision` and brackets capture with
 matching FOV reads. Callers retain one capture owner per drone and serialize view
-changes with capture. A selected temporal session survives a camera adjustment;
+changes with capture. A SAM session survives a camera adjustment;
 old boxes are invalidated and only a fresh corresponding observation may guide flight.
 The original relative pose and FOV are
 restored when the owner resets or closes.
 
-Camera changes affect both SAM images and the existing Pixel Streaming view, without
+Camera changes affect both inspection images and the existing Pixel Streaming view, without
 creating a new video connection or camera. The pinned Cosys
 [image API](https://github.com/Cosys-Lab/Cosys-AirSim/blob/5.8-v3.5.0/docs/image_apis.md#camera-apis)
 defines `simSetCameraPose` and `simSetCameraFov`;
@@ -328,7 +330,10 @@ observation evidence. Live flight, camera cadence, tracking and isolated CPU/GPU
 require their own recorded acceptance. See the [release validation record](../../mission_planner/measurements/release.json)
 for completed checks and remaining limits. A source-level check does not establish installed performance.
 
-For coupled shutdowns, land and disarm first. Do not use the service's
+For coupled shutdowns, land and disarm first. End the grounded mission session
+before stopping Unreal so inspections restore their cameras while RPC is available.
+The sequence below preserves the mission log and resets Studio before world shutdown.
+Do not use the service's
 60-second Docker stop timeout while Unreal is still flushing caches. This sequence
 signals Unreal, observes only new log output, then stops Mission Control as soon as
 world EndPlay has stopped AirSim physics. The log follower is the only helper it
@@ -342,11 +347,24 @@ set -a
 set +a
 sudo -v
 .venv-cosys/bin/python - <<'PY'
+import json
 import os
 import select
 import subprocess
 import time
 from datetime import datetime, timezone
+from websockets.sync.client import connect
+
+mission_url = f"ws://127.0.0.1:{os.environ['SNR_MISSION_PORT']}"
+with connect(mission_url, open_timeout=10) as socket:
+    socket.send(json.dumps({"type": "status"}))
+    status = json.loads(socket.recv(timeout=10))
+assert status["can_open_studio"], "Fleet must be healthy, landed and disarmed"
+if status["mission"] is not None:
+    with connect(mission_url, open_timeout=10) as socket:
+        socket.send(json.dumps({"type": "studio"}))
+        result = json.loads(socket.recv(timeout=30))
+    assert result == {"type": "studio"}, result
 
 container = os.environ["SNR_CONTAINER_NAME"]
 assert container == "snr-unreal-live"

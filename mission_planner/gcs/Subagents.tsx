@@ -32,8 +32,7 @@ export function subagentStatus(row: Inspection) {
   return {
     waiting: 'Waiting for its observation step',
     searching: `Scanning with SAM 3.1 · ${frames}`,
-    reviewing: 'Reviewing a SAM 3.1 candidate',
-    locked: 'Following a candidate',
+    reviewing: 'Reviewing a tracked candidate',
     tracking: 'Following a candidate',
     held: row.rescue!.pending ? 'Holding for Wonder' : 'Holding on a candidate',
     resuming: 'Resuming its search',
@@ -199,9 +198,9 @@ export function SubagentTab({
         if (rescue.phase === 'reviewing' && rescue.review_id !== null && !handed.has(rescue.review_id)) {
           handed.add(rescue.review_id);
           const frame = snapshot.latest;
-          if (!frame) throw new Error('A Glimmer review started without its SAM 3.1 frame.');
+          if (!frame) throw new Error('A Glimmer review started without its source frame.');
           return (
-            <article key={event.id} className="gcs-subagent-entry sam" data-frame-id={frame.frame_id}>
+            <article key={event.id} className="gcs-subagent-entry vision" data-frame-id={frame.frame_id}>
               <header>
                 <strong>SAM 3.1 → Glimmer</strong>
                 <span>
@@ -215,10 +214,10 @@ export function SubagentTab({
               </p>
               <figure className="gcs-evidence-frame">
                 <EvidenceImage
-                  src={frame.overlay_ref}
+                  src={frame.frame_ref}
                   width={frame.width}
                   height={frame.height}
-                  label={`${snapshot.drone_id} SAM 3.1 candidate frame`}
+                  label={`${snapshot.drone_id} original 4K candidate frame`}
                   onError={onError}
                 />
               </figure>

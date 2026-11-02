@@ -24,7 +24,7 @@ import { groupPadLabels, placeLabels } from './mapLabels';
 
 import LandmarkLayer from './LandmarkLayer';
 import type { Landmark } from './landmarks';
-import { previewConflict, type Planner } from './FlightPlan';
+import { planRejection, surveyCoverageText, type Planner } from './FlightPlan';
 import type { Inspection } from './InspectionPanel';
 import FenceEditor, { type FenceConfig, type FenceResult, type FenceState } from './FenceEditor';
 
@@ -142,7 +142,10 @@ export default function MissionMap({
   const drag = useRef<{ x: number; y: number; view: MapView } | null>(null);
   const trails = useRef<Record<string, { north_m: number; east_m: number }[]>>({});
   const returned = new Set(vehicles.filter((v) => !v.armed && onHomePad(v)).map((v) => v.id));
-  const conflict = previewConflict(events);
+  const rejection = planRejection(events);
+  const conflict = rejection?.conflict
+    ? { ...rejection.conflict, version: rejection.version, event_id: rejection.event_id }
+    : null;
   const searchReceipt = planner?.preview ?? planner?.active;
   const searchPolicy = searchReceipt?.plan.search;
   const showSearch =
@@ -433,7 +436,7 @@ export default function MissionMap({
                         data-search-sector={drone_id}
                       >
                         <polygon className="gcs-search-sector" points={polygonPoints(sector)}>
-                          <title>{`${drone_id} observed survey area`}</title>
+                          <title>{`${drone_id} assigned survey area`}</title>
                         </polygon>
                         <text className="gcs-search-sector-label" x={label.x} y={label.y} textAnchor="middle">
                           {drone_id}
@@ -520,11 +523,11 @@ export default function MissionMap({
               aria-label="Fleet flight fences"
             >
               <polygon className="gcs-fence" points={polygonPoints(fences.inclusion)}>
-                <title>{fences.names.inclusion}</title>
+                <title>Inclusion fence</title>
               </polygon>
               {fences.exclusions.map((polygon, index) => (
                 <polygon key={index} className="gcs-fence exclusion" points={polygonPoints(polygon)}>
-                  <title>{`${fences.names.exclusions[index]} · No fly at any altitude`}</title>
+                  <title>{`Exclusion ${index + 1} · No fly at any altitude`}</title>
                 </polygon>
               ))}
             </g>
@@ -684,7 +687,7 @@ export default function MissionMap({
           )}
           {inspections.map((inspection) => {
             const track = inspection.rescue?.track;
-            if (!track || !['reviewing', 'locked'].includes(inspection.rescue!.phase)) return null;
+            if (!track || !['reviewing', 'tracking', 'held'].includes(inspection.rescue!.phase)) return null;
             const p = projection(track.ground.north_m, track.ground.east_m);
             return (
               <g
@@ -697,7 +700,7 @@ export default function MissionMap({
               >
                 <circle r="11" />
                 <path d="M-16 0H-6M6 0H16M0-16V-6M0 6V16" />
-                <title>{`${inspection.drone_id} candidate ${track.candidate_index + 1} · ${new Date(track.captured_at_ms).toISOString()}`}</title>
+                <title>{`${inspection.drone_id} track ${track.track_id} · ${new Date(track.captured_at_ms).toISOString()}`}</title>
               </g>
             );
           })}
@@ -779,10 +782,12 @@ export default function MissionMap({
               {formatValue(conflict.minimum_m, 'm', 3)} required
             </div>
           )}
-          {planner?.preview && !conflict && (
+          {!conflict && (planner?.preview || (showSearch && searchReceipt.coverage)) && (
             <div className="gcs-pending-key">
-              <i />
-              Plan v{planner.preview.plan.version} · Preview
+              {planner?.preview && <span>Plan v{planner.preview.plan.version} · Preview</span>}
+              {showSearch && searchReceipt.coverage && (
+                <span>{surveyCoverageText(searchReceipt.coverage)}</span>
+              )}
             </div>
           )}
           <MapTools
@@ -811,6 +816,14 @@ export default function MissionMap({
               {cursor
                 ? `${formatValue(cursor.north_m, 'm N')} / ${formatValue(cursor.east_m, 'm E')}`
                 : 'Drag to pan · Scroll to zoom'}
+            </span>
+            <span className="gcs-fence-key">
+              <i />
+              {fences === null
+                ? 'Fences not received'
+                : fences.verified
+                  ? `Fleet fences v${fences.version} · autopilot readback`
+                  : 'Fences unverified · launch locked'}
             </span>
           </div>
         </>

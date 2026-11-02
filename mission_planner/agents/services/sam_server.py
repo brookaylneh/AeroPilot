@@ -6,12 +6,10 @@ import io
 import json
 import time
 import uuid
-from contextlib import asynccontextmanager
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel, Field
-from sam_tracking import VideoTracks
 from segmentation import encode_mask
 
 TILE_SIZE, OVERLAP = 1008, 64
@@ -38,7 +36,6 @@ class Sam:
             load_from_HF=False,
             compile=compile_model,
         )
-        self.tracking = VideoTracks(self.instance_id)
         assert all(p.dtype == torch.float32 for p in self.model.parameters())
         torch.backends.cuda.matmul.allow_tf32 = torch.backends.cudnn.allow_tf32 = False
         resize = T.RandomResizeAPI(
@@ -225,59 +222,8 @@ def main():
     )
     sam = Sam(args.compile)
 
-    async def expire_tracks():
-        while True:
-            await asyncio.sleep(1)
-            async with sam.inference_lock:
-                expired = sam.tracking.expire()
-            for session_id in expired:
-                print(json.dumps({"tracking_session_expired": session_id}), flush=True)
-
-    @asynccontextmanager
-    async def lifespan(app):
-        expiration = asyncio.create_task(expire_tracks())
-        try:
-            yield
-        finally:
-            expiration.cancel()
-            await asyncio.wait([expiration])
-            if not expiration.cancelled():
-                expiration.result()
-
-    app = FastAPI(lifespan=lifespan)
+    app = FastAPI()
     app.post("/")(sam.detect)
-
-    @app.post("/tracking/{action}")
-    async def track(action: str, body: dict):
-        submitted = time.monotonic()
-        try:
-            assert action in ("start", "frame", "close"), "Unknown tracking action"
-            operation = {
-                "start": sam.tracking.start,
-                "frame": sam.tracking.advance,
-                "close": sam.tracking.close,
-            }[action]
-            async with sam.inference_lock:
-                started = time.monotonic()
-                task = asyncio.create_task(asyncio.to_thread(operation, body))
-                try:
-                    result = await asyncio.shield(task)
-                except asyncio.CancelledError:
-                    await task
-                    raise
-            if action != "close":
-                result["timings"] = {
-                    "queue_s": started - submitted,
-                    "inference_s": time.monotonic() - started,
-                    "total_s": time.monotonic() - submitted,
-                }
-            return result
-        except (AssertionError, ValueError) as error:
-            raise HTTPException(status_code=400, detail=str(error)) from error
-        except Exception as error:
-            raise HTTPException(
-                status_code=500, detail=f"SAM video failed: {type(error).__name__}: {error}"
-            ) from error
 
     @app.get("/health")
     def health():

@@ -1,10 +1,154 @@
-# Modal inference
+# Inference services
 
-The `snr` app serves all four drones with one H200 Glimmer Server and one exact
-H100 (`H100!`) SAM Server. Both have `min_containers=1`, route through `us-west`,
-and leave compute placement and target concurrency unset. Production Servers
-remain warm after searches and benchmarks. Extra experimental deployments must
-be stopped after their experiment, including after failure.
+Live inspections use one local SAM 3.1 model with four independent Object Multiplex
+video sessions. Wonder supplies the visible target at session creation. Glimmer
+reviews the untouched original 3840×2160 JPEG on the existing Modal H200; Wonder
+receives non-discard reviews. WebRTC continues delivering the browser video.
+The independent Modal SAM image endpoint remains available for calibration.
+
+## Local SAM device package
+
+`sam.Dockerfile` and `vision-requirements.txt` pin the Python image, all Python
+packages, official SAM source and PyTorch/CUDA versions. `sam_video.py` verifies
+the official checkpoint hash, learned keys/shapes and the 64 derived RoPE buffers.
+The runtime uses FP32 checkpoint weights with BF16 autocast, TF32 and the official
+component `torch.compile` path. It uses PyTorch SDPA, one frame at a time, no
+quantization and no FlashAttention 3. FA3 does not support this host's Blackwell
+SM 12.0 under its published Hopper requirements.
+
+The source is `facebookresearch/sam3` at
+`f1647e8d0c1d280991f4d1b7d974c2704537fe66`. The checkpoint is
+`facebook/sam3.1` revision `daa63191845a41281374e725f4c9e51c7a824460`,
+`sam3.1_multiplex.pt`, SHA-256
+`0567debeec80ba4ac6369540c6c248025283cb3ff2b92827509e57e2b3541cb6`.
+The native predictor does not expose an indefinite append-frame API. The small
+adapter uses the pinned native detector, tracker, postprocessor and state
+initializer; a guarded reader rejects access to future images. It retains two
+prepared images and the recent/conditioning tracking memories selected by the
+native algorithm. No model session is reset to repair an error or reject a candidate.
+
+Build with the explicit minimal context; do not send the whole checkout to Docker:
+
+```sh
+bash mission_planner/agents/services/build-sam.sh snr-sam31:<release>
+docker image inspect --format '{{.Id}}' snr-sam31:<release>
+```
+
+Stage the verified checkpoint and warmup fixture under `.local/vendor/sam31/`.
+The warmup manifest lists four lanes of 20 SHA-verified 4K JPEGs. The qualified
+fixture is the canonical protocol identified in
+[the SAM measurement](../../measurements/sam31.json). These images exercise
+initial detection, empty frames and continuing tracking; they do not constrain
+live prompts or live input images. Startup also exercises different target phrases
+and thresholds, warms native suppression for 1–16 object shapes and checks
+compilation counters across repeated passes. Threshold variation warms PyTorch's
+generalized NMS graph before a mission can request a different confidence cutoff.
+Store the compile cache in `.local/vendor/sam31/container-cache/`. It is specific
+to the image, CUDA runtime and GPU architecture; regenerate and qualify it after
+changing any of those. Neither weights nor credentials are baked into the image.
+
+Set `SNR_SAM_IMAGE` to the exact image ID or repository digest and set the SAM
+paths, one GPU UUID and container name in `.local/runtime.env`, as documented in
+[deployment](../../../deploy/README.md). `run_vision.py` works as the systemd
+launcher or as a foreground device process:
+
+```sh
+set -a
+. .local/runtime.env
+set +a
+.venv-cosys/bin/python -m mission_planner.agents.services.run_vision
+```
+
+Use an existing empty socket location and start only one owner. The launcher
+runs the image without networking, with a read-only root and weights, as uid
+1002/gid 1003. Only runtime, temporary and compile-cache paths are writable.
+It sets an eight-CPU/24 GiB host-memory container limit. Host PID visibility lets
+NVML attribute GPU use to the actual SAM process. The model enforces a
+**16,000,000,000-byte process GPU budget** and a **15,000,000,000-byte PyTorch
+allocator limit**; NVML samples every 20 ms. A budget or monitor failure exits.
+This is a software budget on an RTX PRO 6000, not a qualification on a physical
+16 GB card. Real device throughput must be measured on that device.
+
+The launcher signals systemd readiness only after the compiled model is warm,
+the Unix socket is listening and `/health` passes. No new TCP port is used.
+`Restart=no` preserves failures for inspection. The mission service waits for
+initial vision readiness but remains available after a vision failure, so flight
+overrides remain usable. Shutdown addresses only the container created by this
+launcher. Images can be transferred with Docker save/load; the checkpoint,
+warmup fixture, `.env` and runtime configuration are separate device assets.
+
+## Ordered live-frame contract
+
+`agents/vision.py` uses the same local HTTP contract for one or four cameras:
+
+- `POST /vision/start`: JSON `session_id`, `drone_id`, `target`, `threshold`,
+  `inference_height`. Threshold is 0.1–1 and height is 1080. Targets are visible
+  phrases of 1–100 characters that fit the native 30 text-token budget.
+- `POST /vision/frame`: original binary 4K JPEG with `Content-Type: image/jpeg`;
+  query fields `session_id`, `instance_id`, `frame_index`, `timestamp_ns`.
+- `POST /vision/close`: JSON `session_id`, `instance_id`.
+
+One GPU executor serves up to four independent states, with FIFO access and one
+outstanding request per drone. Four preparation workers overlap JPEG decoding.
+The original is reduced to 1920×1080, then the native model uses 1008×1008 input.
+Every reply echoes the source JPEG SHA-256, dimensions, capture timestamp and
+ordered frame/session identities. A detection includes `track_id`, `class_name`,
+4K-pixel `box_xyxy`, `confidence`, consecutive `observations` and mandatory
+`mask: {origin_xy, png_base64}`. The mask is a cropped binary grayscale PNG in
+the original coordinate frame, upscaled from the inference mask by nearest
+neighbor. ID zero from SAM maps to public ID one. Capacity is 16 active objects
+per session; exceeding it is an explicit failure, never silent candidate loss.
+
+A frame error terminates its session. Inference failure makes the shared worker
+unhealthy; there are no retries, automatic repair resets or backend substitutions.
+Clients must close sessions explicitly. Health reports the model identity,
+compilation counters, retained-state counts, GPU/CPU memory and readiness timing.
+
+The mission acquires a candidate after two consecutive valid observations of the
+same ID, preserves tracking state through review and hold, and sends Glimmer the
+unaltered detection JPEG. Masks are separate immutable registered evidence assets,
+bound to that frame and ID by reference and hash. Discard immediately clears the
+lock/guidance, excludes that ID for the observation session and restores the
+verified remaining route. Recheck/escalate are sent to Wonder. Only fresh observed
+positions can authorize the existing checked flight controller.
+
+Live video uses padded guidance boxes: each side adds the larger of half the
+projected box dimension and 12 CSS pixels, clipped to the displayed image. Precise
+masks appear only on their matching evidence/review images. The independent
+WebRTC display cannot provide exact registration to a sampled inference image.
+
+## Qualification
+
+`bench_video.py` exercises the packaged HTTP service, including JPEG preparation,
+source checks, mask encoding, transfer and client validation. It requires an idle
+service and a new output directory, preserves failed runs and asserts unchanged
+compilation counters, one shared model and distinct sessions:
+
+```sh
+.venv-cosys/bin/python -m mission_planner.agents.services.bench_video \
+  --protocol .local/vendor/sam31/warmup/protocol.json \
+  --output .local/evidence/sam31/<new-run> --frames-per-drone 80 --passes 3
+.venv-cosys/bin/python -m mission_planner.agents.services.bench_video \
+  --protocol .local/vendor/sam31/warmup/protocol.json \
+  --output .local/evidence/sam31/<new-soak> \
+  --frames-per-drone 9001 --interval 0.2 --passes 1
+```
+
+Use `--drones 1` for a single camera. The 30-minute paced replay repeats recorded
+frames through persistent states; it does not establish long-mission recognition
+accuracy. Final image identity, dependencies, logged throughput, masks, memory,
+startup, soak and known limitations belong in
+[sam31.json](../../measurements/sam31.json).
+
+The target is at least 20.16 aggregate service FPS. That does not establish five
+new captures per second from each live drone: the earlier grounded acquisition
+run measured 430–464 ms median capture time. Capture optimization is separate.
+Compiled output agreement is not exact numerical equivalence or a ground-truth
+accuracy result. The existing Modal confidence/box equivalence gate below is
+unchanged and must not be used to claim this video adapter is equivalent.
+
+## Modal calibration SAM and Glimmer
+
 
 Load credentials and deploy from the repository root:
 
@@ -62,88 +206,8 @@ Each retained detection additionally returns `mask: {origin_xy, png_base64}`:
 the tile's integer pixel origin in the source JPEG and a lossless grayscale PNG
 whose pixels are exactly 0 or 255. Masks are encoded after the existing NMS;
 boxes, confidence, mask area, prompt handling and model precision are unchanged.
-The existing SAR client continues consuming those original numeric fields.
-Prompted inspection validates decoded mask area and image bounds before drawing
-the mask on its exact source frame. This endpoint performs independent image
+Standalone calibration continues consuming those numeric fields and masks. This endpoint performs independent image
 inference; it does not track objects between video frames.
-
-## Selected-object video tracking
-
-The corrected adapter passed four independent sessions with 19 updates each on synthetic affine motion
-derived from a recorded image: minimum mask IoU 0.872 and 1.844 updates/s per
-session. Median request time was 0.542 s and p95 was 0.567 s inside the H100 runner,
-including its GPU queue but excluding camera capture and per-frame network transport.
-These timings precede the extraction policy below. They establish the exercised
-adapter contract and bounded state, not 5 Hz
-per camera or live moving-person reliability. A subsequent audit found three boxes
-distorted by disconnected foreground despite high mask IoU. Their raw predictions
-were not retained, so the extraction policy below is tested with synthetic masks;
-it has not been replayed on those three predictions. Earlier failures remain in the evidence.
-
-The deployed extraction contract passed one new three-call HTTPS check: one seed
-and two updates. Roundtrip times were 0.640 s for the seed and 0.292/0.438 s for the
-updates, including local evidence writes and excluding camera capture. Update mask
-IoU was 0.872/0.856; maximum box-edge, centre and bottom-centre errors were
-3, 1.581 and 3.041 pixels. Both raw predictions had one component and required no
-removal. This checks deployed/local extraction parity and geometry on new synthetic
-camera motion; it does not establish cleanup of the earlier corrupted predictions,
-simultaneous HTTP capacity or live moving-person following. Exact request/response
-bodies, raw masks, source hashes, dependency versions and the acknowledged close
-are retained with the measurement.
-
-`sam_tracking.py` adds a separate temporal contract to the same SAM Server. The
-image endpoint and its request remain unchanged. `agents/temporal.py` reads the
-same configured provider endpoint; there is no model on the mission host.
-
-- `POST /tracking/start`: `session_id`, `frame_index: 0`, `timestamp_ns`, `jpeg`,
-  `seed: {box_xyxy, mask_area_px, mask}` and `threshold`.
-- `POST /tracking/frame`: `session_id`, `instance_id`, consecutive `frame_index`,
-  increasing `timestamp_ns` and `jpeg`.
-- `POST /tracking/close`: `session_id` and `instance_id`.
-
-Frames are 1920×1080 JPEGs. Replies echo session, instance, index, timestamp and
-dimensions with `status`, `detection` and `error`. `seeded` acknowledges the exact
-selected mask and returns no invented confidence. `tracking` returns a current
-box/mask; its `confidence` is the model's object-presence probability, not identity
-certainty or an independent detector score. `lost` supplies a precise reason and
-no detection. The session threshold gates presence. The first post-seed observation
-may bridge an explicit acquisition delay; its identity quality over long gaps remains
-unmeasured. Thereafter, unordered frames, a gap above two seconds, changed container
-identity or an expired session fail without retry.
-
-Before deriving a box, each prediction uses the official SAM foreground-sprinkle
-rule at the original **1920×1080** resolution: remove each 8-connected foreground
-region with area at most `min(16, total_foreground_pixels // 2)`. Holes are not
-filled and no largest region is selected. Exactly one region must remain; empty,
-ambiguous or image-edge observations return `lost` before they can steer a drone.
-This is an explicit extraction policy, not the pinned SAM 3.1 preset, which disables
-sprinkle removal. The selected seed and SAM's temporal memory remain unchanged.
-The rule follows the [pinned SAM implementation](https://github.com/facebookresearch/sam3/blob/f1647e8d0c1d280991f4d1b7d974c2704537fe66/sam3/model/sam3_tracker_utils.py#L407)
-using the already-pinned SciPy 1.17.1 on the Server.
-
-Every frame response includes `raw_prediction: {mask, mask_area_px, presence_logit}`
-and `extraction: {area_threshold_px, component_areas_px,
-removed_component_areas_px, removed_pixels, remaining_components}`, including lost
-observations. An empty raw foreground is represented exactly by `mask: null` and
-area zero. Seed acknowledgements have both fields null because no prediction is
-being admitted. The mission log retains the complete response. The client also
-attaches `client_timing` from the existing HTTP instrumentation: request start,
-roundtrip, decode, status and derived receive/completion timestamps. Cleanup may
-reject genuinely fragmented silhouettes; connectivity alone cannot detect every
-connected segmentation error. Model identity and flight checks remain required.
-
-The official selected-object VOS path uses the pinned SAM 3.1 checkpoint with
-strict weight-name/shape checks, FP32 weights and BF16 inference. It keeps the
-seed and bounded temporal memory for at most four separate sessions, sharing the
-image inference lock on the H100. Abandoned sessions expire after 30 seconds;
-explicit close releases them immediately. The client has a five-second network
-timeout, independent of the aircraft's one-second source-age admission and missing-update watchdog.
-Neither the service nor client silently reacquires or substitutes a target.
-
-Recorded acceptance and any failed admission are retained under the temporal-follow
-run referenced by [`wonder-planner.json`](../../measurements/wonder-planner.json).
-Four-camera capacity and live moving-person quality require measured acceptance;
-image-detector timings do not establish video-tracker performance.
 
 ## Measurements
 

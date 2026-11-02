@@ -1,185 +1,244 @@
-"""Measure four recorded SAM image streams at one frame per second, without retries."""
+"""Measure ordered SAM sessions through the packaged service's local HTTP socket."""
 
 import argparse
-import asyncio
-import base64
 import hashlib
+import io
 import json
-import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, wait
 from pathlib import Path
+from threading import Barrier, Lock
 
+import cv2
 import httpx
+import numpy as np
+from PIL import Image
 
-from mission_planner.agents.models import endpoint, post
-from mission_planner.agents.services.benchmark import percentiles, prepare_frame, save
+from mission_planner.agents.vision import VisionTrack, vision_http
 from mission_planner.environment import ROOT, load_env
 from mission_planner.gcs.geodesy import NAMES
-from mission_planner.gcs.inspection import annotated_frame, sampling_start
 
-INTERVAL_S = 1.0
-FRAMES_PER_DRONE = 10
+OPEN_LOCK = Lock()
 
 
-def recorded_frames():
-    protocol = json.loads((ROOT / "mission_planner/measurements/modal.json").read_text())["sam"][
-        "protocol"
-    ]
-    assert len(protocol["frames"]) == len(NAMES) * FRAMES_PER_DRONE
-    assert len({source["path"] for source in protocol["frames"]}) == len(protocol["frames"])
-    assert protocol["prompts"] == ["person"]
-    frames = []
-    for source in protocol["frames"]:
-        native = (ROOT / source["path"]).read_bytes()
-        assert hashlib.sha256(native).hexdigest() == source["sha256"], (
-            f"Recorded source changed: {source['path']}"
-        )
-        jpeg = prepare_frame(native)
-        frames.append((source, jpeg))
-    return protocol, frames
-
-
-async def measure(directory):
+def prepare(directory):
     directory.mkdir(parents=True, exist_ok=False)
-    protocol, frames = recorded_frames()
-    save(
-        directory / "protocol.json",
-        {
-            "scope": "Recorded-image SAM HTTP and mask validation only; excludes capture, input preparation, flight, Wonder and browser rendering.",
-            "drone_ids": list(NAMES),
-            "frames_per_drone": FRAMES_PER_DRONE,
-            "interval_s": INTERVAL_S,
-            "phase_offsets_s": {name: i * INTERVAL_S / len(NAMES) for i, name in enumerate(NAMES)},
-            "request_timeout_s": 5,
-            "prompts": protocol["prompts"],
-            "threshold": protocol["sam_threshold"],
-            "frames": protocol["frames"],
-        },
-    )
-    clients = [endpoint("SAM") for _ in NAMES]
-    for client in clients:
-        client.timeout = httpx.Timeout(5)
-    started, started_at = time.monotonic(), time.time()
-    rows = []
-
-    async def lane(index):
-        name, client = NAMES[index], clients[index]
-        first_slot = sampling_start(name, started / INTERVAL_S) * INTERVAL_S
-
-        def record(response):
-            response.read()
-            row["http_status"] = response.status_code
-            with (directory / (row["id"] + ".response.json")).open("xb") as stream:
-                stream.write(response.content)
-
-        client.event_hooks["response"].append(record)
-        for number in range(FRAMES_PER_DRONE):
-            scheduled = first_slot + number * INTERVAL_S
-            await asyncio.sleep(max(0, scheduled - time.monotonic()))
-            source, jpeg = frames[index * FRAMES_PER_DRONE + number]
-            body = {
-                "jpeg": base64.b64encode(jpeg).decode(),
-                "prompts": protocol["prompts"],
-                "threshold": protocol["sam_threshold"],
-            }
-            began = time.monotonic()
-            row = {
-                "id": f"{name}-{number:02d}",
-                "drone_id": name,
-                "frame": number,
-                "source": source,
-                "jpeg_sha256": hashlib.sha256(jpeg).hexdigest(),
-                "jpeg_bytes": len(jpeg),
-                "request": {"prompts": body["prompts"], "threshold": body["threshold"]},
-                "scheduled_at_unix_s": started_at + scheduled - started,
-                "started_at_unix_s": time.time(),
-                "started_after_run_s": began - started,
-                "start_lateness_s": began - scheduled,
-                "http_status": None,
-                "timing": {},
-                "mask_valid": False,
-                "masks_validated": 0,
-                "validation_s": None,
-            }
-            try:
-                response = await asyncio.to_thread(post, client, "", body, row["timing"])
-                validation_started = time.monotonic()
-                _, detections = annotated_frame(jpeg, response, protocol["prompts"][0])
-                row.update(
-                    mask_valid=True,
-                    masks_validated=len(detections),
-                    validation_s=time.monotonic() - validation_started,
-                    server=response["server"],
-                    server_timings=response["timings"],
-                )
-                overrun = time.monotonic() - (scheduled + INTERVAL_S)
-                assert overrun <= 0, (
-                    f"{name}: frame {number} missed the next {INTERVAL_S:g} s slot by {overrun:.6f} s"
-                )
-            finally:
-                error = sys.exc_info()[1]
-                row.update(
-                    total_s=time.monotonic() - began,
-                    finished_at_unix_s=time.time(),
-                    error=None if error is None else f"{type(error).__name__}: {error}",
-                )
-                save(directory / (row["id"] + ".json"), row)
-                rows.append(row)
-
-    try:
-        results = await asyncio.gather(
-            *(lane(i) for i in range(len(NAMES))), return_exceptions=True
-        )
-    finally:
-        for client in clients:
-            client.close()
-    failures = [error for error in results if isinstance(error, BaseException)]
-    successful = [row for row in rows if row["error"] is None]
-    masks = sum(row["masks_validated"] for row in rows)
-    result = {
-        "scope": "Recorded images only; not a live four-camera capacity measurement.",
-        "accepted": len(successful) == len(NAMES) * FRAMES_PER_DRONE and masks > 0,
-        "attempted": len(rows),
-        "successful": len(successful),
-        "masks_validated": masks,
-        "mask_valid_frames": sum(row["mask_valid"] for row in rows),
-        "total_s": time.monotonic() - started,
-        "latency_s": percentiles([row["total_s"] for row in rows]) if rows else None,
-        "latency_scope": "HTTP round trip plus mask decoding and annotation validation; raw HTTP timings are retained per request.",
-        "streams": {},
-        "failures": [f"{type(error).__name__}: {error}" for error in failures],
+    sources = json.loads((ROOT / "mission_planner/measurements/modal.json").read_text())["sam"][
+        "protocol"
+    ]["frames"]
+    lanes = {}
+    for index, name in enumerate(NAMES):
+        source = sources[index * 10]
+        jpeg = (ROOT / source["path"]).read_bytes()
+        assert hashlib.sha256(jpeg).hexdigest() == source["sha256"]
+        with Image.open(io.BytesIO(jpeg)) as image:
+            assert image.size == (3840, 2160) and image.format == "JPEG"
+            rgb = np.asarray(image.convert("RGB"))
+        rows = []
+        for frame in range(20):
+            transform = cv2.getRotationMatrix2D((1920, 1080), frame * 0.1, 1 + frame * 0.002)
+            transform[:, 2] += [frame * 3, frame * 2]
+            moved = cv2.warpAffine(rgb, transform, (3840, 2160), borderMode=cv2.BORDER_REFLECT_101)
+            output = io.BytesIO()
+            Image.fromarray(moved).save(output, format="JPEG", quality=95, subsampling=0)
+            payload = output.getvalue()
+            path = directory / f"{name}-{frame:02}.jpg"
+            path.write_bytes(payload)
+            rows.append(
+                {
+                    "path": path.name,
+                    "sha256": hashlib.sha256(payload).hexdigest(),
+                    "affine": transform.tolist(),
+                }
+            )
+        lanes[name] = {"source": source, "frames": rows}
+    protocol = {
+        "scope": "Synthetic camera translation, rotation and zoom of recorded native 4K nadir images; not live forward tracking or moving-person acceptance.",
+        "target": "person",
+        "threshold": 0.3,
+        "source_size": [3840, 2160],
+        "resolutions": [1080],
+        "frames_per_drone": 20,
+        "lanes": lanes,
     }
-    for name in NAMES:
-        stream = [row for row in rows if row["drone_id"] == name]
-        intervals = [
-            after["started_after_run_s"] - before["started_after_run_s"]
-            for before, after in zip(stream, stream[1:])
-        ]
-        result["streams"][name] = {
-            "attempted": len(stream),
-            "successful": sum(row["error"] is None for row in stream),
-            "start_intervals_s": intervals,
-            "interval_s": percentiles(intervals) if intervals else None,
-            "latency_s": percentiles([row["total_s"] for row in stream]) if stream else None,
+    (directory / "protocol.json").write_text(json.dumps(protocol, indent=2) + "\n")
+    return protocol
+
+
+def lane(name, height, protocol, frames, output, ready, count, interval):
+    client = VisionTrack(vision_http(), name, protocol["target"], protocol["threshold"], height)
+    client.http.timeout = httpx.Timeout(120)
+    started, error = time.monotonic(), None
+    records = []
+    synchronized = False
+    with output.open("x") as log:
+
+        def record(value):
+            records.append(value)
+            log.write(json.dumps(value, allow_nan=False) + "\n")
+            log.flush()
+
+        try:
+            sources = protocol["lanes"][name]["frames"]
+            jpegs = {}
+            for source in sources:
+                jpeg = (frames / source["path"]).read_bytes()
+                assert hashlib.sha256(jpeg).hexdigest() == source["sha256"]
+                jpegs[source["path"]] = jpeg
+            tick = time.monotonic()
+            with OPEN_LOCK:
+                response = client.open()
+            client.http.timeout = httpx.Timeout(5)
+            record({"action": "start", "response": response, "seconds": time.monotonic() - tick})
+            ready.wait(timeout=180)
+            synchronized = True
+            sequence_started = time.monotonic()
+            for index in range(len(sources) if count is None else count):
+                source = sources[index % len(sources)]
+                scheduled = sequence_started + index * interval
+                delay = scheduled - time.monotonic()
+                if delay > 0:
+                    time.sleep(delay)
+                timing, tick = {}, time.monotonic()
+                response = client.advance(jpegs[source["path"]], time.time_ns(), timing)
+                completed = time.monotonic()
+                record(
+                    {
+                        "action": "frame",
+                        "index": index,
+                        "source": source,
+                        "response": response,
+                        "client_timing": timing,
+                        "seconds": completed - tick,
+                        "started_monotonic_s": tick,
+                        "completed_monotonic_s": completed,
+                        "age_s": completed - scheduled if interval else None,
+                    }
+                )
+        except Exception as failure:
+            if not synchronized:
+                ready.abort()
+            error = f"{type(failure).__name__}: {failure}"
+            record({"action": "failure", "error": error})
+            raise RuntimeError(f"{name} at {height}p: {error}") from failure
+        finally:
+            tick = time.monotonic()
+            try:
+                client.close()
+                record({"action": "close", "seconds": time.monotonic() - tick})
+            finally:
+                client.http.close()
+                record({"action": "end", "error": error, "seconds": time.monotonic() - started})
+    return records
+
+
+def summarize(records):
+    frames = [row for row in records if row["action"] == "frame"]
+    assert frames and records[-1]["error"] is None
+    timings = {"request_s": [row["seconds"] for row in frames]}
+    for key in ("decode_s", "preprocess_s", "inference_s", "postprocess_s", "queue_s"):
+        timings[key] = [row["response"]["timings"][key] for row in frames]
+    if frames[0]["age_s"] is not None:
+        timings["age_s"] = [row["age_s"] for row in frames]
+    ids = [sorted(d["track_id"] for d in row["response"]["detections"]) for row in frames]
+    return {
+        "frames": len(frames),
+        "instance_id": records[0]["response"]["instance_id"],
+        "session_id": records[0]["response"]["session_id"],
+        "frames_with_tracks": sum(bool(row) for row in ids),
+        "track_ids_by_frame": ids,
+        "elapsed_s": records[-1]["seconds"],
+        "started_monotonic_s": frames[0]["started_monotonic_s"],
+        "completed_monotonic_s": frames[-1]["completed_monotonic_s"],
+        "sequential_fps": len(frames) / sum(timings["request_s"]),
+        "timings": {
+            key: {
+                "median": float(np.median(values)),
+                "p95": float(np.percentile(values, 95)),
+                "max": max(values),
+            }
+            for key, values in timings.items()
+        },
+    }
+
+
+def run(protocol_path, output, height, drones, count=None, interval=0):
+    assert height == 1080 and drones in (1, 4)
+    assert count is None or type(count) is int and count > 0
+    assert np.isfinite(interval) and interval >= 0
+    output.mkdir(parents=True, exist_ok=False)
+    protocol = json.loads(protocol_path.read_text())
+    started = time.monotonic()
+    ready = Barrier(drones)
+    with ThreadPoolExecutor(max_workers=drones) as executor:
+        jobs = {
+            name: executor.submit(
+                lane,
+                name,
+                height,
+                protocol,
+                protocol_path.parent,
+                output / (name + ".jsonl"),
+                ready,
+                count,
+                interval,
+            )
+            for name in NAMES[:drones]
         }
-    if masks == 0:
-        result["failures"].append("No masks returned; the mask output contract was not exercised")
-    save(directory / "result.json", result)
-    print(json.dumps(result, allow_nan=False), flush=True)
-    if failures:
-        raise RuntimeError(
-            "Recorded SAM rate test failed; see " + str(directory / "result.json")
-        ) from failures[0]
-    assert result["accepted"], "Recorded SAM rate test did not validate any masks"
+        wait(jobs.values())
+    result = {
+        "resolution": height,
+        "drones": drones,
+        "scope": protocol["scope"],
+        "protocol": str(protocol_path),
+        "protocol_sha256": hashlib.sha256(protocol_path.read_bytes()).hexdigest(),
+        "elapsed_s": time.monotonic() - started,
+        "results": {},
+        "failures": {},
+    }
+    for name, job in jobs.items():
+        failure = job.exception()
+        if failure is not None:
+            result["failures"][name] = f"{type(failure).__name__}: {failure}"
+        else:
+            result["results"][name] = summarize(job.result())
+    identities = [value["instance_id"] for value in result["results"].values()]
+    if identities:
+        assert len(set(identities)) == 1, "Drones did not share one SAM model"
+        summaries = list(result["results"].values())
+        assert len({s["session_id"] for s in summaries}) == len(summaries), (
+            "Drones shared tracking state"
+        )
+        elapsed = max(s["completed_monotonic_s"] for s in summaries) - min(
+            s["started_monotonic_s"] for s in summaries
+        )
+        result["frame_elapsed_s"] = elapsed
+        result["aggregate_fps"] = sum(s["frames"] for s in summaries) / elapsed
+    (output / "result.json").write_text(json.dumps(result, indent=2, allow_nan=False) + "\n")
+    assert not result["failures"], json.dumps(result["failures"])
     return result
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--output", type=Path, required=True)
+    sub = parser.add_subparsers(dest="command", required=True)
+    setup = sub.add_parser("prepare")
+    setup.add_argument("--output", type=Path, required=True)
+    bench = sub.add_parser("run")
+    bench.add_argument("--frames", type=Path, required=True)
+    bench.add_argument("--output", type=Path, required=True)
+    bench.add_argument("--height", type=int, choices=(1080,), required=True)
+    bench.add_argument("--drones", type=int, choices=(1, 4), required=True)
     args = parser.parse_args()
     load_env()
-    asyncio.run(measure(args.output))
+    if args.command == "prepare":
+        prepare(args.output)
+    else:
+        print(
+            json.dumps(
+                run(args.frames / "protocol.json", args.output, args.height, args.drones), indent=2
+            )
+        )
 
 
 if __name__ == "__main__":

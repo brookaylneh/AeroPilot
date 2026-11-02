@@ -16,6 +16,17 @@ import InspectionPanel, {
 } from './InspectionPanel.tsx';
 import { eventSchema } from './missionState.ts';
 
+function rescueState() {
+  return {
+    live_frame: null,
+    held_frame: null,
+    healthy_s: 0,
+    tracking_error: null,
+    step_index: 0,
+    completed_steps: [],
+  };
+}
+
 const mission = '00000000-0000-4000-8000-000000000001';
 function inspection(drone = 'Drone1', status = 'candidate') {
   const id = `00000000-0000-4000-8000-00000000001${drone.at(-1)}`;
@@ -34,20 +45,26 @@ function inspection(drone = 'Drone1', status = 'candidate') {
       frame_id: id,
       captured_at_ms: 3000,
       frame_ref: `/api/evidence/${mission}/${id}-frame.jpg`,
-      overlay_ref: `/api/evidence/${mission}/${id}-input.jpg`,
-      width: 1920,
-      height: 1080,
+      sha256: 'a'.repeat(64),
+      horizontal_fov_deg: 53.13,
+      camera_view_revision: 1,
+      width: 3840,
+      height: 2160,
       detections:
         status === 'candidate'
           ? [
               {
                 box_xyxy: [10, 20, 30, 50],
                 confidence: 0.8,
-                mask_area_px: 600,
+                track_id: 1,
+                class_name: 'person',
+                observations: 2,
                 mask: {
                   origin_xy: [10, 20],
-                  png_base64:
-                    'iVBORw0KGgoAAAANSUhEUgAAABQAAAAeCAAAAAAJeWG3AAAAFklEQVR4nGP8z4AJmLCIjQqOClJNEAC+8wE7lNDrzgAAAABJRU5ErkJggg==',
+                  width: 20,
+                  height: 30,
+                  ref: `/api/evidence/${mission}/${id}-track-1-mask.png`,
+                  sha256: 'b'.repeat(64),
                 },
               },
             ]
@@ -160,7 +177,11 @@ test('an evidence image exposes loading and a local failure without re-requestin
     exports: module.exports,
     require: (name) =>
       name === 'react'
-        ? { ...React, useState: (initial) => [state ?? initial, (value) => (state = value)] }
+        ? {
+            ...React,
+            useId: () => 'mask-id',
+            useState: (initial) => [state ?? initial, (value) => (state = value)],
+          }
         : require(name),
   });
   function find(node, predicate) {
@@ -201,6 +222,7 @@ test('an untrackable candidate remains visible for review with completed observa
   const value = {
     ...inspection(),
     rescue: {
+      ...rescueState(),
       phase: 'reviewing',
       review_id: mission,
       reports: [],
@@ -236,7 +258,7 @@ test('an untrackable candidate remains visible for review with completed observa
   assert.doesNotMatch(historical, /Holding for evidence review|drone held/);
 });
 
-test('temporal candidate frames and camera changes preserve telemetry parsing', () => {
+test('tracked candidate frames and camera changes preserve telemetry parsing', () => {
   const original = inspection();
   const live = inspection('Drone2').latest;
   for (const phase of ['reviewing', 'tracking', 'held']) {
@@ -244,6 +266,7 @@ test('temporal candidate frames and camera changes preserve telemetry parsing', 
       ...original,
       camera_changing: false,
       rescue: {
+        ...rescueState(),
         phase,
         review_id: mission,
         reports: [],
@@ -263,12 +286,12 @@ test('temporal candidate frames and camera changes preserve telemetry parsing', 
   }
 });
 
-test('inspection evidence validates exact image pairs, finite coordinates and bounded boxes', () => {
+test('inspection evidence validates original frame identity, finite coordinates and bounded boxes', () => {
   const value = inspection();
   assert.deepEqual(inspectionSchema.parse(value), value);
   for (const mutate of [
     (v) => {
-      v.latest.overlay_ref = inspection('Drone2').latest.overlay_ref;
+      v.latest.frame_ref = inspection('Drone2').latest.frame_ref;
     },
     (v) => {
       v.latest.frame_id = inspection('Drone2').latest.frame_id;
@@ -277,7 +300,7 @@ test('inspection evidence validates exact image pairs, finite coordinates and bo
       v.latest.frame_ref = 'https://example.com/image.jpg';
     },
     (v) => {
-      v.latest.detections[0].box_xyxy[2] = 1921;
+      v.latest.detections[0].box_xyxy[2] = 3841;
     },
     (v) => {
       v.latest.detections[0].box_xyxy[0] = NaN;
@@ -286,16 +309,16 @@ test('inspection evidence validates exact image pairs, finite coordinates and bo
       v.latest.detections[0].confidence = 1.01;
     },
     (v) => {
-      delete v.latest.detections[0].mask;
+      delete v.latest.detections[0].track_id;
     },
     (v) => {
-      v.latest.detections[0].mask.png_base64 = 'not a PNG';
+      v.latest.sha256 = 'invalid hash';
     },
     (v) => {
-      v.latest.detections[0].mask.origin_xy = [1920, 20];
+      v.latest.detections[0].observations = 0;
     },
     (v) => {
-      v.latest.detections[0].mask_area_px = 1920 * 1080 + 1;
+      v.latest.detections.push(structuredClone(v.latest.detections[0]));
     },
     (v) => {
       v.latest.detections = [];
@@ -323,7 +346,7 @@ test('inspection failure requires its exact error and a deadline after its start
   const value = inspection('Drone1', 'failed');
   value.latest = null;
   assert.equal(inspectionSchema.safeParse(value).success, false);
-  value.error = 'SAM request timed out after 30 seconds';
+  value.error = 'SAM 3.1 request timed out after five seconds';
   assert.deepEqual(inspectionSchema.parse(value), value);
   value.deadline_ms = 999;
   assert.equal(inspectionSchema.safeParse(value).success, false);
@@ -400,67 +423,29 @@ test('slow successful samples show measured cadence without declaring a sensing 
   }
 });
 
-test('search review retains recorded track and inconclusive clothing evidence without claiming a live lock', () => {
-  const value = inspection();
-  value.rescue = {
-    phase: 'locked',
-    review_id: value.id,
-    pending: true,
-    track: {
-      candidate_index: 0,
-      box_xyxy: [15, 20, 35, 50],
-      captured_at_ms: 5000,
-      ground: { north_m: 100, east_m: 20, ground_m: 15 },
-    },
-    reports: [
-      {
-        candidate_index: 0,
-        reasoning_tokens: 120,
-        images: {
-          frame_id: inspection('Drone4').id,
-          crop_ref: `/api/evidence/${mission}/${value.id}-0-crop.jpg`,
-          context_ref: `/api/evidence/${mission}/${value.id}-0-context.jpg`,
-          crop_box: [-2, 10, 38, 50],
-          context_box: [-30, -18, 66, 78],
-        },
-        report: {
-          observations: [{ attribute_id: 'jacket', visible: 'cannot_tell', note: 'Torso is occluded' }],
-          reasoning: 'A person is visible but clothing cannot be assessed.',
-          decision: 'recheck',
-          action: 'other_angle',
-          reason: 'Need a clearer view of the torso.',
-        },
-      },
-    ],
+test('search review retains the source frame and recorded track without claiming a current lock', () => {
+  const value = reviewed('Drone1', 'recheck');
+  value.rescue.track = {
+    track_id: 1,
+    box_xyxy: [15, 20, 35, 50],
+    captured_at_ms: 5000,
+    ground: { north_m: 100, east_m: 20, ground_m: 15 },
   };
   const parsed = inspectionSchema.parse(value);
   assert.deepEqual(parsed, value);
   const html = renderEvidence([parsed]);
-  assert.match(html, /Selected by Wonder/);
-  assert.equal(html.match(/<img[^>]*src="([^"]+)"/)[1], value.latest.frame_ref);
-  assert.match(html, /Recorded track for candidate.*1/);
+  assert.match(html, /Recorded track 1 at 1969-12-31 16:00:05.000 PST/);
   assert.match(html, /Uncertain/);
-  assert.match(html, /Cannot tell.*Torso is occluded/);
-  assert.match(html, /Recorded track for candidate.*1969-12-31 16:00:05.000 PST/);
-  assert.match(html, /captured.*1969-12-31 16:00:03.000 PST/);
-  assert.match(html, /Exact images reviewed by Glimmer/);
-  assert.match(html, /40 × 40 pixels resized to 512 × 512/);
-  for (const kind of ['crop', 'context']) {
-    const src = value.rescue.reports[0].images[`${kind}_ref`];
-    assert.ok(html.includes(`src="${src}"`));
-    assert.ok(html.includes(`href="${src}"`));
-  }
-  assert.ok(html.includes(`source frame ${inspection('Drone4').id}`));
-  assert.doesNotMatch(html, /Missing person found|Tracking candidate|The map shows/);
+  assert.match(html, /Original 4K frame reviewed by Glimmer/);
+  assert.match(html, /3840 × 2160/);
+  assert.ok(html.includes(`src="${value.latest.frame_ref}"`));
+  assert.doesNotMatch(html, /Missing person found|Tracking candidate|resized|crop/i);
   for (const mutate of [
     (images) => {
-      images.context_ref = images.context_ref.replace('-0-context', '-1-context');
+      images.frame_ref = inspection('Drone2').latest.frame_ref;
     },
     (images) => {
-      images.crop_box = [0, 0, 0, 20];
-    },
-    (images) => {
-      images.context_box = [0, 0, 1, 1];
+      images.sha256 = 'invalid';
     },
     (images) => {
       images.frame_id = 'unknown';
@@ -470,27 +455,29 @@ test('search review retains recorded track and inconclusive clothing evidence wi
     mutate(invalid.rescue.reports[0].images);
     assert.equal(inspectionSchema.safeParse(invalid).success, false);
   }
-  value.rescue.track.candidate_index = 1;
+  value.rescue.track.track_id = 0;
   assert.equal(inspectionSchema.safeParse(value).success, false);
-  value.rescue.track.candidate_index = 0;
-  value.rescue.track.box_xyxy[2] = 1921;
+  value.rescue.track.track_id = 1;
+  value.rescue.track.box_xyxy[2] = 3841;
   assert.equal(inspectionSchema.safeParse(value).success, false);
 });
 
 function reviewed(drone, decision) {
   const value = inspection(drone);
   value.rescue = {
-    phase: 'locked',
+    ...rescueState(),
+    phase: 'tracking',
     review_id: value.id,
     reports: [
       {
         candidate_index: 0,
         images: {
           frame_id: value.latest.frame_id,
-          crop_ref: `/api/evidence/${mission}/${value.id}-0-crop.jpg`,
-          context_ref: `/api/evidence/${mission}/${value.id}-0-context.jpg`,
-          crop_box: [5, 15, 35, 55],
-          context_box: [-10, 0, 60, 80],
+          frame_ref: value.latest.frame_ref,
+          sha256: value.latest.sha256,
+          track_id: 1,
+          box_xyxy: value.latest.detections[0].box_xyxy,
+          mask: value.latest.detections[0].mask,
         },
         report: {
           observations: [],
@@ -511,7 +498,7 @@ function reviewed(drone, decision) {
   return value;
 }
 
-test('Wonder selects the exact crop and factual strength even when Glimmer discarded the candidate', () => {
+test('Wonder selects the original frame and factual strength even when Glimmer discarded the candidate', () => {
   const value = reviewed('Drone1', 'discard');
   for (const [assessment, label] of [
     ['unresolved', 'Unresolved candidate'],
@@ -523,23 +510,30 @@ test('Wonder selects the exact crop and factual strength even when Glimmer disca
     assert.match(html, /Selected by Wonder/);
     assert.ok(html.includes(label));
     assert.ok(html.includes(finding.arguments.headline));
-    assert.equal(html.match(/<img[^>]*src="([^"]+)"/)[1], value.rescue.reports[0].images.crop_ref);
+    assert.equal(html.match(/<img[^>]*src="([^"]+)"/)[1], value.rescue.reports[0].images.frame_ref);
     assert.doesNotMatch(html, /Confirmed by operator|Missing person found|confirmed_lead/);
   }
 });
 
-test('a candidate without a matching reviewed crop uses its original frame and selected box', () => {
+test('a selected candidate is outlined on the original frame', () => {
   const value = reviewed('Drone1', 'recheck');
   value.latest.detections.push({
     ...structuredClone(value.latest.detections[0]),
     box_xyxy: [120, 130, 140, 160],
-    mask: { ...value.latest.detections[0].mask, origin_xy: [120, 130] },
+    track_id: 2,
+    mask: {
+      origin_xy: [120, 130],
+      width: 20,
+      height: 30,
+      ref: value.latest.frame_ref.replace('-frame.jpg', '-track-2-mask.png'),
+      sha256: 'c'.repeat(64),
+    },
   });
   const finding = eventSchema.parse(event(value, 'evidence', 'agent', { candidate_index: 1 }));
   const html = renderToStaticMarkup(createElement(InspectionPanel, { events: [finding], onError() {} }));
   assert.equal(html.match(/<img[^>]*src="([^"]+)"/)[1], value.latest.frame_ref);
   assert.match(html, /data-candidate-index="1"/);
-  const box = html.match(/data-candidate-index="1"[\s\S]*?(<rect\b[^>]*>)/)[1];
+  const box = html.match(/data-candidate-index="1"[\s\S]*?(<rect\b[^>]*x="120"[^>]*>)/)[1];
   for (const attribute of ['x="120"', 'y="130"', 'width="20"', 'height="30"'])
     assert.ok(box.includes(attribute));
 });
@@ -558,7 +552,7 @@ test('Glimmer decisions are collapsed named reviews with their own exact images'
     assert.doesNotMatch(html, /<details[^>]* open|Failed|Command error|data-call-id/);
     assert.ok(html.includes(`Glimmer · ${current.result.drone_id}`));
     assert.ok(html.includes(current.result.rescue.reports[0].report.reason));
-    for (const kind of ['crop', 'context']) {
+    for (const kind of ['frame']) {
       assert.ok(html.includes(`src="${current.result.rescue.reports[0].images[`${kind}_ref`]}"`));
       assert.ok(
         !html.includes(
@@ -575,9 +569,16 @@ test('mixed candidate decisions keep discarded details only in Glimmer chat afte
   const value = reviewed('Drone1', 'discard');
   const possible = reviewed('Drone1', 'recheck').rescue.reports[0];
   possible.candidate_index = 1;
-  for (const kind of ['crop', 'context'])
-    possible.images[`${kind}_ref`] = possible.images[`${kind}_ref`].replace('-0-', '-1-');
-  value.latest.detections.push(structuredClone(value.latest.detections[0]));
+  value.latest.detections.push({
+    ...structuredClone(value.latest.detections[0]),
+    track_id: 2,
+    mask: {
+      ...value.latest.detections[0].mask,
+      ref: value.latest.frame_ref.replace('-frame.jpg', '-track-2-mask.png'),
+    },
+  });
+  possible.images.track_id = 2;
+  possible.images.mask = value.latest.detections[1].mask;
   value.rescue.reports.push(possible);
   const accepted = eventSchema.parse(event(value, 'evidence', 'agent', { candidate_index: 1 }));
   const review = eventSchema.parse(event(value, 'review', 'glimmer'));
@@ -585,22 +586,17 @@ test('mixed candidate decisions keep discarded details only in Glimmer chat afte
     createElement(InspectionPanel, { events: [review, accepted], onError() {} }),
   );
   const chat = renderToStaticMarkup(createElement(GlimmerReview, { event: review, onError() {} }));
-  assert.equal(evidence.match(/<img[^>]*src="([^"]+)"/)[1], possible.images.crop_ref);
-  assert.ok(evidence.indexOf(accepted.arguments.headline) < evidence.indexOf(possible.images.crop_ref));
-  assert.ok(evidence.indexOf(possible.images.crop_ref) < evidence.indexOf('Assessment and image details'));
+  assert.equal(evidence.match(/<img[^>]*src="([^"]+)"/)[1], possible.images.frame_ref);
+  assert.ok(evidence.indexOf(accepted.arguments.headline) < evidence.indexOf(possible.images.frame_ref));
+  assert.ok(evidence.indexOf(possible.images.frame_ref) < evidence.indexOf('Assessment and image details'));
   assert.doesNotMatch(evidence, /<details[^>]* open/);
   assert.doesNotMatch(chat, /<details[^>]*class="[^"]*\brejected\b/);
   assert.doesNotMatch(evidence, /Discarded|Signpost; no person visible/);
   assert.match(evidence, /Uncertain|A closer observation is needed/);
   assert.match(chat, /Discarded/);
   assert.match(chat, /Signpost; no person visible/);
-  for (const [index, report] of value.rescue.reports.entries()) {
-    for (const kind of ['crop', 'context']) {
-      const source = report.images[`${kind}_ref`];
-      assert.equal(evidence.includes(source), index === 1);
-      assert.ok(chat.includes(source));
-    }
-  }
+  assert.ok(evidence.includes(`src="${value.latest.frame_ref}"`));
+  assert.ok(chat.includes(`src="${value.latest.frame_ref}"`));
 });
 
 test('review events reject mixed-up frames, candidate indexes and model authority', () => {
@@ -686,7 +682,7 @@ test('operator confirmation stays prominent while long assessment and source det
     finding.arguments.headline,
     'Unresolved candidate',
     'Confirmed by operator',
-    value.rescue.reports[0].images.crop_ref,
+    value.rescue.reports[0].images.frame_ref,
     'Captured 1969-12-31 16:00:03.000 PST',
     'Visual tracking unavailable at publication · drone held',
     'Published 1969-12-31 16:00:06.000 PST',
@@ -761,7 +757,7 @@ test('camera revisions and historical candidate locations remain explicit and fi
   assert.deepEqual(inspectionSchema.parse(value), value);
   const historical = inspectionSchema.parse(inspection());
   assert.ok(!('camera_view' in historical));
-  assert.ok(!('horizontal_fov_deg' in historical.latest));
+  assert.equal(historical.latest.horizontal_fov_deg, 53.13);
   for (const mutate of [
     (row) => {
       row.camera_view.zoom = 4.1;

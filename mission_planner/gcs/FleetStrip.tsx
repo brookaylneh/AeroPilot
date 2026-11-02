@@ -86,9 +86,7 @@ export default function FleetStrip({
                   {v ? (isLost ? 'LINK LOST' : v.mode) : 'NO LINK'}
                 </span>
                 <span className="gcs-battery" title="Battery">
-                  <i>
-                    <b style={{ width: `${v?.battery_percent ?? 0}%` }} />
-                  </i>
+                  <i>{v?.battery_percent != null && <b style={{ width: `${v.battery_percent}%` }} />}</i>
                   {formatValue(v?.battery_percent, '%', 0)}
                 </span>
               </header>
@@ -214,11 +212,11 @@ export default function FleetStrip({
             </article>
           );
         })}
-        <button className="gcs-fleet-add" title="Fleet is fixed at 4 drones" disabled>
-          <Plus size={13} />
-          Add drone
-        </button>
       </div>
+      <button className="gcs-fleet-add" title="Fleet is fixed at 4 drones" disabled>
+        <Plus size={13} />
+        Add drone
+      </button>
     </details>
   );
 }

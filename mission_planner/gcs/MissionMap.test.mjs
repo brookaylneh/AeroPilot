@@ -84,7 +84,19 @@ function map() {
       const index = refIndex++;
       if (!(index in refs))
         refs[index] = {
-          current: index === 0 ? { addEventListener() {}, removeEventListener() {} } : initial,
+          current:
+            index === 0
+              ? {
+                  addEventListener() {},
+                  removeEventListener() {},
+                  closest() {
+                    return { querySelectorAll: () => [] };
+                  },
+                  getBoundingClientRect() {
+                    return { left: 0, top: 0, width: 1000, height: 700 };
+                  },
+                }
+              : initial,
         };
       return refs[index];
     },
@@ -135,7 +147,6 @@ test('shared inclusion and exclusion fences remain visible without a selected dr
     selected: null,
     fences: {
       version: 2,
-      names: { inclusion: 'Park boundary', exclusions: ['Bear habitat'] },
       inclusion: polygon,
       exclusions: [polygon],
       verified: true,
@@ -143,8 +154,8 @@ test('shared inclusion and exclusion fences remain visible without a selected dr
       editable: false,
     },
   });
-  assert.match(html, /Park boundary/);
-  assert.match(html, /Bear habitat · No fly at any altitude/);
+  assert.match(html, /Inclusion fence/);
+  assert.match(html, /Exclusion 1 · No fly at any altitude/);
   assert.match(html, /class="gcs-fence exclusion"/);
 });
 
@@ -307,7 +318,20 @@ test('failed preview highlights its two rejected legs and preserves the active m
     kind: 'tool_result',
     name: 'preview_plan',
     arguments: { plan: receipt(2).plan },
-    result: { ok: false, error: 'Route conflict', conflict },
+    result: {
+      ok: false,
+      error: 'Route conflict',
+      rejection: {
+        rule: 'separation',
+        version: 2,
+        drone_id: 'Drone2',
+        step_index: 1,
+        step_kind: 'fly',
+        message: 'Route conflict',
+        detail: null,
+        conflict,
+      },
+    },
   };
   const planner = { active: receipt(1), previous: null, preview: null, progress: {} };
   const render = map();
@@ -341,6 +365,7 @@ test('observation preview draws its perimeter and explicitly observed survey are
   ];
   const names = ['Drone1', 'Drone2', 'Drone3', 'Drone4'];
   const searchReceipt = {
+    coverage: { perimeter_area_m2: 20000, survey_area_m2: 20000, unassigned_area_m2: 0, survey_percent: 100 },
     plan: {
       version: 4,
       search: { perimeter: rectangle(-100, 100) },
@@ -356,6 +381,8 @@ test('observation preview draws its perimeter and explicitly observed survey are
   const html = map()(fleet, { planner });
   assert.match(html, /Observation perimeter and survey areas for plan 4/);
   assert.match(html, /class="gcs-search-perimeter"/);
+  assert.match(map()(fleet, { planner, inset: false }), /Survey assigned: 100.00%/);
+  assert.match(html, /assigned survey area/);
   for (const id of names) assert.match(html, new RegExp(`data-search-sector="${id}"`));
   assert.equal((html.match(/class="gcs-search-sector"/g) ?? []).length, 4);
   assert.doesNotMatch(
@@ -461,7 +488,7 @@ test('live candidate marker uses estimated target position and disappears after 
     id: 'candidate-1',
     drone_id: 'Drone1',
     rescue: {
-      phase: 'locked',
+      phase: 'tracking',
       track: { candidate_index: 0, captured_at_ms: 3000, ground: { north_m: 100, east_m: 20, ground_m: 14 } },
     },
   };

@@ -13,6 +13,10 @@ benchmarks. Its operating point comes from `measurements/commander.json`.
 the shared report schema from `agents/review.py`. Live missions use forward-camera
 review directly; calibration labels and actor metadata never enter that runtime.
 
+`bench_models --case glimmer_frame_2160` measures the current full-frame Glimmer
+review on one saved 4K image. Its selected box comes from a separate SAM image
+request; it does not measure live SAM 3.1 tracking or recognition accuracy.
+
 ## Acquisition and session ownership
 
 `mission_planner/agents/perception/calibration-scenario.mjs` reuses `mission_planner/agents/perception/browser.mjs`. The existing

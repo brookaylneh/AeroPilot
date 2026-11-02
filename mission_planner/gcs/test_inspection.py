@@ -9,17 +9,18 @@ import tempfile
 import threading
 import time
 import unittest
+from functools import lru_cache
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
-import numpy as np
 from PIL import Image
 
-from mission_planner.agents.segmentation import encode_mask
+from mission_planner.agents.test_vision import mask_box
 from mission_planner.gcs.inspection import (
+    AIM_STEP_M,
     Inspections,
-    annotated_frame,
+    aim_toward,
     flight_identity,
     sampling_next,
     sampling_start,
@@ -27,104 +28,65 @@ from mission_planner.gcs.inspection import (
 from world.cosys.terrain import NORTH_MAX_M, terrain_height
 
 
+@lru_cache(maxsize=1)
 def image_bytes():
     output = io.BytesIO()
-    Image.new("RGB", (64, 64), (80, 80, 80)).save(output, format="JPEG")
+    Image.new("RGB", (3840, 2160), (80, 80, 80)).save(output, format="JPEG")
     return output.getvalue()
 
 
-def response(prompt="person", positive=True):
+def response(prompt="person", positive=True, observations=2):
     return {
-        "width": 64,
-        "height": 64,
-        "detections": {
-            prompt: [
-                {
-                    "box_xyxy": [16, 24, 32, 40],
-                    "confidence": 0.8,
-                    "mask_area_px": 256,
-                    "mask": encode_mask(np.ones((16, 16), dtype=bool), [16, 24]),
-                }
-            ]
-            if positive
-            else []
-        },
+        "width": 3840,
+        "height": 2160,
+        "detections": [
+            {
+                "track_id": 1,
+                "class_name": prompt,
+                "box_xyxy": [960, 900, 1800, 1800],
+                "confidence": 0.8,
+                "observations": observations,
+                "mask": mask_box([960, 900, 1800, 1800]),
+            }
+        ]
+        if positive
+        else [],
     }
 
 
-class AnnotationTests(unittest.TestCase):
-    def test_empty_result_checks_header_without_decoding_or_reencoding(self):
-        jpeg = image_bytes()
-        with (
-            patch.object(Image.Image, "convert", side_effect=AssertionError("Decoded empty image")),
-            patch.object(Image.Image, "save", side_effect=AssertionError("Encoded empty overlay")),
-        ):
-            self.assertEqual(annotated_frame(jpeg, response(positive=False), "person"), (jpeg, []))
-            wrong = response(positive=False)
-            wrong["width"] += 1
-            with self.assertRaisesRegex(AssertionError, "dimensions"):
-                annotated_frame(jpeg, wrong, "person")
-            with self.assertRaisesRegex(AssertionError, "unexpected prompt"):
-                annotated_frame(jpeg, response(prompt="car", positive=False), "person")
-
-    def test_overlay_changes_only_the_masked_source_region(self):
-        jpeg = image_bytes()
-        annotated, detections = annotated_frame(jpeg, response(), "person")
-        image = np.array(Image.open(io.BytesIO(annotated)))
-        np.testing.assert_allclose(image[0:8, 0:8], 80, atol=2)
-        self.assertGreater(int(image[30, 20, 1]), 130)
-        self.assertLess(int(image[30, 20, 0]), 65)
-        self.assertEqual(detections, response()["detections"]["person"])
-
-    def test_requires_actual_mask_and_matching_frame_dimensions(self):
-        result = response()
-        del result["detections"]["person"][0]["mask"]
-        with self.assertRaises(KeyError):
-            annotated_frame(image_bytes(), result, "person")
-        result = response()
-        result["width"] = 65
-        with self.assertRaisesRegex(AssertionError, "dimensions"):
-            annotated_frame(image_bytes(), result, "person")
+class LockGeometryTests(unittest.TestCase):
+    def test_aim_moves_at_most_one_step_toward_the_target(self):
+        current = {"x": 0.0, "y": 0.0, "z": 10.0}
+        moved = aim_toward(current, {"x": 30.0, "y": 40.0, "z": 10.0})
+        self.assertAlmostEqual(math.dist(moved.values(), current.values()), AIM_STEP_M)
+        self.assertAlmostEqual(moved["y"] / moved["x"], 4 / 3)
+        near = {"x": 1.0, "y": 1.0, "z": 10.5}
+        self.assertEqual(aim_toward(current, near), near)
+        self.assertEqual(current, {"x": 0.0, "y": 0.0, "z": 10.0})
 
 
 class SamplingTests(unittest.TestCase):
-    def test_reported_observation_times_advance_to_future_phased_slots(self):
-        for name, duration, missed in (
-            ("Drone3", 1.065107, 1),
-            ("Drone1", 0.975694, 0),
-            ("Drone2", 1.144566, 1),
-            ("Drone4", 0.962671, 0),
-        ):
-            with self.subTest(name=name):
-                slot = sampling_start(name, 100)
+    def test_scheduling_skips_expired_slots_and_keeps_the_drone_phase(self):
+        for name in ("Drone1", "Drone2", "Drone3", "Drone4"):
+            slot = sampling_start(name, 100)
+            for duration, missed in ((0.1, 0), (0.3, 1), (1.05, 5)):
                 following, count = sampling_next(slot, slot + duration)
                 self.assertEqual(count, missed)
-                self.assertEqual(following, slot + missed + 1)
                 self.assertGreater(following, slot + duration)
-                self.assertEqual(following % 1, slot % 1)
+                self.assertAlmostEqual(following - slot, (missed + 1) / 5)
 
-    def test_scheduling_never_replays_elapsed_slots_or_uses_a_past_boundary(self):
-        self.assertEqual(sampling_next(100.25, 100.9), (101.25, 0))
-        self.assertEqual(sampling_next(100.25, 101.25), (102.25, 1))
-        self.assertEqual(sampling_next(100.25, 104.7), (105.25, 4))
+    def test_all_four_phases_are_distinct_and_no_capture_is_scheduled_in_the_past(self):
+        starts = [sampling_start(f"Drone{i}", 100.001) for i in range(1, 5)]
+        self.assertEqual(len(set(starts)), 4)
+        for i, slot in enumerate(starts):
+            self.assertGreaterEqual(slot, 100.001)
+            self.assertLess(slot, 100.201)
+            self.assertAlmostEqual(slot * 5 - i / 4, round(slot * 5 - i / 4))
+
+    def test_invalid_schedule_is_rejected(self):
         for slot, completed in ((1, 0.9), (1, math.inf), (math.nan, 1)):
             with self.subTest(slot=slot, completed=completed), self.assertRaises(AssertionError):
                 sampling_next(slot, completed)
-
-    def test_all_four_drones_have_distinct_fixed_phases_each_second(self):
-        starts = [sampling_start(f"Drone{i}", 123.125) for i in range(1, 5)]
-        self.assertEqual(starts, [124, 123.25, 123.5, 123.75])
-        for index, start in enumerate(starts):
-            self.assertEqual(start % 1, index / 4)
-            for sample in range(4):
-                self.assertEqual(
-                    sampling_start(f"Drone{index + 1}", start + sample), start + sample
-                )
-
-    def test_phase_boundary_never_moves_a_past_slot_into_the_future(self):
-        self.assertEqual(sampling_start("Drone2", 100.25), 100.25)
-        self.assertEqual(sampling_start("Drone2", math.nextafter(100.25, math.inf)), 101.25)
-        self.assertEqual(sampling_start("Drone2", math.nextafter(100.25, -math.inf)), 100.25)
         for name, now in (("Drone5", 0), ("Drone1", -1), ("Drone1", math.inf)):
             with self.subTest(name=name, now=now), self.assertRaises(AssertionError):
                 sampling_start(name, now)
@@ -141,7 +103,7 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
             patch.object(Path, "replace", side_effect=OSError("Registry is not writable")),
             self.assertRaisesRegex(OSError, "Registry is not writable"),
         ):
-            self.inspections._register(("new-crop.jpg",))
+            self.inspections._register(("new-frame.jpg",))
         self.assertEqual(assets.assets, {"previous-frame.jpg"})
         self.assertEqual(registry.read_bytes(), published)
 
@@ -228,8 +190,8 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
                     "camera_view_revision": revision,
                     "timestamp_ns": count,
                     "captured_at_ms": time.time() * 1000,
-                    "width": 64,
-                    "height": 64,
+                    "width": 3840,
+                    "height": 2160,
                     "camera_position_world_m": {
                         "x": self.states[name]["north_m"],
                         "y": self.states[name]["east_m"],
@@ -253,13 +215,21 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
             self.captures[name] = value
             return value
 
-        self.post = Mock(
-            side_effect=lambda client, path, body, timing: response(body["prompts"][0])
-        )
+        self.detect = Mock(side_effect=lambda *args: response())
+        self.clients = []
+
+        def vision(http, name, prompt, threshold):
+            client = SimpleNamespace(http=http, status="new")
+            client.open = Mock(side_effect=lambda: setattr(client, "status", "open"))
+            client.advance = Mock(side_effect=lambda *args: self.detect(*args))
+            client.close = Mock(side_effect=lambda: setattr(client, "status", "closed"))
+            self.clients.append(client)
+            return client
+
         for name, replacement in (
             ("ForwardCapture", capture),
-            ("endpoint", Mock(return_value=Mock())),
-            ("post", self.post),
+            ("vision_http", Mock(return_value=Mock())),
+            ("VisionTrack", vision),
         ):
             patcher = patch("mission_planner.gcs.inspection." + name, replacement)
             patcher.start()
@@ -279,7 +249,7 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
         camera.view.assert_awaited_once_with({"x": 30, "y": 10, "z": terrain_height(30, 10) + 2}, 4)
         self.assertEqual(view["zoom"], 4)
         self.assertAlmostEqual(view["horizontal_fov_deg"], 28.072486935852957)
-        self.post.assert_not_called()
+        self.detect.assert_not_called()
         camera.capture.assert_not_awaited()
         first, task = await self.start()
         await task
@@ -354,7 +324,7 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(AssertionError, "Camera view is unverified"):
             await self.start()
         self.assertEqual(camera.view.await_count, 2)
-        self.assertEqual(self.post.call_count, 1)
+        self.assertEqual(self.detect.call_count, 1)
         camera.view.side_effect = original
         await self.inspections.set_camera_view("Drone1", 30, 0, 0, 2)
         self.assertFalse(candidate["camera_changing"])
@@ -372,7 +342,7 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
             assert finish.wait(2), "Test did not release its delayed detector"
             return response()
 
-        self.post.side_effect = detect
+        self.detect.side_effect = detect
         _, task = await self.start()
         self.assertTrue(await asyncio.to_thread(entered.wait, 1))
         camera = self.captures["Drone1"]
@@ -456,29 +426,58 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
         self.states["Drone4"].update(ground_speed_mps=0.3, climb_rate_mps=0.21)
         jobs = [await self.start(name) for name in self.states]
         await asyncio.gather(*(task for _, task in jobs))
-        self.assertEqual(self.post.call_count, 4)
+        self.assertEqual(self.detect.call_count, 4)
         for row, _ in jobs:
             actual = self.inspections.rows[row["id"]]
             self.assertEqual((actual["status"], actual["frames"]), ("candidate", 1))
             evidence = self.inspections.evidence(row["id"])
             self.assertEqual(evidence["metadata"]["drone_id"], row["drone_id"])
             self.assertEqual(evidence["images"][0], image_bytes())
-            self.assertNotEqual(*evidence["images"])
+            self.assertEqual(len(evidence["images"]), 1)
             self.assertEqual(row["status"], "running")
             self.assertNotIn("heading_deg", row)
         snapshot = self.inspections.snapshot()
         snapshot[0]["status"] = "broken"
         self.assertEqual(self.inspections.snapshot()[0]["status"], "candidate")
-        self.assertEqual(len(json.loads((self.directory / "evidence/assets.json").read_text())), 8)
+        assets = json.loads((self.directory / "evidence/assets.json").read_text())
+        self.assertEqual(len(assets), 8)
+        masks = [name for name in assets if name.endswith("-mask.png")]
+        self.assertEqual(len(masks), 4)
+        for name in masks:
+            with Image.open(self.directory / "evidence" / name) as mask:
+                self.assertEqual((mask.format, mask.mode, mask.size), ("PNG", "L", (840, 900)))
         self.mission.fleet.face_heading.assert_not_awaited()
         self.mission.fleet.execute.assert_not_awaited()
 
+    async def test_saved_source_and_metadata_cannot_be_replaced(self):
+        row, task = await self.start()
+        await task
+        evidence = self.inspections.evidence(row["id"])
+        metadata, jpeg = evidence["metadata"], evidence["images"][0]
+        with self.assertRaises(FileExistsError):
+            await self.inspections._save_frame({**metadata, "captured_at_ms": 0}, jpeg)
+        self.assertEqual(self.inspections.evidence(row["id"]), evidence)
+        path = self.inspections.directory / (metadata["frame_id"] + "-frame.jpg")
+        path.write_bytes(jpeg + b"modified")
+        with self.assertRaisesRegex(AssertionError, "changed on disk"):
+            self.inspections.evidence(row["id"])
+
+    async def test_a_single_detection_does_not_trigger_a_confirmed_candidate(self):
+        self.detect.side_effect = [response(observations=1), response(observations=2)]
+        row, task = await self.start()
+        await task
+        actual = self.inspections.rows[row["id"]]
+        self.assertEqual((actual["status"], actual["frames"]), ("candidate", 2))
+        self.assertEqual(len(self.clients), 1)
+        self.clients[0].open.assert_called_once()
+        self.clients[0].close.assert_called_once()
+
     async def test_negative_deadline_publishes_final_frame_without_claiming_absence(self):
-        self.post.side_effect = lambda *args: response(positive=False)
+        self.detect.side_effect = lambda *args: response(positive=False)
         row, task = await self.start(duration=1)
         await task
         actual = self.inspections.rows[row["id"]]
-        self.assertEqual((actual["status"], actual["frames"]), ("complete", 1))
+        self.assertEqual((actual["status"], actual["frames"]), ("complete", 5))
         self.assertEqual(actual["latest"]["detections"], [])
         with self.assertRaisesRegex(AssertionError, "no candidate"):
             self.inspections.publish_evidence(
@@ -506,8 +505,8 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
                 self.assertEqual(detection["location_error"], error)
                 self.assertEqual(self.inspections.evidence(row["id"])["images"][0], image_bytes())
 
-    async def test_two_negative_observations_are_sampled_one_second_apart(self):
-        self.post.side_effect = lambda *args: response(positive=False)
+    async def test_negative_observations_are_sampled_at_five_hz(self):
+        self.detect.side_effect = lambda *args: response(positive=False)
         row, task = await self.start(duration=2)
         await task
         records = [
@@ -515,19 +514,21 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
             for p in (self.directory / "inspections" / row["id"]).glob("*.json")
         ]
         times = sorted(r["captured_at_ms"] for r in records)
-        self.assertEqual(len(times), 2)
-        self.assertGreaterEqual(times[1] - times[0], 990)
-        self.assertEqual(self.inspections.rows[row["id"]]["frames"], 2)
+        self.assertEqual(len(times), 10)
+        self.assertTrue(all(b - a >= 180 for a, b in zip(times, times[1:])))
+        self.assertEqual(self.inspections.rows[row["id"]]["frames"], 10)
 
     async def test_preparation_error_leaves_terminal_failed_state(self):
         with patch(
-            "mission_planner.gcs.inspection.endpoint", side_effect=ValueError("Endpoint missing")
+            "mission_planner.gcs.inspection.vision_http", side_effect=ValueError("Endpoint missing")
         ):
             row, task = await self.start()
             with self.assertRaisesRegex(RuntimeError, "Endpoint missing"):
                 await task
         actual = self.inspections.rows[row["id"]]
-        self.assertEqual((actual["status"], actual["error"]), ("failed", "Endpoint missing"))
+        self.assertEqual(
+            (actual["status"], actual["error"]), ("failed", "ValueError: Endpoint missing")
+        )
         await self.inspections.close()
         self.captures["Drone1"].close.assert_awaited_once()
 
@@ -544,11 +545,11 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
         self.mission.planner_state = lambda: {
             "progress": {"Drone1": {"version": 1, "current_step": step}}
         }
-        self.post.side_effect = moving
+        self.detect.side_effect = moving
         row, task = await self.start()
         await task
         self.assertEqual(self.inspections.rows[row["id"]]["status"], "candidate")
-        self.assertEqual(self.post.call_count, 2)
+        self.assertEqual(self.detect.call_count, 2)
         records = sorted(
             (
                 json.loads(path.read_text())
@@ -566,16 +567,16 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
         self.mission.fleet.execute.assert_not_awaited()
 
     async def test_transport_failure_is_recorded_once_and_not_retried(self):
-        self.post.side_effect = TimeoutError("SAM timed out")
+        self.detect.side_effect = TimeoutError("SAM 3.1 timed out")
         row, task = await self.start()
-        with self.assertRaisesRegex(RuntimeError, "SAM timed out"):
+        with self.assertRaisesRegex(RuntimeError, "SAM 3.1 timed out"):
             await task
-        self.assertEqual(self.post.call_count, 1)
+        self.assertEqual(self.detect.call_count, 1)
         self.assertEqual(self.inspections.rows[row["id"]]["status"], "failed")
         record = json.loads(
             next((self.directory / "inspections" / row["id"]).glob("*.json")).read_text()
         )
-        self.assertEqual(record["error"], "SAM timed out")
+        self.assertEqual(record["error"], "TimeoutError: SAM 3.1 timed out")
 
     async def test_cancellation_is_immediate_but_blocks_reuse_until_request_finishes(self):
         entered, finish = threading.Event(), threading.Event()
@@ -585,7 +586,7 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
             assert finish.wait(2)
             return response()
 
-        self.post.side_effect = detect
+        self.detect.side_effect = detect
         row, task = await self.start()
         self.assertTrue(await asyncio.to_thread(entered.wait, 1))
         stopped = self.inspections.stop("Drone1", "Operator return")
@@ -597,7 +598,7 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
             await task
         self.assertEqual(self.inspections.rows[row["id"]]["status"], "stopped")
         self.assertIsNone(self.inspections.rows[row["id"]]["latest"])
-        self.assertEqual(self.post.call_count, 1)
+        self.assertEqual(self.detect.call_count, 1)
 
     async def test_cancellation_while_waiting_for_phase_starts_no_capture_or_request(self):
         entered = asyncio.Event()
@@ -614,14 +615,14 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
                 await starting
         self.assertEqual(self.inspections.snapshot()[0]["status"], "stopped")
         self.assertEqual(self.captures, {})
-        self.post.assert_not_called()
+        self.detect.assert_not_called()
 
-    async def test_changed_plan_rejects_capture_before_sam(self):
+    async def test_changed_plan_rejects_capture_before_vision(self):
         row, task = await self.start()
         self.mission.plan_active["plan"]["version"] = 2
         with self.assertRaisesRegex(RuntimeError, "flight plan changed"):
             await task
-        self.post.assert_not_called()
+        self.detect.assert_not_called()
         self.assertEqual(self.inspections.rows[row["id"]]["status"], "failed")
 
     async def test_slow_success_continues_on_future_slot_without_backlog(self):
@@ -632,14 +633,14 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
             time.sleep(1.05)
             return response(positive=False)
 
-        self.post.side_effect = detect
+        self.detect.side_effect = detect
         row, task = await self.start(duration=3)
         await task
         actual = self.inspections.rows[row["id"]]
-        self.assertEqual((self.post.call_count, actual["status"]), (2, "complete"))
-        self.assertGreaterEqual(starts[1] - starts[0], 1.99)
-        self.assertEqual(actual["sampling"]["missed_slots"], 2)
-        self.assertGreaterEqual(actual["sampling"]["last_interval_s"], 1.99)
+        self.assertEqual((self.detect.call_count, actual["status"]), (3, "complete"))
+        self.assertGreaterEqual(starts[1] - starts[0], 1.19)
+        self.assertEqual(actual["sampling"]["missed_slots"], 15)
+        self.assertGreaterEqual(actual["sampling"]["last_interval_s"], 1.19)
         self.assertGreaterEqual(actual["sampling"]["last_cycle_s"], 1.05)
         records = sorted(
             (
@@ -655,10 +656,7 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
             for stage in (
                 "aim_s",
                 "capture_s",
-                "prepare_s",
                 "request_s",
-                "annotation_s",
-                "worker_queue_s",
                 "lateness_s",
             ):
                 self.assertGreaterEqual(cycle[stage], 0)
@@ -669,10 +667,7 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
                     for stage in (
                         "aim_s",
                         "capture_s",
-                        "prepare_s",
                         "request_s",
-                        "annotation_s",
-                        "worker_queue_s",
                     )
                 ),
             )
@@ -696,19 +691,19 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
             time.sleep(1.05)
             return response(positive=False)
 
-        self.post.side_effect = detect
+        self.detect.side_effect = detect
         row, task = await self.start(duration=1)
         await task
         actual = self.inspections.rows[row["id"]]
         self.assertEqual((actual["status"], actual["frames"]), ("complete", 1))
-        self.assertEqual(self.post.call_count, 1)
+        self.assertEqual(self.detect.call_count, 1)
 
-    async def test_four_slow_streams_keep_their_phases_without_overlapping_same_drone(self):
+    async def test_four_slow_streams_keep_their_phases_without_overlapping_visione_drone(self):
         def detect(*args):
             time.sleep(1.05)
             return response(positive=False)
 
-        self.post.side_effect = detect
+        self.detect.side_effect = detect
         jobs = await asyncio.gather(*(self.start(name, duration=3) for name in self.states))
         await asyncio.gather(*(task for _, task in jobs))
         for row, _ in jobs:
@@ -719,16 +714,20 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
                 ),
                 key=lambda record: record["timestamp_ns"],
             )
-            self.assertEqual(len(records), 2)
+            self.assertEqual(len(records), 3)
             phase = (int(row["drone_id"][-1]) - 1) / 4
             for record in records:
-                self.assertEqual(record["cycle"]["scheduled_monotonic_s"] % 1, phase)
-            first, second = (record["cycle"] for record in records)
+                self.assertAlmostEqual(
+                    (record["cycle"]["scheduled_monotonic_s"] * 5 - phase) % 1, 0, places=6
+                )
+            first, second = (record["cycle"] for record in records[:2])
             self.assertGreater(
                 second["started_monotonic_s"], first["started_monotonic_s"] + first["observation_s"]
             )
-            self.assertEqual(second["scheduled_monotonic_s"] - first["scheduled_monotonic_s"], 2)
-        self.assertEqual(self.post.call_count, 8)
+            self.assertAlmostEqual(
+                second["scheduled_monotonic_s"] - first["scheduled_monotonic_s"], 1.2
+            )
+        self.assertEqual(self.detect.call_count, 12)
 
     async def test_slow_evidence_write_is_included_before_the_next_slot_is_chosen(self):
         write_text = Path.write_text
@@ -738,40 +737,24 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
                 time.sleep(1.05)
             return write_text(path, *args, **kwargs)
 
-        self.post.side_effect = lambda *args: response(positive=False)
+        self.detect.side_effect = lambda *args: response(positive=False)
         with patch.object(Path, "write_text", autospec=True, side_effect=write):
             row, task = await self.start(duration=3)
             await task
         actual = self.inspections.rows[row["id"]]
-        self.assertEqual((actual["status"], actual["frames"]), ("complete", 2))
-        self.assertEqual(actual["sampling"]["missed_slots"], 2)
-        self.assertGreaterEqual(actual["sampling"]["last_interval_s"], 1.99)
+        self.assertEqual((actual["status"], actual["frames"]), ("complete", 3))
+        self.assertEqual(actual["sampling"]["missed_slots"], 15)
+        self.assertGreaterEqual(actual["sampling"]["last_interval_s"], 1.19)
         cycles = [
             json.loads(line)
             for line in (self.directory / "inspections" / row["id"] / "sampling.jsonl")
             .read_text()
             .splitlines()
         ]
-        self.assertEqual(len(cycles), 2)
+        self.assertEqual(len(cycles), 3)
         for cycle in cycles:
             self.assertGreaterEqual(cycle["evidence_write_s"], 1.05)
             self.assertGreaterEqual(cycle["work_s"], cycle["evidence_write_s"])
-
-    async def test_image_processing_does_not_block_the_mission_event_loop(self):
-        entered, finish = threading.Event(), threading.Event()
-        annotate = annotated_frame
-
-        def process(*args):
-            entered.set()
-            assert finish.wait(2), "Image processing blocked the event loop"
-            return annotate(*args)
-
-        with patch("mission_planner.gcs.inspection.annotated_frame", side_effect=process):
-            row, task = await self.start()
-            self.assertTrue(await asyncio.to_thread(entered.wait, 1))
-            finish.set()
-            await task
-        self.assertEqual(self.inspections.rows[row["id"]]["status"], "candidate")
 
     async def test_late_failed_request_preserves_cancelled_ownership(self):
         entered, finish = threading.Event(), threading.Event()
@@ -779,9 +762,9 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
         def detect(*args):
             entered.set()
             assert finish.wait(2)
-            raise TimeoutError("SAM timed out after cancellation")
+            raise TimeoutError("SAM 3.1 timed out after cancellation")
 
-        self.post.side_effect = detect
+        self.detect.side_effect = detect
         row, task = await self.start()
         self.assertTrue(await asyncio.to_thread(entered.wait, 1))
         self.inspections.invalidate("Operator return", "Drone1")
@@ -793,12 +776,12 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
             next((self.directory / "inspections" / row["id"]).glob("*.json")).read_text()
         )
         self.assertTrue(record["cancelled"])
-        self.assertEqual(record["error"], "SAM timed out after cancellation")
+        self.assertEqual(record["error"], "TimeoutError: SAM 3.1 timed out after cancellation")
         self.mission.fleet.execute.assert_not_awaited()
 
     async def test_no_capture_without_request_and_unhealthy_flight_is_rejected(self):
         self.assertEqual(self.inspections.snapshot(), [])
-        self.post.assert_not_called()
+        self.detect.assert_not_called()
         for changes in (
             {"armed": False},
             {"landed_state": 1},
@@ -826,7 +809,7 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaisesRegex(AssertionError, "participating"):
             flight_identity(self.mission, "Drone1")
 
-    async def test_wrong_drone_frame_fails_before_any_sam_request(self):
+    async def test_wrong_drone_frame_fails_before_any_vision_request(self):
         capture = SimpleNamespace(
             capture=AsyncMock(
                 return_value=({"drone_id": "Drone2", "camera_id": "fpv"}, image_bytes())
@@ -838,7 +821,7 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaisesRegex(RuntimeError, "wrong drone or camera"):
                 await task
         self.assertEqual(self.inspections.rows[row["id"]]["status"], "failed")
-        self.post.assert_not_called()
+        self.detect.assert_not_called()
         await self.inspections.close()
         capture.close.assert_awaited_once()
 

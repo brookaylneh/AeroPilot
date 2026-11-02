@@ -38,8 +38,8 @@
       },
       {
         "ImageType": 0,
-        "Width": 1920,
-        "Height": 1080,
+        "Width": 3840,
+        "Height": 2160,
         "ForceUpdate": false,
         "AutoExposureMethod": 2,
         "AutoExposureApplyPhysicalCameraExposure": false,

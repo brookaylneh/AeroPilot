@@ -125,6 +125,14 @@ sudo systemctl start snr-mission snr-web
 sudo systemctl start snr-caddy
 ```
 
+Build the immutable SAM device image and stage its verified checkpoint, warmup
+fixture and compile-cache directory before starting `snr-mission`. Set all six
+`SNR_SAM_*` values in `.local/runtime.env`; the example image ID identifies the
+qualified build and the GPU UUID must identify the intended device. See the
+[device package](../mission_planner/agents/services/README.md#local-sam-device-package).
+Its systemd dependency waits for vision readiness; a later vision failure must not stop
+the mission owner or its flight override controls. No additional TCP port is allocated.
+
 Acquisition scripts require new destinations; do not rerun them over installed toolchains.
 Units start at boot, fail visibly and do not restart automatically after errors.
 `journalctl -u snr-<service>` records their output. Restart only the affected installed unit after a fix.
@@ -134,28 +142,28 @@ autopilots before Unreal is ready exhausts their first sensor-message timeout.
 The rendering and encoding profile is documented in [streaming](../world/unreal/streaming.md);
 its startup values are defined in `runtime.env.example`.
 
-| Route or endpoint                  | Purpose                                                       | Listener / upstream                                             |
-| ---------------------------------- | ------------------------------------------------------------- | --------------------------------------------------------------- |
-| `http://35.81.229.78/`             | Redirect to `/home`                                           | Caddy, 80 TCP                                                   |
-| `/home`                            | World readiness and planner/scenario entry                    | web, `127.0.0.1:3001`                                           |
-| `/studio`                          | Scenario Creator                                              | web, `127.0.0.1:3001`                                           |
-| `/missionplanner`                  | General mission entry or active-session resume                | web, `127.0.0.1:3001`                                           |
-| `/missionplanner?case=<uuid>`      | Mission Control with a launched rescue scenario               | web, `127.0.0.1:3001`                                           |
-| `/mission`                         | Compatibility redirect, preserving the query                  | web, `127.0.0.1:3001`                                           |
-| `/api/mission`                     | Mission WebSocket                                             | web origin check, then `127.0.0.1:8765`                         |
-| `/api/evidence/<mission>/<asset>`  | Registered immutable frame and crop JPEGs                     | same web origin, mission-owned registry                         |
-| `/api/unreal/status`               | Renderer readiness and occupancy                              | web, signalling health                                          |
-| `/api/stream`                      | Pixel Streaming player WebSocket                              | web origin check, then `127.0.0.1:8080`                         |
-| `/healthz`                         | All six units plus mission, renderer and TURN protocol health | web; 503 if any check fails                                     |
-| Internal streamer                  | Unreal to signalling                                          | `127.0.0.1:8888`                                                |
-| Internal Cosys RPC                 | Native simulation control                                     | `127.0.0.1:41451`                                               |
-| Internal MAVLink                   | Four SITL telemetry inputs                                    | `127.0.0.1:14600–14603` UDP                                     |
-| Internal RC input                  | Four SITL inputs                                              | `127.0.0.1:5501,5511,5521,5531` UDP                             |
-| Internal AirSim sensor and control | Cosys to SITL, SITL instances 0–3                             | `127.0.0.1:9003–9033` and `9002–9032` UDP, step 10              |
-| TURN                               | Browser relay control                                         | `172.31.61.189:3478` TCP/UDP, public EIP translation            |
-| TURN relay                         | Relayed media                                                 | `172.31.61.189:49300–49350` UDP                                 |
-| Unreal WebRTC                      | Local media endpoint reached by TURN                          | `49160–49200` UDP; no public ingress required with forced relay |
-| Development                        | One server, reached by SSH tunnel                             | `127.0.0.1:5174`                                                |
+| Route or endpoint                  | Purpose                                                         | Listener / upstream                                             |
+| ---------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------- |
+| `http://35.81.229.78/`             | Redirect to `/home`                                             | Caddy, 80 TCP                                                   |
+| `/home`                            | World readiness and planner/scenario entry                      | web, `127.0.0.1:3001`                                           |
+| `/studio`                          | Scenario Creator                                                | web, `127.0.0.1:3001`                                           |
+| `/missionplanner`                  | General mission entry or active-session resume                  | web, `127.0.0.1:3001`                                           |
+| `/missionplanner?case=<uuid>`      | Mission Control with a launched rescue scenario                 | web, `127.0.0.1:3001`                                           |
+| `/mission`                         | Compatibility redirect, preserving the query                    | web, `127.0.0.1:3001`                                           |
+| `/api/mission`                     | Mission WebSocket                                               | web origin check, then `127.0.0.1:8765`                         |
+| `/api/evidence/<mission>/<asset>`  | Registered immutable original JPEGs and matching mask PNGs      | same web origin, mission-owned registry                         |
+| `/api/unreal/status`               | Renderer readiness and occupancy                                | web, signalling health                                          |
+| `/api/stream`                      | Pixel Streaming player WebSocket                                | web origin check, then `127.0.0.1:8080`                         |
+| `/healthz`                         | All seven units plus mission, renderer and TURN protocol health | web; 503 if any check fails                                     |
+| Internal streamer                  | Unreal to signalling                                            | `127.0.0.1:8888`                                                |
+| Internal Cosys RPC                 | Native simulation control                                       | `127.0.0.1:41451`                                               |
+| Internal MAVLink                   | Four SITL telemetry inputs                                      | `127.0.0.1:14600–14603` UDP                                     |
+| Internal RC input                  | Four SITL inputs                                                | `127.0.0.1:5501,5511,5521,5531` UDP                             |
+| Internal AirSim sensor and control | Cosys to SITL, SITL instances 0–3                               | `127.0.0.1:9003–9033` and `9002–9032` UDP, step 10              |
+| TURN                               | Browser relay control                                           | `172.31.61.189:3478` TCP/UDP, public EIP translation            |
+| TURN relay                         | Relayed media                                                   | `172.31.61.189:49300–49350` UDP                                 |
+| Unreal WebRTC                      | Local media endpoint reached by TURN                            | `49160–49200` UDP; no public ingress required with forced relay |
+| Development                        | One server, reached by SSH tunnel                               | `127.0.0.1:5174`                                                |
 
 Caddy proxies to the web server so production and development share the same-origin WebSocket
 checks. The root redirects explicitly; unknown paths return 404. TURN and its media endpoints are the network-facing exception to the loopback service rule.
@@ -174,7 +182,17 @@ to character selection; it never initiates a return flight. The coupled fleet re
 A later launch can select a new case. No model inference or autonomous flight starts merely
 by opening the planner or launching the briefing. See [web entry acceptance](../web/README.md).
 General and rescue sessions use one versioned flight plan; the mission state exposes the public map
-as `landmarks`. SAM and Glimmer run remotely on the shared Modal Servers, never on this host.
+as `landmarks`. `snr-vision.service` launches one local SAM 3.1 container; Glimmer
+and the standalone SAM calibration service remain on Modal. Four independent drone
+sessions share one model within a 16-billion-byte GPU budget and expose only
+`SNR_VISION_SOCKET`. See [vision installation and protocol](../mission_planner/agents/services/README.md).
+
+A vision/client/schema migration also needs the mission and web processes to load
+the new code. Mission shutdown terminates its four SITL controllers, so a live
+cutover follows the world-first shutdown linked above. Stage the complete image,
+web build, runtime configuration and rendered units before that coordinated stop.
+Do not replace an active mission's vision worker independently. An idle fleet
+status does not remove the simulator's coupled shutdown requirement.
 
 Run development with `npm run dev`. Vite middleware and API/WebSocket handlers share the single fixed
 listener; reload the browser after changes. Tunnel it with:

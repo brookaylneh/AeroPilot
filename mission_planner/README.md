@@ -17,13 +17,13 @@ General missions and Studio rescue briefings use the same instructions, tools, p
 checks the complete encoded trip, including terrain and obstacles, the world fence, altitude, battery
 and spatial reservations. Airborne revisions preserve one plan version history. Wonder chooses one to
 four aircraft and adds `observe: true` to selected finite fly, follow, survey or circle steps, with
-`plan.search` supplying a simple polygon perimeter, SAM noun phrase and reviewer brief. Ground views
+`plan.search` supplying a simple polygon perimeter, SAM 3.1 noun phrase and reviewer brief. Ground views
 look ahead along routes or at a circle's center. Explicit camera inspection handles hover and elevated
 targets. `expanding_square` generates an ordinary follow step for the same preview path.
 
 Every model context includes exact `flight_constraints` and measured aircraft homes. Public map data
 is exposed as `state.landmarks`; evaluator placements are private. Glimmer's target-independent
-`forward-analyst-v2` review does not establish identity or calibrated search probability. The
+`forward-analyst-v3-full-frame` review does not establish identity or calibrated search probability. The
 [release validation record](measurements/release.json) records the checked revision and acceptance limits.
 
 Wonder runs on Meta Model API. The fleet shares one SAM 3.1 H100 Server and one Glimmer H200 Server on

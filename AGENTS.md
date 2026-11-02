@@ -17,9 +17,11 @@
   `Muse-Glimmer-30B-KQuant-17GB-Q4_K_M.gguf` with its published mmproj, served by llama.cpp
   at the release the model card requires (b10353 or later). No other quantization or
   re-quantization of any model.
-- No model is hosted on the mission host. The four drones share one SAM 3.1 H100 Server and one Glimmer H200 Server
-  on Modal, a hackathon partner. Clients are provider-neutral: they read the
-  endpoint from `.env` and send the same request contract to any provider.
+- Live inspections share one local packaged SAM 3.1 Object Multiplex model across
+  four independent drone sessions, within a 16-billion-byte process GPU budget.
+  Glimmer remains on the shared Modal H200 Server. The independent Modal SAM H100
+  image endpoint remains for calibration. Remote clients read their endpoint from
+  `.env`; the local video client uses `SNR_VISION_SOCKET` from runtime configuration.
 - Keep the repository clean: no phase reports, historical notes, one-off probes or scratch
   scripts. Code lives in its domain folder; documentation is that folder's `README.md`.
   Committed results go to `mission_planner/measurements/`; everything untracked goes to `.local/`.
@@ -67,7 +69,9 @@
 - Glimmer analyst requests use the frozen template and fixed sampling settings; prove
   schema-valid reports and record reasoning-token counts. Belief uses only the measured
   escalation rates for that template, model build and provider.
-- SAM requests contain exactly `jpeg`, `prompts`, and required `threshold` in [0, 1].
+- Standalone SAM image requests contain exactly `jpeg`, `prompts`, and required
+  `threshold` in [0, 1]. Local video sessions use the ordered contract in
+  `mission_planner/agents/services/README.md` and require a mask with every detection.
 - Record sources, exact dependency versions, image digest, and runner usage.
 - The two production Modal Servers stay warm at `min_containers=1`.
 - Deploy: `.venv-cosys/bin/modal deploy -m mission_planner.agents.services.app`

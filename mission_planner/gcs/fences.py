@@ -16,6 +16,7 @@ from mission_planner.gcs.geodesy import (
     to_local,
     validate_polygon,
 )
+from mission_planner.gcs.rejection import PlanRejected
 from world.cosys.terrain import FIELD, heights, launch_triangles
 
 MAX_VERTICES = 70
@@ -145,7 +146,10 @@ def validate_fence_segment(a, b, fences, label, clearance=BOUNDARY_CLEARANCE_M):
     assert all(math.isfinite(p[k]) for p in (a, b) for k in ("north_m", "east_m")), (
         label + ": flight coordinates must be finite metres"
     )
-    assert segment_in_polygon(a, b, fences["inclusion"]), label + ": exits the inclusion fence"
+    if not segment_in_polygon(a, b, fences["inclusion"]):
+        raise PlanRejected(
+            "fence", label + ": exits the inclusion fence", detail={"segment": [a, b]}
+        )
     start, end = ((p["north_m"], p["east_m"], 0) for p in (a, b))
     for index, polygon in enumerate([fences["inclusion"], *fences["exclusions"]]):
         name = "inclusion fence" if index == 0 else f"Exclusion {index}"
@@ -155,15 +159,25 @@ def validate_fence_segment(a, b, fences, label, clearance=BOUNDARY_CLEARANCE_M):
             )
             for c, d in zip(polygon, [*polygon[1:], polygon[0]])
         )
-        if index:
-            assert (
-                not point_in_polygon(a, polygon)
-                and not point_in_polygon(b, polygon)
-                and distance > 1e-9
-            ), f"{label}: enters {name}; add intermediate fly points around this no-fly zone"
-        assert distance + 1e-9 >= clearance, (
-            f"{label}: {distance:.3f} m from {name}; requires {clearance:g} m boundary clearance"
-        )
+        if index and (
+            point_in_polygon(a, polygon) or point_in_polygon(b, polygon) or distance <= 1e-9
+        ):
+            raise PlanRejected(
+                "fence",
+                f"{label}: enters {name}; add intermediate fly points around this no-fly zone",
+                detail={"segment": [a, b], "zone": name},
+            )
+        if distance + 1e-9 < clearance:
+            raise PlanRejected(
+                "fence",
+                f"{label}: {distance:.3f} m from {name}; requires {clearance:g} m boundary clearance",
+                detail={
+                    "segment": [a, b],
+                    "zone": name,
+                    "distance_m": distance,
+                    "required_m": clearance,
+                },
+            )
 
 
 @lru_cache(maxsize=1)

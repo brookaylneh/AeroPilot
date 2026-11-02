@@ -140,7 +140,16 @@ export const eventSchema = z
         !row.rescue.reports.length ||
         row.rescue.reports.some(
           ({ candidate_index, images }) =>
-            images.frame_id !== frame.frame_id || candidate_index >= frame.detections.length,
+            images.frame_id !== frame.frame_id ||
+            images.frame_ref !== frame.frame_ref ||
+            images.sha256 !== frame.sha256 ||
+            candidate_index >= frame.detections.length ||
+            images.track_id !== frame.detections[candidate_index].track_id ||
+            images.mask.sha256 !== frame.detections[candidate_index].mask.sha256 ||
+            images.mask.ref !== frame.detections[candidate_index].mask.ref ||
+            images.box_xyxy.some(
+              (value, index) => value !== frame.detections[candidate_index].box_xyxy[index],
+            ),
         ))
     )
       context.addIssue({

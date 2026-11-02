@@ -12,41 +12,10 @@ from mission_planner.gcs.geodesy import (
     segment_distance,
     segment_in_polygon,
 )
+from mission_planner.gcs.rejection import PlanRejected, separation
 from world.cosys.terrain import COLUMNS, ROWS, WORLD, launch_breaks, terrain_height
 
 CLEARANCE_M = 10.0
-
-
-class RouteConflict(AssertionError):
-    def __init__(self, conflict):
-        self.conflict = conflict
-        super().__init__(conflict)
-
-    def __str__(self):
-        def leg(prefix):
-            name = self.conflict[prefix + "drone_id"]
-            index = self.conflict[prefix + "step_index"]
-            if index is not None:
-                name += f" step {index + 1} ({self.conflict[prefix + 'step_kind']})"
-            return name
-
-        def position(point):
-            return (
-                f"N {point['north_m']:.3f}, E {point['east_m']:.3f}, "
-                f"{point['altitude_above_home_m']:.3f} m above home"
-            )
-
-        return (
-            f"{leg('')} conflicts with {leg('other_')}; "
-            f"minimum separation {self.conflict['minimum_m']:g} m, "
-            f"measured {self.conflict['distance_m']:.6f} m. "
-            + "; ".join(
-                f"{leg(prefix)}: "
-                + " → ".join(position(point) for point in self.conflict[prefix + "segment"])
-                for prefix in ("", "other_")
-            )
-            + ". Entire routes reserve space regardless of timing."
-        )
 
 
 def fence_polygon(readback):
@@ -54,23 +23,31 @@ def fence_polygon(readback):
 
 
 def validate_position(name, state, readback):
-    assert point_in_polygon(state, fence_polygon(readback)), (
-        f"{name}: current position is outside the search fence; launch position conflicts with required fence"
-    )
+    if not point_in_polygon(state, fence_polygon(readback)):
+        raise PlanRejected(
+            "fence",
+            f"{name}: current position is outside the search fence; "
+            "launch position conflicts with required fence",
+            drone_id=name,
+        )
     validate_fence_segment(state, state, read_fences(readback), name + " position", clearance=0)
 
 
 def validate_ground_column(point, landmarks):
     assert landmarks is not None, "Landmark catalogue required for ground-column clearance"
     for landmark in landmarks:
-        if landmark["heightM"] > 0:
-            assert not point_in_polygon(
-                point,
-                [
-                    {"north_m": p["x"] / 100, "east_m": p["y"] / 100}
-                    for p in landmark["geometry"]["points"]
-                ],
-            ), f"Ground column intersects raised landmark {landmark['name']}"
+        if landmark["heightM"] > 0 and point_in_polygon(
+            point,
+            [
+                {"north_m": p["x"] / 100, "east_m": p["y"] / 100}
+                for p in landmark["geometry"]["points"]
+            ],
+        ):
+            raise PlanRejected(
+                "obstacle_clearance",
+                f"Ground column intersects raised landmark {landmark['name']}",
+                detail={"landmark": landmark["id"]},
+            )
 
 
 def validate_route(route, readback, home_z, landmarks):
@@ -78,13 +55,20 @@ def validate_route(route, readback, home_z, landmarks):
     polygon = fence_polygon(readback)
     for p in route:
         assert all(math.isfinite(p[k]) for k in ("north_m", "east_m", "altitude_above_home_m"))
-        assert point_in_polygon(p, polygon), "Waypoint is outside the search fence"
-        assert MIN_ALTITUDE_M <= p["altitude_above_home_m"] <= MAX_ALTITUDE_M, (
-            "Altitude must be 10–100 m above home"
-        )
+        if not point_in_polygon(p, polygon):
+            raise PlanRejected("fence", "Waypoint is outside the search fence", detail={"point": p})
+        if not MIN_ALTITUDE_M <= p["altitude_above_home_m"] <= MAX_ALTITUDE_M:
+            raise PlanRejected(
+                "altitude",
+                f"Altitude must be {MIN_ALTITUDE_M:g}–{MAX_ALTITUDE_M:g} m above home",
+                detail={"point": p, "minimum_m": MIN_ALTITUDE_M, "maximum_m": MAX_ALTITUDE_M},
+            )
 
     for a, b in zip(route, route[1:]):
-        assert segment_in_polygon(a, b, polygon), "Route segment exits the launch corridor fence"
+        if not segment_in_polygon(a, b, polygon):
+            raise PlanRejected(
+                "fence", "Route segment exits the launch corridor fence", detail={"segment": [a, b]}
+            )
     fences = read_fences(readback)
     for index, (a, b) in enumerate(zip(route, route[1:] or route), 1):
         validate_fence_segment(a, b, fences, f"Route segment {index}")
@@ -93,9 +77,12 @@ def validate_route(route, readback, home_z, landmarks):
     assert isinstance(landmarks, list)
     for a, b in zip(route, route[1:] or route):
         clearance = minimum_clearance(a, b, 0, 1, home_z, 0)
-        assert clearance >= CLEARANCE_M, (
-            f"Route clearance above terrain is {clearance:.3f} m; requires {CLEARANCE_M:g} m"
-        )
+        if clearance < CLEARANCE_M:
+            raise PlanRejected(
+                "terrain_clearance",
+                f"Route clearance above terrain is {clearance:.3f} m; requires {CLEARANCE_M:g} m",
+                detail={"segment": [a, b], "clearance_m": clearance, "required_m": CLEARANCE_M},
+            )
     for landmark in landmarks:
         if landmark["geometry"]["type"] != "polygon":
             continue
@@ -106,10 +93,19 @@ def validate_route(route, readback, home_z, landmarks):
         for a, b in zip(route, route[1:] or route):
             for low, high in footprint_intervals(a, b, footprint):
                 clearance = minimum_clearance(a, b, low, high, home_z, landmark["heightM"])
-                assert clearance >= CLEARANCE_M, (
-                    f"Route clearance over {landmark['name']} is {clearance:.3f} m; "
-                    f"requires {CLEARANCE_M:g} m above terrain plus {landmark['heightM']:g} m height"
-                )
+                if clearance < CLEARANCE_M:
+                    raise PlanRejected(
+                        "obstacle_clearance",
+                        f"Route clearance over {landmark['name']} is {clearance:.3f} m; "
+                        f"requires {CLEARANCE_M:g} m above terrain plus "
+                        f"{landmark['heightM']:g} m height",
+                        detail={
+                            "segment": [a, b],
+                            "landmark": landmark["id"],
+                            "clearance_m": clearance,
+                            "required_m": CLEARANCE_M,
+                        },
+                    )
 
 
 def footprint_intervals(a, b, polygon):
@@ -245,4 +241,4 @@ def separation_conflict(name, route, reservations, home_altitudes_msl_m):
 def validate_separation(name, route, reservations, home_altitudes_msl_m):
     conflict = separation_conflict(name, route, reservations, home_altitudes_msl_m)
     if conflict is not None:
-        raise RouteConflict(conflict)
+        raise separation(conflict)

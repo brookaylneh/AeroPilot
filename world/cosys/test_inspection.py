@@ -101,14 +101,14 @@ class ForwardCaptureTests(unittest.TestCase):
         self.directory = Path(temporary.name)
 
     def capture(
-        self, name, camera_name="fpv", width=1920, timestamp=150, pixels=None, fov_after=89.9
+        self, name, camera_name="fpv", width=3840, timestamp=150, pixels=None, fov_after=89.9
     ):
         response = SimpleNamespace(
             message="",
             camera_name=camera_name,
             width=width,
-            height=1080,
-            image_data_uint8=bytes([50, 70, 90]) * width * 1080 if pixels is None else pixels,
+            height=2160,
+            image_data_uint8=bytes([50, 70, 90]) * width * 2160 if pixels is None else pixels,
             time_stamp=timestamp,
             camera_position=SimpleNamespace(x_val=12, y_val=23, z_val=-30),
             camera_orientation=SimpleNamespace(w_val=1, x_val=0, y_val=0, z_val=0),
@@ -164,7 +164,7 @@ class ForwardCaptureTests(unittest.TestCase):
     def test_wrong_camera_low_resolution_and_unbracketed_time_fail(self):
         for arguments, message in (
             ({"camera_name": "front_center"}, "wrong camera"),
-            ({"width": 256}, "1920x1080"),
+            ({"width": 256}, "3840x2160"),
             ({"timestamp": 201}, "capture bracket"),
             ({"fov_after": 53}, "field of view changed"),
         ):
@@ -172,7 +172,7 @@ class ForwardCaptureTests(unittest.TestCase):
                 self.capture("Drone1", **arguments)
 
     def test_dark_scene_regions_do_not_invalidate_a_forward_frame(self):
-        pixels = np.full((1080, 1920, 3), 80, np.uint8)
+        pixels = np.full((2160, 3840, 3), 80, np.uint8)
         pixels[:540] = 0
         record, jpeg = self.capture("Drone1", pixels=pixels.tobytes())
         self.assertEqual(record["shadow_floor_luminance_p1"], 0)
@@ -182,12 +182,12 @@ class ForwardCaptureTests(unittest.TestCase):
 
     def test_unusable_black_frame_preserves_pixels_and_pose_before_raising(self):
         with self.assertRaisesRegex(AssertionError, "entirely black frame; evidence:"):
-            self.capture("Drone2", pixels=bytes(1080 * 1920 * 3))
+            self.capture("Drone2", pixels=bytes(2160 * 3840 * 3))
         from PIL import Image
 
         path = self.directory / "150-rejected.png"
         with Image.open(path) as image:
-            self.assertEqual(image.size, (1920, 1080))
+            self.assertEqual(image.size, (3840, 2160))
             self.assertEqual(image.getextrema(), ((0, 0), (0, 0), (0, 0)))
         metadata = json.loads(path.with_suffix(".json").read_text())
         self.assertEqual(metadata["drone_id"], "Drone2")
@@ -337,9 +337,9 @@ class ForwardCaptureTests(unittest.TestCase):
                 SimpleNamespace(
                     message="",
                     camera_name="fpv",
-                    width=1920,
-                    height=1080,
-                    image_data_uint8=bytes([50, 70, 90]) * 1920 * 1080,
+                    width=3840,
+                    height=2160,
+                    image_data_uint8=bytes([50, 70, 90]) * 3840 * 2160,
                     time_stamp=150,
                     camera_position=info.pose.position,
                     camera_orientation=orientation,
@@ -399,9 +399,9 @@ class ForwardCaptureTests(unittest.TestCase):
         response = SimpleNamespace(
             message="",
             camera_name="fpv",
-            width=1920,
-            height=1080,
-            image_data_uint8=bytes([50, 70, 90]) * 1920 * 1080,
+            width=3840,
+            height=2160,
+            image_data_uint8=bytes([50, 70, 90]) * 3840 * 2160,
             time_stamp=150,
             camera_position=airsim.Vector3r(0, 0, -30),
             camera_orientation=airsim.Quaternionr(0, 0, 0, 1),

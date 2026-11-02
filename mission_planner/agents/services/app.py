@@ -70,7 +70,6 @@ sam_image = (
     .run_commands("python -m pip freeze")
     .add_local_file(DIRECTORY.parent / "segmentation.py", "/segmentation.py", copy=True)
     .add_local_file(DIRECTORY / "sam_server.py", "/sam_server.py", copy=True)
-    .add_local_file(DIRECTORY / "sam_tracking.py", "/sam_tracking.py", copy=True)
 )
 
 

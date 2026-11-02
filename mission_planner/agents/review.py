@@ -1,23 +1,24 @@
 """A frozen forward-camera evidence review; no flight authority or probability credit."""
 
+import hashlib
 import io
 import json
-import math
 import re
 import time
 
 from PIL import Image
 
-TEMPLATE = "forward-analyst-v2"
+TEMPLATE = "forward-analyst-v3-full-frame"
 
 
 DECISIONS = ("escalate", "recheck", "discard")
 ACTIONS = ("none", "closer_look", "other_angle", "hold_and_watch")
 MAX_TOKENS = 2048
 SYSTEM = (
-    "You analyse aerial drone evidence for a mission commander. Image 1 is a region a detector "
-    "matched; image 2 is the same place with its surroundings. Judge only what is visible in "
-    "the images and keep your reasoning brief."
+    "You analyse aerial drone evidence for a mission commander. The image is the original "
+    "3840x2160 forward-camera frame. The text identifies the selected detector box in its "
+    "original pixels. Judge only what is visible in that region and its surroundings; "
+    "the detector label is a hypothesis. Keep your reasoning brief."
 )
 
 
@@ -68,44 +69,18 @@ def schema(look_for):
     }
 
 
-def jpeg(image):
-    stream = io.BytesIO()
-    image.convert("RGB").save(stream, format="JPEG", quality=95, subsampling=0)
-    return stream.getvalue()
-
-
-def candidate_images(payload, box):
-    with Image.open(io.BytesIO(payload)) as image:
-        left, top, right, bottom = box
-        assert all(math.isfinite(v) for v in box)
-        assert 0 <= left < right <= image.width and 0 <= top < bottom <= image.height
-        center = ((left + right) / 2, (top + bottom) / 2)
-        span = max(right - left, bottom - top)
-        images, boxes = [], []
-        for margin in (1.25, 3):
-            half = span * margin / 2
-            crop = [
-                math.floor(center[0] - half),
-                math.floor(center[1] - half),
-                math.ceil(center[0] + half),
-                math.ceil(center[1] + half),
-            ]
-            images.append(jpeg(image.crop(crop).resize((512, 512), Image.Resampling.LANCZOS)))
-            boxes.append(crop)
-    return images, boxes
-
-
-def instructions(look_for, prompt, metadata):
+def instructions(look_for, prompt, metadata, detection):
     check_look_for(look_for)
     attributes = [f"- {a['id']}: {a['text']}" for a in look_for["attributes"]]
     return "\n".join(
         [
             f"Mission: {look_for['objective']}",
             f"Target: {look_for['target']}",
-            f"Detector phrase: {prompt}",
+            f"Detector class: {prompt}; selected track {detection['track_id']}; "
+            f"box [left, top, right, bottom] in source pixels: {detection['box_xyxy']}",
             f"View: forward camera on {metadata['drone_id']}; capture Unix milliseconds "
-            f"{metadata['captured_at_ms']:.0f}. Image 1 contains the complete detector box; "
-            "image 2 contains wider surroundings. Crops may contain black padding at the frame edge. "
+            f"{metadata['captured_at_ms']:.0f}. The single image is the full original 4K frame, "
+            "with no crops, resizing or overlays. "
             "Perspective varies across this view; do not infer dimensions from a nadir scale.",
             "Attributes to check:",
             *(attributes if attributes else ["- none"]),
@@ -123,19 +98,18 @@ def instructions(look_for, prompt, metadata):
 
 
 def review_candidate(glimmer, look_for, prompt, metadata, payload, detection, prefix):
-    images, boxes = candidate_images(payload, detection["box_xyxy"])
-    text = instructions(look_for, prompt, metadata)
+    with Image.open(io.BytesIO(payload)) as image:
+        assert image.format == "JPEG" and image.size == (3840, 2160), (
+            "Glimmer review requires the original 3840x2160 JPEG"
+        )
+    text = instructions(look_for, prompt, metadata, detection)
     contract = schema(look_for)
-    image_names = []
-    for suffix, image in zip(("-crop.jpg", "-context.jpg"), images):
-        path = prefix.with_name(prefix.name + suffix)
-        with path.open("xb") as stream:
-            stream.write(image)
-        image_names.append(path.name)
+    source = {"frame_id": metadata["frame_id"], "sha256": hashlib.sha256(payload).hexdigest()}
+    assert source["sha256"] == metadata["sha256"], "Review frame does not match its capture hash"
     started = time.monotonic()
     timing, result, error = {}, None, None
     try:
-        result = glimmer.report(images, SYSTEM, text, contract, MAX_TOKENS, timing)
+        result = glimmer.report([payload], SYSTEM, text, contract, MAX_TOKENS, timing)
         report = result["report"]
         ids = [observation["attribute_id"] for observation in report["observations"]]
         assert sorted(ids) == sorted(attribute["id"] for attribute in look_for["attributes"]), (
@@ -144,13 +118,7 @@ def review_candidate(glimmer, look_for, prompt, metadata, payload, detection, pr
         assert type(result["reasoning_tokens"]) is int and result["reasoning_tokens"] >= 0
         return {
             **result,
-            "images": {
-                "frame_id": metadata["frame_id"],
-                "crop": image_names[0],
-                "context": image_names[1],
-                "crop_box": boxes[0],
-                "context_box": boxes[1],
-            },
+            "images": source,
         }
     except Exception as failure:
         error = f"{type(failure).__name__}: {failure}"
@@ -162,8 +130,7 @@ def review_candidate(glimmer, look_for, prompt, metadata, payload, detection, pr
             "prompt": prompt,
             "metadata": metadata,
             "detection": detection,
-            "images": image_names,
-            "crop_boxes": boxes,
+            "images": source,
             "system": SYSTEM,
             "text": text,
             "schema": contract,

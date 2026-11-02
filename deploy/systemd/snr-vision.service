@@ -1,0 +1,16 @@
+[Unit]
+Description=SNR local SAM 3.1 fleet vision
+Wants=docker.service
+After=docker.service
+
+[Service]
+Type=notify
+NotifyAccess=main
+KillMode=mixed
+Environment=PYTHONPATH=@ROOT@
+ExecStartPre=/usr/bin/mkdir -p @ROOT@/.local/run
+ExecStart=@ROOT@/.venv-cosys/bin/python -m mission_planner.agents.services.run_vision
+TimeoutStartSec=920
+
+[Install]
+WantedBy=multi-user.target

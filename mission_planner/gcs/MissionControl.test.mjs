@@ -20,6 +20,17 @@ const code = buildSync({
   write: false,
 }).outputFiles[0].text;
 
+function rescueState() {
+  return {
+    live_frame: null,
+    held_frame: null,
+    healthy_s: 0,
+    tracking_error: null,
+    step_index: 0,
+    completed_steps: [],
+  };
+}
+
 function component(read, search, react, window) {
   const module = { exports: {} };
   runInNewContext(code, {
@@ -106,8 +117,8 @@ function state(caseId = null, vehicles = []) {
   return missionState.stateSchema.parse({
     type: 'state',
     fences: {
-      version: 0,
       names: { inclusion: 'Inclusion', exclusions: [] },
+      version: 0,
       inclusion: [
         { north_m: -800, east_m: -1200 },
         { north_m: -800, east_m: 1200 },
@@ -316,15 +327,25 @@ test('accepted findings remain in conversation without stealing the selected tab
       frame_id: frame,
       captured_at_ms: 3000,
       frame_ref: `/api/evidence/${value.mission.id}/${frame}-frame.jpg`,
-      overlay_ref: `/api/evidence/${value.mission.id}/${frame}-input.jpg`,
-      width: 1920,
-      height: 1080,
+      sha256: 'a'.repeat(64),
+      horizontal_fov_deg: 53.13,
+      camera_view_revision: 1,
+      width: 3840,
+      height: 2160,
       detections: [
         {
           box_xyxy: [10, 20, 30, 50],
           confidence: 0.8,
-          mask_area_px: 600,
-          mask: { origin_xy: [10, 20], png_base64: 'AAAA' },
+          track_id: 1,
+          class_name: 'person',
+          observations: 2,
+          mask: {
+            origin_xy: [10, 20],
+            width: 20,
+            height: 30,
+            ref: `/api/evidence/${value.mission.id}/${frame}-track-1-mask.png`,
+            sha256: 'b'.repeat(64),
+          },
         },
       ],
     },
@@ -643,7 +664,7 @@ test('the chat menu starts a new chat only with the fleet at base and reopens pr
   assert.equal(JSON.stringify(shown()), JSON.stringify([]));
 });
 
-test('launched Glimmer subagents open, refocus, close and clear with mission history', () => {
+test('launched Glimmer subagents appear in chat and open, refocus and close their own tabs', () => {
   const agent = (drone, frames) => ({
     id: `00000000-0000-4000-8000-00000000002${drone.at(-1)}`,
     drone_id: drone,
@@ -656,7 +677,14 @@ test('launched Glimmer subagents open, refocus, close and clear with mission his
     frames,
     error: null,
     latest: null,
-    rescue: { phase: 'searching', review_id: null, reports: [], track: null, pending: false },
+    rescue: {
+      ...rescueState(),
+      phase: 'searching',
+      review_id: null,
+      reports: [],
+      track: null,
+      pending: false,
+    },
   });
   const scheduled = (drone) =>
     event(`scheduled-${drone}`, 'perception', {
@@ -702,20 +730,6 @@ test('launched Glimmer subagents open, refocus, close and clear with mission his
   assert.equal(tabs().length, 0);
   assert.equal(shown(), undefined);
   assert.ok(nodes(page.content()).some((node) => node.type.name === 'SubagentLaunch'));
-
-  launch.props.onOpen(four.id);
-  page.render();
-  page.render({ events: [] });
-  assert.equal(tabs().length, 0, 'replaced history cannot retain tabs for absent subagents');
-  assert.equal(shown(), undefined);
-  page.render({ state: null, connection: 'idle' });
-  page.render({ state: state(), connection: 'connected' });
-  assert.equal(tabs().length, 0);
-  assert.equal(shown(), undefined);
-  assert.equal(
-    nodes(page.panels()).find((node) => node.props.className === 'active').props.children,
-    'Conversation',
-  );
 });
 
 test('new conversation content follows only a reader already at the bottom; telemetry never scrolls', () => {

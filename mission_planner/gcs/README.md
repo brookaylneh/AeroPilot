@@ -101,7 +101,7 @@ The map and command guards use this exact readback, including concave boundaries
 Departure and return are chosen from each measured home and the requested task; the southern
 extension is not a required route.
 
-The bottom map legend contains **Inclusion** (yellow, Edit) and **Exclusion**
+The existing map legend contains **Inclusion fence** (yellow, Edit) and **Exclusion fence**
 (red, Draw or select a saved zone). Click corners, then click the first corner to close the
 shape. Drag corners, click an edge to insert a corner, or select a corner to remove it.
 Undo and Cancel affect only the draft. Save remains disabled for an open line, repeated
@@ -109,20 +109,12 @@ corners, a crossing, zero area or a redundant corner on a straight edge. Delete 
 also a draft change until Save. Terrain remains visible beneath the fills; both fence
 types remain visible without selecting an aircraft and in the video map inset.
 The legend's editing controls remain visible at both tested desktop widths, 1440 and 1920 pixels.
-Saving a closed area opens a [native name dialog](https://html.spec.whatwg.org/multipage/interactive-elements.html#the-dialog-element).
-Confirm or edit its name before saving; Back to editing or Escape keeps the drawing.
-Names are 1–60 characters, persist across reloads and appear in the area menu and map
-tooltips. Open an existing area and Save to rename it without moving its corners.
-Deleting a zone needs no name. The bottom legend is the only fence legend.
 
-`fences.py` owns the shared `{version, names, inclusion, exclusions}` configuration, polygon
+`fences.py` owns the shared `{version, inclusion, exclusions}` configuration, polygon
 encoding and continuous segment checks. Coordinates are metres north/east; serialization
 closes each polygon implicitly. There is one inclusion polygon and zero or more exclusion
-polygons, with a product limit of 70 vertices in total. `names` contains an `inclusion`
-string and an `exclusions` string list in polygon order; its count must match the areas.
-Names are application metadata; ArduPilot readback verifies geometry.
-`FenceEditor.tsx` owns drawing and its immediate geometry feedback. The server rechecks
-every edit. Boundary containment
+polygons, with a product limit of 70 vertices in total. `FenceEditor.tsx` owns drawing and
+its immediate geometry feedback. The server rechecks every edit. Boundary containment
 uses the encoded integer coordinates uploaded to ArduPilot, avoiding false rejections
 from sub-centimetre map projection rounding. Inclusion must remain inside the supported world, exclusions must
 remain inside inclusion, and all four homes and aircraft positions must remain accessible.
@@ -135,12 +127,6 @@ verified configuration persists in `.local/data/flight-fences.json` across reloa
 sessions and service restarts. Failed upload/readback/persistence locks flight; telemetry
 continues and the editor displays the exact error. There is no retry or rollback. A
 separate browser editing an old version must reopen its editor before saving.
-
-When installing name support over an unnamed configuration, stop the coupled services
-using the documented world-first sequence, back up `flight-fences.json`, and add
-`names: {"inclusion": "Inclusion", "exclusions": ["Exclusion 1", ...]}` for its existing
-polygons. Preserve version and geometry. Old schemas are rejected; startup does not
-silently migrate or reset operator areas.
 
 Every planned or manually commanded flight leg, hold location and target-follow movement
 must remain inside yellow and outside red, **10 m from every boundary**. Position-only
@@ -316,7 +302,7 @@ still requires live validation. See [`gcs-sitl.json`](../measurements/gcs-sitl.j
 in a step is metres above ground. Steps are takeoff, fly, hover, circle, survey, follow,
 land and return_home. Fly/circle/survey/follow/return specify speed and height; hover
 specifies integer seconds or null for until instructed. Follow uses explicit point order;
-survey uses an explicit polygon, exact line spacing and bearing; circle specifies centre,
+survey uses an explicit polygon, maximum line spacing and bearing; circle specifies centre,
 radius, turns and direction. Land, return_home or indefinite hover must end each branch.
 `return_home` includes landing; appending another `land` is an explicit validation error.
 Conditions without a supported observation tool must be reported by the operator.
@@ -343,6 +329,15 @@ chord error before coordinate encoding; native loiter circles cannot maintain AG
 Return_home expands the specified terrain-following trip to home and a landing. Conversion
 does not reroute around hazards or raise a chosen height. Rejected previews return exact
 errors for Wonder to revise; commands and network requests never retry.
+
+Observed surveys add receipt `coverage`: perimeter area, the union of assigned survey
+areas, unassigned area and assigned percentage. Overlapping/repeated passes count once.
+The map and launch review display these same facts; sector fills mean **assigned**, not
+already observed. Coverage is null when there are no observed survey steps. Trail and
+circle views are not credited as surveyed area. These metrics neither certify visibility
+nor reject an intentionally partial plan. Polygon operations use pinned Shapely 2.1.2;
+its [primary implementation](https://github.com/shapely/shapely/blob/2.1.2/shapely/set_operations.py)
+defines the intersection, difference and union used here.
 
 The mission's sensing perimeter is independent of the world flight fence. Unobserved departure,
 transit and return may leave the perimeter and survey areas. They still require
@@ -436,8 +431,7 @@ without flight commands or inference. No drone starts selected, and only a drone
 current link shows as selected. An unavailable or stale-link drone rejects `open_feed` explicitly.
 The same connection serves the map inset and main video view, independent of flight
 mode and forward inspection; BRAKE, return and landing retain video until disarm.
-Regular state contains the
-small lossless masks for forward detections; full photographs remain registered assets.
+Regular state contains source-pixel boxes and track IDs; original 4K photographs remain registered assets.
 
 Camera selections are serialized and require the exact native `{droneId}` acknowledgement.
 The image stays masked until `requestVideoFrameCallback` reports a new presented frame
@@ -453,41 +447,21 @@ Signalling admits one viewer per Unreal streamer.
 See the [Epic message API](https://github.com/EpicGames/PixelStreamingInfrastructure/blob/a5b526b2383110dcd84e6b56580bca8f459e1836/Frontend/Docs/Communicating%20from%20the%20Player%20Page%20to%20UE5.md)
 and [video frame callback specification](https://wicg.github.io/video-rvfc/).
 
-Forward SAM candidates appear as simple tracked boxes on the selected live camera.
-Exact SAM masks remain on recorded evidence. `VideoBoxes.tsx` copies a decoded frame
-and draws each box on that same copy, so a stale box cannot be painted over newer
-video. `VideoTracking.ts` uses the pinned `@techstark/opencv-js` 4.12.0-release.1
-build of OpenCV 4.12.0. Scene registration aligns the source camera view, then
-mask-weighted colour correspondence locates the selected subject within a bounded
-neighbourhood. It does not require eight corners on a small person. Ambiguous matches,
-image boundaries and changed appearance invalidate the box; there is no independent
-target selection or reacquisition. Candidate sessions use the current SAM temporal
-frame, retaining the original review image separately.
-Only box coordinates cross back from the worker, together with the copied video.
-This display tracking has no flight-control authority or additional model requests.
+`VideoBoxes.tsx` draws SAM guidance boxes over the selected native video.
+It uses original 4K coordinates and the displayed aspect ratio. Each side is padded
+by the larger of half the projected dimension and 12 CSS pixels, then clipped to
+the displayed image, including on high-DPI screens. Searching
+uses the latest detection frame, following uses the selected live track, and a lost
+lock uses the latest held frame. Labels distinguish reviewing, locked and held.
+The overlay clears after one second, on a camera revision change, hidden/stalled video,
+or inspection termination. An incompatible video aspect ratio reports an error.
+Browser optical flow, mask decoding and the old tracking worker are removed.
 
-Initial alignment retains at most 16 intermediate 1080p frames at 50 ms spacing
-within the source's two-second display lifetime. These startup frames are never
-shown. One latest pending SAM source waits for the current alignment to complete,
-so rapid source updates cannot continually interrupt it. Scene registration uses at
-most 480 pixels per dimension; candidate correspondence retains full source resolution.
-Fresh native-resolution frames then use one pending copy, overlapping capture,
-tracking and drawing. A frame older than 100 ms is not displayed. Queue exhaustion,
-processing stalls and source failures stop the boxes explicitly while native video
-continues independently. Camera changes, inspection completion and hidden tabs also
-clear the layer. Each fresh SAM observation replaces the alignment source while reusing
-the worker. SAM observations older than two seconds hide the box; this permits the
-measured inference delay between observations while every displayed box still requires
-fresh pixel correspondence. This display lifetime grants no flight authority. Explicit camera
-changes hide old boxes before the command and until the captured revision matches.
-Ordinary correspondence loss is local expandable tracking status; script, loading and
-processing failures remain explicit. Video continues independently.
-
-Small subjects, occlusion or similar nearby objects can still prevent a reliable box. Their
-unaltered masks and reviewer crops remain in the Glimmer chat cards and, when
-accepted by Wonder, Evidence. Browser benchmarks
-and saved-image replays do not establish live tracking reliability, missing-person
-identity or aircraft-following performance; the operator validates those in flight.
+Boxes update at the measured detector cadence; the video continues independently.
+Capture and WebRTC delivery are separate, so box alignment can lag moving subjects.
+These overlays are not segmentation masks or a claim of frame-exact video registration.
+Only the checked backend controller has flight authority. Live accuracy and moving-person
+tracking remain operator acceptance items.
 
 `accept_browser.mjs feed URL NEW_DIRECTORY SECONDS` requires uploaded active missions,
 measures the installed stream, switches through their available forward cameras,
@@ -575,159 +549,106 @@ Protocol references: [SITL/multiple vehicles](https://ardupilot.org/dev/docs/usi
 
 ## Prompted forward inspection
 
-Wonder can follow a flight plan with `wait_for` and request forward-camera
-SAM observations through `start_inspection`. Waiting stores a mission condition
-and ends the API turn; the service watches telemetry without polling the model.
-Chat remains usable during automatic reviews; a new operator message interrupts
-the old turn and preserves the typed conversation, including interrupted tools.
-It wakes on any requested completed step, inspection result, landing or deadline.
-Conditions are alternatives: one satisfied condition wakes Wonder. Already-completed
-step conditions are rejected; subsequent step waits must name remaining work. An arrival wait
-is tied to the current plan version. Ordinary travel starts no
-camera capture or SAM inference. Operator text cancels the pending wait; successful
-plan replacement and flight overrides invalidate inspections of the old flight.
+Wonder follows mission progress through `wait_for` and chooses whether and when to
+inspect. A wait ends the model turn and wakes on any selected completed step,
+inspection, landing or deadline. Already-completed steps are rejected. Ordinary
+travel starts no inference. Operator messages interrupt an automatic review;
+overrides and plan replacement invalidate old inspection authority.
 
-`start_inspection(drone_id, prompt, threshold, duration_s)` requires healthy, fresh
-airborne telemetry and participation in the current verified flight plan. It samples
-the actual forward view during travel, turns, climbs, descent or hover, across steps
-of the same plan. It changes neither flight nor heading. Wonder chooses when to
-observe and whether the task calls for a pass, circle, or hover. Current telemetry
-includes body heading and climb rate as well as position and ground speed.
+`start_inspection(drone_id, prompt, threshold, duration_s)` samples the actual forward
+view while flying, turning, climbing or hovering, without changing motion or heading.
+It requires fresh healthy airborne telemetry and a verified flight plan. A short
+visible noun phrase configures SAM 3.1; threshold is 0.1–1. The target rate is
+5 Hz, with missed slots recorded and skipped. Two observed frames above threshold
+produce a candidate; a deadline or error ends the job. This one-shot workflow gives
+Wonder an image to review. Automatic pause, Glimmer review and following use an
+observed plan step instead.
 
-`set_camera_view(drone_id, north_m, east_m, height_m, zoom)` centres the existing
-forward camera on a world point and selects 1–4× render zoom. Target height is above
-terrain; it is not aircraft altitude. The operation changes no flight command. One
-`ForwardCapture` owner per drone serializes camera mutations and image capture, retaining
-the measured base FOV across inspections. Every image records its verified FOV and view
-revision. A failed setting invalidates old view authority before it can be reused.
-Inspection and candidate release require an explicitly verified view after that failure.
-Ordinary flight permits camera control. An automatic observation step owns its approved view; its
-zoom/look-ahead change through a plan preview. During candidate following, Wonder may
-use `center_candidate(inspection_id, zoom)` to centre the selected subject's current
-position within the same temporal session. Old boxes
-are hidden until a fresh observation verifies the new camera revision. `get_candidate`
-waits up to five seconds for the existing stream to supply an image no older than one
-second with the current camera revision. It starts no additional inference; its immutable
-snapshot remains publishable after the live frames advance. `center_candidate` waits
-for this verified image before and after changing the view. A lost session remains held.
-`follow_candidate` is an explicit
-new acquisition of a selected evidence frame under the active search policy, with a
-bounded duration; only a fresh corresponding observation can authorize movement.
-Before every capture the camera owner recomputes the relative aim toward its
-remembered world target using current aircraft position and attitude. Closing the
-mission/plan camera owner restores the original pose/FOV. See the verified
-[Cosys camera contract](../../world/cosys/README.md#coupled-settings).
+`set_camera_view` centres a world point and selects 1–4× render zoom on the same
+forward camera. Target height is above terrain, separate from flight altitude.
+One `ForwardCapture` owner per drone serializes camera changes and acquisition;
+images record verified FOV and camera revision. The capture owner re-aims from the
+current aircraft pose before each frame. A failed setting revokes the camera view
+until an explicit setting succeeds. Automatic observation steps retain their
+planned view; change their zoom/look-ahead through a checked plan.
 
-Wonder gives concise commander updates relative to named landmarks. Detailed visible
-attributes and uncertainty go in accepted evidence and expandable reviewer cards.
-The launch summary still states chosen values and aftermath; real failures stay explicit.
-Observation launch cards and the running-agent strip open a Glimmer tab for each observation
-job. `Subagents.tsx` shows that job's SAM frame, reviewed crops, Glimmer decisions and actions.
-Completed logs remain available within the session. Replaced history hides absent jobs;
-an ended or new session clears the open tabs and returns to Conversation.
+During following, `center_candidate` uses the subject's current image-derived
+position. `get_candidate` waits for a fresh frame of the current camera revision and
+retains that exact original for review/publication. A held session returns observed
+boxes for an explicit `relock_candidate` choice. `candidate_index` is the zero-based
+position in that frame's detections list, separate from SAM's `track_id`.
+`follow_candidate` sets a hold deadline on an existing observed-plan lock; it does
+not acquire from a historical one-shot inspection. Camera movement alone never
+restores a lost lock. See the [camera contract](../../world/cosys/README.md#coupled-settings).
 
-The separate `face_heading(drone_id, heading_deg)` tool turns during airborne AUTO
-flight using `MAV_CMD_CONDITION_YAW` in `COMMAND_LONG`: absolute degrees clockwise
-from north, shortest turn, autopilot-configured slew rate, no mode or speed change.
-Measured alignment must be within 2° within 30 seconds. A later navigation item may
-reset yaw; a mission/item change during alignment raises an error. Operator overrides
-can cancel alignment immediately. Copter ignores waypoint yaw; the supported
-command was checked against the [mission command list](https://ardupilot.org/copter/docs/mission-command-list.html),
-[Guided-command documentation](https://ardupilot.org/dev/docs/copter-commands-in-guided-mode.html),
-and the pinned ArduPilot handler. No autopilot parameters are changed.
+`face_heading` separately turns during AUTO using `MAV_CMD_CONDITION_YAW` in
+`COMMAND_LONG`: absolute degrees clockwise from north, shortest turn, configured
+slew rate, without changing speed or mode. Alignment must be within 2° in 30 seconds;
+a changed mission/item fails. An operator override cancels alignment. This follows
+the [Copter mission list](https://ardupilot.org/copter/docs/mission-command-list.html)
+and [Guided commands](https://ardupilot.org/dev/docs/copter-commands-in-guided-mode.html).
 
-Each active drone owns one forward capture/request at a time, targeting one
-frame per second. Fixed quarter-second phases spread Drone1–Drone4 across each
-second. A successful slow response advances to the next future slot and counts the
-missed sampling opportunities; it does not terminate discovery. Requests and frames
-are never retried or queued for later processing. Empty results require no overlay
-encoding; image processing runs off the mission event loop. General inspection stops
-for a candidate, the requested duration, cancellation or a real failure. An in-flight request is
-drained after cancellation and cannot restart capture or dispatch flight actions.
-The fleet's shared SAM endpoint returns lossless masks for the requested prompt.
+All capture and review images are the original **3840×2160 JPEG**. SAM prepares
+a 1920×1080 copy and uses its native 1008-pixel model input. Boxes and masks map
+back into original pixels. Glimmer and Wonder get
+exactly one full original, without crops, resizing or overlays. Capture, inference
+and review hashes identify the same bytes. Per-frame records retain timestamps,
+poses, prompts, model replies and timings. The existing evidence registry exposes
+immutable images through the same-origin `/api/evidence` endpoint.
 
-The UI shows **Waiting** with Wonder's condition. The conversational **Evidence** tab
-contains only frames explicitly accepted through
-`publish_evidence(inspection_id, frame_id, candidate_index, assessment, headline, summary)`.
-This is an immutable event snapshot,
-not an inference from chat text or a Glimmer result. Later inspections cannot overwrite it.
-Only Wonder can publish; empty, stale and already-published frames reject. Acceptance
-means a useful candidate for operator review, not confirmed identity. Wonder states
-whether the evidence is unresolved, a visible subject, or a description match. The
-selected subject crop and headline lead the finding card; the full source image,
-reviewer detail and processing diagnostics remain expandable. A publication event
-appears directly in Conversation even if a concurrent drone state change suppresses
-later flight commentary. Evidence is newest first and does not switch tabs while the
-operator reads. Routine tools are grouped, Glimmer reviews remain individually
-expandable, and real failures retain their exact causes. Background telemetry does
-not scroll a reader away from earlier conversation. Each operator message stays pinned
-at the top of Conversation while its responses scroll beneath it, until the next
-operator message replaces it; a newly published finding scrolls to just below it.
+Only `publish_evidence` places an accepted finding in Evidence. Wonder chooses the
+candidate, factual assessment, landmark-relative headline and detailed support.
+The displayed image is the original with a separate SVG mask and precise box. The
+required binary mask is stored separately and bound to its frame/track by reference
+and hash; a missing or malformed mask fails visibly. Glimmer reviews remain
+expandable named chat cards with their actual full-frame input; rejection is a review
+decision, not a command failure. Operator confirmation is recorded separately and
+never inferred from a model score. Image loading failures remain visible with a direct
+link. Large photographs stay out of routine telemetry and model text.
 
-`confirm_evidence(evidence_id, operator_event_id)` records an explicit operator
-identification with the exact message as provenance. The UI labels it **Confirmed by
-operator**. The referenced message must be the latest operator chat, after publication;
-duplicate confirmation rejects. A model assessment or detector score cannot create
-that provenance. This tool sends no flight command.
-Glimmer decisions appear in separate collapsed chat cards labelled **Glimmer**, including
-discarded candidates. Expanding a card loads its exact crop/context images, source time
-and observations. Successful dismissals have unique review/call identities and explicit
-success results. Discarded review details stay in chat even when Wonder accepts another
-candidate in the same frame. Unaccepted detections do not open Evidence. Each image shows
-its loading or failure state and a direct file link. Per-frame JSON and `sampling.jsonl` under the mission's
-`inspections/` directory preserve poses, source hashes, requests, responses and
-timings, including aiming, capture, HTTP, annotation, full-cycle time and scheduling
-lateness. Expandable diagnostics show measured sample interval, processing time and
-missed opportunities.
-Registered evidence JPEGs use the existing same-origin asset endpoint.
-Wonder and the operator also receive the exact registered crop and context JPEGs
-reviewed by Glimmer, with their source-frame identity and pixel boxes. Enlarging those
-crops to 512 pixels adds no source detail. Files are registered before their report is
-published. Session teardown drains outstanding review requests before closing their
-clients; releasing flight control does not wait for inference.
-During candidate following, one bounded background task annotates and publishes images
-while capture and checked flight commands continue. Busy publication skips only the
-display update and records that choice; all tracking captures and control results remain
-logged. Publication failures stop and hold visibly. Cancellation settles the publisher
-before a previous camera view can reappear. Both the one-second observation freshness
-check and the one-second command watchdog remain enabled. Tracking logs record command
-time, observation age, command intervals and the watchdog's last successful command.
-Raw mask PNG bytes go to the viewer, not Wonder’s text context; Wonder receives the
-images and their metadata. It receives the explicit image order for review; a score is not identity certainty,
-and a camera position is not an object's location. A negative observation covers
-only the inspected views.
-
-The SAM-only rate benchmark is a paid, bounded run of ten recorded images per
-drone at 1 Hz. It launches no aircraft and calls no Wonder model:
+The installed vision benchmark uses recorded images and makes no paid model or
+flight calls. Each output directory must be new:
 
 ```sh
-.venv-cosys/bin/python -m mission_planner.gcs.bench_inspection \
-  --output .local/evidence/agentic-inspection/<new-run>/sam-rate
+set -a
+. .local/runtime.env
+set +a
+.venv-cosys/bin/python -m mission_planner.gcs.bench_inspection prepare --output .local/evidence/sam31/<run>/frames
+.venv-cosys/bin/python -m mission_planner.gcs.bench_inspection run \
+  --frames .local/evidence/sam31/<run>/frames \
+  --output .local/evidence/sam31/<run>/1080 --height 1080 --drones 4
 ```
 
-It records all attempts without retry, stops a failing stream, and measures actual
-intervals, mask validity and request latency. It excludes live capture/rendering
-and does not establish forward-view detection accuracy. Live flight testing remains
-operator-controlled; settle inspection duration or stopping condition, viewing area,
-height, speed and afterwards in the test prompt.
+The service supports its qualified 1080p preparation profile. Recorded affine
+motion tests transport and tracker continuity; live forward recognition and
+aircraft control require separate acceptance. The extended HTTP/soak runner is
+documented in [services](../agents/services/README.md#qualification), with results
+in [sam31.json](../measurements/sam31.json). Camera acquisition previously measured
+430–464 ms median per frame, so service throughput does not establish a live 5 Hz
+capture rate for each drone.
 
 ## Automatic observation and candidate lock
 
 General tasks and Studio briefings use the normal `preview_plan` and `request_launch` workflow.
-Wonder chooses one to four aircraft, a pattern and a visible target. `observe: true` is optional
+For a missing-person area search, Wonder prefers all four healthy available aircraft
+and adjoining zigzag sectors covering its chosen perimeter. It chooses bounds from the
+public briefing and map. A different pattern, fewer drones or partial coverage remains a
+valid choice when justified; Wonder must explain the reason and unassigned area before
+approval. No private scenario placement is supplied to planning.
+For other flights Wonder chooses the aircraft, pattern and visible target for the task. `observe: true` is optional
 on finite `fly`, `follow`, `survey` and `circle` steps; ordinary movement starts no automatic sensing.
 Observed steps require `plan.search`, whose `perimeter` is a simple polygon with 3–100 unique vertices
 and implicit closure. There is no rectangle, fixed aircraft count or tiling requirement.
 Observed survey polygons and their connectors must remain inside their observation area; a concave
 gap requires separate pattern pieces joined by explicit unobserved transit. The map draws the
-perimeter and only observed survey fills, preserving all routes. Approval shows the target,
+perimeter and assigned observed-step survey fills, preserving all routes. Approval shows the target,
 observing aircraft count and each step's observation mode. Return-only plans remain valid.
 
 The policy contains a Wonder-chosen SAM noun phrase in `detector_prompt`, `threshold`, the structured
 reviewer `look_for` brief, horizontal `stand_off_m`, tracking `speed_mps`, camera `zoom` and
 `look_ahead_m`, and `max_lock_seconds`. The latter is the total per-drone interruption allowance,
 including review and return to saved route progress; preview reserves it in the battery budget.
-Automatic and explicitly acquired candidates share that plan-version allowance. Failed or cancelled
+Automatic candidates share that plan-version allowance. Failed or cancelled
 acquisition time counts, and a new inspection cannot reset it. The perimeter and detector score make
 no containment, identity or calibrated probability claim.
 
@@ -741,6 +662,17 @@ changed settings require a new previewed plan version.
 `survey` expresses parallel-track or creeping-line passes. Bearings run clockwise from north;
 rows start on the minimum cross-axis side, with cross = −north × sin(bearing) + east × cos(bearing).
 Using `(bearing_deg + 180) % 360` reverses the starting side. `follow` traces a chosen route.
+`divide_survey(drone_ids, polygon, spacing_m, bearing_deg, height_m, speed_mps)` partitions
+Wonder's polygon into adjacent equal-width cross-track strips in the supplied aircraft
+order, returning ordinary observed survey steps. It does not choose aircraft, bounds,
+ingress, aftermath or fence avoidance. A disconnected split fails with its exact reason.
+Survey rows divide each sector's full cross-track width evenly, no farther apart than
+`spacing_m`, with half-spacing edge margins; a fractional final strip no longer loses a pass.
+Optional `survey.start_at` continues at a zero-based pattern endpoint. Per-step mission
+sequence mappings supply `progress.survey_start_at` from current telemetry, so Wonder can
+retain unfinished passes during speed/zoom-only changes. Dense mappings remain outside
+model context. Continuation still compiles and checks the route from the actual aircraft
+position through the existing upload/readback path.
 `expanding_square` returns an ordinary follow step around a reliable datum, including the scan lead-in;
 Wonder adds ingress, egress and optional observation before preview. It does not route around hazards
 or allocate aircraft. Pattern applicability follows [AMSA's 2026 National SAR Manual, Volume 2](https://www.amsa.gov.au/sites/default/files/2026-03/NATSAR-Manual-February-2026-Volume-2.pdf),
@@ -748,64 +680,51 @@ or allocate aircraft. Pattern applicability follows [AMSA's 2026 National SAR Ma
 
 Verified application starts an inspection job for each drone with remaining observed steps.
 It samples during those steps, within the survey polygon or general sensing perimeter, at a
-staggered target of 1 Hz. `rescue.step_index` identifies the current step;
-`rescue.completed_steps` stores completed `{step_index, frames}` entries. Unobserved transit contributes
+staggered target of 5 Hz. `rescue.step_index` identifies the current step;
+`rescue.completed_steps` stores completed `{step_index, frames}` entries. Aircraft position
+and current navigation step gate acquisition before and after capture. The camera's offset
+mount may cross a sector edge without discarding a valid aircraft observation. Unobserved transit contributes
 no sensing completion. Fly/follow/survey cameras look at terrain ahead along the remaining route,
 across short terrain waypoints, and stop at its endpoint without extrapolating beyond it. Circle
 observation aims at the ground-level center; it does not survey the interior. Hover, building faces
 and elevated targets use ordinary flight steps with `set_camera_view`, `start_inspection` and
 `wait_for`; there is no automatic hover checkpoint.
 
-SAM supplies image masks through the shared Modal image endpoint.
-A candidate checkpoints and pauses only that drone and starts an independent
-evidence review. Its mask initializes a persistent visual tracker when possible. With several candidates, the largest mask supplies
-the initial track; Glimmer reviews every candidate and Wonder sees which one is
-being tracked. The system never silently switches tracks. During the initial brake,
-the camera aims at that selected candidate's image-derived ground point when it is
-available, then recomputes the aim before every capture. The temporal seed remains
-the original detection JPEG and its exact mask; no mask is transferred to a different
-image. This prevents aircraft pitch alone from leaving the camera at its old relative
-angle. Fresh image correspondence is still required before following, and the
-one-second observation and command limits remain enforced.
+Each drone owns an independent SAM video session on one shared local model. A track
+with at least two consecutive valid observations above threshold checkpoints and pauses its drone.
+The highest-confidence eligible track is selected first. Glimmer immediately reviews
+its original 4K detection frame while fresh observations of the same ID drive camera
+aiming and checked movement. Rejected IDs are excluded for the current observation
+session, allowing other candidates to be reviewed after continuation. Discard clears
+guidance immediately, while the same SAM state continues through review, hold and
+verified route resumption. Delayed inference/publication cannot restore a released lock.
 
-`agents/temporal.py` sends ordered selected-object frames to the shared SAM 3.1
-H100 Server. Learned video memory retains the selected visual subject.
-The exact discovery mask seeds one track; up to 16 ordered captures bridge
-image inference latency while the aircraft holds. The server retains bounded history
-and never silently selects another subject. No model is hosted on the mission host.
-The control loop permits up to 5 Hz and records actual intervals; the four-session
-recorded gate measured about 1.84 updates/s per session, excluding capture and network.
-Output extraction removes only 8-connected foreground components no larger than
-`min(16, total_foreground_pixels // 2)` in the original 1920×1080 mask. Exactly one
-remaining component is required; larger disconnected regions cause explicit tracking
-loss. Raw masks, presence logits and extraction statistics are retained even on loss.
-This does not prove identity or recover occluded subjects. The recorded gate used
-synthetic camera motion; moving-person following remains a live acceptance item.
-Every movement dispatch requires a source image no older than one second, checked again
-inside the MAVLink command lock. A separate watchdog holds if no new valid position
-target was dispatched for one second, including while inference is pending. The prior
-checked position target remains valid between updates; no velocity extrapolation is used.
-A seed never authorizes motion. Camera rays intersect the actual heightfield
-for an estimated ground position. Each candidate also retains its image-time ground
-estimate independently of live tracking, so Wonder can centre a later inspection.
-Unknown ground contact or a camera outside the heightfield reports unavailable location
-while retaining the image. This optional calculation runs with evidence review, after
-initiating the candidate hold; it grants no authority to follow an old sighting. Occluded ground contact, lost correspondence and horizon
-geometry can prevent a valid lock. The aircraft holds and reports the tracking
-reason while Glimmer reviews the captured evidence. Tracking loss likewise stops
-following without losing an already-started review. There is no reacquisition or
-substitution of another target, and no actor lookup.
+Every target dispatch requires a source image no older than one second, checked
+again inside the MAVLink command lock. A separate watchdog holds after one second
+without a fresh command, including during a pending model request. No velocity
+extrapolation or predicted track is sent to the aircraft. Capture, inference and
+publication overlap without an unbounded queue. Publication failures remain terminal.
 
-Camera aiming and Guided movement maintain the requested stand-off at the observed step's AGL.
-Every flight segment passes the existing terrain, obstacles, fence and separation
-checks. Tracking stays inside the search perimeter. Glimmer reviews the exact source
-crop and context using target-independent `forward-analyst-v2` and the fixed model sampling;
-it operates independently of tracking and evaluates the requested person, animal or object.
-Earlier template measurements remain preserved and do not transfer. No forward observation earns
-calibrated search probability or negative-detection credit.
+Camera rays intersect the actual heightfield for an estimated ground point. Ground
+contact or horizon ambiguity can make location unavailable while the image remains
+reviewable. That calculation cannot delay the initial pause or authorize movement
+from an old sighting. Following preserves the policy's stand-off and the observed
+step's AGL, with all existing terrain, obstacle, fence, altitude and separation checks.
+It stays inside the observation perimeter and never reads private actor positions.
+
+Loss holds the aircraft and retains the review. The held session continues detecting.
+Wonder may explicitly select an observed ID from a reviewed frame no older than
+30 seconds; re-lock requires that ID in a new frame under one second old. There is
+no automatic reacquisition or target substitution. A camera adjustment must retain
+observed correspondence before movement resumes.
+
+Glimmer uses `forward-analyst-v3-full-frame`, with the existing decisions and fixed
+sampling, to assess the requested person, animal or object. It receives the full
+unaltered 4K JPEG plus the selected box in text. Unknown attributes are not mismatches.
+No observation earns calibrated negative-search credit or establishes identity.
 
 A clear negative authorizes the single `disregard_and_continue(review_id, reason)`
-action. All candidates in the review must be negative before Glimmer can release it.
+action. The selected candidate must be a clear negative before Glimmer can release it.
 The tool first reports `release_requested`; `continued` is logged only after returning
 along the checked recorded path and resuming the same unfinished navigation item. The
 autopilot must report `MIS_RESTART=0`; code verifies it without changing parameters.
@@ -834,7 +753,7 @@ old inspection authority, including delayed failure cleanup. Other aircraft reta
 Private scenario placements are never read.
 
 Per-frame tracking records and every model review live in the mission's `inspections/`
-directory; registered original/masked JPEGs use the existing evidence endpoint.
+directory; registered original 4K JPEGs use the existing evidence endpoint.
 The [release validation record](../measurements/release.json) records current checks and acceptance limits;
 earlier runs remain in [`wonder-planner.json`](../measurements/wonder-planner.json).
 User-operated flights establish live camera cadence, tracking robustness and recognition accuracy;

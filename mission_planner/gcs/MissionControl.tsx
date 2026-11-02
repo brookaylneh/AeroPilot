@@ -331,7 +331,6 @@ export default function MissionControl() {
       setText('');
       setChatView(null);
       setAgentTabs([]);
-      setAgentTab(null);
       setPanel((current) => (current === 'subagent' ? 'agent' : current));
       promptMission.current = null;
     }
@@ -340,7 +339,6 @@ export default function MissionControl() {
         setText(state.mission.briefing.brief);
       setChatView(null);
       setAgentTabs([]);
-      setAgentTab(null);
       setPanel((current) => (current === 'subagent' ? 'agent' : current));
       promptMission.current = state.mission.id;
     }
@@ -419,7 +417,6 @@ export default function MissionControl() {
   const agents = new globalThis.Map(
     [...agentLogs].map(([id, log]) => [id, inspections.find((row) => row.id === id) ?? log.at(-1)!.row]),
   );
-  const agentLog = agentTab === null ? undefined : agentLogs.get(agentTab);
   const shownAgent = panel === 'subagent' && agentTab !== null ? agents.get(agentTab)! : null;
   function openAgent(id: string) {
     setAgentTabs((tabs) => (tabs.includes(id) ? tabs : [...tabs, id]));
@@ -429,15 +426,12 @@ export default function MissionControl() {
   }
   function closeAgent(id: string) {
     setAgentTabs((tabs) => tabs.filter((tab) => tab !== id));
-    if (agentTab === id) {
-      setAgentTab(null);
-      setPanel('agent');
-    }
+    if (agentTab === id) setPanel('agent');
   }
   useEffect(() => {
     const el = conversation.current;
     if (el && shownAgent && followAgent.current) el.scrollTop = el.scrollHeight;
-  }, [agentTab, panel, agentLog?.length, shownAgent?.frames]);
+  }, [agentTab, panel, agentTab && agentLogs.get(agentTab)!.length, shownAgent && shownAgent.frames]);
   const chats = chatSegments(events);
   const currentChat = chats.at(-1)!;
   const shownChat = chatView === null ? currentChat : chats[chatView];
@@ -844,26 +838,24 @@ export default function MissionControl() {
                 Evidence <span>{published.length}</span>
               </button>
             )}
-            {agentTabs
-              .filter((id) => agents.has(id))
-              .map((id) => {
-                const row = agents.get(id)!;
-                return (
-                  <div
-                    key={id}
-                    className={`gcs-subagent-tab ${panel === 'subagent' && agentTab === id ? 'active' : ''}`}
-                    style={{ '--drone': droneColors[row.drone_id] } as CSSProperties}
-                  >
-                    <button aria-label={`Glimmer · ${row.drone_id} subagent`} onClick={() => openAgent(id)}>
-                      <i className="gcs-drone-dot" />
-                      {row.drone_id}
-                    </button>
-                    <button aria-label={`Close Glimmer · ${row.drone_id}`} onClick={() => closeAgent(id)}>
-                      <X size={11} />
-                    </button>
-                  </div>
-                );
-              })}
+            {agentTabs.map((id) => {
+              const row = agents.get(id)!;
+              return (
+                <div
+                  key={id}
+                  className={`gcs-subagent-tab ${panel === 'subagent' && agentTab === id ? 'active' : ''}`}
+                  style={{ '--drone': droneColors[row.drone_id] } as CSSProperties}
+                >
+                  <button aria-label={`Glimmer · ${row.drone_id} subagent`} onClick={() => openAgent(id)}>
+                    <i className="gcs-drone-dot" />
+                    {row.drone_id}
+                  </button>
+                  <button aria-label={`Close Glimmer · ${row.drone_id}`} onClick={() => closeAgent(id)}>
+                    <X size={11} />
+                  </button>
+                </div>
+              );
+            })}
           </div>
           {panel === 'agent' && chatView !== null && (
             <div className="gcs-chat-history-bar">
@@ -922,7 +914,7 @@ export default function MissionControl() {
               <SubagentTab
                 key={shownAgent.id}
                 row={shownAgent}
-                log={agentLog!}
+                log={agentLogs.get(shownAgent.id)!}
                 events={events}
                 now={now}
                 onError={setError}

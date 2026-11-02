@@ -38,8 +38,10 @@ connection for the selected drone's live camera, including return and landing.
 Leaving the planner releases that video player; the mission remains active.
 
 Inspection evidence is served from the mission's registered image files at
-`/api/evidence/<mission>/<asset>`. Candidate reviews expose the same crop and
-context JPEGs sent to Glimmer, alongside the original frame and SAM overlay.
+`/api/evidence/<mission>/<asset>`. Candidate reviews expose the same original
+3840×2160 JPEG sent to Glimmer and Wonder. A separate SVG layer displays the
+selected SAM mask and precise box without altering the image. Mask PNGs are
+immutable registry entries bound to the source frame and track ID.
 Image cards show loading or failure locally and provide a direct file link.
 
 The browser connects to `/api/mission` for validated mission state, conversation,

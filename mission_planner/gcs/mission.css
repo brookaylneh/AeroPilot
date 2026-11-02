@@ -538,8 +538,7 @@
   pointer-events: none;
 }
 .gcs-fence-editor .gcs-stage-key,
-.gcs-fence-edit-bar,
-.gcs-fence-name-dialog {
+.gcs-fence-edit-bar {
   pointer-events: auto;
 }
 .gcs-fence-legend-button {
@@ -566,10 +565,6 @@
   bottom: 48px;
   right: 16px;
   max-width: calc(100% - 32px);
-}
-.gcs-fence-menu,
-.gcs-fence-edit-bar,
-.gcs-fence-name-dialog {
   padding: 12px;
   border: 1px solid #ffffff30;
   border-radius: 10px;
@@ -588,8 +583,7 @@
   min-width: 200px;
 }
 .gcs-fence-menu button,
-.gcs-fence-edit-bar button,
-.gcs-fence-name-dialog button {
+.gcs-fence-edit-bar button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -602,13 +596,11 @@
   font: inherit;
   cursor: pointer;
 }
-.gcs-fence-edit-bar button:disabled,
-.gcs-fence-name-dialog button:disabled {
+.gcs-fence-edit-bar button:disabled {
   opacity: 0.4;
   cursor: default;
 }
-.gcs-fence-edit-bar button.primary,
-.gcs-fence-name-dialog button.primary {
+.gcs-fence-edit-bar button.primary {
   background: #e8d27a;
   border-color: #e8d27a;
   color: #20221a;
@@ -644,39 +636,6 @@
 .gcs-fence-edit-actions {
   flex-wrap: wrap;
   margin-top: 12px;
-}
-.gcs-fence-name-dialog {
-  width: min(340px, calc(100vw - 64px));
-  padding: 20px;
-}
-.gcs-fence-name-dialog::backdrop {
-  background: #0009;
-}
-.gcs-fence-name-dialog h3 {
-  margin: 0 0 18px;
-  font-size: 16px;
-}
-.gcs-fence-name-dialog label {
-  display: block;
-  margin-bottom: 6px;
-}
-.gcs-fence-name-dialog input {
-  box-sizing: border-box;
-  width: 100%;
-  padding: 9px 10px;
-  border: 1px solid #ffffff40;
-  border-radius: 5px;
-  background: #ffffff09;
-  color: inherit;
-  font: inherit;
-}
-.gcs-fence-name-dialog input:focus {
-  outline: 2px solid #e8d27a;
-  outline-offset: 2px;
-}
-.gcs-fence-name-dialog .gcs-fence-edit-actions {
-  justify-content: flex-end;
-  margin-top: 20px;
 }
 .gcs-fence-draft {
   position: absolute;
@@ -791,6 +750,17 @@
   border-width: 0 1px 1px;
   flex-shrink: 0;
   color: var(--gcs-text);
+}
+.gcs-fence-key {
+  margin-left: auto;
+  margin-bottom: 34px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.gcs-fence-key i {
+  width: 15px;
+  border-top: 2px dashed #e8d27a;
 }
 .gcs-aircraft {
   cursor: pointer;
@@ -967,6 +937,12 @@
 .gcs-fleet[open] .gcs-fleet-toggle svg {
   transform: rotate(90deg);
 }
+.gcs-fleet::details-content {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 .gcs-fleet-cards {
   min-height: 0;
   display: grid;
@@ -1002,6 +978,7 @@
   border-radius: 14px;
   backdrop-filter: blur(18px) saturate(140%);
   color: #ffffffd9;
+  pointer-events: auto;
   font:
     500 12px 'DM Sans',
     sans-serif;
@@ -1529,6 +1506,7 @@
   place-items: center;
   width: 24px;
   height: 24px;
+  padding: 0;
   border-radius: 50%;
   background: #f2f4f6;
   color: #191b1a;
@@ -1705,6 +1683,11 @@
   stroke: #ffe08a;
   stroke-width: 3px;
   vector-effect: non-scaling-stroke;
+}
+.gcs-finding-selection .gcs-evidence-mask {
+  fill: #20e1b4;
+  fill-opacity: 0.4;
+  stroke: none;
 }
 .gcs-finding-summary {
   margin: 0;
@@ -2265,6 +2248,9 @@
   .gcs-map-bottom {
     gap: 16px;
   }
+  .gcs-fence-key {
+    max-width: 220px;
+  }
   .gcs-conversation {
     padding: 0 20px 64px;
   }
@@ -2280,7 +2266,8 @@
   .gcs-tabs button {
     padding: 0 10px;
   }
-  .gcs-tabs kbd {
+  .gcs-tabs kbd,
+  .gcs-fence-key {
     display: none;
   }
 }
@@ -2345,6 +2332,8 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
   display: flex;
+  flex-wrap: wrap;
+  max-width: min(440px, calc(100% - 32px));
   align-items: center;
   gap: 8px;
 }

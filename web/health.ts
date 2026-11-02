@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { port, required } from './runtime';
 
 const execute = promisify(execFile);
-const services = ['web', 'mission', 'signalling', 'unreal', 'turn', 'caddy'];
+const services = ['web', 'mission', 'vision', 'signalling', 'unreal', 'turn', 'caddy'];
 
 export async function rendererHealth() {
   const response = await fetch(`http://${required('SNR_HOST')}:${port('PIXEL_PLAYER_PORT')}/health`, {

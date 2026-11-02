@@ -17,7 +17,7 @@ export const searchPolicySchema = z
   .object({
     perimeter: z.array(point).min(3).max(100),
     detector_prompt: text(100),
-    threshold: number.min(0).max(1),
+    threshold: number.min(0.1).max(1),
     look_for: z
       .object({
         objective: text(200),
@@ -64,6 +64,7 @@ export const flightStepSchema = z.discriminatedUnion('kind', [
       polygon: z.array(point).min(3).max(100),
       spacing_m: number.positive(),
       bearing_deg: number.min(0).lt(360),
+      start_at: number.int().nonnegative().optional(),
       height_m: height,
       speed_mps: speed,
       observe: z.literal(true).optional(),
@@ -97,6 +98,15 @@ export const flightPlanSchema = z
 export const planReceiptSchema = z
   .object({
     plan: flightPlanSchema,
+    coverage: z
+      .object({
+        perimeter_area_m2: number.positive(),
+        survey_area_m2: number.nonnegative(),
+        unassigned_area_m2: number.nonnegative(),
+        survey_percent: number.min(0).max(100),
+      })
+      .nullable()
+      .optional(),
     missions: z.record(
       z.string().refine((id) => droneIds.includes(id as (typeof droneIds)[number])),
       z.object({
@@ -125,12 +135,17 @@ export const plannerSchema = z.object({
       current_step: number.int().nonnegative().nullable(),
       completed_steps: z.array(number.int().nonnegative()),
       time_remaining_s: number.nonnegative().nullable(),
+      survey_start_at: number.int().nonnegative().optional(),
     }),
   ),
 });
 export type PlanReceipt = z.infer<typeof planReceiptSchema>;
 export type Planner = z.infer<typeof plannerSchema>;
 export type FlightStep = z.infer<typeof flightStepSchema>;
+
+export function surveyCoverageText(coverage: NonNullable<PlanReceipt['coverage']>) {
+  return `Survey assigned: ${formatValue(coverage.survey_percent, '%', 2)} · ${formatValue(coverage.unassigned_area_m2, 'm²', 0)} unassigned`;
+}
 
 const routePoint = point.extend({ altitude_above_home_m: number });
 const conflictSchema = z
@@ -150,7 +165,21 @@ const conflictSchema = z
   })
   .strict();
 
-export function previewConflict(events: MissionEvent[]) {
+const rejectionSchema = z
+  .object({
+    rule: z.string().min(1),
+    version: number.int().positive().nullable(),
+    drone_id: z.enum(droneIds).nullable(),
+    step_index: number.int().nonnegative().nullable(),
+    step_kind: z.string().nullable(),
+    message: z.string().min(1),
+    detail: z.unknown().nullable(),
+    conflict: conflictSchema.nullable(),
+  })
+  .strict();
+export type PlanRejection = z.infer<typeof rejectionSchema> & { event_id: string };
+
+export function planRejection(events: MissionEvent[]): PlanRejection | null {
   const event = events
     .filter(
       (event) =>
@@ -170,14 +199,10 @@ export function previewConflict(events: MissionEvent[]) {
     event?.name !== 'preview_plan' ||
     event.kind !== 'tool_result' ||
     event.result?.ok !== false ||
-    !('conflict' in event.result)
+    !('rejection' in event.result)
   )
     return null;
-  return {
-    event_id: event.id,
-    version: flightPlanSchema.parse(event.arguments!.plan).version,
-    ...conflictSchema.parse(event.result.conflict),
-  };
+  return { event_id: event.id, ...rejectionSchema.parse(event.result.rejection) };
 }
 
 export function stepText(step: FlightStep): string {
@@ -199,7 +224,7 @@ export function stepText(step: FlightStep): string {
     case 'circle':
       return `Circle ${formatPosition(step.north_m, step.east_m)}, radius ${formatValue(step.radius_m, 'm')}, ${step.turns} turns ${step.clockwise ? 'clockwise' : 'counterclockwise'}, ${flight}${speed}${observation}`;
     case 'survey':
-      return `Survey the mapped area, ${formatValue(step.spacing_m, 'm')} line spacing at ${formatValue(step.bearing_deg, '°')}, ${flight}${speed}${observation}`;
+      return `${step.start_at ? 'Continue surveying' : 'Survey'} the mapped area, up to ${formatValue(step.spacing_m, 'm')} line spacing at ${formatValue(step.bearing_deg, '°')}, ${flight}${speed}${observation}`;
     case 'follow':
       return `Follow the mapped line in point order, ${flight}${speed}${observation}`;
     case 'land':
@@ -212,7 +237,11 @@ export function stepText(step: FlightStep): string {
 export default function FlightPlan({
   receipt,
 }: {
-  receipt: { plan: z.infer<typeof flightPlanSchema>; missions?: PlanReceipt['missions'] };
+  receipt: {
+    plan: z.infer<typeof flightPlanSchema>;
+    missions?: PlanReceipt['missions'];
+    coverage?: PlanReceipt['coverage'];
+  };
 }) {
   const observations = receipt.plan.drones.flatMap(({ drone_id, steps }) =>
     steps.filter((step) => 'observe' in step && step.observe).map(({ kind }) => ({ drone_id, kind })),
@@ -225,12 +254,17 @@ export default function FlightPlan({
             Observe {receipt.plan.search.look_for.target} ·{' '}
             {new Set(observations.map(({ drone_id }) => drone_id)).size} aircraft
           </strong>
+          {receipt.coverage && (
+            <p>
+              {surveyCoverageText(receipt.coverage)}. Planned passes; actual visibility is not measured here.
+            </p>
+          )}
           <p>
             Perimeter:{' '}
             {receipt.plan.search.perimeter.map((p) => formatPosition(p.north_m, p.east_m)).join('; ')}
           </p>
           <p>
-            SAM: “{receipt.plan.search.detector_prompt}” · threshold {receipt.plan.search.threshold}
+            SAM 3.1: “{receipt.plan.search.detector_prompt}” · threshold {receipt.plan.search.threshold}
           </p>
           <p>Observation camera: {receipt.plan.search.zoom}× zoom.</p>
           {observations.some(({ kind }) => kind !== 'circle') && (
@@ -253,8 +287,8 @@ export default function FlightPlan({
             {formatValue(receipt.plan.search.max_lock_seconds, 's')}.
           </p>
           <p>
-            Track the largest candidate mask; review every candidate. Glimmer releases only when all
-            candidates are clear negatives. Possible matches and uncertainty go to Wonder.
+            Pause on the highest-confidence stable track. Glimmer reviews its original 4K frame and releases
+            only on a clear negative. Possible matches and uncertainty go to Wonder.
           </p>
         </div>
       )}
