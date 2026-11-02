@@ -19,7 +19,7 @@ class PlannerConversations(unittest.TestCase):
 
         def respond(text, *args, history, **kwargs):
             self.assertIsNone(text)
-            message = history[-1]["content"][0]["text"]
+            message = history[-2]["content"][0]["text"]
             requests.append(message)
             if message == "first":
                 raise httpx.ReadTimeout("Recorded test timeout")
@@ -35,6 +35,7 @@ class PlannerConversations(unittest.TestCase):
                 "usage": {
                     "input_tokens": 1,
                     "output_tokens": 2,
+                    "input_tokens_details": {"cached_tokens": 0},
                     "output_tokens_details": {"reasoning_tokens": 1},
                 },
             }
@@ -56,7 +57,7 @@ class PlannerConversations(unittest.TestCase):
                     ],
                 ),
             ):
-                asyncio.run(run(path / "run", recorded))
+                asyncio.run(run(path / "run", recorded, None, 100.0))
             results = json.loads((path / "run/results.json").read_text())
             self.assertEqual(requests, ["first", "second"])
             self.assertIn("ReadTimeout: Recorded test timeout", results[0]["error"])
@@ -87,6 +88,7 @@ class PlannerConversations(unittest.TestCase):
                 "usage": {
                     "input_tokens": 1,
                     "output_tokens": 2,
+                    "input_tokens_details": {"cached_tokens": 0},
                     "output_tokens_details": {"reasoning_tokens": 1},
                 },
             }
@@ -104,14 +106,18 @@ class PlannerConversations(unittest.TestCase):
             )
         requests = [call.kwargs for call in model.respond.call_args_list]
         first, second, third = (request["history"] for request in requests)
-        self.assertEqual(second, (*first, *outputs[0], second[-1]))
-        self.assertEqual(second[-1]["content"][0]["text"], "Drone1")
-        self.assertEqual(third[:-2], (*second, *outputs[1]))
+        live = first[-1]
+        self.assertTrue(live["content"][0]["text"].startswith("Current mission context"))
+        self.assertEqual(second, (*first[:-1], *outputs[0], second[-2], live))
+        self.assertEqual(second[-2]["content"][0]["text"], "Drone1")
+        self.assertEqual(third[:-3], (*second[:-1], *outputs[1]))
         self.assertEqual(
-            [item["call_id"] for item in third[-2:]], [call["call_id"] for call in calls]
+            [item["call_id"] for item in third[-3:-1]], [call["call_id"] for call in calls]
         )
-        self.assertTrue(all(item["type"] == "function_call_output" for item in third[-2:]))
-        self.assertTrue(all('"map":' in request["instructions"] for request in requests))
+        self.assertTrue(all(item["type"] == "function_call_output" for item in third[-3:-1]))
+        self.assertEqual(third[-1], live)
+        self.assertTrue(all('"places":' in request["instructions"] for request in requests))
+        self.assertTrue(all(request["cache_key"] == "conversation" for request in requests))
         self.assertTrue(all(call.args[0] is None for call in model.respond.call_args_list))
 
     def test_effort_comparison_uses_the_same_script(self):
@@ -119,7 +125,7 @@ class PlannerConversations(unittest.TestCase):
         medium = next(script for script in SCRIPTS if script[0] == "change_medium")
         self.assertEqual((high[1:3], high[4:]), (medium[1:3], medium[4:]))
         self.assertEqual((high[3], medium[3]), ("high", "medium"))
-        self.assertEqual(len(SCRIPTS), 12)
+        self.assertEqual(len(SCRIPTS), 11)
 
     def test_conversation_records_more_than_twelve_tool_turns(self):
         outputs = [
@@ -149,6 +155,7 @@ class PlannerConversations(unittest.TestCase):
                         "usage": {
                             "input_tokens": 1,
                             "output_tokens": 2,
+                            "input_tokens_details": {"cached_tokens": 0},
                             "output_tokens_details": {"reasoning_tokens": 1},
                         },
                     }

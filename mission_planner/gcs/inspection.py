@@ -117,10 +117,16 @@ class Inspections:
         )
 
     def _remaining_lock(self, row, policy):
-        key = (row["plan_version"], row["drone_id"])
-        if key not in self.lock_seconds:
-            self.lock_seconds[key] = 0.0
-        return policy["max_lock_seconds"] - self.lock_seconds[key]
+        # The interruption allowance belongs to the aircraft's flight, not to a plan version:
+        # mid-flight plan changes keep the spent time; a relaunch from the ground resets it.
+        name = row["drone_id"]
+        if name not in self.lock_seconds:
+            self.lock_seconds[name] = 0.0
+        return policy["max_lock_seconds"] - self.lock_seconds[name]
+
+    def reset_lock(self, names):
+        for name in names:
+            self.lock_seconds[name] = 0.0
 
     def _camera(self, name, directory):
         if name not in self.cameras:
@@ -1173,7 +1179,7 @@ class Inspections:
         remaining = self._remaining_lock(row, policy)
         assert 0 < allowance <= remaining, (
             f"{name}: requested candidate interruption {allowance:g} s exceeds "
-            f"remaining allowance {remaining:.3f} s in plan {row['plan_version']}"
+            f"remaining allowance {remaining:.3f} s for this flight"
         )
         started = time.monotonic()
         self.control_idle[name].clear()
@@ -1200,9 +1206,7 @@ class Inspections:
                 f"{name}: candidate lock failed: {type(error).__name__}: {error}"
             ) from error
         finally:
-            self.lock_seconds[(row["plan_version"], name)] += (
-                time.monotonic() - started - row["rescue"]["healthy_s"]
-            )
+            self.lock_seconds[name] += time.monotonic() - started - row["rescue"]["healthy_s"]
             self.control_idle[name].set()
 
     async def _follow_lock(

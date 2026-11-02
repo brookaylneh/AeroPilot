@@ -15,7 +15,11 @@ class TruthIsolation(unittest.TestCase):
             module = pending.pop()
             if module in checked:
                 continue
-            self.assertFalse(module.startswith(("scenario_creator", "mission_planner.search")))
+            self.assertFalse(
+                module.startswith(
+                    ("scenario_creator", "mission_planner.search", "mission_planner.evaluation")
+                )
+            )
             self.assertFalse(module.startswith("mission_planner.agents.perception"))
             checked.add(module)
             path = ROOT.joinpath(*module.split(".")).with_suffix(".py")

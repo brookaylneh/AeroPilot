@@ -1,14 +1,16 @@
 # Search and Rescue Mission Control
 
-An AI flight planner and incident commander for a simulated backcountry world. Muse Wonder writes one
-versioned flight plan for up to four quadcopters, each flown by an ArduPilot autopilot over MAVLink.
+An AI flight planner and incident commander for a simulated backcountry world. Muse Wonder states
+one task; code generates, sizes and proves a versioned flight plan for up to four quadcopters, each
+flown by an ArduPilot autopilot over MAVLink.
 The operator reviews the checked plan and approves launch from a browser ground control station.
 Local SAM 3.1 detects, segments and tracks visual candidates. Muse Glimmer reviews
 their original 4K images; neither establishes identity.
 
 General missions and Studio briefings share the same tools and planning instructions. Wonder chooses
-one to four aircraft, the flight pattern and a visible target such as a person, animal or object.
-Selected fly, follow, survey and circle steps can observe automatically inside a chosen polygon.
+the task, the aircraft and a visible target such as a person, animal or object; search areas are
+sized from published lost-person tables, cut into equal-time strips and expanded band by band under
+operator approval. Survey, follow and circle steps observe automatically inside the generated area.
 Hover and elevated views use explicit camera inspection. The complete trip is checked against each
 aircraft's measured home, the exact flight fence, terrain, obstacles, separation and battery limits.
 See [mission planning](mission_planner/gcs/README.md) and the

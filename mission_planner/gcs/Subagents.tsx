@@ -127,9 +127,16 @@ export function SubagentTab({
         (event.kind === 'tool_call' || event.kind === 'tool_result') &&
         reviews.has(String((event.kind === 'tool_call' ? event.arguments : event.result)!.review_id))),
   );
+  // Operator previews carry the plan in their call; tasking receipts carry it in their result.
   const brief = events
-    .filter((event) => event.kind === 'tool_call' && event.name === 'preview_plan')
-    .map((event) => flightPlanSchema.safeParse(event.arguments!.plan))
+    .flatMap((event) =>
+      event.kind === 'tool_call' && event.name === 'preview_plan'
+        ? [event.arguments!.plan]
+        : event.kind === 'tool_result' && event.name === 'plan_task' && event.result?.ok === true
+          ? [(event.result.state as { plan: unknown }).plan]
+          : [],
+    )
+    .map((plan) => flightPlanSchema.safeParse(plan))
     .filter((plan) => plan.success && plan.data.version === row.plan_version)
     .at(-1)?.data!.search?.look_for;
   const handed = new Set<string>();

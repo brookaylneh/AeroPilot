@@ -75,6 +75,40 @@ TEST_F(AirSimBattery, DischargeReachesLowVoltageAndDoesNotRecharge)
     delete aircraft;
 }
 
+TEST_F(AirSimBattery, ParameterChangeReinitialisesStateOfCharge)
+{
+    auto aircraft = new BatteryCopter;
+    sitl_input input{};
+    for (unsigned i = 0; i < 4; i++) {
+        input.servos[i] = 2000;
+    }
+    aircraft->update_battery(input);
+    for (uint64_t now = 10001; now <= 120000001; now += 10000) {
+        hal.scheduler->stop_clock(now);
+        aircraft->update_battery(input);
+    }
+    const float drained = aircraft->battery_voltage;
+    EXPECT_LT(drained, 12.0f);
+    for (unsigned i = 0; i < 4; i++) {
+        input.servos[i] = 1000;
+    }
+    // Writing the same SIM_BATT_VOLTAGE changes nothing; a different value re-initialises.
+    simulator.batt_voltage.set(12.6f);
+    hal.scheduler->stop_clock(120010001);
+    aircraft->update_battery(input);
+    EXPECT_LT(aircraft->battery_voltage, 12.3f);
+    simulator.batt_voltage.set(12.61f);
+    hal.scheduler->stop_clock(120020001);
+    aircraft->update_battery(input);
+    EXPECT_GT(aircraft->battery_voltage, 12.5f);
+    simulator.batt_voltage.set(12.6f);
+    hal.scheduler->stop_clock(120030001);
+    aircraft->update_battery(input);
+    EXPECT_FLOAT_EQ(aircraft->battery_voltage, 12.6f);
+    printf("battery_model reset drained_v=%.6f refilled_v=%.6f\n", drained, aircraft->battery_voltage);
+    delete aircraft;
+}
+
 TEST_F(AirSimBattery, UnlimitedCapacityFails)
 {
     simulator.batt_capacity_ah.set(0);

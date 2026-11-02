@@ -1,25 +1,31 @@
 # Mission planner
 
 One conversational flight planner, a four-aircraft ground control service, and visual evidence review.
-Wonder writes the plan; the compiler expands and validates it; the operator approves each new launch.
+Wonder states the task; code generates, sizes and proves the plan; the operator approves each new
+launch and each search expansion.
 General missions and Studio rescue briefings use the same instructions, tools, plan and execution path.
 
 - [`gcs/`](gcs/README.md): ground control station. Four ArduPilot SITL autopilots over MAVLink, the mission
   service, terrain/timing helpers, forward observation and the `/missionplanner` browser UI.
 - [`agents/`](agents/README.md): the AI. Model clients (`models.py`), Wonder's typed tool catalogue,
   [perception calibration](agents/perception/README.md) for SAM 3.1 and Muse Glimmer.
+- [`evaluation/`](evaluation/README.md): offline scoring against private scenario truth, never
+  imported by the runtime.
 - `measurements/`: logged results with their source versions and limitations. Raw evidence belongs in
   `.local/evidence/`.
 - `environment.py`: loads `.env` and asserts `HF_TOKEN`, `MODEL_API_KEY`, `MODAL_TOKEN_ID` and
   `MODAL_TOKEN_SECRET`.
 
-`gcs/planner.py` defines takeoff, fly, hover, circle, survey, follow, land and return-home steps. Preview
-checks the complete encoded trip, including terrain and obstacles, the world fence, altitude, battery
-and spatial reservations. Airborne revisions preserve one plan version history. Wonder chooses one to
-four aircraft and adds `observe: true` to selected finite fly, follow, survey or circle steps, with
-`plan.search` supplying a simple polygon perimeter, SAM 3.1 noun phrase and reviewer brief. Ground views
-look ahead along routes or at a circle's center. Explicit camera inspection handles hover and elevated
-targets. `expanding_square` generates an ordinary follow step for the same preview path.
+`gcs/tasking.py` turns Wonder's tasking (task, subject, references, fleet, settings, aftermath,
+expansion) into a plan: `gcs/region.py` sizes doctrine search bands from published distance and
+dispersion tables, `gcs/allocation.py` cuts equal-time strips with lanes and altitude layers, and
+`gcs/expansion.py` proposes the next band or a strip reassignment in flight. `gcs/planner.py` defines
+takeoff, fly, hover, circle, survey, follow, land and return-home steps and compiles the complete
+encoded trip against terrain and obstacles, the world fence, altitude, battery and fleet separation
+(time-aware only for unobserved transit before the first observed step). Observed steps carry
+`observe: true` with `plan.search` supplying the perimeter, SAM 3.1 noun phrase and reviewer brief.
+Ground views look ahead along routes or at a circle's center. Explicit camera inspection handles
+hover and elevated targets.
 
 Every model context includes exact `flight_constraints` and measured aircraft homes. Public map data
 is exposed as `state.landmarks`; evaluator placements are private. Glimmer's target-independent

@@ -183,18 +183,23 @@ def segment_in_polygon(a, b, polygon):
     )
 
 
-def validate_polygon(points, label):
+def polygon_error(points):
+    """Why the points are not a simple polygon with implicit closure, or None."""
     from world.cosys.landmarks import _intersects
 
     vertices = [(p["north_m"], p["east_m"]) for p in points]
-    assert len(vertices) >= 3 and len(set(vertices)) == len(vertices), (
-        f"{label}: vertices must be unique; closure is implicit"
-    )
+    if len(vertices) < 3 or len(set(vertices)) != len(vertices):
+        return "vertices must be unique; closure is implicit"
     edges = list(zip(vertices, [*vertices[1:], vertices[0]]))
     for i, (a, b) in enumerate(edges):
         for j, (c, d) in enumerate(edges):
-            if j > i + 1 and (i, j) != (0, len(edges) - 1):
-                assert not _intersects(a, b, c, d), f"{label}: polygon self-intersects"
-    assert abs(sum(a[0] * b[1] - b[0] * a[1] for a, b in edges)) > 1e-6, (
-        f"{label}: polygon has no area"
-    )
+            if j > i + 1 and (i, j) != (0, len(edges) - 1) and _intersects(a, b, c, d):
+                return "polygon self-intersects"
+    if abs(sum(a[0] * b[1] - b[0] * a[1] for a, b in edges)) <= 1e-6:
+        return "polygon has no area"
+    return None
+
+
+def validate_polygon(points, label):
+    error = polygon_error(points)
+    assert error is None, f"{label}: {error}"

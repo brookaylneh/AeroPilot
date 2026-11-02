@@ -1,0 +1,128 @@
+{
+  "subject": "Wonder request layout and prompt-cache behaviour of the mission service",
+  "date": "2026-11-02",
+  "prices_usd_per_million_tokens": {
+    "input": 4.0,
+    "cached_input": 0.2,
+    "output": 20.0,
+    "source": "https://dev.meta.ai/docs/pricing-rate-limits"
+  },
+  "cache_rules_source": "https://dev.meta.ai/docs/prompt-caching (automatic prefix match from the first token; stable content first; prompt_cache_key routes requests together; prompt_cache_retention in_memory or 24h)",
+  "recorded_missions_before_change": {
+    "window": "2026-10-31 19:43 to 2026-11-02 19:55 UTC, .local/data/missions/*/response-*.response.json",
+    "responses": 834,
+    "unreadable_traces": 7,
+    "input_tokens": 45963311,
+    "cached_input_tokens": 2890788,
+    "cached_share": 0.063,
+    "output_tokens": 609939,
+    "reasoning_tokens": 388679,
+    "cost_usd_at_published_prices": 185.07,
+    "cost_usd_if_nothing_cached": 196.05,
+    "conversation_starts": {
+      "operator": 191,
+      "watcher_condition": 100,
+      "watcher_rescue": 83,
+      "watcher_autopilot": 8,
+      "watcher_deadline": 2,
+      "watcher_error": 1
+    },
+    "requests_per_conversation_start_mean": 2.17,
+    "tool_calls_in_final_transcripts": {
+      "total": 682,
+      "wait_for": 209,
+      "preview_plan": 133,
+      "get_candidate": 39,
+      "request_launch": 37,
+      "get_fleet": 37
+    },
+    "request_layout": {
+      "instructions_chars": "49,196 to 56,077 = 23,187 static prompt + about 31,600 live context JSON rebuilt every turn (map.places alone 18,545 chars)",
+      "tools_json_bytes": 27933,
+      "tool_count": 31,
+      "first_differing_instructions_offset_between_consecutive_requests_chars": "44,310 to 50,978",
+      "cached_tokens_when_a_hit_occurred": "11,892 to 12,660 (exactly the unchanged prefix before the live context)",
+      "follow_up_requests_with_any_cache_hit": "251 of 796; median gap to the previous request 9 s on hits and 12 s on misses",
+      "evidence_images": "4K JPEG as base64 data URL, 12.6 to 13.1 MB each; request bodies up to 38.8 MB with three frames",
+      "largest_tool_outputs_bytes": {
+        "request_launch": 75377,
+        "get_fleet": 58464,
+        "preview_plan": 29037,
+        "apply_plan_change": 28824
+      }
+    },
+    "input_token_attribution_estimate": {
+      "method": "least squares over 834 requests: input_tokens = text_chars / 2.8 + 1601 * images + 118 * reasoning_items (R2 0.98, median error 2,248 tokens)",
+      "shares": {
+        "tools": 0.15,
+        "history_operator_watcher_evidence_text": 0.13,
+        "instructions_static_prompt": 0.12,
+        "instructions_public_map": 0.12,
+        "history_assistant_messages_and_call_arguments": 0.11,
+        "instructions_live_state": 0.1,
+        "history_request_launch_outputs": 0.08,
+        "history_get_fleet_outputs": 0.05,
+        "history_preview_plan_outputs": 0.05,
+        "history_other_tool_outputs": 0.03,
+        "history_encrypted_reasoning": 0.03,
+        "history_images": 0.03,
+        "history_apply_plan_change_outputs": 0.01
+      }
+    }
+  },
+  "change": {
+    "instructions": "static brief plus compact public map only, identical on every turn",
+    "live_context": "newest input item labelled 'Current mission context (live system state, not an operator message)', never stored in the transcript",
+    "prompt_cache_key": "mission id (bench_tools and accept_chat use their run names)",
+    "prompt_cache_retention": "24h",
+    "effort": "operator picker in the composer (low, medium, high; each mission starts at high) via the set_effort message",
+    "wake_payloads": "vehicles reduced to compact_vehicle; live telemetry arrives in the context item",
+    "model_usage_event": "adds cached_tokens",
+    "images": "unchanged: full 4K frames as before"
+  },
+  "proof_run": {
+    "trace": ".local/evidence/wonder-prompt-cache/20261102T205322Z",
+    "instructions_chars": 26025,
+    "tools": 30,
+    "effort": "low",
+    "history": "one operator line plus the live context item; the second request changes only a note inside the context item",
+    "turns": [
+      {
+        "turn": 0,
+        "response_id": "resp_6ae8f843a2045260ff2e4fc9",
+        "elapsed_s": 1.31,
+        "usage": {
+          "input_tokens": 14591,
+          "input_tokens_details": {
+            "cached_tokens": 0
+          },
+          "output_tokens": 21,
+          "output_tokens_details": {
+            "reasoning_tokens": 11
+          },
+          "total_tokens": 14612
+        },
+        "request_body_bytes": 51782
+      },
+      {
+        "turn": 1,
+        "response_id": "resp_6ae8f8451f6e35f457d44cce",
+        "elapsed_s": 1.27,
+        "usage": {
+          "input_tokens": 14595,
+          "input_tokens_details": {
+            "cached_tokens": 14580
+          },
+          "output_tokens": 21,
+          "output_tokens_details": {
+            "reasoning_tokens": 11
+          },
+          "total_tokens": 14616
+        },
+        "request_body_bytes": 51808
+      }
+    ],
+    "cached_share_second_request": 0.999,
+    "cost_usd": 0.0622
+  }
+}

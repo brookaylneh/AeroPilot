@@ -16,6 +16,17 @@ from mission_planner.gcs.rejection import PlanRejected, separation
 from world.cosys.terrain import COLUMNS, ROWS, WORLD, launch_breaks, terrain_height
 
 CLEARANCE_M = 10.0
+# Unobserved transit flown before a drone's first observed step is compared by time window;
+# observed steps, hovers, holds and launch or landing columns reserve space regardless of time.
+SEPARATION_MARGIN_S = 30.0
+
+
+def timed_apart(window, other):
+    if window is None or other is None:
+        return False
+    return (
+        window[1] + SEPARATION_MARGIN_S <= other[0] or other[1] + SEPARATION_MARGIN_S <= window[0]
+    )
 
 
 def fence_polygon(readback):
@@ -187,8 +198,7 @@ def minimum_clearance(a, b, low, high, home_z, height):
     return result
 
 
-def separation_conflict(name, route, reservations, home_altitudes_msl_m):
-    # Routes reserve their entire spatial corridor, independent of timing.
+def separation_conflict(name, route, reservations, home_altitudes_msl_m, windows=None):
     def segments(points, home_offset_m):
         assert points, "Separation requires a nonempty route"
         values = [
@@ -204,6 +214,10 @@ def separation_conflict(name, route, reservations, home_altitudes_msl_m):
         f"{name}: home altitude must be finite MSL metres"
     )
     route_segments = segments(route, 0)
+    mine = windows[name] if windows is not None and name in windows else None
+    assert mine is None or len(mine) == len(route_segments), (
+        "Separation windows must match route segments"
+    )
     for other, reserved in reservations:
         if other != name:
             other_home = home_altitudes_msl_m[other]
@@ -211,14 +225,27 @@ def separation_conflict(name, route, reservations, home_altitudes_msl_m):
                 f"{other}: home altitude must be finite MSL metres"
             )
             reserved_segments = segments(reserved, other_home - home)
-            distance, index, other_index = min(
+            theirs = windows[other] if windows is not None and other in windows else None
+            assert theirs is None or len(theirs) == len(reserved_segments), (
+                "Separation windows must match reserved segments"
+            )
+            pairs = [
                 (segment_distance(a, b, c, d), i, j)
                 for i, (a, b) in enumerate(route_segments)
                 for j, (c, d) in enumerate(reserved_segments)
-            )
+                if not timed_apart(
+                    mine[i] if mine is not None else None,
+                    theirs[j] if theirs is not None else None,
+                )
+            ]
+            if not pairs:
+                continue
+            distance, index, other_index = min(pairs)
             assert math.isfinite(distance), "Separation distance must be finite metres"
             if distance < MIN_SEPARATION_M - SEPARATION_TOLERANCE_M:
                 keys = ("north_m", "east_m", "altitude_above_home_m")
+                window = mine[index] if mine is not None else None
+                other_window = theirs[other_index] if theirs is not None else None
                 return {
                     "drone_id": name,
                     "other_drone_id": other,
@@ -234,11 +261,15 @@ def separation_conflict(name, route, reservations, home_altitudes_msl_m):
                     "other_step_index": None,
                     "step_kind": None,
                     "other_step_kind": None,
+                    "timing": {
+                        "applied": window is not None and other_window is not None,
+                        "windows": [window, other_window],
+                    },
                 }
     return None
 
 
-def validate_separation(name, route, reservations, home_altitudes_msl_m):
-    conflict = separation_conflict(name, route, reservations, home_altitudes_msl_m)
+def validate_separation(name, route, reservations, home_altitudes_msl_m, windows=None):
+    conflict = separation_conflict(name, route, reservations, home_altitudes_msl_m, windows)
     if conflict is not None:
         raise separation(conflict)

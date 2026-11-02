@@ -416,6 +416,27 @@ export default function MissionMap({
               className="gcs-search-sectors"
               aria-label={`Observation perimeter and survey areas for plan ${searchReceipt.plan.version}`}
             >
+              {searchReceipt.region?.bands?.map((band) => {
+                const label = projection(
+                  band.polygon.reduce((sum, point) => sum + point.north_m, 0) / band.polygon.length,
+                  band.polygon.reduce((sum, point) => sum + point.east_m, 0) / band.polygon.length,
+                );
+                return (
+                  <g key={band.index} data-band-status={band.status}>
+                    <polygon
+                      className={`gcs-search-band gcs-search-band-${band.status}`}
+                      points={polygonPoints(band.polygon)}
+                    >
+                      <title>{`Band ${band.index} · ${band.status.replace('_', ' ')} · ${formatValue(band.area_m2 / 10000, 'ha')}`}</title>
+                    </polygon>
+                    {band.status !== 'previous' && (
+                      <text className="gcs-search-band-label" x={label.x} y={label.y} textAnchor="middle">
+                        {`Band ${band.index}`}
+                      </text>
+                    )}
+                  </g>
+                );
+              })}
               <polygon className="gcs-search-perimeter" points={polygonPoints(searchPolicy.perimeter)}>
                 <title>Observation perimeter</title>
               </polygon>

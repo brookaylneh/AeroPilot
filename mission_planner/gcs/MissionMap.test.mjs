@@ -312,6 +312,7 @@ test('failed preview highlights its two rejected legs and preserves the active m
     other_step_index: 1,
     step_kind: 'fly',
     other_step_kind: 'fly',
+    timing: { applied: false, windows: [null, null] },
   };
   const event = {
     id: 'preview-result',
@@ -411,6 +412,44 @@ test('observation preview draws its perimeter and explicitly observed survey are
   const revised = map()(fleet, { planner: { ...planner, preview: replacement } });
   assert.equal((revised.match(/data-search-sector="Drone4"/g) ?? []).length, 2);
   for (const id of names.slice(0, 3)) assert.doesNotMatch(revised, new RegExp(`data-search-sector="${id}"`));
+});
+
+test('search bands draw under the perimeter with their status and labels', () => {
+  const rectangle = (west, east) => [
+    { north_m: -500, east_m: west },
+    { north_m: -400, east_m: west },
+    { north_m: -400, east_m: east },
+    { north_m: -500, east_m: east },
+  ];
+  const searchReceipt = {
+    coverage: { perimeter_area_m2: 20000, survey_area_m2: 20000, unassigned_area_m2: 0, survey_percent: 100 },
+    plan: {
+      version: 6,
+      search: { perimeter: rectangle(-100, 100) },
+      drones: [
+        { drone_id: 'Drone1', steps: [{ kind: 'survey', polygon: rectangle(-100, 100), observe: true }] },
+      ],
+    },
+    missions: { Drone1: { route } },
+    region: {
+      kind: 'doctrine',
+      bands: [
+        { index: 1, polygon: rectangle(-300, -100), area_m2: 20000, mass: null, status: 'previous' },
+        { index: 2, polygon: rectangle(-100, 100), area_m2: 20000, mass: 0.3, status: 'planned' },
+        { index: 3, polygon: rectangle(100, 300), area_m2: 20000, mass: 0.2, status: 'provisional' },
+      ],
+    },
+  };
+  const fleet = [vehicle('Drone1', { ...home, armed: false, landed_state: 1 })];
+  const planner = { active: null, previous: null, preview: searchReceipt, progress: {} };
+  const html = map()(fleet, { planner });
+  assert.equal((html.match(/class="gcs-search-band gcs-search-band-/g) ?? []).length, 3);
+  assert.match(html, /data-band-status="previous"/);
+  assert.match(html, /class="gcs-search-band gcs-search-band-planned"/);
+  assert.match(html, /Band 2 · planned · 2.0 ha/);
+  assert.equal((html.match(/class="gcs-search-band-label"/g) ?? []).length, 2);
+  assert.match(html, />Band 3</);
+  assert.doesNotMatch(html, />Band 1</);
 });
 
 test('route and circle observation draw arbitrary perimeters without inventing survey fill', () => {

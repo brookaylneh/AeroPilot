@@ -471,6 +471,7 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
                 "usage": {
                     "input_tokens": 0,
                     "output_tokens": 0,
+                    "input_tokens_details": {"cached_tokens": 0},
                     "output_tokens_details": {"reasoning_tokens": 0},
                 },
                 "output": [],
@@ -479,16 +480,15 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
         self.mission.model.respond.side_effect = respond
         from world.cosys.landmarks import load
 
-        self.mission.context = Mock(
-            return_value=("Test context", {"map": load()[:1], "inspections": []})
-        )
+        self.mission.context = Mock(return_value={"inspections": []})
+        self.mission.landmarks = load()[:1]
         self.mission.decision_state = Mock(return_value=([], []))
         for case_id in (None, self.cases[0]["id"]):
             await self.mission.begin(case_id)
             await self.mission.agent("Hello")
             names = {tool["name"] for tool in self.mission.model.respond.call_args.args[3]}
-            self.assertTrue({"find_place", "describe_location", "preview_plan"} <= names)
-            self.assertNotIn("resume", names)
+            self.assertTrue({"find_place", "describe_location", "plan_task"} <= names)
+            self.assertTrue({"resume", "preview_plan"}.isdisjoint(names))
             await self.mission.clear()
 
     async def test_disconnect_does_not_cancel_but_returning_to_studio_does(self):

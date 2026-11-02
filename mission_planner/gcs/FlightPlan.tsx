@@ -15,7 +15,7 @@ const text = (limit: number) =>
     .refine((value) => value.trim().length > 0);
 export const searchPolicySchema = z
   .object({
-    perimeter: z.array(point).min(3).max(100),
+    perimeter: z.array(point).min(3).max(400),
     detector_prompt: text(100),
     threshold: number.min(0.1).max(1),
     look_for: z
@@ -62,7 +62,7 @@ export const flightStepSchema = z.discriminatedUnion('kind', [
   z
     .object({
       kind: z.literal('survey'),
-      polygon: z.array(point).min(3).max(100),
+      polygon: z.array(point).min(3).max(400),
       spacing_m: number.positive(),
       bearing_deg: number.min(0).lt(360),
       start_at: number.int().nonnegative().optional(),
@@ -96,6 +96,77 @@ export const flightPlanSchema = z
       .refine((drones) => new Set(drones.map((drone) => drone.drone_id)).size === drones.length),
   })
   .strict();
+export const taskNames = [
+  'area_search',
+  'datum_search',
+  'route_search',
+  'boundary_check',
+  'point_inspection',
+  'transit',
+  'waypoint_route',
+] as const;
+export const taskingSchema = z.object({
+  task: z.enum(taskNames),
+  subject: z
+    .object({
+      detector_prompt: z.string().min(1),
+      threshold: number.min(0.1).max(1),
+      look_for: searchPolicySchema.shape.look_for,
+    })
+    .nullable(),
+  references: z.object({
+    landmark_ids: z.array(z.string().min(1)),
+    points: z.array(point),
+    polygon: z.array(point).min(3).nullable(),
+    direction_of_travel: z
+      .union([
+        z.object({ compass: z.string() }).strict(),
+        z.object({ degrees: number.min(0).lt(360) }).strict(),
+      ])
+      .nullable(),
+    subject_category: z.enum(['child', 'hiker', 'dementia', 'elderly', 'unknown']),
+  }),
+  fleet: z.object({
+    drone_ids: z.array(z.enum(droneIds)).nullable(),
+    count: number.int().positive().nullable(),
+  }),
+  settings: z.record(z.string(), number.nullable()),
+  aftermath: z.enum(['return_home', 'hover', 'land']),
+  region: z.object({
+    band_index: number.int().positive().nullable(),
+    accept_partial: z.boolean(),
+    radius_m: number.positive().nullable(),
+    half_angle_deg: number.positive().max(180).nullable(),
+  }),
+  expansion: z.object({ automatic_proposals: z.boolean(), lead_seconds: number.positive().nullable() }),
+});
+export type Tasking = z.infer<typeof taskingSchema>;
+export const bandSchema = z.object({
+  index: number.int().positive(),
+  polygon: z.array(point).min(3),
+  area_m2: number.nonnegative(),
+  mass: number.min(0).max(1).nullable(),
+  status: z.enum(['previous', 'planned', 'provisional', 'outside_endurance']),
+});
+export const regionSchema = z.object({ kind: z.string(), bands: z.array(bandSchema).optional() });
+export const fitSchema = z.record(
+  z.string().refine((id) => droneIds.includes(id as (typeof droneIds)[number])),
+  z.object({
+    usable_flight_s: number.nonnegative(),
+    planned_s: number.nonnegative(),
+    indefinite: z.boolean(),
+    lock_allowance_s: number.nonnegative(),
+    approval_hover_s: number.nonnegative(),
+    headroom_s: number,
+  }),
+);
+export const sectorSchema = z.object({
+  drone_id: z.enum(droneIds),
+  entry: point.nullable(),
+  exit: point.nullable(),
+  layer_agl_m: number.positive(),
+  continuing_steps: number.int().nonnegative(),
+});
 export const planReceiptSchema = z
   .object({
     plan: flightPlanSchema,
@@ -118,6 +189,11 @@ export const planReceiptSchema = z
         available_hover_s: number.nonnegative(),
       }),
     ),
+    tasking: taskingSchema.optional(),
+    region: regionSchema.optional(),
+    sectors: z.array(sectorSchema).optional(),
+    fit: fitSchema.optional(),
+    rationale: z.array(z.string()).optional(),
   })
   .refine(
     ({ plan, missions }) =>
@@ -149,6 +225,7 @@ export function surveyCoverageText(coverage: NonNullable<PlanReceipt['coverage']
 }
 
 const routePoint = point.extend({ altitude_above_home_m: number });
+const separationWindow = z.tuple([number.nonnegative(), number.nonnegative()]).nullable();
 const conflictSchema = z
   .object({
     drone_id: z.enum(droneIds),
@@ -163,6 +240,12 @@ const conflictSchema = z
     other_step_index: number.int().nonnegative().nullable(),
     step_kind: z.string().nullable(),
     other_step_kind: z.string().nullable(),
+    timing: z
+      .object({
+        applied: z.boolean(),
+        windows: z.tuple([separationWindow, separationWindow]),
+      })
+      .strict(),
   })
   .strict();
 
@@ -186,6 +269,7 @@ export function planRejection(events: MissionEvent[]): PlanRejection | null {
       (event) =>
         (event.kind === 'tool_call' || event.kind === 'tool_result') &&
         [
+          'plan_task',
           'preview_plan',
           'request_launch',
           'apply_plan_change',
@@ -197,7 +281,7 @@ export function planRejection(events: MissionEvent[]): PlanRejection | null {
     )
     .at(-1);
   if (
-    event?.name !== 'preview_plan' ||
+    (event?.name !== 'plan_task' && event?.name !== 'preview_plan') ||
     event.kind !== 'tool_result' ||
     event.result?.ok !== false ||
     !('rejection' in event.result)
@@ -235,20 +319,104 @@ export function stepText(step: FlightStep): string {
   }
 }
 
+const taskTitles: Record<Tasking['task'], string> = {
+  area_search: 'Area search',
+  datum_search: 'Datum search',
+  route_search: 'Route search',
+  boundary_check: 'Boundary check',
+  point_inspection: 'Point inspection',
+  transit: 'Transit',
+  waypoint_route: 'Waypoint route',
+};
+export function taskText(tasking: Tasking) {
+  const { references, fleet, settings } = tasking;
+  const where = references.polygon
+    ? `operator polygon (${references.polygon.length} points)`
+    : [...references.landmark_ids, ...references.points.map((p) => formatPosition(p.north_m, p.east_m))].join(
+        ', ',
+      ) || 'no reference';
+  const direction = references.direction_of_travel
+    ? 'compass' in references.direction_of_travel
+      ? ` · travelling ${references.direction_of_travel.compass}`
+      : ` · travelling ${formatValue(references.direction_of_travel.degrees, '°', 0)}`
+    : '';
+  const aircraft = fleet.drone_ids
+    ? fleet.drone_ids.join(', ')
+    : fleet.count === null
+      ? 'all healthy aircraft'
+      : `${fleet.count} aircraft`;
+  const chosen = Object.entries(settings)
+    .filter(([, value]) => value !== null)
+    .map(([key, value]) => `${key.replace(/_m(ps)?$/, '').replace(/_/g, ' ')} ${value}`);
+  const search = tasking.task === 'area_search' || tasking.task === 'datum_search';
+  return [
+    `${taskTitles[tasking.task]} · ${where}${direction}`,
+    tasking.subject
+      ? `detect “${tasking.subject.detector_prompt}” for ${tasking.subject.look_for.target}`
+      : 'no detector',
+    search ? `${references.subject_category} tables` : null,
+    aircraft,
+    chosen.length ? chosen.join(', ') : 'default settings',
+    tasking.region.radius_m !== null ? `radius ${formatValue(tasking.region.radius_m, 'm', 0)}` : null,
+    tasking.region.accept_partial ? 'partial coverage accepted' : null,
+    tasking.expansion.automatic_proposals ? 'expansion proposals' : null,
+    `then ${tasking.aftermath.replace('_', ' ')}`,
+  ]
+    .filter((part) => part !== null)
+    .join(' · ');
+}
+
+function TaskSummary({ receipt }: { receipt: Partial<PlanReceipt> & { tasking: Tasking } }) {
+  const bands = receipt.region?.bands ?? [];
+  const planned = bands.find((band) => band.status === 'planned');
+  return (
+    <div className="gcs-task-summary">
+      <strong>{taskText(receipt.tasking)}</strong>
+      {receipt.rationale?.map((sentence, index) => (
+        <p key={index}>{sentence}</p>
+      ))}
+      {planned && (
+        <p>
+          Band {planned.index} of {bands.length} · {formatValue(planned.area_m2 / 10000, 'ha')}
+          {planned.mass !== null
+            ? ` · ${formatValue(planned.mass * 100, '%', 0)} of modelled probability`
+            : ''}
+          {receipt.coverage ? ` · ${surveyCoverageText(receipt.coverage)}` : ''}
+          {receipt.tasking.region.accept_partial ? ' · partial coverage accepted by the operator' : ''}
+        </p>
+      )}
+      {receipt.fit && (
+        <ul className="gcs-task-fit">
+          {Object.entries(receipt.fit).map(([drone_id, row]) => (
+            <li key={drone_id}>
+              {drone_id}: {row.indefinite ? 'until instructed' : formatValue(row.planned_s / 60, 'min')}{' '}
+              planned of {formatValue(row.usable_flight_s / 60, 'min')} usable · headroom{' '}
+              {formatValue(row.headroom_s / 60, 'min')}
+              {row.lock_allowance_s
+                ? ` after a ${formatValue(row.lock_allowance_s, 's', 0)} candidate allowance`
+                : ''}
+              {row.approval_hover_s
+                ? ` and a ${formatValue(row.approval_hover_s, 's', 0)} approval hover`
+                : ''}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 export default function FlightPlan({
   receipt,
 }: {
-  receipt: {
-    plan: z.infer<typeof flightPlanSchema>;
-    missions?: PlanReceipt['missions'];
-    coverage?: PlanReceipt['coverage'];
-  };
+  receipt: Partial<PlanReceipt> & { plan: z.infer<typeof flightPlanSchema> };
 }) {
   const observations = receipt.plan.drones.flatMap(({ drone_id, steps }) =>
     steps.filter((step) => 'observe' in step && step.observe).map(({ kind }) => ({ drone_id, kind })),
   );
   return (
     <section className="gcs-flight-plan" aria-label={`Mission plan version ${receipt.plan.version}`}>
+      {receipt.tasking && <TaskSummary receipt={{ ...receipt, tasking: receipt.tasking }} />}
       {receipt.plan.search && observations.length > 0 && (
         <div className="gcs-search-policy">
           <strong>

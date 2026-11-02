@@ -1490,6 +1490,17 @@
   color: #c4ccd4;
   font-size: 12px;
 }
+.gcs-composer > div > span > select {
+  border: 0;
+  background: transparent;
+  color: var(--gcs-text);
+  font: inherit;
+  cursor: pointer;
+}
+.gcs-composer > div > span > select:focus-visible {
+  outline: 1px solid #ffffff38;
+  border-radius: 4px;
+}
 .gcs-composer > div > button:not(.gcs-send) {
   height: 22px;
   margin-right: auto;
@@ -2413,6 +2424,40 @@
   paint-order: stroke;
   stroke: #191b1a;
   stroke-width: 3;
+}
+.gcs-search-band {
+  stroke: #d6e2ec;
+  stroke-width: 1;
+  fill: #d6e2ec;
+  fill-opacity: 0.1;
+}
+.gcs-search-band-provisional,
+.gcs-search-band-outside_endurance {
+  fill-opacity: 0.03;
+  stroke-dasharray: 3 5;
+}
+.gcs-search-band-previous {
+  fill-opacity: 0.02;
+  stroke-opacity: 0.4;
+}
+.gcs-search-band-label {
+  fill: #d6e2ec;
+  font: 500 10px var(--gcs-mono);
+  letter-spacing: 0.06em;
+  paint-order: stroke;
+  stroke: #191b1a;
+  stroke-width: 3;
+}
+.gcs-fleet-reset {
+  margin: 0.3em 0.6em;
+  font: 500 11px var(--gcs-mono);
+}
+.gcs-task-summary p,
+.gcs-task-summary li {
+  margin: 0.2em 0;
+}
+.gcs-task-fit {
+  padding-left: 1.2em;
 }
 .gcs-search-sectors,
 .gcs-tracked-candidate {

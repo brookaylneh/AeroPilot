@@ -13,15 +13,12 @@ from mission_planner.gcs.geodesy import (
     NAMES,
     ORIGIN,
     homes,
-    point_in_polygon,
     to_geodetic,
     to_local,
 )
 from mission_planner.gcs.planner import (
     PLAN_SCHEMA,
     compile_plan,
-    divide_survey,
-    expanding_square,
     mission_item,
     mission_readback,
     survey_coverage,
@@ -250,8 +247,14 @@ class SearchPlan(unittest.TestCase):
                 ],
             }
         ]
-        with self.assertRaisesRegex(AssertionError, "split the pattern"):
+        # The connector between the two points cuts outside the concave perimeter; sampling is
+        # gated by aircraft position, so only the pattern points themselves must stay inside.
+        compile_plan(value, airborne(-740, 5, 30), {name: readback() for name in NAMES}, load())
+        value["drones"][0]["steps"][0]["points"][1] = {"north_m": -710, "east_m": 120}
+        with self.assertRaises(PlanRejected) as caught:
             compile_plan(value, airborne(-740, 5, 30), {name: readback() for name in NAMES}, load())
+        self.assertEqual(caught.exception.rejection["rule"], "observation_area")
+        self.assertIn("leaves its observation area", str(caught.exception))
 
     def check(self, value):
         Draft202012Validator(PLAN_SCHEMA).validate(value)
@@ -300,6 +303,49 @@ class SearchPlan(unittest.TestCase):
             },
         )
         self.assertEqual(rejection["detail"]["maximum_m"], 20)
+
+    def test_unobserved_transit_legs_may_cross_when_their_windows_are_apart(self):
+        fences = {name: readback() for name in NAMES}
+        shared = (-650, 60)
+        drone2 = [
+            {"kind": "takeoff", "height_m": 30},
+            fly(*shared, 30),
+            fly(-600, 120, 30),
+            fly(-550, 200, 30),
+            hover(),
+        ]
+
+        def compile_pair(first):
+            drone1 = [
+                {"kind": "takeoff", "height_m": 30},
+                *first,
+                fly(*shared, 30),
+                fly(-600, 120, 30),
+                fly(-700, -60, 30),
+                hover(),
+            ]
+            value = {
+                "version": 1,
+                "drones": [
+                    {"drone_id": "Drone1", "steps": drone1},
+                    {"drone_id": "Drone2", "steps": drone2},
+                ],
+            }
+            return compile_plan(value, states(), fences, load())
+
+        accepted = compile_pair([fly(-300, -40, 30)])
+        windows = accepted["missions"]["Drone1"]["windows"]
+        self.assertEqual(len(windows), len(accepted["missions"]["Drone1"]["route"]) - 1)
+        self.assertIsNone(windows[0])
+        timed = [w for w in windows if w is not None]
+        self.assertTrue(timed)
+        self.assertTrue(all(0 <= a < b for a, b in timed))
+        self.assertTrue(all(b <= c for (_, b), (c, _) in zip(timed, timed[1:])))
+        with self.assertRaises(PlanRejected) as caught:
+            compile_pair([])
+        self.assertEqual(caught.exception.rejection["rule"], "separation")
+        self.assertTrue(caught.exception.rejection["conflict"]["timing"]["applied"])
+        self.assertIn("time windows overlap", str(caught.exception))
 
     def test_return_only_branch_has_no_candidate_lock_allowance(self):
         value = search_plan()
@@ -441,49 +487,6 @@ class SurveyCoverage(unittest.TestCase):
         self.assertIsNone(survey_coverage(value))
         self.assertIsNone(survey_coverage(plan([hover()])))
 
-    def test_divided_surveys_cover_the_chosen_polygon_at_other_bearings_and_fleet_sizes(self):
-        for count in (1, 2, 3, 4):
-            for bearing in (0, 90, 180, 217):
-                with self.subTest(count=count, bearing=bearing):
-                    value = search_plan()
-                    perimeter = value["search"]["perimeter"]
-                    result = divide_survey(NAMES[:count], perimeter, 10, bearing, 30, 5)
-                    self.assertEqual(result["perimeter"], perimeter)
-                    value["drones"] = result["drones"]
-                    self.assertEqual([d["drone_id"] for d in value["drones"]], list(NAMES[:count]))
-                    self.assertAlmostEqual(survey_coverage(value)["survey_area_m2"], 6000)
-                    self.assertAlmostEqual(survey_coverage(value)["unassigned_area_m2"], 0)
-                    sectors = [d["steps"][0]["polygon"] for d in value["drones"]]
-                    for north in range(-750, -699, 5):
-                        for east in range(-60, 61, 5):
-                            point = {"north_m": north, "east_m": east}
-                            self.assertTrue(
-                                any(point_in_polygon(point, sector) for sector in sectors)
-                            )
-                    validate_search(value, {name: readback() for name in NAMES})
-
-    def test_disconnected_split_and_duplicate_aircraft_fail_without_repair(self):
-        perimeter = rectangle(-750, -700, -60, 60)
-        with self.assertRaisesRegex(AssertionError, "appears twice in survey division"):
-            divide_survey(["Drone1", "Drone1"], perimeter, 10, 0, 30, 5)
-        disconnected = [
-            {"north_m": n, "east_m": e}
-            for n, e in (
-                (0, 0),
-                (100, 0),
-                (100, 100),
-                (80, 100),
-                (80, 20),
-                (20, 20),
-                (20, 100),
-                (0, 100),
-            )
-        ]
-        original = copy.deepcopy(disconnected)
-        with self.assertRaisesRegex(AssertionError, "disconnected survey sector"):
-            divide_survey(list(NAMES), disconnected, 10, 0, 30, 5)
-        self.assertEqual(disconnected, original)
-
     def test_edge_passes_cover_short_and_non_divisible_sector_widths(self):
         for width in (1, 10, 20, 21, 40, 80, 85, 90, 100):
             step = {"polygon": rectangle(-750, -710, 0, width), "spacing_m": 20, "bearing_deg": 0}
@@ -517,35 +520,6 @@ class SurveyCoverage(unittest.TestCase):
         remaining["start_at"] = len(points)
         with self.assertRaisesRegex(AssertionError, "start_at.*outside"):
             compile_plan(value, airborne(n, e, 40), {name: readback() for name in NAMES}, load())
-
-
-class ExpandingSquare(unittest.TestCase):
-    def test_leadin_and_successive_leg_pairs_rotate_about_explicit_datum(self):
-        for bearing in (0, 90, 217):
-            step = expanding_square(-700, 0, 10, bearing, 8, 30, 5)
-            points = step["points"]
-            self.assertEqual(points[1], {"north_m": -700, "east_m": 0})
-            lengths = [
-                math.dist(tuple(a.values()), tuple(b.values())) for a, b in zip(points, points[1:])
-            ]
-            for actual, expected in zip(lengths, (10, 10, 10, 20, 20, 30, 30, 40, 40)):
-                self.assertAlmostEqual(actual, expected)
-            directions = [
-                math.atan2(b["east_m"] - a["east_m"], b["north_m"] - a["north_m"])
-                for a, b in zip(points[1:], points[2:])
-            ]
-            for a, b in zip(directions, directions[1:]):
-                self.assertAlmostEqual((b - a) % math.tau, math.pi / 2)
-            self.assertNotIn("observe", step)
-            Draft202012Validator(PLAN_SCHEMA).validate(plan([step, hover()]))
-
-    def test_bad_extent_fails_without_clipping_and_outside_pattern_reaches_preview(self):
-        for spacing, count in ((0, 2), (10, 0), (10, 101), (10, True)):
-            with self.assertRaises(AssertionError):
-                expanding_square(0, 0, spacing, 0, count, 30, 5)
-        step = expanding_square(0, 0, 1000, 0, 8, 30, 5)
-        with self.assertRaisesRegex(AssertionError, "fence"):
-            compile_steps([step, hover()], airborne(0, 0, 30))
 
 
 class Planner(unittest.TestCase):

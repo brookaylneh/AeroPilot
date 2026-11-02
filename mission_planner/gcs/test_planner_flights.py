@@ -5,7 +5,7 @@ import unittest
 from pymavlink.dialects.v20 import ardupilotmega as MAV
 
 from mission_planner.gcs.geodesy import NAMES, point_in_polygon, to_geodetic
-from mission_planner.gcs.planner import compile_plan, divide_survey, survey_points
+from mission_planner.gcs.planner import compile_plan, survey_points
 from mission_planner.gcs.rejection import PlanRejected
 from mission_planner.gcs.test_planner import fly, rectangle, search_plan, states
 from mission_planner.gcs.test_validation import readback
@@ -31,13 +31,48 @@ def recorded_pad():
     return fleet
 
 
+def strips(drone_ids, bounds, spacing, bearing, height, speed):
+    """Equal rectangular strips across the sweep direction, one observed survey per drone."""
+    south, north, west, east = bounds
+    count = len(drone_ids)
+    result = []
+    for index, name in enumerate(drone_ids):
+        if bearing == 0:
+            a, b = west + (east - west) * index / count, west + (east - west) * (index + 1) / count
+            polygon = rectangle(south, north, a, b)
+        else:
+            assert bearing == 90
+            a, b = (
+                south + (north - south) * index / count,
+                south + (north - south) * (index + 1) / count,
+            )
+            polygon = rectangle(a, b, west, east)
+        result.append(
+            {
+                "drone_id": name,
+                "steps": [
+                    {
+                        "kind": "survey",
+                        "polygon": polygon,
+                        "spacing_m": spacing,
+                        "bearing_deg": bearing,
+                        "height_m": height,
+                        "speed_mps": speed,
+                        "observe": True,
+                    }
+                ],
+            }
+        )
+    return result
+
+
 def complete_search(fleet, bounds, spacing, bearing):
     value = search_plan()
     value["search"]["perimeter"] = rectangle(*bounds)
     value["search"]["max_lock_seconds"] = 180
-    value["drones"] = divide_survey(
-        ["Drone3", "Drone1", "Drone2", "Drone4"], rectangle(*bounds), spacing, bearing, 40, 10
-    )["drones"]
+    value["drones"] = strips(
+        ["Drone3", "Drone1", "Drone2", "Drone4"], bounds, spacing, bearing, 40, 10
+    )
     for i, branch in enumerate(value["drones"]):
         name = branch["drone_id"]
         state = next(state for state in fleet if state["id"] == name)
@@ -64,9 +99,9 @@ class CompleteSearchFlights(unittest.TestCase):
         fleet = states()
         value = search_plan()
         value["search"]["perimeter"] = rectangle(-710, -650, -70, 30)
-        value["drones"] = divide_survey(
-            ["Drone3", "Drone1", "Drone2", "Drone4"], value["search"]["perimeter"], 20, 0, 30, 5
-        )["drones"]
+        value["drones"] = strips(
+            ["Drone3", "Drone1", "Drone2", "Drone4"], (-710, -650, -70, 30), 20, 0, 30, 5
+        )
         for index, (branch, lane) in enumerate(zip(value["drones"], (-65, -40, -15, 10))):
             name = branch["drone_id"]
             state = next(state for state in fleet if state["id"] == name)

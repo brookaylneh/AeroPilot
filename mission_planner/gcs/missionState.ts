@@ -46,6 +46,7 @@ const vehicleSchema = z.object({
   ground_speed_mps: number.nonnegative(),
   climb_rate_mps: number,
   battery_percent: number.min(0).max(100).nullable(),
+  usable_flight_s: number.nullable(),
   battery_voltage_v: number.nonnegative().nullable(),
   gps_fix: z.number().int().nonnegative(),
   satellites: z.number().int().nonnegative(),
@@ -194,6 +195,7 @@ export const stateSchema = z.object({
   agent_busy: z.boolean(),
   agent_wait: agentWaitSchema.nullable(),
   chat_ready: z.boolean(),
+  effort: z.enum(['low', 'medium', 'high']),
   inspections: z.array(inspectionSchema),
   approvals: z.array(
     z.object({

@@ -48,6 +48,8 @@ class WonderContract(unittest.TestCase):
         self.assertEqual(self.requests[0]["previous_response_id"], "resp_stored")
         self.assertIs(self.requests[0]["store"], True)
         self.assertNotIn("include", self.requests[0])
+        self.assertNotIn("prompt_cache_key", self.requests[0])
+        self.assertNotIn("prompt_cache_retention", self.requests[0])
 
     def test_explicit_history_preserves_reasoning_phase_and_tool_pairing(self):
         reasoning = {
@@ -72,10 +74,18 @@ class WonderContract(unittest.TestCase):
         history = (*self.history, reasoning, commentary, call, output)
         self.response["output"].insert(0, {**reasoning, "id": "rs_next"})
         response = self.model.respond(
-            None, [], "high", [], instructions="Current fleet facts", history=history
+            None,
+            [],
+            "high",
+            [],
+            instructions="Current fleet facts",
+            history=history,
+            cache_key="mission-1",
         )
         self.assertEqual(response, self.response)
         self.assertEqual(self.requests[0]["input"], list(history))
+        self.assertEqual(self.requests[0]["prompt_cache_key"], "mission-1")
+        self.assertEqual(self.requests[0]["prompt_cache_retention"], "24h")
         self.assertIs(self.requests[0]["store"], False)
         self.assertEqual(self.requests[0]["include"], ["reasoning.encrypted_content"])
         self.assertEqual(self.requests[0]["instructions"], "Current fleet facts")

@@ -16,7 +16,7 @@ class BenchmarkFailures(unittest.TestCase):
     def test_timeout_stops_without_retry_and_preserves_completed_scores(self):
         attempted = []
 
-        def respond(request, images, effort, tools, *, instructions, trace_path):
+        def respond(request, images, effort, tools, *, instructions, trace_path, cache_key):
             attempted.append(request)
             trace_path.with_suffix(".http.json").write_text(
                 json.dumps(

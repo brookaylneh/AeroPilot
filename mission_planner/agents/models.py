@@ -162,6 +162,9 @@ class Glimmer:
         }
 
 
+EFFORTS = ("low", "medium", "high")
+
+
 class Wonder:
     def __init__(self):
         self.http = httpx.Client(
@@ -180,8 +183,9 @@ class Wonder:
         trace_path: Path | None = None,
         *,
         history: tuple[dict, ...] | None = None,
+        cache_key: str | None = None,
     ) -> dict:
-        assert effort in ("low", "medium", "high")
+        assert effort in EFFORTS
         if history is not None:
             assert text is None and not images and not tool_outputs
             assert previous_response_id is None, "Explicit history cannot use a response ID"
@@ -212,6 +216,10 @@ class Wonder:
             body["previous_response_id"] = previous_response_id
         if instructions is not None:
             body["instructions"] = instructions
+        if cache_key is not None:
+            # Requests sharing a key route to the backend holding their cached prefix.
+            body["prompt_cache_key"] = cache_key
+            body["prompt_cache_retention"] = "24h"
         request = self.http.build_request("POST", META_URL, json=body)
         if trace_path is not None:
             trace_path.with_suffix(".request.json").write_bytes(request.content)

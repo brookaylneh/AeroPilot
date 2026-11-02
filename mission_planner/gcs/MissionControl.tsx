@@ -27,7 +27,7 @@ import InspectionPanel, {
   type Inspection,
 } from './InspectionPanel';
 import { SubagentLaunch, subagentLogs, SubagentStrip, SubagentTab } from './Subagents';
-import FlightPlan, { flightPlanSchema } from './FlightPlan';
+import FlightPlan, { flightPlanSchema, planReceiptSchema, taskText, taskingSchema } from './FlightPlan';
 import DroneVideo from './DroneVideo';
 import { droneColors, droneIds, linkLost, useMission, type DroneId, type MissionEvent } from './missionState';
 import {
@@ -75,6 +75,11 @@ function ToolRow({ event, events }: { event: MissionEvent; events: MissionEvent[
   const status = actionStatus(related);
   const drone = droneIds.find((id) => id === event.arguments?.drone_id);
   const plan = event.name === 'preview_plan' ? flightPlanSchema.safeParse(event.arguments!.plan) : null;
+  const tasking = event.name === 'plan_task' ? taskingSchema.safeParse(event.arguments!.tasking) : null;
+  const planned =
+    event.name === 'plan_task' && result?.result?.ok === true
+      ? planReceiptSchema.safeParse(result.result.state)
+      : null;
   return (
     <details
       className={`gcs-tool ${status === 'Failed' ? 'failed' : ''}`}
@@ -98,6 +103,15 @@ function ToolRow({ event, events }: { event: MissionEvent; events: MissionEvent[
               <pre>{JSON.stringify(event.arguments!.plan, null, 2)}</pre>
             </>
           )
+        ) : tasking ? (
+          tasking.success ? (
+            <p className="gcs-task-text">{taskText(tasking.data)}</p>
+          ) : (
+            <>
+              <p className="gcs-result-error">Invalid tasking; review the rejection below.</p>
+              <pre>{JSON.stringify(event.arguments!.tasking, null, 2)}</pre>
+            </>
+          )
         ) : (
           <Arguments values={event.arguments!} />
         )}
@@ -106,6 +120,8 @@ function ToolRow({ event, events }: { event: MissionEvent; events: MissionEvent[
             <span>RESULT</span>
             {result.result?.ok === false ? (
               <p className="gcs-result-error">{String(result.result.error)}</p>
+            ) : planned?.success ? (
+              <FlightPlan receipt={planned.data} />
             ) : (
               <pre>{JSON.stringify(result.result, null, 2)}</pre>
             )}
@@ -133,8 +149,8 @@ function FailureGroup({ attempts, events }: { attempts: MissionEvent[]; events: 
         <strong>
           {attempts[0].arguments?.inspection_id
             ? 'Inspection action failed'
-            : attempts[0].name === 'preview_plan'
-              ? 'Plan preview blocked'
+            : attempts[0].name === 'preview_plan' || attempts[0].name === 'plan_task'
+              ? 'Plan blocked'
               : 'Mission action failed'}
         </strong>
       </header>
@@ -299,6 +315,8 @@ function conversationRows(
   endTurn();
   return turns;
 }
+const EFFORTS = ['low', 'medium', 'high'] as const;
+
 export default function MissionControl() {
   const caseId = new URLSearchParams(location.search).get('case');
   const { state, feedFocus, fenceResult, events, connection, error, setError, send, now, age } =
@@ -308,7 +326,7 @@ export default function MissionControl() {
   const [markingPlan, setMarkingPlan] = useState(false);
   const approval = state?.approvals[0];
   const launchPreview =
-    approval && ['request_launch', 'apply_plan_change'].includes(approval.name)
+    approval && ['request_launch', 'apply_plan_change', 'apply_proposal'].includes(approval.name)
       ? state.planner.preview
       : null;
   const pendingPlan = launchPreview?.plan.version === approval?.arguments.version ? launchPreview : null;
@@ -738,6 +756,10 @@ export default function MissionControl() {
               }}
               exportPlan={(id) => send({ type: 'export_plan', drone_id: id })}
               progress={state ? state.planner.progress : {}}
+              resetBatteries={{
+                enabled: enabled && Boolean(state?.chat_ready),
+                send: () => send({ type: 'reset_batteries' }),
+              }}
             />
           </section>
           <footer className="gcs-footer">
@@ -985,7 +1007,7 @@ export default function MissionControl() {
                       <p>Airborne aircraft in this change are holding while launch approval is pending.</p>
                     )}
                   </>
-                ) : ['request_launch', 'apply_plan_change'].includes(approval.name) ? (
+                ) : ['request_launch', 'apply_plan_change', 'apply_proposal'].includes(approval.name) ? (
                   <p role="alert">The matching plan preview is unavailable. Decline this request.</p>
                 ) : (
                   <details className="gcs-approval-arguments" open>
@@ -1008,7 +1030,8 @@ export default function MissionControl() {
                     className="gcs-primary"
                     disabled={
                       !enabled ||
-                      (['request_launch', 'apply_plan_change'].includes(approval.name) && !pendingPlan)
+                      (['request_launch', 'apply_plan_change', 'apply_proposal'].includes(approval.name) &&
+                        !pendingPlan)
                     }
                     onClick={() => send({ type: 'approval', id: approval.id, approved: true })}
                   >
@@ -1050,6 +1073,19 @@ export default function MissionControl() {
               <span>
                 <i className="gcs-status-dot" />
                 Wonder
+                {state && (
+                  <select
+                    aria-label="Reasoning effort"
+                    value={state.effort}
+                    onChange={(e) => send({ type: 'set_effort', effort: e.target.value })}
+                  >
+                    {EFFORTS.map((effort) => (
+                      <option key={effort} value={effort}>
+                        {effort}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </span>
               <button
                 type="button"

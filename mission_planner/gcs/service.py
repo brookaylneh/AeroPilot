@@ -5,6 +5,7 @@ import copy
 import json
 import math
 import os
+import re
 import time
 import traceback
 import uuid
@@ -15,7 +16,7 @@ import httpx
 from pymavlink.dialects.v20 import ardupilotmega as MAV
 
 from mission_planner.agents.map_context import compact_map, ground_height, ground_profile
-from mission_planner.agents.models import Wonder, data_url
+from mission_planner.agents.models import EFFORTS, Wonder, data_url
 from mission_planner.agents.tools import (
     AGENT_INSTRUCTIONS,
     CATEGORIES,
@@ -24,6 +25,9 @@ from mission_planner.agents.tools import (
     validate_arguments,
 )
 from mission_planner.environment import ROOT
+from mission_planner.gcs.allocation import APPROVAL_HOVER_S
+from mission_planner.gcs.battery import available_seconds
+from mission_planner.gcs.expansion import EXPANSION_LEAD_S, due, expansion_request, reassignment
 from mission_planner.gcs.fences import BOUNDARY_CLEARANCE_M, validate_fences
 from mission_planner.gcs.fleet import Fleet
 from mission_planner.gcs.geodesy import (
@@ -37,7 +41,6 @@ from mission_planner.gcs.geodesy import (
     ORIGIN,
 )
 from mission_planner.gcs.inspection import Inspections
-from mission_planner.gcs.planner import divide_survey, expanding_square
 from mission_planner.gcs.rejection import PlanRejected
 from mission_planner.gcs.validation import CLEARANCE_M
 from mission_planner.gcs.waiting import ready, validate_conditions
@@ -55,16 +58,24 @@ MESSAGE_FIELDS = {
     "tool": {"type", "name", "arguments"},
     "approval": {"type", "id", "approved"},
     "export_plan": {"type", "drone_id"},
+    "reset_batteries": {"type"},
+    "set_effort": {"type", "effort"},
     "set_fences": {"type", "fences"},
 }
 
 
-PLAN_TOOLS = ("preview_plan", "request_launch", "apply_plan_change")
+PLAN_TOOLS = ("plan_task", "preview_plan", "request_launch", "apply_plan_change", "apply_proposal")
+TASKING_EXTRAS = ("tasking", "region", "sectors", "fit", "rationale")
+CONTEXT_PREFIX = "Current mission context (live system state, not an operator message): "
+# The browser sends an operator's map click as this chat line.
+MAP_POINT = re.compile(r"Use the map point at (-?\d+\.\d+) m north, (-?\d+\.\d+) m east\.")
 
 
 def requested_version(name, arguments):
     """The plan version a plan tool asked for, when the request carried one."""
     holder = arguments
+    if name == "plan_task":
+        holder = None
     if name == "preview_plan":
         holder = arguments["plan"] if isinstance(arguments, dict) and "plan" in arguments else None
     if isinstance(holder, dict) and "version" in holder and type(holder["version"]) is int:
@@ -122,6 +133,9 @@ def planning_vehicle(vehicle):
         "heading_deg": vehicle["heading_deg"],
         "climb_rate_mps": vehicle["climb_rate_mps"],
         "battery_percent": vehicle["battery_percent"],
+        "usable_flight_s": None
+        if vehicle["battery_percent"] is None
+        else available_seconds(vehicle["battery_percent"]),
         "home": vehicle["home"],
         "height_above_ground_m": vehicle["home"]["altitude_msl_m"]
         - ORIGIN["altitude_msl_m"]
@@ -131,10 +145,25 @@ def planning_vehicle(vehicle):
 
 
 def planning_receipt(receipt):
+    """The receipt for Wonder: no mission items, routes, windows or polygon vertex lists."""
     if receipt is None:
         return None
+    compact = {key: value for key, value in receipt.items() if key != "missions"}
+    if "region" in compact and "bands" in compact["region"]:
+        compact["region"] = {
+            **compact["region"],
+            "bands": [
+                {key: value for key, value in band.items() if key != "polygon"}
+                for band in compact["region"]["bands"]
+            ],
+        }
+    if "sectors" in compact:
+        compact["sectors"] = [
+            {key: value for key, value in sector.items() if key != "polygons"}
+            for sector in compact["sectors"]
+        ]
     return {
-        **{key: value for key, value in receipt.items() if key != "missions"},
+        **compact,
         "missions": {
             name: {
                 **{
@@ -142,7 +171,7 @@ def planning_receipt(receipt):
                     if key == "step_ranges"
                     else value
                     for key, value in mission.items()
-                    if key not in ("items", "route")
+                    if key not in ("items", "route", "windows")
                 },
                 "route_points": len(mission["route"]),
             }
@@ -194,30 +223,25 @@ def planning_inspection(row, landmarks):
     return result
 
 
-def planning_instructions(instructions, context):
-    landmarks = context["map"]
-    return (
-        instructions
-        + "\nCurrent mission context: "
-        + encode(
-            {
-                **context,
-                "map": compact_map(landmarks),
-                "inspections": [
-                    planning_inspection(row, landmarks) for row in context["inspections"]
-                ],
-            }
-        )
-    )
+def planning_instructions(instructions, landmarks):
+    """The static request prefix: the brief and the public map, identical on every turn."""
+    return instructions + "\nPublic map: " + encode(compact_map(landmarks))
+
+
+def live_context(context, landmarks):
+    """The live mission state travels as the newest input item, after the cacheable prefix."""
+    rows = [planning_inspection(row, landmarks) for row in context["inspections"]]
+    text = CONTEXT_PREFIX + encode({**context, "inspections": rows})
+    return {"role": "user", "content": [{"type": "input_text", "text": text}]}
 
 
 def planning_result(name, result):
     if not result["ok"]:
         return result
     state = result["state"]
-    if name == "preview_plan":
+    if name in ("preview_plan", "plan_task"):
         state = planning_receipt(state)
-    elif name in ("request_launch", "apply_plan_change"):
+    elif name in ("request_launch", "apply_plan_change", "apply_proposal"):
         state = {
             **state,
             "receipt": planning_receipt(state["receipt"]),
@@ -231,6 +255,17 @@ def planning_result(name, result):
         places = compact_map(state["matches"])
         state = {**state, "matches": places["places"], "coordinates": places["coordinates"]}
     return {**result, "state": state}
+
+
+def wake_message(wake):
+    """Wake payloads stay in the transcript; vehicles keep only their compact state."""
+    if "results" not in wake:
+        return wake
+    rows = [
+        {**row, "vehicle": compact_vehicle(row["vehicle"])} if "vehicle" in row else row
+        for row in wake["results"]
+    ]
+    return {**wake, "results": rows}
 
 
 def retire_images(history):
@@ -247,7 +282,9 @@ def flight_constraints(vehicles):
         "minimum_clearance_m": CLEARANCE_M,
         "boundary_clearance_m": BOUNDARY_CLEARANCE_M,
         "minimum_separation_m": MIN_SEPARATION_M,
-        "separation": "Complete 3D routes and takeoff/landing columns, independent of timing",
+        "separation": "Observed steps, hovers and takeoff/landing columns reserve space independent "
+        "of timing; unobserved transit before a drone's first observed step is separated in time",
+        "approval_hover_s": APPROVAL_HOVER_S,
         "fences": {vehicle["id"]: vehicle["fence"] for vehicle in vehicles},
     }
 
@@ -298,6 +335,7 @@ class Mission:
         self.active = active
         self.case = case
         self.id = str(uuid.uuid4())
+        self.effort = "high"
         self.directory = ROOT / ".local/data/missions" / self.id
         self.directory.mkdir(parents=True, exist_ok=False)
         self.log = (self.directory / "events.jsonl").open("x")
@@ -323,6 +361,10 @@ class Mission:
         self.plan_previous = None
         self.plan_trigger = None
         self.step_clock = {}
+        # Aircraft braked by an operator override or a pending launch approval; a wait on their
+        # steps keeps waiting instead of reporting a stopped flight.
+        self.holds = set()
+        self.proposal = None
         self.conversation = []
         self.plan_task = None
         self.fence_change = False
@@ -467,12 +509,15 @@ class Mission:
             text = f"Flight fences v{item['fences']['version']} · {item['stage']}"
         elif kind == "sitl_ports_verified":
             text = "SITL listener ports verified"
+        elif kind == "battery_reset":
+            text = "Simulator batteries reset to 100 % on " + ", ".join(item["drone_ids"])
         elif kind == "home_comparison":
             text = f"{item['drone_id']} home position error {item['home_error_m']:.3f} m"
         elif kind == "plan_swap":
             if item["stage"] == "holding":
                 self.cancel_wait("Flight plan changed")
                 self.inspections.invalidate("Flight plan changed")
+                self.proposal = None
                 for name in item["drone_ids"]:
                     if name in self.return_tasks:
                         self.cancel_return(name, "Flight plan changed")
@@ -481,13 +526,25 @@ class Mission:
                 self.inspections.invalidate("Flight plan changed")
                 self.plan_previous = self.plan_active
                 self.plan_active = item["receipt"]
+                if (
+                    self.plan_preview is not None
+                    and self.plan_preview["plan"] == self.plan_active["plan"]
+                ):
+                    # The fleet recompiles the plan; the tasking receipt's extras describe it.
+                    for key in TASKING_EXTRAS:
+                        if key in self.plan_preview:
+                            self.plan_active[key] = self.plan_preview[key]
                 self.plan_preview = None
                 self.step_clock.clear()
+                self.holds.difference_update(
+                    branch["drone_id"] for branch in self.plan_active["plan"]["drones"]
+                )
                 launching = {
                     branch["drone_id"]
                     for branch in self.plan_active["plan"]["drones"]
                     if branch["steps"][0]["kind"] == "takeoff"
                 }
+                self.inspections.reset_lock(launching)
                 self.autopilot_alerts = {
                     key: alert
                     for key, alert in self.autopilot_alerts.items()
@@ -587,6 +644,7 @@ class Mission:
             "agent_busy": self.agent_busy,
             "agent_wait": self.agent_wait,
             "chat_ready": self.chat_ready(),
+            "effort": self.effort,
             "inspections": self.inspections.snapshot(),
             "approvals": [item["card"] for item in self.approvals.values()],
             "map_focus": self.map_focus,
@@ -732,11 +790,13 @@ class Mission:
         assert not self.fence_change, "Flight fences are being saved; wait for verification"
         assert self.fleet_ready, "MAVLink fleet is unavailable"
         assert self.plan_task is None, "A plan operation is already in progress"
-        if name == "preview_plan":
+        if name in ("preview_plan", "plan_task"):
             assert not any(
-                card["card"]["name"] == "request_launch" for card in self.approvals.values()
-            ), "Resolve the pending launch approval before replacing its preview"
+                card["card"]["name"] in ("request_launch", "apply_proposal")
+                for card in self.approvals.values()
+            ), "Resolve the pending approval before replacing its preview"
             self.plan_preview = None
+            self.proposal = None
             operator = next((e for e in reversed(self.events) if e["kind"] == "operator"), None)
             if source == "agent":
                 assert operator is not None, "Wonder planning requires a preceding operator message"
@@ -748,6 +808,28 @@ class Mission:
             else:
                 self.plan_trigger = {"source": source, "event_id": call_id, "text": None}
         validate_arguments(name, arguments)
+        if name == "plan_task":
+            version = 1 if self.plan_active is None else self.plan_active["plan"]["version"] + 1
+            self.plan_task = asyncio.current_task()
+            try:
+                receipt = await self.fleet.preview_task(
+                    arguments["tasking"], version, self.operator_points()
+                )
+            except PlanRejected as error:
+                error.rejection["version"] = version
+                raise
+            finally:
+                if self.plan_task is asyncio.current_task():
+                    self.plan_task = None
+            self.check_participants(receipt["plan"])
+            self.plan_preview = receipt
+            return {
+                **receipt,
+                "missions": {
+                    drone: {key: value for key, value in mission.items() if key != "items"}
+                    for drone, mission in receipt["missions"].items()
+                },
+            }
         if name == "preview_plan":
             plan = arguments["plan"]
             if (
@@ -764,19 +846,7 @@ class Mission:
                         "active": self.plan_active["plan"]["version"],
                     },
                 )
-            participants = {p["drone_id"] for p in plan["drones"]}
-            if self.plan_active is not None:
-                flying = {
-                    v["id"]
-                    for v in self.vehicles()
-                    if v["armed"] and v["id"] in self.plan_active["missions"]
-                }
-                if not flying <= participants:
-                    raise PlanRejected(
-                        "participants",
-                        "Change must include every active drone's remaining plan",
-                        detail={"missing": sorted(flying - participants)},
-                    )
+            self.check_participants(plan)
             self.plan_task = asyncio.current_task()
             try:
                 receipt = await self.fleet.preview_plan(plan)
@@ -791,6 +861,13 @@ class Mission:
                     for drone, mission in receipt["missions"].items()
                 },
             }
+        if name == "apply_proposal":
+            assert self.proposal is not None and self.proposal["kind"] == "expansion", (
+                "No search expansion proposal is pending"
+            )
+            assert self.proposal["version"] == arguments["version"], (
+                "The proposal has another version"
+            )
         receipt = self.plan_preview
         assert receipt is not None and arguments["version"] == receipt["plan"]["version"], (
             "Preview this plan version successfully before applying it"
@@ -803,9 +880,25 @@ class Mission:
         try:
             states = [v for v in self.vehicles() if v["id"] in aircraft]
             launches = any(not v["armed"] for v in states)
-            assert name == ("request_launch" if launches else "apply_plan_change"), (
-                "Use request_launch for a plan that launches a drone; otherwise use apply_plan_change"
-            )
+            if name == "apply_proposal":
+                assert not launches, "A search expansion keeps every participant airborne"
+                band = self.proposal["band_index"]
+                try:
+                    await self.approve(
+                        name,
+                        arguments,
+                        source,
+                        call_id,
+                        f"Plan {arguments['version']} · search expansion to band {band} awaiting "
+                        "operator approval",
+                    )
+                finally:
+                    self.proposal = None
+            else:
+                assert name == ("request_launch" if launches else "apply_plan_change"), (
+                    "Use request_launch for a plan that launches a drone; otherwise use "
+                    "apply_plan_change"
+                )
             if launches:
                 await self.fleet.preview_plan(receipt["plan"])
                 await self.cancel_returns(aircraft, "Flight launch awaiting approval")
@@ -814,6 +907,7 @@ class Mission:
                 for vehicle in states:
                     if vehicle["armed"]:
                         await self.fleet.execute("hold", {"drone_id": vehicle["id"]})
+                        self.holds.add(vehicle["id"])
                 await self.approve(
                     name,
                     arguments,
@@ -839,6 +933,34 @@ class Mission:
                 self.plan_task = None
             if self.plan_active is not None and self.plan_active is not active_before:
                 self.launch(self.watch_plan(self.plan_active))
+
+    def check_participants(self, plan):
+        if self.plan_active is None:
+            return
+        participants = {p["drone_id"] for p in plan["drones"]}
+        flying = {
+            v["id"]
+            for v in self.vehicles()
+            if v["armed"] and v["id"] in self.plan_active["missions"]
+        }
+        if not flying <= participants:
+            raise PlanRejected(
+                "participants",
+                "Change must include every active drone's remaining plan",
+                detail={"missing": sorted(flying - participants)},
+            )
+
+    def operator_points(self):
+        """Map points the operator clicked in the current chat, oldest first."""
+        reset = max((e["sequence"] for e in self.events if e["kind"] == "chat_reset"), default=0)
+        points = []
+        for event in self.events:
+            if event["kind"] != "operator" or event["sequence"] <= reset:
+                continue
+            match = MAP_POINT.fullmatch(event["text"].strip())
+            if match is not None:
+                points.append({"north_m": float(match[1]), "east_m": float(match[2])})
+        return points
 
     async def approve(self, name, arguments, source, call_id, text):
         approval_id = str(uuid.uuid4())
@@ -871,7 +993,7 @@ class Mission:
 
     async def execute(self, name, arguments, source, call_id):
         assert not self.fence_change, "Flight fences are being saved; wait for verification"
-        if name in ("preview_plan", "request_launch", "apply_plan_change"):
+        if name in PLAN_TOOLS:
             return await self.execute_plan(name, arguments, source, call_id)
         validate_arguments(name, arguments)
         if name == "return_fleet":
@@ -969,10 +1091,6 @@ class Mission:
                 return self.inspections.stop(arguments["drone_id"], "Stopped by " + source)
             assert source == "agent", "Only Wonder can schedule its next turn"
             return self.schedule_wait(**arguments)
-        if name == "expanding_square":
-            return expanding_square(**arguments)
-        if name == "divide_survey":
-            return divide_survey(**arguments)
         if name == "ground_height":
             return ground_height(**arguments)
         if name == "ground_profile":
@@ -1097,6 +1215,11 @@ class Mission:
                 source=source,
             )
             state = await self.fleet.execute("hold" if name == "stop" else name, arguments)
+            if override:
+                if name in ("hold", "stop"):
+                    self.holds.add(arguments["drone_id"])
+                else:
+                    self.holds.discard(arguments["drone_id"])
             return {**compact_vehicle(state), "acknowledged_command": name}
         finally:
             self.active_flight.difference_update(aircraft)
@@ -1256,9 +1379,12 @@ class Mission:
                         if isinstance(error, PlanRejected)
                         else PlanRejected("compile", operator_error(error))
                     )
+                    version = rejected.rejection["version"]
                     result["rejection"] = {
                         **rejected.rejection,
-                        "version": requested_version(name, arguments),
+                        "version": requested_version(name, arguments)
+                        if version is None
+                        else version,
                     }
             self.event(
                 "tool_result",
@@ -1290,7 +1416,6 @@ class Mission:
         context = {
             "fence_version": self.fleet.fences["version"],
             "flight_constraints": flight_constraints(vehicles),
-            "map": self.landmarks,
             "briefing": None if self.case is None else {"brief": self.case["report"]["brief"]},
             "planner": planning_context(self.planner_state()),
             "inspections": self.inspections.snapshot(),
@@ -1354,7 +1479,7 @@ class Mission:
                 if event["source"] == "operator" and event["kind"] in ("tool_result", "mode")
             ][-8:],
         }
-        return AGENT_INSTRUCTIONS, copy.deepcopy(context)
+        return copy.deepcopy(context)
 
     def decision_state(self):
         inspections = []
@@ -1395,9 +1520,36 @@ class Mission:
                             row["pending"] = False
                     for row in rows:
                         self.inspections.acknowledge(row["id"])
+                    failed = [
+                        row["drone_id"]
+                        for row in rows
+                        if row["status"] == "failed"
+                        and row["drone_id"] in receipt["missions"]
+                        and self.unfinished_work(receipt, row["drone_id"])
+                    ]
+                    if failed and self.plan_preview is None and not self.approvals:
+                        wake["proposal"] = await self.propose_reassignment(receipt, failed[0])
                     self.event(
                         "mode", "Wonder reviewing mission events", result=wake, source="agent"
                     )
+                    self.agent_busy = True
+                    self.agent_task = self.launch(self.agent(None, wake=wake))
+                elif (
+                    self.plan_preview is None
+                    and self.proposal is None
+                    and not self.approvals
+                    and not self.holds
+                    and "tasking" in receipt
+                    and due(
+                        receipt,
+                        self.planner_state()["progress"],
+                        self.vehicles(),
+                        self.lead_s(receipt),
+                    )
+                ):
+                    self.cancel_wait("Search expansion proposed")
+                    wake = {"reason": "proposal", "proposal": await self.propose_expansion(receipt)}
+                    self.event("mode", "Wonder reviewing a proposal", result=wake, source="agent")
                     self.agent_busy = True
                     self.agent_task = self.launch(self.agent(None, wake=wake))
             vehicles = [v for v in self.vehicles() if v["id"] in receipt["missions"]]
@@ -1410,6 +1562,82 @@ class Mission:
             ):
                 return
             await asyncio.sleep(0.1)
+
+    def lead_s(self, receipt):
+        lead = receipt["tasking"]["expansion"]["lead_seconds"]
+        return EXPANSION_LEAD_S if lead is None else lead
+
+    def unfinished_work(self, receipt, name):
+        progress = self.planner_state()["progress"]
+        if name not in progress or progress[name]["current_step"] is None:
+            return False
+        steps = next(b["steps"] for b in receipt["plan"]["drones"] if b["drone_id"] == name)
+        return any(step["kind"] == "survey" for step in steps[progress[name]["current_step"] :])
+
+    async def propose_expansion(self, receipt):
+        """Compile the next band for the airborne fleet as the pending preview, or record why not.
+
+        The result is stored once per active plan; a rejection is not retried, Wonder decides.
+        """
+        version = receipt["plan"]["version"] + 1
+        tasking, searched, continuing = expansion_request(
+            receipt, self.planner_state()["progress"], self.vehicles()
+        )
+        self.plan_task = asyncio.current_task()
+        try:
+            compiled = await self.fleet.preview_task(
+                tasking, version, self.operator_points(), searched, continuing
+            )
+        except PlanRejected as error:
+            error.rejection["version"] = version
+            self.proposal = {"kind": "expansion", "version": version, "rejection": error.rejection}
+            self.event(
+                "plan_version", f"Plan {version} · expansion not possible", result=self.proposal
+            )
+            return dict(self.proposal)
+        finally:
+            if self.plan_task is asyncio.current_task():
+                self.plan_task = None
+        self.plan_preview = compiled
+        band = next(b["index"] for b in compiled["region"]["bands"] if b["status"] == "planned")
+        self.proposal = {"kind": "expansion", "version": version, "band_index": band}
+        self.event(
+            "plan_version",
+            f"Plan {version} · expansion to band {band} proposed",
+            result={**self.proposal, "receipt": compiled},
+        )
+        return {**self.proposal, "receipt": planning_receipt(compiled)}
+
+    async def propose_reassignment(self, receipt, failed):
+        """Compile a remaining plan that sends the failed drone home and hands its rows on."""
+        version = receipt["plan"]["version"] + 1
+        self.plan_task = asyncio.current_task()
+        try:
+            request = reassignment(
+                receipt, self.planner_state()["progress"], self.vehicles(), failed
+            )
+            compiled = await self.fleet.preview_plan(request)
+        except (PlanRejected, AssertionError) as error:
+            rejected = (
+                error
+                if isinstance(error, PlanRejected)
+                else PlanRejected("compile", operator_error(error))
+            )
+            rejected.rejection["version"] = version
+            result = {"kind": "reassignment", "failed": failed, "rejection": rejected.rejection}
+            self.event("plan_version", f"Plan {version} · reassignment not possible", result=result)
+            return result
+        finally:
+            if self.plan_task is asyncio.current_task():
+                self.plan_task = None
+        self.plan_preview = compiled
+        self.proposal = {"kind": "reassignment", "version": version, "failed": failed}
+        self.event(
+            "plan_version",
+            f"Plan {version} · reassignment after {failed} sensing failure proposed",
+            result={**self.proposal, "receipt": compiled},
+        )
+        return {**self.proposal, "receipt": planning_receipt(compiled)}
 
     async def interrupt_agent(self, reason):
         if self.agent_task is None:
@@ -1488,6 +1716,7 @@ class Mission:
                 self.planner_state(),
                 self.vehicles(),
                 self.inspections.snapshot(),
+                self.holds,
             )
             if result is None and time.monotonic() >= deadline:
                 result = {"reason": "deadline", "description": waiting["description"]}
@@ -1516,7 +1745,8 @@ class Mission:
             content = [
                 {
                     "type": "input_text",
-                    "text": "Automatic mission event; continue the agreed task. " + encode(wake),
+                    "text": "Automatic mission event; continue the agreed task. "
+                    + encode(wake_message(wake)),
                 }
             ]
             if wake["reason"] in ("condition", "rescue"):
@@ -1550,7 +1780,10 @@ class Mission:
             trace = self.directory / f"response-{time.time_ns()}"
             call_started = time.monotonic()
             try:
-                instructions = await asyncio.to_thread(planning_instructions, *self.context())
+                instructions = await asyncio.to_thread(
+                    planning_instructions, AGENT_INSTRUCTIONS, self.landmarks
+                )
+                live = await asyncio.to_thread(live_context, self.context(), self.landmarks)
             except Exception as error:
                 raise RuntimeError(
                     "Wonder context preparation failed: " + operator_error(error)
@@ -1561,11 +1794,12 @@ class Mission:
                     self.model.respond,
                     None,
                     [],
-                    "high",
+                    self.effort,
                     TOOLS,
                     instructions=instructions,
                     trace_path=trace,
-                    history=tuple(self.conversation),
+                    history=(*self.conversation, live),
+                    cache_key=self.id,
                 )
             )
             try:
@@ -1600,6 +1834,7 @@ class Mission:
                     "elapsed_s": time.monotonic() - call_started,
                     "context_preparation_s": context_preparation_s,
                     "input_tokens": response["usage"]["input_tokens"],
+                    "cached_tokens": response["usage"]["input_tokens_details"]["cached_tokens"],
                     "output_tokens": response["usage"]["output_tokens"],
                     "reasoning_tokens": response["usage"]["output_tokens_details"][
                         "reasoning_tokens"
@@ -1803,6 +2038,12 @@ class Mission:
             await websocket.send(
                 encode({"type": "fence_result", "version": fences["version"], "error": None})
             )
+        elif kind == "reset_batteries":
+            assert self.fleet_ready, "MAVLink fleet is unavailable"
+            assert self.chat_ready(), (
+                "Battery reset needs every drone landed and disarmed at its home pad"
+            )
+            await self.fleet.reset_batteries()
         elif kind == "export_plan":
             assert message["drone_id"] in NAMES, "Unknown drone: " + message["drone_id"]
             assert self.fleet_ready, "MAVLink fleet is unavailable"
@@ -1810,6 +2051,10 @@ class Mission:
             await websocket.send(
                 encode({"type": "plan", "drone_id": message["drone_id"], "plan": plan})
             )
+        elif kind == "set_effort":
+            assert message["effort"] in EFFORTS, "Unknown reasoning effort"
+            self.effort = message["effort"]
+            self.event("mode", "Reasoning effort set to " + self.effort, source="operator")
         else:
             raise AssertionError("Mission is already connected")
 

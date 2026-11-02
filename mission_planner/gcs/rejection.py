@@ -82,6 +82,11 @@ def conflict_text(conflict):
             f"{point['altitude_above_home_m']:.3f} m above home"
         )
 
+    closing = (
+        "Both legs are unobserved transit whose time windows overlap within the margin."
+        if conflict["timing"]["applied"]
+        else "Observed steps, hovers and launch or landing columns reserve space regardless of timing."
+    )
     return (
         f"{leg('')} conflicts with {leg('other_')}; "
         f"minimum separation {conflict['minimum_m']:g} m, "
@@ -91,7 +96,8 @@ def conflict_text(conflict):
             + " → ".join(position(point) for point in conflict[prefix + "segment"])
             for prefix in ("", "other_")
         )
-        + ". Entire routes reserve space regardless of timing."
+        + ". "
+        + closing
     )
 
 

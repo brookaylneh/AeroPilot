@@ -311,10 +311,51 @@ The browser validates the structure of preview, active and previous plans, inclu
 arbitrary simple sensing polygons; route, circle, mixed and return-only changes retain telemetry.
 Flight geometry and execution authority remain backend checks.
 
-Wonder builds and previews a plan directly when the destination and objective are clear.
-The checked plan states any proposed details and goes straight to the single launch
-approval; no separate text-proposal confirmation is required. Genuine ambiguity still
-requires a question. Pure compilation
+### Tasking and generated plans
+
+Wonder never writes coordinates. `plan_task(tasking)` states the task (`area_search`,
+`datum_search`, `route_search`, `boundary_check`, `point_inspection`, `transit`,
+`waypoint_route`), the subject to detect, references (landmark ids, operator-clicked map points
+or an operator polygon, the briefing's direction of travel and subject category), the fleet,
+settings (null takes the disclosed defaults), the aftermath, the region options and the
+expansion policy. `tasking.py` validates it, `region.py` sizes doctrine search bands from the
+published ISRID distance and dispersion tables (child, hiker, dementia; elderly and unknown need
+an explicit radius), `allocation.py` cuts each band into equal-flight-time strips parallel to the
+sweep with departure lanes and 8 m altitude layers in the fixed order Drone1, Drone3, Drone2,
+Drone4, and `compile_plan` proves the result. The sizing loop uses the compiler's own step timing
+(compiled durations run 18–32 % above a single-leg estimate because every terrain-following
+waypoint carries its own speed ramps). Code assigns the plan version as the active version plus
+one. The receipt adds `tasking`, `region` (bands with status previous, planned, provisional or
+outside endurance), `sectors`, `fit` (usable, planned and headroom seconds per drone) and
+`rationale`; coverage is measured against the planned band. Sizing cost grows with the band's
+vertex count and row count: in the 2026-11-02 evaluation run a half-sortie band planned in 2–9 s,
+while a whole-sortie band around the 1.15 km fire road took 127–140 s
+(`measurements/tasking-planner.json`); the strip partition is the dominant cost.
+
+Every rejection is structured: `rule`, `drone_id`, zero-based `step_index`, `step_kind`, prose
+with one-based steps, `detail` and, for separation, the `conflict`. Rules are schema, version,
+participants, aircraft_state, fence, altitude, terrain_clearance, obstacle_clearance,
+separation, battery, aftermath, observation_area, spacing_overlap, coverage, transit_ceiling,
+lane_blocked, band_behind_pads, disconnected_sector, endurance, no_distance_table, reference
+and compile. Nothing shrinks, retries or reroutes silently; Wonder changes the named field.
+
+With `expansion.automatic_proposals` the first band takes half the sortie and ends in a 180 s
+approval hover. As the drones come within 240 s of finishing their rows, `expansion.py` asks the
+tasking planner for the next band over the unsearched cells, from live positions and batteries,
+with each drone's unfinished rows flown first and a layered join to its new strip; drones without
+endurance for a strip return home. Wonder reviews the proposal and calls `apply_proposal`, which
+raises an operator approval card; a decline leaves the compiled hover and return in place. After a
+sensing failure the watcher compiles a reassignment: the failed drone flies its exit lane home and
+its rows beyond the one it stopped on join the drone with the most headroom; Wonder applies it
+with `apply_plan_change` without approval. The simulator battery never recharges, so the fleet
+strip offers **Reset simulator batteries** while every drone is landed at base: the patched SITL
+re-initialises its state of charge when `SIM_BATT_VOLTAGE` changes and the autopilot's consumed
+charge is reset (`measurements/gcs-sitl-battery-reset.json`). Operator controls keep the raw
+`preview_plan` compile for hand-written plans.
+
+Wonder calls `plan_task` directly when the destination and objective are clear. The checked plan
+states any proposed details and goes straight to the single launch approval; no separate
+text-proposal confirmation is required. Genuine ambiguity still requires a question. Pure compilation
 uses the existing terrain-leg expansion and checks the exact encoded mission route against
 the read-back fence, altitude band, continuous terrain, raised footprints, spatial fleet
 reservations and battery budget. Open slopes and single-point holds receive the same
@@ -348,17 +389,20 @@ preceding `fly` steps. Code never chooses a detour.
 
 Separation failures include both drones, the measured and required distances, both
 segment endpoints and their plan steps. Structured indices are zero-based; chat uses
-one-based step numbers. The map draws the two rejected legs without replacing active
+one-based step numbers. Unobserved transit flown before a drone's first observed step carries a
+time window; two such legs may cross when their windows are more than 30 s apart. Observed steps,
+hovers, holds and launch or landing columns reserve space regardless of timing. The map draws the two rejected legs without replacing active
 routes. A new preview clears that diagnostic and invalidates any earlier preview's
 launch authority; rejected previews leave active flights and inspections unchanged.
 Tool cards display the canonical submitted steps, including failed plans. Schema
 errors identify the field and limit without echoing the whole request.
 
-For a multi-aircraft departure, moving outward at each aircraft's own home northing into
-separate lanes is a useful proposal. The actual homes, fence and destination determine lane
-positions and return approaches. Different transit heights can separate horizontal paths but
-cannot remove crossings through another aircraft's takeoff or landing column. The complete
-outbound, task and homebound routes must pass preview; no pad ordering or detour is mandatory.
+Generated plans depart by lane: each drone climbs at its pad to its own layer, flies north to
+its own row (20 m plus 12 m per lane) and straight to its strip entry; returns reverse the lane.
+Front pads take the low layers so rear pads cross their columns above them. Different transit
+heights separate horizontal paths but cannot remove crossings through another aircraft's takeoff
+or landing column, so a band overlapping the pads is rejected. The complete outbound, task and
+homebound routes must pass preview.
 
 `request_launch(version)` submits the successful preview for approval. Applying a change
 checks current state while the old mission flies, then BRAKEs the participants, waits for
@@ -368,7 +412,9 @@ Upload/read-back failures leave airborne participants in BRAKE. Overrides cancel
 Wonder conversation, approval and upload work before issuing their command. A blocking
 HTTP call may finish writing its raw trace after cancellation; its response cannot dispatch
 tools or change conversation history. Operator overrides clear the local conversation,
-and a new chat uses current mission facts.
+and a new chat uses current mission facts. The composer's reasoning-effort picker beside the
+model name (`set_effort`: low, medium or high; each mission starts at high) applies to every
+following Wonder request, including automatic wakes.
 Verified uploads become the active
 receipt before individual AUTO starts, so a later start failure does not imply rollback.
 Every version, trigger, state and result is recorded in the mission event log.
@@ -731,54 +777,45 @@ capture rate for each drone.
 
 ## Automatic observation and candidate lock
 
-General tasks and Studio briefings use the normal `preview_plan` and `request_launch` workflow.
-For a missing-person area search, Wonder prefers all four healthy available aircraft
-and adjoining zigzag sectors covering its chosen perimeter. It chooses bounds from the
-public briefing and map. A different pattern, fewer drones or partial coverage remains a
-valid choice when justified; Wonder must explain the reason and unassigned area before
-approval. No private scenario placement is supplied to planning.
-For other flights Wonder chooses the aircraft, pattern and visible target for the task. `observe: true` is optional
-on finite `fly`, `follow`, `survey` and `circle` steps; ordinary movement starts no automatic sensing.
-Observed steps require `plan.search`, whose `perimeter` is a simple polygon with 3–100 unique vertices
-and implicit closure. There is no rectangle, fixed aircraft count or tiling requirement.
-Observed survey polygons and their connectors must remain inside their observation area; a concave
-gap requires separate pattern pieces joined by explicit unobserved transit. The map draws the
-perimeter and assigned observed-step survey fills, preserving all routes. Approval shows the target,
-observing aircraft count and each step's observation mode. Return-only plans remain valid.
+General tasks and Studio briefings use the `plan_task` and `request_launch` workflow. For a
+missing-person area search the tasking names the Point Last Seen landmark, the reported direction
+of travel and the subject category; code builds the doctrine region, uses every healthy aircraft
+unless the operator restricts the fleet, and proves full coverage of the planned band (strips
+drop slivers below one row pitch squared, so a complete band measures just under 100 %). No
+private scenario placement is supplied to planning. Route searches, boundary checks and point
+inspections observe only when a subject is given; transit and waypoint routes start no sensing.
+Observed steps require `plan.search`, whose `perimeter` is a simple polygon of 3–400 unique
+vertices with implicit closure; an expansion hulls the new band with the unfinished rows of the
+previous one. Observed survey pattern points must lie inside their observation area. The map
+draws the search bands, the perimeter and assigned observed-step survey fills, preserving all
+routes. Approval shows the task, rationale, band, coverage, per-drone fit and each step.
 
-The policy contains a Wonder-chosen SAM noun phrase in `detector_prompt`, `threshold`, the structured
+The policy contains the SAM noun phrase in `detector_prompt`, `threshold`, the structured
 reviewer `look_for` brief, horizontal `stand_off_m`, tracking `speed_mps`, camera
-`look_ahead_m`, and `max_lock_seconds`. The latter is the total per-drone interruption allowance,
-including review and return to saved route progress; preview reserves it in the battery budget.
-Automatic candidates share that plan-version allowance. Failed or cancelled
-acquisition time counts, and a new inspection cannot reset it. The perimeter and detector score make
-no containment, identity or calibrated probability claim.
+`look_ahead_m`, and `max_lock_seconds`. The latter is the total per-aircraft interruption
+allowance for one flight, including review and return to saved route progress; preview reserves
+it in the battery budget. Mid-flight plan changes keep the time already spent; a relaunch from
+the ground resets it. Failed or cancelled acquisition time counts, and a new inspection cannot
+reset it. The perimeter and detector score make no containment, identity or calibrated
+probability claim.
 
-For this operator's missing-person surveys, the disclosed defaults are **30 m AGL, 5 m/s, fixed 1× camera,
-20 m line spacing and 20 m camera look-ahead**. Other tasks use separately chosen settings.
-Observed surveys require one-third nominal horizontal overlap under the flat-ground 90° camera
-model: spacing ≤ 4 × survey height / 3. This checks a planning constraint, not actual
-visibility or recognition accuracy. Takeoff, transit and return heights remain explicit choices;
-changed settings require a new previewed plan version.
+The disclosed search defaults are **30 m AGL, 5 m/s, 10 m/s transit, 20 m line spacing, fixed 1× camera,
+20 m camera look-ahead, 20 m stand-off and a 180 s candidate allowance**; point inspections use
+40 m and transit 40 m at 10 m/s. Observed surveys require one-third nominal horizontal overlap
+under the flat-ground 90° camera model: spacing ≤ 4 × survey height / 3. This checks a
+planning constraint, not actual visibility or recognition accuracy. Changed settings require a
+new tasking.
 
 `survey` expresses parallel-track or creeping-line passes. Bearings run clockwise from north;
 rows start on the minimum cross-axis side, with cross = −north × sin(bearing) + east × cos(bearing).
-Using `(bearing_deg + 180) % 360` reverses the starting side. `follow` traces a chosen route.
-`divide_survey(drone_ids, polygon, spacing_m, bearing_deg, height_m, speed_mps)` partitions
-Wonder's polygon into adjacent equal-width cross-track strips in the supplied aircraft
-order, returning ordinary observed survey steps. It does not choose aircraft, bounds,
-ingress, aftermath or fence avoidance. A disconnected split fails with its exact reason.
-Survey rows divide each sector's full cross-track width evenly, no farther apart than
-`spacing_m`, with half-spacing edge margins; a fractional final strip no longer loses a pass.
-Optional `survey.start_at` continues at a zero-based pattern endpoint. Per-step mission
-sequence mappings supply `progress.survey_start_at` from current telemetry, so Wonder can
-retain unfinished passes during speed-only changes. Dense mappings remain outside
-model context. Continuation still compiles and checks the route from the actual aircraft
-position through the existing upload/readback path.
-`expanding_square` returns an ordinary follow step around a reliable datum, including the scan lead-in;
-Wonder adds ingress, egress and optional observation before preview. It does not route around hazards
-or allocate aircraft. Pattern applicability follows [AMSA's 2026 National SAR Manual, Volume 2](https://www.amsa.gov.au/sites/default/files/2026-03/NATSAR-Manual-February-2026-Volume-2.pdf),
-§§4.5.6–30 and land-route guidance in §§4.13.58, 4.13.62–67. A finite route does not prove complete coverage.
+The allocator chooses the bearing (long axis, its normal, or across the direction of travel)
+with the shortest longest flight and flips it so the nearest strip gets the lowest layer.
+Survey rows divide each strip's full cross-track width evenly, no farther apart than
+`spacing_m`, with half-spacing edge margins. Optional `survey.start_at` continues at a zero-based
+pattern endpoint. Per-step mission sequence mappings supply `progress.survey_start_at` from
+current telemetry, so expansions and reassignments retain unfinished passes. Dense mappings
+remain outside model context. Continuation still compiles and checks the route from the actual
+aircraft position through the existing upload/readback path.
 
 Verified application starts an inspection job for each drone with remaining observed steps.
 It samples during those steps, within the survey polygon or general sensing perimeter, at a

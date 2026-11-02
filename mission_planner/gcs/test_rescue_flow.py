@@ -1166,7 +1166,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         row = next(iter(self.inspections.rows.values()))
         self.assertEqual(row["status"], "failed")
         self.assertFalse(row["rescue"]["reports"])
-        self.assertGreater(self.inspections.lock_seconds[(1, "Drone1")], 0)
+        self.assertGreater(self.inspections.lock_seconds["Drone1"], 0)
         self.review_ready.set()
         if self.inspections.reviews:
             await asyncio.gather(*self.inspections.reviews)
@@ -2039,14 +2039,14 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
                     await self.inspections._publish(row, metadata, [], live=True)
                 self.assertIsNone(row["rescue"]["live_frame"])
 
-    async def test_new_inspection_cannot_reset_same_plan_candidate_allowance(self):
+    async def test_new_inspection_or_plan_version_cannot_reset_the_flight_allowance(self):
         self.decisions = ["recheck"]
         row = await self.begin()
         await self.until(lambda: row["rescue"]["pending"] and bool(row["rescue"]["reports"]))
         self.inspections.invalidate("Operator hold", "Drone1")
         with self.assertRaises(asyncio.CancelledError):
             await self.inspections.tasks["Drone1"]
-        spent = self.inspections.lock_seconds[(1, "Drone1")]
+        spent = self.inspections.lock_seconds["Drone1"]
         self.assertGreater(spent, 0)
         self.states["Drone1"]["mode"] = "BRAKE"
         started = await self.inspections.start("Drone1", "person", 0.3, 2)
@@ -2056,24 +2056,29 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
             await self.inspections.follow_candidate(
                 candidate["id"], candidate["latest"]["frame_id"], 0, 10
             )
-        self.assertEqual(self.inspections.lock_seconds[(1, "Drone1")], spent)
+        self.assertEqual(self.inspections.lock_seconds["Drone1"], spent)
         self.fleet.tracking_start.assert_awaited_once()
         self.assertNotIn("rescue", candidate)
         policy = self.receipt["plan"]["search"]
         self.assertEqual(
-            self.inspections._remaining_lock({"plan_version": 2, "drone_id": "Drone1"}, policy), 10
+            self.inspections._remaining_lock({"plan_version": 2, "drone_id": "Drone1"}, policy),
+            10 - spent,
         )
         self.assertEqual(
             self.inspections._remaining_lock({"plan_version": 1, "drone_id": "Drone2"}, policy), 10
         )
+        self.inspections.reset_lock({"Drone1"})
+        self.assertEqual(
+            self.inspections._remaining_lock({"plan_version": 2, "drone_id": "Drone1"}, policy), 10
+        )
 
     async def test_automatic_candidate_receives_only_shared_remaining_allowance(self):
-        self.inspections.lock_seconds[(1, "Drone1")] = 7
+        self.inspections.lock_seconds["Drone1"] = 7
         row = await self.begin()
         self.assertEqual(row["plan_version"], 1)
         await asyncio.wait_for(self.inspections.tasks["Drone1"], 5)
-        self.assertGreater(self.inspections.lock_seconds[(1, "Drone1")], 7)
-        self.assertLess(self.inspections.lock_seconds[(1, "Drone1")], 10)
+        self.assertGreater(self.inspections.lock_seconds["Drone1"], 7)
+        self.assertLess(self.inspections.lock_seconds["Drone1"], 10)
         record = next((self.directory / "inspections" / row["id"]).glob("*-tracking.jsonl"))
         first = json.loads(record.read_text().splitlines()[0])
         self.assertEqual(first["allowance_s"], 3)

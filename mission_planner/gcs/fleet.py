@@ -58,6 +58,8 @@ from mission_planner.gcs.validation import (  # noqa: E402
 from world.cosys.landmarks import load as load_landmarks  # noqa: E402
 from world.cosys.terrain import terrain_height  # noqa: E402
 
+# SIM_BATT_VOLTAGE of a full simulator battery (gcs-sitl.json expected parameters).
+FULL_BATTERY_V = 12.6
 MAV = mavutil.mavlink
 RATES = {0: 2, 1: 5, 24: 5, 33: 10, 42: 5, 193: 5, 245: 5, 242: 1}
 STOPPED_SPEED_MPS = 0.2
@@ -602,6 +604,9 @@ class Fleet:
                     "battery_percent": None
                     if battery.battery_remaining == -1
                     else battery.battery_remaining,
+                    "usable_flight_s": None
+                    if battery.battery_remaining == -1
+                    else available_seconds(battery.battery_remaining),
                     "battery_voltage_v": None
                     if battery.voltage_battery == 65535
                     else battery.voltage_battery / 1000,
@@ -745,6 +750,57 @@ class Fleet:
             copy.deepcopy(self.reservations(states)),
         )
         assert self.fences_verified and self.fences["version"] == version, (
+            "Flight fences changed during preview; preview the plan again"
+        )
+        return receipt
+
+    async def reset_batteries(self):
+        """Refill every landed simulator battery.
+
+        The patched AirSim model re-initialises its state of charge when SIM_BATT_VOLTAGE changes,
+        so the parameter is written away from and back to the full value; the autopilot's
+        consumed-charge estimate is then reset to a full battery.
+        """
+        async with self.command_lock:
+            states = self.snapshot()
+            for state in states:
+                assert (
+                    not state["armed"] and state["landed_state"] == MAV.MAV_LANDED_STATE_ON_GROUND
+                ), f"{state['id']}: battery reset needs every drone landed and disarmed"
+            for name in NAMES:
+                await self._parameter(name, "SIM_BATT_VOLTAGE", FULL_BATTERY_V + 0.01)
+                await self._parameter(name, "SIM_BATT_VOLTAGE", FULL_BATTERY_V)
+                await self._command(name, MAV.MAV_CMD_BATTERY_RESET, [1, 100, 0, 0, 0, 0, 0])
+                await self._until(
+                    name,
+                    lambda name=name: (
+                        self.vehicles[name]["messages"]["SYS_STATUS"].battery_remaining == 100
+                    ),
+                    10,
+                )
+            self.on_event({"kind": "battery_reset", "drone_ids": list(NAMES)})
+
+    async def preview_task(self, tasking, version, operator_points, searched=(), continuing=None):
+        from mission_planner.gcs.tasking import plan as plan_task
+
+        assert self.fences_verified, (
+            "Flight fences are not verified on all four drones; launch is locked"
+        )
+        fence_version = self.fences["version"]
+        states = self.snapshot()
+        receipt = await asyncio.to_thread(
+            plan_task,
+            copy.deepcopy(tasking),
+            version,
+            states,
+            {name: copy.deepcopy(vehicle["fence"]) for name, vehicle in self.vehicles.items()},
+            self.landmarks,
+            copy.deepcopy(self.reservations(states)),
+            list(operator_points),
+            searched=copy.deepcopy(list(searched)),
+            continuing=copy.deepcopy(continuing),
+        )
+        assert self.fences_verified and self.fences["version"] == fence_version, (
             "Flight fences changed during preview; preview the plan again"
         )
         return receipt

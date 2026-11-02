@@ -3,7 +3,8 @@
 import copy
 import unittest
 
-from mission_planner.agents.tools import TOOLS, validate_arguments
+from mission_planner.agents.tools import AGENT_INSTRUCTIONS, TOOLS, validate_arguments
+from mission_planner.gcs.tasking import SETTINGS_SCHEMA
 from mission_planner.gcs.test_planner import search_plan
 from world.cosys.terrain import EAST_MAX_M, EAST_MIN_M, NORTH_MAX_M
 
@@ -65,19 +66,25 @@ class ToolContracts(unittest.TestCase):
     def test_registry_has_only_available_subsystems(self):
         names = [tool["name"] for tool in TOOLS]
         self.assertIn("open_feed", names)
-        self.assertTrue({"preview_plan", "request_launch", "apply_plan_change"} <= set(names))
-        self.assertTrue({"take_off", "fly_to", "fly_route"}.isdisjoint(names))
-        self.assertIn("divide_survey", names)
+        self.assertTrue({"plan_task", "request_launch", "apply_plan_change"} <= set(names))
+        self.assertTrue(
+            {
+                "take_off",
+                "fly_to",
+                "fly_route",
+                "preview_plan",
+                "divide_survey",
+                "expanding_square",
+            }.isdisjoint(names)
+        )
+        plan_task = next(tool for tool in TOOLS if tool["name"] == "plan_task")
+        self.assertTrue(plan_task["strict"])
+        self.assertEqual(list(plan_task["parameters"]["properties"]), ["tasking"])
+        self.assertLess(len(AGENT_INSTRUCTIONS), 9000)
 
-    def test_survey_division_accepts_operator_choices_and_continuation_stays_on_survey_steps(self):
+    def test_operator_preview_schema_keeps_continuation_on_survey_steps(self):
         value = search_plan()
         step = value["drones"][0]["steps"][0]
-        arguments = {
-            "drone_ids": ["Drone1", "Drone2", "Drone3", "Drone4"],
-            **{k: v for k, v in step.items() if k not in ("kind", "observe")},
-        }
-        validate_arguments("divide_survey", arguments)
-        validate_arguments("divide_survey", {**arguments, "drone_ids": ["Drone1"]})
         step["start_at"] = 3
         validate_arguments("preview_plan", {"plan": value})
         step["start_at"] = -1
@@ -87,6 +94,34 @@ class ToolContracts(unittest.TestCase):
         value["drones"][0]["steps"][-1]["start_at"] = 1
         with self.assertRaisesRegex(AssertionError, "start_at"):
             validate_arguments("preview_plan", {"plan": value})
+
+    def test_plan_task_arguments_follow_the_model_copy_of_the_tasking_schema(self):
+        tasking = {
+            "task": "transit",
+            "subject": None,
+            "references": {
+                "landmark_ids": ["ranger-cabin"],
+                "points": [],
+                "polygon": None,
+                "direction_of_travel": None,
+                "subject_category": "unknown",
+            },
+            "fleet": {"drone_ids": ["Drone1"], "count": None},
+            "settings": {key: None for key in SETTINGS_SCHEMA["properties"]},
+            "aftermath": "hover",
+            "region": {
+                "band_index": None,
+                "accept_partial": False,
+                "radius_m": None,
+                "half_angle_deg": None,
+            },
+            "expansion": {"automatic_proposals": False, "lead_seconds": None},
+        }
+        validate_arguments("plan_task", {"tasking": tasking})
+        with self.assertRaisesRegex(AssertionError, "Required values missing"):
+            validate_arguments("plan_task", {"tasking": {**tasking, "fleet": {}}})
+        with self.assertRaisesRegex(AssertionError, "Unrecognized arguments"):
+            validate_arguments("plan_task", {"tasking": tasking, "plan": {}})
 
     def test_feed_requires_one_known_drone(self):
         validate_arguments("open_feed", {"drone_id": "Drone3"})
@@ -179,7 +214,8 @@ class ToolContracts(unittest.TestCase):
                     self.assertEqual(schema["type"], "object")
                     self.assertTrue({"anyOf", "enum", "not"}.isdisjoint(schema))
                     check(schema)
-        self.assertFalse(next(t for t in TOOLS if t["name"] == "preview_plan")["strict"])
+        self.assertTrue(next(t for t in TOOLS if t["name"] == "plan_task")["strict"])
+        self.assertNotIn("preview_plan", {t["name"] for t in TOOLS})
 
     def test_unknown_drone_is_explicit(self):
         with self.assertRaisesRegex(AssertionError, "Unknown drone: Drone9"):

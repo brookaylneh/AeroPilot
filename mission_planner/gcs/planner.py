@@ -57,6 +57,8 @@ def object_schema(properties):
     }
 
 
+# Doctrine bands around long trails need a few hundred vertices; polygons are never uploaded.
+MAX_POLYGON_VERTICES = 400
 NUMBER = {"type": "number"}
 POINT = object_schema({"north_m": NUMBER, "east_m": NUMBER})
 HEIGHT = {"type": "number", "exclusiveMinimum": 0, "maximum": 150}
@@ -64,7 +66,12 @@ SPEED = {"type": "number", "minimum": MIN_SPEED_MPS, "maximum": MAX_SPEED_MPS}
 TRAVEL = {"height_m": HEIGHT, "speed_mps": SPEED}
 SEARCH_SCHEMA = object_schema(
     {
-        "perimeter": {"type": "array", "items": POINT, "minItems": 3, "maxItems": 100},
+        "perimeter": {
+            "type": "array",
+            "items": POINT,
+            "minItems": 3,
+            "maxItems": MAX_POLYGON_VERTICES,
+        },
         "detector_prompt": {"type": "string", "minLength": 1, "maxLength": 100},
         "threshold": {"type": "number", "minimum": 0.1, "maximum": 1},
         "look_for": object_schema(
@@ -106,7 +113,12 @@ STEP_FIELDS = {
         "clockwise": {"type": "boolean"},
     },
     "survey": {
-        "polygon": {"type": "array", "items": POINT, "minItems": 3, "maxItems": 100},
+        "polygon": {
+            "type": "array",
+            "items": POINT,
+            "minItems": 3,
+            "maxItems": MAX_POLYGON_VERTICES,
+        },
         "spacing_m": {"type": "number", "exclusiveMinimum": 0},
         "bearing_deg": {"type": "number", "minimum": 0, "exclusiveMaximum": 360},
         **TRAVEL,
@@ -217,53 +229,6 @@ def validate_search(plan, fences):
             )
 
 
-def divide_survey(drone_ids, polygon, spacing_m, bearing_deg, height_m, speed_mps):
-    assert 1 <= len(drone_ids) <= len(NAMES), "Survey division requires one to four aircraft"
-    assert len(set(drone_ids)) == len(drone_ids), "A drone appears twice in survey division"
-    assert set(drone_ids) <= set(NAMES), "Unknown survey aircraft"
-    settings = {
-        "polygon": polygon,
-        "spacing_m": spacing_m,
-        "bearing_deg": bearing_deg,
-        "height_m": height_m,
-        "speed_mps": speed_mps,
-    }
-    Draft202012Validator(object_schema(STEP_FIELDS["survey"])).validate(settings)
-    json.dumps(settings, allow_nan=False)
-    validate_polygon(polygon, "Survey perimeter")
-    angle = math.radians(bearing_deg)
-    c, s = math.cos(angle), math.sin(angle)
-    shape = Polygon(
-        [(p["north_m"] * c + p["east_m"] * s, -p["north_m"] * s + p["east_m"] * c) for p in polygon]
-    )
-    west, low, east, high = shape.bounds
-    width = (high - low) / len(drone_ids)
-    branches = []
-    for index, name in enumerate(drone_ids):
-        a, b = low + index * width, low + (index + 1) * width
-        sector = shape.intersection(Polygon([(west, a), (east, a), (east, b), (west, b)]))
-        if sector.geom_type != "Polygon" or sector.is_empty or sector.interiors:
-            raise PlanRejected(
-                "disconnected_sector",
-                f"{name}: this bearing creates a disconnected survey sector; "
-                "choose another bearing or divide the area into separate patterns",
-                drone_id=name,
-                detail={"bearing_deg": bearing_deg, "sector_index": index},
-            )
-        points = [
-            {"north_m": x * c - y * s, "east_m": x * s + y * c}
-            for x, y in sector.exterior.coords[:-1]
-        ]
-        validate_polygon(points, f"{name} survey sector")
-        branches.append(
-            {
-                "drone_id": name,
-                "steps": [{"kind": "survey", **settings, "polygon": points, "observe": True}],
-            }
-        )
-    return {"perimeter": copy.deepcopy(polygon), "drones": branches}
-
-
 def survey_coverage(plan):
     sectors = [
         Polygon([(p["north_m"], p["east_m"]) for p in step["polygon"]])
@@ -284,31 +249,6 @@ def survey_coverage(plan):
         "unassigned_area_m2": perimeter.difference(assigned).area,
         "survey_percent": round(100 * assigned.area / perimeter.area, 6),
     }
-
-
-def expanding_square(north_m, east_m, spacing_m, bearing_deg, leg_count, height_m, speed_mps):
-    assert all(
-        math.isfinite(v) for v in (north_m, east_m, spacing_m, bearing_deg, height_m, speed_mps)
-    )
-    assert spacing_m > 0 and 0 <= bearing_deg < 360
-    assert type(leg_count) is int and 2 <= leg_count <= 100
-    assert 0 < height_m <= 150 and MIN_SPEED_MPS <= speed_mps <= MAX_SPEED_MPS
-    angle = math.radians(bearing_deg)
-    along = math.cos(angle), math.sin(angle)
-    points = [
-        {"north_m": north_m - spacing_m * along[0], "east_m": east_m - spacing_m * along[1]},
-        {"north_m": north_m, "east_m": east_m},
-    ]
-    for index in range(leg_count):
-        heading = angle + index * math.pi / 2
-        length = spacing_m * (index // 2 + 1)
-        points.append(
-            {
-                "north_m": points[-1]["north_m"] + length * math.cos(heading),
-                "east_m": points[-1]["east_m"] + length * math.sin(heading),
-            }
-        )
-    return {"kind": "follow", "points": points, "height_m": height_m, "speed_mps": speed_mps}
 
 
 def mission_item(point, altitude, command, param1=0):
@@ -431,299 +371,9 @@ def compile_plan(plan, states, fences, landmarks, reservations=()):
     assert set(current) == set(NAMES), "Live state must contain all four drones"
     missions = {}
     for branch in plan["drones"]:
-        name, steps = branch["drone_id"], branch["steps"]
+        name = branch["drone_id"]
         state = current[name]
-        health = {
-            key: state[key]
-            for key in ("link_lost", "ekf_healthy", "gps_fix", "battery_percent", "armed")
-        }
-        health["landed_state"] = state["landed_state"]
-        if state["link_lost"]:
-            raise PlanRejected("aircraft_state", f"{name}: link lost", drone_id=name, detail=health)
-        if not (state["ekf_healthy"] and state["gps_fix"] >= 3):
-            raise PlanRejected(
-                "aircraft_state", f"{name}: GPS/EKF unhealthy", drone_id=name, detail=health
-            )
-        if state["battery_percent"] is None:
-            raise PlanRejected(
-                "aircraft_state",
-                f"{name}: battery telemetry unavailable",
-                drone_id=name,
-                detail=health,
-            )
-        assert 0 <= state["battery_percent"] <= 100, f"{name}: battery outside 0–100%"
-        validate_position(name, state, fences[name])
-        fence = fence_polygon(fences[name])
-        boundaries = read_fences(fences[name])
-        airborne = state["armed"] and state["landed_state"] == MAV.MAV_LANDED_STATE_IN_AIR
-        landed = not state["armed"] and state["landed_state"] == MAV.MAV_LANDED_STATE_ON_GROUND
-        if not (airborne or landed):
-            raise PlanRejected(
-                "aircraft_state",
-                f"{name}: aircraft is neither ready on ground nor airborne",
-                drone_id=name,
-                detail=health,
-            )
-        if (steps[0]["kind"] == "takeoff") != landed:
-            raise PlanRejected(
-                "aircraft_state",
-                f"{name}: takeoff is required only for a landed drone",
-                drone_id=name,
-                step_index=0,
-                step_kind=steps[0]["kind"],
-                detail=health,
-            )
-        if not (
-            steps[-1]["kind"] in ("land", "return_home")
-            or (steps[-1]["kind"] == "hover" and steps[-1]["seconds"] is None)
-        ):
-            raise PlanRejected(
-                "aftermath",
-                f"{name}: specify the aftermath with land, return_home or indefinite hover",
-                drone_id=name,
-                step_index=len(steps) - 1,
-                step_kind=steps[-1]["kind"],
-            )
-        home_z = state["home"]["altitude_msl_m"] - ORIGIN["altitude_msl_m"]
-        route = [{key: state[key] for key in ("north_m", "east_m", "altitude_above_home_m")}]
-        items = [mission_home(state["home"])]
-        step_ranges = []
-        finite_time = 0.0
-        indefinite = False
-        if airborne:
-            items.append(
-                mission_item(route[0], route[0]["altitude_above_home_m"], MAV.MAV_CMD_NAV_WAYPOINT)
-            )
-            route.append(mission_point(items[-1]))
-
-        def travel(target, height, speed):
-            start = route[-1]
-            if not point_in_polygon(target, fence):
-                raise PlanRejected(
-                    "fence",
-                    f"Destination N {target['north_m']:.3f}, E {target['east_m']:.3f} "
-                    "is outside the world fence. Transit may leave the search perimeter, "
-                    "but its destination must remain inside the world fence.",
-                    detail={"point": {k: target[k] for k in ("north_m", "east_m")}},
-                )
-            if not segment_in_polygon(start, target, fence):
-                raise PlanRejected(
-                    "fence",
-                    f"Transit from N {start['north_m']:.3f}, E {start['east_m']:.3f} to "
-                    f"N {target['north_m']:.3f}, E {target['east_m']:.3f} exits the world fence. "
-                    "Transit may leave the search perimeter, but the southern launch apron "
-                    "connects to the world only through the read-back launch corridor. "
-                    "Specify an intermediate fly point inside that corridor.",
-                    detail={
-                        "segment": [
-                            {k: p[k] for k in ("north_m", "east_m")} for p in (start, target)
-                        ]
-                    },
-                )
-            validate_fence_segment(start, target, boundaries, "Flight leg")
-            level = waypoint(start["north_m"], start["east_m"], home_z, height)
-            path = [level]
-            if (start["north_m"], start["east_m"]) != (target["north_m"], target["east_m"]):
-                leg, _ = terrain_leg(start, target, home_z, height)
-                path.extend(leg[1:])
-            duration = 0.0
-            for point in path:
-                item = mission_item(point, point["altitude_above_home_m"], MAV.MAV_CMD_NAV_WAYPOINT)
-                encoded = mission_point(item)
-                if encoded == route[-1]:
-                    continue
-                duration += movement_seconds(route[-1], encoded, speed)
-                route.append(encoded)
-                items.append(item)
-            return duration
-
-        def land():
-            point = route[-1]
-            item = mission_item(point, 0, MAV.MAV_CMD_NAV_LAND)
-            point = {**mission_point(item), "altitude_above_home_m": point["altitude_above_home_m"]}
-            route.append(point)
-            ground = terrain_height(point["north_m"], point["east_m"]) - home_z
-            duration = landing_seconds(point["altitude_above_home_m"] - ground)
-            route.append({**point, "altitude_above_home_m": ground})
-            items.append(item)
-            return duration
-
-        for index, step in enumerate(steps):
-            first = 1 if index == 0 else len(items)
-            first_route_segment = 0 if index == 0 else len(route) - 1
-            duration = 0.0
-            survey_seqs = []
-            kind = step["kind"]
-            if indefinite:
-                raise PlanRejected(
-                    "aftermath",
-                    f"{name} step {index + 1} ({kind}): a step follows indefinite hover",
-                    drone_id=name,
-                    step_index=index,
-                    step_kind=kind,
-                )
-            if kind == "return_home" and index != len(steps) - 1:
-                raise PlanRejected(
-                    "aftermath",
-                    f"{name} step {index + 1} (return_home): return_home returns home and lands; "
-                    "it must be the last step. Remove the following steps.",
-                    drone_id=name,
-                    step_index=index,
-                    step_kind=kind,
-                )
-            if kind == "land" and index != len(steps) - 1:
-                raise PlanRejected(
-                    "aftermath",
-                    f"{name} step {index + 1} (land): landing must end the mission",
-                    drone_id=name,
-                    step_index=index,
-                    step_kind=kind,
-                )
-            try:
-                if kind == "takeoff":
-                    assert index == 0 and landed, "Takeoff must be the first step from the ground"
-                    target = waypoint(
-                        route[-1]["north_m"], route[-1]["east_m"], home_z, step["height_m"]
-                    )
-                    items.append(
-                        mission_item(
-                            target, target["altitude_above_home_m"], MAV.MAV_CMD_NAV_TAKEOFF
-                        )
-                    )
-                    route.append(
-                        {**target, "altitude_above_home_m": mission_readback(items[-1])["z"]}
-                    )
-                    duration = launch_seconds(
-                        target["altitude_above_home_m"] - route[0]["altitude_above_home_m"]
-                    )
-                elif kind == "hover":
-                    indefinite = step["seconds"] is None
-                    point = route[-1]
-                    items.append(
-                        mission_item(
-                            point,
-                            point["altitude_above_home_m"],
-                            MAV.MAV_CMD_NAV_LOITER_UNLIM
-                            if indefinite
-                            else MAV.MAV_CMD_NAV_LOITER_TIME,
-                            0 if indefinite else step["seconds"],
-                        )
-                    )
-                    encoded = mission_point(items[-1])
-                    if encoded != route[-1]:
-                        route.append(encoded)
-                    duration = 0 if indefinite else step["seconds"]
-                elif kind == "land":
-                    duration = land()
-                else:
-                    speed = step["speed_mps"]
-                    items.append(
-                        {
-                            "frame": MAV.MAV_FRAME_GLOBAL,
-                            "command": MAV.MAV_CMD_DO_CHANGE_SPEED,
-                            "param1": 1,
-                            "param2": speed,
-                            "param3": -1,
-                            "param4": 0,
-                            "x": 0,
-                            "y": 0,
-                            "z": 0,
-                        }
-                    )
-                    if kind == "fly":
-                        targets = [step]
-                    elif kind == "follow":
-                        targets = step["points"]
-                    elif kind == "survey":
-                        targets = survey_points(step)
-                        start_at = step["start_at"] if "start_at" in step else 0
-                        if start_at >= len(targets):
-                            raise PlanRejected(
-                                "schema",
-                                f"Survey start_at {start_at} is outside its "
-                                f"{len(targets)} pattern points",
-                                detail={"start_at": start_at, "pattern_points": len(targets)},
-                            )
-                        targets = targets[start_at:]
-                    elif kind == "circle":
-                        start = math.atan2(
-                            route[-1]["east_m"] - step["east_m"],
-                            route[-1]["north_m"] - step["north_m"],
-                        )
-                        sweep = math.tau * step["turns"] * (1 if step["clockwise"] else -1)
-                        count = math.ceil(
-                            abs(sweep) / (2 * math.acos(1 - min(0.25 / step["radius_m"], 1)))
-                        )
-                        assert count <= 10000, "Circle exceeds 10000 segments"
-                        targets = [
-                            {
-                                "north_m": step["north_m"]
-                                + step["radius_m"] * math.cos(start + sweep * i / count),
-                                "east_m": step["east_m"]
-                                + step["radius_m"] * math.sin(start + sweep * i / count),
-                            }
-                            for i in range(count + 1)
-                        ]
-                    else:
-                        assert kind == "return_home"
-                        targets = [state["home"]]
-                    if "observe" in step:
-                        area = step["polygon"] if kind == "survey" else plan["search"]["perimeter"]
-                        if not all(point_in_polygon(point, area) for point in targets):
-                            raise PlanRejected(
-                                "observation_area", "Observed pattern leaves its observation area"
-                            )
-                        if not all(
-                            segment_in_polygon(a, b, area) for a, b in zip(targets, targets[1:])
-                        ):
-                            raise PlanRejected(
-                                "observation_area",
-                                "Observed pattern crosses outside its observation area; split "
-                                "the pattern and use unobserved transit between its parts",
-                            )
-                    for target in targets:
-                        duration += travel(target, step["height_m"], speed)
-                        if kind == "survey":
-                            survey_seqs.append(len(items) - 1)
-                    if kind == "return_home":
-                        duration += land()
-            except PlanRejected as error:
-                error.at(name, index, kind)
-                raise
-            except (AssertionError, ValueError) as error:
-                raise PlanRejected(
-                    "compile",
-                    f"{name} step {index + 1} ({kind}): {error}",
-                    drone_id=name,
-                    step_index=index,
-                    step_kind=kind,
-                ) from error
-            if len(items) <= first:
-                raise PlanRejected(
-                    "compile",
-                    f"{name} step {index + 1} ({kind}): step creates no mission items",
-                    drone_id=name,
-                    step_index=index,
-                    step_kind=kind,
-                )
-            step_ranges.append(
-                {
-                    "step_index": index,
-                    "first_seq": first,
-                    "last_seq": len(items) - 1,
-                    "first_route_segment": first_route_segment,
-                    "last_route_segment": len(route) - 2,
-                    "duration_s": None if indefinite else duration,
-                }
-            )
-            if kind == "survey":
-                step_ranges[-1].update(survey_start_at=start_at, survey_seqs=survey_seqs)
-            finite_time += duration
-        lock_allowance = (
-            plan["search"]["max_lock_seconds"]
-            if "search" in plan and any("observe" in step for step in steps)
-            else 0
-        )
+        mission, finite_time, lock_allowance = compile_branch(plan, branch, state, fences[name])
         required = required_percent(finite_time + lock_allowance)
         if required > state["battery_percent"]:
             raise PlanRejected(
@@ -745,17 +395,7 @@ def compile_plan(plan, states, fences, landmarks, reservations=()):
                 },
             )
         missions[name] = {
-            "items": items,
-            "route": route,
-            "step_ranges": step_ranges,
-            "distance_m": sum(
-                math.dist(
-                    [a[k] for k in ("north_m", "east_m", "altitude_above_home_m")],
-                    [b[k] for k in ("north_m", "east_m", "altitude_above_home_m")],
-                )
-                for a, b in zip(route, route[1:])
-            ),
-            "duration_s": None if indefinite else finite_time,
+            **mission,
             "battery_required_percent": required,
             "available_hover_s": available_seconds(state["battery_percent"])
             - finite_time
@@ -764,6 +404,332 @@ def compile_plan(plan, states, fences, landmarks, reservations=()):
     receipt = {"plan": copy.deepcopy(plan), "missions": missions, "coverage": survey_coverage(plan)}
     validate_missions(receipt, states, fences, landmarks, reservations)
     return receipt
+
+
+def compile_branch(plan, branch, state, fence_items):
+    """Items, route, separation windows and timing for one drone's steps of a validated plan."""
+    name, steps = branch["drone_id"], branch["steps"]
+    health = {
+        key: state[key]
+        for key in ("link_lost", "ekf_healthy", "gps_fix", "battery_percent", "armed")
+    }
+    health["landed_state"] = state["landed_state"]
+    if state["link_lost"]:
+        raise PlanRejected("aircraft_state", f"{name}: link lost", drone_id=name, detail=health)
+    if not (state["ekf_healthy"] and state["gps_fix"] >= 3):
+        raise PlanRejected(
+            "aircraft_state", f"{name}: GPS/EKF unhealthy", drone_id=name, detail=health
+        )
+    if state["battery_percent"] is None:
+        raise PlanRejected(
+            "aircraft_state",
+            f"{name}: battery telemetry unavailable",
+            drone_id=name,
+            detail=health,
+        )
+    assert 0 <= state["battery_percent"] <= 100, f"{name}: battery outside 0–100%"
+    validate_position(name, state, fence_items)
+    fence = fence_polygon(fence_items)
+    boundaries = read_fences(fence_items)
+    airborne = state["armed"] and state["landed_state"] == MAV.MAV_LANDED_STATE_IN_AIR
+    landed = not state["armed"] and state["landed_state"] == MAV.MAV_LANDED_STATE_ON_GROUND
+    if not (airborne or landed):
+        raise PlanRejected(
+            "aircraft_state",
+            f"{name}: aircraft is neither ready on ground nor airborne",
+            drone_id=name,
+            detail=health,
+        )
+    if (steps[0]["kind"] == "takeoff") != landed:
+        raise PlanRejected(
+            "aircraft_state",
+            f"{name}: takeoff is required only for a landed drone",
+            drone_id=name,
+            step_index=0,
+            step_kind=steps[0]["kind"],
+            detail=health,
+        )
+    if not (
+        steps[-1]["kind"] in ("land", "return_home")
+        or (steps[-1]["kind"] == "hover" and steps[-1]["seconds"] is None)
+    ):
+        raise PlanRejected(
+            "aftermath",
+            f"{name}: specify the aftermath with land, return_home or indefinite hover",
+            drone_id=name,
+            step_index=len(steps) - 1,
+            step_kind=steps[-1]["kind"],
+        )
+    home_z = state["home"]["altitude_msl_m"] - ORIGIN["altitude_msl_m"]
+    route = [{key: state[key] for key in ("north_m", "east_m", "altitude_above_home_m")}]
+    # One entry per route segment: a (start_s, end_s) window for unobserved transit flown
+    # before the branch's first observed step, otherwise None for a timing-independent leg.
+    windows = []
+    items = [mission_home(state["home"])]
+    step_ranges = []
+    finite_time = 0.0
+    indefinite = False
+    first_observed = next((i for i, s in enumerate(steps) if "observe" in s), len(steps))
+    if airborne:
+        items.append(
+            mission_item(route[0], route[0]["altitude_above_home_m"], MAV.MAV_CMD_NAV_WAYPOINT)
+        )
+        route.append(mission_point(items[-1]))
+        windows.append(None)
+
+    def travel(target, height, speed, start_s=None):
+        start = route[-1]
+        if not point_in_polygon(target, fence):
+            raise PlanRejected(
+                "fence",
+                f"Destination N {target['north_m']:.3f}, E {target['east_m']:.3f} "
+                "is outside the world fence. Transit may leave the search perimeter, "
+                "but its destination must remain inside the world fence.",
+                detail={"point": {k: target[k] for k in ("north_m", "east_m")}},
+            )
+        if not segment_in_polygon(start, target, fence):
+            raise PlanRejected(
+                "fence",
+                f"Transit from N {start['north_m']:.3f}, E {start['east_m']:.3f} to "
+                f"N {target['north_m']:.3f}, E {target['east_m']:.3f} exits the world fence. "
+                "Transit may leave the search perimeter, but the southern launch apron "
+                "connects to the world only through the read-back launch corridor. "
+                "Specify an intermediate fly point inside that corridor.",
+                detail={
+                    "segment": [{k: p[k] for k in ("north_m", "east_m")} for p in (start, target)]
+                },
+            )
+        validate_fence_segment(start, target, boundaries, "Flight leg")
+        level = waypoint(start["north_m"], start["east_m"], home_z, height)
+        path = [level]
+        if (start["north_m"], start["east_m"]) != (target["north_m"], target["east_m"]):
+            leg, _ = terrain_leg(start, target, home_z, height)
+            path.extend(leg[1:])
+        duration = 0.0
+        for point in path:
+            item = mission_item(point, point["altitude_above_home_m"], MAV.MAV_CMD_NAV_WAYPOINT)
+            encoded = mission_point(item)
+            if encoded == route[-1]:
+                continue
+            seconds = movement_seconds(route[-1], encoded, speed)
+            vertical = (encoded["north_m"], encoded["east_m"]) == (
+                route[-1]["north_m"],
+                route[-1]["east_m"],
+            )
+            windows.append(
+                None
+                if start_s is None or vertical
+                else [start_s + duration, start_s + duration + seconds]
+            )
+            duration += seconds
+            route.append(encoded)
+            items.append(item)
+        return duration
+
+    def land():
+        point = route[-1]
+        item = mission_item(point, 0, MAV.MAV_CMD_NAV_LAND)
+        point = {**mission_point(item), "altitude_above_home_m": point["altitude_above_home_m"]}
+        route.append(point)
+        windows.append(None)
+        ground = terrain_height(point["north_m"], point["east_m"]) - home_z
+        duration = landing_seconds(point["altitude_above_home_m"] - ground)
+        route.append({**point, "altitude_above_home_m": ground})
+        windows.append(None)
+        items.append(item)
+        return duration
+
+    for index, step in enumerate(steps):
+        first = 1 if index == 0 else len(items)
+        first_route_segment = 0 if index == 0 else len(route) - 1
+        duration = 0.0
+        survey_seqs = []
+        kind = step["kind"]
+        if indefinite:
+            raise PlanRejected(
+                "aftermath",
+                f"{name} step {index + 1} ({kind}): a step follows indefinite hover",
+                drone_id=name,
+                step_index=index,
+                step_kind=kind,
+            )
+        if kind == "return_home" and index != len(steps) - 1:
+            raise PlanRejected(
+                "aftermath",
+                f"{name} step {index + 1} (return_home): return_home returns home and lands; "
+                "it must be the last step. Remove the following steps.",
+                drone_id=name,
+                step_index=index,
+                step_kind=kind,
+            )
+        if kind == "land" and index != len(steps) - 1:
+            raise PlanRejected(
+                "aftermath",
+                f"{name} step {index + 1} (land): landing must end the mission",
+                drone_id=name,
+                step_index=index,
+                step_kind=kind,
+            )
+        try:
+            if kind == "takeoff":
+                assert index == 0 and landed, "Takeoff must be the first step from the ground"
+                target = waypoint(
+                    route[-1]["north_m"], route[-1]["east_m"], home_z, step["height_m"]
+                )
+                items.append(
+                    mission_item(target, target["altitude_above_home_m"], MAV.MAV_CMD_NAV_TAKEOFF)
+                )
+                route.append({**target, "altitude_above_home_m": mission_readback(items[-1])["z"]})
+                windows.append(None)
+                duration = launch_seconds(
+                    target["altitude_above_home_m"] - route[0]["altitude_above_home_m"]
+                )
+            elif kind == "hover":
+                indefinite = step["seconds"] is None
+                point = route[-1]
+                items.append(
+                    mission_item(
+                        point,
+                        point["altitude_above_home_m"],
+                        MAV.MAV_CMD_NAV_LOITER_UNLIM if indefinite else MAV.MAV_CMD_NAV_LOITER_TIME,
+                        0 if indefinite else step["seconds"],
+                    )
+                )
+                encoded = mission_point(items[-1])
+                if encoded != route[-1]:
+                    route.append(encoded)
+                    windows.append(None)
+                duration = 0 if indefinite else step["seconds"]
+            elif kind == "land":
+                duration = land()
+            else:
+                speed = step["speed_mps"]
+                items.append(
+                    {
+                        "frame": MAV.MAV_FRAME_GLOBAL,
+                        "command": MAV.MAV_CMD_DO_CHANGE_SPEED,
+                        "param1": 1,
+                        "param2": speed,
+                        "param3": -1,
+                        "param4": 0,
+                        "x": 0,
+                        "y": 0,
+                        "z": 0,
+                    }
+                )
+                if kind == "fly":
+                    targets = [step]
+                elif kind == "follow":
+                    targets = step["points"]
+                elif kind == "survey":
+                    targets = survey_points(step)
+                    start_at = step["start_at"] if "start_at" in step else 0
+                    if start_at >= len(targets):
+                        raise PlanRejected(
+                            "schema",
+                            f"Survey start_at {start_at} is outside its "
+                            f"{len(targets)} pattern points",
+                            detail={"start_at": start_at, "pattern_points": len(targets)},
+                        )
+                    targets = targets[start_at:]
+                elif kind == "circle":
+                    start = math.atan2(
+                        route[-1]["east_m"] - step["east_m"],
+                        route[-1]["north_m"] - step["north_m"],
+                    )
+                    sweep = math.tau * step["turns"] * (1 if step["clockwise"] else -1)
+                    count = math.ceil(
+                        abs(sweep) / (2 * math.acos(1 - min(0.25 / step["radius_m"], 1)))
+                    )
+                    assert count <= 10000, "Circle exceeds 10000 segments"
+                    targets = [
+                        {
+                            "north_m": step["north_m"]
+                            + step["radius_m"] * math.cos(start + sweep * i / count),
+                            "east_m": step["east_m"]
+                            + step["radius_m"] * math.sin(start + sweep * i / count),
+                        }
+                        for i in range(count + 1)
+                    ]
+                else:
+                    assert kind == "return_home"
+                    targets = [state["home"]]
+                if "observe" in step:
+                    # Pattern points stay inside the observation area; a connector between
+                    # rows may cut across a concave edge because sampling is gated by the
+                    # aircraft position and every leg is still checked against the fences.
+                    area = step["polygon"] if kind == "survey" else plan["search"]["perimeter"]
+                    if not all(point_in_polygon(point, area) for point in targets):
+                        raise PlanRejected(
+                            "observation_area", "Observed pattern leaves its observation area"
+                        )
+                timed = (
+                    kind in ("fly", "follow") and "observe" not in step and index < first_observed
+                )
+                for target in targets:
+                    duration += travel(
+                        target,
+                        step["height_m"],
+                        speed,
+                        finite_time + duration if timed else None,
+                    )
+                    if kind == "survey":
+                        survey_seqs.append(len(items) - 1)
+                if kind == "return_home":
+                    duration += land()
+        except PlanRejected as error:
+            error.at(name, index, kind)
+            raise
+        except (AssertionError, ValueError) as error:
+            raise PlanRejected(
+                "compile",
+                f"{name} step {index + 1} ({kind}): {error}",
+                drone_id=name,
+                step_index=index,
+                step_kind=kind,
+            ) from error
+        if len(items) <= first:
+            raise PlanRejected(
+                "compile",
+                f"{name} step {index + 1} ({kind}): step creates no mission items",
+                drone_id=name,
+                step_index=index,
+                step_kind=kind,
+            )
+        step_ranges.append(
+            {
+                "step_index": index,
+                "first_seq": first,
+                "last_seq": len(items) - 1,
+                "first_route_segment": first_route_segment,
+                "last_route_segment": len(route) - 2,
+                "duration_s": None if indefinite else duration,
+            }
+        )
+        if kind == "survey":
+            step_ranges[-1].update(survey_start_at=start_at, survey_seqs=survey_seqs)
+        finite_time += duration
+    lock_allowance = (
+        plan["search"]["max_lock_seconds"]
+        if "search" in plan and any("observe" in step for step in steps)
+        else 0
+    )
+    assert len(windows) == len(route) - 1, "Every route segment needs a separation window entry"
+    mission = {
+        "items": items,
+        "route": route,
+        "windows": windows,
+        "step_ranges": step_ranges,
+        "distance_m": sum(
+            math.dist(
+                [a[k] for k in ("north_m", "east_m", "altitude_above_home_m")],
+                [b[k] for k in ("north_m", "east_m", "altitude_above_home_m")],
+            )
+            for a, b in zip(route, route[1:])
+        ),
+        "duration_s": None if indefinite else finite_time,
+    }
+    return mission, finite_time, lock_allowance
 
 
 def validate_missions(receipt, states, fences, landmarks, reservations):
@@ -807,9 +773,10 @@ def validate_missions(receipt, states, fences, landmarks, reservations):
     reserved = [(name, route) for name, route in reservations if name not in missions]
     reserved.extend((state["id"], [state]) for state in states if state["id"] not in missions)
     reserved.extend(routes.items())
+    windows = {name: missions[name]["windows"] for name in missions}
     for name, route in routes.items():
         try:
-            validate_separation(name, route, reserved, home_heights)
+            validate_separation(name, route, reserved, home_heights, windows)
         except PlanRejected as error:
             if error.rejection["rule"] != "separation":
                 raise

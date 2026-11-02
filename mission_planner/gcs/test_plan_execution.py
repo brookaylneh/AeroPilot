@@ -12,9 +12,11 @@ from unittest.mock import AsyncMock, Mock
 
 from mission_planner.environment import ROOT
 from mission_planner.gcs.fleet import MAV, Fleet
+from mission_planner.gcs.geodesy import NAMES
 from mission_planner.gcs.planner import mission_readback
 from mission_planner.gcs.rejection import PlanRejected
 from mission_planner.gcs.service import Mission
+from mission_planner.gcs.tasking import SETTINGS_SCHEMA
 from mission_planner.gcs.test_planner import airborne, fly, hover, plan, search_plan, states
 from mission_planner.gcs.test_validation import HOME_HEIGHTS, readback
 from mission_planner.gcs.validation import validate_separation
@@ -66,6 +68,30 @@ def fleet(current):
     return value
 
 
+def transit_task(drone_ids=("Drone1",)):
+    return {
+        "task": "transit",
+        "subject": None,
+        "references": {
+            "landmark_ids": ["ranger-cabin"],
+            "points": [],
+            "polygon": None,
+            "direction_of_travel": None,
+            "subject_category": "unknown",
+        },
+        "fleet": {"drone_ids": list(drone_ids), "count": None},
+        "settings": {key: None for key in SETTINGS_SCHEMA["properties"]},
+        "aftermath": "hover",
+        "region": {
+            "band_index": None,
+            "accept_partial": False,
+            "radius_m": None,
+            "half_angle_deg": None,
+        },
+        "expansion": {"automatic_proposals": False, "lead_seconds": None},
+    }
+
+
 def mission(current):
     owner = object.__new__(Mission)
     owner.fence_change = False
@@ -73,7 +99,9 @@ def mission(current):
     owner.fleet = fleet(current)
     owner.fleet_ready, owner.fleet_error = True, None
     owner.search = SimpleNamespace(status="unplanned", paused={})
-    owner.events = [{"id": "operator-1", "kind": "operator", "text": "Go to the new destination"}]
+    owner.events = [
+        {"id": "operator-1", "kind": "operator", "sequence": 1, "text": "Go to the new destination"}
+    ]
     owner.event = Mock()
     owner.autopilot_alerts = {}
     owner.fleet.on_event = owner.fleet_event
@@ -81,6 +109,8 @@ def mission(current):
     owner.approvals = {}
     owner.plan_preview = owner.plan_active = owner.plan_previous = owner.plan_task = None
     owner.plan_trigger = None
+    owner.holds = set()
+    owner.proposal = None
     owner.step_clock = {}
     owner.agent_task = None
     owner.agent_lock = asyncio.Lock()
@@ -90,6 +120,7 @@ def mission(current):
         pending_events=Mock(return_value=[]),
         close=AsyncMock(),
         flight_stopped=AsyncMock(),
+        start_search=AsyncMock(),
     )
     owner.agent_busy = False
     owner.conversation = []
@@ -128,25 +159,200 @@ class PlanApplication(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(owner.planner_state()["progress"]["Drone1"]["survey_start_at"], 3)
         owner.fleet._command.assert_not_awaited()
 
-    async def test_divide_survey_is_a_read_tool_with_no_flight_side_effects(self):
-        owner = mission(states())
-        request = search_plan()
-        step = request["drones"][0]["steps"][0]
-        result = await owner.execute(
-            "divide_survey",
-            {
-                "drone_ids": [d["drone_id"] for d in request["drones"]],
-                **{k: v for k, v in step.items() if k not in ("kind", "observe")},
-                "polygon": request["search"]["perimeter"],
-            },
-            "agent",
-            "divide",
-        )
-        self.assertEqual(len(result["drones"]), 4)
-        self.assertTrue(all(d["steps"][0]["kind"] == "survey" for d in result["drones"]))
-        self.assertIsNone(owner.plan_preview)
-        self.assertFalse(owner.approvals)
+    async def test_plan_task_assigns_the_next_version_and_keeps_tasking_extras(self):
+        current = states()
+        owner = mission(current)
+        result = await owner.execute("plan_task", {"tasking": transit_task()}, "agent", "t1")
+        self.assertEqual(result["plan"]["version"], 1)
+        self.assertEqual(result["tasking"]["task"], "transit")
+        self.assertTrue({"region", "sectors", "fit", "rationale"} <= set(result))
+        self.assertNotIn("items", result["missions"]["Drone1"])
+        self.assertEqual(owner.plan_trigger, TRIGGER)
+        self.assertIs(owner.plan_preview["plan"], owner.plan_preview["plan"])
+        owner.plan_active = owner.plan_preview
+        again = await owner.execute("plan_task", {"tasking": transit_task()}, "agent", "t2")
+        self.assertEqual(again["plan"]["version"], 2)
         owner.fleet._command.assert_not_awaited()
+        current[0].update(armed=True, landed_state=MAV.MAV_LANDED_STATE_IN_AIR)
+        current[0]["altitude_above_home_m"] = 40
+        owner.vehicles = lambda: current
+        with self.assertRaises(PlanRejected) as caught:
+            await owner.execute(
+                "plan_task",
+                {"tasking": transit_task(drone_ids=["Drone2"])},
+                "agent",
+                "t3",
+            )
+        self.assertEqual(caught.exception.rejection["rule"], "participants")
+
+    async def test_expansion_proposal_needs_approval_and_a_decline_keeps_the_compiled_hover(self):
+        from mission_planner.gcs.test_expansion import airborne_mid_survey, search_receipt
+
+        receipt = search_receipt()
+        fleet_states, progress = airborne_mid_survey(receipt, battery=78, late=NAMES)
+        owner = mission(fleet_states)
+        owner.plan_active = receipt
+        owner.planner_state = Mock(
+            return_value={
+                "preview": None,
+                "active": receipt,
+                "previous": None,
+                "progress": progress,
+            }
+        )
+        proposal = await owner.propose_expansion(receipt)
+        self.assertEqual(proposal["kind"], "expansion")
+        self.assertEqual((proposal["version"], proposal["band_index"]), (2, 2))
+        self.assertNotIn("items", proposal["receipt"]["missions"]["Drone1"])
+        self.assertIs(owner.plan_preview["tasking"], proposal["receipt"]["tasking"])
+        self.assertEqual(owner.proposal, {"kind": "expansion", "version": 2, "band_index": 2})
+        with self.assertRaisesRegex(AssertionError, "another version"):
+            await owner.execute("apply_proposal", {"version": 3}, "agent", "wrong")
+        applying = asyncio.create_task(
+            owner.execute("apply_proposal", {"version": 2}, "agent", "apply")
+        )
+        await pending_approval(owner)
+        card = next(iter(owner.approvals.values()))["card"]
+        self.assertEqual((card["name"], card["arguments"]), ("apply_proposal", {"version": 2}))
+        text = owner.event.call_args_list[-1].args[1]
+        self.assertEqual(text, "Plan 2 · search expansion to band 2 awaiting operator approval")
+        next(iter(owner.approvals.values()))["future"].set_result(False)
+        with self.assertRaisesRegex(AssertionError, "Operator declined"):
+            await applying
+        self.assertIsNone(owner.proposal)
+        owner.fleet._mode.assert_not_awaited()
+        owner.fleet._upload.assert_not_awaited()
+        with self.assertRaisesRegex(AssertionError, "No search expansion proposal"):
+            await owner.execute("apply_proposal", {"version": 2}, "agent", "gone")
+        owner.fleet.upload_mission = AsyncMock()
+        await owner.propose_expansion(receipt)
+        applying = asyncio.create_task(
+            owner.execute("apply_proposal", {"version": 2}, "agent", "apply-again")
+        )
+        await pending_approval(owner)
+        next(iter(owner.approvals.values()))["future"].set_result(True)
+        applied = await applying
+        self.assertEqual(applied["receipt"]["plan"]["version"], 2)
+        self.assertEqual(owner.plan_active["plan"]["version"], 2)
+        self.assertEqual(owner.plan_active["tasking"]["task"], "area_search")
+        self.assertEqual(owner.plan_active["region"]["bands"][0]["status"], "previous")
+        self.assertIsNone(owner.proposal)
+
+    async def test_watcher_proposes_once_when_due_and_hands_failed_rows_on(self):
+        from mission_planner.gcs.test_expansion import airborne_mid_survey, search_receipt
+
+        receipt = search_receipt()
+        fleet_states, progress = airborne_mid_survey(receipt, battery=78, late=NAMES)
+        for row in progress.values():
+            row["time_remaining_s"] = 1.0
+        owner = mission(fleet_states)
+        owner.plan_active = receipt
+        owner.planner_state = Mock(
+            return_value={
+                "preview": None,
+                "active": receipt,
+                "previous": None,
+                "progress": progress,
+            }
+        )
+        wakes = []
+
+        async def review(text, *, wake):
+            wakes.append(wake)
+            owner.plan_active = None
+
+        owner.agent = AsyncMock(side_effect=review)
+        await asyncio.wait_for(owner.watch_plan(receipt), 30)
+        self.assertEqual([w["reason"] for w in wakes], ["proposal"])
+        self.assertEqual(wakes[0]["proposal"]["band_index"], 2)
+        self.assertEqual(owner.plan_preview["plan"]["version"], 2)
+        owner.plan_active, owner.plan_preview, owner.proposal = receipt, None, None
+        failed_row = {
+            "id": "inspection-3",
+            "drone_id": "Drone3",
+            "status": "failed",
+            "rescue": {"pending": True, "phase": "failed"},
+            "latest": None,
+        }
+        owner.inspections.pending_events.return_value = [failed_row]
+        await asyncio.wait_for(owner.watch_plan(receipt), 30)
+        self.assertEqual(wakes[1]["reason"], "rescue")
+        self.assertEqual(wakes[1]["proposal"]["kind"], "reassignment")
+        self.assertEqual(wakes[1]["proposal"]["failed"], "Drone3")
+        kinds = {
+            b["drone_id"]: [s["kind"] for s in b["steps"]]
+            for b in owner.plan_preview["plan"]["drones"]
+        }
+        self.assertEqual(kinds["Drone3"], ["fly", "return_home"])
+        self.assertEqual(owner.proposal["kind"], "reassignment")
+        owner.fleet.upload_mission = AsyncMock()
+        owner.inspections.pending_events.return_value = []
+        applied = await owner.execute("apply_plan_change", {"version": 2}, "agent", "reassign")
+        self.assertEqual(applied["receipt"]["plan"]["version"], 2)
+        self.assertFalse(owner.approvals)
+        self.assertIsNone(owner.proposal)
+
+    async def test_battery_reset_rewrites_the_simulator_voltage_and_resets_consumption(self):
+        current = states()
+        value = fleet(current)
+        value._parameter = AsyncMock()
+        for state in current:
+            value.vehicles[state["id"]]["messages"]["SYS_STATUS"] = SimpleNamespace(
+                battery_remaining=100
+            )
+        await value.reset_batteries()
+        for name in NAMES:
+            self.assertEqual(
+                [c.args for c in value._parameter.await_args_list if c.args[0] == name],
+                [(name, "SIM_BATT_VOLTAGE", 12.61), (name, "SIM_BATT_VOLTAGE", 12.6)],
+            )
+            self.assertIn(
+                (name, MAV.MAV_CMD_BATTERY_RESET, [1, 100, 0, 0, 0, 0, 0]),
+                [c.args for c in value._command.await_args_list],
+            )
+        self.assertEqual(value.on_event.call_args.args[0]["kind"], "battery_reset")
+        current[0].update(armed=True, landed_state=MAV.MAV_LANDED_STATE_IN_AIR)
+        with self.assertRaisesRegex(AssertionError, "landed and disarmed"):
+            await value.reset_batteries()
+        self.assertEqual(value._parameter.await_count, 8)
+        owner = mission(states())
+        owner.clearing = False
+        owner.chat_ready = lambda: False
+        owner.fleet.reset_batteries = AsyncMock()
+        with self.assertRaisesRegex(AssertionError, "landed and disarmed at its home pad"):
+            await owner.handle({"type": "reset_batteries"}, None)
+        owner.chat_ready = lambda: True
+        await owner.handle({"type": "reset_batteries"}, None)
+        owner.fleet.reset_batteries.assert_awaited_once()
+
+    async def test_plan_task_rejection_carries_the_assigned_version_and_clicked_points(self):
+        owner = mission(states())
+        owner.plan_active = {"plan": {"version": 4, "drones": []}, "missions": {}}
+        bad = transit_task()
+        bad["references"]["landmark_ids"] = ["nowhere"]
+        result = await owner.invoke("plan_task", {"tasking": bad}, "agent", "bad")
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["rejection"]["rule"], "reference")
+        self.assertEqual(result["rejection"]["version"], 5)
+        self.assertIsNone(owner.plan_preview)
+        clicked = transit_task()
+        clicked["references"].update(landmark_ids=[], points=[{"north_m": -600, "east_m": -200}])
+        with self.assertRaises(PlanRejected) as caught:
+            await owner.execute("plan_task", {"tasking": clicked}, "agent", "unclicked")
+        self.assertEqual(caught.exception.rejection["rule"], "reference")
+        owner.events.append(
+            {
+                "id": "operator-2",
+                "kind": "operator",
+                "sequence": 2,
+                "text": "Use the map point at -600.00 m north, -200.00 m east.",
+            }
+        )
+        self.assertEqual(owner.operator_points(), [{"north_m": -600.0, "east_m": -200.0}])
+        result = await owner.execute("plan_task", {"tasking": clicked}, "agent", "clicked")
+        self.assertEqual(result["sectors"][0]["targets"], [{"north_m": -600.0, "east_m": -200.0}])
+        owner.events.append({"id": "reset", "kind": "chat_reset", "sequence": 3, "text": ""})
+        self.assertEqual(owner.operator_points(), [])
 
     async def test_all_launches_arm_before_fresh_references_and_auto_without_rewriting_upload(self):
         current = states()
@@ -498,6 +704,7 @@ class PlanApplication(unittest.IsolatedAsyncioTestCase):
             "usage": {
                 "input_tokens": 1,
                 "output_tokens": 1,
+                "input_tokens_details": {"cached_tokens": 0},
                 "output_tokens_details": {"reasoning_tokens": 0},
             },
             "output": [
@@ -526,9 +733,10 @@ class PlanApplication(unittest.IsolatedAsyncioTestCase):
             owner.model = SimpleNamespace(respond=respond)
             from world.cosys.landmarks import load
 
-            owner.context = Mock(
-                return_value=("Current facts", {"map": load()[:1], "inspections": []})
-            )
+            owner.context = Mock(return_value={"inspections": []})
+            owner.landmarks = load()[:1]
+            owner.effort = "high"
+            owner.id = "plan-test"
             owner.invoke = AsyncMock()
             owner.conversation = [{"role": "user", "content": "Previous request"}]
             owner.agent_busy = True

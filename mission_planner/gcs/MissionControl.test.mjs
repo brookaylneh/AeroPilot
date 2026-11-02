@@ -151,6 +151,7 @@ function state(caseId = null, vehicles = []) {
     agent_busy: false,
     agent_wait: null,
     chat_ready: false,
+    effort: 'high',
     inspections: [],
     approvals: [],
     map_focus: null,
@@ -177,6 +178,7 @@ function vehicle(id, values = {}) {
     ground_speed_mps: 0,
     climb_rate_mps: 0,
     battery_percent: 100,
+    usable_flight_s: 1960.36,
     battery_voltage_v: 16,
     gps_fix: 6,
     satellites: 10,
@@ -540,7 +542,7 @@ test('repeated rejected previews share one incident while preserving every plan 
     attempts.map(([call]) => call),
   );
   const incident = groups[0].type(groups[0].props);
-  assert.equal(nodes(incident).find((node) => node.type === 'strong').props.children, 'Plan preview blocked');
+  assert.equal(nodes(incident).find((node) => node.type === 'strong').props.children, 'Plan blocked');
   assert.deepEqual(
     nodes(incident)
       .filter((node) => node.type === 'p')
@@ -1148,4 +1150,150 @@ test('takeoff approval uses the exact request and plan launch requires its match
     });
     assert.equal(approve().props.disabled, true);
   }
+});
+
+test('plan_task rows summarise the tasking and render the compiled receipt; expansions seek approval', () => {
+  const tasking = {
+    task: 'transit',
+    subject: null,
+    references: {
+      landmark_ids: ['ranger-cabin'],
+      points: [],
+      polygon: null,
+      direction_of_travel: null,
+      subject_category: 'unknown',
+    },
+    fleet: { drone_ids: ['Drone2'], count: null },
+    settings: { height_m: null, speed_mps: null, transit_speed_mps: null, dwell_seconds: null },
+    aftermath: 'hover',
+    region: { band_index: null, accept_partial: false, radius_m: null, half_angle_deg: null },
+    expansion: { automatic_proposals: false, lead_seconds: null },
+  };
+  const receipt = {
+    plan: {
+      version: 2,
+      drones: [
+        {
+          drone_id: 'Drone2',
+          steps: [
+            { kind: 'takeoff', height_m: 48 },
+            { kind: 'fly', north_m: -498, east_m: -189, height_m: 40, speed_mps: 10 },
+            { kind: 'hover', seconds: null },
+          ],
+        },
+      ],
+    },
+    coverage: null,
+    missions: {
+      Drone2: {
+        route: [{ north_m: 0, east_m: 0, altitude_above_home_m: 48 }],
+        distance_m: 400,
+        duration_s: null,
+        battery_required_percent: 50,
+        available_hover_s: 900,
+      },
+    },
+    tasking,
+    region: { kind: 'waypoints' },
+    sectors: [
+      {
+        drone_id: 'Drone2',
+        entry: { north_m: -498, east_m: -189 },
+        exit: { north_m: -498, east_m: -189 },
+        layer_agl_m: 48,
+        continuing_steps: 0,
+      },
+    ],
+    fit: {
+      Drone2: {
+        usable_flight_s: 1960,
+        planned_s: 300,
+        indefinite: true,
+        lock_allowance_s: 0,
+        approval_hover_s: 0,
+        headroom_s: 900,
+      },
+    },
+    rationale: ['Transit via the departure lane to Ranger Cabin at 40 m above ground; aftermath hover.'],
+  };
+  const events = [
+    event('operator', 'operator', { source: 'operator', text: 'Go to the Ranger Cabin with Drone2.' }),
+    event('task', 'tool_call', { call_id: 'task', name: 'plan_task', arguments: { tasking } }),
+    event('task-result', 'tool_result', {
+      call_id: 'task',
+      name: 'plan_task',
+      arguments: { tasking },
+      result: { ok: true, state: receipt },
+    }),
+  ];
+  const initial = state();
+  const page = view(initial);
+  page.render({ events });
+  const html = renderToStaticMarkup(page.content());
+  assert.match(html, /Plan mission task/);
+  assert.match(html, /Transit · ranger-cabin · no detector · Drone2 · default settings · then hover/);
+  assert.match(html, /Transit via the departure lane to Ranger Cabin/);
+  assert.match(html, /Drone2: until instructed planned of 32.7 min usable · headroom 15.0 min/);
+  assert.match(html, /Mission plan version 2/);
+  const sent = [];
+  const expansion = {
+    ...initial,
+    approvals: [
+      {
+        id: 'approval-9',
+        call_id: 'call-9',
+        name: 'apply_proposal',
+        arguments: { version: 2 },
+        source: 'agent',
+      },
+    ],
+    planner: { ...initial.planner, preview: receipt },
+  };
+  page.render({ state: expansion, send: (message) => sent.push(message) });
+  const card = renderToStaticMarkup(page.approval());
+  assert.match(card, /Expand the search with plan version 2/);
+  assert.match(card, /Mission plan version 2/);
+  const approve = nodes(page.approval()).find(
+    (node) => node.type === 'button' && node.props.className === 'gcs-primary',
+  );
+  assert.equal(approve.props.disabled, false);
+  page.click(approve);
+  assert.equal(sent.at(-1).type, 'approval');
+  assert.equal(sent.at(-1).id, 'approval-9');
+  assert.equal(sent.at(-1).approved, true);
+  page.render({ state: { ...expansion, planner: { ...initial.planner, preview: null } } });
+  assert.match(renderToStaticMarkup(page.approval()), /matching plan preview is unavailable/);
+});
+
+test('the simulator battery reset is offered only with the fleet landed at base', () => {
+  const grounded = state();
+  const sent = [];
+  const page = view({ ...grounded, chat_ready: false });
+  page.render({ send: (message) => sent.push(message) });
+  assert.equal(page.fleet().props.resetBatteries.enabled, false);
+  page.render({ state: { ...grounded, chat_ready: true } });
+  assert.equal(page.fleet().props.resetBatteries.enabled, true);
+  page.fleet().props.resetBatteries.send();
+  assert.equal(sent.at(-1).type, 'reset_batteries');
+});
+
+test('the composer offers a reasoning effort picker beside the model name', () => {
+  const sent = [];
+  const page = view(state());
+  page.render({ send: (message) => sent.push(message) });
+  const picker = () => nodes(page.composer()).find((node) => node.type === 'select');
+  assert.equal(picker().props.value, 'high');
+  assert.deepEqual(
+    nodes(picker())
+      .filter((node) => node.type === 'option')
+      .map((node) => node.props.value),
+    ['low', 'medium', 'high'],
+  );
+  picker().props.onChange({ target: { value: 'low' } });
+  assert.equal(sent.at(-1).type, 'set_effort');
+  assert.equal(sent.at(-1).effort, 'low');
+  assert.equal(
+    nodes(view(null).composer()).find((node) => node.type === 'select'),
+    undefined,
+  );
 });

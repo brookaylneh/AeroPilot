@@ -35,7 +35,7 @@ def validate_conditions(conditions, planner, vehicles, inspections):
             assert kind == "landed", "Unknown wait condition"
 
 
-def ready(conditions, planner, vehicles, inspections):
+def ready(conditions, planner, vehicles, inspections, holds):
     results = []
     for condition in conditions:
         kind = condition["kind"]
@@ -106,6 +106,6 @@ def ready(conditions, planner, vehicles, inspections):
                 for row in inspections
             ):
                 continue
-            elif landed or vehicle["mode"] != "AUTO":
+            elif landed or (vehicle["mode"] != "AUTO" and vehicle["id"] not in holds):
                 return {"reason": "error", "error": vehicle["id"] + ": awaited flight step stopped"}
     return {"reason": "condition", "results": results} if results else None

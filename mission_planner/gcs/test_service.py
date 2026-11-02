@@ -19,9 +19,11 @@ from mission_planner.agents.tools import AGENT_INSTRUCTIONS
 from mission_planner.environment import ROOT
 from mission_planner.gcs.geodesy import ORIGIN, fence_vertices
 from mission_planner.gcs.service import (
+    CONTEXT_PREFIX,
     Mission,
     compact_vehicle,
     flight_constraints,
+    live_context,
     operator_error,
     planning_inspection,
     planning_instructions,
@@ -29,6 +31,11 @@ from mission_planner.gcs.service import (
     retire_images,
 )
 from world.cosys.landmarks import load
+
+
+def live_json(mission):
+    text = live_context(mission.context(), mission.landmarks)["content"][0]["text"]
+    return json.loads(text.split(CONTEXT_PREFIX)[1])
 
 
 class AgentContext(unittest.TestCase):
@@ -211,11 +218,9 @@ class AgentContext(unittest.TestCase):
         mission.vehicles = lambda: []
         mission.event_sequence = 0
         for _ in range(2):
-            context = json.loads(
-                planning_instructions(*mission.context()).split("Current mission context: ")[1]
-            )
+            context = live_json(mission)
             self.assertEqual(context["briefing"], {"brief": "Briefing text"})
-            self.assertTrue(context["map"])
+            self.assertNotIn("map", context)
         instruction = {
             "id": "operator-message",
             "kind": "operator",
@@ -227,9 +232,7 @@ class AgentContext(unittest.TestCase):
             "arguments": None,
         }
         mission.events = [instruction, {"kind": "perception", "source": "inspection"}]
-        context = json.loads(
-            planning_instructions(*mission.context()).split("Current mission context: ")[1]
-        )
+        context = live_json(mission)
         self.assertEqual(
             context["latest_operator_instruction"],
             {key: value for key, value in instruction.items() if key != "source"},
@@ -245,9 +248,7 @@ class AgentContext(unittest.TestCase):
             "arguments": {"drone_id": "Drone4"},
         }
         mission.events.extend([override, {"kind": "perception", "source": "inspection"}])
-        context = json.loads(
-            planning_instructions(*mission.context()).split("Current mission context: ")[1]
-        )
+        context = live_json(mission)
         self.assertEqual(
             context["latest_operator_instruction"],
             {key: value for key, value in override.items() if key != "source"},
@@ -303,9 +304,7 @@ class AgentContext(unittest.TestCase):
                 },
             }
         ]
-        context = json.loads(
-            planning_instructions(*mission.context()).split("Current mission context: ")[1]
-        )
+        context = live_json(mission)
         self.assertEqual(context["current_vehicles"][0]["mode"], "GUIDED")
         self.assertEqual(context["current_vehicles"][0]["heading_deg"], 119.75)
         self.assertEqual(context["current_vehicles"][0]["climb_rate_mps"], 1.6)
@@ -324,9 +323,7 @@ class AgentContext(unittest.TestCase):
         ]
         mission.fleet.fences["version"] = 1
         vehicle["fence"]["exclusions"].append(exclusion)
-        updated = json.loads(
-            planning_instructions(*mission.context()).split("Current mission context: ")[1]
-        )
+        updated = live_json(mission)
         self.assertEqual(updated["fence_version"], 1)
         self.assertEqual(updated["flight_constraints"]["fences"]["Drone1"], vehicle["fence"])
         self.assertEqual(updated["flight_constraints"]["boundary_clearance_m"], 10)
@@ -350,13 +347,15 @@ class AgentContext(unittest.TestCase):
             mission.return_rows = {}
             mission.vehicles = lambda: []
             mission.event_sequence = 0
-            instructions = planning_instructions(*mission.context())
-            context = json.loads(instructions.split("Current mission context: ")[1])
-            self.assertTrue(context["map"])
+            instructions = planning_instructions(AGENT_INSTRUCTIONS, mission.landmarks)
+            context = live_json(mission)
+            self.assertIn('"places":', instructions)
+            self.assertNotIn("map", context)
             self.assertIsNone(context["briefing"])
             self.assertNotIn("search", context)
             self.assertTrue(instructions.startswith(AGENT_INSTRUCTIONS))
-            self.assertIn("observe:true", instructions)
+            self.assertIn("Observed plan steps search automatically", instructions)
+            self.assertIn("plan_task", instructions)
             self.assertNotIn("{NORTH_MIN_M", instructions)
 
     def test_http_error_does_not_expose_exception_class(self):
@@ -463,7 +462,7 @@ class EvidenceIdentification(unittest.IsolatedAsyncioTestCase):
         m.inspections.snapshot.return_value = []
         m.autopilot_alerts, m.return_rows = {}, {}
         confirmed = await m.execute("confirm_evidence", self.arguments, "agent", "call")
-        _, context = m.context()
+        context = m.context()
         self.assertEqual(context["latest_operator_instruction"]["id"], self.operator["id"])
         self.assertEqual(
             context["evidence"],
@@ -511,9 +510,7 @@ class AutopilotAlerts(unittest.TestCase):
         self.assertTrue(any(e["result"] == self.warning for e in m.events))
         self.assertEqual(len(m.events), 1002)
         self.assertEqual(m.summary()["alerts"], ["Drone1 autopilot: Potential Thrust Loss (3)"])
-        context = json.loads(
-            planning_instructions(*m.context()).split("Current mission context: ")[1]
-        )
+        context = live_json(m)
         self.assertEqual(context["autopilot_alerts"], [{**self.warning, "pending": True}])
         logged = [
             json.loads(line) for line in (m.directory / "events.jsonl").read_text().splitlines()
@@ -559,7 +556,7 @@ class AutopilotAlerts(unittest.TestCase):
 
     def test_context_snapshot_is_detached_from_mutable_flight_state(self):
         self.mission.fleet_event(self.warning)
-        _, context = self.mission.context()
+        context = self.mission.context()
         alert = next(iter(self.mission.autopilot_alerts.values()))
         alert.update(text="A newer alert", pending=False)
         self.mission.autopilot_alerts.clear()
@@ -580,7 +577,7 @@ class AutopilotAlerts(unittest.TestCase):
 class AgentConversation(unittest.IsolatedAsyncioTestCase):
     async def test_context_failure_reports_operation_type_and_traceback_without_model_call(self):
         self.replies([])
-        with patch("mission_planner.gcs.service.planning_instructions", side_effect=AssertionError):
+        with patch("mission_planner.gcs.service.live_context", side_effect=AssertionError):
             task = self.mission.launch(self.mission.agent("Review the candidate"))
             await asyncio.wait([task])
         self.assertIsInstance(task.exception(), RuntimeError)
@@ -595,7 +592,7 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
         result = self.mission.event.call_args.kwargs["result"]
         self.assertEqual(result["exception_type"], "RuntimeError")
         self.assertIn("AssertionError", result["traceback"])
-        self.assertIn("planning_instructions", result["traceback"])
+        self.assertIn("live_context", result["traceback"])
 
     async def test_slow_context_formatting_leaves_event_loop_responsive_and_can_be_cancelled(self):
         self.replies([])
@@ -647,10 +644,10 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
         self.replies([self.reply([call]), self.reply([])])
         await self.mission.agent("Show me the current candidate view")
         self.mission.inspections.evidence.assert_called_once_with(identity, frame)
-        content = self.requests[1]["input"][-1]["content"]
+        content = self.requests[1]["input"][-2]["content"]
         self.assertIn(frame, content[0]["text"])
         self.assertEqual(base64.b64decode(content[1]["image_url"].split(",", 1)[1]), payload)
-        paired = self.requests[1]["input"][-2]
+        paired = self.requests[1]["input"][-3]
         self.assertEqual(paired["type"], "function_call_output")
         self.assertEqual(paired["call_id"], "current-image")
 
@@ -677,9 +674,10 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
         self.mission.event = Mock()
         from world.cosys.landmarks import load
 
-        self.mission.context = Mock(
-            return_value=("Current aircraft state", {"map": load()[:1], "inspections": []})
-        )
+        self.mission.context = Mock(return_value={"inspections": []})
+        self.mission.landmarks = load()[:1]
+        self.mission.effort = "high"
+        self.mission.id = "test-mission"
         self.mission.vehicles = Mock(return_value=[])
         self.mission.autopilot_alerts = {}
         self.mission.return_rows = {}
@@ -722,6 +720,7 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
                 "usage": {
                     "input_tokens": 10,
                     "output_tokens": 10,
+                    "input_tokens_details": {"cached_tokens": 0},
                     "output_tokens_details": {"reasoning_tokens": 5},
                 },
             },
@@ -763,24 +762,29 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
         ]
         previous = [first_user, reasoning, commentary, *calls, *results, answer]
         self.assertEqual(self.mission.conversation, previous)
-        self.assertEqual(self.requests[1]["input"], previous[:-1])
-        self.mission.context.return_value = (
-            "Drone1 is now airborne at the hut",
-            self.mission.context.return_value[1],
-        )
+        live = live_context({"inspections": []}, self.mission.landmarks)
+        self.assertEqual(self.requests[1]["input"], [*previous[:-1], live])
+        self.mission.context.return_value = {"inspections": [], "note": "Drone1 is airborne"}
         await self.mission.agent("Changed my mind, return back home")
-        self.assertEqual(self.requests[2]["input"][:-1], previous)
+        self.assertEqual(self.requests[2]["input"][:-2], previous)
         self.assertEqual(
-            self.requests[2]["input"][-1]["content"][0]["text"], "Changed my mind, return back home"
+            self.requests[2]["input"][-2]["content"][0]["text"], "Changed my mind, return back home"
         )
         self.assertEqual(
-            self.requests[2]["instructions"],
-            planning_instructions(*self.mission.context.return_value),
+            self.requests[2]["input"][-1],
+            live_context({"inspections": [], "note": "Drone1 is airborne"}, self.mission.landmarks),
         )
         for request in self.requests:
+            self.assertEqual(
+                request["instructions"],
+                planning_instructions(AGENT_INSTRUCTIONS, self.mission.landmarks),
+            )
             self.assertNotIn("previous_response_id", request)
             self.assertFalse(request["store"])
             self.assertEqual(request["include"], ["reasoning.encrypted_content"])
+            self.assertEqual(request["prompt_cache_key"], "test-mission")
+            self.assertEqual(request["prompt_cache_retention"], "24h")
+            self.assertEqual(request["reasoning"], {"effort": "high"})
         self.assertEqual(self.mission.invoke.await_count, 2)
 
     async def test_http_failure_preserves_history_and_does_not_retry(self):
@@ -794,7 +798,7 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
         self.replies([self.reply([call]), httpx.Response(400, json={"error": {"message": reason}})])
         await self.mission.agent("Return home")
         self.assertEqual(len(self.requests), 2)
-        self.assertEqual(self.mission.conversation, self.requests[1]["input"])
+        self.assertEqual(self.mission.conversation, self.requests[1]["input"][:-1])
         self.mission.invoke.assert_awaited_once_with(
             "return_home", {"drone_id": "Drone1"}, "agent", "return"
         )
@@ -891,7 +895,9 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
         pixels = base64.b64encode(images[0]).decode()
         for request in self.requests:
             self.assertNotIn(pixels, request["instructions"])
-            context = json.loads(request["instructions"].split("Current mission context: ")[1])
+            context = json.loads(
+                request["input"][-1]["content"][0]["text"].split(CONTEXT_PREFIX)[1]
+            )
             self.assertEqual(
                 context["inspections"][0]["latest"]["detections"], row["latest"]["detections"]
             )
@@ -899,7 +905,7 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
                 context["inspections"][0]["rescue"]["reports"], original["rescue"]["reports"]
             )
         self.assertNotIn(pixels, json.dumps(self.requests[-1]))
-        output = self.requests[1]["input"][-1]
+        output = self.requests[1]["input"][-2]
         self.assertEqual(output["type"], "function_call_output")
         self.assertNotIn(pixels, output["output"])
         self.assertEqual(mission.state()["inspections"], [original])
@@ -935,7 +941,7 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
             await asyncio.wait_for(task, 2)
         self.mission.invoke.assert_not_awaited()
         self.assertEqual(len(self.requests), 1)
-        self.assertEqual(self.mission.conversation, self.requests[0]["input"])
+        self.assertEqual(self.mission.conversation, self.requests[0]["input"][:-1])
         self.assertIn("response discarded", self.mission.event.call_args.args[1])
         self.assertEqual(self.mission.event.call_args.args[0], "mode")
 
@@ -1234,7 +1240,7 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
             try:
                 return original(*args, **kwargs)
             finally:
-                if len(kwargs["history"]) == 1:
+                if len(kwargs["history"]) == 2:
                     finished.set()
 
         self.mission.model.respond = observed
@@ -1255,7 +1261,7 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
         m.invoke.assert_not_awaited()
         self.assertEqual(len(self.requests), 2)
         self.assertEqual(
-            [item["content"][0]["text"] for item in self.requests[-1]["input"]],
+            [item["content"][0]["text"] for item in self.requests[-1]["input"][:-1]],
             ["Find people near the lake", "Use Drone2 instead"],
         )
 
@@ -1299,7 +1305,7 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([item["call_id"] for item in outputs], [c["call_id"] for c in calls])
         self.assertTrue(all(json.loads(item["output"])["ok"] is False for item in outputs))
         self.assertEqual(history[0]["content"][0]["text"], "Inspect for people near the lake")
-        self.assertEqual(history[-1]["content"][0]["text"], "Go to the cabin instead")
+        self.assertEqual(history[-2]["content"][0]["text"], "Go to the cabin instead")
 
     async def test_simultaneous_messages_keep_one_turn_and_both_operator_inputs(self):
         entered, cancelled, release = asyncio.Event(), asyncio.Event(), asyncio.Event()
@@ -1335,7 +1341,11 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
             await asyncio.wait_for(m.agent_task, 2)
         self.assertEqual(len(self.requests), 2)
         self.assertEqual(
-            [item["content"][0]["text"] for item in self.requests[-1]["input"] if "role" in item],
+            [
+                item["content"][0]["text"]
+                for item in self.requests[-1]["input"][:-1]
+                if "role" in item
+            ],
             ["Inspect the lake", "Also inspect the cabin", "Then return home"],
         )
         self.assertIsNone(m.agent_task)
@@ -1467,7 +1477,7 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(json.JSONDecodeError):
             await self.mission.agent("Check the fleet")
         self.mission.invoke.assert_not_awaited()
-        self.assertEqual(self.mission.conversation, self.requests[0]["input"])
+        self.assertEqual(self.mission.conversation, self.requests[0]["input"][:-1])
 
 
 if __name__ == "__main__":

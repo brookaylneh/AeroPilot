@@ -62,6 +62,10 @@ CASES = [
         [call("apply_plan_change", version=4)],
     ),
     (
+        "A search expansion proposal for plan version 6 is in your context: band 2 north-east of the campsite, all four drones have endurance. Apply it so the operator can approve.",
+        [call("apply_proposal", version=6)],
+    ),
+    (
         "Drone2 is healthy and airborne on a verified plan with no active search or inspection. Inspect its current forward view for 'house' at threshold 0.3 for 20 seconds.",
         [call("start_inspection", drone_id="Drone2", prompt="house", threshold=0.3, duration_s=20)],
     ),
@@ -130,6 +134,7 @@ def run(output, first_case):
                 TOOLS,
                 instructions=AGENT_INSTRUCTIONS,
                 trace_path=trace,
+                cache_key="bench_tools",
             )
             elapsed = time.perf_counter() - started
             http = json.loads(trace.with_suffix(".http.json").read_text())

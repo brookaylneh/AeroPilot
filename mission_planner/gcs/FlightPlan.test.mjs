@@ -5,13 +5,15 @@ import { runInNewContext } from 'node:vm';
 import { buildSync } from 'esbuild';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import {
+import FlightPlan, {
   flightPlanSchema,
   planReceiptSchema,
-  plannerSchema,
   planRejection,
+  plannerSchema,
   stepText,
   surveyCoverageText,
+  taskText,
+  taskingSchema,
 } from './FlightPlan.tsx';
 import { droneIds, linkLost, stateSchema } from './missionState.ts';
 
@@ -232,6 +234,7 @@ test('complete mission states retain telemetry through observed route, circle, m
       ground_speed_mps: 5,
       climb_rate_mps: 0,
       battery_percent: 80,
+      usable_flight_s: 1240.36,
       battery_voltage_v: 12,
       gps_fix: 6,
       satellites: 10,
@@ -248,6 +251,7 @@ test('complete mission states retain telemetry through observed route, circle, m
     agent_busy: false,
     agent_wait: null,
     chat_ready: false,
+    effort: 'high',
     inspections: [
       {
         id: '00000000-0000-4000-8000-000000000003',
@@ -325,7 +329,7 @@ test('observation flags are optional literal true on finite waypoint steps only'
     const value = { version: 1, drones: [{ drone_id: 'Drone1', steps: [{ ...step, observe: true }] }] };
     assert.equal(flightPlanSchema.safeParse(value).success, false, step.kind);
   }
-  for (const count of [2, 101]) {
+  for (const count of [2, 401]) {
     const value = structuredClone(observationPlans.route);
     value.search.perimeter = Array.from({ length: count }, (_, east_m) => ({ north_m: 0, east_m }));
     assert.equal(flightPlanSchema.safeParse(value).success, false);
@@ -388,6 +392,13 @@ test('rejected geometry belongs only to the current failed preview', () => {
     other_step_index: 1,
     step_kind: 'fly',
     other_step_kind: 'fly',
+    timing: {
+      applied: true,
+      windows: [
+        [12.5, 40],
+        [10, 35.5],
+      ],
+    },
   };
   const rejection = {
     rule: 'separation',
@@ -594,6 +605,7 @@ test('planner missions require a remaining-task instruction after hold; raw miss
     exports: module.exports,
   });
   const props = {
+    resetBatteries: { enabled: false, send() {} },
     vehicles: [
       {
         id: 'Drone1',
@@ -604,6 +616,7 @@ test('planner missions require a remaining-task instruction after hold; raw miss
         landed_state: 2,
         armed: true,
         battery_percent: 90,
+        usable_flight_s: 1600.36,
         altitude_above_home_m: 30,
         ground_speed_mps: 0,
         mission_current: 2,
@@ -665,6 +678,7 @@ test('only an active drone card is clickable, anywhere except its command contro
     armed: camera_available,
     landed_state: camera_available ? 2 : 1,
     battery_percent: 90,
+    usable_flight_s: 1600.36,
     altitude_above_home_m: 0,
     ground_speed_mps: 0,
     mission_current: null,
@@ -687,6 +701,7 @@ test('only an active drone card is clickable, anywhere except its command contro
     prepare() {},
     exportPlan() {},
     progress: {},
+    resetBatteries: { enabled: false, send() {} },
   });
   const nodes = (node) =>
     Array.isArray(node)
@@ -780,4 +795,125 @@ test('observation approval shows task, participating aircraft, camera aim and fo
   const returning = render(observationPlans.returning);
   assert.match(returning, /Return home/);
   assert.doesNotMatch(returning, /Observe |Observation camera|candidate-lock allowance/);
+});
+
+const tasking = {
+  task: 'area_search',
+  subject: {
+    detector_prompt: 'person',
+    threshold: 0.35,
+    look_for: {
+      objective: 'Find the child',
+      target: 'child',
+      attributes: [{ id: 'jacket', text: 'red jacket' }],
+      ignore: [],
+    },
+  },
+  references: {
+    landmark_ids: ['campsite'],
+    points: [],
+    polygon: null,
+    direction_of_travel: { compass: 'south-east' },
+    subject_category: 'child',
+  },
+  fleet: { drone_ids: null, count: null },
+  settings: {
+    height_m: 30,
+    speed_mps: 5,
+    transit_speed_mps: 10,
+    spacing_m: 20,
+    zoom: 2,
+    look_ahead_m: 20,
+    stand_off_m: 20,
+    max_lock_seconds: 180,
+    dwell_seconds: null,
+  },
+  aftermath: 'return_home',
+  region: { band_index: null, accept_partial: false, radius_m: null, half_angle_deg: null },
+  expansion: { automatic_proposals: true, lead_seconds: null },
+};
+
+test('tasking receipts carry region bands, fit and rationale into the plan card', () => {
+  const plan = structuredClone(searchPlan);
+  const value = {
+    plan,
+    coverage: {
+      perimeter_area_m2: 200000,
+      survey_area_m2: 199800,
+      unassigned_area_m2: 200,
+      survey_percent: 99.9,
+    },
+    missions: Object.fromEntries(plan.drones.map(({ drone_id }) => [drone_id, receipt.missions.Drone2])),
+    tasking,
+    region: {
+      kind: 'doctrine',
+      bands: [
+        { index: 1, polygon: rectangle(0, 200), area_m2: 200000, mass: 0.31, status: 'planned' },
+        { index: 2, polygon: rectangle(200, 400), area_m2: 180000, mass: 0.2, status: 'provisional' },
+        { index: 3, polygon: rectangle(400, 600), area_m2: 50000, mass: 0.05, status: 'outside_endurance' },
+      ],
+    },
+    sectors: [
+      {
+        drone_id: 'Drone1',
+        entry: { north_m: 0, east_m: 10 },
+        exit: { north_m: 100, east_m: 10 },
+        layer_agl_m: 38,
+        continuing_steps: 0,
+      },
+    ],
+    fit: {
+      Drone1: {
+        usable_flight_s: 1960,
+        planned_s: 1100,
+        indefinite: false,
+        lock_allowance_s: 180,
+        approval_hover_s: 180,
+        headroom_s: 680,
+      },
+    },
+    rationale: ['Typically developing children: 25/50/75/95 % found within 0.3/0.9/2.4/11.3 km (n=903).'],
+  };
+  const parsed = planReceiptSchema.parse(value);
+  assert.deepEqual(
+    parsed.region.bands.map((band) => band.status),
+    ['planned', 'provisional', 'outside_endurance'],
+  );
+  assert.equal(parsed.tasking.task, 'area_search');
+  assert.deepEqual(
+    planReceiptSchema.parse({ plan, coverage: null, missions: value.missions }).tasking,
+    undefined,
+  );
+  assert.throws(() => taskingSchema.parse({ ...tasking, task: 'fly_somewhere' }));
+  assert.throws(() => taskingSchema.parse({ ...tasking, fleet: { drone_ids: ['Drone9'], count: null } }));
+  const html = renderToStaticMarkup(createElement(FlightPlan, { receipt: parsed }));
+  assert.match(html, /Area search · campsite · travelling south-east/);
+  assert.match(html, /detect “person” for child/);
+  assert.match(html, /child tables/);
+  assert.match(html, /all healthy aircraft/);
+  assert.match(html, /expansion proposals/);
+  assert.match(html, /n=903/);
+  assert.match(html, /Band 1 of 3 · 20.0 ha · 31% of modelled probability · Survey assigned: 99.90%/);
+  assert.match(
+    html,
+    /Drone1: 18.3 min planned of 32.7 min usable · headroom 11.3 min after a 180 s candidate allowance and a 180 s approval hover/,
+  );
+  assert.equal(
+    taskText({
+      ...tasking,
+      task: 'transit',
+      subject: null,
+      references: {
+        ...tasking.references,
+        landmark_ids: [],
+        points: [{ north_m: -600, east_m: -200 }],
+        direction_of_travel: null,
+      },
+      fleet: { drone_ids: ['Drone2'], count: null },
+      settings: { height_m: 40, speed_mps: null, dwell_seconds: 60 },
+      aftermath: 'hover',
+      expansion: { automatic_proposals: false, lead_seconds: null },
+    }),
+    'Transit · 600.0 m south · 200.0 m west · no detector · Drone2 · height 40, dwell seconds 60 · then hover',
+  );
 });

@@ -61,15 +61,17 @@ class Conditions(unittest.TestCase):
         }
         condition = {"kind": "inspection", "inspection_id": "candidate"}
         validate_conditions([condition], self.planner, self.vehicles, [row])
-        result = ready([condition], self.planner, self.vehicles, [row])
+        result = ready([condition], self.planner, self.vehicles, [row], set())
         self.assertEqual(result["results"][0]["inspection"], row)
         self.assertFalse(row["rescue"]["pending"])
 
     def test_arrival_needs_completed_transit_not_upload_or_current_leg(self):
         validate_conditions([STEP], self.planner, self.vehicles, [])
-        self.assertIsNone(ready([STEP], self.planner, self.vehicles, []))
+        self.assertIsNone(ready([STEP], self.planner, self.vehicles, [], set()))
         self.planner["progress"]["Drone1"]["completed_steps"].append(1)
-        self.assertEqual(ready([STEP], self.planner, self.vehicles, [])["reason"], "condition")
+        self.assertEqual(
+            ready([STEP], self.planner, self.vehicles, [], set())["reason"], "condition"
+        )
 
     def test_survey_completion_waits_for_and_includes_final_inspection(self):
         self.planner["active"]["plan"]["drones"][0]["steps"][1] = {
@@ -89,12 +91,12 @@ class Conditions(unittest.TestCase):
                 "step_index": 1,
             },
         }
-        self.assertIsNone(ready([STEP], self.planner, self.vehicles, [row]))
+        self.assertIsNone(ready([STEP], self.planner, self.vehicles, [row], set()))
         row["rescue"]["completed_steps"].append({"step_index": 1, "frames": 12})
-        self.assertIsNone(ready([STEP], self.planner, self.vehicles, [row]))
+        self.assertIsNone(ready([STEP], self.planner, self.vehicles, [row], set()))
         row["status"] = "complete"
         row["rescue"].update(phase="complete", pending=True, step_index=None)
-        result = ready([STEP], self.planner, self.vehicles, [row])
+        result = ready([STEP], self.planner, self.vehicles, [row], set())
         self.assertEqual(result["results"][0]["inspection"], row)
         self.assertTrue(row["rescue"]["pending"])
 
@@ -111,7 +113,7 @@ class Conditions(unittest.TestCase):
             "status": "failed",
             "rescue": {"phase": "failed", "pending": True, "completed_steps": []},
         }
-        result = ready([STEP], self.planner, self.vehicles, [row])
+        result = ready([STEP], self.planner, self.vehicles, [row], set())
         self.assertEqual(result["results"][0]["inspection"], row)
 
     def test_invalid_version_and_step_fail_at_registration(self):
@@ -127,31 +129,41 @@ class Conditions(unittest.TestCase):
         other = {**STEP, "step_index": 2}
         validate_conditions([STEP, other], self.planner, self.vehicles, [])
         self.planner["progress"]["Drone1"]["completed_steps"].append(1)
-        result = ready([STEP, other], self.planner, self.vehicles, [])
+        result = ready([STEP, other], self.planner, self.vehicles, [], set())
         self.assertEqual([row["condition"] for row in result["results"]], [STEP])
         validate_conditions([other], self.planner, self.vehicles, [])
-        self.assertIsNone(ready([other], self.planner, self.vehicles, []))
+        self.assertIsNone(ready([other], self.planner, self.vehicles, [], set()))
 
     def test_rtl_acknowledgement_is_not_landing(self):
         condition = {"kind": "landed", "drone_id": "Drone1"}
         self.vehicles[0]["mode"] = "RTL"
-        self.assertIsNone(ready([condition], self.planner, self.vehicles, []))
+        self.assertIsNone(ready([condition], self.planner, self.vehicles, [], set()))
         self.vehicles[0].update(landed_state=1)
-        self.assertIsNone(ready([condition], self.planner, self.vehicles, []))
+        self.assertIsNone(ready([condition], self.planner, self.vehicles, [], set()))
         self.vehicles[0]["armed"] = False
-        self.assertEqual(ready([condition], self.planner, self.vehicles, [])["reason"], "condition")
+        self.assertEqual(
+            ready([condition], self.planner, self.vehicles, [], set())["reason"], "condition"
+        )
 
     def test_telemetry_failure_and_interrupted_flight_are_errors(self):
         for change in ({"link_lost": True}, {"ekf_healthy": False}, {"mode": "RTL"}):
             with self.subTest(change=change):
-                result = ready([STEP], self.planner, [{**self.vehicles[0], **change}], [])
+                result = ready([STEP], self.planner, [{**self.vehicles[0], **change}], [], set())
                 self.assertEqual(result["reason"], "error")
+
+    def test_a_held_aircraft_keeps_waiting_while_a_stopped_one_is_an_error(self):
+        braked = [{**self.vehicles[0], "mode": "BRAKE"}]
+        self.assertIsNone(ready([STEP], self.planner, braked, [], {"Drone1"}))
+        self.assertEqual(ready([STEP], self.planner, braked, [], set())["reason"], "error")
+        self.assertEqual(ready([STEP], self.planner, braked, [], {"Drone2"})["reason"], "error")
+        landed = [{**braked[0], "armed": False, "landed_state": 1}]
+        self.assertEqual(ready([STEP], self.planner, landed, [], {"Drone1"})["reason"], "error")
 
     def test_all_ready_inspections_are_retained_including_failures(self):
         rows = [{"id": "one", "status": "candidate"}, {"id": "two", "status": "failed"}]
         conditions = [{"kind": "inspection", "inspection_id": row["id"]} for row in rows]
         validate_conditions(conditions, self.planner, self.vehicles, rows)
-        result = ready(conditions, self.planner, self.vehicles, rows)
+        result = ready(conditions, self.planner, self.vehicles, rows, set())
         self.assertEqual([r["inspection"] for r in result["results"]], rows)
 
     def test_search_lock_does_not_misreport_an_interrupted_survey(self):
@@ -160,9 +172,11 @@ class Conditions(unittest.TestCase):
         for phase in ("reviewing", "tracking", "held", "resuming"):
             with self.subTest(phase=phase):
                 row["rescue"]["phase"] = phase
-                self.assertIsNone(ready([STEP], self.planner, self.vehicles, [row]))
+                self.assertIsNone(ready([STEP], self.planner, self.vehicles, [row], set()))
         row["rescue"]["phase"] = "failed"
-        self.assertEqual(ready([STEP], self.planner, self.vehicles, [row])["reason"], "error")
+        self.assertEqual(
+            ready([STEP], self.planner, self.vehicles, [row], set())["reason"], "error"
+        )
 
     def test_acknowledged_candidate_does_not_repeatedly_wake_wonder(self):
         row = {"id": "search", "status": "candidate", "rescue": {"pending": False}}
@@ -188,6 +202,9 @@ class WakeLifecycle(unittest.IsolatedAsyncioTestCase):
         m.operator_tasks = set()
         m.plan_task = None
         m.tasks = set()
+        m.holds = set()
+        m.plan_preview = m.proposal = None
+        m.approvals = {}
         m.event = Mock()
         m.planner_state = Mock(return_value=copy.deepcopy(PLANNER))
         m.vehicles = Mock(return_value=[{**VEHICLE, "received_at_ms": time.time() * 1000}])
@@ -217,7 +234,12 @@ class WakeLifecycle(unittest.IsolatedAsyncioTestCase):
         m = self.mission
         receipt = {"missions": {"Drone1": {}}}
         m.plan_active = receipt
-        row = {"id": "inspection", "rescue": {"pending": True}, "latest": None}
+        row = {
+            "id": "inspection",
+            "status": "candidate",
+            "rescue": {"pending": True},
+            "latest": None,
+        }
         m.inspections.pending_events.return_value = [row]
 
         async def review(text, *, wake):
@@ -339,7 +361,12 @@ class WakeLifecycle(unittest.IsolatedAsyncioTestCase):
         m = self.mission
         receipt = {"missions": {"Drone1": {}}}
         m.plan_active = receipt
-        row = {"id": "inspection", "rescue": {"pending": True}, "latest": None}
+        row = {
+            "id": "inspection",
+            "status": "candidate",
+            "rescue": {"pending": True},
+            "latest": None,
+        }
         m.inspections.pending_events.return_value = [row]
         m.fleet_event(
             {
@@ -442,9 +469,10 @@ class AgentWake(unittest.IsolatedAsyncioTestCase):
         m.event = Mock()
         from world.cosys.landmarks import load
 
-        m.context = Mock(
-            return_value=("Measured mission context", {"map": load()[:1], "inspections": []})
-        )
+        m.context = Mock(return_value={"inspections": []})
+        m.landmarks = load()[:1]
+        m.effort = "high"
+        m.id = "waiting-test"
         m.vehicles = Mock(return_value=[])
         m.autopilot_alerts = {}
         m.return_rows = {}
@@ -477,6 +505,7 @@ class AgentWake(unittest.IsolatedAsyncioTestCase):
                     "usage": {
                         "input_tokens": 1,
                         "output_tokens": 1,
+                        "input_tokens_details": {"cached_tokens": 0},
                         "output_tokens_details": {"reasoning_tokens": 0},
                     },
                 },
@@ -523,6 +552,7 @@ class AgentWake(unittest.IsolatedAsyncioTestCase):
                     "usage": {
                         "input_tokens": 1,
                         "output_tokens": 1,
+                        "input_tokens_details": {"cached_tokens": 0},
                         "output_tokens_details": {"reasoning_tokens": 0},
                     },
                 },

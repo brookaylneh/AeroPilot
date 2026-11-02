@@ -84,6 +84,52 @@ class RouteValidation(unittest.TestCase):
                     with self.assertRaises(PlanRejected):
                         validate_separation("Drone1", route, reserved, homes)
 
+    def test_unobserved_transit_windows_separate_crossing_legs_only_when_apart(self):
+        route = [point(-10, 0, 30), point(10, 0, 30)]
+        reserved = [("Drone2", [point(0, -10, 30), point(0, 10, 30)])]
+        validate_separation(
+            "Drone1",
+            route,
+            reserved,
+            HOME_HEIGHTS,
+            {"Drone1": [[100.0, 110.0]], "Drone2": [[0, 20]]},
+        )
+        validate_separation(
+            "Drone1", route, reserved, HOME_HEIGHTS, {"Drone1": [[50.0, 60.0]], "Drone2": [[0, 20]]}
+        )
+        for other, applied in (([[0, 71]], True), ([[80, 90]], True), ([None], False)):
+            with self.subTest(other=other), self.assertRaises(PlanRejected) as caught:
+                validate_separation(
+                    "Drone1",
+                    route,
+                    reserved,
+                    HOME_HEIGHTS,
+                    {"Drone1": [[100, 110]], "Drone2": other},
+                )
+            timing = caught.exception.rejection["conflict"]["timing"]
+            self.assertEqual(timing, {"applied": applied, "windows": [[100, 110], other[0]]})
+            self.assertIn(
+                "time windows overlap" if applied else "regardless of timing", str(caught.exception)
+            )
+        with self.assertRaises(PlanRejected):
+            validate_separation(
+                "Drone1",
+                route,
+                reserved,
+                HOME_HEIGHTS,
+                {"Drone1": [[49.0, 60.0]], "Drone2": [[0, 20]]},
+            )
+        with self.assertRaises(PlanRejected) as spatial:
+            validate_separation("Drone1", route, reserved, HOME_HEIGHTS)
+        self.assertEqual(
+            spatial.exception.rejection["conflict"]["timing"],
+            {"applied": False, "windows": [None, None]},
+        )
+        with self.assertRaisesRegex(AssertionError, "match route segments"):
+            validate_separation(
+                "Drone1", route, reserved, HOME_HEIGHTS, {"Drone1": [], "Drone2": [[0, 20]]}
+            )
+
     def test_each_home_reference_must_be_present_and_finite(self):
         for name in ("Drone1", "Drone2"):
             for value in (float("nan"), float("inf"), True, "2632.43", None):
@@ -202,6 +248,7 @@ class RouteValidation(unittest.TestCase):
                 "other_step_index": None,
                 "step_kind": None,
                 "other_step_kind": None,
+                "timing": {"applied": False, "windows": [None, None]},
             },
         )
         self.assertIn("Drone1 conflicts with Drone2", str(error))

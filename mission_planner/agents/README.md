@@ -1,10 +1,15 @@
 # Mission agents
 
-Wonder chooses the mission; code supplies facts, validates the complete plan and executes
-it. Plan coordinates are metres north/east; flight heights are above terrain. One checked
-plan is the proposal. A clear request proceeds directly to preview and one launch approval;
-genuine ambiguity requires a question or an operator map click. Airborne changes and
-immediate overrides need no approval unless another landed drone would launch.
+Wonder states the task; code generates, sizes and proves the flight plan, then executes it.
+`plan_task(tasking)` names the task (area, datum, route or boundary search, point inspection,
+transit or waypoint route), the subject to detect, landmark ids or operator-clicked map points,
+the briefing's direction of travel and subject category, the fleet, settings (null takes the
+disclosed defaults), the aftermath and the expansion policy. Code owns every coordinate, lane,
+altitude layer, timing and battery number and returns a checked receipt or a structured
+rejection naming the field to change. One checked plan is the proposal: a clear request goes
+straight to `plan_task` and one launch approval; genuine ambiguity requires a question or an
+operator map click. Airborne changes and immediate overrides need no approval unless another
+landed drone would launch; a code-proposed search expansion needs operator approval.
 
 | Module                         | Responsibility                                                            |
 | ------------------------------ | ------------------------------------------------------------------------- |
@@ -12,16 +17,16 @@ immediate overrides need no approval unless another landed drone would launch.
 | `tools.py`                     | Current tool catalogue, concise mission instructions, argument validation |
 | `map_context.py`               | Compact public landmarks and terrain queries                              |
 | `review.py`                    | Frozen Glimmer contract, original 4K evidence and logged review           |
-| `vision.py`, `segmentation.py` | Local SAM video client; standalone SAM mask validation               |
+| `vision.py`, `segmentation.py` | Local SAM video client; standalone SAM mask validation                    |
 | `perception/`                  | Offline camera/model calibration; never imported by live planning         |
-| `services/`                    | Local SAM device package and warm Modal calibration/Glimmer services               |
+| `services/`                    | Local SAM device package and warm Modal calibration/Glimmer services      |
 
 | Tools                                                                                                 | Purpose                                                       |
 | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
 | `get_mission`, `get_fleet`, `get_drone`                                                               | Current plan, mission facts and measured aircraft state       |
 | `find_place`, `describe_location`, `ground_height`, `ground_profile`                                  | Public map and terrain facts                                  |
-| `expanding_square`                                                                                    | Generate an ordinary follow step around a chosen datum        |
-| `preview_plan`, `request_launch`, `apply_plan_change`                                                 | One versioned plan through checking, approval and execution   |
+| `plan_task`                                                                                           | One tasking → generated, sized and proved plan receipt        |
+| `request_launch`, `apply_plan_change`, `apply_proposal`                                               | Launch approval, airborne change, approved search expansion   |
 | `hold`, `stop`, `return_home`, `return_fleet`, `land`                                                 | Immediate flight overrides                                    |
 | `show_on_map`, `open_feed`                                                                            | Operator map focus and live forward video                     |
 | `wait_for`                                                                                            | Event-driven continuation with fresh state                    |
@@ -29,8 +34,8 @@ immediate overrides need no approval unless another landed drone would launch.
 | `get_candidate`, `follow_candidate`, `relock_candidate`, `disregard_and_continue` | Evidence review, bounded following and explicit re-lock       |
 | `publish_evidence`, `confirm_evidence`                                                                | Wonder-accepted findings and explicit operator identification |
 
-Raw takeoff/waypoint commands and QGC export remain available to operator controls;
-Wonder uses the plan tools. A command acknowledgement is not arrival. Flight progress,
+Raw takeoff/waypoint commands, the raw `preview_plan` compile and QGC export remain available
+to operator controls; Wonder uses the tasking tools. A command acknowledgement is not arrival. Flight progress,
 landing and video availability come from current telemetry. General and Studio sessions
 use the same planning instructions and tools. Images never reveal scenario placement or evaluator truth.
 
@@ -74,7 +79,7 @@ uses the documented 50 Ah simulation model, a 10% charge floor and the unchanged
 low-voltage limit, without an extra fixed reserve. Planned return/landing and candidate
 allowance remain explicit costs; reported charge is not a direct percentage of usable flight time.
 
-The service uses `muse-wonder-1.0`, high reasoning and flat Responses function definitions. Each request sends ordered local conversation history with `store=false` and `include=["reasoning.encrypted_content"]`; it does not depend on server-stored response IDs. The transcript preserves encrypted reasoning, assistant message phases, function calls and their results in order. Tool results use `function_call_output` with the original `call_id`. Missing encrypted reasoning, a missing summary list or a response ending in reasoning fails before any tool executes. Operator overrides cancel the pending conversation and clear its transcript; late HTTP responses cannot dispatch tools.
+The service uses `muse-wonder-1.0` and flat Responses function definitions; the operator picks the reasoning effort (low, medium or high; each mission starts at high) from the composer's picker beside the model name, and the choice applies to every following request including automatic wakes. Each request sends ordered local conversation history with `store=false` and `include=["reasoning.encrypted_content"]`; it does not depend on server-stored response IDs. Requests are laid out for Meta's automatic prefix cache: `instructions` holds only the static brief and the compact public map (about 26,000 characters, identical on every turn), the tool list follows, then the transcript, and the live mission context travels as the newest input item, labelled `Current mission context (live system state, not an operator message)` and never stored in the transcript. Every mission request carries `prompt_cache_key` = mission id with `prompt_cache_retention: "24h"` so consecutive turns route to the backend holding the prefix; `model_usage` events record `cached_tokens` beside `input_tokens`. Wake payloads keep only each vehicle's compact state because the live context already carries full telemetry. Before this layout the live context sat inside `instructions`, so the prefix broke on every turn: 834 recorded responses (2026-10-31 to 11-02) billed 46.0 M input tokens with 6 % cached (`measurements/wonder-prompt-cache.json`). The transcript preserves encrypted reasoning, assistant message phases, function calls and their results in order. Tool results use `function_call_output` with the original `call_id`. Missing encrypted reasoning, a missing summary list or a response ending in reasoning fails before any tool executes. Operator overrides cancel the pending conversation and clear its transcript; late HTTP responses cannot dispatch tools.
 
 Every model context includes `flight_constraints`: each aircraft's exact read-back fence vertices,
 the origin MSL altitude, altitude/speed limits, minimum clearance and the complete-route separation rule.
@@ -93,7 +98,7 @@ turns; evidence identifiers and conclusions remain, and `wait_for` with the insp
 supplies the original images again when needed. This does not alter encrypted reasoning
 or the ordering of function calls and results.
 
-The output budget is 16,384 tokens for reasoning plus visible output; an incomplete response raises with its status and incomplete details. Meta supports high effort but prescribes no fixed numeric output budget. Every request supplies current aircraft state, the active version and progress, operator map points, briefing and the compact public map. The loop has no fixed tool-turn limit: it continues until Wonder finishes, a model request fails, or the operator cancels it. Execution and network failures never trigger a retry. Wonder may revise its own rejected preview after reading the exact safety error. `accept_chat.py` uses the same ordered transcript contract. The model client's existing stored-response interface remains available for the separate model benchmark.
+The output budget is 16,384 tokens for reasoning plus visible output; an incomplete response raises with its status and incomplete details. Meta supports high effort but prescribes no fixed numeric output budget. Every request supplies, in its live context item, current aircraft state, the active version and progress, operator map points, briefing and the compact public map. The loop has no fixed tool-turn limit: it continues until Wonder finishes, a model request fails, or the operator cancels it. Execution and network failures never trigger a retry. Wonder may revise its own rejected preview after reading the exact safety error. `accept_chat.py` uses the same ordered transcript contract. The model client's existing stored-response interface remains available for the separate model benchmark.
 
 Flight results contain aircraft identity, mode, armed/landed state, north/east, altitude above home, mission progress and the acknowledged command. `get_fleet` adds link age/health to one compact row per drone. `get_drone` adds battery, GPS, EKF and the last five status texts; its full waypoint list remains available to the operator. `get_mission` includes the same exact `flight_constraints` supplied in every context. Telemetry histories remain in the browser stream. Each model response logs input, output and reasoning tokens, request-body bytes and elapsed time. Credential-free request/response traces remain beside mission events.
 
@@ -156,32 +161,40 @@ their wording and live operation remain operator-tested.
 
 ## General mission plans
 
-Wonder chooses one to four aircraft, geometry, observation timing and aftermath from the task,
-supplied evidence and measured state. General and Studio sessions receive the same instructions.
-For a missing-person area search, the preferred first plan uses all four healthy available
-drones in adjoining zigzag sectors covering Wonder's chosen perimeter. `divide_survey`
-mechanically partitions the supplied polygon and aircraft list into ordinary observed
-survey steps. Wonder still chooses the bounds, bearing, ingress, return and policy.
-Different patterns, partial searches and fewer drones remain available when justified by
-the task, evidence or constraints; Wonder explains the reason and remaining area.
-Optional `observe: true` enables automatic sensing on finite `fly`, `follow`, `survey` and `circle`
-steps. Other movement remains ordinary flight. `plan.search.perimeter` is a simple polygon of
-3–100 unique vertices with implicit closure; assignments need not be rectangles or tile the area.
-The map outlines the perimeter, fills assigned survey polygons and retains every flight route.
-Preview `coverage` reports the union of those polygons and unassigned perimeter area;
-repeated passes do not double-count. Wonder checks these facts before launch rather than
-treating a safe route as proof of area coverage. They do not measure actual camera visibility
-or detection probability, and they do not count trail/circle views as surveyed area.
-Inspection `rescue.step_index` and `rescue.completed_steps` record the active step and completed
-`{step_index, frames}` entries without claiming unobserved regions were searched.
+Wonder chooses the task, subject, references, fleet, settings and aftermath; code builds the
+geometry. `gcs/tasking.py` validates the tasking (schema plus semantic rules such as one initial
+planning point, clicked points only, published distance tables or an explicit radius), fills
+the disclosed defaults (searches 30 m above ground, 5 m/s, 10 m/s transit, 20 m spacing, fixed 1× camera,
+20 m look-ahead, 20 m stand-off, 180 s candidate allowance; point inspection 40 m; transit 40 m
+at 10 m/s) and dispatches to one template per task:
+
+- `area_search`: `gcs/region.py` builds 100 m ring cells crossed with dispersion sectors from
+  the published ISRID tables (child, hiker, dementia; elderly and unknown need `region.radius_m`),
+  ranks them by probability density, removes already searched bands and cuts band 1 at the
+  fleet's live endurance. `gcs/allocation.py` partitions the band into equal-flight-time strips
+  parallel to the sweep, assigns departure lanes and 8 m altitude layers in the fixed order
+  Drone1, Drone3, Drone2, Drone4, and the compiler's own step timing closes the sizing loop.
+  An operator polygon is searched whole. With `expansion.automatic_proposals` the first band
+  takes half the sortie, ends in a 180 s approval hover, and code proposes the next band as the
+  drones near completion.
+- `datum_search`: a uniform disc of `region.radius_m` around a reliable datum, partitioned the
+  same way.
+- `route_search` and `boundary_check`: one follow pass per named trail, road, creek, ridge or
+  polygon outline, observed when a subject is given; the corridor is not credited as surveyed.
+- `point_inspection`: one orbit of `stand_off_m` around the target, observing its centre when a
+  subject is given, with an optional dwell.
+- `transit` and `waypoint_route`: one aircraft through landmark positions or clicked points.
+
+Every template emits ordinary plan steps that `compile_plan` checks for fences, terrain,
+obstacles, separation, battery and band coverage; nothing shrinks, retries or reroutes silently.
+The receipt adds `tasking`, `region` (bands with status previous/planned/provisional), `sectors`,
+`fit` (per-drone usable, planned and headroom seconds) and `rationale` sentences citing the tables
+used. Rejections are structured (`rule`, drone, zero-based step, prose with one-based steps,
+`detail`, separation `conflict`); Wonder changes only the named choice.
 
 Compact pattern guidance follows [AMSA's 2026 National SAR Manual, Volume 2](https://www.amsa.gov.au/sites/default/files/2026-03/NATSAR-Manual-February-2026-Volume-2.pdf),
-§§4.5.6–30 and land-route guidance in §§4.13.58, 4.13.62–67. `survey` supports parallel long-axis
-passes or short-axis creeping-line passes from the better-supported end. `follow` traces a credible
-route. `expanding_square(north_m, east_m, spacing_m, bearing_deg, leg_count, height_m, speed_mps)`
-returns an ordinary `follow` step, with a one-spacing lead-in before the datum and paired leg lengths
-S, S, 2S, 2S, and so on. Wonder supplies ingress and egress, adds `observe: true` when needed and
-previews the complete trip. The helper does not allocate aircraft, clip or reroute geometry, or fly.
+§§4.5.6–30 and land-route guidance in §§4.13.58, 4.13.62–67. Area and datum searches sweep
+parallel strips; route searches follow a credible line; point inspections orbit a datum.
 A finite pattern does not prove complete coverage; a circle observes its center from changing views.
 Terrain following alone does not provide a contour-search route.
 
@@ -265,23 +278,25 @@ The [mission-control README](../gcs/README.md#automatic-observation-and-candidat
 describes tracker freshness, checkpoint restoration and failure handling. These
 forward observations do not claim calibrated search probability.
 
-`preview_plan(plan)` validates the single schema in `gcs/planner.py`, converts all steps,
-checks fence, altitude, terrain, obstacles, separation and battery, and draws the receipt.
-Separation failures return both drones, measured/required distance, conflicting segment
-coordinates and zero-based plan step indices so Wonder can revise the offending legs.
-The error text uses one-based steps. Invalid array lengths and step fields produce
-concise schema errors. Wonder corrects the implicated plan choices while retaining
-the agreed destination, task, aircraft and aftermath. Invalid or unavailable aircraft
-references, unhealthy telemetry and service failures stop that planning attempt with
-the exact blocker; changing flight heights or repeatedly reading unchanged state cannot
-repair them. A new chat or completed flight retains the active plan version, so the
-next preview still needs a greater version. These communication rules guide the model;
-offline contract checks do not establish its live adherence. Each new preview invalidates
-the previous preview's launch authority, including when the new request is invalid;
-active flights continue unchanged.
+`plan_task(tasking)` validates the tasking, generates the plan, compiles it with the single
+schema in `gcs/planner.py`, checks fence, altitude, terrain, obstacles, separation, battery and
+coverage, and draws the receipt. Code assigns the plan version (active version plus one), so a new
+chat or completed flight never produces a stale-version rejection. Separation failures return
+both drones, measured/required distance, conflicting segment coordinates and zero-based plan step
+indices; the error text uses one-based steps. Unobserved transit before a drone's first observed
+step is separated in time (30 s margin); observed steps, hovers and launch or landing columns
+reserve space regardless of timing. Wonder corrects the implicated tasking field while retaining
+the agreed task, aircraft and aftermath. Invalid or unavailable references, unhealthy telemetry
+and service failures stop that planning attempt with the exact blocker; changing heights or
+repeatedly reading unchanged state cannot repair them. Each new tasking invalidates the previous
+preview's launch authority, including when the new request is rejected; active flights continue
+unchanged. The instructions stay under 9,000 characters; task guidance lives in the `plan_task`
+description and the returned rationale. Deferred tool loading (Meta tool search) is not adopted:
+its replay with `store: false` is undocumented and unproven, so the flat tool list remains.
 `request_launch(version)` submits that successful preview for launch approval.
 `apply_plan_change(version)` checks fresh application-time state and replaces an airborne
-mission without another approval. `stop(drone_id)` brakes immediately, like `hold`.
+mission without another approval; code-proposed strip reassignments after a sensing failure
+use it. `apply_proposal(version)` applies a code-proposed search expansion after operator approval. `stop(drone_id)` brakes immediately, like `hold`.
 The preview version must match; these tools accept no independently editable route.
 See [mission control](../gcs/README.md) for step semantics and upload ownership.
 
@@ -315,14 +330,19 @@ The offline conversation acceptance command is:
   --output .local/evidence/wonder-planner/<run>/conversations
 ```
 
-It runs twelve scripted conversations once each, including identical mid-flight
-replacement prompts at high and medium effort. It executes pure previews against
-current map geometry, replays a recorded moving AUTO state for the change cases,
-and never sends aircraft commands. Other aircraft and the agreed task are explicitly
+It runs eleven scripted conversations once each: an ambiguous trail request that must be
+clarified, a map click, an impossible request, an orbit, a route pass, a boundary check, three
+generator-style rescue briefings (child, hiker, dementia) and identical mid-flight replacement
+prompts at high and medium effort. The stub plans each `plan_task` with the real tasking planner
+against current map geometry, replays a recorded moving AUTO state for the change cases,
+acknowledges a closing `wait_for` without waiting, and never sends aircraft commands. The
+`--budget-usd` cap stops before the next script once the published uncached prices are reached;
+`--only` selects scripts. Other aircraft and the agreed task are explicitly
 labelled fixtures. Failed requests remain in the evidence while the next distinct
 script continues. Results include request/response traces, each turn's latency and
-input/output/reasoning tokens. Automatic checks assess question timing, preview and
-launch/change tool selection; semantic request matching requires explicit trace review.
+input/output/reasoning tokens. Automatic checks assess whether an unsettled request was deferred to the operator before any
+plan call, that the final plan passed, and launch/change tool selection; semantic request matching
+requires explicit trace review.
 
 Primary API references checked: [Responses](https://dev.meta.ai/docs/protocols/responses),
 [tool calling](https://dev.meta.ai/docs/tool-calling),

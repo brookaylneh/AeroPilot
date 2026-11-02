@@ -45,9 +45,11 @@ export function relativeTime(ms: number, now: number) {
 }
 
 const titles: Record<string, string> = {
+  plan_task: 'Plan mission task',
   preview_plan: 'Preview mission plan',
   request_launch: 'Launch mission plan',
   apply_plan_change: 'Change mission plan',
+  apply_proposal: 'Expand search',
   ground_height: 'Ground height',
   ground_profile: 'Ground profile',
   start_inspection: 'Inspect forward camera',
@@ -67,7 +69,6 @@ const titles: Record<string, string> = {
   open_feed: 'Live camera',
   take_off: 'Take off',
   fly_route: 'Fly route',
-  fly_to: 'Fly to',
   hold: 'Hold',
   resume: 'Resume',
   return_home: 'Return home',
@@ -90,6 +91,7 @@ export function actionTitle(name: string, args: Record<string, unknown>) {
 export function approvalSentence(name: string, args: Record<string, unknown>) {
   if (name === 'request_launch') return `Launch mission plan version ${args.version}`;
   if (name === 'apply_plan_change') return `Launch additional aircraft for plan version ${args.version}`;
+  if (name === 'apply_proposal') return `Expand the search with plan version ${args.version}`;
   if (name === 'take_off' && typeof args.altitude_above_home_m === 'number')
     return `Take off ${args.drone_id} to ${formatValue(args.altitude_above_home_m, 'm', 0)} above home`;
   throw new Error(`Unknown flight approval: ${name}`);
