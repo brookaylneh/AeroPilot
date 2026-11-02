@@ -139,9 +139,7 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
             id="test",
             case=None,
             directory=self.directory,
-            fleet=SimpleNamespace(
-                face_heading=AsyncMock(), execute=AsyncMock(), gimbals={}, gimbal_bridges={}
-            ),
+            fleet=SimpleNamespace(face_heading=AsyncMock(), execute=AsyncMock()),
             events=self.events,
             event=Mock(side_effect=event),
             launch=asyncio.create_task,

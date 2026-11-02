@@ -5,7 +5,7 @@ import math
 import cv2
 import numpy as np
 
-from mission_planner.gcs.gimbal import visible_box
+from mission_planner.gcs.centering import visible_box
 
 
 def pixels(jpeg):

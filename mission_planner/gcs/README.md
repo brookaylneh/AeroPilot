@@ -484,29 +484,33 @@ acquiring that camera during an authorized visual hold after SAM closes. Real tr
 loss stops steering; only a newer detection of the selected identity may seed it again.
 A worker failure is reported and is not automatically restarted.
 
-`gimbal.py` sends `GIMBAL_MANAGER_SET_PITCHYAW` to ArduPilot mount 1. It acquires
-manager ownership, checks fresh gimbal feedback and converts reported yaw frames
-explicitly. Commands contain finite pitch/yaw angles in radians and NaN rates. Thus
-a stopped controller leaves a finite last target rather than a continuing rotation.
-Capture-time camera orientation compensates for camera motion between video frames.
+`centering.py` computes a bounded world-NED optical target from the CSRT box and its
+capture-time orientation. `world.cosys.inspection.ForwardCapture` applies it directly
+to the existing `fpv` camera with `simSetCameraPose`. Each update compensates for the
+aircraft's measured attitude, preserving the original body-relative camera position.
+World-target integration prevents aircraft turns from accumulating camera pointing
+error. Readback verifies the commanded relative pose within 0.25° plus body rotation
+across the separate RPC snapshots, then recomputes centering error from the actual
+camera orientation. An ignored command or RPC failure raises with camera context.
 The requested control period is 100 ms; observations older than two seconds cannot
 steer. The controller has a 1% image-centre tolerance, 6°/s slew cap, 1/s gain and
 0.3 s smoothing. These are settings, not measured flight accuracy or throughput.
-Mechanical pitch/yaw limits are enforced and reported as `centering.limited`.
-Acquisition checks manager ownership and the device's yaw-lock flag. ArduPilot's
-manager yaw-lock flag describes its RC policy and need not match an active
-earth-frame MAVLink target.
+No MAVLink mount emulator or gimbal ownership handshake remains. SITL has
+`MNT1_TYPE=0`, since this camera path exposes no MAVLink mount device.
 
 Guidance is permitted in a validated candidate hold or its active GUIDED follow,
 including Glimmer review. Plan changes, release, departure and manual camera changes
 revoke that owner. The mission's `camera-follow.jsonl` records frame age, raw box,
-centering error, angle targets and command time. `camera_tracking` reports native
+centering error, camera pose readback and command time. `camera_tracking` reports native
 status and failures independently of SAM and the browser overlay. Camera failures
 do not stop aircraft telemetry or remove the operator's flight controls.
 
 Flight following retains the existing terrain-checked GUIDED position/yaw updates.
 The aircraft waits for fresh camera centering within 5% of the image before moving;
-active following permits 15% error while the camera corrects. Position requests
+active following permits 15% error while the camera corrects. Beyond that threshold,
+fresh valid observations maintain a current-position GUIDED target while the camera
+recenters. This keeps the watchdog current without aircraft translation or a latched
+tracking loss. Stale observations still stop guidance. Position requests
 advance at most 0.5 m horizontally and 0.25 m vertically per update, with a 1 m
 horizontal deadband and heading changes capped at 5°/s. A current-position target
 initializes GUIDED position mode before applying the requested speed limit, because
@@ -515,18 +519,16 @@ This is the mechanism documented by ArduPilot's
 [GCS Follow Me](https://ardupilot.org/copter/docs/ac2_followme.html), with the target
 position derived from camera observations instead of a GPS dongle. ArduPilot handles
 aircraft stabilization, position control and its existing failsafes. Native FOLLOW
-mode is not required for this path. Gimbal APIs are checked against the
-[ArduPilot mount documentation](https://ardupilot.org/dev/docs/mavlink-gimbal-mount.html),
-[MAVLink Gimbal v2](https://mavlink.io/en/services/gimbal_v2.html) and the pinned
-ArduPilot `fb773567` `AP_Mount` implementation.
+mode is not required for this path. Camera API semantics are checked against the pinned
+[Cosys implementation](https://github.com/Cosys-Lab/Cosys-AirSim/blob/5.8-v3.5.0/Unreal/Plugins/AirSim/Source/PIPCamera.cpp).
 
 The device Python environment installs `opencv-contrib-python-headless==4.10.0.84`
 from `requirements.txt`; the plain headless package does not contain CSRT. The pure
-tracker and MAVLink controller accept images and a supplied connection without
-browser or model dependencies. Cosys/SITL supplies their current camera and flight
-adapters. Hardware integration must supply timestamped calibrated frames, a matching
-optical orientation, a real ArduPilot link and its configured gimbal driver with
-measured angle feedback. Verify axes, FOV, time alignment and mechanical limits on
+tracker and centering controller accept images and optical poses without browser or
+model dependencies. Cosys/SITL supplies their current camera and flight adapters.
+Hardware integration must replace the Cosys actuator with a configured gimbal driver,
+and supply timestamped calibrated frames, matching optical orientation, an ArduPilot
+link and measured angle feedback. Verify axes, FOV, time alignment and mechanical limits on
 that aircraft before flight. Simulation acceptance does not qualify unknown hardware.
 
 Each side of the box is padded by the larger of half the projected dimension and
@@ -537,7 +539,10 @@ the aircraft is held. SAM/Glimmer retain identification and review
 authority; only the checked backend controller can move an aircraft. Capture and
 WebRTC delivery remain separate: the first live frame can be newer than the SAM seed,
 and processing lag or visual drift must still be checked during operator acceptance.
-A fresh SAM frame missing the selected ID invalidates native and browser tracking.
+A brief SAM miss preserves fresh CSRT updates for at most two seconds; sustained
+absence invalidates native and browser tracking. A fresh positive observation clears
+that timer. Periodic SAM corrections are advanced to the current frame before native
+publication, even when CSRT already processed newer images. They never rewind guidance.
 The browser also invalidates a visual box outside the latest SAM box plus a
 96-pixel margin in its 960×540 tracking image, then seeds from that new evidence.
 

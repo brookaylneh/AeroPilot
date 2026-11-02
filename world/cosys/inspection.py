@@ -13,6 +13,7 @@ import numpy as np
 from PIL import Image
 from scipy.spatial.transform import Rotation
 
+from mission_planner.gcs.centering import Centering, quaternion_rotation, target_error
 from world.cosys import client as sim
 from world.cosys.capture import capture_time, rotation, shadow_floor, truth_sample
 
@@ -71,7 +72,7 @@ class ForwardCapture:
         self.follow_rpc = None
         self.follow_generation = 0
         self.visual_controlled = False
-        self.gimbal = None
+        self.centering = Centering()
         self.control_lock = asyncio.Lock()
         self.follow_diagnostic = None
         self.video_sample = None
@@ -124,29 +125,87 @@ class ForwardCapture:
         self.follow_generation += 1
         self.visual_controlled = True
         self.follow_diagnostic = None
+        self.centering = Centering()
         return self.follow_generation
 
     def cancel_follow(self):
         # Keep the last view until an explicit view/reset; an old SAM aim must not take over.
         self.follow_generation += 1
 
-    def _follow_feedback(self):
+    def _follow(self, box, generation, expires, observed_q):
+        started = time.monotonic()
         with self.pose_lock:
             if self.follow_rpc is None:
                 self.follow_rpc = airsim.MultirotorClient(
                     ip="127.0.0.1", port=sim.PORT, timeout_value=3
                 )
             rpc, name = self.follow_rpc, self.drone_id
+            body = rpc.simGetVehiclePose(vehicle_name=name)
             info = rpc.simGetCameraInfo("fpv", vehicle_name=name)
+            if generation != self.follow_generation:
+                return {"status": "stopped"}, None
+            if time.monotonic() >= expires:
+                return {"status": "stale"}, None
             q = info.pose.orientation
-            return [q.w_val, q.x_val, q.y_val, q.z_val], info.fov
+            movement = self.centering.step(
+                box, info.fov, [q.w_val, q.x_val, q.y_val, q.z_val], observed_q, time.monotonic()
+            )
+            desired = Rotation.from_euler(
+                "ZYX", [movement[k + "_rad"] for k in ("yaw", "pitch", "roll")]
+            )
+            relative = rotation(sim.quat(body.orientation)).inv() * desired
+            assert self.original_pose is not None, (
+                "Camera view must be initialized before following"
+            )
+            if generation != self.follow_generation:
+                return {"status": "stopped"}, None
+            if time.monotonic() >= expires:
+                return {"status": "stale"}, None
+            rpc.simSetCameraPose(
+                "fpv",
+                airsim.Pose(self.original_pose.position, airsim.Quaternionr(*relative.as_quat())),
+                vehicle_name=name,
+            )
+            measured = rpc.simGetCameraInfo("fpv", vehicle_name=name)
+            body_after = rpc.simGetVehiclePose(vehicle_name=name)
+            actual = rotation(sim.quat(measured.pose.orientation))
+            actual_relative = rotation(sim.quat(body_after.orientation)).inv() * actual
+            readback_error = math.degrees((relative.inv() * actual_relative).magnitude())
+            body_motion = math.degrees(
+                (
+                    rotation(sim.quat(body.orientation)).inv()
+                    * rotation(sim.quat(body_after.orientation))
+                ).magnitude()
+            )
+            # Camera and body readbacks are separate RPC snapshots.
+            assert readback_error <= 0.25 + body_motion, (
+                f"{name}: camera pose did not follow command: {readback_error:.3f} degrees"
+            )
+            assert math.isclose(measured.fov, info.fov, abs_tol=0.01), (
+                "Camera field of view changed during centering"
+            )
+            camera_q = actual.as_quat()[[3, 0, 1, 2]].tolist()
+            _, error = target_error(box, measured.fov, camera_q, observed_q)
+            movement.update(
+                error_x_px=float(error[0]),
+                error_y_px=float(error[1]),
+                centered=bool(abs(error[0]) <= 9.6 and abs(error[1]) <= 5.4),
+                readback_error_deg=readback_error,
+                readback_body_motion_deg=body_motion,
+                camera_q=camera_q,
+            )
+            return {
+                "status": "moved",
+                "yaw_delta_deg": movement["yaw_delta_deg"],
+                "pitch_delta_deg": movement["pitch_delta_deg"],
+                "elapsed_ms": (time.monotonic() - started) * 1000,
+            }, movement
 
     async def end_follow(self, generation=None):
         async with self.control_lock:
             if generation is not None and generation != self.follow_generation:
                 return
-            if self.gimbal is not None:
-                await self.gimbal.release()
+            self.follow_diagnostic = None
 
     async def follow(self, box, generation, expires, observed_q):
         async with self.control_lock:
@@ -155,18 +214,15 @@ class ForwardCapture:
             if time.monotonic() >= expires:
                 return {"status": "stale"}
             assert self.visual_controlled, "Visual guidance no longer owns the camera"
-            assert self.gimbal is not None, "The main camera has no ArduPilot gimbal connection"
-            orientation, fov = await asyncio.get_running_loop().run_in_executor(
-                self.follow_executor, self._follow_feedback
+            quaternion_rotation(observed_q)
+            pending = asyncio.get_running_loop().run_in_executor(
+                self.follow_executor, self._follow, box, generation, expires, observed_q
             )
-            if not self.gimbal.claimed:
-                await self.gimbal.acquire(orientation)
-            if generation != self.follow_generation:
-                await self.gimbal.release()
-                return {"status": "stopped"}
-            if time.monotonic() >= expires:
-                return {"status": "stale"}
-            movement, diagnostic = self.gimbal.center(box, fov, observed_q)
+            try:
+                movement, diagnostic = await asyncio.shield(pending)
+            finally:
+                if not pending.done():
+                    await pending
             self.follow_diagnostic = diagnostic
             return movement
 

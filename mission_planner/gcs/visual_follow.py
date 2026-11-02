@@ -6,7 +6,7 @@ import math
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from mission_planner.gcs.gimbal import visible_box
+from mission_planner.gcs.centering import visible_box
 from mission_planner.gcs.live_tracker import LiveTracker
 from mission_planner.gcs.tracking import MAX_TRACKING_AGE_S
 
@@ -75,7 +75,9 @@ class VisualFollow:
         name = row["drone_id"]
         if not selected:
             if name in self.sessions:
-                self.sessions[name].update(seed=None, latest=None, visible=False)
+                session = self.sessions[name]
+                if session["missing_since"] is None:
+                    session["missing_since"] = time.monotonic()
             return
         identity = (
             row["id"],
@@ -92,7 +94,9 @@ class VisualFollow:
                 "seed": None,
                 "latest": None,
                 "visible": True,
+                "missing_since": None,
                 "last_seed": 0.0,
+                "last_seed_ns": 0,
                 "task": None,
             }
             self.sessions[name] = session
@@ -101,7 +105,10 @@ class VisualFollow:
         if session["task"].done():
             return
         session["visible"] = True
-        if session["latest"] is None or time.monotonic() - session["last_seed"] >= 2:
+        session["missing_since"] = None
+        if metadata["timestamp_ns"] > session["last_seed_ns"] and (
+            session["latest"] is None or time.monotonic() - session["last_seed"] >= 2
+        ):
             path = self.inspections.directory / (metadata["frame_id"] + "-frame.jpg")
             jpeg = await asyncio.to_thread(path.read_bytes)
             session["seed"] = (dict(metadata), jpeg, selected[0]["box_xyxy"])
@@ -115,24 +122,28 @@ class VisualFollow:
 
         async def produce():
             while True:
+                if (
+                    session["missing_since"] is not None
+                    and time.monotonic() - session["missing_since"] >= MAX_TRACKING_AGE_S
+                ):
+                    session.update(seed=None, latest=None, visible=False)
                 if not session["visible"]:
                     tracker.tracker = None
                     session["latest"] = None
                     await asyncio.sleep(0.02)
                     continue
+                updated, result = False, None
                 seed = session["seed"]
                 if seed is not None:
                     session["seed"] = None
                     metadata, jpeg, box = seed
-                    if (
-                        tracker.timestamp_ns is None
-                        or metadata["timestamp_ns"] > tracker.timestamp_ns
-                    ):
+                    if time.time() * 1000 - metadata["captured_at_ms"] <= MAX_TRACKING_AGE_S * 1000:
                         box = await loop.run_in_executor(
                             executor, tracker.seed, jpeg, box, metadata["timestamp_ns"]
                         )
-                        session["latest"] = (metadata, box)
+                        updated, result = True, (metadata, box)
                         session["last_seed"] = time.monotonic()
+                        session["last_seed_ns"] = metadata["timestamp_ns"]
                 if tracker.tracker is None:
                     await asyncio.sleep(0.02)
                     continue
@@ -152,7 +163,16 @@ class VisualFollow:
                         box = await loop.run_in_executor(
                             executor, tracker.advance, jpeg, metadata["timestamp_ns"]
                         )
-                        session["latest"] = None if box is None else (dict(metadata), box)
+                        updated, result = True, None if box is None else (dict(metadata), box)
+                # A delayed SAM correction is advanced to the current image before publication.
+                if updated and session["visible"]:
+                    if result is None:
+                        session["latest"] = None
+                    elif (
+                        session["latest"] is None
+                        or result[0]["timestamp_ns"] >= session["latest"][0]["timestamp_ns"]
+                    ):
+                        session["latest"] = result
                 await asyncio.sleep(0.02)
 
         producer = asyncio.create_task(produce())
@@ -165,7 +185,11 @@ class VisualFollow:
                     producer_observed = True
                     producer.result()
                     raise RuntimeError(name + ": main-camera frame producer stopped")
-                latest = session["latest"] if session["visible"] else None
+                available = session["visible"] and (
+                    session["missing_since"] is None
+                    or tick - session["missing_since"] < MAX_TRACKING_AGE_S
+                )
+                latest = session["latest"] if available else None
                 sequence += 1
                 message = {
                     "type": "camera_follow",

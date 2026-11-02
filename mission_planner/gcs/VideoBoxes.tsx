@@ -83,6 +83,7 @@ export function followVideo(
     requestEpoch = 0,
     lastSource = '',
     lastSeed = '',
+    missingSince: number | null = null,
     seededAt = -Infinity,
     requestedAt = performance.now(),
     presentedAt = 0,
@@ -209,6 +210,7 @@ export function followVideo(
         if (tracking && current.frame && current.frame.frame_id !== lastSource) {
           lastSource = current.frame.frame_id;
           const detection = current.frame.detections.find((item) => item.track_id === current.trackId);
+          missingSince = detection ? null : (missingSince ?? presentedAt);
           const reference = detection?.box_xyxy.map((v) => v / 4);
           const box = image?.detections[0]?.box_xyxy;
           const contradicted =
@@ -218,7 +220,7 @@ export function followVideo(
               box[0] > reference[2] + 96 ||
               box[3] < reference[1] - 96 ||
               box[1] > reference[3] + 96);
-          if (!detection || contradicted) {
+          if (contradicted) {
             epoch++;
             seeded = false;
             image = null;
@@ -226,6 +228,14 @@ export function followVideo(
             onTrack?.(null, presentedAt);
             clear();
           }
+        }
+        if (missingSince !== null && presentedAt - missingSince >= 2000 && (seeded || image)) {
+          epoch++;
+          seeded = false;
+          image = null;
+          state = 'lost';
+          onTrack?.(null, presentedAt);
+          clear();
         }
         if (tracking && ready && !busy) {
           const detection = current.frame?.detections.find((item) => item.track_id === current.trackId);

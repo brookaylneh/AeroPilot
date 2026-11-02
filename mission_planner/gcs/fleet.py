@@ -38,7 +38,6 @@ from mission_planner.gcs.geodesy import (  # noqa: E402
     to_geodetic,
     to_local,
 )
-from mission_planner.gcs.gimbal import Gimbal
 from mission_planner.gcs.planner import (  # noqa: E402
     mission_home,
     mission_item,
@@ -110,9 +109,6 @@ class Fleet:
         self.directory = Path(directory).resolve()
         self.on_event = on_event
         self.vehicles = {}
-        self.gimbals = {}
-        self.gimbal_bridges = {}
-        self.gimbal_tasks = {}
         self.tasks = []
         self.command_lock = asyncio.Lock()
         self.planned_routes = {}
@@ -166,19 +162,6 @@ class Fleet:
                 "started": time.monotonic(),
             }
             self.tasks.append(asyncio.create_task(self._receive(name), name=f"mavlink-{name}"))
-            if os.environ["SNR_SITL_MODEL"] == "airsim-copter":
-                from world.cosys.gimbal import CosysGimbal
-
-                self.gimbals[name] = Gimbal(
-                    index + 1,
-                    connection,
-                    lambda command, params, name=name: self._command(name, command, params),
-                    lambda predicate, timeout, name=name: self._until(name, predicate, timeout),
-                )
-                bridge = self.gimbal_bridges[name] = CosysGimbal(name, index + 1, connection)
-                task = asyncio.create_task(bridge.run(), name=f"gimbal-{name}")
-                self.gimbal_tasks[name] = task
-                task.add_done_callback(lambda task, name=name: self._gimbal_stopped(name, task))
             self.on_event(
                 {
                     "kind": "autopilot_started",
@@ -218,9 +201,6 @@ class Fleet:
                 if kind == "BAD_DATA":
                     raise ValueError(f"{name}: invalid MAVLink frame: {message.to_dict()}")
                 assert message.get_srcSystem() == vehicle["sysid"], f"Wrong SYSID on {name}"
-                if name in self.gimbals:
-                    self.gimbals[name].receive(message)
-                    self.gimbal_bridges[name].receive(message)
                 if message.get_srcComponent() != MAV.MAV_COMP_ID_AUTOPILOT1:
                     continue
                 if (
@@ -288,17 +268,6 @@ class Fleet:
                 task.result()
                 raise RuntimeError("MAVLink receiver stopped")
 
-    def _gimbal_stopped(self, name, task):
-        if not task.cancelled():
-            error = task.exception()
-            self.on_event(
-                {
-                    "kind": "gimbal_error",
-                    "drone_id": name,
-                    "text": f"Main-camera gimbal stopped: {type(error).__name__}: {error}",
-                }
-            )
-
     async def _command(self, name, command, params):
         assert len(params) == 7
         vehicle = self.vehicles[name]
@@ -343,33 +312,6 @@ class Fleet:
         for message_id, hz in RATES.items():
             await self._command(
                 name, MAV.MAV_CMD_SET_MESSAGE_INTERVAL, [message_id, 1e6 / hz, 0, 0, 0, 0, 0]
-            )
-        if name in self.gimbals:
-            for message_id, hz in ((280, 1), (281, 10), (285, 10)):
-                await self._command(
-                    name, MAV.MAV_CMD_SET_MESSAGE_INTERVAL, [message_id, 1e6 / hz, 0, 0, 0, 0, 0]
-                )
-            await self._until(
-                name,
-                lambda: (
-                    all(
-                        kind in self.gimbals[name].messages
-                        for kind in (
-                            "GIMBAL_MANAGER_INFORMATION",
-                            "GIMBAL_MANAGER_STATUS",
-                            "GIMBAL_DEVICE_ATTITUDE_STATUS",
-                        )
-                    )
-                    and math.isclose(
-                        sum(
-                            v * v
-                            for v in self.gimbals[name].messages["GIMBAL_DEVICE_ATTITUDE_STATUS"].q
-                        ),
-                        1,
-                        abs_tol=1e-3,
-                    )
-                ),
-                30,
             )
         await self._until(name, lambda: all(k in vehicle["messages"] for k in REQUIRED), 60)
         await self._until(
@@ -1457,7 +1399,7 @@ class Fleet:
         }
 
     async def close(self):
-        tasks = [*self.tasks, *self.gimbal_tasks.values()]
+        tasks = self.tasks
         for task in tasks:
             task.cancel()
         results = await asyncio.gather(*tasks, return_exceptions=True)

@@ -130,8 +130,6 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
             self.states[name].update(mode="AUTO", mission_current=3)
 
         self.fleet = SimpleNamespace(
-            gimbals={},
-            gimbal_bridges={},
             tracking_start=AsyncMock(side_effect=start),
             tracking_follow=AsyncMock(side_effect=follow),
             tracking_target=AsyncMock(),
@@ -375,6 +373,33 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         self.fleet.tracking_target.assert_not_awaited()
         self.inspections.visual.observe.side_effect = centered
         await self.until(lambda: self.fleet.tracking_target.await_count > 0)
+
+    async def test_active_follow_holds_position_while_recentering_without_latching_tracking_loss(
+        self,
+    ):
+        self.decisions = ["recheck"]
+        row = await self.begin()
+        centered = self.inspections.visual.observe.side_effect
+
+        async def off_center(row, metadata, detections):
+            await centered(row, metadata, detections)
+            if row["camera_tracking"] is not None:
+                row["camera_tracking"]["centering"]["error_x_px"] = 240
+
+        self.inspections.visual.observe.side_effect = off_center
+        state = self.states["Drone1"]
+        position = {k: state[k] for k in ("north_m", "east_m", "altitude_above_home_m")}
+        await self.until(lambda: self.fleet.tracking_target.await_args.args[1] == position)
+        await asyncio.sleep(2.2)
+        self.assertIsNone(row["rescue"]["tracking_error"])
+        self.assertEqual(state["mode"], "GUIDED")
+        self.assertEqual(
+            self.fleet.tracking_target.await_args.args[1:3], (position, state["heading_deg"])
+        )
+        self.fleet.execute.assert_not_awaited()
+        self.inspections.visual.observe.side_effect = centered
+        await self.until(lambda: self.fleet.tracking_target.await_args.args[1] != position)
+        self.fleet.tracking_follow.assert_awaited_once()
 
     async def test_unobserved_pattern_starts_no_capture_or_models(self):
         del self.receipt["plan"]["drones"][0]["steps"][0]["observe"]
@@ -938,7 +963,9 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
             )
         )
         row = next(iter(self.inspections.rows.values()))
-        self.assertIn("track 1 is not visible", row["rescue"]["tracking_error"])
+        self.assertIn(
+            "track 1 has not been visible for two seconds", row["rescue"]["tracking_error"]
+        )
         latest = row["latest"]
         metadata = self.inspections.metadata[latest["frame_id"]]
         (detection,) = latest["detections"]

@@ -446,9 +446,6 @@ class Mission:
 
     def fleet_event(self, item):
         kind = item["kind"]
-        if kind == "gimbal_error":
-            self.event("error", item["drone_id"] + ": " + item["text"], result=item)
-            return
         if kind == "statustext":
             text = item["drone_id"] + ": " + item["text"]
             assert type(item["severity"]) is int and 0 <= item["severity"] <= MAV.MAV_SEVERITY_DEBUG

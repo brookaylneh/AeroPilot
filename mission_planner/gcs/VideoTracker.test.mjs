@@ -219,15 +219,49 @@ test('lost tracking clears the box and requires a newer SAM detection before ano
   v.controller.dispose();
 });
 
-test('a fresh SAM frame without the selected person clears a surviving visual box', async () => {
+test('a sustained SAM miss clears the box and rejects a pending visual result', async () => {
   const v = fixture();
   await v.seed();
   v.reply();
   v.current.frame = { ...v.current.frame, frame_id: '33333333-3333-4333-8333-333333333333', detections: [] };
   v.tick();
+  assert.equal(v.changes.at(-1).visible, true);
+  await setImmediate();
+  v.tick(2000);
   assert.equal(v.changes.at(-1).visible, false);
   assert.equal(v.changes.at(-1).state, 'lost');
   assert.equal(v.guidance.at(-1).box, null);
+  v.reply();
+  v.tick();
+  assert.equal(v.changes.at(-1).visible, false);
+  assert.equal(v.guidance.at(-1).box, null);
+  v.controller.dispose();
+});
+
+test('a brief SAM miss and fresh recovery preserve live visual tracking', async () => {
+  const v = fixture();
+  await v.seed();
+  v.reply();
+  const positive = v.current.frame;
+  v.current.frame = { ...positive, frame_id: 'missing', detections: [] };
+  for (let i = 0; i < 10; i++) {
+    v.tick(100);
+    await setImmediate();
+    v.reply();
+  }
+  assert.equal(v.changes.at(-1).visible, true);
+  v.current.frame = { ...positive, frame_id: 'recovered' };
+  v.tick();
+  await setImmediate();
+  v.reply();
+  v.current.frame = null;
+  for (let i = 0; i < 15; i++) {
+    v.tick(100);
+    await setImmediate();
+    v.reply();
+  }
+  assert.equal(v.changes.at(-1).visible, true);
+  assert.equal(v.errors.length, 0);
   v.controller.dispose();
 });
 

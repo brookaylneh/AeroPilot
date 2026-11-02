@@ -191,33 +191,28 @@ old boxes are invalidated and only a fresh corresponding observation may guide f
 The original relative pose and FOV are
 restored when the owner resets or closes.
 
-`gimbal.CosysGimbal` exposes the existing `fpv` camera as MAVLink Gimbal v2 component
-154 on each aircraft's existing MAVLink connection. ArduPilot uses `MNT1_TYPE=6`
-and mount ID 1. The bridge publishes device information and measured attitude, and
-applies ArduPilot's `GIMBAL_DEVICE_SET_ATTITUDE` targets to that camera. No additional
-camera, flight-control RPC or network listener is created. Unowned startup/neutral
-targets do not overwrite the mission's existing camera view. Releasing ownership
-allows explicit mission view/reset operations again.
-Manager ownership enables the bridge; each device command supplies its yaw-frame
-flags. ArduPilot's manager-status RC yaw flag is not used to enable device motion.
+`ForwardCapture.follow` uses `simSetCameraPose` directly on the existing `fpv` camera,
+with a separate control RPC worker and a 3-second RPC deadline. It transforms the
+bounded world-NED optical target through the current aircraft attitude, preserving
+the original body-relative mount position. The returned camera pose must agree with
+the command within 0.25° plus measured aircraft rotation across RPC snapshots.
+Centering diagnostics use the actual readback. FOV must remain unchanged.
+No MAVLink mount device or emulator participates; ArduPilot continues controlling
+aircraft movement through the existing validated GUIDED path.
 
-The bridge runs on its own RPC worker with a requested 50 ms period and a 3-second
-RPC deadline. It transforms an earth-frame optical target through the aircraft's
-current attitude while preserving the original body-relative mount position.
-Feedback uses earth roll/pitch and vehicle-frame yaw as expected by the pinned
-ArduPilot mount backend. A shared pose lock excludes competing camera writes;
-native CSRT ownership suppresses old world-target aims until a view/reset. Image
-responses retain their capture-time pose. Native control leaves zoom and view
-revision fixed so continuous small rotations do not invalidate the browser box.
-Manual view changes cancel and drain the previous controller before a new view.
+A shared pose lock excludes competing camera writes. Native CSRT ownership suppresses
+old world-target aims until a view/reset. Image responses retain their capture-time
+pose. Control leaves zoom and view revision fixed so continuous small rotations do
+not invalidate the browser box. Manual view changes cancel and drain the previous
+controller before a new view; an expired generation cannot issue a camera command.
 
-`ForwardCapture.follow` delegates commands to the MAVLink controller described in
+The pure centering controller is described in
 [the GCS README](../../mission_planner/gcs/README.md#live-camera-and-overlays).
 Capture/encoding and control have separate workers. Elapsed integration time is
-capped at 0.2 seconds; stale frames cannot accumulate a large correction. Bridge
-failures propagate with camera context and close their RPC worker. They do not kill
-the aircraft telemetry receiver. A real ArduPilot-supported gimbal replaces this
-simulation bridge; the native CSRT and MAVLink centering logic remain the same.
+capped at 0.2 seconds; stale frames cannot accumulate a large correction. Camera
+failures propagate with context without killing the aircraft telemetry receiver.
+A hardware deployment requires a real gimbal actuator with calibrated angle feedback
+in place of this Cosys adapter; native CSRT and world-frame centering remain reusable.
 
 Camera changes affect both inspection images and the existing Pixel Streaming view, without
 creating a new video connection or camera. The pinned Cosys

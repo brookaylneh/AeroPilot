@@ -2,6 +2,7 @@
 
 import asyncio
 import copy
+import json
 import tempfile
 import time
 import unittest
@@ -215,12 +216,46 @@ class VisualFollowTests(unittest.IsolatedAsyncioTestCase):
         self.assertIs(self.control.sessions["Drone1"]["task"], task)
         self.camera.follow.assert_not_awaited()
 
-    async def test_missing_selected_person_stops_native_camera_guidance(self):
+    async def test_brief_sam_gap_retains_fresh_csrt_and_sustained_loss_stops_guidance(self):
         fixture = test_live_tracker.NativeTrackerTests()
         fixture.setUp()
         metadata = await self.native_seed(fixture.jpeg(1600, 900))
         await self.until(lambda: self.camera.follow.await_count >= 1)
+        commands = self.camera.follow.await_count
         await self.control.observe(self.row, metadata, [])
+        await self.until(lambda: self.camera.follow.await_count > commands)
+        session = self.control.sessions["Drone1"]
+        self.assertTrue(session["visible"])
+        self.assertIsNotNone(self.row["camera_tracking"]["box"])
+        session["missing_since"] -= 2.1
         await self.until(lambda: self.row["camera_tracking"]["status"] == "stopped")
         self.assertIsNone(self.row["camera_tracking"]["box"])
-        self.assertFalse(self.control.sessions["Drone1"]["visible"])
+        await self.until(lambda: not session["visible"])
+
+    async def test_delayed_sam_correction_catches_up_without_rewinding_guidance_frames(self):
+        fixture = test_live_tracker.NativeTrackerTests()
+        fixture.setUp()
+        metadata = await self.native_seed(fixture.jpeg(1600, 900))
+        await self.until(lambda: self.camera.follow.await_count >= 1)
+        session = self.control.sessions["Drone1"]
+        current = {**metadata, "timestamp_ns": 3, "captured_at_ms": time.time() * 1000}
+        self.camera.video_sample = (current, fixture.jpeg(1680, 900))
+        await self.until(lambda: session["latest"][0]["timestamp_ns"] == 3)
+        await self.control.observe(self.row, current, [])
+        session["last_seed"] -= 2.1
+        corrected = {**metadata, "frame_id": "correction", "timestamp_ns": 2}
+        (self.inspections.directory / "correction-frame.jpg").write_bytes(fixture.jpeg(1640, 900))
+        await self.control.observe(
+            self.row, corrected, [{"track_id": 7, "box_xyxy": [1640, 900, 1740, 1060]}]
+        )
+        self.assertIsNone(session["missing_since"])
+        await self.until(lambda: session["last_seed_ns"] == 2)
+        await self.until(lambda: self.camera.follow.await_count >= 3)
+        self.assertEqual(session["latest"][0]["timestamp_ns"], 3)
+        self.assertGreater(session["latest"][1][0], 415)
+        rows = [
+            json.loads(line)
+            for line in (self.mission.directory / "camera-follow.jsonl").read_text().splitlines()
+        ]
+        timestamps = [row["frame_timestamp_ns"] for row in rows]
+        self.assertEqual(timestamps, sorted(timestamps))

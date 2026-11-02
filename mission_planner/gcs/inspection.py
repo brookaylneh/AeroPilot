@@ -125,9 +125,6 @@ class Inspections:
     def _camera(self, name, directory):
         if name not in self.cameras:
             self.cameras[name] = ForwardCapture(name, directory)
-            if name in self.mission.fleet.gimbals:
-                self.cameras[name].gimbal = self.mission.fleet.gimbals[name]
-                self.mission.fleet.gimbal_bridges[name].pose_lock = self.cameras[name].pose_lock
             self.camera_locks[name] = asyncio.Lock()
         self.cameras[name].directory = directory
         return self.cameras[name]
@@ -1288,6 +1285,7 @@ class Inspections:
         )
         checkpoint, breadcrumbs, motion = None, [], None
         following, last_command, last_success = False, None, None
+        last_seen_ns = metadata["timestamp_ns"]
         request, publication, queued = None, None, None
         review_processed = False
         latest, fresh = [None], asyncio.Event()
@@ -1528,7 +1526,13 @@ class Inspections:
                                 )
                     selected = next((d for d in detections if d["track_id"] == selected_id), None)
                     if selected is None:
-                        await lose(f"SAM track {selected_id} is not visible in the current frame")
+                        if (current["timestamp_ns"] - last_seen_ns) / 1e9 >= MAX_TRACKING_AGE_S:
+                            await lose(
+                                f"SAM track {selected_id} has not been visible for two seconds"
+                            )
+                        queue_held(current, detections)
+                        continue
+                    last_seen_ns = current["timestamp_ns"]
                     if row["rescue"]["tracking_error"] is not None:
                         queue_held(current, detections)
                         continue
@@ -1583,15 +1587,26 @@ class Inspections:
                         continue
                     centering = camera["centering"]
                     tolerance = 0.15 if following else 0.05
-                    if (
+                    recentering = (
                         abs(centering["error_x_px"]) > 960 * tolerance
                         or abs(centering["error_y_px"]) > 540 * tolerance
-                    ):
+                    )
+                    if recentering and not following:
                         continue
                     elapsed = 0.2 if last_success is None else time.monotonic() - last_success
-                    point, yaw = gentle_target(
-                        state, movement["point"], movement["yaw_deg"], elapsed, policy["speed_mps"]
-                    )
+                    if recentering:
+                        point = {
+                            k: state[k] for k in ("north_m", "east_m", "altitude_above_home_m")
+                        }
+                        yaw = state["heading_deg"]
+                    else:
+                        point, yaw = gentle_target(
+                            state,
+                            movement["point"],
+                            movement["yaw_deg"],
+                            elapsed,
+                            policy["speed_mps"],
+                        )
                     if not following:
                         await self.mission.fleet.tracking_follow(
                             name, checkpoint, policy["speed_mps"]
@@ -1628,6 +1643,7 @@ class Inspections:
                     )
                     if (
                         motion is None
+                        or recentering
                         or distance <= 1
                         or math.dist(tuple(position.values()), tuple(motion[1].values())) >= 0.5
                     ):
@@ -1651,6 +1667,7 @@ class Inspections:
                             "frame_id": current["frame_id"],
                             "track": row["rescue"]["track"],
                             "target": point,
+                            "recentering": recentering,
                             "vehicle": position,
                             "yaw_deg": yaw,
                             "command_at_ms": time.time() * 1000,
