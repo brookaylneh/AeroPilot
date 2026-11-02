@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Camera } from 'lucide-react';
 import { PixelStreamingTransport, droneViewSchema } from '../../scenario_creator/PixelStreamingTransport';
 import { droneColors, type DroneId } from './droneIdentity';
 import type { Inspection } from './InspectionPanel';
 import VideoBoxes from './VideoBoxes';
+import { cameraGuide, type CameraContext, type CameraRequester } from './CameraFollow';
 import './droneVideo.css';
 
 type VideoState = {
@@ -136,11 +137,15 @@ export default function DroneVideo({
   inset,
   onError,
   inspection,
+  held,
+  requestCamera,
 }: {
   droneId: DroneId;
   inset: boolean;
   onError: (message: string) => void;
   inspection?: Inspection;
+  held: boolean;
+  requestCamera: CameraRequester;
 }) {
   const parent = useRef<HTMLDivElement>(null);
   const viewer = useRef<ReturnType<typeof connectDroneVideo> | null>(null);
@@ -164,6 +169,17 @@ export default function DroneVideo({
   const status = state.type === 'live' && state.droneId !== droneId ? 'connecting' : state.type;
   const video = parent.current?.querySelector('video');
   const rescue = inspection?.rescue;
+  const persistent = held && inspection?.status === 'failed' && rescue?.visual_hold === true;
+  const guide = useRef<ReturnType<typeof cameraGuide> | null>(null);
+  const control = useRef<CameraContext | null>(null);
+  useEffect(() => {
+    const camera = cameraGuide(requestCamera, onError);
+    guide.current = camera;
+    return () => {
+      camera.dispose();
+      guide.current = null;
+    };
+  }, [requestCamera, onError]);
   const observed = rescue
     ? rescue.phase === 'searching'
       ? rescue.reports.some((report) => report.images.frame_id === inspection?.latest?.frame_id)
@@ -178,7 +194,36 @@ export default function DroneVideo({
     (!inspection?.camera_view || observed.camera_view_revision === inspection.camera_view.revision)
       ? observed
       : null;
-  const tracking = rescue && ['reviewing', 'tracking', 'held'].includes(rescue.phase);
+  const tracking = rescue && (persistent || ['reviewing', 'tracking', 'held'].includes(rescue.phase));
+  useEffect(() => {
+    guide.current?.stop();
+    control.current =
+      held &&
+      tracking &&
+      inspection?.camera_view &&
+      !inspection.camera_changing &&
+      rescue?.review_id &&
+      rescue.selected_track_id !== null
+        ? {
+            inspection_id: inspection.id,
+            review_id: rescue.review_id,
+            track_id: rescue.selected_track_id,
+            camera_revision: inspection.camera_view.revision,
+          }
+        : null;
+  }, [
+    held,
+    tracking,
+    droneId,
+    inspection?.id,
+    inspection?.camera_changing,
+    inspection?.camera_view?.revision,
+    rescue?.review_id,
+    rescue?.selected_track_id,
+  ]);
+  const onTrack = useCallback((box: [number, number, number, number] | null, at: number) => {
+    guide.current?.sample(control.current, box, at);
+  }, []);
   const showBoxes =
     status === 'live' &&
     video &&
@@ -186,8 +231,8 @@ export default function DroneVideo({
     inspection.drone_id === droneId &&
     !inspection.camera_changing &&
     (tracking ? rescue.selected_track_id !== null : frame && frame.detections.length > 0) &&
-    ['running', 'candidate'].includes(inspection.status) &&
-    (!rescue || ['searching', 'reviewing', 'tracking', 'held'].includes(rescue.phase));
+    (persistent || ['running', 'candidate'].includes(inspection.status)) &&
+    (persistent || !rescue || ['searching', 'reviewing', 'tracking', 'held'].includes(rescue.phase));
   return (
     <section
       className={`gcs-video gcs-drone-video ${inset ? 'is-inset' : ''}`}
@@ -203,15 +248,18 @@ export default function DroneVideo({
           frame={frame}
           trackId={tracking ? rescue.selected_track_id : null}
           lock={
-            rescue?.phase === 'reviewing'
-              ? 'reviewing'
-              : rescue?.phase === 'tracking'
-                ? 'locked'
-                : rescue?.phase === 'held'
-                  ? 'held'
-                  : undefined
+            persistent
+              ? 'held'
+              : rescue?.phase === 'reviewing'
+                ? 'reviewing'
+                : rescue?.phase === 'tracking'
+                  ? 'locked'
+                  : rescue?.phase === 'held'
+                    ? 'held'
+                    : undefined
           }
           onError={onError}
+          onTrack={onTrack}
         />
       )}
       <div className="gcs-video-top" style={{ '--drone': droneColors[droneId] } as CSSProperties}>

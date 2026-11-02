@@ -982,7 +982,13 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
             await asyncio.wait_for(self.inspections.tasks["Drone1"], 5)
         self.assertLess(time.monotonic() - lost, 2)
         self.assertEqual(row["status"], "failed")
+        self.assertTrue(row["rescue"]["visual_hold"])
+        self.assertEqual(row["rescue"]["selected_track_id"], 1)
+        self.assertIsNone(row["rescue"]["held_frame"])
+        self.assertEqual(self.receipt["plan"]["search"]["max_lock_seconds"], 2)
         self.fleet.tracking_resume.assert_not_awaited()
+        self.inspections.invalidate("Return home", "Drone1")
+        self.assertFalse(row["rescue"]["visual_hold"])
 
     async def test_reobserved_track_stays_held_until_wonder_explicitly_relocks(self):
         row, _ = await self.held_lock(1)

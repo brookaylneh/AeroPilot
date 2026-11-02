@@ -4,6 +4,7 @@ import asyncio
 import io
 import json
 import math
+import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 
@@ -20,6 +21,23 @@ def zoom_fov(zoom, base_fov):
     assert math.isfinite(zoom) and 1 <= zoom <= 4, "Camera zoom must be between 1 and 4"
     assert math.isfinite(base_fov) and 1 < base_fov < 179, "Invalid base camera field of view"
     return math.degrees(2 * math.atan(math.tan(math.radians(base_fov) / 2) / zoom))
+
+
+def follow_step(box, fov, dt, rates):
+    assert len(box) == 4 and all(math.isfinite(v) for v in box)
+    assert 0 <= box[0] < box[2] <= 960 and 0 <= box[1] < box[3] <= 540
+    assert math.isfinite(fov) and 1 < fov < 179
+    assert math.isfinite(dt) and 0 < dt <= 0.2
+    focal = 960 / (2 * math.tan(math.radians(fov) / 2))
+    center = ((box[0] + box[2]) / 2 - 480, (box[1] + box[3]) / 2 - 270)
+    wanted = []
+    for value, size, sign in zip(center, (960, 540), (1, -1)):
+        outside = math.copysign(max(0, abs(value) - size * 0.08), value)
+        rate = sign * 0.8 * math.atan(outside / focal)
+        wanted.append(max(-math.radians(8), min(math.radians(8), rate)))
+    weight = 1 - math.exp(-dt / 0.18)
+    updated = [old + weight * (new - old) for old, new in zip(rates, wanted)]
+    return [value * dt for value in updated], updated
 
 
 def route_look_ahead(points, position, distance_m):
@@ -63,8 +81,22 @@ class ForwardCapture:
         self.original_fov = None
         self.view_revision = 0
         self.target = None
+        self.pose_lock = threading.RLock()
+        self.follow_executor = ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="camera-follow-" + drone_id
+        )
+        self.follow_rpc = None
+        self.follow_generation = 0
+        self.visual_controlled = False
+        self.follow_rates = [0.0, 0.0]
+        self.follow_at = None
 
     def _aim(self, target):
+        with self.pose_lock:
+            if not self.visual_controlled:
+                self._aim_world(target)
+
+    def _aim_world(self, target):
         assert set(target) == {"x", "y", "z"} and all(np.isfinite(v) for v in target.values())
         if self.rpc is None:
             self.rpc = sim.connect()
@@ -102,8 +134,68 @@ class ForwardCapture:
     async def aim(self, target):
         await asyncio.get_running_loop().run_in_executor(self.executor, self._aim, target)
 
+    def begin_follow(self):
+        self.follow_generation += 1
+        self.visual_controlled = True
+        self.follow_rates = [0.0, 0.0]
+        self.follow_at = None
+        return self.follow_generation
+
+    def cancel_follow(self):
+        # Keep the last view until an explicit view/reset; an old SAM aim must not take over.
+        self.follow_generation += 1
+
+    def _follow(self, box, generation, expires):
+        started = time.monotonic()
+        with self.pose_lock:
+            if generation != self.follow_generation:
+                return {"status": "stopped"}
+            if started >= expires:
+                return {"status": "stale"}
+            assert self.visual_controlled and self.original_pose is not None
+            if self.follow_rpc is None:
+                self.follow_rpc = sim.connect()
+            rpc, name = self.follow_rpc, self.drone_id
+            body = rpc.simGetVehiclePose(vehicle_name=name)
+            info = rpc.simGetCameraInfo("fpv", vehicle_name=name)
+            now = time.monotonic()
+            if generation != self.follow_generation:
+                return {"status": "stopped"}
+            if now >= expires:
+                return {"status": "stale"}
+            dt = 0.1 if self.follow_at is None else min(0.2, now - self.follow_at)
+            delta, rates = follow_step(box, info.fov, dt, self.follow_rates)
+            self.follow_rates, self.follow_at = rates, now
+            body_rotation = rotation(sim.quat(body.orientation))
+            camera_rotation = rotation(sim.quat(info.pose.orientation))
+            turn = Rotation.from_euler("ZYX", [*delta, 0])
+            relative = (body_rotation.inv() * camera_rotation * turn).as_quat()
+            rpc.simSetCameraPose(
+                "fpv",
+                airsim.Pose(self.original_pose.position, airsim.Quaternionr(*relative)),
+                vehicle_name=name,
+            )
+            return {
+                "status": "moved",
+                "yaw_delta_deg": math.degrees(delta[0]),
+                "pitch_delta_deg": math.degrees(delta[1]),
+                "elapsed_ms": (time.monotonic() - started) * 1000,
+            }
+
+    async def follow(self, box, generation, expires):
+        pending = asyncio.get_running_loop().run_in_executor(
+            self.follow_executor, self._follow, box, generation, expires
+        )
+        try:
+            return await asyncio.shield(pending)
+        finally:
+            if not pending.done():
+                await pending
+
     def _view(self, target, zoom):
         assert math.isfinite(zoom) and 1 <= zoom <= 4, "Camera zoom must be between 1 and 4"
+        self.cancel_follow()
+        self.visual_controlled = False
         self._aim(target)
         info = self.rpc.simGetCameraInfo("fpv", vehicle_name=self.drone_id)
         if self.original_fov is None:
@@ -134,6 +226,12 @@ class ForwardCapture:
                 await pending
 
     def _reset(self):
+        self.cancel_follow()
+        with self.pose_lock:
+            self.visual_controlled = False
+            self._restore()
+
+    def _restore(self):
         self.target = None
         if self.original_pose is not None:
             self.rpc.simSetCameraPose("fpv", self.original_pose, vehicle_name=self.drone_id)
@@ -232,6 +330,12 @@ class ForwardCapture:
                 await pending
 
     async def close(self):
+        self.cancel_follow()
+        if self.follow_rpc is not None:
+            await asyncio.get_running_loop().run_in_executor(
+                self.follow_executor, self.follow_rpc.client.close
+            )
+        self.follow_executor.shutdown(wait=True)
         if self.rpc is not None:
             await self.reset()
             await asyncio.get_running_loop().run_in_executor(self.executor, self.rpc.client.close)

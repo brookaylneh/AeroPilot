@@ -191,6 +191,21 @@ old boxes are invalidated and only a fresh corresponding observation may guide f
 The original relative pose and FOV are
 restored when the owner resets or closes.
 
+`ForwardCapture.follow` applies CSRT camera guidance on its own serialized RPC worker,
+so 4K acquisition/encoding does not queue ahead of camera movement. A shared pose lock
+excludes competing camera writes, and visual ownership suppresses old world-target
+aims until an explicit view/reset. Image responses still own their capture-time pose.
+Guidance holds zoom and view revision fixed: continuous small rotations must not
+destroy the browser tracker. Manual view changes cancel that ownership and retain
+their existing revision and capture serialization.
+
+The controller uses the measured FOV, an 8% dead zone on either side of image centre,
+proportional gain 0.8/s, 0.18 s rate smoothing and an 8°/s limit on each image axis.
+Elapsed integration time is capped at 0.2 s; expired or cancelled requests never
+accumulate into a large correction. These are controller settings, not measured
+performance claims. Network/RPC failures raise without retries. The same mount and
+image-axis-to-NED rotation are preserved for every aircraft heading.
+
 Camera changes affect both inspection images and the existing Pixel Streaming view, without
 creating a new video connection or camera. The pinned Cosys
 [image API](https://github.com/Cosys-Lab/Cosys-AirSim/blob/5.8-v3.5.0/docs/image_apis.md#camera-apis)

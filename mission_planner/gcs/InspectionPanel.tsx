@@ -176,6 +176,7 @@ const rescueSchema = z
         .strict(),
     ),
     selected_track_id: number.int().positive().nullable(),
+    visual_hold: z.boolean(),
     track: z
       .object({
         track_id: number.int().positive(),
@@ -233,6 +234,10 @@ export const inspectionSchema = z
   .refine(
     (inspection) =>
       inspection.deadline_ms >= inspection.started_at_ms &&
+      (!inspection.rescue?.visual_hold ||
+        (inspection.status === 'failed' &&
+          inspection.rescue.phase === 'failed' &&
+          inspection.rescue.selected_track_id !== null)) &&
       (inspection.status === 'failed') === (inspection.error !== null) &&
       (inspection.status !== 'candidate' ||
         (inspection.latest !== null && inspection.latest.detections.length > 0)) &&

@@ -27,6 +27,7 @@ function fixture() {
     messages = [],
     boxes = [],
     labels = [],
+    guidance = [],
     callbacks = new Map(),
     listeners = new Map();
   let now = 10000,
@@ -122,6 +123,7 @@ function fixture() {
     () => current,
     (state, visible) => changes.push({ state, visible }),
     (message) => errors.push(message),
+    (box, at) => guidance.push({ box, at }),
   );
   return {
     current,
@@ -131,6 +133,7 @@ function fixture() {
     changes,
     boxes,
     labels,
+    guidance,
     controller,
     callbacks,
     tick(ms = 16) {
@@ -188,7 +191,7 @@ test('live tracking continues between SAM updates and does not compare server an
   await v.seed();
   v.reply();
   v.current.frame = null;
-  for (let i = 0; i < 12; i++) {
+  for (let i = 0; i < 3300; i++) {
     v.tick(100);
     await setImmediate();
     v.reply();
@@ -196,7 +199,8 @@ test('live tracking continues between SAM updates and does not compare server an
   v.tick();
   assert(v.changes.at(-1).visible);
   assert.equal(v.messages.filter((x) => x.type === 'seed').length, 1);
-  assert(v.messages.filter((x) => x.type === 'frame').length >= 12);
+  assert(v.messages.filter((x) => x.type === 'frame').length >= 3300);
+  assert(v.guidance.filter((x) => x.box !== null).length >= 3300);
   v.controller.dispose();
 });
 
@@ -204,6 +208,7 @@ test('lost tracking clears the box and requires a newer SAM detection before ano
   const v = fixture();
   await v.seed();
   v.reply('lost');
+  assert.equal(v.guidance.at(-1).box, null);
   v.tick();
   assert.equal(v.changes.at(-1).visible, false);
   assert.equal(v.changes.at(-1).state, 'lost');

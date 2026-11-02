@@ -462,14 +462,32 @@ frames are taken only when the worker is ready, so tracking cannot accumulate a 
 backlog. Tracking and drawing use local monotonic presentation times; a browser/server
 clock offset does not hide the box. A SAM update gap does not expire a CSRT result that
 is still being updated from live pixels. Camera changes, a released/rejected candidate,
-an ended inspection, hidden video or a stalled stream invalidate the corresponding
+an ended inspection except the held-budget case below, hidden video or a stalled stream invalidate the corresponding
 visual state. Failures are visible and do not restart the worker or retry requests.
 `window.visualTrackerSamples` keeps the last 2,000 processing, seed and error records.
+
+The candidate interruption allowance and flight plan are unchanged. If that allowance
+expires and the aircraft has acknowledged its hold, `rescue.visual_hold` keeps the
+existing CSRT worker mounted on the same selected object. The inspection still fails
+and its SAM session closes. No old evidence is supplied as a new seed. CSRT continues
+from live video while the aircraft remains airborne in BRAKE/LOITER with healthy
+telemetry. Departure, release, invalidation and mission closure end this permission.
+A real visual loss clears the box and requires a fresh detection; reopening a browser
+after the SAM session ended cannot reconstruct the previous CSRT state.
+
+`CameraFollow.ts` sends the selected CSRT box through the existing mission WebSocket,
+at most once per 100 ms and with only one acknowledgement outstanding. It uses the
+unpadded 960×540 tracker box. The backend validates aircraft hold, mission and object
+identity, view revision, sequence and frame freshness before moving the camera.
+There is no aircraft command in this path. Loss, stale video and viewer disposal stop
+guidance; failures remain visible. `window.cameraFollowSamples` retains 2,000 command
+timings and the mission's `camera-follow.jsonl` records processed camera guidance.
 
 Each side of the box is padded by the larger of half the projected dimension and
 12 CSS pixels, then clipped to the displayed image, including on high-DPI screens.
 Labels distinguish reviewing, locked and held. CSRT supplies a display box, not a
-segmentation mask or flight command. SAM/Glimmer retain identification and review
+segmentation mask or flight command. Its box also supplies camera-only guidance while
+the aircraft is held. SAM/Glimmer retain identification and review
 authority; only the checked backend controller can move an aircraft. Capture and
 WebRTC delivery remain separate: the first live frame can be newer than the SAM seed,
 and processing lag or visual drift must still be checked during operator acceptance.

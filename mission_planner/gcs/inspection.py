@@ -19,11 +19,16 @@ from mission_planner.agents.models import Glimmer
 from mission_planner.agents.review import review_candidate
 from mission_planner.agents.vision import VisionTrack, check_target, decode_mask, vision_http
 from mission_planner.gcs.geodesy import NAMES, point_in_polygon, to_local
+from mission_planner.gcs.visual_follow import VisualFollow, held
 from world.cosys.inspection import ForwardCapture, route_look_ahead
 
 AIM_STEP_M = 2
 CAPTURE_PERIOD_S = 0.2
 HOLD_FRAMES = round(30 / CAPTURE_PERIOD_S)
+
+
+class LockBudgetExpired(AssertionError):
+    pass
 
 
 def sampling_start(drone_id, now):
@@ -94,6 +99,7 @@ class Inspections:
         self.held_buffers = {}
         self.relocks = {}
         self.vision = {}
+        self.visual = VisualFollow(self)
 
     def snapshot(self):
         return copy.deepcopy(list(self.rows.values()))
@@ -133,6 +139,7 @@ class Inspections:
         from world.cosys.terrain import terrain_height
 
         version = flight_identity(self.mission, drone_id)
+        self.visual.cancel(drone_id)
         rows = [r for r in self.rows.values() if r["drone_id"] == drone_id]
         for row in rows:
             if row["status"] not in ("running", "candidate"):
@@ -401,8 +408,10 @@ class Inspections:
         return copy.deepcopy(row)
 
     def _stop(self, row, reason):
+        self.visual.cancel(row["drone_id"])
         row["status"] = "stopped"
         if "rescue" in row:
+            row["rescue"]["visual_hold"] = False
             row["rescue"]["phase"] = "stopped"
             row["rescue"]["pending"] = False
             row["rescue"]["live_frame"] = None
@@ -419,6 +428,10 @@ class Inspections:
 
     def invalidate(self, reason, drone_id=None):
         for row in self.rows.values():
+            if drone_id is None or row["drone_id"] == drone_id:
+                self.visual.cancel(row["drone_id"])
+                if "rescue" in row:
+                    row["rescue"]["visual_hold"] = False
             if (drone_id is None or row["drone_id"] == drone_id) and (
                 row["status"] == "running" or ("rescue" in row and row["status"] == "candidate")
             ):
@@ -460,6 +473,7 @@ class Inspections:
                 "Glimmer cannot release a positive or unresolved candidate"
             )
         release["reason"], release["source"] = reason, source
+        self.visual.cancel(name)
         release["call_id"] = call_id if call_id is not None else "review-" + review_id
         row["rescue"].update(
             phase="resuming", track=None, live_frame=None, held_frame=None, pending=False
@@ -510,6 +524,7 @@ class Inspections:
                     "review_id": None,
                     "reports": [],
                     "selected_track_id": None,
+                    "visual_hold": False,
                     "track": None,
                     "live_frame": None,
                     "held_frame": None,
@@ -972,7 +987,8 @@ class Inspections:
                         "Candidate evidence preserved after observation step ended: " + skipped
                     )
                 remaining = self._remaining_lock(row, policy)
-                assert remaining > 0, name + ": search interruption allowance exhausted"
+                if remaining <= 0:
+                    raise LockBudgetExpired(name + ": search interruption allowance exhausted")
                 rejected.update(
                     await self._lock(
                         row,
@@ -1001,6 +1017,7 @@ class Inspections:
             raise
         except Exception as error:
             message = f"{type(error).__name__}: {error}"
+            keep_visual = False
             self.control_idle[name].clear()
             try:
                 state = next(v for v in self.mission.vehicles() if v["id"] == name)
@@ -1031,6 +1048,14 @@ class Inspections:
                             ranges[index]["last_seq"],
                         )
                     await self.mission.fleet.execute("hold", {"drone_id": name}, **guard)
+                    keep_visual = (
+                        (
+                            isinstance(error, LockBudgetExpired)
+                            or isinstance(error.__cause__, LockBudgetExpired)
+                        )
+                        and row["rescue"]["selected_track_id"] is not None
+                        and held(next(v for v in self.mission.vehicles() if v["id"] == name))
+                    )
                 else:
                     message += (
                         "; hold not sent: flight control is no longer owned "
@@ -1044,8 +1069,15 @@ class Inspections:
                 if row["status"] != "stopped":
                     row["status"], row["error"] = "failed", message
                     row["rescue"].update(
-                        phase="failed", pending=True, live_frame=None, held_frame=None, track=None
+                        phase="failed",
+                        pending=True,
+                        live_frame=None,
+                        held_frame=None,
+                        track=None,
+                        visual_hold=keep_visual,
                     )
+                    if not keep_visual:
+                        self.visual.cancel(name)
                     self._event(row, name + ": search inspection failed · " + message)
             raise RuntimeError(f"{name}: search inspection failed: {message}") from error
         finally:
@@ -1340,9 +1372,8 @@ class Inspections:
                 )
                 while True:
                     self._search_state(row)
-                    assert unhealthy_s() < allowance, (
-                        name + ": search interruption allowance exhausted"
-                    )
+                    if unhealthy_s() >= allowance:
+                        raise LockBudgetExpired(name + ": search interruption allowance exhausted")
                     if producer.done():
                         producer.result()
                     if guard.done():

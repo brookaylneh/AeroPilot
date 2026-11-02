@@ -121,6 +121,7 @@ function videoFixture() {
           useState: () => [state, () => {}],
           useRef: () => ({ current: refIndex++ === 0 ? parent : null }),
           useEffect() {},
+          useCallback: (callback) => callback,
         };
       if (id === './VideoBoxes') return boxes;
       if (id === '../../scenario_creator/PixelStreamingTransport') return {};
@@ -129,10 +130,10 @@ function videoFixture() {
   });
   return {
     state,
-    render(inspection, droneId = 'Drone1') {
+    render(inspection, droneId = 'Drone1', held = false) {
       refIndex = 0;
       return find(
-        module.exports.default({ droneId, inspection, inset: false, onError() {} }),
+        module.exports.default({ droneId, inspection, held, inset: false, onError() {} }),
         (node) => node.type === boxes,
       );
     },
@@ -159,6 +160,45 @@ test('ended inspections and inactive observation steps cannot paint historical e
     );
   assert.equal(v.render({ ...source, latest: null }), undefined);
   assert.equal(v.render({ ...source, latest: { ...source.latest, detections: [] } }), undefined);
+});
+
+test('budget expiry preserves the same worker while held, with no historical frame to reseed', () => {
+  const v = videoFixture(),
+    source = inspection();
+  const active = {
+    ...source,
+    status: 'candidate',
+    rescue: {
+      phase: 'held',
+      reports: [],
+      review_id: 'review',
+      selected_track_id: 7,
+      visual_hold: false,
+      live_frame: null,
+      held_frame: source.latest,
+    },
+  };
+  const before = v.render(active, 'Drone1', true);
+  const expired = {
+    ...active,
+    status: 'failed',
+    rescue: {
+      ...active.rescue,
+      phase: 'failed',
+      visual_hold: true,
+      held_frame: null,
+    },
+  };
+  const after = v.render(expired, 'Drone1', true);
+  assert.equal(after.key, before.key);
+  assert.equal(after.props.trackId, 7);
+  assert.equal(after.props.lock, 'held');
+  assert.equal(after.props.frame, null);
+  assert.equal(v.render(expired, 'Drone1', false), undefined);
+  assert.equal(
+    v.render({ ...expired, rescue: { ...expired.rescue, visual_hold: false } }, 'Drone1', true),
+    undefined,
+  );
 });
 test('search, review, lock and hold display their own current frames with accurate status', () => {
   const v = videoFixture(),

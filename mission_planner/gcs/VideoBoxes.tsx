@@ -13,6 +13,7 @@ type BoxFrame = {
 };
 type Source = { frame: Frame | null; lock: Lock | undefined; trackId: number | null };
 type TrackerState = 'loading' | 'waiting' | 'tracking' | 'lost' | 'error';
+export type TrackSample = (box: [number, number, number, number] | null, presentedAt: number) => void;
 declare global {
   interface Window {
     visualTrackerSamples?: Array<Record<string, string | number | boolean>>;
@@ -66,6 +67,7 @@ export function followVideo(
   source: () => Source,
   changed: (state: TrackerState, visible: boolean) => void,
   onError: (message: string) => void,
+  onTrack?: TrackSample,
 ) {
   const tracking = source().lock !== undefined;
   let worker: Worker | null = null,
@@ -102,6 +104,7 @@ export function followVideo(
     video.cancelVideoFrameCallback(callback);
     document.removeEventListener('visibilitychange', visibilityChanged);
     worker?.terminate();
+    onTrack?.(null, performance.now());
     clear();
   }
   function fail(message: string) {
@@ -118,6 +121,7 @@ export function followVideo(
     worker!.postMessage(message, transfer);
   }
   function visibilityChanged() {
+    onTrack?.(null, performance.now());
     epoch++;
     image = null;
     if (tracking) {
@@ -166,6 +170,7 @@ export function followVideo(
             return;
           }
           if (value.type === 'lost' || value.box === null) {
+            onTrack?.(null, performance.now());
             seeded = false;
             image = null;
             state = 'lost';
@@ -186,6 +191,7 @@ export function followVideo(
               captured_at_ms: value.presentedAt,
               detections: [{ box_xyxy: value.box, track_id: source().trackId!, class_name: 'person' }],
             };
+            onTrack?.(value.box, value.presentedAt);
           }
         }
       };
@@ -257,7 +263,10 @@ export function followVideo(
         fail('Live tracker timed out');
         return;
       }
-      if (document.hidden || !image || now - image.captured_at_ms > 1000 || now - presentedAt > 1000) clear();
+      if (document.hidden || !image || now - image.captured_at_ms > 1000 || now - presentedAt > 1000) {
+        clear();
+        onTrack?.(null, now);
+      }
     }, 100);
     document.addEventListener('visibilitychange', visibilityChanged);
   }
@@ -270,15 +279,21 @@ export default function VideoBoxes({
   lock,
   trackId,
   onError,
+  onTrack,
 }: {
   video: HTMLVideoElement;
   frame: Frame | null;
   lock?: Lock;
   trackId: number | null;
   onError: (message: string) => void;
+  onTrack?: TrackSample;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const source = useRef<Source>({ frame, lock, trackId });
+  const sample = useRef(onTrack);
+  useEffect(() => {
+    sample.current = onTrack;
+  }, [onTrack]);
   const [visible, setVisible] = useState(false);
   const [state, setState] = useState<TrackerState>('loading');
   const tracking = lock !== undefined;
@@ -295,6 +310,7 @@ export default function VideoBoxes({
         setVisible(drawn);
       },
       onError,
+      (box, at) => sample.current?.(box, at),
     );
     return () => tracker.dispose();
   }, [video, onError, tracking, trackId]);

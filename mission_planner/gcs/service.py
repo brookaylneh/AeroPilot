@@ -56,6 +56,16 @@ MESSAGE_FIELDS = {
     "approval": {"type", "id", "approved"},
     "export_plan": {"type", "drone_id"},
     "set_fences": {"type", "fences"},
+    "camera_follow": {
+        "type",
+        "inspection_id",
+        "review_id",
+        "track_id",
+        "camera_revision",
+        "sequence",
+        "frame_age_ms",
+        "box",
+    },
 }
 
 
@@ -1748,7 +1758,10 @@ class Mission:
         kind = message["type"]
         assert kind in MESSAGE_FIELDS, f"Unknown message type: {kind}"
         assert set(message) == MESSAGE_FIELDS[kind], f"Invalid fields for {kind}"
-        if kind == "chat":
+        if kind == "camera_follow":
+            result = await self.inspections.visual.update(message, websocket)
+            await websocket.send(encode(result))
+        elif kind == "chat":
             assert isinstance(message["text"], str) and 1 <= len(message["text"].strip()) <= 4000
             self.cancel_wait("New operator message")
             conversation = self.conversation
@@ -1876,6 +1889,7 @@ class Mission:
             for task in done:
                 task.result()
         finally:
+            self.inspections.visual.disconnect(websocket)
             for task in tasks:
                 if not task.done():
                     task.cancel()

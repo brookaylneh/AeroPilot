@@ -23,6 +23,7 @@ const code = buildSync({
 function rescueState() {
   return {
     selected_track_id: null,
+    visual_hold: false,
     live_frame: null,
     held_frame: null,
     healthy_s: 0,

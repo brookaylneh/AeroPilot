@@ -340,6 +340,7 @@ test('switching between inset and main view preserves the mounted camera connect
   let refIndex = 0,
     effectIndex = 0;
   const value = fixture({
+    useCallback: (callback) => callback,
     useRef(initial) {
       const index = refIndex++;
       if (!(index in refs)) refs[index] = { current: initial };
