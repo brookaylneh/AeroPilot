@@ -124,6 +124,9 @@ class Inspections:
     def _camera(self, name, directory):
         if name not in self.cameras:
             self.cameras[name] = ForwardCapture(name, directory)
+            if name in self.mission.fleet.gimbals:
+                self.cameras[name].gimbal = self.mission.fleet.gimbals[name]
+                self.mission.fleet.gimbal_bridges[name].pose_lock = self.cameras[name].pose_lock
             self.camera_locks[name] = asyncio.Lock()
         self.cameras[name].directory = directory
         return self.cameras[name]
@@ -647,6 +650,7 @@ class Inspections:
         else:
             self._check(row)
             row["latest"] = frame
+        await self.visual.observe(row, metadata, detections)
         return detections
 
     def evidence(self, inspection_id, frame_id=None):
@@ -1263,6 +1267,7 @@ class Inspections:
             "follow_until": None,
         }
         self.held_buffers[review_id] = deque(maxlen=HOLD_FRAMES)
+        await self.visual.observe(row, metadata, [detection])
         cancelled = threading.Event()
         review = self._review_task(row, candidates, metadata, jpeg, policy, directory, cancelled)
         start = asyncio.create_task(
@@ -1685,6 +1690,7 @@ class Inspections:
 
     async def close(self):
         self.invalidate("Mission closed")
+        await self.visual.close()
         for task in self.tasks.values():
             if not task.done():
                 await asyncio.wait([task])

@@ -301,19 +301,8 @@ function conversationRows(
 }
 export default function MissionControl() {
   const caseId = new URLSearchParams(location.search).get('case');
-  const {
-    state,
-    feedFocus,
-    fenceResult,
-    events,
-    connection,
-    error,
-    setError,
-    send,
-    now,
-    age,
-    requestCamera,
-  } = useMission(caseId);
+  const { state, feedFocus, fenceResult, events, connection, error, setError, send, now, age } =
+    useMission(caseId);
   const activeCaseId = state ? state.mission.case_id : null;
   const briefing = state ? state.mission.briefing : null;
   const [markingPlan, setMarkingPlan] = useState(false);
@@ -684,7 +673,6 @@ export default function MissionControl() {
                   inset={view === 'map'}
                   onError={setError}
                   inspection={inspections.filter((item) => item.drone_id === cameraId).at(-1)}
-                  requestCamera={requestCamera}
                   held={vehicles.some(
                     (v) =>
                       v.id === cameraId &&

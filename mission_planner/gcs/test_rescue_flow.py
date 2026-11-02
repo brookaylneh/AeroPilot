@@ -129,6 +129,8 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
             self.states[name].update(mode="AUTO", mission_current=3)
 
         self.fleet = SimpleNamespace(
+            gimbals={},
+            gimbal_bridges={},
             tracking_start=AsyncMock(side_effect=start),
             tracking_follow=AsyncMock(side_effect=follow),
             tracking_target=AsyncMock(),
@@ -290,6 +292,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
         self.inspections = Inspections(self.mission)
+        self.inspections.visual.observe = AsyncMock()
 
     async def asyncTearDown(self):
         self.review_ready.set()
@@ -1610,13 +1613,23 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         finally:
             finish.set()
 
-    async def test_stand_off_refusal_keeps_fresh_masks_and_rejects_unsafe_relock(self):
+    async def test_outside_subject_keeps_fresh_masks_and_rejects_unsafe_relock(self):
         self.decisions = ["recheck"]
-        self.receipt["plan"]["search"]["stand_off_m"] = 150
+        original = tracking.ground_observation
+        patcher = patch.object(
+            tracking,
+            "ground_observation",
+            side_effect=lambda *args: {
+                **original(*args),
+                "ground": {"north_m": 120, "east_m": 0, "ground_m": terrain_height(120, 0)},
+            },
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
         await self.inspections.start_search(self.receipt)
         row = next(iter(self.inspections.rows.values()))
         await self.until(lambda: row["rescue"]["held_frame"] is not None)
-        reason = "Required stand-off leaves the search perimeter"
+        reason = "Candidate left the authorized search perimeter"
         self.assertEqual(row["rescue"]["tracking_error"], reason)
         self.assertEqual(row["rescue"]["selected_track_id"], 1)
         first = row["rescue"]["held_frame"]["frame_id"]
@@ -1644,13 +1657,23 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
             await self.inspections.tasks["Drone1"]
         self.assertIsNone(row["rescue"]["held_frame"])
 
-    async def test_negative_review_releases_a_stand_off_refusal_through_its_checkpoint(self):
-        self.receipt["plan"]["search"]["stand_off_m"] = 150
+    async def test_negative_review_releases_an_outside_subject_through_its_checkpoint(self):
+        original = tracking.ground_observation
+        patcher = patch.object(
+            tracking,
+            "ground_observation",
+            side_effect=lambda *args: {
+                **original(*args),
+                "ground": {"north_m": 120, "east_m": 0, "ground_m": terrain_height(120, 0)},
+            },
+        )
+        patcher.start()
+        self.addCleanup(patcher.stop)
         await self.inspections.start_search(self.receipt)
         row = next(iter(self.inspections.rows.values()))
         await self.until(lambda: row["rescue"]["held_frame"] is not None)
         self.assertEqual(
-            row["rescue"]["tracking_error"], "Required stand-off leaves the search perimeter"
+            row["rescue"]["tracking_error"], "Candidate left the authorized search perimeter"
         )
         self.review_ready.set()
         await asyncio.wait_for(self.inspections.tasks["Drone1"], 5)

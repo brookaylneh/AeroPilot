@@ -4,7 +4,7 @@ import math
 
 import numpy as np
 
-from mission_planner.gcs.geodesy import ORIGIN, point_in_polygon, segment_in_polygon
+from mission_planner.gcs.geodesy import ORIGIN, point_in_polygon
 from mission_planner.gcs.terrain import waypoint
 from mission_planner.gcs.validation import minimum_clearance
 from world.cosys.capture import rotation
@@ -79,12 +79,8 @@ def follow_target(state, target, perimeter, stand_off_m, height_m):
             "north_m": target["north_m"] - north / distance * stand_off_m,
             "east_m": target["east_m"] - east / distance * stand_off_m,
         }
-        if not point_in_polygon(desired, perimeter):
-            error = "Required stand-off leaves the search perimeter"
-        elif not segment_in_polygon(state, desired, perimeter):
-            error = "Following path leaves the search perimeter"
-        else:
-            home_z = state["home"]["altitude_msl_m"] - ORIGIN["altitude_msl_m"]
-            point = waypoint(desired["north_m"], desired["east_m"], home_z, height_m)
-            yaw = math.degrees(math.atan2(east, north)) % 360
+        # The search perimeter bounds subjects; Fleet.tracking_target validates the flight path.
+        home_z = state["home"]["altitude_msl_m"] - ORIGIN["altitude_msl_m"]
+        point = waypoint(desired["north_m"], desired["east_m"], home_z, height_m)
+        yaw = math.degrees(math.atan2(east, north)) % 360
     return {"point": point, "yaw_deg": yaw, "error": error}

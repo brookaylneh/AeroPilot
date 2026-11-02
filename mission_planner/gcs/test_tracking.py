@@ -90,7 +90,7 @@ class GroundFollowing(unittest.TestCase):
             0.126,
         )
 
-    def test_following_rejects_outside_target_or_unachievable_stand_off(self):
+    def test_following_rejects_outside_target_or_unresolved_bearing(self):
         state = {
             "north_m": 0,
             "east_m": 0,
@@ -101,7 +101,6 @@ class GroundFollowing(unittest.TestCase):
         ]
         for north, stand_off, reason in (
             (20, 5, "Candidate left the authorized search perimeter"),
-            (5, 30, "Required stand-off leaves the search perimeter"),
             (0, 5, "Candidate bearing is unresolved directly below the aircraft"),
         ):
             with self.subTest(reason=reason):
@@ -110,7 +109,7 @@ class GroundFollowing(unittest.TestCase):
                 )
                 self.assertEqual(result, {"point": None, "yaw_deg": None, "error": reason})
 
-    def test_recorded_twenty_metre_test_area_refuses_movement_without_losing_detection(self):
+    def test_recorded_twenty_metre_area_preserves_stand_off_for_flight_fence_validation(self):
         state = {
             "north_m": 144,
             "east_m": -349,
@@ -122,14 +121,15 @@ class GroundFollowing(unittest.TestCase):
         ]
         target = {"north_m": 155.23981277107208, "east_m": -340.5492331556043}
         result = follow_target(state, target, perimeter, 20, 15)
-        self.assertEqual(
-            result,
-            {
-                "point": None,
-                "yaw_deg": None,
-                "error": "Required stand-off leaves the search perimeter",
-            },
+        self.assertIsNone(result["error"])
+        self.assertAlmostEqual(
+            math.dist(
+                [result["point"][key] for key in ("north_m", "east_m")],
+                [target[key] for key in ("north_m", "east_m")],
+            ),
+            20,
         )
+        self.assertLess(result["point"]["north_m"], 144)
         with self.assertRaisesRegex(AssertionError, "finite mission metres"):
             follow_target(state, {"north_m": float("nan"), "east_m": 0}, perimeter, 20, 15)
 

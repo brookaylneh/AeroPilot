@@ -211,6 +211,32 @@ export const inspectionSchema = z
     error: z.string().min(1).nullable(),
     latest: frameSchema.nullable(),
     camera_changing: z.boolean().optional(),
+    camera_tracking: z
+      .object({
+        source: z.literal('onboard_csrt'),
+        track_id: number.int().positive(),
+        status: z.enum(['moved', 'stopped', 'stale', 'failed']),
+        sequence: number.int().positive(),
+        box: z.tuple([number, number, number, number]).nullable(),
+        frame_age_ms: number.nonnegative().nullable(),
+        error: z.string().min(1).nullable(),
+        centering: z
+          .object({
+            yaw_rad: number,
+            pitch_rad: number,
+            yaw_delta_deg: number,
+            pitch_delta_deg: number,
+            error_x_px: number,
+            error_y_px: number,
+            centered: z.boolean(),
+            limited: z.boolean(),
+          })
+          .strict()
+          .nullable(),
+      })
+      .strict()
+      .nullable()
+      .optional(),
     camera_view: z
       .object({
         revision: number.int().nonnegative(),

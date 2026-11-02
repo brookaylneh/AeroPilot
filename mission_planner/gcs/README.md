@@ -475,13 +475,50 @@ telemetry. Departure, release, invalidation and mission closure end this permiss
 A real visual loss clears the box and requires a fresh detection; reopening a browser
 after the SAM session ended cannot reconstruct the previous CSRT state.
 
-`CameraFollow.ts` sends the selected CSRT box through the existing mission WebSocket,
-at most once per 100 ms and with only one acknowledgement outstanding. It uses the
-unpadded 960×540 tracker box. The backend validates aircraft hold, mission and object
-identity, view revision, sequence and frame freshness before moving the camera.
-There is no aircraft command in this path. Loss, stale video and viewer disposal stop
-guidance; failures remain visible. `window.cameraFollowSamples` retains 2,000 command
-timings and the mission's `camera-follow.jsonl` records processed camera guidance.
+`visual_follow.py` owns a native OpenCV CSRT session for the same selected SAM object,
+seeded from its registered 4K evidence image. The browser retains its visual box;
+camera control runs on the device even when the viewer disconnects. Native tracking
+uses the existing main-camera frames resized to 960×540, with one CPU worker per active
+drone and no queued frame backlog. It shares current captures with SAM and continues
+acquiring that camera during an authorized visual hold after SAM closes. Real tracking
+loss stops steering; only a newer detection of the selected identity may seed it again.
+A worker failure is reported and is not automatically restarted.
+
+`gimbal.py` sends `GIMBAL_MANAGER_SET_PITCHYAW` to ArduPilot mount 1. It acquires
+manager ownership, checks fresh gimbal feedback and converts reported yaw frames
+explicitly. Commands contain finite pitch/yaw angles in radians and NaN rates. Thus
+a stopped controller leaves a finite last target rather than a continuing rotation.
+Capture-time camera orientation compensates for camera motion between video frames.
+The requested control period is 100 ms; observations older than one second cannot
+steer. The controller has a 1% image-centre tolerance, 12°/s slew cap, 1.5/s gain and
+0.12 s smoothing. These are settings, not measured flight accuracy or throughput.
+Mechanical pitch/yaw limits are enforced and reported as `centering.limited`.
+
+Guidance is permitted in a validated candidate hold or its active GUIDED follow,
+including Glimmer review. Plan changes, release, departure and manual camera changes
+revoke that owner. The mission's `camera-follow.jsonl` records frame age, raw box,
+centering error, angle targets and command time. `camera_tracking` reports native
+status and failures independently of SAM and the browser overlay. Camera failures
+do not stop aircraft telemetry or remove the operator's flight controls.
+
+Flight following retains the existing terrain-checked GUIDED position/yaw updates.
+This is the mechanism documented by ArduPilot's
+[GCS Follow Me](https://ardupilot.org/copter/docs/ac2_followme.html), with the target
+position derived from camera observations instead of a GPS dongle. ArduPilot handles
+aircraft stabilization, position control and its existing failsafes. Native FOLLOW
+mode is not required for this path. Gimbal APIs are checked against the
+[ArduPilot mount documentation](https://ardupilot.org/dev/docs/mavlink-gimbal-mount.html),
+[MAVLink Gimbal v2](https://mavlink.io/en/services/gimbal_v2.html) and the pinned
+ArduPilot `fb773567` `AP_Mount` implementation.
+
+The device Python environment installs `opencv-contrib-python-headless==4.10.0.84`
+from `requirements.txt`; the plain headless package does not contain CSRT. The pure
+tracker and MAVLink controller accept images and a supplied connection without
+browser or model dependencies. Cosys/SITL supplies their current camera and flight
+adapters. Hardware integration must supply timestamped calibrated frames, a matching
+optical orientation, a real ArduPilot link and its configured gimbal driver with
+measured angle feedback. Verify axes, FOV, time alignment and mechanical limits on
+that aircraft before flight. Simulation acceptance does not qualify unknown hardware.
 
 Each side of the box is padded by the larger of half the projected dimension and
 12 CSS pixels, then clipped to the displayed image, including on high-DPI screens.
@@ -756,8 +793,10 @@ contact or horizon ambiguity can make location unavailable while the image remai
 reviewable. That calculation cannot delay the initial pause or authorize movement
 from an old sighting. Following preserves the policy's stand-off and the observed
 step's AGL, with all existing terrain, obstacle, fence, altitude and separation checks.
-It stays inside the observation perimeter and never reads private actor positions.
-An unavailable bearing, an outside candidate, or a stand-off/path outside that perimeter
+The subject must stay inside the observation perimeter; the aircraft's stand-off
+may lie outside that search area but must pass the actual flight fences and route
+checks. This preserves the requested stand-off even for a small search rectangle.
+Private actor positions are never read. An unavailable bearing or outside candidate
 reports its exact reason and keeps the candidate session held. Fresh boxes and masks
 continue while movement is refused. Re-lock succeeds only after a fresh matched target
 passes movement checks and its following command completes.

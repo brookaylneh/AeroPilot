@@ -139,7 +139,9 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
             id="test",
             case=None,
             directory=self.directory,
-            fleet=SimpleNamespace(face_heading=AsyncMock(), execute=AsyncMock()),
+            fleet=SimpleNamespace(
+                face_heading=AsyncMock(), execute=AsyncMock(), gimbals={}, gimbal_bridges={}
+            ),
             events=self.events,
             event=Mock(side_effect=event),
             launch=asyncio.create_task,
@@ -235,6 +237,7 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
             patcher.start()
             self.addCleanup(patcher.stop)
         self.inspections = Inspections(self.mission)
+        self.inspections.visual.observe = AsyncMock()
 
     async def asyncTearDown(self):
         await self.inspections.close()

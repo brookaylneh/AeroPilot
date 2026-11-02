@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
-import { cameraReplySchema, cameraRequests } from './CameraFollow';
 import { briefingSchema } from '../../scenario_creator/briefing';
 import { landmarkSchema } from './landmarks';
 import { missionPlanSchema } from './missionPlan';
@@ -215,7 +214,6 @@ const messageSchema = z.discriminatedUnion('type', [
   stateSchema,
   feedFocusMessageSchema,
   fenceResultSchema,
-  cameraReplySchema,
   z.object({ type: z.literal('event'), event: eventSchema }),
   z.object({ type: z.literal('history'), events: z.array(eventSchema) }),
   z.object({ type: z.literal('error'), message: z.string() }),
@@ -237,13 +235,6 @@ export function useMission(caseId: string | null) {
   const [error, setError] = useState('');
   const [now, setNow] = useState(Date.now());
   const socket = useRef<WebSocket | null>(null);
-  const camera = useRef<ReturnType<typeof cameraRequests> | null>(null);
-  if (camera.current === null)
-    camera.current = cameraRequests((message) => {
-      if (!socket.current || socket.current.readyState !== WebSocket.OPEN)
-        throw new Error('Mission service is disconnected');
-      socket.current.send(JSON.stringify(message));
-    });
   const arrived = useRef(0);
   useEffect(() => {
     const clock = window.setInterval(() => setNow(Date.now()), 250);
@@ -284,13 +275,11 @@ export function useMission(caseId: string | null) {
         arrived.current = Date.now();
         setState(data);
       } else if (data.type === 'feed_focus') setFeedFocus(data);
-      else if (data.type === 'camera_follow') camera.current!.receive(data);
       else if (data.type === 'fence_result') setFenceResult(data);
       else if (data.type === 'event') setEvents((items) => [...items, data.event]);
       else if (data.type === 'history') setEvents(data.events);
       else if (data.type === 'error') {
         setError(data.message);
-        camera.current!.fail(new Error(data.message));
       } else if (data.type === 'plan') {
         const url = URL.createObjectURL(
           new Blob([JSON.stringify(data.plan, null, 2)], { type: 'application/json' }),
@@ -305,10 +294,8 @@ export function useMission(caseId: string | null) {
     ws.onerror = () => setError('Mission service connection failed. Check the service and reload this page.');
     ws.onclose = () => {
       setConnection('closed');
-      camera.current!.fail(new Error('Mission service disconnected'));
     };
     const close = () => {
-      camera.current!.fail(new Error('Mission connection closed'));
       ws.onclose = null;
       ws.onerror = null;
       ws.close();
@@ -356,7 +343,6 @@ export function useMission(caseId: string | null) {
     send,
     now,
     age,
-    requestCamera: camera.current.request,
   };
 }
 

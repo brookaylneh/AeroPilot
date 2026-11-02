@@ -56,16 +56,6 @@ MESSAGE_FIELDS = {
     "approval": {"type", "id", "approved"},
     "export_plan": {"type", "drone_id"},
     "set_fences": {"type", "fences"},
-    "camera_follow": {
-        "type",
-        "inspection_id",
-        "review_id",
-        "track_id",
-        "camera_revision",
-        "sequence",
-        "frame_age_ms",
-        "box",
-    },
 }
 
 
@@ -456,6 +446,9 @@ class Mission:
 
     def fleet_event(self, item):
         kind = item["kind"]
+        if kind == "gimbal_error":
+            self.event("error", item["drone_id"] + ": " + item["text"], result=item)
+            return
         if kind == "statustext":
             text = item["drone_id"] + ": " + item["text"]
             assert type(item["severity"]) is int and 0 <= item["severity"] <= MAV.MAV_SEVERITY_DEBUG
@@ -1758,10 +1751,7 @@ class Mission:
         kind = message["type"]
         assert kind in MESSAGE_FIELDS, f"Unknown message type: {kind}"
         assert set(message) == MESSAGE_FIELDS[kind], f"Invalid fields for {kind}"
-        if kind == "camera_follow":
-            result = await self.inspections.visual.update(message, websocket)
-            await websocket.send(encode(result))
-        elif kind == "chat":
+        if kind == "chat":
             assert isinstance(message["text"], str) and 1 <= len(message["text"].strip()) <= 4000
             self.cancel_wait("New operator message")
             conversation = self.conversation
@@ -1889,7 +1879,6 @@ class Mission:
             for task in done:
                 task.result()
         finally:
-            self.inspections.visual.disconnect(websocket)
             for task in tasks:
                 if not task.done():
                     task.cancel()

@@ -2,6 +2,7 @@
 
 import asyncio
 import copy
+import os
 import tempfile
 import time
 import unittest
@@ -52,6 +53,7 @@ class CameraLifetime(unittest.IsolatedAsyncioTestCase):
             mode=mode,
             get_type=lambda: "HEARTBEAT",
             get_srcSystem=lambda: 1,
+            get_srcComponent=lambda: 1,
         )
 
     def setUp(self):
@@ -136,6 +138,14 @@ class CameraLifetime(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(self.fleet.snapshot()[0]["camera_available"])
         await self.fleet.upload_mission("Drone1", self.items)
         self.assertTrue(self.fleet.snapshot()[0]["camera_available"])
+
+    async def test_gimbal_heartbeat_cannot_replace_aircraft_arming_or_flight_mode(self):
+        original = self.vehicle["messages"]["HEARTBEAT"]
+        gimbal = self.heartbeat(True, "GUIDED")
+        gimbal.get_srcComponent = lambda: MAV.MAV_COMP_ID_GIMBAL
+        await self.receive(gimbal)
+        self.assertIs(self.vehicle["messages"]["HEARTBEAT"], original)
+        self.assertFalse(self.fleet.snapshot()[0]["armed"])
 
     async def test_failed_uploads_preserve_previous_camera_and_mission(self):
         for available in (False, True):
@@ -238,6 +248,7 @@ class CameraLifetime(unittest.IsolatedAsyncioTestCase):
                 ]
             )
             with (
+                patch.dict(os.environ, {"SNR_SITL_MODEL": "quad"}),
                 patch("mission_planner.gcs.fleet.load_env"),
                 patch("mission_planner.gcs.fleet.launches", return_value=aircraft),
                 patch("mission_planner.gcs.fleet.check_ports", return_value={}),

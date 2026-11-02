@@ -23,23 +23,6 @@ def zoom_fov(zoom, base_fov):
     return math.degrees(2 * math.atan(math.tan(math.radians(base_fov) / 2) / zoom))
 
 
-def follow_step(box, fov, dt, rates):
-    assert len(box) == 4 and all(math.isfinite(v) for v in box)
-    assert 0 <= box[0] < box[2] <= 960 and 0 <= box[1] < box[3] <= 540
-    assert math.isfinite(fov) and 1 < fov < 179
-    assert math.isfinite(dt) and 0 < dt <= 0.2
-    focal = 960 / (2 * math.tan(math.radians(fov) / 2))
-    center = ((box[0] + box[2]) / 2 - 480, (box[1] + box[3]) / 2 - 270)
-    wanted = []
-    for value, size, sign in zip(center, (960, 540), (1, -1)):
-        outside = math.copysign(max(0, abs(value) - size * 0.08), value)
-        rate = sign * 0.8 * math.atan(outside / focal)
-        wanted.append(max(-math.radians(8), min(math.radians(8), rate)))
-    weight = 1 - math.exp(-dt / 0.18)
-    updated = [old + weight * (new - old) for old, new in zip(rates, wanted)]
-    return [value * dt for value in updated], updated
-
-
 def route_look_ahead(points, position, distance_m):
     keys = ("north_m", "east_m")
     assert points and all(math.isfinite(p[k]) for p in [position, *points] for k in keys)
@@ -88,8 +71,11 @@ class ForwardCapture:
         self.follow_rpc = None
         self.follow_generation = 0
         self.visual_controlled = False
-        self.follow_rates = [0.0, 0.0]
-        self.follow_at = None
+        self.gimbal = None
+        self.control_lock = asyncio.Lock()
+        self.follow_diagnostic = None
+        self.video_sample = None
+        self.capture_inflight = 0
 
     def _aim(self, target):
         with self.pose_lock:
@@ -137,60 +123,52 @@ class ForwardCapture:
     def begin_follow(self):
         self.follow_generation += 1
         self.visual_controlled = True
-        self.follow_rates = [0.0, 0.0]
-        self.follow_at = None
+        self.follow_diagnostic = None
         return self.follow_generation
 
     def cancel_follow(self):
         # Keep the last view until an explicit view/reset; an old SAM aim must not take over.
         self.follow_generation += 1
 
-    def _follow(self, box, generation, expires):
-        started = time.monotonic()
+    def _follow_feedback(self):
         with self.pose_lock:
-            if generation != self.follow_generation:
-                return {"status": "stopped"}
-            if started >= expires:
-                return {"status": "stale"}
-            assert self.visual_controlled and self.original_pose is not None
             if self.follow_rpc is None:
-                self.follow_rpc = sim.connect()
+                self.follow_rpc = airsim.MultirotorClient(
+                    ip="127.0.0.1", port=sim.PORT, timeout_value=3
+                )
             rpc, name = self.follow_rpc, self.drone_id
-            body = rpc.simGetVehiclePose(vehicle_name=name)
             info = rpc.simGetCameraInfo("fpv", vehicle_name=name)
-            now = time.monotonic()
+            q = info.pose.orientation
+            return [q.w_val, q.x_val, q.y_val, q.z_val], info.fov
+
+    async def end_follow(self, generation=None):
+        async with self.control_lock:
+            if generation is not None and generation != self.follow_generation:
+                return
+            if self.gimbal is not None:
+                await self.gimbal.release()
+
+    async def follow(self, box, generation, expires, observed_q):
+        async with self.control_lock:
             if generation != self.follow_generation:
                 return {"status": "stopped"}
-            if now >= expires:
+            if time.monotonic() >= expires:
                 return {"status": "stale"}
-            dt = 0.1 if self.follow_at is None else min(0.2, now - self.follow_at)
-            delta, rates = follow_step(box, info.fov, dt, self.follow_rates)
-            self.follow_rates, self.follow_at = rates, now
-            body_rotation = rotation(sim.quat(body.orientation))
-            camera_rotation = rotation(sim.quat(info.pose.orientation))
-            turn = Rotation.from_euler("ZYX", [*delta, 0])
-            relative = (body_rotation.inv() * camera_rotation * turn).as_quat()
-            rpc.simSetCameraPose(
-                "fpv",
-                airsim.Pose(self.original_pose.position, airsim.Quaternionr(*relative)),
-                vehicle_name=name,
+            assert self.visual_controlled, "Visual guidance no longer owns the camera"
+            assert self.gimbal is not None, "The main camera has no ArduPilot gimbal connection"
+            orientation, fov = await asyncio.get_running_loop().run_in_executor(
+                self.follow_executor, self._follow_feedback
             )
-            return {
-                "status": "moved",
-                "yaw_delta_deg": math.degrees(delta[0]),
-                "pitch_delta_deg": math.degrees(delta[1]),
-                "elapsed_ms": (time.monotonic() - started) * 1000,
-            }
-
-    async def follow(self, box, generation, expires):
-        pending = asyncio.get_running_loop().run_in_executor(
-            self.follow_executor, self._follow, box, generation, expires
-        )
-        try:
-            return await asyncio.shield(pending)
-        finally:
-            if not pending.done():
-                await pending
+            if not self.gimbal.claimed:
+                await self.gimbal.acquire(orientation)
+            if generation != self.follow_generation:
+                await self.gimbal.release()
+                return {"status": "stopped"}
+            if time.monotonic() >= expires:
+                return {"status": "stale"}
+            movement, diagnostic = self.gimbal.center(box, fov, observed_q)
+            self.follow_diagnostic = diagnostic
+            return movement
 
     def _view(self, target, zoom):
         assert math.isfinite(zoom) and 1 <= zoom <= 4, "Camera zoom must be between 1 and 4"
@@ -216,6 +194,8 @@ class ForwardCapture:
         }
 
     async def view(self, target, zoom):
+        self.cancel_follow()
+        await self.end_follow()
         pending = asyncio.get_running_loop().run_in_executor(
             self.executor, self._view, target, zoom
         )
@@ -245,6 +225,8 @@ class ForwardCapture:
             self.original_fov = None
 
     async def reset(self):
+        self.cancel_follow()
+        await self.end_follow()
         await asyncio.get_running_loop().run_in_executor(self.executor, self._reset)
 
     def _capture(self):
@@ -319,18 +301,25 @@ class ForwardCapture:
             raise AssertionError(
                 f"Forward camera returned an entirely black frame; evidence: {path}"
             )
-        return metadata, encoded.getvalue()
+        result = metadata, encoded.getvalue()
+        self.video_sample = result
+        return result
 
     async def capture(self):
+        self.capture_inflight += 1
         pending = asyncio.get_running_loop().run_in_executor(self.executor, self._capture)
         try:
             return await asyncio.shield(pending)
         finally:
-            if not pending.done():
-                await pending
+            try:
+                if not pending.done():
+                    await pending
+            finally:
+                self.capture_inflight -= 1
 
     async def close(self):
         self.cancel_follow()
+        await self.end_follow()
         if self.follow_rpc is not None:
             await asyncio.get_running_loop().run_in_executor(
                 self.follow_executor, self.follow_rpc.client.close
