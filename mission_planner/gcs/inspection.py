@@ -145,7 +145,7 @@ class Inspections:
     async def set_camera_view(self, drone_id, north_m, east_m, height_m, zoom=1):
         from world.cosys.terrain import terrain_height
 
-        assert type(zoom) in (int, float) and zoom in (1, 2), "Camera zoom must be 1x or 2x"
+        assert type(zoom) in (int, float) and zoom in (1, 2, 4), "Camera zoom must be 1x, 2x or 4x"
         version = flight_identity(self.mission, drone_id)
         rows = [r for r in self.rows.values() if r["drone_id"] == drone_id]
         for row in rows:

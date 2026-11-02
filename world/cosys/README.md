@@ -181,7 +181,7 @@ The camera never reads a scenario character's position. Tracking uses the image-
 pose for every ray, so aircraft and camera rotations cannot be confused with target motion.
 
 `ForwardCapture.view(target, zoom=1)` aims the main camera at a world point on
-its serialized capture worker. Zoom accepts only 1× or 2× and uses `simSetCameraFov`,
+its serialized capture worker. Zoom accepts only 1×, 2× or 4× and uses `simSetCameraFov`,
 relative to the original lens: `2 atan(tan(base_fov / 2) / zoom)`. Readback must
 agree within 0.01°. The command returns its target, zoom, measured horizontal FOV
 and view revision. Each image records `camera_view_revision` and brackets capture with matching FOV reads.
@@ -219,7 +219,7 @@ Camera changes affect both inspection images and the existing Pixel Streaming vi
 creating a new video connection or camera. The pinned Cosys
 [image API](https://github.com/Cosys-Lab/Cosys-AirSim/blob/5.8-v3.5.0/docs/image_apis.md#camera-apis)
 defines `simSetCameraPose` and `simSetCameraFov`. The stock main camera has approximately 90°
-horizontal field of view at 1×, narrowed to approximately 53° at 2×.
+horizontal field of view at 1×, narrowed to approximately 53° at 2× and 28° at 4×.
 The flight plan must choose overlapping passes for its
 height, angle and capture rate.
 

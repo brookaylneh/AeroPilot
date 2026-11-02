@@ -96,7 +96,7 @@ SEARCH_SCHEMA = object_schema(
             }
         ),
         "stand_off_m": {"type": "number", "exclusiveMinimum": 0},
-        "zoom": {"type": "number", "enum": [1, 2]},
+        "zoom": {"type": "number", "enum": [1, 2, 4]},
         "look_ahead_m": {"type": "number", "exclusiveMinimum": 0},
         "speed_mps": SPEED,
         "max_lock_seconds": {"type": "number", "exclusiveMinimum": 0},

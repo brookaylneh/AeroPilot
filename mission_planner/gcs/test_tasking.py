@@ -136,7 +136,7 @@ class Schema(unittest.TestCase):
     def test_semantic_rejections_are_structured(self):
         cases = [
             (task(subject=None), "schema", "needs a subject"),
-            (task(settings={"zoom": 4}), "schema", "settings.zoom"),
+            (task(settings={"zoom": 3}), "schema", "settings.zoom"),
             (task(references={"landmark_ids": ["nowhere"]}), "reference", "Unknown landmark"),
             (
                 task(references={"landmark_ids": [], "points": [{"north_m": 0, "east_m": 0}]}),
@@ -205,21 +205,21 @@ class Schema(unittest.TestCase):
 
 
 class Templates(unittest.TestCase):
-    def test_requested_2x_reaches_the_checked_observation_policy(self):
+    def test_requested_4x_reaches_the_checked_observation_policy(self):
         receipt = compiled(
             task(
                 task="datum_search",
                 references={"direction_of_travel": None},
-                settings={"zoom": 2},
+                settings={"zoom": 4, "spacing_m": 10},
                 region={"radius_m": 150},
             )
         )
-        self.assertEqual(receipt["tasking"]["settings"]["zoom"], 2)
-        self.assertEqual(receipt["plan"]["search"]["zoom"], 2)
+        self.assertEqual(receipt["tasking"]["settings"]["zoom"], 4)
+        self.assertEqual(receipt["plan"]["search"]["zoom"], 4)
         for branch in receipt["plan"]["drones"]:
             for step in branch["steps"]:
                 if step["kind"] == "survey":
-                    self.assertLessEqual(step["spacing_m"], 2 * step["height_m"] / 3)
+                    self.assertLessEqual(step["spacing_m"], step["height_m"] / 3)
 
     def test_doctrine_band_fits_the_fleet_with_an_approval_hover_and_shrinks_with_battery(self):
         receipt = compiled(task(expansion={"automatic_proposals": True}))

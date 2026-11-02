@@ -772,14 +772,12 @@ test('observation approval shows task, participating aircraft, camera aim and fo
   assert.match(html, /Observe person · 4 aircraft/);
   assert.match(html, /red jacket/);
   assert.match(html, /Observation camera: 1×/);
-  const zoomed = structuredClone(value);
-  zoomed.search.zoom = 2;
-  assert.deepEqual(flightPlanSchema.parse(zoomed), zoomed);
-  assert.match(render(zoomed), /Observation camera: 2×/);
-  const historical = structuredClone(value);
-  historical.search.zoom = 4;
-  assert.deepEqual(flightPlanSchema.parse(historical), historical);
-  assert.match(render(historical), /Recorded observation camera: 4×/);
+  for (const zoom of [2, 4]) {
+    const zoomed = structuredClone(value);
+    zoomed.search.zoom = zoom;
+    assert.deepEqual(flightPlanSchema.parse(zoomed), zoomed);
+    assert.match(render(zoomed), new RegExp(`Observation camera: ${zoom}×`));
+  }
   assert.match(html, /Ground view 20.0 m ahead along the route/);
   assert.match(html, /15.0 m.*horizontal stand-off/);
   assert.match(html, /Total candidate-lock allowance per drone:.*90.0 s/);

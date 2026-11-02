@@ -710,7 +710,7 @@ produce a candidate; a deadline or error ends the job. This one-shot workflow gi
 Wonder an image to review. Automatic pause, Glimmer review and following use an
 observed plan step instead.
 
-`set_camera_view` aims the forward camera at a world point with 1× or 2× zoom. Target height
+`set_camera_view` aims the forward camera at a world point with 1×, 2× or 4× zoom. Target height
 is above terrain, separate from flight altitude. One `ForwardCapture` owner per
 drone serializes explicit camera changes and acquisition; images record measured
 FOV and camera revision. The capture owner re-aims from the current aircraft pose
@@ -719,8 +719,9 @@ setting succeeds. Automatic observation steps retain their planned view; change
 their look-ahead or zoom through a checked plan. Healthy candidate tracking centres the
 subject automatically and rejects manual view changes before cancelling control
 or invalidating frames. Select zoom before observation; it stays fixed during tracking.
-`plan_task.settings.zoom` defaults to 1 and accepts only 1 or 2. Survey overlap is
-validated with the selected zoom; at 30 m AGL, 2× permits at most 20 m line spacing.
+`plan_task.settings.zoom` defaults to 1 and accepts only 1, 2 or 4. Survey overlap is
+validated with the selected zoom; at 30 m AGL, 2× permits at most 20 m line spacing
+and 4× permits at most 10 m. Set the spacing in the checked plan before launch.
 Saved receipts and evidence remain readable with their recorded optics.
 
 `get_candidate` waits for a fresh frame of the current camera revision and

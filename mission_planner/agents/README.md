@@ -114,7 +114,7 @@ performance for a changed prompt or review template. The current
 
 `set_camera_view(drone_id, north_m, east_m, height_m, zoom)` aims the main
 camera at a world point for detection and live video. Target height is above
-terrain. Zoom is 1× or 2×; set it before inspection. Automatic observation steps retain their
+terrain. Zoom is 1×, 2× or 4×; set it before inspection. Automatic observation steps retain their
 planned view. Healthy candidate tracking centres the subject automatically;
 manual view requests fail before changing its camera or tracking state.
 For an observed plan, `plan_task.settings.zoom` selects the magnification; null defaults
@@ -240,7 +240,7 @@ omits `uniqueItems`, which Meta rejects before responding to any tool-equipped r
 
 The policy contains a Wonder-chosen visible SAM noun phrase in `detector_prompt`, `threshold`, and
 `look_for` with objective, target, visible attributes and ignore instructions.
-It also specifies horizontal `stand_off_m`, 1× or 2× `zoom`, tracking `speed_mps`,
+It also specifies horizontal `stand_off_m`, 1×, 2× or 4× `zoom`, tracking `speed_mps`,
 `look_ahead_m` and total per-drone
 `max_lock_seconds`. One launch approval includes this provisional-follow authority.
 SAM discovery starts during the explicitly observed steps. Route steps look ahead along the ground,

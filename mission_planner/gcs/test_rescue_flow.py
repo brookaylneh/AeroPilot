@@ -1909,7 +1909,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
                 AssertionError, "Automatic candidate tracking owns the camera"
             ):
                 await self.inspections.set_camera_view(
-                    "Drone1", target["north_m"], target["east_m"], 0, zoom=2
+                    "Drone1", target["north_m"], target["east_m"], 0, zoom=4
                 )
             cancel.assert_not_called()
         self.assertEqual(self.inspections.camera_views["Drone1"], view)

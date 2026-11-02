@@ -246,7 +246,7 @@ class ForwardCapture:
         }
 
     async def view(self, target, zoom=1):
-        assert type(zoom) in (int, float) and zoom in (1, 2), "Camera zoom must be 1x or 2x"
+        assert type(zoom) in (int, float) and zoom in (1, 2, 4), "Camera zoom must be 1x, 2x or 4x"
         self.cancel_follow()
         await self.end_follow()
         pending = asyncio.get_running_loop().run_in_executor(

@@ -282,7 +282,7 @@ class ForwardCaptureTests(unittest.TestCase):
         capture, rpc, info = self.camera()
         target = {"x": 20, "y": 0, "z": 0}
         base = info.fov
-        for revision, zoom in enumerate((1, 2, 2, 1, 2), 1):
+        for revision, zoom in enumerate((1, 2, 4, 4, 2, 1, 4), 1):
             capture.begin_follow()
             result = asyncio.run(capture.view(target, zoom))
             self.assertFalse(capture.visual_controlled)
@@ -297,7 +297,7 @@ class ForwardCaptureTests(unittest.TestCase):
         selected = info.fov
         capture._aim(target)
         self.assertEqual(info.fov, selected)
-        self.assertEqual(capture.view_revision, 5)
+        self.assertEqual(capture.view_revision, 7)
         capture._reset()
         self.assertAlmostEqual(info.fov, base)
         self.assertIsNone(capture.original_pose)
@@ -381,8 +381,8 @@ class ForwardCaptureTests(unittest.TestCase):
     def test_invalid_zoom_has_no_camera_or_tracking_side_effect(self):
         capture, rpc, _ = self.camera()
         generation = capture.begin_follow()
-        for zoom in (0, 1.5, 3, 4, float("nan"), True, "2"):
-            with self.subTest(zoom=zoom), self.assertRaisesRegex(AssertionError, "1x or 2x"):
+        for zoom in (0, 1.5, 3, 5, float("nan"), True, "4"):
+            with self.subTest(zoom=zoom), self.assertRaisesRegex(AssertionError, "1x, 2x or 4x"):
                 asyncio.run(capture.view({"x": 20, "y": 0, "z": 0}, zoom))
         self.assertEqual(rpc.mock_calls, [])
         self.assertEqual(capture.view_revision, 0)
@@ -420,7 +420,7 @@ class ForwardCaptureTests(unittest.TestCase):
         rpc.simSetCameraPose.side_effect = change
 
         async def exercise():
-            view = asyncio.create_task(capture.view({"x": 20, "y": 0, "z": 0}, 2))
+            view = asyncio.create_task(capture.view({"x": 20, "y": 0, "z": 0}, 4))
             self.assertTrue(await asyncio.to_thread(entered.wait, 2))
             frame = asyncio.create_task(capture.capture())
             await asyncio.sleep(0)
