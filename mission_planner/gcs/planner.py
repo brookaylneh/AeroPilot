@@ -96,6 +96,7 @@ SEARCH_SCHEMA = object_schema(
             }
         ),
         "stand_off_m": {"type": "number", "exclusiveMinimum": 0},
+        "zoom": {"type": "number", "enum": [1, 2]},
         "look_ahead_m": {"type": "number", "exclusiveMinimum": 0},
         "speed_mps": SPEED,
         "max_lock_seconds": {"type": "number", "exclusiveMinimum": 0},
@@ -210,13 +211,13 @@ def validate_search(plan, fences):
                 step_index=index,
                 step_kind="survey",
             )
-        # A fixed 90-degree nadir view is 2h wide; retain one-third nominal overlap.
-        maximum_spacing = 4 * step["height_m"] / 3
+        # A 90-degree nadir view is 2h/zoom wide; retain one-third nominal overlap.
+        maximum_spacing = 4 * step["height_m"] / (3 * search["zoom"])
         if step["spacing_m"] > maximum_spacing:
             raise PlanRejected(
                 "spacing_overlap",
                 f"{label}: spacing {step['spacing_m']:g} m exceeds {maximum_spacing:g} m "
-                f"at {step['height_m']:g} m AGL with the fixed 1x camera "
+                f"at {step['height_m']:g} m AGL and {search['zoom']:g}x zoom "
                 "for one-third nominal camera overlap",
                 drone_id=name,
                 step_index=index,
@@ -225,6 +226,7 @@ def validate_search(plan, fences):
                     "spacing_m": step["spacing_m"],
                     "maximum_m": maximum_spacing,
                     "height_m": step["height_m"],
+                    "zoom": search["zoom"],
                 },
             )
 

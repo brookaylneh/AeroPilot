@@ -114,6 +114,7 @@ def search_plan():
                 "ignore": [],
             },
             "stand_off_m": 15,
+            "zoom": 1,
             "look_ahead_m": 20,
             "speed_mps": 3,
             "max_lock_seconds": 90,
@@ -260,7 +261,7 @@ class SearchPlan(unittest.TestCase):
         Draft202012Validator(PLAN_SCHEMA).validate(value)
         validate_search(value, {name: readback() for name in NAMES})
 
-    def test_fixed_optics_require_nominal_overlap_without_rewriting_the_plan(self):
+    def test_nominal_overlap_without_rewriting_the_plan(self):
         value = search_plan()
         for branch in value["drones"]:
             branch["steps"][0].update(height_m=30, speed_mps=5, spacing_m=20)
@@ -270,18 +271,37 @@ class SearchPlan(unittest.TestCase):
         for branch in value["drones"]:
             branch["steps"][0]["spacing_m"] = 40.01
         original = copy.deepcopy(value)
-        with self.assertRaisesRegex(AssertionError, "spacing 40.01 m exceeds 40 m.*fixed 1x"):
+        with self.assertRaisesRegex(AssertionError, "spacing 40.01 m exceeds 40 m.*1x zoom"):
             self.check(value)
         self.assertEqual(value, original)
         for branch in value["drones"]:
             branch["steps"][0]["spacing_m"] = 40
         self.check(value)
 
-    def test_search_policy_rejects_a_zoom_option(self):
-        for zoom in (1, 2, 4):
+    def test_search_policy_accepts_only_1x_and_2x(self):
+        for zoom in (1, 2):
+            value = search_plan()
+            value["search"]["zoom"] = zoom
+            self.assertTrue(Draft202012Validator(PLAN_SCHEMA).is_valid(value))
+        for zoom in (0, 1.5, 3, 4, True, "2"):
             value = search_plan()
             value["search"]["zoom"] = zoom
             self.assertFalse(Draft202012Validator(PLAN_SCHEMA).is_valid(value))
+
+    def test_2x_rejects_spacing_that_only_covers_at_1x(self):
+        value = search_plan()
+        value["search"]["zoom"] = 2
+        for branch in value["drones"]:
+            branch["steps"][0].update(height_m=30, spacing_m=20)
+        self.check(value)
+        value["drones"][0]["steps"][0]["spacing_m"] = 20.01
+        original = copy.deepcopy(value)
+        with self.assertRaisesRegex(
+            PlanRejected, "spacing 20.01 m exceeds 20 m.*2x zoom"
+        ) as caught:
+            self.check(value)
+        self.assertEqual(caught.exception.rejection["detail"]["zoom"], 2)
+        self.assertEqual(value, original)
 
     def test_each_remaining_survey_uses_its_own_height_for_camera_overlap(self):
         value = search_plan()

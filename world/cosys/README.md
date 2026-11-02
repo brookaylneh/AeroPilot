@@ -180,15 +180,16 @@ the observation `step_index`; the mission's `rescue.completed_steps` retains per
 The camera never reads a scenario character's position. Tracking uses the image-owned
 pose for every ray, so aircraft and camera rotations cannot be confused with target motion.
 
-`ForwardCapture.view(target)` aims the fixed 1× main camera at a world point on
-its serialized capture worker. No runtime command changes focal length or FOV.
-The command returns its target, measured horizontal FOV and view revision. Each
-image records `camera_view_revision` and brackets capture with matching FOV reads.
+`ForwardCapture.view(target, zoom=1)` aims the main camera at a world point on
+its serialized capture worker. Zoom accepts only 1× or 2× and uses `simSetCameraFov`,
+relative to the original lens: `2 atan(tan(base_fov / 2) / zoom)`. Readback must
+agree within 0.01°. The command returns its target, zoom, measured horizontal FOV
+and view revision. Each image records `camera_view_revision` and brackets capture with matching FOV reads.
 Callers retain one capture owner per drone and serialize explicit view changes
 with capture. A healthy candidate's native tracker owns the camera; manual view
 requests fail before cancellation or state changes. Explicit aiming remains
 available before inspection or while a lost candidate is held. Reset and close
-restore the original relative mount pose.
+restore the original relative mount pose and FOV.
 After candidate release, route search explicitly reclaims camera aiming on its next frame.
 
 `ForwardCapture.follow` uses `simSetCameraPose` directly on the existing `fpv` camera,
@@ -217,8 +218,9 @@ in place of this Cosys adapter; native CSRT and world-frame centering remain reu
 Camera changes affect both inspection images and the existing Pixel Streaming view, without
 creating a new video connection or camera. The pinned Cosys
 [image API](https://github.com/Cosys-Lab/Cosys-AirSim/blob/5.8-v3.5.0/docs/image_apis.md#camera-apis)
-defines `simSetCameraPose`. The stock main camera retains its approximately 90°
-horizontal field of view. The flight plan must choose overlapping passes for its
+defines `simSetCameraPose` and `simSetCameraFov`. The stock main camera has approximately 90°
+horizontal field of view at 1×, narrowed to approximately 53° at 2×.
+The flight plan must choose overlapping passes for its
 height, angle and capture rate.
 
 Generate the tracked deployment settings with explicit port and instance choices:

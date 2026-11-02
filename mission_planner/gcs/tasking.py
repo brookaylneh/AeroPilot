@@ -100,6 +100,7 @@ SETTINGS_SCHEMA = object_schema(
         "speed_mps": nullable(SPEED),
         "transit_speed_mps": nullable(SPEED),
         "spacing_m": nullable({"type": "number", "exclusiveMinimum": 0}),
+        "zoom": nullable(SEARCH_SCHEMA["properties"]["zoom"]),
         "look_ahead_m": nullable({"type": "number", "exclusiveMinimum": 0}),
         "stand_off_m": nullable({"type": "number", "exclusiveMinimum": 0}),
         "max_lock_seconds": nullable({"type": "number", "exclusiveMinimum": 0}),
@@ -179,6 +180,7 @@ SEARCH_DEFAULTS = {
     "speed_mps": 5,
     "transit_speed_mps": 10,
     "spacing_m": 20,
+    "zoom": 1,
     "look_ahead_m": 20,
     "stand_off_m": 20,
     "max_lock_seconds": 180,
@@ -452,7 +454,7 @@ def assemble(version, plan_drones, subject, settings, perimeter):
             "perimeter": perimeter,
             **{
                 key: settings[key]
-                for key in ("stand_off_m", "look_ahead_m", "speed_mps", "max_lock_seconds")
+                for key in ("stand_off_m", "zoom", "look_ahead_m", "speed_mps", "max_lock_seconds")
             },
         }
     return plan

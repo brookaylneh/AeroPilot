@@ -169,11 +169,13 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
             count = 0
             revision, horizontal_fov_deg = 0, 90
 
-            async def view(target):
-                nonlocal revision
+            async def view(target, zoom=1):
+                nonlocal revision, horizontal_fov_deg
                 revision += 1
+                horizontal_fov_deg = math.degrees(2 * math.atan(1 / zoom))
                 return {
                     "revision": revision,
+                    "zoom": zoom,
                     "target": target,
                     "horizontal_fov_deg": horizontal_fov_deg,
                 }
@@ -243,11 +245,11 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
         return row, self.inspections.tasks[name]
 
     async def test_camera_view_persists_across_inspections_without_commanding_flight(self):
-        view = await self.inspections.set_camera_view("Drone1", 30, 10, 2)
+        view = await self.inspections.set_camera_view("Drone1", 30, 10, 2, zoom=2)
         camera = self.captures["Drone1"]
-        camera.view.assert_awaited_once_with({"x": 30, "y": 10, "z": terrain_height(30, 10) + 2})
-        self.assertNotIn("zoom", view)
-        self.assertAlmostEqual(view["horizontal_fov_deg"], 90)
+        camera.view.assert_awaited_once_with({"x": 30, "y": 10, "z": terrain_height(30, 10) + 2}, 2)
+        self.assertEqual(view["zoom"], 2)
+        self.assertAlmostEqual(view["horizontal_fov_deg"], math.degrees(2 * math.atan(0.5)))
         self.detect.assert_not_called()
         camera.capture.assert_not_awaited()
         first, task = await self.start()
@@ -280,8 +282,8 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
         camera = self.captures["Drone1"]
         set_view = camera.view.side_effect
 
-        async def changed(target):
-            result = await set_view(target)
+        async def changed(target, zoom):
+            result = await set_view(target, zoom)
             self.mission.plan_active["plan"]["version"] = 2
             return result
 

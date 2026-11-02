@@ -68,6 +68,7 @@ def tasking(parsed, automatic_proposals):
                 "speed_mps",
                 "transit_speed_mps",
                 "spacing_m",
+                "zoom",
                 "look_ahead_m",
                 "stand_off_m",
                 "max_lock_seconds",

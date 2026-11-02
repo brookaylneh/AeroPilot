@@ -3,6 +3,7 @@
 import asyncio
 import copy
 import json
+import math
 import tempfile
 import threading
 import unittest
@@ -263,6 +264,7 @@ class ForwardCaptureTests(unittest.TestCase):
         rpc.simGetVehiclePose.return_value = pose
         info = SimpleNamespace(pose=pose, fov=89.90362548828125)
         rpc.simGetCameraInfo.return_value = info
+        rpc.simSetCameraFov.side_effect = lambda _, fov, **kwargs: setattr(info, "fov", fov)
         capture.rpc = rpc
         self.addCleanup(lambda: asyncio.run(capture.close()))
         native = patch(
@@ -276,25 +278,32 @@ class ForwardCaptureTests(unittest.TestCase):
         self.addCleanup(native.stop)
         return capture, rpc, info
 
-    def test_view_aim_and_reset_preserve_the_fixed_lens(self):
+    def test_zoom_is_relative_to_original_lens_and_reset_restores_it(self):
         capture, rpc, info = self.camera()
         target = {"x": 20, "y": 0, "z": 0}
         base = info.fov
-        for revision in range(1, 4):
+        for revision, zoom in enumerate((1, 2, 2, 1, 2), 1):
             capture.begin_follow()
-            result = asyncio.run(capture.view(target))
+            result = asyncio.run(capture.view(target, zoom))
             self.assertFalse(capture.visual_controlled)
             self.assertEqual(result["revision"], revision)
             self.assertEqual(result["target"], target)
-            self.assertNotIn("zoom", result)
-            self.assertEqual(result["horizontal_fov_deg"], base)
+            self.assertEqual(result["zoom"], zoom)
+            self.assertAlmostEqual(
+                math.tan(math.radians(base) / 2)
+                / math.tan(math.radians(result["horizontal_fov_deg"]) / 2),
+                zoom,
+            )
+        selected = info.fov
         capture._aim(target)
-        self.assertEqual(capture.view_revision, 3)
+        self.assertEqual(info.fov, selected)
+        self.assertEqual(capture.view_revision, 5)
         capture._reset()
         self.assertAlmostEqual(info.fov, base)
         self.assertIsNone(capture.original_pose)
+        self.assertIsNone(capture.original_fov)
         self.assertIsNone(capture.target)
-        rpc.simSetCameraFov.assert_not_called()
+        rpc.simSetCameraFov.assert_called_with("fpv", base, vehicle_name="Drone1")
 
     def test_capture_reaims_latest_world_target_after_aircraft_attitude_changes(self):
         capture, rpc, info = self.camera()
@@ -369,11 +378,22 @@ class ForwardCaptureTests(unittest.TestCase):
         rpc.simSetCameraFov.assert_not_called()
         self.assertEqual(capture.view_revision, 0)
 
-    def test_removed_zoom_argument_has_no_camera_side_effect(self):
+    def test_invalid_zoom_has_no_camera_or_tracking_side_effect(self):
         capture, rpc, _ = self.camera()
-        with self.assertRaises(TypeError):
-            asyncio.run(capture.view({"x": 20, "y": 0, "z": 0}, zoom=4))
+        generation = capture.begin_follow()
+        for zoom in (0, 1.5, 3, 4, float("nan"), True, "2"):
+            with self.subTest(zoom=zoom), self.assertRaisesRegex(AssertionError, "1x or 2x"):
+                asyncio.run(capture.view({"x": 20, "y": 0, "z": 0}, zoom))
         self.assertEqual(rpc.mock_calls, [])
+        self.assertEqual(capture.view_revision, 0)
+        self.assertEqual(capture.follow_generation, generation)
+        self.assertTrue(capture.visual_controlled)
+
+    def test_unapplied_zoom_fails_without_publishing_a_revision(self):
+        capture, rpc, _ = self.camera()
+        rpc.simSetCameraFov.side_effect = None
+        with self.assertRaisesRegex(AssertionError, "zoom readback differs"):
+            asyncio.run(capture.view({"x": 20, "y": 0, "z": 0}, 2))
         self.assertEqual(capture.view_revision, 0)
 
     def test_capture_waits_for_an_in_flight_camera_change(self):
@@ -400,7 +420,7 @@ class ForwardCaptureTests(unittest.TestCase):
         rpc.simSetCameraPose.side_effect = change
 
         async def exercise():
-            view = asyncio.create_task(capture.view({"x": 20, "y": 0, "z": 0}))
+            view = asyncio.create_task(capture.view({"x": 20, "y": 0, "z": 0}, 2))
             self.assertTrue(await asyncio.to_thread(entered.wait, 2))
             frame = asyncio.create_task(capture.capture())
             await asyncio.sleep(0)

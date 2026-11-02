@@ -142,9 +142,10 @@ class Inspections:
             metadata.update(frame_id=str(uuid.uuid4()), sha256=hashlib.sha256(jpeg).hexdigest())
             return metadata, jpeg
 
-    async def set_camera_view(self, drone_id, north_m, east_m, height_m):
+    async def set_camera_view(self, drone_id, north_m, east_m, height_m, zoom=1):
         from world.cosys.terrain import terrain_height
 
+        assert type(zoom) in (int, float) and zoom in (1, 2), "Camera zoom must be 1x or 2x"
         version = flight_identity(self.mission, drone_id)
         rows = [r for r in self.rows.values() if r["drone_id"] == drone_id]
         for row in rows:
@@ -181,13 +182,14 @@ class Inspections:
             row["camera_changing"] = True
         async with self.camera_locks[drone_id]:
             result = await camera.view(
-                {"x": north_m, "y": east_m, "z": terrain_height(north_m, east_m) + height_m}
+                {"x": north_m, "y": east_m, "z": terrain_height(north_m, east_m) + height_m}, zoom
             )
         assert flight_identity(self.mission, drone_id) == version, (
             "The flight changed while setting the camera view"
         )
         view = {
             "revision": result["revision"],
+            "zoom": result["zoom"],
             "horizontal_fov_deg": result["horizontal_fov_deg"],
             "target": {"north_m": north_m, "east_m": east_m, "height_m": height_m},
         }
@@ -872,10 +874,15 @@ class Inspections:
             )
         north, east = target["north_m"], target["east_m"]
         world = {"x": north, "y": east, "z": terrain_height(north, east)}
-        if "camera_view" not in row or capture.visual_controlled:
-            view = await capture.view(world)
+        if (
+            "camera_view" not in row
+            or row["camera_view"]["zoom"] != policy["zoom"]
+            or capture.visual_controlled
+        ):
+            view = await capture.view(world, policy["zoom"])
             row["camera_view"] = {
                 "revision": view["revision"],
+                "zoom": view["zoom"],
                 "horizontal_fov_deg": view["horizontal_fov_deg"],
                 "target": {**target, "height_m": 0},
             }

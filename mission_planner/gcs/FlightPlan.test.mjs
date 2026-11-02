@@ -771,7 +771,11 @@ test('observation approval shows task, participating aircraft, camera aim and fo
   const html = render(value);
   assert.match(html, /Observe person · 4 aircraft/);
   assert.match(html, /red jacket/);
-  assert.match(html, /Observation camera: fixed 1×/);
+  assert.match(html, /Observation camera: 1×/);
+  const zoomed = structuredClone(value);
+  zoomed.search.zoom = 2;
+  assert.deepEqual(flightPlanSchema.parse(zoomed), zoomed);
+  assert.match(render(zoomed), /Observation camera: 2×/);
   const historical = structuredClone(value);
   historical.search.zoom = 4;
   assert.deepEqual(flightPlanSchema.parse(historical), historical);

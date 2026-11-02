@@ -56,6 +56,7 @@ class ForwardCapture:
         )
         self.rpc = None
         self.original_pose = None
+        self.original_fov = None
         self.view_revision = 0
         self.target = None
         self.pose_lock = threading.RLock()
@@ -219,25 +220,38 @@ class ForwardCapture:
             self.follow_diagnostic = diagnostic
             return movement
 
-    def _view(self, target):
+    def _view(self, target, zoom=1):
         self.cancel_follow()
         self.visual_controlled = False
         self._aim(target)
-        measured = self.rpc.simGetCameraInfo("fpv", vehicle_name=self.drone_id).fov
-        assert math.isfinite(measured) and 1 < measured < 179, (
+        current = self.rpc.simGetCameraInfo("fpv", vehicle_name=self.drone_id).fov
+        assert math.isfinite(current) and 1 < current < 179, (
             "Forward camera field of view is invalid"
+        )
+        if self.original_fov is None:
+            self.original_fov = current
+        fov = math.degrees(2 * math.atan(math.tan(math.radians(self.original_fov) / 2) / zoom))
+        if not math.isclose(current, fov, abs_tol=0.01):
+            self.rpc.simSetCameraFov("fpv", fov, vehicle_name=self.drone_id)
+        measured = self.rpc.simGetCameraInfo("fpv", vehicle_name=self.drone_id).fov
+        assert math.isclose(measured, fov, abs_tol=0.01), (
+            "Camera zoom readback differs from request"
         )
         self.view_revision += 1
         return {
             "target": dict(target),
+            "zoom": zoom,
             "horizontal_fov_deg": measured,
             "revision": self.view_revision,
         }
 
-    async def view(self, target):
+    async def view(self, target, zoom=1):
+        assert type(zoom) in (int, float) and zoom in (1, 2), "Camera zoom must be 1x or 2x"
         self.cancel_follow()
         await self.end_follow()
-        pending = asyncio.get_running_loop().run_in_executor(self.executor, self._view, target)
+        pending = asyncio.get_running_loop().run_in_executor(
+            self.executor, self._view, target, zoom
+        )
         try:
             return await asyncio.shield(pending)
         finally:
@@ -255,6 +269,13 @@ class ForwardCapture:
         if self.original_pose is not None:
             self.rpc.simSetCameraPose("fpv", self.original_pose, vehicle_name=self.drone_id)
             self.original_pose = None
+        if self.original_fov is not None:
+            self.rpc.simSetCameraFov("fpv", self.original_fov, vehicle_name=self.drone_id)
+            measured = self.rpc.simGetCameraInfo("fpv", vehicle_name=self.drone_id).fov
+            assert math.isclose(measured, self.original_fov, abs_tol=0.01), (
+                "Camera field of view was not restored"
+            )
+            self.original_fov = None
 
     async def reset(self):
         self.cancel_follow()

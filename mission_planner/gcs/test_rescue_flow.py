@@ -4,6 +4,7 @@ import asyncio
 import copy
 import hashlib
 import json
+import math
 import tempfile
 import threading
 import time
@@ -88,6 +89,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
                         "ignore": [],
                     },
                     "stand_off_m": 15,
+                    "zoom": 1,
                     "speed_mps": 3,
                     "max_lock_seconds": 10,
                     "look_ahead_m": 20,
@@ -161,7 +163,9 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
             return {
                 "drone_id": "Drone1",
                 "camera_id": "fpv",
-                "horizontal_fov_deg": 90,
+                "horizontal_fov_deg": math.degrees(
+                    2 * math.atan(1 / self.receipt["plan"]["search"]["zoom"])
+                ),
                 "camera_view_revision": 1,
                 "camera_position_world_m": {
                     "x": self.states["Drone1"]["north_m"],
@@ -186,12 +190,13 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
             close=AsyncMock(),
         )
 
-        def view(target):
+        def view(target, zoom=1):
             self.capture.target = target
             self.capture.visual_controlled = False
             return {
                 "target": target,
-                "horizontal_fov_deg": 90,
+                "zoom": zoom,
+                "horizontal_fov_deg": math.degrees(2 * math.atan(1 / zoom)),
                 "revision": 1,
             }
 
@@ -429,7 +434,8 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         self.assertGreaterEqual(self.detect.call_count, 3)
         self.assertEqual(self.review_count, 1)
         self.fleet.tracking_resume.assert_awaited_once()
-        (target,) = self.capture.view.await_args_list[0].args
+        target, zoom = self.capture.view.await_args_list[0].args
+        self.assertEqual(zoom, self.receipt["plan"]["search"]["zoom"])
         self.assertAlmostEqual(target["x"], 20)
         self.assertAlmostEqual(target["y"], 0)
         self.assertAlmostEqual(target["z"], terrain_height(20, 0))
@@ -455,7 +461,8 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         self.assertGreaterEqual(self.detect.call_count, 3)
         self.assertEqual(self.review_count, 1)
         self.fleet.tracking_resume.assert_awaited_once()
-        (target,) = self.capture.view.await_args_list[0].args
+        target, zoom = self.capture.view.await_args_list[0].args
+        self.assertEqual(zoom, self.receipt["plan"]["search"]["zoom"])
         self.assertEqual(target, {"x": 20, "y": 40, "z": terrain_height(20, 40)})
 
     async def test_vertical_observed_fly_aims_at_its_ground_endpoint(self):
@@ -482,7 +489,8 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         await asyncio.wait_for(self.inspections.tasks["Drone1"], 5)
         row = next(iter(self.inspections.rows.values()))
         self.assertEqual((row["status"], row["frames"]), ("complete", 1))
-        (target,) = self.capture.view.await_args_list[0].args
+        target, zoom = self.capture.view.await_args_list[0].args
+        self.assertEqual(zoom, self.receipt["plan"]["search"]["zoom"])
         self.assertEqual(target, {"x": 0, "y": 0, "z": terrain_height(0, 0)})
         self.fleet.execute.assert_not_awaited()
 
@@ -521,7 +529,8 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         await asyncio.wait_for(self.inspections.tasks["Drone1"], 5)
         row = next(iter(self.inspections.rows.values()))
         self.assertEqual((row["status"], row["frames"]), ("complete", 1))
-        (target,) = self.capture.view.await_args_list[0].args
+        target, zoom = self.capture.view.await_args_list[0].args
+        self.assertEqual(zoom, self.receipt["plan"]["search"]["zoom"])
         self.assertAlmostEqual(target["x"], -720, delta=0.02)
         self.assertAlmostEqual(target["y"], 0, delta=0.02)
         self.assertEqual(target["z"], terrain_height(target["x"], target["y"]))
@@ -1900,7 +1909,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
                 AssertionError, "Automatic candidate tracking owns the camera"
             ):
                 await self.inspections.set_camera_view(
-                    "Drone1", target["north_m"], target["east_m"], 0
+                    "Drone1", target["north_m"], target["east_m"], 0, zoom=2
                 )
             cancel.assert_not_called()
         self.assertEqual(self.inspections.camera_views["Drone1"], view)
@@ -1915,6 +1924,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
 
     async def test_candidate_release_returns_camera_ownership_to_route_search(self):
         self.decisions = ["recheck"]
+        self.receipt["plan"]["search"]["zoom"] = 2
         row = await self.begin()
         await self.until(lambda: row["rescue"]["pending"] and bool(row["rescue"]["reports"]))
         resume = self.fleet.tracking_resume.side_effect
@@ -1929,7 +1939,10 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         self.inspections.disregard_and_continue(row["rescue"]["review_id"], "Candidate excluded")
         await self.until(lambda: self.capture.view.await_count > views)
         self.assertFalse(self.capture.visual_controlled)
-        self.assertEqual(row["camera_view"]["horizontal_fov_deg"], 90)
+        self.assertEqual(row["camera_view"]["zoom"], 2)
+        self.assertAlmostEqual(
+            row["camera_view"]["horizontal_fov_deg"], math.degrees(2 * math.atan(0.5))
+        )
         self.assertEqual(row["rescue"]["phase"], "searching")
         self.assertIsNone(row["rescue"]["selected_track_id"])
         self.states["Drone1"]["mission_current"] = 3

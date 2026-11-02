@@ -75,7 +75,7 @@ CASES = [
     ),
     (
         "Drone2 has no active inspection. Aim its camera at north 100 east 20 at target height zero metres above terrain; keep its flight unchanged.",
-        [call("set_camera_view", drone_id="Drone2", north_m=100, east_m=20, height_m=0)],
+        [call("set_camera_view", drone_id="Drone2", north_m=100, east_m=20, height_m=0, zoom=1)],
     ),
     (
         "Read the current candidate image from active inspection inspection-17. Its temporal track is healthy; do not adjust the camera or flight.",

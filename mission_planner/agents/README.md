@@ -112,11 +112,13 @@ flight measurements remain in [measurements](../measurements/); they do not esta
 performance for a changed prompt or review template. The current
 [release validation record](../measurements/release.json) separates completed checks from live acceptance limits.
 
-`set_camera_view(drone_id, north_m, east_m, height_m)` aims the fixed 1× main
+`set_camera_view(drone_id, north_m, east_m, height_m, zoom)` aims the main
 camera at a world point for detection and live video. Target height is above
-terrain. There is no adjustable zoom. Automatic observation steps retain their
+terrain. Zoom is 1× or 2×; set it before inspection. Automatic observation steps retain their
 planned view. Healthy candidate tracking centres the subject automatically;
 manual view requests fail before changing its camera or tracking state.
+For an observed plan, `plan_task.settings.zoom` selects the magnification; null defaults
+to 1×. The checked plan records it and validates survey overlap at that magnification.
 `get_candidate(inspection_id)` supplies and retains the current original 4K frame
 for review or publication without interrupting the camera controller.
 
@@ -164,7 +166,7 @@ their wording and live operation remain operator-tested.
 Wonder chooses the task, subject, references, fleet, settings and aftermath; code builds the
 geometry. `gcs/tasking.py` validates the tasking (schema plus semantic rules such as one initial
 planning point, clicked points only, published distance tables or an explicit radius), fills
-the disclosed defaults (searches 30 m above ground, 5 m/s, 10 m/s transit, 20 m spacing, fixed 1× camera,
+the disclosed defaults (searches 30 m above ground, 5 m/s, 10 m/s transit, 20 m spacing, 1× camera,
 20 m look-ahead, 20 m stand-off, 180 s candidate allowance; point inspection 40 m; transit 40 m
 at 10 m/s) and dispatches to one template per task:
 
@@ -198,7 +200,7 @@ parallel strips; route searches follow a credible line; point inspections orbit 
 A finite pattern does not prove complete coverage; a circle observes its center from changing views.
 Terrain following alone does not provide a contour-search route.
 
-The operator selected **30 m AGL, 5 m/s, fixed 1× camera, 20 m line spacing and 20 m camera
+The operator selected **30 m AGL, 5 m/s, 1× camera, 20 m line spacing and 20 m camera
 look-ahead as defaults for this operator's missing-person surveys**. They do not govern other tasks.
 Wonder states the selected values in the launch plan;
 takeoff, transit and return heights remain explicit choices for safe route separation.
@@ -238,7 +240,7 @@ omits `uniqueItems`, which Meta rejects before responding to any tool-equipped r
 
 The policy contains a Wonder-chosen visible SAM noun phrase in `detector_prompt`, `threshold`, and
 `look_for` with objective, target, visible attributes and ignore instructions.
-It also specifies horizontal `stand_off_m`, tracking `speed_mps`,
+It also specifies horizontal `stand_off_m`, 1× or 2× `zoom`, tracking `speed_mps`,
 `look_ahead_m` and total per-drone
 `max_lock_seconds`. One launch approval includes this provisional-follow authority.
 SAM discovery starts during the explicitly observed steps. Route steps look ahead along the ground,
