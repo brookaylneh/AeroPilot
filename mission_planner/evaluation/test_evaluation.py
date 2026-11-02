@@ -89,6 +89,9 @@ class Scoring(unittest.TestCase):
         self.assertAlmostEqual(row["distance_m"], 85 * 2**0.5, delta=5)
         self.assertEqual(row["containing_band"], 1)
         self.assertGreater(row["bands"], 1)
+        self.assertTrue(row["band_1_in_direction"])
+        self.assertTrue(row["band_1_touches_ipp"])
+        self.assertLess(row["band_1_off_direction_deg"], 30)
         self.assertGreaterEqual(row["coverage_percent"], 99.5)
         self.assertGreater(row["min_headroom_s"], 0)
         # Outside the searchable area (inside the fence margin): no band can contain the subject.

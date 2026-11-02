@@ -21,18 +21,18 @@ landed drone would launch; a code-proposed search expansion needs operator appro
 | `perception/`                  | Offline camera/model calibration; never imported by live planning         |
 | `services/`                    | Local SAM device package and warm Modal calibration/Glimmer services      |
 
-| Tools                                                                                                 | Purpose                                                       |
-| ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
-| `get_mission`, `get_fleet`, `get_drone`                                                               | Current plan, mission facts and measured aircraft state       |
-| `find_place`, `describe_location`, `ground_height`, `ground_profile`                                  | Public map and terrain facts                                  |
-| `plan_task`                                                                                           | One tasking → generated, sized and proved plan receipt        |
-| `request_launch`, `apply_plan_change`, `apply_proposal`                                               | Launch approval, airborne change, approved search expansion   |
-| `hold`, `stop`, `return_home`, `return_fleet`, `land`                                                 | Immediate flight overrides                                    |
-| `show_on_map`, `open_feed`                                                                            | Operator map focus and live forward video                     |
-| `wait_for`                                                                                            | Event-driven continuation with fresh state                    |
-| `set_camera_view`, `face_heading`, `start_inspection`, `stop_inspection`                              | Explicit camera observation during flight                     |
+| Tools                                                                             | Purpose                                                       |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| `get_mission`, `get_fleet`, `get_drone`                                           | Current plan, mission facts and measured aircraft state       |
+| `find_place`, `describe_location`, `ground_height`, `ground_profile`              | Public map and terrain facts                                  |
+| `plan_task`                                                                       | One tasking → generated, sized and proved plan receipt        |
+| `request_launch`, `apply_plan_change`, `apply_proposal`                           | Launch approval, airborne change, approved search expansion   |
+| `hold`, `stop`, `return_home`, `return_fleet`, `land`                             | Immediate flight overrides                                    |
+| `show_on_map`, `open_feed`                                                        | Operator map focus and live forward video                     |
+| `wait_for`                                                                        | Event-driven continuation with fresh state                    |
+| `set_camera_view`, `face_heading`, `start_inspection`, `stop_inspection`          | Explicit camera observation during flight                     |
 | `get_candidate`, `follow_candidate`, `relock_candidate`, `disregard_and_continue` | Evidence review, bounded following and explicit re-lock       |
-| `publish_evidence`, `confirm_evidence`                                                                | Wonder-accepted findings and explicit operator identification |
+| `publish_evidence`, `confirm_evidence`                                            | Wonder-accepted findings and explicit operator identification |
 
 Raw takeoff/waypoint commands, the raw `preview_plan` compile and QGC export remain available
 to operator controls; Wonder uses the tasking tools. A command acknowledgement is not arrival. Flight progress,
@@ -168,10 +168,13 @@ the disclosed defaults (searches 30 m above ground, 5 m/s, 10 m/s transit, 20 m 
 20 m look-ahead, 20 m stand-off, 180 s candidate allowance; point inspection 40 m; transit 40 m
 at 10 m/s) and dispatches to one template per task:
 
-- `area_search`: `gcs/region.py` builds 100 m ring cells crossed with dispersion sectors from
-  the published ISRID tables (child, hiker, dementia; elderly and unknown need `region.radius_m`),
-  ranks them by probability density, removes already searched bands and cuts band 1 at the
-  fleet's live endurance. `gcs/allocation.py` partitions the band into equal-flight-time strips
+- `area_search`: `gcs/region.py` grids the searchable area into 50 m cells, gives each the
+  published ISRID distance-and-dispersion density (child, hiker, dementia; elderly and unknown
+  need `region.radius_m`) averaged over witness points every 20 m along the initial planning
+  point, ranks cells by density nearest-first, grows connected bands to the fleet's live
+  endurance and removes already searched bands. A first band that does not touch the initial
+  planning point or centres more than the 75 % dispersion angle off the stated direction is the
+  `band_direction` rejection. `gcs/allocation.py` partitions the band into equal-flight-time strips
   parallel to the sweep, assigns departure lanes and 8 m altitude layers in the fixed order
   Drone1, Drone3, Drone2, Drone4, and the compiler's own step timing closes the sizing loop.
   An operator polygon is searched whole. With `expansion.automatic_proposals` the first band

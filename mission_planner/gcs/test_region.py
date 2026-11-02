@@ -8,19 +8,22 @@ from shapely import Point, Polygon, union_all
 
 from mission_planner.gcs.fences import default_fences
 from mission_planner.gcs.region import (
+    CELL_M,
     DISTANCE_KM,
     SUB_RING_M,
     bands,
     cells,
+    check_direction,
     compass_degrees,
+    direction_limit_deg,
     dispersion_mass,
     distance_cdf,
     ipp_geometry,
+    placement,
     polygon_points,
     rationale,
     samples,
     searchable_area,
-    sector,
 )
 from mission_planner.gcs.rejection import PlanRejected
 from world.cosys.landmarks import load
@@ -78,27 +81,70 @@ class Doctrine(unittest.TestCase):
         self.assertGreater(same_ring[1], same_ring[2])
         self.assertTrue(all(c["polygon"].area >= 400 for c in result))
         self.assertTrue(all(c["polygon"].geom_type == "Polygon" for c in result))
-        self.assertEqual(result[0]["angle_deg"], [0.0, 23.0])
+        self.assertTrue(any(c["angle_deg"] == [0.0, 23.0] for c in result))
+        self.assertLessEqual(result[0]["distance_m"], result[-1]["distance_m"])
+        self.assertTrue(all(c["polygon"].area <= CELL_M**2 + 1e-6 for c in result))
 
-    def test_polyline_ipp_covers_the_direction_from_every_witness_point(self):
-        geometry = ipp_geometry(LANDMARKS["fire-road"])
+    def test_trail_ipp_band_one_lies_on_the_direction_side_and_touches_the_trail(self):
+        """The recorded 2026-11-02 miss: Granite Lake Trail, travelling south, planned a band
+        north-east of the trail. Band 1 must now lie south of it and start at the trail."""
+        geometry = ipp_geometry(LANDMARKS["lake-trail"])
         self.assertEqual(geometry.geom_type, "LineString")
-        result = cells(geometry, 45.0, "child", None, AREA)
-        forward = union_all([c["polygon"] for c in result if c["sector"] <= 1])
-        for north, east in samples(geometry):
-            target = Point(
-                north + 200 * math.cos(math.radians(45)), east + 200 * math.sin(math.radians(45))
-            )
-            if target.within(union_all([c["polygon"] for c in result])):
-                self.assertTrue(forward.buffer(1).contains(target), (north, east))
-        self.assertTrue(sector((0, 0), 90, 2, 23, 100).is_valid)
+        self.assertEqual(len(samples(geometry)), math.ceil(geometry.length / 20) + 1)
+        result = cells(geometry, 180.0, "child", None, AREA)
+        band = bands(result, 385.5, RATE)[0]
+        polygon = band["polygon"]
+        self.assertLess(polygon.distance(geometry), SUB_RING_M)
+        minx, miny, maxx, maxy = polygon.bounds
+        points = [
+            Point(x, y)
+            for x in np.arange(minx, maxx, 10)
+            for y in np.arange(miny, maxy, 10)
+            if polygon.contains(Point(x, y))
+        ]
+        south = sum(1 for p in points if p.x < geometry.interpolate(geometry.project(p)).x)
+        self.assertGreaterEqual(south / len(points), 0.9)
+        self.assertGreater(band["mass"], 0.1)
+        distance, bearing, off = placement(geometry, 180.0, polygon)
+        self.assertLess(distance, 2 * SUB_RING_M)
+        self.assertLessEqual(off, direction_limit_deg("child"))
+        check_direction(geometry, 180.0, "child", band, 1)
+        wrong = {**band, "polygon": Polygon([(500, 0), (700, 0), (700, 300), (500, 300)])}
+        with self.assertRaises(PlanRejected) as caught:
+            check_direction(geometry, 180.0, "child", wrong, 1)
+        self.assertEqual(caught.exception.rejection["rule"], "band_direction")
+        self.assertGreater(caught.exception.rejection["detail"]["off_direction_deg"], 64)
+
+    def test_every_initial_planning_point_kind_starts_band_one_in_the_stated_direction(self):
+        cases = [
+            ("campsite", 135.0),
+            ("fire-road", 45.0),
+            ("footbridge", 0.0),
+            ("granite-lake", 270.0),
+            ("trail-fork-sign", 90.0),
+            ("snow-survey-hut", 135.0),
+            ("creek-loop", 0.0),
+            ("lake-trail", 180.0),
+        ]
+        for landmark_id, bearing in cases:
+            with self.subTest(landmark=landmark_id, bearing=bearing):
+                geometry = ipp_geometry(LANDMARKS[landmark_id])
+                result = cells(geometry, bearing, "child", None, AREA)
+                band = bands(result, 600, RATE)[0]
+                check_direction(geometry, bearing, "child", band, 1)
+                self.assertLess(band["polygon"].distance(geometry), SUB_RING_M)
+                self.assertLessEqual(placement(geometry, bearing, band["polygon"])[2], 30)
 
     def test_no_direction_gives_whole_rings_with_cdf_mass(self):
         result = cells(Point(0, 0), None, "dementia", None, AREA)
         self.assertTrue(all(c["sector"] == 0 for c in result))
-        first = next(c for c in result if c["ring"] == 0)
-        self.assertAlmostEqual(first["mass"], float(distance_cdf("dementia", None, SUB_RING_M)))
-        self.assertAlmostEqual(first["polygon"].area, math.pi * SUB_RING_M**2, delta=300)
+        first = [c for c in result if c["ring"] == 0]
+        expected = float(distance_cdf("dementia", None, SUB_RING_M))
+        # Squares take the density at their centre; the first ring is 12 squares of 50 m.
+        self.assertAlmostEqual(sum(c["mass"] for c in first), expected, delta=expected * 0.1)
+        self.assertAlmostEqual(
+            sum(c["polygon"].area for c in first), math.pi * SUB_RING_M**2, delta=2 * CELL_M**2
+        )
 
     def test_cells_respect_the_fence_inset_and_exclusions(self):
         fences = {

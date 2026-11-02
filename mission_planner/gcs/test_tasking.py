@@ -9,6 +9,7 @@ from jsonschema import Draft202012Validator
 from shapely import Polygon
 
 from mission_planner.gcs.allocation import APPROVAL_HOVER_S
+from mission_planner.gcs.expansion import expandable
 from mission_planner.gcs.geodesy import NAMES
 from mission_planner.gcs.rejection import PlanRejected
 from mission_planner.gcs.tasking import (
@@ -266,10 +267,16 @@ class Templates(unittest.TestCase):
         self.assertTrue(
             all(m["battery_required_percent"] <= 72 for m in smaller["missions"].values())
         )
-        with self.assertRaises(PlanRejected) as caught:
-            compiled(task(expansion={"automatic_proposals": True}), low)
-        self.assertEqual(caught.exception.rejection["rule"], "endurance")
-        self.assertIn("automatic_proposals false", str(caught.exception))
+        # Half of this endurance buys less search than the round trip costs: band 1 takes the
+        # whole sortie, no approval hover is planned and expansion waits for the fleet to return.
+        whole_low = compiled(task(expansion={"automatic_proposals": True}), low)
+        self.assertFalse(whole_low["region"]["in_flight_expansion"])
+        self.assertTrue(region["in_flight_expansion"])
+        self.assertNotIn("hover", [k for steps in kinds(whole_low).values() for k in steps])
+        self.assertIn("whole sortie", whole_low["rationale"][-1])
+        self.assertIn("off the stated direction", whole_low["rationale"][-2])
+        self.assertFalse(expandable(whole_low))
+        self.assertTrue(expandable(receipt))
 
     def test_second_band_with_two_aircraft_marks_the_first_band_previous(self):
         receipt = compiled(
