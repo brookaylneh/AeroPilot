@@ -94,16 +94,15 @@ class CompleteSearchFlights(unittest.TestCase):
     def test_four_grounded_drones_search_and_return_across_the_map(self):
         fleet = recorded_pad()
         fences, landmarks = {name: readback() for name in NAMES}, load()
-        for bounds, spacing, zoom in (
-            ((-400, 500, -100, 800), 45, 1),
-            ((-750, -650, -100, 100), 20, 2),
-            ((500, 700, 200, 400), 20, 2),
-            ((-100, 100, -600, -400), 20, 2),
+        for bounds, spacing in (
+            ((-400, 500, -100, 800), 45),
+            ((-750, -650, -100, 100), 20),
+            ((500, 700, 200, 400), 20),
+            ((-100, 100, -600, -400), 20),
         ):
             for bearing in (0, 90):
                 with self.subTest(bounds=bounds, bearing=bearing):
                     value = complete_search(fleet, bounds, spacing, bearing)
-                    value["search"]["zoom"] = zoom
                     receipt = compile_plan(value, fleet, fences, landmarks)
                     self.assertEqual(receipt["plan"], value)
                     self.assertEqual(receipt["coverage"]["survey_percent"], 100)

@@ -121,7 +121,6 @@ class PlanApplication(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(progress["survey_start_at"], 2)
         self.assertEqual(progress["completed_steps"], [])
         request["version"] = 2
-        request["search"]["zoom"] = 1
         request["drones"][0]["steps"][0].update(start_at=progress["survey_start_at"], speed_mps=10)
         owner.plan_active = await owner.fleet.preview_plan(request)
         updated = owner.plan_active["missions"]["Drone1"]["step_ranges"][0]

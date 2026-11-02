@@ -81,7 +81,7 @@ class AgentContext(unittest.TestCase):
         result = planning_inspection(row, load())
         self.assertEqual(
             result["rescue"]["unavailable_tools"],
-            ["center_candidate", "follow_candidate"],
+            ["follow_candidate"],
         )
         self.assertNotIn("unavailable_tools", row["rescue"])
 
@@ -621,42 +621,38 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.requests, [])
 
     async def test_current_candidate_tool_supplies_its_exact_images_to_the_next_turn(self):
-        for name in ("get_candidate", "center_candidate"):
-            with self.subTest(tool=name):
-                self.requests.clear()
-                self.mission.conversation.clear()
-                self.mission.inspections.evidence.reset_mock()
-                identity, frame = "inspection", "current-frame"
-                call = {
-                    "type": "function_call",
-                    "name": name,
-                    "call_id": "current-image",
-                    "arguments": json.dumps({"inspection_id": identity}),
-                }
-                self.mission.invoke.side_effect = None
-                self.mission.invoke.return_value = {
-                    "ok": True,
-                    "state": {"inspection_id": identity, "frame": {"frame_id": frame}},
-                }
-                image = io.BytesIO()
-                Image.new("RGB", (4, 4), "pink").save(image, format="JPEG")
-                payload = image.getvalue()
-                self.mission.inspections.evidence.return_value = {
-                    "metadata": {"frame_id": frame},
-                    "image_order": [{"kind": "original", "frame_id": frame}],
-                    "images": [payload],
-                }
-                self.replies([self.reply([call]), self.reply([])])
-                await self.mission.agent("Show me the closer candidate view")
-                self.mission.inspections.evidence.assert_called_once_with(identity, frame)
-                content = self.requests[1]["input"][-1]["content"]
-                self.assertIn(frame, content[0]["text"])
-                self.assertEqual(
-                    base64.b64decode(content[1]["image_url"].split(",", 1)[1]), payload
-                )
-                paired = self.requests[1]["input"][-2]
-                self.assertEqual(paired["type"], "function_call_output")
-                self.assertEqual(paired["call_id"], "current-image")
+        self.requests.clear()
+        self.mission.conversation.clear()
+        self.mission.inspections.evidence.reset_mock()
+        identity, frame = "inspection", "current-frame"
+        call = {
+            "type": "function_call",
+            "name": "get_candidate",
+            "call_id": "current-image",
+            "arguments": json.dumps({"inspection_id": identity}),
+        }
+        self.mission.invoke.side_effect = None
+        self.mission.invoke.return_value = {
+            "ok": True,
+            "state": {"inspection_id": identity, "frame": {"frame_id": frame}},
+        }
+        image = io.BytesIO()
+        Image.new("RGB", (4, 4), "pink").save(image, format="JPEG")
+        payload = image.getvalue()
+        self.mission.inspections.evidence.return_value = {
+            "metadata": {"frame_id": frame},
+            "image_order": [{"kind": "original", "frame_id": frame}],
+            "images": [payload],
+        }
+        self.replies([self.reply([call]), self.reply([])])
+        await self.mission.agent("Show me the current candidate view")
+        self.mission.inspections.evidence.assert_called_once_with(identity, frame)
+        content = self.requests[1]["input"][-1]["content"]
+        self.assertIn(frame, content[0]["text"])
+        self.assertEqual(base64.b64decode(content[1]["image_url"].split(",", 1)[1]), payload)
+        paired = self.requests[1]["input"][-2]
+        self.assertEqual(paired["type"], "function_call_output")
+        self.assertEqual(paired["call_id"], "current-image")
 
     def setUp(self):
         directory = tempfile.TemporaryDirectory(dir=ROOT / ".local")

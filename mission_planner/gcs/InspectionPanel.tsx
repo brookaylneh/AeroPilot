@@ -246,7 +246,8 @@ export const inspectionSchema = z
     camera_view: z
       .object({
         revision: number.int().nonnegative(),
-        zoom: number.min(1).max(4),
+        // Immutable evidence can retain the former camera setting.
+        zoom: number.min(1).max(4).optional(),
         target: z.object({ north_m: number, east_m: number, height_m: number.nonnegative() }).strict(),
         horizontal_fov_deg: number.gt(1).lt(179),
       })

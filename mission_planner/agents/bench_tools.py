@@ -70,16 +70,12 @@ CASES = [
         [call("stop_inspection", drone_id="Drone2")],
     ),
     (
-        "Drone2 has no active inspection. Centre its camera on north 100 east 20 at target height zero metres above terrain, with 2x zoom; keep its flight unchanged.",
-        [call("set_camera_view", drone_id="Drone2", north_m=100, east_m=20, height_m=0, zoom=2)],
+        "Drone2 has no active inspection. Aim its camera at north 100 east 20 at target height zero metres above terrain; keep its flight unchanged.",
+        [call("set_camera_view", drone_id="Drone2", north_m=100, east_m=20, height_m=0)],
     ),
     (
         "Read the current candidate image from active inspection inspection-17. Its temporal track is healthy; do not adjust the camera or flight.",
         [call("get_candidate", inspection_id="inspection-17")],
-    ),
-    (
-        "Centre the camera on the healthy active track in inspection-17 and use 3x zoom. Keep its temporal session and flight.",
-        [call("center_candidate", inspection_id="inspection-17", zoom=3)],
     ),
     (
         "Turn airborne Drone1 to heading 90 degrees clockwise from north while preserving its verified AUTO route.",

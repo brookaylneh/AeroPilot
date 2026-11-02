@@ -664,16 +664,18 @@ produce a candidate; a deadline or error ends the job. This one-shot workflow gi
 Wonder an image to review. Automatic pause, Glimmer review and following use an
 observed plan step instead.
 
-`set_camera_view` centres a world point and selects 1–4× render zoom on the same
-forward camera. Target height is above terrain, separate from flight altitude.
-One `ForwardCapture` owner per drone serializes camera changes and acquisition;
-images record verified FOV and camera revision. The capture owner re-aims from the
-current aircraft pose before each frame. A failed setting revokes the camera view
-until an explicit setting succeeds. Automatic observation steps retain their
-planned view; change their zoom/look-ahead through a checked plan.
+`set_camera_view` aims the fixed 1× forward camera at a world point. Target height
+is above terrain, separate from flight altitude. One `ForwardCapture` owner per
+drone serializes explicit camera changes and acquisition; images record measured
+FOV and camera revision. The capture owner re-aims from the current aircraft pose
+before each frame. A failed setting revokes the camera view until an explicit
+setting succeeds. Automatic observation steps retain their planned view; change
+their look-ahead through a checked plan. Healthy candidate tracking centres the
+subject automatically and rejects manual view changes before cancelling control
+or invalidating frames. There is no adjustable zoom command or search setting.
+Saved receipts and evidence remain readable with their recorded optics.
 
-During following, `center_candidate` uses the subject's current image-derived
-position. `get_candidate` waits for a fresh frame of the current camera revision and
+`get_candidate` waits for a fresh frame of the current camera revision and
 retains that exact original for review/publication. A held session returns observed
 boxes for an explicit `relock_candidate` choice. `candidate_index` is the zero-based
 position in that frame's detections list, separate from SAM's `track_id`.
@@ -745,17 +747,17 @@ perimeter and assigned observed-step survey fills, preserving all routes. Approv
 observing aircraft count and each step's observation mode. Return-only plans remain valid.
 
 The policy contains a Wonder-chosen SAM noun phrase in `detector_prompt`, `threshold`, the structured
-reviewer `look_for` brief, horizontal `stand_off_m`, tracking `speed_mps`, camera `zoom` and
+reviewer `look_for` brief, horizontal `stand_off_m`, tracking `speed_mps`, camera
 `look_ahead_m`, and `max_lock_seconds`. The latter is the total per-drone interruption allowance,
 including review and return to saved route progress; preview reserves it in the battery budget.
 Automatic candidates share that plan-version allowance. Failed or cancelled
 acquisition time counts, and a new inspection cannot reset it. The perimeter and detector score make
 no containment, identity or calibrated probability claim.
 
-For this operator's missing-person surveys, the disclosed defaults are **30 m AGL, 5 m/s, 2× zoom,
+For this operator's missing-person surveys, the disclosed defaults are **30 m AGL, 5 m/s, fixed 1× camera,
 20 m line spacing and 20 m camera look-ahead**. Other tasks use separately chosen settings.
 Observed surveys require one-third nominal horizontal overlap under the flat-ground 90° camera
-model: spacing ≤ 4 × survey height / (3 × zoom). This checks a planning constraint, not actual
+model: spacing ≤ 4 × survey height / 3. This checks a planning constraint, not actual
 visibility or recognition accuracy. Takeoff, transit and return heights remain explicit choices;
 changed settings require a new previewed plan version.
 
@@ -770,7 +772,7 @@ Survey rows divide each sector's full cross-track width evenly, no farther apart
 `spacing_m`, with half-spacing edge margins; a fractional final strip no longer loses a pass.
 Optional `survey.start_at` continues at a zero-based pattern endpoint. Per-step mission
 sequence mappings supply `progress.survey_start_at` from current telemetry, so Wonder can
-retain unfinished passes during speed/zoom-only changes. Dense mappings remain outside
+retain unfinished passes during speed-only changes. Dense mappings remain outside
 model context. Continuation still compiles and checks the route from the actual aircraft
 position through the existing upload/readback path.
 `expanding_square` returns an ordinary follow step around a reliable datum, including the scan lead-in;

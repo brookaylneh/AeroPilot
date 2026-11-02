@@ -58,7 +58,6 @@ const searchPlan = {
       ignore: [],
     },
     stand_off_m: 15,
-    zoom: 2,
     look_ahead_m: 20,
     speed_mps: 3,
     max_lock_seconds: 90,
@@ -719,9 +718,6 @@ test('observation approval shows task, participating aircraft, camera aim and fo
   assert.equal(flightPlanSchema.safeParse(repeated).success, false);
   for (const mutate of [
     (plan) => {
-      delete plan.search.zoom;
-    },
-    (plan) => {
       plan.search.zoom = 4.1;
     },
     (plan) => {
@@ -760,7 +756,11 @@ test('observation approval shows task, participating aircraft, camera aim and fo
   const html = render(value);
   assert.match(html, /Observe person · 4 aircraft/);
   assert.match(html, /red jacket/);
-  assert.match(html, /Observation camera: 2× zoom/);
+  assert.match(html, /Observation camera: fixed 1×/);
+  const historical = structuredClone(value);
+  historical.search.zoom = 4;
+  assert.deepEqual(flightPlanSchema.parse(historical), historical);
+  assert.match(render(historical), /Recorded observation camera: 4×/);
   assert.match(html, /Ground view 20.0 m ahead along the route/);
   assert.match(html, /15.0 m.*horizontal stand-off/);
   assert.match(html, /Total candidate-lock allowance per drone:.*90.0 s/);

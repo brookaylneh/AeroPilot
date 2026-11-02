@@ -136,11 +136,10 @@ class Inspections:
             metadata.update(frame_id=str(uuid.uuid4()), sha256=hashlib.sha256(jpeg).hexdigest())
             return metadata, jpeg
 
-    async def set_camera_view(self, drone_id, north_m, east_m, height_m, zoom):
+    async def set_camera_view(self, drone_id, north_m, east_m, height_m):
         from world.cosys.terrain import terrain_height
 
         version = flight_identity(self.mission, drone_id)
-        self.visual.cancel(drone_id)
         rows = [r for r in self.rows.values() if r["drone_id"] == drone_id]
         for row in rows:
             if row["status"] not in ("running", "candidate"):
@@ -152,22 +151,9 @@ class Inspections:
                 assert self.releases[row["rescue"]["review_id"]]["reason"] is None, (
                     "The candidate has been released; its observation step owns the camera"
                 )
-                track = row["rescue"]["track"]
-                if track is not None:
-                    assert (
-                        0
-                        <= time.time() * 1000 - track["captured_at_ms"]
-                        <= MAX_TRACKING_AGE_S * 1000
-                    ), "The candidate position is stale; obtain fresh evidence before centering"
-                    assert (
-                        math.hypot(
-                            north_m - track["ground"]["north_m"],
-                            east_m - track["ground"]["east_m"],
-                        )
-                        <= 2
-                    ), "Active following can center only the currently tracked candidate"
-                    north_m, east_m = (track["ground"][key] for key in ("north_m", "east_m"))
-                row["rescue"]["live_frame"] = None
+                assert row["rescue"]["tracking_error"] is not None, (
+                    "Automatic candidate tracking owns the camera; use get_candidate to review it"
+                )
             else:
                 assert row["status"] == "candidate", (
                     "Stop the current inspection before changing the camera view"
@@ -177,6 +163,10 @@ class Inspections:
             or self.tasks[drone_id].done()
             or any("rescue" in row and row["status"] in ("running", "candidate") for row in rows)
         ), "The previous camera request is still finishing"
+        self.visual.cancel(drone_id)
+        for row in rows:
+            if "rescue" in row and row["status"] in ("running", "candidate"):
+                row["rescue"]["live_frame"] = None
         directory = self.mission.directory / "inspections" / ("camera-" + drone_id)
         directory.mkdir(parents=True, exist_ok=True)
         camera = self._camera(drone_id, directory)
@@ -185,14 +175,13 @@ class Inspections:
             row["camera_changing"] = True
         async with self.camera_locks[drone_id]:
             result = await camera.view(
-                {"x": north_m, "y": east_m, "z": terrain_height(north_m, east_m) + height_m}, zoom
+                {"x": north_m, "y": east_m, "z": terrain_height(north_m, east_m) + height_m}
             )
         assert flight_identity(self.mission, drone_id) == version, (
             "The flight changed while setting the camera view"
         )
         view = {
             "revision": result["revision"],
-            "zoom": result["zoom"],
             "horizontal_fov_deg": result["horizontal_fov_deg"],
             "target": {"north_m": north_m, "east_m": east_m, "height_m": height_m},
         }
@@ -247,18 +236,6 @@ class Inspections:
                 "No fresh candidate frame arrived within five seconds"
             )
             await asyncio.sleep(0.05)
-
-    async def center_candidate(self, inspection_id, zoom):
-        observed = await self.get_candidate(inspection_id)
-        assert observed["tracking_error"] is None, (
-            "The candidate lock is held; choose a numbered hold candidate with relock_candidate"
-        )
-        target = observed["frame"]["detections"][0]["ground"]
-        assert target is not None, "The current candidate has no verified ground location"
-        await self.set_camera_view(
-            self.rows[inspection_id]["drone_id"], target["north_m"], target["east_m"], 0, zoom
-        )
-        return await self.get_candidate(inspection_id)
 
     async def relock_candidate(self, inspection_id, frame_id, candidate_index):
         row = self.rows[inspection_id]
@@ -889,11 +866,10 @@ class Inspections:
             )
         north, east = target["north_m"], target["east_m"]
         world = {"x": north, "y": east, "z": terrain_height(north, east)}
-        if "camera_view" not in row or row["camera_view"]["zoom"] != policy["zoom"]:
-            view = await capture.view(world, policy["zoom"])
+        if "camera_view" not in row or capture.visual_controlled:
+            view = await capture.view(world)
             row["camera_view"] = {
                 "revision": view["revision"],
-                "zoom": view["zoom"],
                 "horizontal_fov_deg": view["horizontal_fov_deg"],
                 "target": {**target, "height_m": 0},
             }

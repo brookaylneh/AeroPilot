@@ -117,7 +117,6 @@ def search_plan():
                 "ignore": [],
             },
             "stand_off_m": 15,
-            "zoom": 2,
             "look_ahead_m": 20,
             "speed_mps": 3,
             "max_lock_seconds": 90,
@@ -258,30 +257,37 @@ class SearchPlan(unittest.TestCase):
         Draft202012Validator(PLAN_SCHEMA).validate(value)
         validate_search(value, {name: readback() for name in NAMES})
 
-    def test_zoom_requires_nominal_overlap_without_rewriting_the_plan(self):
+    def test_fixed_optics_require_nominal_overlap_without_rewriting_the_plan(self):
         value = search_plan()
         for branch in value["drones"]:
             branch["steps"][0].update(height_m=30, speed_mps=5, spacing_m=20)
         original = copy.deepcopy(value)
         self.check(value)
         self.assertEqual(value, original)
-        value["search"]["zoom"] = 4
+        for branch in value["drones"]:
+            branch["steps"][0]["spacing_m"] = 40.01
         original = copy.deepcopy(value)
-        with self.assertRaisesRegex(AssertionError, "spacing 20 m exceeds 10 m.*4x zoom"):
+        with self.assertRaisesRegex(AssertionError, "spacing 40.01 m exceeds 40 m.*fixed 1x"):
             self.check(value)
         self.assertEqual(value, original)
         for branch in value["drones"]:
-            branch["steps"][0]["spacing_m"] = 10
+            branch["steps"][0]["spacing_m"] = 40
         self.check(value)
+
+    def test_search_policy_rejects_a_zoom_option(self):
+        for zoom in (1, 2, 4):
+            value = search_plan()
+            value["search"]["zoom"] = zoom
+            self.assertFalse(Draft202012Validator(PLAN_SCHEMA).is_valid(value))
 
     def test_each_remaining_survey_uses_its_own_height_for_camera_overlap(self):
         value = search_plan()
         value["drones"] = value["drones"][-1:]
         survey = value["drones"][0]["steps"][0]
-        survey.update(height_m=15, spacing_m=10)
+        survey.update(height_m=15, spacing_m=20)
         self.check(value)
-        survey["spacing_m"] = 10.01
-        with self.assertRaisesRegex(PlanRejected, "Drone4 step 1 .*exceeds 10 m.*15 m AGL") as c:
+        survey["spacing_m"] = 20.01
+        with self.assertRaisesRegex(PlanRejected, "Drone4 step 1 .*exceeds 20 m.*15 m AGL") as c:
             self.check(value)
         rejection = c.exception.rejection
         self.assertEqual(
@@ -293,7 +299,7 @@ class SearchPlan(unittest.TestCase):
                 "step_kind": "survey",
             },
         )
-        self.assertEqual(rejection["detail"]["maximum_m"], 10)
+        self.assertEqual(rejection["detail"]["maximum_m"], 20)
 
     def test_return_only_branch_has_no_candidate_lock_allowance(self):
         value = search_plan()
@@ -382,7 +388,6 @@ class SearchPlan(unittest.TestCase):
         for key in (
             "detector_prompt",
             "stand_off_m",
-            "zoom",
             "look_ahead_m",
             "speed_mps",
             "max_lock_seconds",

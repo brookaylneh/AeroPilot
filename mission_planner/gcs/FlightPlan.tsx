@@ -30,7 +30,8 @@ export const searchPolicySchema = z
       })
       .strict(),
     stand_off_m: number.positive(),
-    zoom: number.min(1).max(4),
+    // Saved receipts can include the former camera setting; new plans omit it.
+    zoom: number.min(1).max(4).optional(),
     look_ahead_m: number.positive(),
     speed_mps: speed,
     max_lock_seconds: number.positive(),
@@ -266,7 +267,11 @@ export default function FlightPlan({
           <p>
             SAM 3.1: “{receipt.plan.search.detector_prompt}” · threshold {receipt.plan.search.threshold}
           </p>
-          <p>Observation camera: {receipt.plan.search.zoom}× zoom.</p>
+          <p>
+            {receipt.plan.search.zoom === undefined
+              ? 'Observation camera: fixed 1×.'
+              : `Recorded observation camera: ${receipt.plan.search.zoom}×.`}
+          </p>
           {observations.some(({ kind }) => kind !== 'circle') && (
             <p>Ground view {formatValue(receipt.plan.search.look_ahead_m, 'm')} ahead along the route.</p>
           )}

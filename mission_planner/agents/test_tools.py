@@ -119,12 +119,18 @@ class ToolContracts(unittest.TestCase):
         }
         validate_arguments("follow_candidate", arguments)
         validate_arguments("get_candidate", {"inspection_id": "inspection"})
-        validate_arguments("center_candidate", {"inspection_id": "inspection", "zoom": 4})
-        with self.assertRaises(AssertionError):
-            validate_arguments("center_candidate", {"inspection_id": "inspection", "zoom": 5})
         for change in ({"candidate_index": -1}, {"duration_s": 0}, {"speed_mps": 15}):
             with self.subTest(change=change), self.assertRaises(AssertionError):
                 validate_arguments("follow_candidate", {**arguments, **change})
+
+    def test_camera_tools_offer_fixed_optics_and_reject_removed_zoom_commands(self):
+        arguments = {"drone_id": "Drone1", "north_m": 30, "east_m": 10, "height_m": 0}
+        validate_arguments("set_camera_view", arguments)
+        for zoom in (1, 2, 4):
+            with self.subTest(zoom=zoom), self.assertRaises(AssertionError):
+                validate_arguments("set_camera_view", {**arguments, "zoom": zoom})
+        with self.assertRaises(AssertionError):
+            validate_arguments("center_candidate", {"inspection_id": "inspection"})
 
     def test_finding_requires_selected_candidate_and_visual_assessment(self):
         arguments = {

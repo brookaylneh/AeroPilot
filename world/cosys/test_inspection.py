@@ -3,7 +3,6 @@
 import asyncio
 import copy
 import json
-import math
 import tempfile
 import threading
 import unittest
@@ -15,22 +14,10 @@ import cosysairsim as airsim
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from world.cosys.inspection import ForwardCapture, route_look_ahead, zoom_fov
+from world.cosys.inspection import ForwardCapture, route_look_ahead
 
 
 class CameraGeometryTests(unittest.TestCase):
-    def test_zoom_scales_focal_length_instead_of_halving_field_of_view(self):
-        base = 89.90362548828125
-        for zoom in (1, 2, 4):
-            fov = zoom_fov(zoom, base)
-            self.assertAlmostEqual(
-                math.tan(math.radians(base) / 2) / math.tan(math.radians(fov) / 2), zoom
-            )
-        self.assertAlmostEqual(zoom_fov(2, 90), 53.13010235415598)
-        for zoom, base in ((0.5, 90), (4.1, 90), (float("nan"), 90), (2, 180), (2, float("inf"))):
-            with self.subTest(zoom=zoom, base=base), self.assertRaises(AssertionError):
-                zoom_fov(zoom, base)
-
     def test_look_ahead_crosses_terrain_waypoints_and_turns(self):
         origin = {"north_m": 0, "east_m": 0}
         points = [
@@ -276,7 +263,6 @@ class ForwardCaptureTests(unittest.TestCase):
         rpc.simGetVehiclePose.return_value = pose
         info = SimpleNamespace(pose=pose, fov=89.90362548828125)
         rpc.simGetCameraInfo.return_value = info
-        rpc.simSetCameraFov.side_effect = lambda _, fov, **__: setattr(info, "fov", fov)
         capture.rpc = rpc
         self.addCleanup(lambda: asyncio.run(capture.close()))
         native = patch(
@@ -290,25 +276,25 @@ class ForwardCaptureTests(unittest.TestCase):
         self.addCleanup(native.stop)
         return capture, rpc, info
 
-    def test_view_centres_before_zoom_and_keeps_original_focal_reference(self):
+    def test_view_aim_and_reset_preserve_the_fixed_lens(self):
         capture, rpc, info = self.camera()
         target = {"x": 20, "y": 0, "z": 0}
         base = info.fov
-        for revision, zoom in enumerate((2, 4, 1), 1):
-            result = asyncio.run(capture.view(target, zoom))
+        for revision in range(1, 4):
+            capture.begin_follow()
+            result = asyncio.run(capture.view(target))
+            self.assertFalse(capture.visual_controlled)
             self.assertEqual(result["revision"], revision)
             self.assertEqual(result["target"], target)
-            self.assertEqual(result["zoom"], zoom)
-            self.assertAlmostEqual(result["horizontal_fov_deg"], zoom_fov(zoom, base))
-        calls = [call[0] for call in rpc.mock_calls]
-        self.assertLess(calls.index("simSetCameraPose"), calls.index("simSetCameraFov"))
+            self.assertNotIn("zoom", result)
+            self.assertEqual(result["horizontal_fov_deg"], base)
         capture._aim(target)
         self.assertEqual(capture.view_revision, 3)
         capture._reset()
         self.assertAlmostEqual(info.fov, base)
         self.assertIsNone(capture.original_pose)
-        self.assertIsNone(capture.original_fov)
         self.assertIsNone(capture.target)
+        rpc.simSetCameraFov.assert_not_called()
 
     def test_capture_reaims_latest_world_target_after_aircraft_attitude_changes(self):
         capture, rpc, info = self.camera()
@@ -351,7 +337,7 @@ class ForwardCaptureTests(unittest.TestCase):
             ({"x": 20, "y": 0, "z": 0}, {"x": 40, "y": 10, "z": 0}), 1
         ):
             with self.subTest(target=target):
-                capture._view(target, 2)
+                capture._view(target)
                 wanted = np.array([target["x"], target["y"], 30.0])
                 wanted /= np.linalg.norm(wanted)
                 body.orientation = airsim.Quaternionr(
@@ -375,20 +361,18 @@ class ForwardCaptureTests(unittest.TestCase):
             capture._capture()
         rpc.simGetImages.assert_not_called()
 
-    def test_zoom_rejection_does_not_retry_or_publish_a_revision(self):
+    def test_invalid_optics_do_not_publish_a_revision(self):
         capture, rpc, info = self.camera()
-        base = info.fov
-        rpc.simSetCameraFov.side_effect = None
-        with self.assertRaisesRegex(AssertionError, "zoom readback"):
-            asyncio.run(capture.view({"x": 20, "y": 0, "z": 0}, 2))
-        rpc.simSetCameraFov.assert_called_once()
+        info.fov = float("nan")
+        with self.assertRaisesRegex(AssertionError, "field of view is invalid"):
+            asyncio.run(capture.view({"x": 20, "y": 0, "z": 0}))
+        rpc.simSetCameraFov.assert_not_called()
         self.assertEqual(capture.view_revision, 0)
-        self.assertEqual(info.fov, base)
 
-    def test_invalid_zoom_has_no_camera_side_effect(self):
+    def test_removed_zoom_argument_has_no_camera_side_effect(self):
         capture, rpc, _ = self.camera()
-        with self.assertRaisesRegex(AssertionError, "between 1 and 4"):
-            asyncio.run(capture.view({"x": 20, "y": 0, "z": 0}, 5))
+        with self.assertRaises(TypeError):
+            asyncio.run(capture.view({"x": 20, "y": 0, "z": 0}, zoom=4))
         self.assertEqual(rpc.mock_calls, [])
         self.assertEqual(capture.view_revision, 0)
 
@@ -408,15 +392,15 @@ class ForwardCaptureTests(unittest.TestCase):
         )
         rpc.simGetImages.return_value = [response]
 
-        def change(_, fov, **kwargs):
+        def change(_, pose, **kwargs):
             entered.set()
             assert finish.wait(2), "Test did not release camera change"
-            info.fov = fov
+            info.pose = pose
 
-        rpc.simSetCameraFov.side_effect = change
+        rpc.simSetCameraPose.side_effect = change
 
         async def exercise():
-            view = asyncio.create_task(capture.view({"x": 20, "y": 0, "z": 0}, 2))
+            view = asyncio.create_task(capture.view({"x": 20, "y": 0, "z": 0}))
             self.assertTrue(await asyncio.to_thread(entered.wait, 2))
             frame = asyncio.create_task(capture.capture())
             await asyncio.sleep(0)

@@ -181,7 +181,7 @@ def planning_inspection(row, landmarks):
     if "rescue" in row:
         rescue = result["rescue"] = dict(row["rescue"])
         rescue["unavailable_tools"] = (
-            ["center_candidate", "follow_candidate"] if rescue["tracking_error"] is not None else []
+            ["follow_candidate"] if rescue["tracking_error"] is not None else ["set_camera_view"]
         )
         if rescue["track"] is not None:
             rescue["track"] = located(rescue["track"])
@@ -924,8 +924,6 @@ class Mission:
                 )
             if name == "get_candidate":
                 return await self.inspections.get_candidate(**arguments)
-            if name == "center_candidate":
-                return await self.inspections.center_candidate(**arguments)
             if name == "relock_candidate":
                 assert self.fleet_ready, "MAVLink fleet is unavailable"
                 assert self.plan_task is None, "A flight plan action is already in progress"
@@ -1639,7 +1637,6 @@ class Mission:
                 "publish_evidence",
                 "confirm_evidence",
                 "get_candidate",
-                "center_candidate",
                 "follow_candidate",
                 "disregard_and_continue",
                 "set_camera_view",
@@ -1712,7 +1709,7 @@ class Mission:
                         "output": encode(planning_result(call["name"], result)),
                     }
                 )
-                if call["name"] in ("get_candidate", "center_candidate") and result["ok"]:
+                if call["name"] == "get_candidate" and result["ok"]:
                     evidence = self.inspections.evidence(
                         arguments["inspection_id"], result["state"]["frame"]["frame_id"]
                     )

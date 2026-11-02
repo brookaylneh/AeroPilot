@@ -134,7 +134,6 @@ const events = [
             ignore: [],
           },
           stand_off_m: 15,
-          zoom: 2,
           look_ahead_m: 20,
           speed_mps: 3,
           max_lock_seconds: 90,

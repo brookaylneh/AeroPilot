@@ -26,7 +26,7 @@ immediate overrides need no approval unless another landed drone would launch.
 | `show_on_map`, `open_feed`                                                                            | Operator map focus and live forward video                     |
 | `wait_for`                                                                                            | Event-driven continuation with fresh state                    |
 | `set_camera_view`, `face_heading`, `start_inspection`, `stop_inspection`                              | Explicit camera observation during flight                     |
-| `get_candidate`, `center_candidate`, `follow_candidate`, `relock_candidate`, `disregard_and_continue` | Evidence review, bounded following and explicit re-lock       |
+| `get_candidate`, `follow_candidate`, `relock_candidate`, `disregard_and_continue` | Evidence review, bounded following and explicit re-lock       |
 | `publish_evidence`, `confirm_evidence`                                                                | Wonder-accepted findings and explicit operator identification |
 
 Raw takeoff/waypoint commands and QGC export remain available to operator controls;
@@ -107,13 +107,13 @@ flight measurements remain in [measurements](../measurements/); they do not esta
 performance for a changed prompt or review template. The current
 [release validation record](../measurements/release.json) separates completed checks from live acceptance limits.
 
-`set_camera_view(drone_id, north_m, east_m, height_m, zoom)` centres a world point
-and selects verified 1–4× render zoom for detection and live video. Target height is
-above terrain. Automatic observation steps retain their planned camera view;
-candidate adjustments preserve the SAM video session and invalidate old boxes until
-a fresh observation matches the new revision. `center_candidate(inspection_id, zoom)`
-uses the selected subject's current position. `get_candidate(inspection_id)` supplies
-and retains the original current 4K frame for later review or publication.
+`set_camera_view(drone_id, north_m, east_m, height_m)` aims the fixed 1× main
+camera at a world point for detection and live video. Target height is above
+terrain. There is no adjustable zoom. Automatic observation steps retain their
+planned view. Healthy candidate tracking centres the subject automatically;
+manual view requests fail before changing its camera or tracking state.
+`get_candidate(inspection_id)` supplies and retains the current original 4K frame
+for review or publication without interrupting the camera controller.
 
 `follow_candidate(inspection_id, frame_id, candidate_index, duration_s)` sets a hold
 deadline on an existing automatic follow. It does not acquire a one-shot inspection
@@ -185,15 +185,15 @@ previews the complete trip. The helper does not allocate aircraft, clip or rerou
 A finite pattern does not prove complete coverage; a circle observes its center from changing views.
 Terrain following alone does not provide a contour-search route.
 
-The operator selected **30 m AGL, 5 m/s, 2× zoom, 20 m line spacing and 20 m camera
+The operator selected **30 m AGL, 5 m/s, fixed 1× camera, 20 m line spacing and 20 m camera
 look-ahead as defaults for this operator's missing-person surveys**. They do not govern other tasks.
 Wonder states the selected values in the launch plan;
 takeoff, transit and return heights remain explicit choices for safe route separation.
 An operator can change the survey height through a new previewed plan version. Survey
-spacing must satisfy one-third nominal camera overlap for the chosen height and zoom.
+spacing must satisfy one-third nominal camera overlap for the chosen height with the fixed camera.
 Preview does not certify actual terrain visibility, capture coverage or recognition accuracy.
 Survey rows are evenly distributed across the full width with spacing no greater than
-the requested maximum, including both edge margins. For a speed/zoom-only change,
+the requested maximum, including both edge margins. For a speed-only change,
 Wonder retains the polygons and uses live `progress.survey_start_at` as the active step's
 optional `start_at`, preserving unfinished passes instead of restarting the whole sector.
 All continuation geometry goes through the ordinary preview and fresh-state safety checks.
@@ -225,7 +225,7 @@ omits `uniqueItems`, which Meta rejects before responding to any tool-equipped r
 
 The policy contains a Wonder-chosen visible SAM noun phrase in `detector_prompt`, `threshold`, and
 `look_for` with objective, target, visible attributes and ignore instructions.
-It also specifies horizontal `stand_off_m`, tracking `speed_mps`, camera `zoom`,
+It also specifies horizontal `stand_off_m`, tracking `speed_mps`,
 `look_ahead_m` and total per-drone
 `max_lock_seconds`. One launch approval includes this provisional-follow authority.
 SAM discovery starts during the explicitly observed steps. Route steps look ahead along the ground,

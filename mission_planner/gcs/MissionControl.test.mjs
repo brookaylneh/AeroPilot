@@ -463,7 +463,7 @@ test('routine activity is grouped while repeated inspection failures expose each
     ...toolEvents('lost-2', 'get_candidate', { inspection_id: 'inspection-2' }, 'Candidate lock was lost.'),
     ...toolEvents(
       'camera',
-      'center_candidate',
+      'set_camera_view',
       { inspection_id: 'inspection-2' },
       'Camera location is unavailable.',
     ),

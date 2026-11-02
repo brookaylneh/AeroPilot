@@ -794,6 +794,11 @@ test('camera revisions and historical candidate locations remain explicit and fi
   value.latest.detections[0].ground = { north_m: 25, east_m: 35, ground_m: 20 };
   value.latest.detections[0].location_error = null;
   assert.deepEqual(inspectionSchema.parse(value), value);
+  const fixed = structuredClone(value);
+  delete fixed.camera_view.zoom;
+  fixed.camera_view.horizontal_fov_deg = 90;
+  fixed.latest.horizontal_fov_deg = 90;
+  assert.deepEqual(inspectionSchema.parse(fixed), fixed);
   const historical = inspectionSchema.parse(inspection());
   assert.ok(!('camera_view' in historical));
   assert.equal(historical.latest.horizontal_fov_deg, 53.13);

@@ -180,16 +180,16 @@ the observation `step_index`; the mission's `rescue.completed_steps` retains per
 The camera never reads a scenario character's position. Tracking uses the image-owned
 pose for every ray, so aircraft and camera rotations cannot be confused with target motion.
 
-`ForwardCapture.view(target, zoom)` centres a world point and sets 1–4× focal zoom
-on the same serialized worker as capture and aiming. Zoom uses the original measured
-field of view: doubling focal length halves `tan(FOV/2)`, not the angle. The command
-reads the setting back, then returns its target, zoom, measured horizontal FOV and
-view revision. Each image records `camera_view_revision` and brackets capture with
-matching FOV reads. Callers retain one capture owner per drone and serialize view
-changes with capture. A SAM session survives a camera adjustment;
-old boxes are invalidated and only a fresh corresponding observation may guide flight.
-The original relative pose and FOV are
-restored when the owner resets or closes.
+`ForwardCapture.view(target)` aims the fixed 1× main camera at a world point on
+its serialized capture worker. No runtime command changes focal length or FOV.
+The command returns its target, measured horizontal FOV and view revision. Each
+image records `camera_view_revision` and brackets capture with matching FOV reads.
+Callers retain one capture owner per drone and serialize explicit view changes
+with capture. A healthy candidate's native tracker owns the camera; manual view
+requests fail before cancellation or state changes. Explicit aiming remains
+available before inspection or while a lost candidate is held. Reset and close
+restore the original relative mount pose.
+After candidate release, route search explicitly reclaims camera aiming on its next frame.
 
 `ForwardCapture.follow` uses `simSetCameraPose` directly on the existing `fpv` camera,
 with a separate control RPC worker and a 3-second RPC deadline. It transforms the
@@ -202,7 +202,7 @@ aircraft movement through the existing validated GUIDED path.
 
 A shared pose lock excludes competing camera writes. Native CSRT ownership suppresses
 old world-target aims until a view/reset. Image responses retain their capture-time
-pose. Control leaves zoom and view revision fixed so continuous small rotations do
+pose. Control leaves optics and view revision fixed so continuous small rotations do
 not invalidate the browser box. Manual view changes cancel and drain the previous
 controller before a new view; an expired generation cannot issue a camera command.
 
@@ -217,10 +217,9 @@ in place of this Cosys adapter; native CSRT and world-frame centering remain reu
 Camera changes affect both inspection images and the existing Pixel Streaming view, without
 creating a new video connection or camera. The pinned Cosys
 [image API](https://github.com/Cosys-Lab/Cosys-AirSim/blob/5.8-v3.5.0/docs/image_apis.md#camera-apis)
-defines `simSetCameraPose` and `simSetCameraFov`;
-[PIPCamera.cpp](https://github.com/Cosys-Lab/Cosys-AirSim/blob/5.8-v3.5.0/Unreal/Plugins/AirSim/Source/PIPCamera.cpp)
-applies FOV to both the main camera and scene captures. Zoom narrows search coverage;
-the flight plan must choose overlapping passes for its height, angle and capture rate.
+defines `simSetCameraPose`. The stock main camera retains its approximately 90°
+horizontal field of view. The flight plan must choose overlapping passes for its
+height, angle and capture rate.
 
 Generate the tracked deployment settings with explicit port and instance choices:
 

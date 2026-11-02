@@ -169,13 +169,11 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
             count = 0
             revision, horizontal_fov_deg = 0, 90
 
-            async def view(target, zoom):
-                nonlocal revision, horizontal_fov_deg
+            async def view(target):
+                nonlocal revision
                 revision += 1
-                horizontal_fov_deg = math.degrees(2 * math.atan(1 / zoom))
                 return {
                     "revision": revision,
-                    "zoom": zoom,
                     "target": target,
                     "horizontal_fov_deg": horizontal_fov_deg,
                 }
@@ -245,25 +243,25 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
         return row, self.inspections.tasks[name]
 
     async def test_camera_view_persists_across_inspections_without_commanding_flight(self):
-        view = await self.inspections.set_camera_view("Drone1", 30, 10, 2, 4)
+        view = await self.inspections.set_camera_view("Drone1", 30, 10, 2)
         camera = self.captures["Drone1"]
-        camera.view.assert_awaited_once_with({"x": 30, "y": 10, "z": terrain_height(30, 10) + 2}, 4)
-        self.assertEqual(view["zoom"], 4)
-        self.assertAlmostEqual(view["horizontal_fov_deg"], 28.072486935852957)
+        camera.view.assert_awaited_once_with({"x": 30, "y": 10, "z": terrain_height(30, 10) + 2})
+        self.assertNotIn("zoom", view)
+        self.assertAlmostEqual(view["horizontal_fov_deg"], 90)
         self.detect.assert_not_called()
         camera.capture.assert_not_awaited()
         first, task = await self.start()
         await task
         camera.close.assert_not_awaited()
         self.assertEqual(first["camera_view"], self.inspections.camera_views["Drone1"])
-        await self.inspections.set_camera_view("Drone1", 40, 15, 0, 2)
+        await self.inspections.set_camera_view("Drone1", 40, 15, 0)
         second, task = await self.start()
         await task
         self.assertIs(self.captures["Drone1"], camera)
         self.assertEqual(camera.directory, self.directory / "inspections" / second["id"])
         latest = self.inspections.rows[second["id"]]["latest"]
         self.assertEqual(latest["camera_view_revision"], 2)
-        self.assertAlmostEqual(latest["horizontal_fov_deg"], 53.13010235415598)
+        self.assertAlmostEqual(latest["horizontal_fov_deg"], 90)
         camera.close.assert_not_awaited()
         self.mission.fleet.execute.assert_not_awaited()
         self.mission.fleet.face_heading.assert_not_awaited()
@@ -275,27 +273,27 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
     async def test_camera_view_rejects_unlaunched_flight_and_changed_plan(self):
         self.states["Drone1"]["armed"] = False
         with self.assertRaisesRegex(AssertionError, "airborne"):
-            await self.inspections.set_camera_view("Drone1", 30, 0, 0, 2)
+            await self.inspections.set_camera_view("Drone1", 30, 0, 0)
         self.assertEqual(self.captures, {})
         self.states["Drone1"]["armed"] = True
-        await self.inspections.set_camera_view("Drone1", 30, 0, 0, 2)
+        await self.inspections.set_camera_view("Drone1", 30, 0, 0)
         camera = self.captures["Drone1"]
         set_view = camera.view.side_effect
 
-        async def changed(target, zoom):
-            result = await set_view(target, zoom)
+        async def changed(target):
+            result = await set_view(target)
             self.mission.plan_active["plan"]["version"] = 2
             return result
 
         camera.view.side_effect = changed
         with self.assertRaisesRegex(AssertionError, "flight changed"):
-            await self.inspections.set_camera_view("Drone1", 40, 0, 0, 4)
+            await self.inspections.set_camera_view("Drone1", 40, 0, 0)
         self.assertIsNone(self.inspections.camera_views["Drone1"])
         self.assertEqual(camera.view.await_count, 2)
         self.mission.fleet.execute.assert_not_awaited()
 
     async def test_failed_camera_readback_invalidates_old_view_until_explicit_new_command(self):
-        await self.inspections.set_camera_view("Drone1", 30, 0, 0, 2)
+        await self.inspections.set_camera_view("Drone1", 30, 0, 0)
         row, task = await self.start()
         await task
         candidate = self.inspections.rows[row["id"]]
@@ -309,7 +307,7 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
             raise TimeoutError("Camera readback timed out")
 
         camera.view.side_effect = failed_view
-        changing = asyncio.create_task(self.inspections.set_camera_view("Drone1", 30, 0, 0, 4))
+        changing = asyncio.create_task(self.inspections.set_camera_view("Drone1", 30, 0, 0))
         await asyncio.wait_for(entered.wait(), 1)
         try:
             self.assertTrue(candidate["camera_changing"])
@@ -327,9 +325,9 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(camera.view.await_count, 2)
         self.assertEqual(self.detect.call_count, 1)
         camera.view.side_effect = original
-        await self.inspections.set_camera_view("Drone1", 30, 0, 0, 2)
+        await self.inspections.set_camera_view("Drone1", 30, 0, 0)
         self.assertFalse(candidate["camera_changing"])
-        self.assertEqual(self.inspections.camera_views["Drone1"]["zoom"], 2)
+        self.assertEqual(self.inspections.camera_views["Drone1"]["horizontal_fov_deg"], 90)
         _, task = await self.start()
         await task
         self.assertIs(self.inspections.cameras["Drone1"], camera)
@@ -349,16 +347,16 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
         camera = self.captures["Drone1"]
         try:
             with self.assertRaisesRegex(AssertionError, "Stop the current inspection"):
-                await self.inspections.set_camera_view("Drone1", 30, 0, 0, 2)
+                await self.inspections.set_camera_view("Drone1", 30, 0, 0)
             self.inspections.stop("Drone1", "Change inspection view")
             with self.assertRaisesRegex(AssertionError, "still finishing"):
-                await self.inspections.set_camera_view("Drone1", 30, 0, 0, 2)
+                await self.inspections.set_camera_view("Drone1", 30, 0, 0)
             camera.view.assert_not_awaited()
         finally:
             finish.set()
             with self.assertRaises(asyncio.CancelledError):
                 await task
-        await self.inspections.set_camera_view("Drone1", 30, 0, 0, 2)
+        await self.inspections.set_camera_view("Drone1", 30, 0, 0)
         camera.view.assert_awaited_once()
 
     async def test_wonder_publishes_only_the_exact_candidate_once_as_immutable_evidence(self):

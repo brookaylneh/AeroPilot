@@ -14,7 +14,7 @@ def quat(yaw, pitch):
 
 
 class CenteringTests(unittest.TestCase):
-    def test_delayed_camera_observations_converge_at_every_heading_and_zoom(self):
+    def test_delayed_camera_observations_converge_across_headings_and_lenses(self):
         for heading in (0, 90, 179, 270):
             for pitch in (-25, -65, -88):
                 for fov in (90, 53.13, 28.07):
