@@ -263,6 +263,7 @@ test('complete mission states retain telemetry through observed route, circle, m
         error: null,
         latest: null,
         rescue: {
+          selected_track_id: null,
           live_frame: null,
           held_frame: null,
           healthy_s: 0,

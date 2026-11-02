@@ -509,6 +509,7 @@ class Inspections:
                     "phase": "waiting",
                     "review_id": None,
                     "reports": [],
+                    "selected_track_id": None,
                     "track": None,
                     "live_frame": None,
                     "held_frame": None,
@@ -988,7 +989,12 @@ class Inspections:
                 )
                 row["status"], row["rescue"]["phase"] = "running", "searching"
                 row["rescue"].update(
-                    track=None, live_frame=None, held_frame=None, tracking_error=None, pending=False
+                    selected_track_id=None,
+                    track=None,
+                    live_frame=None,
+                    held_frame=None,
+                    tracking_error=None,
+                    pending=False,
                 )
                 next_slot = None
         except asyncio.CancelledError:
@@ -1213,6 +1219,7 @@ class Inspections:
             reports=[],
             pending=False,
             tracking_error=None,
+            selected_track_id=selected_id,
             track=None,
             live_frame=row["latest"],
             held_frame=None,
@@ -1463,6 +1470,7 @@ class Inspections:
                                 selected_id = relock["track_id"]
                                 reviewed_ids.add(selected_id)
                                 row["rescue"].update(
+                                    selected_track_id=selected_id,
                                     tracking_error=None,
                                     held_frame=None,
                                     pending=False,

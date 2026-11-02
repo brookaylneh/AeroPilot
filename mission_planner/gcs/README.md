@@ -447,23 +447,49 @@ Signalling admits one viewer per Unreal streamer.
 See the [Epic message API](https://github.com/EpicGames/PixelStreamingInfrastructure/blob/a5b526b2383110dcd84e6b56580bca8f459e1836/Frontend/Docs/Communicating%20from%20the%20Player%20Page%20to%20UE5.md)
 and [video frame callback specification](https://wicg.github.io/video-rvfc/).
 
-`VideoBoxes.tsx` draws SAM guidance boxes over the selected native video.
-It uses original 4K coordinates and the displayed aspect ratio. Each side is padded
-by the larger of half the projected dimension and 12 CSS pixels, then clipped to
-the displayed image, including on high-DPI screens. Searching
-uses the latest detection frame. Review starts with that same candidate frame and
-refreshes while the aircraft pauses; following uses the selected live track and a held
-lock uses fresh held frames. Visual publication does not wait for a following command.
-Labels distinguish reviewing, locked and held.
-The overlay clears after one second, on a camera revision change, hidden/stalled video,
-or inspection termination. An incompatible video aspect ratio reports an error.
-Browser optical flow, mask decoding and the old tracking worker are removed.
+`VideoBoxes.tsx` draws enlarged guidance boxes over the selected native video.
+Searching uses SAM boxes; an active review, lock or hold uses OpenCV CSRT on the
+browser's decoded video frames. The backend's `rescue.selected_track_id` identifies
+the selected SAM object independently of whether aircraft following is possible.
+CSRT starts from that object's exact evidence image and box, then updates from live
+pixels. The immutable `/api/evidence/<mission>/<frame>-frame.jpg/preview` endpoint
+provides a 960×540 copy of the registered 4K image; the original and mask are untouched.
+Fresh SAM observations reinitialize the visual tracker at most once every two seconds.
+A lost visual track clears the box and requires a newer SAM detection to initialize again.
 
-Boxes update at the measured detector cadence; the video continues independently.
-Capture and WebRTC delivery are separate, so box alignment can lag moving subjects.
-These overlays are not segmentation masks or a claim of frame-exact video registration.
-Only the checked backend controller has flight authority. Live accuracy and moving-person
-tracking remain operator acceptance items.
+`videoTracker.worker.ts` runs one serialized tracker operation at a time. New live
+frames are taken only when the worker is ready, so tracking cannot accumulate a frame
+backlog. Tracking and drawing use local monotonic presentation times; a browser/server
+clock offset does not hide the box. A SAM update gap does not expire a CSRT result that
+is still being updated from live pixels. Camera changes, a released/rejected candidate,
+an ended inspection, hidden video or a stalled stream invalidate the corresponding
+visual state. Failures are visible and do not restart the worker or retry requests.
+`window.visualTrackerSamples` keeps the last 2,000 processing, seed and error records.
+
+Each side of the box is padded by the larger of half the projected dimension and
+12 CSS pixels, then clipped to the displayed image, including on high-DPI screens.
+Labels distinguish reviewing, locked and held. CSRT supplies a display box, not a
+segmentation mask or flight command. SAM/Glimmer retain identification and review
+authority; only the checked backend controller can move an aircraft. Capture and
+WebRTC delivery remain separate: the first live frame can be newer than the SAM seed,
+and processing lag or visual drift must still be checked during operator acceptance.
+
+Build the packaged browser runtime before `npm run build`:
+
+```sh
+bash mission_planner/gcs/build-csrt.sh
+```
+
+The build requires a new `.local/vendor/csrt` directory, verifies the OpenCV and
+opencv_contrib 4.12.0 archives, and uses the pinned Emscripten 4.0.17 image with
+four CPU cores, 8 GiB RAM and no GPU access. `csrt.cpp` enables WebAssembly SIMD,
+uses a 128-pixel CSRT template and 17 scales, and processes 960×540 RGBA frames.
+Its initial WebAssembly heap is 32 MiB, bounded at 256 MiB. Vite includes the runtime
+and license under `/csrt/`; development serves only that explicit artifact directory.
+No CDN, second video connection or additional model is needed.
+See the primary [CSRT API](https://github.com/opencv/opencv_contrib/blob/4.12.0/modules/tracking/include/opencv2/tracking.hpp),
+[tracker contract](https://github.com/opencv/opencv/blob/4.12.0/modules/video/include/opencv2/video/tracking.hpp),
+and [Emscripten container instructions](https://github.com/emscripten-core/emsdk/tree/main/docker).
 
 `accept_browser.mjs feed URL NEW_DIRECTORY SECONDS` requires uploaded active missions,
 measures the installed stream, switches through their available forward cameras,

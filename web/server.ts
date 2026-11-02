@@ -7,6 +7,7 @@ import { createServer, request } from 'node:http';
 import { required, port as configuredPort } from './runtime';
 import { health, rendererHealth } from './health';
 import { briefingRouter } from '../scenario_creator/briefingRouter';
+import { trackerPreview } from './evidence';
 const app = express();
 app.disable('x-powered-by');
 app.use(compression());
@@ -21,11 +22,15 @@ app.get('/', (_req, res) => res.redirect(308, '/home'));
 app.get('/mission', (req, res) =>
   res.redirect(308, `/missionplanner${req.originalUrl.slice('/mission'.length)}`),
 );
-app.get('/api/evidence/:mission/:asset', async (req, res) => {
+app.get(['/api/evidence/:mission/:asset', '/api/evidence/:mission/:asset/preview'], async (req, res) => {
   const { mission, asset } = req.params;
+  const preview = req.path.endsWith('/preview');
   if (
+    typeof mission !== 'string' ||
+    typeof asset !== 'string' ||
     !/^[a-f0-9-]{36}$/.test(mission) ||
-    !/^[a-f0-9-]+-(?:(?:frame|input|crop|context)\.jpg|track-[1-9][0-9]*-mask\.png)$/.test(asset)
+    !/^[a-f0-9-]+-(?:(?:frame|input|crop|context)\.jpg|track-[1-9][0-9]*-mask\.png)$/.test(asset) ||
+    (preview && !asset.endsWith('-frame.jpg'))
   ) {
     res.sendStatus(400);
     return;
@@ -37,6 +42,10 @@ app.get('/api/evidence/:mission/:asset', async (req, res) => {
     return;
   }
   res.setHeader('Cache-Control', 'private, max-age=31536000, immutable');
+  if (preview) {
+    res.type('jpeg').send(await trackerPreview(path.join(directory, asset)));
+    return;
+  }
   res.sendFile(asset, { root: directory });
 });
 app.get('/healthz', async (_req, res) => {
@@ -50,6 +59,7 @@ app.get('/api/unreal/status', async (_req, res) => {
   res.status(result.state === 'unavailable' ? 503 : 200).json(result);
 });
 if (development) {
+  app.use('/csrt', express.static(path.resolve('.local/vendor/csrt/runtime'), { index: false }));
   const { createServer: createViteServer } = await import('vite');
   const vite = await createViteServer({ server: { middlewareMode: true, hmr: false } });
   app.use(vite.middlewares);

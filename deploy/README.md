@@ -125,6 +125,19 @@ sudo systemctl start snr-mission snr-web
 sudo systemctl start snr-caddy
 ```
 
+The browser build also requires the packaged CSRT artifacts. Run
+`bash mission_planner/gcs/build-csrt.sh` once before the first `npm run build`;
+the build and verified source versions are documented in
+[live camera overlays](../mission_planner/gcs/README.md#live-camera-and-overlays).
+
+When a parallel editing session has unfinished changes, build and verify an isolated
+source checkout against the installed version. The mission and web units can use an
+explicit `WorkingDirectory` in their `source.conf` drop-ins; keep that checkout and
+its `.env`, `.local`, virtual environment and Node dependency links available while
+installed. Check `systemctl show snr-mission snr-web -p WorkingDirectory` before a
+deployment, and update both source locations together after the normal coupled shutdown.
+Changing the source directory does not restart the vision service.
+
 Build the immutable SAM device image and stage its verified checkpoint, warmup
 fixture and compile-cache directory before starting `snr-mission`. Set all six
 `SNR_SAM_*` values in `.local/runtime.env`; the example image ID identifies the

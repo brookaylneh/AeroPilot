@@ -164,7 +164,7 @@ export default function DroneVideo({
   const status = state.type === 'live' && state.droneId !== droneId ? 'connecting' : state.type;
   const video = parent.current?.querySelector('video');
   const rescue = inspection?.rescue;
-  const frame = rescue
+  const observed = rescue
     ? rescue.phase === 'searching'
       ? rescue.reports.some((report) => report.images.frame_id === inspection?.latest?.frame_id)
         ? null
@@ -173,15 +173,19 @@ export default function DroneVideo({
         ? rescue.held_frame
         : rescue.live_frame
     : inspection?.latest;
+  const frame =
+    observed &&
+    (!inspection?.camera_view || observed.camera_view_revision === inspection.camera_view.revision)
+      ? observed
+      : null;
+  const tracking = rescue && ['reviewing', 'tracking', 'held'].includes(rescue.phase);
   const showBoxes =
     status === 'live' &&
     video &&
     inspection !== undefined &&
     inspection.drone_id === droneId &&
     !inspection.camera_changing &&
-    frame &&
-    (!inspection.camera_view || frame.camera_view_revision === inspection.camera_view.revision) &&
-    frame.detections.length > 0 &&
+    (tracking ? rescue.selected_track_id !== null : frame && frame.detections.length > 0) &&
     ['running', 'candidate'].includes(inspection.status) &&
     (!rescue || ['searching', 'reviewing', 'tracking', 'held'].includes(rescue.phase));
   return (
@@ -194,9 +198,10 @@ export default function DroneVideo({
       <div ref={parent} className="gcs-drone-video-stream" />
       {showBoxes && (
         <VideoBoxes
-          key={`${droneId}:${inspection.id}:${inspection.rescue?.review_id}`}
+          key={`${droneId}:${inspection.id}:${inspection.rescue?.review_id}:${inspection.camera_view?.revision}`}
           video={video}
           frame={frame}
+          trackId={tracking ? rescue.selected_track_id : null}
           lock={
             rescue?.phase === 'reviewing'
               ? 'reviewing'

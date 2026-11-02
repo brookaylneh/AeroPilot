@@ -43,6 +43,10 @@ Inspection evidence is served from the mission's registered image files at
 selected SAM mask and precise box without altering the image. Mask PNGs are
 immutable registry entries bound to the source frame and track ID.
 Image cards show loading or failure locally and provide a direct file link.
+Appending `/preview` to a registered `-frame.jpg` URL returns a 960×540 JPEG of
+the complete image for the browser's CSRT seed. It verifies the original 4K geometry,
+does not crop or modify the evidence, and rejects mask/crop assets as tracker seeds.
+The pinned Sharp dependency processes previews on request; no inference is performed.
 
 The browser connects to `/api/mission` for validated mission state, conversation,
 plan export and live camera focus. State includes public landmarks independently

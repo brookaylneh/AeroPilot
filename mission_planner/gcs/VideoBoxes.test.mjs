@@ -173,15 +173,25 @@ test('search, review, lock and hold display their own current frames with accura
   ]) {
     const result = v.render({
       ...source,
-      rescue: { reports: [], phase, live_frame: live, held_frame: held },
+      rescue: { reports: [], phase, selected_track_id: 7, live_frame: live, held_frame: held },
     });
     assert.equal(result.props.frame, frame);
     assert.equal(result.props.lock, label);
+    assert.equal(result.props.trackId, phase === 'searching' ? null : 7);
   }
   for (const phase of ['reviewing', 'tracking', 'held'])
     assert.equal(
-      v.render({ ...source, rescue: { reports: [], phase, live_frame: null, held_frame: null } }),
-      undefined,
+      v.render({
+        ...source,
+        rescue: {
+          reports: [],
+          phase,
+          selected_track_id: 7,
+          live_frame: null,
+          held_frame: null,
+        },
+      }).props.frame,
+      null,
     );
 });
 test('camera revisions and drone changes invalidate prior boxes', () => {
@@ -203,4 +213,26 @@ test('returning to search cannot display the reviewed frame as live guidance', (
   const rescue = { phase: 'searching', reports: [{ images: { frame_id: source.latest.frame_id } }] };
   assert.equal(v.render({ ...source, rescue }), undefined);
   assert.ok(v.render({ ...source, latest: inspection('new-frame').latest, rescue }));
+});
+
+test('a camera change replaces the visual tracker and waits for SAM evidence from that camera revision', () => {
+  const v = videoFixture(),
+    source = inspection();
+  const active = {
+    ...source,
+    camera_view: { revision: 1 },
+    rescue: {
+      phase: 'held',
+      reports: [],
+      selected_track_id: 7,
+      held_frame: source.latest,
+      live_frame: null,
+    },
+  };
+  const first = v.render(active);
+  const changed = v.render({ ...active, camera_view: { revision: 2 } });
+  assert.notEqual(first.key, changed.key);
+  assert.equal(changed.props.frame, null);
+  assert.equal(changed.props.trackId, 7);
+  assert.equal(v.render({ ...active, camera_changing: true }), undefined);
 });

@@ -175,6 +175,7 @@ const rescueSchema = z
         })
         .strict(),
     ),
+    selected_track_id: number.int().positive().nullable(),
     track: z
       .object({
         track_id: number.int().positive(),

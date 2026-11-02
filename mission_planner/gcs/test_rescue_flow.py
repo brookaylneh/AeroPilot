@@ -995,6 +995,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
             row["id"], observed["frame"]["frame_id"], 0
         )
         self.assertEqual(result["relock"], {"status": "tracking", "track_id": 1})
+        self.assertEqual(row["rescue"]["selected_track_id"], 1)
         self.assertIsNone(row["rescue"]["tracking_error"])
         self.assertEqual(self.states["Drone1"]["mode"], "GUIDED")
         self.assertGreater(self.fleet.tracking_target.await_count, commands)
@@ -1586,6 +1587,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
             seed = row["latest"]["frame_id"]
             announcement = next(e for e in self.events if "pausing on visual track" in e["text"])
             self.assertEqual(announcement["result"]["rescue"]["live_frame"]["frame_id"], seed)
+            self.assertEqual(announcement["result"]["rescue"]["selected_track_id"], 1)
             await self.until(
                 lambda: (
                     row["status"] == "candidate" and row["rescue"]["live_frame"]["frame_id"] != seed
@@ -1610,6 +1612,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         await self.until(lambda: row["rescue"]["held_frame"] is not None)
         reason = "Required stand-off leaves the search perimeter"
         self.assertEqual(row["rescue"]["tracking_error"], reason)
+        self.assertEqual(row["rescue"]["selected_track_id"], 1)
         first = row["rescue"]["held_frame"]["frame_id"]
         await self.until(lambda: row["rescue"]["held_frame"]["frame_id"] != first)
         frame = row["rescue"]["held_frame"]

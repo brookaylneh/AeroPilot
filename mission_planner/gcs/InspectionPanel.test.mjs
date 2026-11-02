@@ -18,6 +18,7 @@ import { eventSchema } from './missionState.ts';
 
 function rescueState() {
   return {
+    selected_track_id: null,
     live_frame: null,
     held_frame: null,
     healthy_s: 0,
