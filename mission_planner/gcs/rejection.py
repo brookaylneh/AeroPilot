@@ -18,6 +18,7 @@ RULES = (
     "transit_ceiling",
     "lane_blocked",
     "band_behind_pads",
+    "band_direction",
     "disconnected_sector",
     "endurance",
     "no_distance_table",

@@ -320,7 +320,15 @@ or an operator polygon, the briefing's direction of travel and subject category)
 settings (null takes the disclosed defaults), the aftermath, the region options and the
 expansion policy. `tasking.py` validates it, `region.py` sizes doctrine search bands from the
 published ISRID distance and dispersion tables (child, hiker, dementia; elderly and unknown need
-an explicit radius), `allocation.py` cuts each band into equal-flight-time strips parallel to the
+an explicit radius): the searchable area is gridded into 50 m cells, each cell takes the point
+model's density averaged over witness points every 20 m along the initial planning point (a
+trail or outline is every point on it), cells are ranked by density and searched nearest-first,
+and connected bands grow to the fleet's budget. The first band must touch the first 100 m of the
+initial planning point and centre within the 75 % dispersion angle of the stated direction, else
+the plan is the `band_direction` rejection; the rationale states where each band centres. The
+2026-11-02 Granite Lake Trail mission planned its first band 150° off a southbound direction
+because ring-and-wedge slivers outranked the core; this grid replaced it. `allocation.py` cuts
+each band into equal-flight-time strips parallel to the
 sweep with departure lanes and 8 m altitude layers in the fixed order Drone1, Drone3, Drone2,
 Drone4, and `compile_plan` proves the result. The sizing loop uses the compiler's own step timing
 (compiled durations run 18–32 % above a single-leg estimate because every terrain-following
@@ -336,11 +344,13 @@ Every rejection is structured: `rule`, `drone_id`, zero-based `step_index`, `ste
 with one-based steps, `detail` and, for separation, the `conflict`. Rules are schema, version,
 participants, aircraft_state, fence, altitude, terrain_clearance, obstacle_clearance,
 separation, battery, aftermath, observation_area, spacing_overlap, coverage, transit_ceiling,
-lane_blocked, band_behind_pads, disconnected_sector, endurance, no_distance_table, reference
-and compile. Nothing shrinks, retries or reroutes silently; Wonder changes the named field.
+lane_blocked, band_behind_pads, band_direction, disconnected_sector, endurance,
+no_distance_table, reference and compile. Nothing shrinks, retries or reroutes silently; Wonder changes the named field.
 
 With `expansion.automatic_proposals` the first band takes half the sortie and ends in a 180 s
-approval hover. As the drones come within 240 s of finishing their rows, `expansion.py` asks the
+approval hover, unless half the searchable endurance is less than the round trip to the initial
+planning point; then the first band takes the whole sortie, the receipt's
+`region.in_flight_expansion` is false and expansion resumes from the pads after a battery reset. As the drones come within 240 s of finishing their rows, `expansion.py` asks the
 tasking planner for the next band over the unsearched cells, from live positions and batteries,
 with each drone's unfinished rows flown first and a layered join to its new strip; drones without
 endurance for a strip return home. Wonder reviews the proposal and calls `apply_proposal`, which

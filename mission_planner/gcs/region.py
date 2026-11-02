@@ -3,7 +3,8 @@
 import math
 
 import numpy as np
-from shapely import LineString, Point, Polygon, box, union_all
+import shapely
+from shapely import LineString, Point, Polygon, STRtree, box, union_all
 
 from mission_planner.gcs.fences import BOUNDARY_CLEARANCE_M
 from mission_planner.gcs.geodesy import EAST_MAX_M, EAST_MIN_M, NORTH_MAX_M, NORTH_MIN_M
@@ -43,8 +44,10 @@ SEARCH_INSET_M = BOUNDARY_CLEARANCE_M + 0.5
 # Rows of adjacent bands end on their shared edge; a metre of gap keeps those endpoints apart.
 SEARCHED_GAP_M = 1.0
 SUB_RING_M = 100.0
+# Witness points along a linear or polygon initial planning point.
 SAMPLE_M = 20.0
-ARC_STEP_DEG = 5.0
+# Grid squares take the density at their centre; a square is a quarter of a 20 m sweep row.
+CELL_M = 50.0
 MIN_CELL_M2 = 400.0
 REACH_M = 3000.0
 
@@ -106,33 +109,30 @@ def ipp_geometry(landmark):
 
 
 def samples(geometry):
-    """Witness positions along the initial planning point every SAMPLE_M; polygons use their boundary."""
+    """Witness positions along the initial planning point every SAMPLE_M; polygons use their
+    boundary, a point is its own witness."""
     line = geometry.exterior if geometry.geom_type == "Polygon" else geometry
     if line.geom_type == "Point":
-        return [(line.x, line.y)]
+        return np.array([[line.x, line.y]])
     count = max(1, math.ceil(line.length / SAMPLE_M))
-    return [line.interpolate(i / count, normalized=True).coords[0] for i in range(count + 1)]
-
-
-def sector(origin, bearing_deg, from_deg, to_deg, radius_m):
-    """Fan from origin covering the angular band [from_deg, to_deg] on both sides of bearing_deg."""
-    north, east = origin
-
-    def arc(a0, a1):
-        steps = max(1, math.ceil((a1 - a0) / ARC_STEP_DEG))
-        return [
-            (
-                north + radius_m * math.cos(math.radians(bearing_deg + a)),
-                east + radius_m * math.sin(math.radians(bearing_deg + a)),
-            )
-            for a in np.linspace(a0, a1, steps + 1)
-        ]
-
-    if from_deg == 0:
-        return Polygon([origin, *arc(-to_deg, to_deg)])
-    return union_all(
-        [Polygon([origin, *arc(from_deg, to_deg)]), Polygon([origin, *arc(-to_deg, -from_deg)])]
+    return np.array(
+        [line.interpolate(i / count, normalized=True).coords[0] for i in range(count + 1)]
     )
+
+
+def offsets(geometry, points):
+    """Distance of each (north, east) point from the initial planning point and the bearing from
+    its nearest point there; a point on or inside the geometry has distance 0 and bearing 0."""
+    targets = shapely.points(np.asarray(points, dtype=float))
+    distance = shapely.distance(geometry, targets)
+    ends = shapely.get_coordinates(shapely.shortest_line(geometry, targets)).reshape(-1, 2, 2)
+    bearing = np.degrees(np.arctan2(ends[:, 1, 1] - ends[:, 0, 1], ends[:, 1, 0] - ends[:, 0, 0]))
+    return distance, np.where(distance > 0, bearing % 360, 0.0)
+
+
+def angle_off(bearing_deg, direction_deg):
+    """Unsigned angle between a bearing and the stated direction of travel, 0–180°."""
+    return np.abs(((np.asarray(bearing_deg, dtype=float) - direction_deg + 180) % 360) - 180)
 
 
 def searchable_area(fences):
@@ -155,11 +155,42 @@ def searchable_area(fences):
     return area
 
 
-def cells(geometry, bearing_deg, category, radius_m, area, half_angle_deg=None):
-    """Searchable cells (distance band × dispersion sector) with their probability density.
+def point_density(category, radius_m, bearing_deg, half_angle_deg, distance, off):
+    """Probability density (per m²) of the published point model at a distance from the witness
+    point and an unsigned angle off the stated direction; uniform inside each quartile ring, with
+    the dispersion share of each sector spread over its angular width on both sides."""
+    if category in DISTANCE_KM:
+        radii = np.array([0.0, *(r * 1000 for r in DISTANCE_KM[category][2])])
+        radii = np.append(radii, math.sqrt(2) * radii[-1])
+        mass = np.diff(distance_cdf(category, None, radii))
+    else:
+        radii = np.array([0.0, float(radius_m)])
+        mass = np.array([1.0])
+    ring_density = mass / (math.pi * np.diff(radii**2))
+    quartile = np.minimum(np.searchsorted(radii[1:], distance, side="right"), len(mass) - 1)
+    density = np.where(distance < radii[-1], ring_density[quartile], 0.0)
+    if bearing_deg is None:
+        return density
+    if half_angle_deg is not None:
+        return np.where(off <= half_angle_deg, density * 360 / (2 * half_angle_deg), 0.0)
+    edges = np.array(sector_edges(category))
+    shares = np.array([dispersion_mass(category, a0, a1) for a0, a1 in zip(edges, edges[1:])])
+    sector = np.minimum(np.searchsorted(edges[1:], off, side="right"), len(shares) - 1)
+    return density * shares[sector] / (2 * np.diff(edges)[sector] / 360)
 
-    area is the searchable polygon; an operator-stated half_angle_deg replaces the published
-    dispersion sectors with one wedge holding all modelled mass.
+
+def cells(geometry, bearing_deg, category, radius_m, area, half_angle_deg=None):
+    """Searchable cells: CELL_M squares with the probability density of the published model
+    averaged over witness points along the initial planning point.
+
+    The published distance rings and dispersion sectors describe one witness point. A trail or
+    an outline is every point on it, so a square's density is the mean of the point model over
+    witness points every SAMPLE_M, measured from each as distance and angle off the stated
+    direction. Densities are scaled so the squares within reach carry exactly the model's mass
+    within reach; fence clipping then removes mass with the area. Each square also records its
+    nearest distance band and sector for ordering and reporting. area is the searchable polygon;
+    an operator-stated half_angle_deg replaces the published sectors with one wedge holding all
+    modelled mass.
     """
     assert geometry.geom_type in ("Point", "LineString", "Polygon"), geometry.geom_type
     assert bearing_deg is None or 0 <= bearing_deg < 360
@@ -175,52 +206,102 @@ def cells(geometry, bearing_deg, category, radius_m, area, half_angle_deg=None):
     r95 = DISTANCE_KM[category][2][3] * 1000 if category in DISTANCE_KM else radius_m
     reach = min(r95, REACH_M, max(geometry.distance(Point(p)) for p in area.exterior.coords))
     edges = [*np.arange(0, reach, SUB_RING_M), reach]
-    if bearing_deg is None:
-        masks = [(0.0, 180.0, None, 1.0)]
-    elif half_angle_deg is not None:
-        wedge = union_all(
-            [sector(p, bearing_deg, 0.0, half_angle_deg, REACH_M) for p in samples(geometry)]
-        )
-        masks = [(0.0, half_angle_deg, wedge, 1.0)]
-    else:
-        # Fans from different witness points overlap between angular bands; each location
-        # belongs to the smallest band that reaches it, so the masks peel outward disjointly.
-        angles = sector_edges(category)
-        masks, covered = [], Polygon()
-        for a0, a1 in zip(angles, angles[1:]):
-            fan = union_all([sector(p, bearing_deg, a0, a1, REACH_M) for p in samples(geometry)])
-            masks.append((a0, a1, fan.difference(covered), dispersion_mass(category, a0, a1)))
-            covered = covered.union(fan)
+    angles = (
+        (0.0, 180.0)
+        if bearing_deg is None
+        else (0.0, float(half_angle_deg))
+        if half_angle_deg is not None
+        else sector_edges(category)
+    )
+    min_n, min_e, max_n, max_e = geometry.bounds
+    norths = np.arange(math.floor((min_n - reach) / CELL_M) * CELL_M, max_n + reach, CELL_M)
+    easts = np.arange(math.floor((min_e - reach) / CELL_M) * CELL_M, max_e + reach, CELL_M)
+    corners = np.array([(n, e) for n in norths for e in easts])
+    centres = corners + CELL_M / 2
+    witnesses = samples(geometry)
+    delta = centres[:, None, :] - witnesses[None, :, :]
+    distance = np.hypot(delta[..., 0], delta[..., 1])
+    off = np.zeros_like(distance)
+    if bearing_deg is not None:
+        off = angle_off(np.degrees(np.arctan2(delta[..., 1], delta[..., 0])), bearing_deg)
+    density = point_density(category, radius_m, bearing_deg, half_angle_deg, distance, off).mean(
+        axis=1
+    )
+    nearest, bearing = offsets(geometry, centres)
+    nearest_off = np.where(nearest > 0, angle_off(bearing, bearing_deg or 0.0), 0.0)
+    keep = (nearest < reach) & (nearest_off <= angles[-1]) & (density > 0)
+    density *= float(distance_cdf(category, radius_m, reach)) / float(
+        (density[keep] * CELL_M**2).sum()
+    )
+    ring = np.minimum((nearest // SUB_RING_M).astype(int), len(edges) - 2)
+    sector = np.searchsorted(np.array(angles[1:-1]), nearest_off, side="right")
+    members = sorted(np.flatnonzero(keep), key=lambda i: (nearest[i], -density[i]))
+    squares = shapely.box(
+        corners[members, 0],
+        corners[members, 1],
+        corners[members, 0] + CELL_M,
+        corners[members, 1] + CELL_M,
+    )
     result = []
-    for ring, (d0, d1) in enumerate(zip(edges, edges[1:])):
-        band = geometry.buffer(d1).difference(geometry.buffer(d0)) if d0 else geometry.buffer(d1)
-        mass = float(distance_cdf(category, radius_m, d1) - distance_cdf(category, radius_m, d0))
-        for index, (a0, a1, mask, share) in enumerate(masks):
-            whole = band if mask is None else band.intersection(mask)
-            if whole.area < MIN_CELL_M2:
+    for index, clipped in zip(members, shapely.intersection(squares, area)):
+        parts = [clipped] if clipped.geom_type == "Polygon" else list(clipped.geoms)
+        for part in parts:
+            if part.geom_type != "Polygon" or part.area < MIN_CELL_M2:
                 continue
-            # Density belongs to the whole ring sector; fence clipping removes mass with the area.
-            density = mass * share / whole.area
-            cell = whole.intersection(area)
-            # Off-axis sectors have two lobes; each lobe is its own cell with its share of the mass.
-            parts = [cell] if cell.geom_type == "Polygon" else list(cell.geoms)
-            for part in parts:
-                if part.geom_type != "Polygon" or part.area < MIN_CELL_M2:
-                    continue
-                result.append(
-                    {
-                        "ring": ring,
-                        "sector": index,
-                        "inner_m": float(d0),
-                        "outer_m": float(d1),
-                        "angle_deg": [a0, a1],
-                        "polygon": part,
-                        "mass": density * part.area,
-                        "density": density,
-                    }
-                )
+            r, s = int(ring[index]), int(sector[index])
+            result.append(
+                {
+                    "ring": r,
+                    "sector": s,
+                    "inner_m": float(edges[r]),
+                    "outer_m": float(edges[r + 1]),
+                    "angle_deg": [angles[s], angles[s + 1]],
+                    "distance_m": float(nearest[index]),
+                    "polygon": part,
+                    "mass": float(density[index]) * part.area,
+                    "density": float(density[index]),
+                }
+            )
     assert result, "No searchable cell lies within reach of the initial planning point"
     return result
+
+
+def placement(geometry, bearing_deg, polygon):
+    """A band's centroid: distance from the initial planning point, bearing from its nearest
+    point and, with a stated direction, the unsigned angle off that direction."""
+    centroid = polygon.centroid
+    distance, bearing = offsets(geometry, [[centroid.x, centroid.y]])
+    off = None
+    if bearing_deg is not None:
+        off = 0.0 if distance[0] == 0 else float(angle_off(bearing[0], bearing_deg))
+    return float(distance[0]), float(bearing[0]), off
+
+
+def direction_limit_deg(category):
+    """The 75 % dispersion quantile: the first band must centre within it."""
+    return float(dispersion_table(category)[1][2])
+
+
+def check_direction(geometry, bearing_deg, category, band, index):
+    """The first band of a directed search touches the first distance band of the initial planning
+    point and centres within the 75 % dispersion angle of the stated direction; anything else is a
+    structured rejection."""
+    distance, bearing, off = placement(geometry, bearing_deg, band["polygon"])
+    limit = direction_limit_deg(category)
+    if off > limit or band["polygon"].distance(geometry) >= SUB_RING_M:
+        raise PlanRejected(
+            "band_direction",
+            f"Band {index} centres {distance:.0f} m from the initial planning point at bearing "
+            f"{bearing:.0f}°, {off:.0f}° off the stated direction of travel ({bearing_deg:g}°); "
+            f"the first band must touch the first {SUB_RING_M:g} m and centre within ±{limit:g}°",
+            detail={
+                "band_index": index,
+                "distance_m": distance,
+                "bearing_deg": bearing,
+                "off_direction_deg": off,
+                "limit_deg": limit,
+            },
+        )
 
 
 def remaining(cells, searched):
@@ -256,14 +337,16 @@ def largest_part(shape):
 def bands(cells, budget_s, rate_m2_per_s, searched=()):
     """Group density-ordered, connected cells into bands whose survey time fits the fleet budget.
 
-    Enclosed unsearched cells join the surrounding band; already searched polygons stay out, so
-    a band wrapping a searched core keeps that core as a hole.
+    Each band seeds on the highest-priority unassigned cell and repeatedly adds the
+    highest-priority cell touching it, so squares that become adjacent later still join. Enclosed
+    unsearched cells join the surrounding band; already searched polygons stay out, so a band
+    wrapping a searched core keeps that core as a hole.
     """
     assert budget_s > 0 and rate_m2_per_s > 0
     done = union_all(
         [Polygon([(p["north_m"], p["east_m"]) for p in points]) for points in searched]
     ).buffer(SEARCHED_GAP_M)
-    # Cells inside one quartile ring share a density up to geometric approximation; such ties
+    # Cells of one quartile ring sector share a density up to geometric approximation; such ties
     # (chained within one percent) are searched nearest-first.
     groups = []
     for cell in sorted(cells, key=lambda c: -c["density"]):
@@ -271,44 +354,52 @@ def bands(cells, budget_s, rate_m2_per_s, searched=()):
             groups[-1].append(cell)
         else:
             groups.append([cell])
-    remaining = [
+    order = [
         cell
         for group in groups
-        for cell in sorted(group, key=lambda c: (c["inner_m"], c["sector"]))
+        for cell in sorted(group, key=lambda c: (c["inner_m"], c["distance_m"]))
     ]
+    polygons = [cell["polygon"] for cell in order]
+    tree = STRtree(polygons)
+    remaining = set(range(len(order)))
     result = []
     while remaining:
-        shape, chosen, area = None, [], 0.0
-        for cell in list(remaining):
-            polygon = cell["polygon"]
-            if chosen and not shape.buffer(1.0).intersects(polygon):
-                continue
-            if chosen and (area + polygon.area) / rate_m2_per_s > budget_s:
+        seed = min(remaining)
+        remaining.remove(seed)
+        chosen, shape, area = [seed], polygons[seed], polygons[seed].area
+        while True:
+            touching = sorted(
+                i for i in tree.query(shape.buffer(1.0), predicate="intersects") if i in remaining
+            )
+            if not touching or (area + polygons[touching[0]].area) / rate_m2_per_s > budget_s:
                 break
-            merged = polygon if shape is None else union_all([shape, polygon])
-            merged, leftovers = largest_part(merged)
-            if leftovers:
-                continue
-            shape, area = merged, area + polygon.area
-            chosen.append(cell)
-            remaining.remove(cell)
-        assert chosen, "Band construction made no progress"
+            for index in touching:
+                merged, leftovers = largest_part(union_all([shape, polygons[index]]))
+                if leftovers:
+                    # Corner contact only; it joins once an edge neighbour is in the band.
+                    continue
+                shape, area = merged, area + polygons[index].area
+                chosen.append(index)
+                remaining.remove(index)
+                break
+            else:
+                break
         # An enclosed lower-priority cell would leave a hole: search it with its band instead.
         shape = Polygon(shape.exterior).difference(done)
         assert shape.geom_type == "Polygon", "A band stays one connected polygon"
-        for cell in list(remaining):
-            if cell["polygon"].within(shape.buffer(0.1)):
-                chosen.append(cell)
-                area += cell["polygon"].area
-                remaining.remove(cell)
+        for index in tree.query(shape.buffer(0.1), predicate="contains"):
+            if index in remaining:
+                chosen.append(index)
+                area += polygons[index].area
+                remaining.remove(index)
         survey_s = area / rate_m2_per_s
         result.append(
             {
                 "index": len(result) + 1,
                 "polygon": shape,
                 "area_m2": area,
-                "mass": sum(c["mass"] for c in chosen),
-                "cells": [{k: v for k, v in c.items() if k != "polygon"} for c in chosen],
+                "mass": sum(order[i]["mass"] for i in chosen),
+                "cells": [{k: v for k, v in order[i].items() if k != "polygon"} for i in chosen],
                 "survey_s": survey_s,
                 "status": "outside_endurance"
                 if survey_s > budget_s
@@ -362,8 +453,10 @@ def rationale(category, radius_m, bearing_deg, direction_name, half_angle_deg, p
             f"of the stated direction; {SOURCES[table]['url']}.{proxy}"
         )
     sentences.append(
-        f"Cells are {SUB_RING_M:g} m distance bands crossed with dispersion sectors, ranked by "
-        f"probability density. Band {planned['index']} holds {len(planned['cells'])} of {total} "
+        f"Cells are {CELL_M:g} m squares whose probability density averages the published point "
+        f"model over witness points every {SAMPLE_M:g} m along the initial planning point, ranked "
+        f"by density and searched nearest-first. Band {planned['index']} holds "
+        f"{len(planned['cells'])} of {total} "
         f"cells, {planned['area_m2'] / 1e4:.1f} ha and {planned['mass']:.0%} of the modelled "
         "mass; other bands are provisional at the same budget."
     )

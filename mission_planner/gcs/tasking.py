@@ -16,6 +16,7 @@ from mission_planner.gcs.allocation import (
     drone_budgets,
     fit,
     fly,
+    horizontal_seconds,
     pattern_points,
     point,
     points_of,
@@ -38,8 +39,10 @@ from mission_planner.gcs.region import (
     SOURCES,
     bands,
     cells,
+    check_direction,
     compass_degrees,
     ipp_geometry,
+    placement,
     polygon_points,
     rationale,
     remaining,
@@ -558,6 +561,7 @@ def search_work(
         bearing, sectors = allocate(polygon, drones, origins, settings, None)
         region = {
             "kind": "operator_polygon",
+            "in_flight_expansion": False,
             "ipp": None,
             "direction_deg": None,
             "category": None,
@@ -606,6 +610,7 @@ def search_work(
         bearing, sectors = allocate(polygon, drones, origins, settings, None)
         region = {
             "kind": "datum_disc",
+            "in_flight_expansion": False,
             "ipp": ipp,
             "direction_deg": None,
             "category": references["subject_category"],
@@ -658,16 +663,28 @@ def search_work(
     chosen = 1 if region_spec["band_index"] is None else region_spec["band_index"]
     proposals = tasking["expansion"]["automatic_proposals"]
     centre = geometry.centroid
+    target = point(centre.x, centre.y)
+    trip_s = max(
+        2
+        * horizontal_seconds(
+            current[name] if current[name]["armed"] else current[name]["home"],
+            target,
+            settings["transit_speed_mps"],
+        )
+        for name in drones
+    )
+    in_flight = proposals
     budgets = drone_budgets(
-        states,
-        drones,
-        settings,
-        point(centre.x, centre.y),
-        lock_s,
-        APPROVAL_HOVER_S if proposals else 0,
+        states, drones, settings, target, lock_s, APPROVAL_HOVER_S if proposals else 0
     )
     if proposals and not searched:
-        budgets = {name: budget / SORTIE_BANDS for name, budget in budgets.items()}
+        # Half a sortie must buy more search than the round trip costs; otherwise the first band
+        # takes the whole sortie and expansion resumes from the pads.
+        in_flight = min(budgets.values()) / SORTIE_BANDS >= trip_s
+        if in_flight:
+            budgets = {name: budget / SORTIE_BANDS for name, budget in budgets.items()}
+        else:
+            budgets = drone_budgets(states, drones, settings, target, lock_s, 0)
     returning = [name for name in drones if budgets[name] < MIN_SECTOR_S]
     for name in returning:
         if not current[name]["armed"]:
@@ -679,7 +696,7 @@ def search_work(
                     f" with the sortie split into {SORTIE_BANDS} bands; set "
                     "expansion.automatic_proposals false to give one band the whole sortie, or "
                     "leave the aircraft out of the fleet"
-                    if proposals and not searched
+                    if in_flight and not searched
                     else "; leave it out of the fleet"
                 ),
                 drone_id=name,
@@ -708,7 +725,7 @@ def search_work(
         band = all_bands[chosen - 1]
         polygon = simplified(band["polygon"], area)
         bearing, sectors = allocate(polygon, searching, origins, settings, direction_deg)
-        next_band = proposals and chosen < len(all_bands)
+        next_band = in_flight and chosen < len(all_bands)
         strips = survey_sectors(sectors, settings, bearing)
         # Only the new strips scale with the budget; unfinished rows and transit are fixed.
         scalable = {id(step) for sector in strips for step in sector["steps"]}
@@ -764,8 +781,17 @@ def search_work(
             f"passes; the last attempt needed {1 / factor:.2f}× the available survey time",
             detail={"band_index": chosen, "budget_s": budget, "factor": factor},
         )
+    if (
+        direction_deg is not None
+        and region_spec["half_angle_deg"] is None
+        and chosen == 1
+        and not searched
+    ):
+        check_direction(geometry, direction_deg, category, band, chosen)
+    distance_m, bearing_deg, off_deg = placement(geometry, direction_deg, band["polygon"])
     region = {
         "kind": "doctrine",
+        "in_flight_expansion": in_flight,
         "ipp": ipp,
         "direction_deg": direction_deg,
         "category": category,
@@ -816,12 +842,21 @@ def search_work(
         len(grid),
     )
     sentences.append(
+        f"Band {chosen + len(searched)} centres {distance_m:.0f} m from the initial planning point "
+        f"at bearing {bearing_deg:.0f}°"
+        + ("." if off_deg is None else f", {off_deg:.0f}° off the stated direction.")
+    )
+    sentences.append(
         f"Band {chosen + len(searched)} is sized to {len(searching)} aircraft from their live battery after the "
         f"{lock_s:g} s candidate allowance"
         + (f" and a {APPROVAL_HOVER_S} s approval hover" if next_band else "")
         + "; strips equalise flight time."
         + (
             f" It takes 1/{SORTIE_BANDS} of the sortie so the fleet can expand in flight."
+            if in_flight and not searched
+            else f" It takes the whole sortie: the {trip_s:.0f} s round trip to the initial "
+            "planning point exceeds half the searchable endurance, so expansion resumes from "
+            "the pads."
             if proposals and not searched
             else ""
         )

@@ -11,7 +11,7 @@ from mission_planner.environment import load_env
 from mission_planner.evaluation import briefs, truth
 from mission_planner.gcs.fences import default_fences, fence_items
 from mission_planner.gcs.geodesy import NAMES
-from mission_planner.gcs.region import ipp_geometry
+from mission_planner.gcs.region import compass_degrees, direction_limit_deg, ipp_geometry, placement
 from mission_planner.gcs.rejection import PlanRejected
 from mission_planner.gcs.tasking import plan
 from mission_planner.gcs.test_planner import states
@@ -38,6 +38,8 @@ def evaluate_case(brief, subject, landmarks, fences, fleet, automatic_proposals)
     except PlanRejected as error:
         return {**row, "rejection": error.rejection, "seconds": time.perf_counter() - started}
     bands = receipt["region"]["bands"]
+    first = Polygon([(p["north_m"], p["east_m"]) for p in bands[0]["polygon"]])
+    distance_m, bearing_deg, off_deg = placement(ipp, compass_degrees(parsed["direction"]), first)
     containing = next(
         (
             band["index"]
@@ -53,6 +55,11 @@ def evaluate_case(brief, subject, landmarks, fences, fleet, automatic_proposals)
         "bands": len(bands),
         "band_1_area_ha": bands[0]["area_m2"] / 1e4,
         "band_1_mass": bands[0]["mass"],
+        "band_1_distance_m": distance_m,
+        "band_1_bearing_deg": bearing_deg,
+        "band_1_off_direction_deg": off_deg,
+        "band_1_touches_ipp": first.distance(ipp) < 100,
+        "band_1_in_direction": off_deg <= direction_limit_deg(parsed["category"]),
         "containing_band": containing,
         "coverage_percent": receipt["coverage"]["survey_percent"],
         "min_headroom_s": min(row["headroom_s"] for row in receipt["fit"].values()),
@@ -77,7 +84,8 @@ def run(output):
                     f"rejected {row['rejection']['rule']}"
                     if row["rejection"]
                     else f"band={row['containing_band']} of {row['bands']} "
-                    f"band1={row['band_1_area_ha']:.1f} ha {row['seconds']:.1f} s"
+                    f"band1={row['band_1_area_ha']:.1f} ha {row['band_1_off_direction_deg']:.0f}° "
+                    f"off {row['seconds']:.1f} s"
                 ),
                 flush=True,
             )
@@ -90,6 +98,12 @@ def run(output):
             "in_band_1": sum(r.get("containing_band") == 1 for r in subset),
             "in_band_1_or_2": sum((r.get("containing_band") or 99) <= 2 for r in subset),
             "in_any_band": sum(r.get("containing_band") is not None for r in subset),
+            "band_1_in_direction": sum(r.get("band_1_in_direction") is True for r in subset),
+            "band_1_touches_ipp": sum(r.get("band_1_touches_ipp") is True for r in subset),
+            "max_band_1_off_direction_deg": max(
+                (r["band_1_off_direction_deg"] for r in subset if r["rejection"] is None),
+                default=None,
+            ),
             "unparsed_briefs": sum(
                 r["rejection"] is not None and r["rejection"]["rule"] == "brief" for r in subset
             ),

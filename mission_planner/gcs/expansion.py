@@ -32,6 +32,8 @@ def expandable(receipt):
         return False
     if not receipt["tasking"]["expansion"]["automatic_proposals"]:
         return False
+    if not receipt["region"]["in_flight_expansion"]:
+        return False
     return any(band["status"] == "provisional" for band in receipt["region"]["bands"])
 
 
