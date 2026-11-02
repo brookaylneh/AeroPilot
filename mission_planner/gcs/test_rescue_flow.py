@@ -320,6 +320,32 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         self.review_ready.set()
         return next(iter(self.inspections.rows.values()))
 
+    async def test_new_search_hands_candidate_to_native_camera_and_review(self):
+        del self.inspections.visual.observe
+        self.capture.capture_inflight = 1
+        self.capture.video_sample = None
+        self.capture.follow_generation = 1
+        self.capture.follow_diagnostic = None
+        self.capture.begin_follow = Mock(return_value=1)
+        self.capture.follow = AsyncMock(return_value={"status": "moved"})
+        self.capture.cancel_follow = Mock()
+        self.capture.end_follow = AsyncMock()
+        await self.inspections.start_search(self.receipt)
+        await self.until(
+            lambda: (
+                self.capture.follow.await_count > 0
+                and self.glimmer.call_count == 1
+                and self.fleet.tracking_target.await_count > 0
+            )
+        )
+        row = next(iter(self.inspections.rows.values()))
+        self.assertFalse(row["camera_changing"])
+        self.assertEqual(row["camera_tracking"]["source"], "onboard_csrt")
+        self.assertEqual(row["camera_tracking"]["track_id"], row["rescue"]["selected_track_id"])
+        self.assertEqual(row["camera_tracking"]["status"], "moved")
+        self.fleet.tracking_start.assert_awaited_once()
+        self.assertIsNone(row["error"])
+
     async def test_unobserved_pattern_starts_no_capture_or_models(self):
         del self.receipt["plan"]["drones"][0]["steps"][0]["observe"]
         with patch("mission_planner.gcs.inspection.vision_http") as client:

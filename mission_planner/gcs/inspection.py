@@ -366,6 +366,7 @@ class Inspections:
             "frames": 0,
             "error": None,
             "latest": None,
+            "camera_changing": False,
             "sampling": {"missed_slots": 0, "last_interval_s": None, "last_cycle_s": None},
         }
         self.rows[row["id"]] = row
@@ -521,6 +522,7 @@ class Inspections:
                 "frames": 0,
                 "error": None,
                 "latest": None,
+                "camera_changing": False,
                 "sampling": {"missed_slots": 0, "last_interval_s": None, "last_cycle_s": None},
                 "rescue": {
                     "phase": "waiting",
