@@ -1,6 +1,7 @@
 """Image-based centering and real MAVLink encoding without a running simulator."""
 
 import io
+import json
 import math
 import time
 import unittest
@@ -88,7 +89,9 @@ class GimbalProtocolTests(unittest.TestCase):
 
     def test_camera_control_emits_radians_and_finite_angles_not_unbounded_rate_commands(self):
         pose = quat(0, -0.5)
-        self.gimbal.center([670, 200, 720, 300], 70, pose)
+        motion, centering = self.gimbal.center([670, 200, 720, 300], 70, pose)
+        encoded = json.dumps({"motion": motion, "centering": centering}, allow_nan=False)
+        self.assertIs(json.loads(encoded)["centering"]["centered"], False)
         messages = MAV.MAVLink(None).parse_buffer(self.output.getvalue())
         self.assertEqual(len(messages), 1)
         message = messages[0]

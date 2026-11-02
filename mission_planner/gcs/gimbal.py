@@ -63,7 +63,7 @@ class Centering:
                 -math.atan2(target[2], math.hypot(target[0], target[1])) - pitch,
             ]
         )
-        centered = abs(error[0]) <= 960 * 0.01 and abs(error[1]) <= 540 * 0.01
+        centered = bool(abs(error[0]) <= 960 * 0.01 and abs(error[1]) <= 540 * 0.01)
         wanted = (
             np.zeros(2) if centered else np.clip(desired * 1.5, -math.radians(12), math.radians(12))
         )
@@ -73,7 +73,7 @@ class Centering:
         delta = self.rates * dt
         return {
             "yaw_rad": wrapped(yaw + delta[0]),
-            "pitch_rad": pitch + delta[1],
+            "pitch_rad": float(pitch + delta[1]),
             "yaw_delta_deg": math.degrees(delta[0]),
             "pitch_delta_deg": math.degrees(delta[1]),
             "error_x_px": float(error[0]),
