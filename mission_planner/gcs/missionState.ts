@@ -247,7 +247,7 @@ export function useMission(caseId: string | null) {
   useEffect(() => {
     if (caseId !== null && !z.string().uuid().safeParse(caseId).success) {
       setConnection('closed');
-      setError('The scenario id is invalid. Open Mission Planner from Home or a saved scenario.');
+      setError('The scenario id is invalid. Open AeroPilot from Home or a saved scenario.');
       return;
     }
     const ws = new WebSocket(

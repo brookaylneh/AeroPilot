@@ -570,10 +570,10 @@ export default function MissionControl() {
           <header className="gcs-header">
             <a className="gcs-brand" href="/home" aria-label="Home">
               <Compass size={14} strokeWidth={1.5} />
-              <strong>Mission Planner</strong>
+              <strong>AeroPilot</strong>
             </a>
             <div className="gcs-case">
-              <h1>Search and Rescue Mission</h1>
+              <h1>Mission Control</h1>
             </div>
             <div className="gcs-clock">
               <span>Mission time</span>
@@ -780,7 +780,7 @@ export default function MissionControl() {
             className="gcs-divider"
             role="separator"
             aria-orientation="vertical"
-            aria-label="Resize map and Mission Commander"
+            aria-label="Resize map and Mission Copilot"
             tabIndex={0}
             onPointerDown={(e) => {
               e.preventDefault();
@@ -803,7 +803,7 @@ export default function MissionControl() {
               <Compass size={16} />
             </div>
             <div>
-              <h2>Mission commander</h2>
+              <h2>Mission copilot</h2>
               <span>Powered by Wonder</span>
             </div>
             <span className={`gcs-agent-status ${enabled ? 'healthy' : ''}`}>

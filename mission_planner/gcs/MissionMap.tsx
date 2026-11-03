@@ -76,7 +76,7 @@ export function MapTools({
   centerLabel: string;
   center?: () => void;
 }) {
-  const expand = mapOnly ? 'Show Mission Commander' : `Full-screen ${subject}`;
+  const expand = mapOnly ? 'Show Mission Copilot' : `Full-screen ${subject}`;
   return (
     <div className="gcs-map-tools">
       <button title="Zoom in" aria-label="Zoom in" disabled={!zoomIn} onClick={zoomIn}>

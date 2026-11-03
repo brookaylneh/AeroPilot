@@ -76,7 +76,7 @@ export default function Home() {
         <a className="home-choice" href={planner}>
           <Map size={28} strokeWidth={1.4} />
           <span className="home-choice-number">01 / FLY</span>
-          <h2>Proceed to Mission Planner</h2>
+          <h2>Proceed to AeroPilot</h2>
           <p>Tell Wonder where to go. Review the flight plan and approve launch.</p>
           <span className="home-choice-action">
             {mission ? `Resume ${mission.case_name}` : 'Start without a rescue scenario'}{' '}
@@ -87,7 +87,7 @@ export default function Home() {
           <Users size={28} strokeWidth={1.4} />
           <span className="home-choice-number">02 / CREATE</span>
           <h2>Create Search and Rescue Scenario</h2>
-          <p>Choose a character, place them in the world, then take the scenario into Mission Planner.</p>
+          <p>Choose a character, place them in the world, then take the scenario into AeroPilot.</p>
           <span className="home-choice-action">
             Open Scenario Studio <ArrowUpRight size={19} />
           </span>

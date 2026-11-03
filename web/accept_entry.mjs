@@ -65,7 +65,7 @@ try {
   await expect(page.getByRole('status')).toHaveText('World ready');
   assert(sent.every((message) => message.type === 'status'));
   await capture('home');
-  await page.getByRole('link', { name: /Proceed to Mission Planner/ }).click();
+  await page.getByRole('link', { name: /Proceed to AeroPilot/ }).click();
   const general = await fleet();
   assert.equal(state.mission.case_id, null);
   assert.equal(state.mission.briefing, null);
@@ -78,7 +78,7 @@ try {
   await page.getByRole('link', { name: 'Home', exact: true }).click();
   await expect(page.getByRole('status')).toHaveText('World ready');
   state = null;
-  await page.getByRole('link', { name: /Proceed to Mission Planner/ }).click();
+  await page.getByRole('link', { name: /Proceed to AeroPilot/ }).click();
   assert.equal(await fleet(), general);
   state = null;
   await page.goto(`${origin}/mission`);

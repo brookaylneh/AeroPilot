@@ -582,7 +582,7 @@ async function worldViews(browser, url, output) {
     focused.push({ point, marker, zoomed, panned });
   }
   await page.getByRole('button', { name: 'Full-screen map', exact: true }).click();
-  await page.getByRole('button', { name: 'Show Mission Commander', exact: true }).click();
+  await page.getByRole('button', { name: 'Show Mission Copilot', exact: true }).click();
   assert.deepEqual(errors, []);
   await writeFile(
     `${output}/world-views.json`,

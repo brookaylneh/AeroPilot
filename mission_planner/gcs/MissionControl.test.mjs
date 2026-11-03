@@ -759,7 +759,7 @@ test('new conversation content follows only a reader already at the bottom; tele
 
 test('general state enables planning without rescue controls or invented briefing', () => {
   const page = render('', state());
-  assert.match(page, /<h1>Search and Rescue Mission<\/h1>/);
+  assert.match(page, /<h1>Mission Control<\/h1>/);
   assert.match(page, /aria-label="Take off Drone1"/);
   assert.doesNotMatch(page, loadTexts);
   assert.doesNotMatch(page, /gcs-briefing-button|>Evidence /);
@@ -767,7 +767,7 @@ test('general state enables planning without rescue controls or invented briefin
 
 test('an attached rescue case controls the UI even when entry had no case query', () => {
   const page = render('', state('00000000-0000-4000-8000-000000000001'));
-  assert.match(page, /<h1>Search and Rescue Mission<\/h1>/);
+  assert.match(page, /<h1>Mission Control<\/h1>/);
   assert.match(page, /gcs-briefing-button/);
   assert.match(page, />Evidence /);
   assert.doesNotMatch(page, loadTexts);
