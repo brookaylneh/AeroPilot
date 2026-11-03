@@ -38,7 +38,7 @@ export const packetSchema = z.object({
   }),
   catalog: z.object({
     environmentId: z.string(),
-    navigationVersion: z.literal(9),
+    navigationVersion: z.literal(10),
     navigation: navigationSettingsSchema,
     creatorVersion: z.literal(1),
     droneFoundation: z.boolean(),
@@ -119,7 +119,7 @@ export function useUnrealSession(stream: Stream, explore: boolean) {
       stop();
     };
   }, [transport]);
-  // Exploring starts on the ground; the scenario resumes the camera of its current step.
+  // Exploring starts above the launch port; the scenario resumes the camera of its current step.
   useEffect(() => {
     if (packet)
       void send(

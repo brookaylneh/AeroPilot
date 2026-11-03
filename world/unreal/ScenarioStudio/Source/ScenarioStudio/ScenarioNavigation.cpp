@@ -108,12 +108,22 @@ FVector AScenarioSession::ConstrainCamera(FVector P, double ClearanceCm) const
     return P;
 }
 
-bool AScenarioSession::TravelAndPlace(const FString &Space, double U, double V, FString &Error)
+void AScenarioSession::FinishFlight()
 {
-    if (CreatorStage != TEXT("placement") || !FMath::IsFinite(U) || !FMath::IsFinite(V) || U < 0 || U > 1 ||
-        V < 0 || V > 1 || !Camera)
+    if (bPlacementFlight)
     {
-        Error = TEXT("Travel and placement require placement stage and normalized coordinates");
+        Manager->Person->SetActorHiddenInGame(false);
+        Manager->SetBehaviorActive(true);
+    }
+    bNavigationFlight = bPlacementFlight = false;
+}
+
+bool AScenarioSession::TravelTo(const FString &Space, double U, double V, bool Place, FString &Error)
+{
+    if ((Place && CreatorStage != TEXT("placement")) || !FMath::IsFinite(U) || !FMath::IsFinite(V) || U < 0 ||
+        U > 1 || V < 0 || V > 1 || !Camera)
+    {
+        Error = TEXT("Placement requires the placement stage; travel requires normalized coordinates");
         return false;
     }
     const auto *R = Manager->Catalog->Regions.FindByPredicate(
@@ -156,17 +166,23 @@ bool AScenarioSession::TravelAndPlace(const FString &Space, double U, double V, 
         Error = TEXT("The approach camera has no terrain beneath it");
         return false;
     }
-    if (!Manager->PlaceAtGround(Ground.X, Ground.Y, Error))
+    if (Place && !Manager->PlaceAtGround(Ground.X, Ground.Y, Error))
         return false;
-    Manager->SetBehaviorActive(false);
+    FinishFlight();
+    if (Place)
+    {
+        Manager->SetBehaviorActive(false);
+        Manager->Person->SetActorHiddenInGame(true);
+    }
     StopNavigation();
     bFreeCamera = true;
     bPreviewFraming = false;
     PreviewFill->SetVisibility(false);
     bFollowPerson = false;
-    bBriefingRisePending = false;
+    bBriefingReturnPending = false;
     bNavigationFlight = true;
-    NavigationMode = 0;
+    bPlacementFlight = Place;
+    NavigationMode = Nav::DefaultMode;
     bNavigationBoost = false;
     bManualHeight = false;
     NavigationDestination = Ground;
@@ -248,9 +264,8 @@ void AScenarioSession::HandleNavigation(const FString &Player, const TSharedPtr<
     if (CameraTransitionDuration > 0 && Active)
     {
         CameraTransitionDuration = 0;
-        if (bNavigationFlight)
-            Manager->SetBehaviorActive(true);
-        bNavigationFlight = bBriefingRisePending = false;
+        FinishFlight();
+        bBriefingReturnPending = false;
         EnterFreeCamera();
     }
     if (!bFreeCamera && (Forward != 0 || Right != 0 || Up != 0))
@@ -318,15 +333,14 @@ void AScenarioSession::Tick(float DeltaSeconds)
             CameraTransitionDuration = 0;
             if (bNavigationFlight)
             {
-                bNavigationFlight = false;
-                Manager->SetBehaviorActive(true);
+                FinishFlight();
                 HeightFrom = NavigationClearance = Nav::EyeHeightCm;
                 HeightElapsed = Nav::HeightSeconds;
             }
-            if (bBriefingRisePending)
+            if (bBriefingReturnPending)
             {
                 FString Error;
-                const bool Started = TransitionCamera(TEXT("departure"), 2.4, Error);
+                const bool Started = TransitionCamera(TEXT("start"), 4, Error);
                 checkf(Started, TEXT("Cannot start briefing camera: %s"), *Error);
             }
         }

@@ -36,6 +36,20 @@ const keys = new Set([
   'ShiftLeft',
   'ShiftRight',
 ]);
+const moves: [string[], string][] = [
+  [['W', '↑'], 'Forward'],
+  [['S', '↓'], 'Back'],
+  [['A', '←'], 'Left'],
+  [['D', '→'], 'Right'],
+  [['E'], 'Up'],
+  [['Q'], 'Down'],
+];
+const pointerActions: [string, string][] = [
+  ['Drag', 'Look around'],
+  ['Scroll', 'Zoom the lens'],
+  ['Double-click', 'Travel there'],
+  ['Esc', 'Release the mouse'],
+];
 
 export default function WorldNavigation({
   transport,
@@ -46,7 +60,7 @@ export default function WorldNavigation({
   placing,
   busy,
   send,
-  place,
+  travelToScreen,
   hasPort = false,
   inspectionOnly = false,
 }: {
@@ -58,14 +72,16 @@ export default function WorldNavigation({
   placing: boolean;
   busy: boolean;
   send: (command: UnrealCommand) => Promise<unknown>;
-  place: (x: number, y: number) => Promise<void>;
+  travelToScreen: (x: number, y: number) => Promise<void>;
   hasPort?: boolean;
   inspectionOnly?: boolean;
 }) {
   const surface = useRef<HTMLDivElement>(null);
+  const exploring = !placing && !inspectionOnly;
   const [camera, setCamera] = useState(initialCamera);
   const [movementMode, setMovementMode] = useState(settings.modes[0]),
-    [help, setHelp] = useState(false);
+    [help, setHelp] = useState(false),
+    [legend, setLegend] = useState(true);
   const [focused, setFocused] = useState(false),
     [locked, setLocked] = useState(false);
   const [mouseError, setMouseError] = useState('');
@@ -292,11 +308,14 @@ export default function WorldNavigation({
         // events for releasing one button during a chorded click.
         onMouseDown={(e) => e.preventDefault()}
         onDoubleClick={(e) => {
-          if (!placing || busy || validClicks.current < 2) return;
+          if (inspectionOnly || busy || validClicks.current < 2) return;
           prepareTravel();
           const captured = document.pointerLockElement === e.currentTarget;
           const r = e.currentTarget.getBoundingClientRect();
-          void place(captured ? r.x + r.width / 2 : e.clientX, captured ? r.y + r.height / 2 : e.clientY);
+          void travelToScreen(
+            captured ? r.x + r.width / 2 : e.clientX,
+            captured ? r.y + r.height / 2 : e.clientY,
+          );
         }}
         onPointerDown={(e) => {
           if (!e.isPrimary || (e.button !== 0 && e.button !== 2) || busy) return;
@@ -402,7 +421,11 @@ export default function WorldNavigation({
           >
             <Expand size={16} />
           </button>
-          <button aria-label="Navigation help" aria-expanded={help} onClick={() => setHelp(!help)}>
+          <button
+            aria-label="Navigation help"
+            aria-expanded={exploring ? legend : help}
+            onClick={() => (exploring ? setLegend(!legend) : setHelp(!help))}
+          >
             <HelpCircle size={16} />
           </button>
         </div>
@@ -412,7 +435,50 @@ export default function WorldNavigation({
           {mouseError}
         </div>
       )}
-      {help && !inspectionOnly && (
+      {exploring && legend && (
+        <aside className="navigation-legend" aria-label="Navigation controls">
+          <div className="minimap-heading">Controls</div>
+          <dl className="legend-moves">
+            {moves.map(([keys, action]) => (
+              <div key={action}>
+                <dt>
+                  {keys.map((key) => (
+                    <kbd key={key}>{key}</kbd>
+                  ))}
+                </dt>
+                <dd>{action}</dd>
+              </div>
+            ))}
+          </dl>
+          <dl className="legend-actions">
+            <div>
+              <dt>
+                <kbd>Shift</kbd>
+              </dt>
+              <dd>Hold for {settings.boost}× speed</dd>
+            </div>
+            {settings.modes.map((mode) => (
+              <div key={mode.id}>
+                <dt>
+                  <kbd>{mode.key}</kbd>
+                </dt>
+                <dd>
+                  {mode.label} · {mode.speedCm / 100} m/s
+                </dd>
+              </div>
+            ))}
+            {pointerActions.map(([key, action]) => (
+              <div key={key}>
+                <dt>
+                  <kbd>{key}</kbd>
+                </dt>
+                <dd>{action}</dd>
+              </div>
+            ))}
+          </dl>
+        </aside>
+      )}
+      {help && placing && (
         <div className="navigation-help">
           <strong>Explore anywhere</strong>
           <p>
@@ -422,15 +488,13 @@ export default function WorldNavigation({
             <b>Q / E</b> to move down / up; release to keep that height above the ground.
           </p>
           <p>
-            Scroll to zoom the lens.{placing && ' Click the map to place the person and fly there.'}{' '}
-            <b>Mouse look</b> captures the cursor; <b>Esc</b> releases it.
+            Scroll to zoom the lens. Click the map to place the person and fly there. <b>Mouse look</b>{' '}
+            captures the cursor; <b>Esc</b> releases it.
           </p>
-          {placing && (
-            <p>
-              <b>Person</b> opens orbit inspection. Press any movement key or <b>Explore</b> to leave
-              inspection. WASD and drag exploration keep the placement unchanged.
-            </p>
-          )}
+          <p>
+            <b>Person</b> opens orbit inspection. Press any movement key or <b>Explore</b> to leave
+            inspection. WASD and drag exploration keep the placement unchanged.
+          </p>
         </div>
       )}
       {!inspectionOnly && (
@@ -450,14 +514,16 @@ export default function WorldNavigation({
           }
         />
       )}
-      <div className="native-navigation">
-        {placing ? 'Map click or ground double-click places and flies there · ' : ''}
-        {inspectionOnly
-          ? 'Drag to inspect · Scroll to zoom'
-          : mode === 'inspect'
-            ? 'Inspecting scene · Drag to orbit · WASD to explore'
-            : `${focused ? 'WASD move' : 'Click scene to explore'} · Q / E down / up · Drag to look · 1 / 2 / 3 modes · Shift faster`}
-      </div>
+      {!exploring && (
+        <div className="native-navigation">
+          {placing ? 'Map click or ground double-click places and flies there · ' : ''}
+          {inspectionOnly
+            ? 'Drag to inspect · Scroll to zoom'
+            : mode === 'inspect'
+              ? 'Inspecting scene · Drag to orbit · WASD to explore'
+              : `${focused ? 'WASD move' : 'Click scene to explore'} · Q / E down / up · Drag to look · 1 / 2 / 3 modes · Shift faster`}
+        </div>
+      )}
     </>
   );
 }

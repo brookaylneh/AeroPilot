@@ -65,7 +65,7 @@ const packet = {
   },
   catalog: {
     environmentId: 'valley',
-    navigationVersion: 9,
+    navigationVersion: 10,
     navigation: {
       heartbeatMs: 100,
       boost: 3,

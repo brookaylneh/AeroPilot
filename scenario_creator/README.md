@@ -8,7 +8,7 @@ scenarios. A saved scenario restores the person, appearance, situation, placemen
 movement state and mission brief together. Use Scenarios to save, load or begin a new
 scenario. Launch saves the reviewed brief and starts that case, then returns to the Map tab.
 **Explore world** uses the same Studio camera, navigation and map without a character;
-its map shows the world but does not travel.
+its map shows the world but does not travel. Double-clicking ground flies there.
 
 ## Authoring flow
 

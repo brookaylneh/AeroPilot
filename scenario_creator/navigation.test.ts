@@ -28,6 +28,18 @@ test('travel and placement are one strict command in either coordinate space', (
   }
 });
 
+test('exploration travel is a strict screen-space command without placement', () => {
+  const command = { type: 'travel', u: 0.4, v: 0.7 };
+  assert.deepEqual(requestSchema.parse(command), command);
+  for (const invalid of [
+    { ...command, u: 1.01 },
+    { ...command, v: -0.01 },
+    { ...command, space: 'screen' },
+    { type: command.type, u: command.u },
+  ])
+    assert.equal(requestSchema.safeParse(invalid).success, false);
+});
+
 const held: NavigationInput = {
   forward: 1,
   right: 0,

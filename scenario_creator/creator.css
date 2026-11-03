@@ -60,6 +60,7 @@
 .scenario-library-link,
 .creator-app .navigation-toolbar,
 .creator-app .navigation-help,
+.creator-app .navigation-legend,
 .creator-app .world-minimap,
 .creator-app .native-navigation {
   background-color: var(--glass);
@@ -511,6 +512,10 @@
 .creator-app .world-minimap {
   right: var(--edge);
   bottom: var(--content-bottom);
+}
+.creator-app .navigation-legend {
+  top: var(--content-top);
+  left: var(--edge);
 }
 .creator-transition {
   position: absolute;

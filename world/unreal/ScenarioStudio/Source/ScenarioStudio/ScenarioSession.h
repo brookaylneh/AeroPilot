@@ -15,13 +15,13 @@ class UPCGGenSourceComponent;
 
 namespace ScenarioNavigation
 {
-inline constexpr int32 ProtocolVersion = 3, Version = 9;
+inline constexpr int32 ProtocolVersion = 3, Version = 10;
 inline constexpr double EyeHeightCm = 170, Boost = 2, RampSeconds = .25, StopSeconds = .2, HeightSeconds = 1.2;
 inline constexpr double WatchdogSeconds = 1, HitchSeconds = 2, TelemetrySeconds = .05;
 inline constexpr double HeartbeatMs = 100, DefaultFov = 60, MinFov = 20, MaxFov = 90;
 inline constexpr double FramingDistanceCm = 450, FlightSpeedCm = 20000;
-inline constexpr double MinFlightSeconds = 2, MaxFlightSeconds = 6;
-inline constexpr double FlightArcFraction = .35, MaxFlightArcCm = 50000;
+inline constexpr double MinFlightSeconds = 2.5, MaxFlightSeconds = 6;
+inline constexpr double FlightArcFraction = .1, MaxFlightArcCm = 4000;
 struct Mode
 {
     const TCHAR *Id, *Label, *Key;
@@ -32,6 +32,7 @@ inline constexpr Mode Modes[] = {
     {TEXT("run"), TEXT("Run"), TEXT("2"), 500, EyeHeightCm},
     {TEXT("survey"), TEXT("Survey"), TEXT("3"), 2000, 4000},
 };
+inline constexpr int32 DefaultMode = 1;
 }
 
 // One admitted Pixel Streaming peer edits this session. Cosys remains independent.
@@ -84,7 +85,7 @@ class SCENARIOSTUDIO_API AScenarioSession : public AActor
     FString NavigationPlayer, NavigationSession;
     double NavigationSequence = -1, LastInputTime = 0, LastTelemetryTime = 0, LastNavigationTick = 0;
     double InputYaw = 0, InputPitch = 0, InputZoom = 0;
-    int32 NavigationMode = 0;
+    int32 NavigationMode = ScenarioNavigation::DefaultMode;
     bool bNavigationBoost = false;
     bool bManualHeight = false;
     double NavigationAcceleration = 0;
@@ -98,13 +99,16 @@ class SCENARIOSTUDIO_API AScenarioSession : public AActor
     float CameraTransitionFov = ScenarioNavigation::DefaultFov;
     double FlightStartClearanceCm = ScenarioNavigation::EyeHeightCm;
     bool bNavigationFlight = false;
+    // The placed person stays hidden and paused until its flight ends.
+    bool bPlacementFlight = false;
     FVector NavigationDestination = FVector::ZeroVector;
-    bool bBriefingRisePending = false;
+    bool bBriefingReturnPending = false;
     bool TransitionCamera(const FString &View, double Duration, FString &Error);
     void HandleNavigation(const FString &Player, const TSharedPtr<FJsonObject> &Input);
     void StopNavigation();
     void EnterFreeCamera();
-    bool TravelAndPlace(const FString &Space, double U, double V, FString &Error);
+    void FinishFlight();
+    bool TravelTo(const FString &Space, double U, double V, bool Place, FString &Error);
     bool GroundAt(const FVector &Point, double &GroundZ) const;
     FVector ConstrainCamera(FVector Location, double ClearanceCm) const;
     TSharedRef<FJsonObject> NavigationSettings() const;

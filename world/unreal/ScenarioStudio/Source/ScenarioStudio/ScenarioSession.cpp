@@ -33,7 +33,8 @@
 
 namespace
 {
-constexpr double StartBehindPortCm = 4200, StartHeightCm = 700, StartPitch = -10;
+constexpr double StartNorthOfPortCm = -4050, StartEastOfPortCm = 1910, StartHeightCm = 800;
+constexpr double StartYaw = -29.6, StartPitch = -6;
 TSharedPtr<FJsonObject> Parse(const FString &Text)
 {
     TSharedPtr<FJsonObject> Object;
@@ -270,7 +271,8 @@ bool AScenarioSession::SetCreatorStage(const FString &Stage, FString &Error)
         // Keep the preview pose until the location chooser starts the flight.
         StopNavigation();
         CameraTransitionDuration = 0;
-        bNavigationFlight = bBriefingRisePending = false;
+        FinishFlight();
+        bBriefingReturnPending = false;
         Manager->Person->SetActorHiddenInGame(!Manager->bPlaced);
     }
     else if (Stage == TEXT("briefing"))
@@ -283,9 +285,9 @@ bool AScenarioSession::SetCreatorStage(const FString &Stage, FString &Error)
                 Briefing->SetStringField(Key, TEXT(""));
         const bool Departing =
             Stage == TEXT("briefing") && CreatorStage == TEXT("placement") && Manager->bPlaced;
-        if (!(Departing ? TransitionCamera(TEXT("person"), .9, Error) : SetCamera(TEXT("start"), Error)))
+        if (!(Departing ? TransitionCamera(TEXT("departure"), 1.6, Error) : SetCamera(TEXT("start"), Error)))
             return false;
-        bBriefingRisePending = Departing;
+        bBriefingReturnPending = Departing;
         Manager->Person->SetActorHiddenInGame(!Manager->bPlaced);
     }
     else
@@ -387,7 +389,7 @@ void AScenarioSession::CameraTravel(double U, double V)
 {
     check(FParse::Param(FCommandLine::Get(), TEXT("ScenarioDiagnostics")));
     FString Error;
-    checkf(TravelAndPlace(TEXT("map"), U, V, Error), TEXT("%s"), *Error);
+    checkf(TravelTo(TEXT("map"), U, V, true, Error), TEXT("%s"), *Error);
 }
 
 void AScenarioSession::CameraNavigation(const FString &Input)
@@ -444,10 +446,8 @@ bool AScenarioSession::SetCamera(const FString &View, FString &Error)
         bManualHeight = false;
     bFollowPerson = View == TEXT("person") || View == TEXT("ground") || View == TEXT("elevated");
     CameraTransitionDuration = 0;
-    if (bNavigationFlight)
-        Manager->SetBehaviorActive(true);
-    bNavigationFlight = false;
-    bBriefingRisePending = false;
+    FinishFlight();
+    bBriefingReturnPending = false;
     // Shorter people and resting poses need a lower preview camera to keep
     // their whole body in frame. Free exploration has its own eye-height rule.
     InspectionGroundClearanceCm = (View == TEXT("creator") || View == TEXT("portrait")) ? 20. : 100.;
@@ -469,12 +469,13 @@ bool AScenarioSession::SetCamera(const FString &View, FString &Error)
     }
     if (View == TEXT("start"))
     {
-        NavigationMode = 0;
+        NavigationMode = ScenarioNavigation::DefaultMode;
         bNavigationBoost = false;
-        // The incident-command van stands south of the port; this looks north past both into the world.
+        // Behind the antenna mast: the incident command post and port in front, the ranger cabin and
+        // fire lookout on the horizon.
         FVector PortCenter, PortExtent;
         Port->GetActorBounds(false, PortCenter, PortExtent);
-        const FVector Entry = PortCenter - FVector(StartBehindPortCm, 0, 0);
+        const FVector Entry = PortCenter + FVector(StartNorthOfPortCm, StartEastOfPortCm, 0);
         FHitResult Ground;
         FCollisionQueryParams Query;
         if (!GetWorld()->LineTraceSingleByChannel(Ground, FVector(Entry.X, Entry.Y, Region->Max.Z),
@@ -485,7 +486,7 @@ bool AScenarioSession::SetCamera(const FString &View, FString &Error)
             return false;
         }
         Camera->SetActorLocationAndRotation(Ground.ImpactPoint + FVector(0, 0, StartHeightCm),
-                                            FRotator(StartPitch, 0, 0));
+                                            FRotator(StartPitch, StartYaw, 0));
         DesiredFieldOfView = ScenarioNavigation::DefaultFov;
         Camera->GetCameraComponent()->SetFieldOfView(DesiredFieldOfView);
         if (auto *PC = UGameplayStatics::GetPlayerController(this, 0))
@@ -539,8 +540,8 @@ bool AScenarioSession::SetCamera(const FString &View, FString &Error)
     {
         check(Manager->bPlaced && Manager->Person);
         CameraTarget = Manager->Person->GetActorLocation();
-        CameraDistance = 22000;
-        CameraPitch = 72;
+        CameraDistance = 2500;
+        CameraPitch = 25;
         CameraYaw = Camera->GetActorRotation().Yaw - 180.;
     }
     else if (View == TEXT("area"))
@@ -926,7 +927,10 @@ void AScenarioSession::HandleCommand(const FString &Player, const FString &Messa
                  Fields(*Command, {TEXT("type"), TEXT("space"), TEXT("u"), TEXT("v")}) &&
                  (*Command)->TryGetStringField(TEXT("space"), Value) &&
                  (*Command)->TryGetNumberField(TEXT("u"), A) && (*Command)->TryGetNumberField(TEXT("v"), B))
-            Ok = TravelAndPlace(Value, A, B, Error);
+            Ok = TravelTo(Value, A, B, true, Error);
+        else if (Type == TEXT("travel") && Fields(*Command, {TEXT("type"), TEXT("u"), TEXT("v")}) &&
+                 (*Command)->TryGetNumberField(TEXT("u"), A) && (*Command)->TryGetNumberField(TEXT("v"), B))
+            Ok = TravelTo(TEXT("screen"), A, B, false, Error);
         else if (Type == TEXT("camera") && Fields(*Command, {TEXT("type"), TEXT("view")}) &&
                  (*Command)->TryGetStringField(TEXT("view"), Value) && Value != TEXT("departure"))
             Ok = SetCamera(Value, Error);

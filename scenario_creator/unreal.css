@@ -138,6 +138,62 @@
   color: #f4f4f2;
   font: 500 11px var(--gcs-mono);
 }
+.navigation-legend {
+  position: absolute;
+  width: 236px;
+  padding: 8px 10px 10px;
+  border-radius: 14px;
+  pointer-events: none;
+}
+.navigation-legend dl {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+}
+.navigation-legend .legend-moves {
+  grid-template-columns: 1fr 1fr;
+  column-gap: 8px;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid #ffffff14;
+}
+.navigation-legend dl > div {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+}
+.navigation-legend dt {
+  display: flex;
+  gap: 3px;
+  flex: none;
+}
+.navigation-legend dl dt {
+  justify-content: flex-end;
+}
+.navigation-legend .legend-moves dt {
+  width: 47px;
+}
+.navigation-legend .legend-actions dt {
+  width: 84px;
+}
+.navigation-legend dd {
+  margin: 0;
+  color: #ffffffb3;
+  font-size: 12px;
+}
+.navigation-legend kbd {
+  min-width: 22px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid #ffffff2e;
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: #ffffff0f;
+  color: #f4f4f2;
+  font: 500 10px/17px var(--gcs-mono);
+  text-align: center;
+}
 .navigation-crosshair {
   position: absolute;
   left: 50%;

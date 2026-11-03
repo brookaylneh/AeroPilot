@@ -26,6 +26,7 @@ export const requestSchema = z.discriminatedUnion('type', [
       v: z.number().min(0).max(1),
     })
     .strict(),
+  z.object({ type: z.literal('travel'), u: z.number().min(0).max(1), v: z.number().min(0).max(1) }).strict(),
   z.object({ type: z.literal('rotate'), yaw: z.number().min(0).max(359) }).strict(),
   z.object({ type: z.literal('region'), regionId: z.string().regex(/^[a-z0-9-]{1,48}$/) }).strict(),
   z

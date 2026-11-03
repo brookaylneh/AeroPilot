@@ -6,13 +6,20 @@ Click the map to place the selected person and fly to them in one action. The ma
 then becomes a compact navigation map, revealing the flight. Repeating a map click
 or double-clicking visible ground moves the person
 and flies to the new location. The camera arrives at eye level, a few metres back
-along the approach heading in Walk mode, with the person framed in view. Terrain and obstacle
+along the approach heading in Run mode, with the person framed in view. Terrain and obstacle
 validation applies before the placement changes.
-The person's situation behaviour pauses during the flight and resumes on arrival
-or when the flight is cancelled.
+The person stays hidden with its situation behaviour paused during the flight; it
+appears and resumes on arrival or when the flight is cancelled.
 
-Travel takes 2–6 seconds according to distance. Its quintic easing starts and ends
-with zero velocity and acceleration; the path arcs above the terrain.
+Explore world opens 8 m above the apron behind the antenna mast, looking across the
+incident command post and launch port towards the ranger cabin and fire lookout.
+Double-clicking visible ground there flies the camera to that point the same way,
+without a person. Confirming a placement pulls back from the person for 1.6 seconds,
+then flies for 4 seconds to that same view, where the rescue briefing opens.
+
+Travel takes 2.5–6 seconds according to distance. Its quintic easing starts and ends
+with zero velocity and acceleration; the path rises by a tenth of its length, at
+most 40 m, above the straight line and never below terrain clearance.
 Movement, look input or a mode change cancels the flight at the
 current pose. WASD and drag exploration do not change the authored placement.
 
@@ -28,7 +35,8 @@ leave time for input delivery and the next frame. Height changes use a separate
 1.2-second smoothstep.
 
 Click the scene to focus it. W/S or up/down arrows move along the horizontal
-heading; A/D or left/right arrows strafe. Keys 1/2/3 select Walk/Run/Survey. Changing
+heading; A/D or left/right arrows strafe. Keys 1/2/3 select Walk/Run/Survey; Run is the
+default. Explore world lists every key and action in its Controls card. Changing
 the selector immediately returns focus to the scene. The toolbar displays the
 active mode and its speed.
 
@@ -62,8 +70,9 @@ labelled explicitly.
 ## Protocol and measurement
 
 Authoring and navigation use protocol version 3; the navigation capability
-version is 9. `travel-and-place` carries `space` (`map` or `screen`) and normalized
+version is 10. `travel-and-place` carries `space` (`map` or `screen`) and normalized
 `u`, `v`. It is one strictly validated request and one native operation.
+`travel` carries screen `u`, `v` and moves only the camera.
 
 Navigation carries absolute `forward`, `right`, `up`, `mode`, `boost`, cumulative
 `yaw`, `pitch`, `zoom`, and a session/sequence envelope. The browser sends changes

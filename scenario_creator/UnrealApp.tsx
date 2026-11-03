@@ -155,7 +155,7 @@ export default function UnrealApp({
       setWorking(false);
     }
   }
-  async function place(clientX: number, clientY: number) {
+  async function travelToScreen(clientX: number, clientY: number) {
     const video = container.current?.querySelector('video');
     if (!video?.videoWidth) return;
     const rect = video.getBoundingClientRect(),
@@ -165,7 +165,8 @@ export default function UnrealApp({
       height = width / ratio;
     const u = (clientX - rect.left - (rect.width - width) / 2) / width;
     const v = (clientY - rect.top - (rect.height - height) / 2) / height;
-    if (u >= 0 && u <= 1 && v >= 0 && v <= 1) await send({ type: 'travel-and-place', space: 'screen', u, v });
+    if (u >= 0 && u <= 1 && v >= 0 && v <= 1)
+      await send(explore ? { type: 'travel', u, v } : { type: 'travel-and-place', space: 'screen', u, v });
   }
   const options = (key: string) => packet?.catalog.options.find((group) => group.key === key)?.values || [];
   function swatches(key: 'topColor' | 'bottomColor' | 'backpackColor', label: string) {
@@ -214,7 +215,7 @@ export default function UnrealApp({
             placing={!explore && stage === 'placement'}
             busy={busy || working}
             send={send}
-            place={place}
+            travelToScreen={travelToScreen}
             hasPort={packet.catalog.droneFoundation}
             inspectionOnly={!explore && stage !== 'placement'}
           />
