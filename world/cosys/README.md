@@ -376,7 +376,7 @@ for completed checks and remaining limits. A source-level check does not establi
 
 For coupled shutdowns, land and disarm first. End the grounded mission session
 before stopping Unreal so inspections restore their cameras while RPC is available.
-The sequence below preserves the mission log and resets Studio before world shutdown.
+The sequence below preserves the mission log and resets the world before shutdown.
 Do not use the service's
 60-second Docker stop timeout while Unreal is still flushing caches. This sequence
 signals Unreal, observes only new log output, then stops Mission Control as soon as
@@ -401,14 +401,24 @@ from websockets.sync.client import connect
 
 mission_url = f"ws://127.0.0.1:{os.environ['SNR_MISSION_PORT']}"
 with connect(mission_url, open_timeout=10) as socket:
-    socket.send(json.dumps({"type": "status"}))
-    status = json.loads(socket.recv(timeout=10))
-assert status["can_open_studio"], "Fleet must be healthy, landed and disarmed"
-if status["mission"] is not None:
-    with connect(mission_url, open_timeout=10) as socket:
-        socket.send(json.dumps({"type": "studio"}))
-        result = json.loads(socket.recv(timeout=30))
-    assert result == {"type": "studio"}, result
+    socket.send(json.dumps({"type": "connect", "case_id": None}))
+
+    def state():
+        while True:
+            message = json.loads(socket.recv(timeout=30))
+            assert message["type"] != "error", message["message"]
+            if message["type"] == "state":
+                return message
+
+    current = state()
+    assert len(current["vehicles"]) == 4 and all(
+        not v["armed"] and v["landed_state"] == 1 and not v["link_lost"] and v["ekf_healthy"]
+        for v in current["vehicles"]
+    ), "Fleet must be healthy, landed and disarmed"
+    if current["mission"]["active"]:
+        socket.send(json.dumps({"type": "end_mission"}))
+        while state()["mission"]["active"]:
+            pass
 
 container = os.environ["SNR_CONTAINER_NAME"]
 assert container == "snr-unreal-live"
