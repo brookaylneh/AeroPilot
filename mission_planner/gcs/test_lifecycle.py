@@ -2,6 +2,7 @@
 
 import asyncio
 import json
+import os
 import tempfile
 import unittest
 import uuid
@@ -536,7 +537,8 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
 
 class FleetReset(unittest.IsolatedAsyncioTestCase):
     async def test_clear_requires_landing_acknowledgement_and_empty_readback(self):
-        fleet = Fleet("unused", Mock(), [])
+        with patch.dict(os.environ, {"SNR_FENCES_PATH": "/nonexistent/flight-fences.json"}):
+            fleet = Fleet("unused", Mock(), [])
         state = {"id": "Drone1", "armed": False, "landed_state": MAV.MAV_LANDED_STATE_ON_GROUND}
         fleet.snapshot = Mock(return_value=[state])
         vehicle = {

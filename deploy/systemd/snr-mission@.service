@@ -1,0 +1,12 @@
+[Unit]
+Description=SNR mission owner and ArduPilot fleet, slot %i
+After=network-online.target snr-vision@%i.service
+Wants=network-online.target snr-vision@%i.service
+
+[Service]
+Type=simple
+ExecStart=@ROOT@/.venv-cosys/bin/python -m mission_planner.gcs.host
+KillMode=mixed
+
+[Install]
+WantedBy=multi-user.target

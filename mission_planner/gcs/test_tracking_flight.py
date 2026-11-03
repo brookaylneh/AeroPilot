@@ -3,10 +3,11 @@
 import asyncio
 import copy
 import math
+import os
 import time
 import unittest
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 from mission_planner.gcs.fleet import MAV, Fleet
 from mission_planner.gcs.geodesy import ORIGIN, to_geodetic, to_local
@@ -63,7 +64,8 @@ class TrackingFlight(unittest.IsolatedAsyncioTestCase):
             "sysid": 1,
             "connection": SimpleNamespace(mav=self.mav),
         }
-        self.fleet = Fleet("unused", Mock(), [])
+        with patch.dict(os.environ, {"SNR_FENCES_PATH": "/nonexistent/flight-fences.json"}):
+            self.fleet = Fleet("unused", Mock(), [])
         self.fleet.fences_verified = True
         self.fleet.vehicles = {"Drone1": self.vehicle}
 

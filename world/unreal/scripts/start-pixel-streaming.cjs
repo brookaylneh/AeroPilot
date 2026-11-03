@@ -58,7 +58,15 @@ const signalling = new SignallingServer({
   maxSubscribers: 1,
   playerKeepaliveTimeout: 30000,
 });
-app.get('/health', (_req, res) =>
+const runtimeFile = path.join(required('SNR_DRONE_DATA_DIR'), 'runtime.json');
+// The renderer's own telemetry file lives beside this server, so a remote web server reads it here.
+app.get('/health', (_req, res) => {
+  let renderer = null;
+  if (fs.existsSync(runtimeFile)) {
+    const info = fs.statSync(runtimeFile);
+    const runtime = JSON.parse(fs.readFileSync(runtimeFile, 'utf8'));
+    renderer = { scenarioReady: runtime.scenarioReady, telemetryAgeMs: Date.now() - info.mtimeMs };
+  }
   res.json({
     status: 'ok',
     purpose: 'local Unreal stream diagnostic',
@@ -67,8 +75,9 @@ app.get('/health', (_req, res) =>
       id: s.streamerId,
       players: s.subscribers.size,
     })),
-  }),
-);
+    renderer,
+  });
+});
 server.listen(playerPort, '127.0.0.1', () => {
   console.log(`Unreal diagnostic player: http://127.0.0.1:${playerPort}`);
   console.log(`Local Unreal signalling: ws://127.0.0.1:${streamerPort}; one player per instance`);

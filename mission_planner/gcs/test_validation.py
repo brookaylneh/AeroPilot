@@ -1,6 +1,7 @@
 """Fence and reservation boundaries retained by the fleet's pure validation API."""
 
 import copy
+import os
 import unittest
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -30,7 +31,8 @@ def readback():
 
 
 def fleet(states, planned):
-    value = Fleet("unused", lambda event: None, [])
+    with patch.dict(os.environ, {"SNR_FENCES_PATH": "/nonexistent/flight-fences.json"}):
+        value = Fleet("unused", lambda event: None, [])
     value.fences_verified = True
     value.vehicles = {state["id"]: {"fence": readback()} for state in states}
     value.planned_routes = {state["id"]: [state] for state in states} | planned

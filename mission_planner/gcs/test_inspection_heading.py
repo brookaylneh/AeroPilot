@@ -2,6 +2,7 @@
 
 import asyncio
 import copy
+import os
 import unittest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
@@ -36,7 +37,8 @@ class InspectionHeading(unittest.IsolatedAsyncioTestCase):
                 {"command": MAV.MAV_CMD_NAV_LOITER_UNLIM},
             ],
         }
-        self.fleet = Fleet("unused", Mock(), [])
+        with patch.dict(os.environ, {"SNR_FENCES_PATH": "/nonexistent/flight-fences.json"}):
+            self.fleet = Fleet("unused", Mock(), [])
         self.fleet.fences_verified = True
         self.fleet.vehicles = {"Drone1": self.vehicle}
         self.fleet.snapshot = lambda: [copy.deepcopy(self.state)]

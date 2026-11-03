@@ -3,6 +3,7 @@
 import asyncio
 import copy
 import json
+import os
 import tempfile
 import threading
 import unittest
@@ -272,7 +273,8 @@ class FenceInstallation(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.addCleanup(self.temporary.cleanup)
-        self.fleet = Fleet(Path(self.temporary.name) / "sitl", Mock(), load())
+        with patch.dict(os.environ, {"SNR_FENCES_PATH": "/nonexistent/flight-fences.json"}):
+            self.fleet = Fleet(Path(self.temporary.name) / "sitl", Mock(), load())
         self.fleet.fences_verified = True
         self.fleet.fences_path = Path(self.temporary.name) / "fences.json"
         self.states = [

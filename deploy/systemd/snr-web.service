@@ -1,6 +1,6 @@
 [Unit]
 Description=SNR web applications and same-origin WebSockets
-After=network-online.target snr-mission.service snr-signalling.service
+After=network-online.target
 Wants=network-online.target
 
 [Service]

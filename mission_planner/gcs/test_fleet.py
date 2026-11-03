@@ -46,6 +46,15 @@ class Course(unittest.TestCase):
                 course_degrees(value, 0)
 
 
+class FencePersistence(unittest.TestCase):
+    def test_each_slot_persists_its_own_fences(self):
+        with patch.dict(os.environ, {"SNR_FENCES_PATH": "/srv/slots/1/flight-fences.json"}):
+            fleet = Fleet("unused", Mock(), [])
+        self.assertEqual(fleet.fences_path, Path("/srv/slots/1/flight-fences.json"))
+        with patch.dict(os.environ, clear=True), self.assertRaises(KeyError):
+            Fleet("unused", Mock(), [])
+
+
 class CameraLifetime(unittest.IsolatedAsyncioTestCase):
     def heartbeat(self, armed, mode="STABILIZE"):
         return SimpleNamespace(
@@ -60,7 +69,8 @@ class CameraLifetime(unittest.IsolatedAsyncioTestCase):
         home = homes()["Drone1"]
         latitude, longitude = (round(home[k] * 1e7) for k in ("latitude_deg", "longitude_deg"))
         now = time.monotonic()
-        self.fleet = Fleet("unused", Mock(), [])
+        with patch.dict(os.environ, {"SNR_FENCES_PATH": "/nonexistent/flight-fences.json"}):
+            self.fleet = Fleet("unused", Mock(), [])
         self.vehicle = {
             "connection": SimpleNamespace(mav=Mock(), recv_match=Mock()),
             "process": SimpleNamespace(returncode=None),
@@ -222,7 +232,8 @@ class CameraLifetime(unittest.IsolatedAsyncioTestCase):
 
     async def test_startup_retained_missions_do_not_enable_cameras(self):
         with tempfile.TemporaryDirectory(dir=ROOT / ".local") as directory:
-            fleet = Fleet(Path(directory) / "fleet", Mock(), [])
+            with patch.dict(os.environ, {"SNR_FENCES_PATH": "/nonexistent/flight-fences.json"}):
+                fleet = Fleet(Path(directory) / "fleet", Mock(), [])
             fleet.fences_path = Path(directory) / "fences.json"
             aircraft = [
                 {

@@ -64,6 +64,17 @@ case "$mode" in
   run-packaged|run-packaged-isolated)
     package_root=$(realpath "${SNR_PACKAGE_ROOT:?}")
     container_flags+=(--mount "type=bind,src=$package_root,dst=$package_root,readonly")
+    # A slot's state lives outside the checkout when a staged worktree runs the world.
+    for directory in "${SNR_DRONE_DATA_DIR:-}" "${SNR_SCENARIO_DATA_DIR:-}"; do
+      if [[ -n "$directory" ]]; then
+        directory=$(realpath "$directory")
+        container_flags+=(--mount "type=bind,src=$directory,dst=$directory")
+      fi
+    done
+    if [[ -n "${SNR_COSYS_SETTINGS:-}" ]]; then
+      settings=$(realpath "$SNR_COSYS_SETTINGS")
+      container_flags+=(--mount "type=bind,src=$settings,dst=$settings,readonly")
+    fi
     if [ -n "${SNR_CONTAINER_NAME:-}" ]; then
       [[ "$SNR_CONTAINER_NAME" =~ ^snr-[a-z0-9-]+$ ]] || exit 2
       container_flags+=(--name "$SNR_CONTAINER_NAME")

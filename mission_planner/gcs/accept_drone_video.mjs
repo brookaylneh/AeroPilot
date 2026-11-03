@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile, writeFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { droneIds } from './droneIdentity.ts';
+import { reserveScene } from '../../web/reserveScene.mjs';
 
 export async function measureDroneVideo(browser, url, output, seconds, sendTool) {
   const builtPage = await readFile('.local/dist/index.html', 'utf8');
@@ -37,11 +38,7 @@ export async function measureDroneVideo(browser, url, output, seconds, sendTool)
     };
   });
   try {
-    const readiness = await fetch(`${new URL(url).origin}/api/unreal/status`, {
-      signal: AbortSignal.timeout(5000),
-    });
-    assert(readiness.ok, 'Renderer status request failed');
-    assert.equal((await readiness.json()).state, 'ready', 'Release the other video player first');
+    await reserveScene(page, new URL(url).origin);
     const response = await page.goto(url);
     assert.equal(await response.text(), builtPage, 'Installed page differs from the measured build');
     await page.waitForFunction(() => window.missionRenderSamples?.length > 0);

@@ -366,7 +366,7 @@ a running world. Keep the fixed ports and instance assignments from `.local/runt
 
 Land and disarm the fleet, release the viewer and use the world-first shutdown below before
 replacing binaries or settings. Start the installed signalling and web services and Unreal;
-after its loopback RPC listener is ready, start `snr-mission`. It starts all four controllers
+after its loopback RPC listener is ready, start `snr-mission@<k>`. It starts all four controllers
 immediately because the world needs their motor replies. Do not start a second fleet or listener.
 
 Verify startup homes, fence and 184 Hz parameter readback, real camera frames and persisted
@@ -381,13 +381,16 @@ Do not use the service's
 60-second Docker stop timeout while Unreal is still flushing caches. This sequence
 signals Unreal, observes only new log output, then stops Mission Control as soon as
 world EndPlay has stopped AirSim physics. The log follower is the only helper it
-terminates.
+terminates. Set `SLOT` to the [environment slot](../../deploy/README.md#environment-slots)
+being stopped.
 
 ```sh
 cd /home/brook_avionuas/snr
 set -euo pipefail
+export SLOT=0
 set -a
 . .local/runtime.env
+. ".local/slots/$SLOT/runtime.env"
 set +a
 sudo -v
 .venv-cosys/bin/python - <<'PY'
@@ -420,8 +423,9 @@ with connect(mission_url, open_timeout=10) as socket:
         while state()["mission"]["active"]:
             pass
 
+slot = os.environ["SLOT"]
 container = os.environ["SNR_CONTAINER_NAME"]
-assert container == "snr-unreal-live"
+assert container == f"snr-unreal-slot{slot}"
 since = datetime.now(timezone.utc).isoformat()
 logs = subprocess.Popen(
     ["docker", "logs", "--follow", "--since", since, container],
@@ -437,20 +441,25 @@ try:
         chunk = os.read(logs.stdout.fileno(), 65536)
         assert chunk, "Unreal log ended before EndPlay"
         buffer = (buffer + chunk)[-131072:]
-    subprocess.run(["sudo", "-n", "systemctl", "stop", "snr-mission"], check=True)
+    subprocess.run(["sudo", "-n", "systemctl", "stop", f"snr-mission@{slot}"], check=True)
 finally:
     logs.terminate()
     logs.wait(timeout=5)
 PY
-timeout 180 bash -c 'while systemctl is-active --quiet snr-unreal; do sleep 1; done'
-test "$(systemctl show snr-unreal -p ActiveState --value)" = inactive
-test "$(systemctl show snr-unreal -p Result --value)" = success
-systemctl show snr-unreal -p ExecMainStatus -p Result
-test -z "$(docker ps -aq --filter name=^/snr-unreal-live$)"
+timeout 180 bash -c "while systemctl is-active --quiet snr-unreal@$SLOT; do sleep 1; done"
+test "$(systemctl show "snr-unreal@$SLOT" -p ActiveState --value)" = inactive
+test "$(systemctl show "snr-unreal@$SLOT" -p Result --value)" = success
+systemctl show "snr-unreal@$SLOT" -p ExecMainStatus -p Result
+test -z "$(docker ps -aq --filter "name=^/$SNR_CONTAINER_NAME$")"
 .venv-cosys/bin/python - <<'PY'
+import os
 from mission_planner.gcs.sitl import check_ports
-check_ports([8765, 41451, 9002, 9012, 9022, 9032, 9003, 9013, 9023, 9033,
-             14600, 14601, 14602, 14603, 5501, 5511, 5521, 5531])
+port = lambda name: int(os.environ[name])
+instances = [port("SNR_SITL_INSTANCE_BASE") + i for i in range(4)]
+check_ports([port("SNR_MISSION_PORT"), port("SNR_COSYS_PORT"),
+             *[9002 + 10 * i for i in instances], *[9003 + 10 * i for i in instances],
+             *[port("SNR_MAVLINK_BASE_PORT") + i for i in range(4)],
+             *[port("SNR_SITL_RC_BASE_PORT") + 10 * i for i in range(4)]])
 PY
 ```
 

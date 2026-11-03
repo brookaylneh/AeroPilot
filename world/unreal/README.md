@@ -487,7 +487,7 @@ The launcher accepts `SNR_STREAM_HEIGHT=2160` for 3840×2160 and `1440` for 2560
 Each package records its cooked shader platform in `shader-platform.txt`; the launcher requires
 that manifest and starts the matching SM5 or SM6 RHI. Packaging saves the exact engine configuration
 beside its log. Missing or unsupported shader platforms fail before starting Unreal.
-A resolution experiment requires restarting `snr-unreal`; changing the setting does not alter the
+A resolution experiment requires restarting `snr-unreal@<k>`; changing the setting does not alter the
 cooked lighting features or automatically select a different quality profile.
 
 Check SM6 and hardware ray-tracing support using UE's generated Vulkan profile implementation:

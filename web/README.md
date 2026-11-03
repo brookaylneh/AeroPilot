@@ -4,8 +4,23 @@ The installed public origin is configured in `.local/runtime.env`; see
 [deployment](../deploy/README.md) for the fixed ports and services.
 
 `/` opens Mission Control; `/home`, `/studio`, `/missionplanner` and `/mission`
-redirect there. Its tabs share one Pixel Streaming connection, because the renderer
-admits one subscriber; the video element moves between views without reconnecting.
+redirect there. Its tabs share one Pixel Streaming connection, because each
+environment's renderer admits one subscriber; the video element moves between views
+without reconnecting.
+
+Every visitor has their own environment without logging in. The server sets an
+anonymous `HttpOnly` `snr_session` cookie and `/api/slots` assigns it the lowest free
+[environment slot](../deploy/README.md#environment-slots): its world, four drones and
+mission. The mission and stream WebSockets reach only that slot. When every slot is
+taken, the page shows an All environments are busy card in the drone-card style and
+polls every 5 seconds; it never opens another visitor's scene. A slot is released
+30 seconds after its visitor's last socket closes if no mission is running. An
+abandoned mission is ended through the normal End mission request after
+`SNR_SLOT_IDLE_S` seconds without a connected browser, which returns airborne drones
+first. If that request fails, the slot is marked faulted, excluded from assignment
+and reported by `/healthz` until an operator restores its fleet and restarts
+`snr-web`. A second tab of the same browser shares the session's mission and reports
+that the scene is open in another tab.
 
 - **Map** is the planner. With no mission running, Start mission, a Wonder chat or
   a tool opens a general mission; End mission returns airborne drones, waits for
@@ -30,11 +45,22 @@ node --env-file=.local/runtime.env web/accept_entry.mjs \
   http://35.81.229.78 .local/evidence/mission-entry/<new-browser-run>
 ```
 
-It exercises the idle map, the redirected entry paths, Explore, character
-placement, a saved-scenario launch, the locked world tabs, refresh and End
+It claims a slot through the browser's own session, then exercises the idle map,
+the redirected entry paths, Explore, character placement, a saved-scenario launch, the locked world tabs, refresh and End
 mission. It records screenshots and mission messages, asserts that every aircraft
 stays grounded, and sends no model requests, flight tools or approvals. Failures
 are retained and never retried automatically.
+
+Slot acceptance opens two independent browser contexts and sends only `connect`:
+
+```sh
+node --env-file=.local/runtime.env web/accept_slots.mjs \
+  http://35.81.229.78 .local/evidence/slots/<new-browser-run>
+```
+
+With one slot, the second visitor sees the busy card without opening a socket, then
+receives the slot after the first closes. With two slots, the visitors receive distinct
+missions and each decodes video from its own world. The command flies nothing.
 
 Inspection evidence is served from the mission's registered image files at
 `/api/evidence/<mission>/<asset>`. Candidate reviews expose the same original

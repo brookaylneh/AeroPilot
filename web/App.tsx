@@ -3,12 +3,21 @@ import { Lock } from 'lucide-react';
 import MissionControl, { type Tab } from '../mission_planner/gcs/MissionControl';
 import { useMission } from '../mission_planner/gcs/missionState';
 import { useStream } from './useStream';
+import { useSlot } from './useSlot';
+import { Waiting } from './Waiting';
 import './app.css';
 
 const UnrealApp = lazy(() => import('../scenario_creator/UnrealApp'));
 
-// The world serves either the studio or a running mission, so its views open only between missions.
+// Each visitor gets a whole environment; a new slot remounts the mission and stream connections.
 export default function App() {
+  const slot = useSlot();
+  if (slot.state === 'assigned') return <Environment key={slot.slot} />;
+  return <Waiting slot={slot} />;
+}
+
+// The world serves either the studio or a running mission, so its views open only between missions.
+function Environment() {
   const mission = useMission();
   const stream = useStream();
   const [tab, setTab] = useState<Tab>('map');

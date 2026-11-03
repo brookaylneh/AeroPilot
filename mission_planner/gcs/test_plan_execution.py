@@ -3,12 +3,13 @@
 import asyncio
 import copy
 import json
+import os
 import tempfile
 import threading
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock
+from unittest.mock import AsyncMock, Mock, patch
 
 from mission_planner.environment import ROOT
 from mission_planner.gcs.fleet import MAV, Fleet, with_kept
@@ -26,7 +27,8 @@ TRIGGER = {"source": "agent", "event_id": "operator-1", "text": "Go to the new d
 
 
 def fleet(current):
-    value = Fleet("unused", Mock(), load())
+    with patch.dict(os.environ, {"SNR_FENCES_PATH": "/nonexistent/flight-fences.json"}):
+        value = Fleet("unused", Mock(), load())
     value.fences_verified = True
     value.snapshot = lambda: copy.deepcopy(current)
     value.vehicles = {

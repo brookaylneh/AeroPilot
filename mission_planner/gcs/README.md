@@ -120,7 +120,7 @@ remain inside inclusion, and all four homes and aircraft positions must remain a
 waive flight boundaries. Saving requires four healthy, landed, disarmed drones and the
 current fence version. It cancels old launch approvals and previews, ends old observation
 tasks, clears uploaded missions, then uploads and reads back all four fence lists. The
-verified configuration persists in `.local/data/flight-fences.json` across reloads, Studio
+verified configuration persists in each slot's `SNR_FENCES_PATH` across reloads, Studio
 sessions and service restarts. Failed upload/readback/persistence locks flight; telemetry
 continues and the editor displays the exact error. There is no retry or rollback. A
 separate browser editing an old version must reopen its editor before saving.
