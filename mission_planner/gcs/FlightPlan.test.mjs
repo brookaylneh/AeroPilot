@@ -606,7 +606,6 @@ test('planner missions require a remaining-task instruction after hold; raw miss
     exports: module.exports,
   });
   const props = {
-    resetBatteries: { enabled: false, send() {} },
     vehicles: [
       {
         id: 'Drone1',
@@ -702,7 +701,6 @@ test('only an active drone card is clickable, anywhere except its command contro
     prepare() {},
     exportPlan() {},
     progress: {},
-    resetBatteries: { enabled: false, send() {} },
   });
   const nodes = (node) =>
     Array.isArray(node)
@@ -798,6 +796,44 @@ test('observation approval shows task, participating aircraft, camera aim and fo
   const returning = render(observationPlans.returning);
   assert.match(returning, /Return home/);
   assert.doesNotMatch(returning, /Observe |Observation camera|candidate-lock allowance/);
+  const card = renderToStaticMarkup(
+    createElement(module.exports.PlanApproval, {
+      receipt: { plan: value, missions: { Drone1: receipt.missions.Drone2 } },
+    }),
+  );
+  assert.match(card, /aria-label="Mission plan version 1"/);
+  assert.equal((card.match(/<details /g) ?? []).length, 4);
+  assert.doesNotMatch(card, /<details[^>]* open/);
+  assert.deepEqual(
+    [...card.matchAll(/data-drone-id="(\w+)" style="--drone:(#\w+)"/g)].map((match) => match.slice(1)),
+    [
+      ['Drone1', '#56b4e9'],
+      ['Drone2', '#e6b450'],
+      ['Drone3', '#cc79a7'],
+      ['Drone4', '#68d6b1'],
+    ],
+  );
+  assert.match(card, /Survey area · 30 m · 5 m\/s · searching/);
+  assert.match(card, /Hover until instructed/);
+  assert.match(card, /2 steps · until instructed · 12% battery/);
+  assert.doesNotMatch(card, /red jacket|missing hiker|person|stand-off|Observation camera|SAM|Glimmer/);
+  const brief = module.exports.stepBrief;
+  assert.equal(
+    brief({ kind: 'fly', north_m: 610.4, east_m: -310.6, height_m: 38, speed_mps: 2.5 }),
+    'Fly to 610 m N, 311 m W · 38 m · 2.5 m/s',
+  );
+  assert.equal(
+    brief({
+      kind: 'circle',
+      north_m: -40,
+      east_m: 0,
+      radius_m: 25,
+      height_m: 30,
+      speed_mps: 4,
+      observe: true,
+    }),
+    'Circle 40 m S, 0 m E · 25 m radius · 30 m · 4 m/s · searching',
+  );
 });
 
 const tasking = {

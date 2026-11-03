@@ -1,5 +1,7 @@
+import type { CSSProperties } from 'react';
 import { z } from 'zod';
-import { droneIds } from './droneIdentity';
+import { ChevronRight } from 'lucide-react';
+import { droneColors, droneIds } from './droneIdentity';
 import { formatPosition, formatValue } from './display';
 import type { MissionEvent } from './missionState';
 
@@ -317,6 +319,86 @@ export function stepText(step: FlightStep): string {
     case 'return_home':
       return `Return home at ${flight}${speed} and land`;
   }
+}
+
+function stepAction(step: FlightStep, metres: (value: number) => string): string {
+  const place = (north: number, east: number) =>
+    `${metres(north)} ${Math.round(north) < 0 ? 'S' : 'N'}, ${metres(east)} ${Math.round(east) < 0 ? 'W' : 'E'}`;
+  switch (step.kind) {
+    case 'takeoff':
+      return 'Take off';
+    case 'fly':
+      return `Fly to ${place(step.north_m, step.east_m)}`;
+    case 'hover':
+      return step.seconds === null ? 'Hover until instructed' : `Hover ${formatValue(step.seconds, 's', 0)}`;
+    case 'circle':
+      return `Circle ${place(step.north_m, step.east_m)} · ${metres(step.radius_m)} radius`;
+    case 'survey':
+      return step.start_at ? 'Continue survey' : 'Survey area';
+    case 'follow':
+      return 'Follow line';
+    case 'land':
+      return 'Land';
+    case 'return_home':
+      return 'Return home and land';
+  }
+}
+
+export function stepBrief(step: FlightStep): string {
+  const metres = (value: number) => formatValue(Math.abs(value), 'm', 0);
+  const action = stepAction(step, metres);
+  return [
+    action,
+    'height_m' in step ? metres(step.height_m) : null,
+    'speed_mps' in step ? formatValue(step.speed_mps, 'm/s', Number.isInteger(step.speed_mps) ? 0 : 1) : null,
+    'observe' in step && step.observe ? 'searching' : null,
+  ]
+    .filter(Boolean)
+    .join(' · ');
+}
+
+export function PlanApproval({
+  receipt,
+}: {
+  receipt: Partial<PlanReceipt> & { plan: z.infer<typeof flightPlanSchema> };
+}) {
+  return (
+    <section className="gcs-plan-approval" aria-label={`Mission plan version ${receipt.plan.version}`}>
+      {receipt.plan.drones.map(({ drone_id, steps }) => {
+        const mission = receipt.missions?.[drone_id];
+        return (
+          <details
+            key={drone_id}
+            className="gcs-tool gcs-plan-drone"
+            data-drone-id={drone_id}
+            style={{ '--drone': droneColors[drone_id] } as CSSProperties}
+          >
+            <summary>
+              <ChevronRight size={13} />
+              <span className="gcs-action-title">{drone_id}</span>
+              <span className="gcs-tool-status">
+                {[
+                  `${steps.length} ${steps.length === 1 ? 'step' : 'steps'}`,
+                  mission &&
+                    (mission.duration_s === null
+                      ? 'until instructed'
+                      : formatValue(mission.duration_s / 60, 'min', 0)),
+                  mission && `${formatValue(mission.battery_required_percent, '%', 0)} battery`,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              </span>
+            </summary>
+            <ol>
+              {steps.map((step, index) => (
+                <li key={index}>{stepBrief(step)}</li>
+              ))}
+            </ol>
+          </details>
+        );
+      })}
+    </section>
+  );
 }
 
 const taskTitles: Record<Tasking['task'], string> = {

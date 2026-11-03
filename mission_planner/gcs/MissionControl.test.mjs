@@ -1267,15 +1267,28 @@ test('plan_task rows summarise the tasking and render the compiled receipt; expa
   assert.match(renderToStaticMarkup(page.approval()), /matching plan preview is unavailable/);
 });
 
-test('the simulator battery reset is offered only with the fleet landed at base', () => {
+test('Reset Batteries sits left of the mission button and is offered only with the fleet landed at base', () => {
   const grounded = state();
   const sent = [];
   const page = view({ ...grounded, chat_ready: false });
   page.render({ send: (message) => sent.push(message) });
-  assert.equal(page.fleet().props.resetBatteries.enabled, false);
+  const nav = () =>
+    nodes(page.tree()).find((node) => node.type === 'nav' && node.props.className === 'gcs-tabs');
+  const reset = () =>
+    nodes(nav()).find((node) => node.props.className === 'gcs-mission-button gcs-reset-batteries');
+  assert.equal(reset().props.disabled, true);
+  assert.equal(page.fleet().props.resetBatteries, undefined);
+  const buttons = nodes(nav()).filter((node) =>
+    String(node.props.className).startsWith('gcs-mission-button'),
+  );
+  assert.equal(
+    buttons.map((node) => node.props.className).join(' | '),
+    'gcs-mission-button gcs-reset-batteries | gcs-mission-button',
+  );
+  assert.match(renderToStaticMarkup(reset()), />Reset Batteries<\/button>$/);
   page.render({ state: { ...grounded, chat_ready: true } });
-  assert.equal(page.fleet().props.resetBatteries.enabled, true);
-  page.fleet().props.resetBatteries.send();
+  assert.equal(reset().props.disabled, false);
+  page.click(reset());
   assert.equal(sent.at(-1).type, 'reset_batteries');
 });
 

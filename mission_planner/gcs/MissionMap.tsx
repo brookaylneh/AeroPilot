@@ -45,6 +45,7 @@ const navigationBounds = {
   minY: searchBounds.minY - eastSpan / 8,
   maxY: searchBounds.maxY + eastSpan / 8,
 };
+const routeGap = 3;
 function gridTicks(minimum: number, maximum: number) {
   const first = Math.ceil(minimum / 200),
     last = Math.floor(maximum / 200);
@@ -52,6 +53,29 @@ function gridTicks(minimum: number, maximum: number) {
 }
 function rulerLabel(metres: number, positive: string, negative: string) {
   return metres === 0 ? '0' : `${Math.abs(metres)}${metres > 0 ? positive : negative}`;
+}
+// Legs sit right of travel so out-and-back legs never coincide; turns past 90° are bevelled, not mitred.
+export function separatedRoute(points: { x: number; y: number }[], offset: number) {
+  if (!(offset > 0)) throw new Error(`Route separation must be positive, got ${offset}`);
+  const route = points.filter((p, i) => i === 0 || p.x !== points[i - 1].x || p.y !== points[i - 1].y);
+  if (route.length < 2) return route;
+  const normals = route.slice(1).map((p, i) => {
+    const dx = p.x - route[i].x,
+      dy = p.y - route[i].y,
+      length = Math.hypot(dx, dy);
+    return { x: (-dy / length) * offset, y: (dx / length) * offset };
+  });
+  return route.flatMap((p, i) => {
+    const before = normals[i - 1] ?? normals[i],
+      after = normals[i] ?? normals[i - 1],
+      cos = (before.x * after.x + before.y * after.y) / offset ** 2;
+    if (cos < 0)
+      return [
+        { x: p.x + before.x, y: p.y + before.y },
+        { x: p.x + after.x, y: p.y + after.y },
+      ];
+    return [{ x: p.x + (before.x + after.x) / (1 + cos), y: p.y + (before.y + after.y) / (1 + cos) }];
+  });
 }
 function onHomePad(vehicle: Vehicle) {
   return (
@@ -575,11 +599,11 @@ export default function MissionMap({
                 {!returned.has(v.id) && v.mission.length > 0 && !planner?.active?.missions[v.id] && (
                   <polyline
                     className="gcs-route"
-                    points={v.mission
-                      .map((w) => {
-                        const q = projection(w.north_m, w.east_m);
-                        return `${q.x},${q.y}`;
-                      })
+                    points={separatedRoute(
+                      v.mission.map((w) => projection(w.north_m, w.east_m)),
+                      routeGap,
+                    )
+                      .map((q) => `${q.x},${q.y}`)
                       .join(' ')}
                   />
                 )}
@@ -655,11 +679,11 @@ export default function MissionMap({
                       ? [...v.mission.filter((item) => item.seq > 0 && item.seq < current), v]
                       : [];
                   const points = (route: { north_m: number; east_m: number }[]) =>
-                    route
-                      .map((point) => {
-                        const p = projection(point.north_m, point.east_m);
-                        return `${p.x},${p.y}`;
-                      })
+                    separatedRoute(
+                      route.map((point) => projection(point.north_m, point.east_m)),
+                      routeGap,
+                    )
+                      .map((p) => `${p.x},${p.y}`)
                       .join(' ');
                   return (
                     <g key={`${status}-${drone_id}`} style={{ color: droneColors[drone_id] }}>

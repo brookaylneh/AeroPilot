@@ -226,6 +226,43 @@ for (const [name, values] of [
   });
 }
 
+test('out-and-back legs are drawn apart, right of travel, with bevelled turnarounds', () => {
+  const module = { exports: {} };
+  runInNewContext(outputFiles[0].text, {
+    require,
+    module,
+    exports: module.exports,
+    ResizeObserver: class {},
+  });
+  const route = (points) => JSON.stringify(module.exports.separatedRoute(points, 3));
+  assert.equal(
+    route([
+      { x: 0, y: 0 },
+      { x: 0, y: -100 },
+      { x: 0, y: -100 },
+      { x: 0, y: 0 },
+    ]),
+    JSON.stringify([
+      { x: 3, y: 0 },
+      { x: 3, y: -100 },
+      { x: -3, y: -100 },
+      { x: -3, y: 0 },
+    ]),
+  );
+  assert.equal(
+    route([
+      { x: 0, y: 0 },
+      { x: 100, y: 0 },
+      { x: 100, y: 100 },
+    ]),
+    JSON.stringify([
+      { x: 0, y: 3 },
+      { x: 97, y: 3 },
+      { x: 97, y: 100 },
+    ]),
+  );
+});
+
 test('an approved plan stays dashed and only the flown part of its active version is solid', () => {
   const render = map();
   const mission = [

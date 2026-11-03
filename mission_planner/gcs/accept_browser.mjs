@@ -856,7 +856,7 @@ async function plannerViews(browser, url, output, seconds) {
             .getByLabel(`Mission plan version ${approval.arguments.version}`, { exact: true })
             .waitFor();
           assert.equal(
-            await page.locator('.gcs-flight-plan li').count(),
+            await page.locator('.gcs-plan-approval li').count(),
             planner.preview.plan.drones.reduce((count, drone) => count + drone.steps.length, 0),
           );
         }

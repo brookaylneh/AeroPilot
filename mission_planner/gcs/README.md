@@ -357,8 +357,8 @@ endurance for a strip return home. Wonder reviews the proposal and calls `apply_
 raises an operator approval card; a decline leaves the compiled hover and return in place. After a
 sensing failure the watcher compiles a reassignment: the failed drone flies its exit lane home and
 its rows beyond the one it stopped on join the drone with the most headroom; Wonder applies it
-with `apply_plan_change` without approval. The simulator battery never recharges, so the fleet
-strip offers **Reset simulator batteries** while every drone is landed at base: the patched SITL
+with `apply_plan_change` without approval. The simulator battery never recharges, so the view
+bar offers **Reset Batteries**, left of the mission button, while every drone is landed at base: the patched SITL
 re-initialises its state of charge when `SIM_BATT_VOLTAGE` changes and the autopilot's consumed
 charge is reset (`measurements/gcs-sitl-battery-reset.json`). Operator controls keep the raw
 `preview_plan` compile for hand-written plans.

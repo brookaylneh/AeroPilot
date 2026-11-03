@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import { z } from 'zod';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Maximize2, Minimize2 } from 'lucide-react';
 import { droneIds } from './droneIdentity';
 import type { MissionEvent } from './missionState';
 import { formatPosition, pacificTimestamp } from './display';
@@ -428,6 +428,22 @@ export function EvidenceImage({
               )}
             </svg>
           )}
+          <button
+            type="button"
+            className="gcs-evidence-expand"
+            aria-label={`View ${label} full screen`}
+            title="View full screen · click or press Esc to close"
+            onClick={(e) => {
+              if (document.fullscreenElement) void document.exitFullscreen();
+              else
+                e.currentTarget
+                  .parentElement!.requestFullscreen()
+                  .catch((error: Error) => onError(`Full-screen view unavailable: ${error.message}`));
+            }}
+          >
+            <Maximize2 className="gcs-evidence-open" size={13} />
+            <Minimize2 className="gcs-evidence-close" size={13} />
+          </button>
         </div>
       )}
       <a href={src} target="_blank" rel="noreferrer">
@@ -471,56 +487,61 @@ export function FindingCard({
       data-evidence-id={event.id}
       data-candidate-index={finding.candidate_index}
     >
-      <header>
-        <span className="gcs-evidence-status">Selected by Wonder · {inspection.drone_id}</span>
-        <h3>{finding.headline}</h3>
-        <p className="gcs-finding-assessment">
-          {
-            {
-              unresolved: 'Unresolved candidate',
-              observed: 'Observed subject',
-              matching: 'Matches reported details',
-            }[finding.assessment]
-          }
-        </p>
-        {confirmation && <p className="gcs-finding-confirmed">Confirmed by operator</p>}
-      </header>
-      <figure
-        className="gcs-evidence-frame gcs-finding-image"
-        data-frame-id={candidate.photo ? candidate.photo.frame_id : frame.frame_id}
-      >
-        <EvidenceImage
-          key={candidate.photo ? candidate.photo.frame_ref : frame.frame_ref}
-          src={candidate.photo ? candidate.photo.frame_ref : frame.frame_ref}
-          width={frame.width}
-          height={frame.height}
-          selection={candidate.photo ? undefined : candidate.box_xyxy}
-          mask={candidate.photo ? undefined : candidate.mask}
-          label={`${inspection.drone_id} selected candidate ${finding.candidate_index + 1}, ${candidate.photo ? '4x camera photograph' : 'original 4K frame'}`}
-          onError={onError}
-        />
-        <figcaption>
-          {candidate.photo
-            ? '4× evidence camera · original 3840 × 2160 photograph'
-            : `Original 4K frame · candidate ${finding.candidate_index + 1} mask and outline`}
-        </figcaption>
-      </figure>
-      <p className="gcs-evidence-provenance">
-        Captured {pacificTimestamp(candidate.photo ? candidate.photo.captured_at_ms : frame.captured_at_ms)}
-      </p>
-      {inspection.rescue?.tracking_error && (
-        <p className="gcs-finding-recorded-status">
-          Visual tracking unavailable at publication{inspection.rescue.phase === 'held' && ' · drone held'}
-          <br />
-          Published {pacificTimestamp(event.timestamp_ms)}
-        </p>
-      )}
-      {!confirmation && <p className="gcs-evidence-note">Visual evidence does not establish identity.</p>}
-      {inspection.error !== null && (
-        <p className="gcs-result-error" role="alert">
-          Inspection failed at publication. See the recorded error below.
-        </p>
-      )}
+      <div className="gcs-finding-main">
+        <div className="gcs-finding-text">
+          <header>
+            <span className="gcs-evidence-status">Selected by Wonder · {inspection.drone_id}</span>
+            <h3>{finding.headline}</h3>
+            <p className="gcs-finding-assessment">
+              {
+                {
+                  unresolved: 'Unresolved candidate',
+                  observed: 'Observed subject',
+                  matching: 'Matches reported details',
+                }[finding.assessment]
+              }
+            </p>
+            {confirmation && <p className="gcs-finding-confirmed">Confirmed by operator</p>}
+          </header>
+          <p className="gcs-evidence-provenance">
+            Captured{' '}
+            {pacificTimestamp(candidate.photo ? candidate.photo.captured_at_ms : frame.captured_at_ms)}
+            <br />
+            {candidate.photo
+              ? '4× evidence camera · original 3840 × 2160 photograph'
+              : `Original 4K frame · candidate ${finding.candidate_index + 1} mask and outline`}
+          </p>
+          {inspection.rescue?.tracking_error && (
+            <p className="gcs-finding-recorded-status">
+              Visual tracking unavailable at publication
+              {inspection.rescue.phase === 'held' && ' · drone held'}
+              <br />
+              Published {pacificTimestamp(event.timestamp_ms)}
+            </p>
+          )}
+          {!confirmation && <p className="gcs-evidence-note">Visual evidence does not establish identity.</p>}
+          {inspection.error !== null && (
+            <p className="gcs-result-error" role="alert">
+              Inspection failed at publication. See the recorded error below.
+            </p>
+          )}
+        </div>
+        <figure
+          className="gcs-evidence-frame gcs-finding-image"
+          data-frame-id={candidate.photo ? candidate.photo.frame_id : frame.frame_id}
+        >
+          <EvidenceImage
+            key={candidate.photo ? candidate.photo.frame_ref : frame.frame_ref}
+            src={candidate.photo ? candidate.photo.frame_ref : frame.frame_ref}
+            width={frame.width}
+            height={frame.height}
+            selection={candidate.photo ? undefined : candidate.box_xyxy}
+            mask={candidate.photo ? undefined : candidate.mask}
+            label={`${inspection.drone_id} selected candidate ${finding.candidate_index + 1}, ${candidate.photo ? '4x camera photograph' : 'original 4K frame'}`}
+            onError={onError}
+          />
+        </figure>
+      </div>
       <details className="gcs-evidence-details">
         <summary>Assessment and image details</summary>
         <p className="gcs-finding-summary">{finding.summary}</p>

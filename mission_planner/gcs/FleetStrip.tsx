@@ -27,7 +27,6 @@ export default function FleetStrip({
   prepare,
   exportPlan,
   progress,
-  resetBatteries,
 }: {
   vehicles: Vehicle[];
   selected: DroneId | null;
@@ -39,7 +38,6 @@ export default function FleetStrip({
   prepare: (form: 'take_off' | 'fly_route', id: DroneId) => void;
   exportPlan: (id: DroneId) => void;
   progress: Planner['progress'];
-  resetBatteries: { enabled: boolean; send: () => void };
 }) {
   const [expanded, setExpanded] = useState(true);
   return (
@@ -60,14 +58,6 @@ export default function FleetStrip({
           <ChevronRight size={11} />
         </span>
       </summary>
-      <button
-        className="gcs-fleet-reset"
-        disabled={!resetBatteries.enabled}
-        title="Simulator only: refills every battery to 100 % while the fleet is landed at base"
-        onClick={resetBatteries.send}
-      >
-        Reset simulator batteries
-      </button>
       <div className="gcs-fleet-cards">
         {droneIds.map((id) => {
           const v = vehicles.find((item) => item.id === id),

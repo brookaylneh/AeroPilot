@@ -4,6 +4,7 @@ import {
   ArrowLeftRight,
   ArrowUp,
   ArrowUpRight,
+  BatteryFull,
   Bell,
   Check,
   ChevronRight,
@@ -30,7 +31,13 @@ import InspectionPanel, {
   type Inspection,
 } from './InspectionPanel';
 import { SubagentLaunch, subagentLogs, SubagentStrip, SubagentTab } from './Subagents';
-import FlightPlan, { flightPlanSchema, planReceiptSchema, taskText, taskingSchema } from './FlightPlan';
+import FlightPlan, {
+  flightPlanSchema,
+  PlanApproval,
+  planReceiptSchema,
+  taskText,
+  taskingSchema,
+} from './FlightPlan';
 import DroneVideo from './DroneVideo';
 import {
   droneColors,
@@ -641,6 +648,15 @@ export default function MissionControl({
               </button>
             ))}
             <span className="gcs-tabs-spacer" />
+            <button
+              className="gcs-mission-button gcs-reset-batteries"
+              disabled={!enabled || !state?.chat_ready}
+              title="Simulator only: refills every battery to 100 % while the fleet is landed at base"
+              onClick={() => send({ type: 'reset_batteries' })}
+            >
+              <BatteryFull size={12} />
+              Reset Batteries
+            </button>
             {active ? (
               <button
                 className="gcs-mission-button"
@@ -797,10 +813,6 @@ export default function MissionControl({
               }}
               exportPlan={(id) => send({ type: 'export_plan', drone_id: id })}
               progress={state ? state.planner.progress : {}}
-              resetBatteries={{
-                enabled: enabled && Boolean(state?.chat_ready),
-                send: () => send({ type: 'reset_batteries' }),
-              }}
             />
             {world && <div className="gcs-world">{world}</div>}
           </section>
@@ -1042,7 +1054,7 @@ export default function MissionControl({
                 <p>{approvalSentence(approval.name, approval.arguments)}</p>
                 {pendingPlan ? (
                   <>
-                    <FlightPlan receipt={pendingPlan} />
+                    <PlanApproval receipt={pendingPlan} />
                     {pendingPlan.plan.drones.some(({ drone_id }) =>
                       state.vehicles.some((vehicle) => vehicle.id === drone_id && vehicle.armed),
                     ) && (
@@ -1057,10 +1069,12 @@ export default function MissionControl({
                     <Arguments values={approval.arguments} />
                   </details>
                 )}
-                <small>
-                  Requested by {approval.source === 'agent' ? 'Wonder' : 'operator controls'}. Safety checks
-                  run before execution.
-                </small>
+                {!pendingPlan && (
+                  <small>
+                    Requested by {approval.source === 'agent' ? 'Wonder' : 'operator controls'}. Safety checks
+                    run before execution.
+                  </small>
+                )}
                 <div className="gcs-approval-buttons">
                   <button
                     disabled={!enabled}
