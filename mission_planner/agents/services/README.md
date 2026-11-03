@@ -28,6 +28,9 @@ The training artifact SHA-256 is
 the assembled video checkpoint SHA-256 is
 `6f97e110579b94e9ad5d5537bcb6f8b2a54111181f0fcd97ed021a2b575ca666`.
 Health and session creation identify this variant explicitly.
+The packaged four-session replay measured 17.79 aggregate FPS and 7.97 GB peak
+process GPU memory. The exact protocol, masks, runtime versions and limitations
+are recorded in [the fine-tuned measurement](../../measurements/sam31-drone-ft-v2.json).
 
 `assemble_sam.py` runs on CPU in the pinned SAM image. It checks both source
 hashes, loads 1,102 detector tensors, preserves all 521 original mask-head,
