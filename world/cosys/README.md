@@ -188,19 +188,24 @@ alone does not establish missing lighting. An entirely black forward frame is sa
 losslessly as `<timestamp>-rejected.png` with pose/quality JSON in the inspection directory
 before raising. The calibrated nadir capture retains its strict shadow-fill check.
 Forward capture neither pauses physics nor selects the operator's video camera. Each inspection
-owns one RPC worker; cancellation drains its current acquisition before closing
+owns one capture RPC worker; SAM and native CSRT share its in-flight acquisition,
+with capture starts limited to 5 Hz. The capture also supplies read-only native BGR
+pixels to the bounded tracking history, avoiding a second JPEG decode. Each
+consumer has its own advancing timestamp cursor. Cancellation drains its current acquisition before closing
 the client. These are observation poses, not inferred object coordinates or SAR
 calibration claims. Changed camera settings require regenerated release settings and a coupled
 world restart.
 
 Automatic `observe: true` steps also use that forward camera. `ForwardCapture.aim` commands
 the level world rotation from the measured camera position to an observation-derived world
-point. The gimbal holds that world rotation through aircraft rotation between images; the
-capture owner remembers the world target and reapplies its aim before each image as the
-aircraft moves. Route look-ahead aims and their re-aims turn at most 45°/s; an explicit view,
-the first aim and tracking aims move directly. A quaternion cannot restore the configured NaN
-yaw, so reset clears the target and levels the camera at the current aircraft heading, which
-it then holds until the next aim.
+point. A separate aim loop runs at a requested 20 Hz independently of image capture,
+using the existing control RPC worker. Every step starts at the measured orientation
+and moves at most 12°/s, including the first aim, explicit view changes and return
+to the aircraft heading. The loop is suspended while native tracking owns the
+camera; native centering retains its own gentler limits. `camera-aim.jsonl` records
+the step and remaining angle. Loop failures propagate through capture and are not
+restarted. A quaternion cannot restore the configured NaN yaw, so reset establishes
+a smooth return toward level at the current aircraft heading.
 `route_look_ahead` projects the
 aircraft onto its active leg, then follows the remaining route across short terrain
 waypoints. It receives the previous navigation point followed by current/future targets
@@ -220,8 +225,9 @@ and view revision. Each image records `camera_view_revision` and brackets captur
 Callers retain one capture owner per drone and serialize explicit view changes
 with capture. A healthy candidate's native tracker owns the camera; manual view
 requests fail before cancellation or state changes. Explicit aiming remains
-available before inspection or while a lost candidate is held. Reset and close
-level the camera at the current heading and restore the original FOV.
+available before inspection or while a lost candidate is held. Reset restores the
+original FOV and slews toward level at the current heading. Close drains all
+workers and restores only the original FOV, without a final camera-pose jump.
 After candidate release, route search explicitly reclaims camera aiming on its next frame.
 
 `ForwardCapture.follow` uses `simSetCameraPose` directly on the existing `fpv` camera,

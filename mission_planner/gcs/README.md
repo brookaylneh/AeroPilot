@@ -4,7 +4,8 @@ The mission service requires `SNR_SITL_MODEL=airsim-copter`: four ArduCopter
 autopilots fly the Cosys vehicles. `quad` is retained only for the named
 `bench_sitl.py` built-in-physics benchmark. See the [coupling gate](../../world/cosys/README.md)
 and its recorded acceptance measurements. One Python process owns their
-MAVLink connections, Wonder, approvals and the event log. The browser receives actual
+MAVLink connections, approvals and the event log; spawned workers assemble and send
+multimodal Wonder and Glimmer requests. The browser receives actual
 telemetry, mission and fence readback, and each aircraft's forward-camera observations.
 General flights and Studio rescue briefings use the same instructions, tools and versioned planner. Public map data is
 `state.landmarks`; the service does not read private target placements.
@@ -534,6 +535,16 @@ is still being updated from live pixels. Camera changes, a released/rejected can
 an ended inspection except the held-budget case below, hidden video or a stalled stream invalidate the corresponding
 visual state. Failures are visible and do not restart the worker or retry requests.
 `window.visualTrackerSamples` keeps the last 2,000 processing, seed and error records.
+The box remains amber and labelled `ACQUIRING` until the onboard tracker has two
+fresh agreements with SAM. The browser's CSRT remains a separate display tracker;
+this label does not establish pixel alignment between its decoded video and the
+onboard camera. Browser tracking updates are sampled at most twice per second,
+with state changes recorded immediately. Video statistics are sampled once per
+second through the existing mission socket. `browser-video.jsonl`
+records decoded/presented/dropped frames, freezes, jitter, decode time, visibility
+and tracker timing. It rotates at 4 MiB, retaining one previous log. Optional
+WebRTC metrics are null when unavailable. These messages cannot start a mission,
+call a model or issue flight commands.
 
 The candidate interruption allowance and flight plan are unchanged. If that allowance
 expires and the aircraft has acknowledged its hold, `rescue.visual_hold` keeps the
@@ -544,14 +555,34 @@ telemetry. Departure, release, invalidation and mission closure end this permiss
 A real visual loss clears the box and requires a fresh detection; reopening a browser
 after the SAM session ended cannot reconstruct the previous CSRT state.
 
-`visual_follow.py` owns a native OpenCV CSRT session for the same selected SAM object,
-seeded from its registered 4K evidence image. The browser retains its visual box;
-camera control runs on the device even when the viewer disconnects. Native tracking
-uses the existing main-camera frames resized to 960×540, with one CPU worker per active
-drone and no queued frame backlog. It shares current captures with SAM and continues
-acquiring that camera during an authorized visual hold after SAM closes. Real tracking
-loss stops steering; only a newer detection of the selected identity may seed it again.
-A worker failure is reported and is not automatically restarted.
+`visual_follow.py` owns a native OpenCV CSRT session for the selected SAM object.
+The browser retains its visual box; camera control runs on the device even when
+the viewer disconnects. SAM and native CSRT share one in-flight camera acquisition
+and a bounded history of 12 native 4K pixel buffers. CSRT starts on the exact source
+timestamp, advances intervening frames in order and retains native subject detail
+in a local crop, normally 960×540 pixels. Measured camera rotations and intrinsics
+warp each update into the seed camera's reference frame; the returned box is
+projected back into the complete image. The transform compensates rotation, not
+translation or scene depth.
+
+Two distinct fresh SAM/CSRT comparisons with intersection-over-union at least 0.25
+are required before steering. Disagreement corrects from the exact observed frame;
+otherwise corrections are spaced by two seconds. Seeding cannot rewind published
+guidance. One CPU worker owns each drone's tracker. `native-tracking.jsonl` records
+updates, source age, processing time, agreement and correction. Aircraft guidance
+projects the same validated sample last used by the camera controller.
+Acquisition continues during an authorized visual hold after SAM closes. Real
+tracking loss stops steering; only a newer detection of the selected identity may
+seed it again. A worker failure is reported and is not automatically restarted.
+
+`observation.py` derives control boxes from the coherent foreground in each SAM
+mask. Only remote connected components smaller than 1% of the largest component
+are excluded; nearby detached limbs and tiny whole objects remain. Raw masks and
+raw boxes are retained alongside the control geometry in the observation log.
+This prevents a few remote pixels from moving a ground projection across a search
+boundary; actual boundary crossings and stale observations still stop following.
+Recorded replay results and their limits are in
+[`robust-lock.json`](../measurements/robust-lock.json).
 
 `centering.py` computes a bounded world-NED optical target from the CSRT box and its
 capture-time orientation. `world.cosys.inspection.ForwardCapture` applies it directly

@@ -715,6 +715,36 @@ test('review events reject mixed-up frames, candidate indexes and model authorit
   assert.equal(eventSchema.safeParse({ ...event(inspection()), text: ' ' }).success, false);
 });
 
+test('Python concurrent reviews from different capture frames pass the browser protocol', () => {
+  const reviews = JSON.parse(
+    execFileSync(
+      '.venv-cosys/bin/python',
+      [
+        '-c',
+        `
+import json, time, unittest
+from mission_planner.gcs.test_rescue_flow import RescueFlow
+case = RescueFlow('test_later_candidate_review_keeps_its_source_frame_and_reaches_wonder')
+result = unittest.TestResult()
+case.run(result)
+assert result.wasSuccessful(), result.errors + result.failures
+events = []
+for event in case.events:
+    if event['kind'] == 'review':
+        event['result']['camera_tracking'] = None  # Flight movement is mocked in this fixture.
+        events.append({'timestamp_ms': time.time() * 1000, 'name': None,
+                       'arguments': None, 'call_id': None, **event})
+print(json.dumps(events, allow_nan=False))
+`,
+      ],
+      { encoding: 'utf8' },
+    ),
+  );
+  assert.equal(reviews.length, 2);
+  for (const review of reviews) assert.deepEqual(eventSchema.parse(review), review);
+  assert.notEqual(reviews[0].result.latest.frame_id, reviews[1].result.latest.frame_id);
+});
+
 test('accepted evidence retains prior frames when the same inspection finds another candidate', () => {
   const first = eventSchema.parse(event(inspection()));
   const next = inspection();

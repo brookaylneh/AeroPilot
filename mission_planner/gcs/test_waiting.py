@@ -517,7 +517,7 @@ class AgentWake(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(calls), 1)
         self.assertEqual(self.mission.conversation[-1]["type"], "function_call_output")
 
-    async def test_wake_supplies_exact_original_and_mask_images(self):
+    async def test_wake_supplies_one_copy_of_each_original_photo(self):
         import httpx
 
         from mission_planner.agents.models import data_url
@@ -528,11 +528,14 @@ class AgentWake(unittest.IsolatedAsyncioTestCase):
         image_order = [
             {"kind": kind, "frame_id": "frame-one"} for kind in ("original", "SAM overlay")
         ]
-        self.mission.inspections.evidence.return_value = {
-            "metadata": {"frame_id": "frame-one"},
-            "images": images,
-            "image_order": image_order,
-        }
+        from mission_planner.gcs.test_inspection import model_evidence
+
+        self.mission.inspections.evidence.return_value = model_evidence(
+            self.mission.directory,
+            {"frame_id": "frame-one"},
+            image_order,
+            images,
+        )
         requests = []
 
         def respond(request):
@@ -567,7 +570,7 @@ class AgentWake(unittest.IsolatedAsyncioTestCase):
         content = requests[0]["input"][0]["content"]
         self.assertEqual(
             [p["image_url"] for p in content if p["type"] == "input_image"],
-            list(map(data_url, images)),
+            list(map(data_url, images[:1])),
         )
         self.assertTrue(
             any('"image_order"' in p["text"] for p in content if p["type"] == "input_text")

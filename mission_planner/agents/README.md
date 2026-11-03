@@ -14,6 +14,7 @@ landed drone would launch; a code-proposed search expansion needs operator appro
 | Module                         | Responsibility                                                            |
 | ------------------------------ | ------------------------------------------------------------------------- |
 | `models.py`                    | Provider-neutral SAM/Glimmer clients and Wonder Responses client          |
+| `model_process.py`             | Spawned request workers, immutable image references and provider errors   |
 | `tools.py`                     | Current tool catalogue, concise mission instructions, argument validation |
 | `map_context.py`               | Compact public landmarks and terrain queries                              |
 | `review.py`                    | Frozen Glimmer contract, original 4K evidence and logged review           |
@@ -140,6 +141,18 @@ one photograph per SAM session/track, captured on acquisition and reused during
 tracking. Its timestamp and source-detection identity are explicit. An absent or
 poorly framed subject in the later zoom view requires recheck; it does not negate
 the earlier detection. Main-camera masks and boxes never apply to the photograph.
+
+`model_process.py` keeps image encoding and HTTP JSON serialization outside the
+flight controller's Python interpreter. Wonder uses one spawned worker; Glimmer
+uses a pool of at most four. Conversation snapshots contain absolute evidence paths
+and SHA-256 hashes. Workers verify each immutable file before materializing the
+provider's existing image request contract. Photographs are deduplicated by SHA-256
+within the retained conversation history; later references add no duplicate image
+part. Each stateless request still sends the images retained in that history. Rejection
+removes its image from subsequent requests, including images discovered after the
+initial lock. A submitted request is an immutable snapshot. Worker and network
+failures propagate without retries, preserving Wonder HTTP status and timeout
+messages. Glimmer's frozen template and sampling settings are unchanged.
 Capture, review and evidence hashes bind decisions to the saved image. Model
 preprocessing is separate from this transport contract. See [model services](services/README.md)
 for runtime, dependencies, benchmarks and their limits.
@@ -260,10 +273,17 @@ There is no automatic hover checkpoint. A real required-sensing failure holds th
 wakes Wonder to explain the coverage gap and obtain operator direction; other drones
 continue. This policy is stated in the launch plan. A plain go-to plan starts no inference.
 
-A stable track above threshold pauses only its drone for Glimmer review. The
-highest-confidence eligible track is selected first. Fresh observations of that same
-ID drive bounded following; other candidates can be reviewed after a rejection and
-checked continuation. No silent target substitution occurs. Lost correspondence holds
+A stable track above threshold pauses only its drone for Glimmer review. Eligible
+tracks initially follow birth order: SAM's video score is the detector score at
+birth, not a refreshed semantic confidence. Up to two objects per drone and four
+objects across the fleet may be reviewed concurrently. Each result is recorded as
+it completes, with its exact source frame, mask and original 4× photograph.
+Candidates have explicit pending, verified, recheck and rejected states. A fresh
+verified candidate can preempt an unresolved one within the same saved mission
+checkpoint; the handoff is logged and does not resume the route between objects.
+New objects discovered during a lock receive one photograph and review each.
+Rejected session/track identities stay excluded from later evidence and relock.
+Fresh observations of the selected ID drive bounded following. Lost correspondence holds
 and preserves review evidence. A clear negative permits release to the saved unfinished
 route; positive and uncertain results wake Wonder. Unknown appearance remains
 `cannot_tell`, and `recheck` with `action: none` remains valid. No model result establishes

@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Inspection } from './InspectionPanel';
 import type { TrackerReply, TrackerRequest } from './videoTracker.worker';
+import type { VideoMetrics } from './videoDiagnostics';
 
 type Frame = NonNullable<Inspection['latest']>;
-export type Lock = 'reviewing' | 'locked' | 'held';
-const labels = { reviewing: 'REVIEWING', locked: 'LOCKED', held: 'HELD' };
+export type Lock = 'acquiring' | 'reviewing' | 'locked' | 'held';
+const labels = { acquiring: 'ACQUIRING', reviewing: 'REVIEWING', locked: 'LOCKED', held: 'HELD' };
 type BoxFrame = {
   width: number;
   height: number;
@@ -39,7 +40,7 @@ export function drawBoxes(
   const scale = Math.min(canvas.width / frame.width, canvas.height / frame.height);
   const left = (canvas.width - frame.width * scale) / 2;
   const top = (canvas.height - frame.height * scale) / 2;
-  drawing.strokeStyle = drawing.fillStyle = '#20e1b4';
+  drawing.strokeStyle = drawing.fillStyle = lock === 'acquiring' ? '#efba54' : '#20e1b4';
   drawing.lineWidth = Math.max(2, canvas.width / 600);
   drawing.font = `600 ${Math.max(12, canvas.width / 80)}px 'DM Sans', sans-serif`;
   drawing.textBaseline = 'bottom';
@@ -68,6 +69,7 @@ export function followVideo(
   changed: (state: TrackerState, visible: boolean) => void,
   onError: (message: string) => void,
   onTrack?: TrackSample,
+  diagnostics?: (metrics: VideoMetrics) => void,
 ) {
   const tracking = source().lock !== undefined;
   let worker: Worker | null = null,
@@ -89,7 +91,13 @@ export function followVideo(
     presentedAt = 0,
     state: TrackerState = tracking ? 'loading' : 'waiting';
 
+  let diagnosedAt = -Infinity;
   function log(values: Record<string, string | number | boolean>) {
+    const now = performance.now();
+    if (values.type !== 'tracked' || now - diagnosedAt >= 500) {
+      diagnosedAt = now;
+      diagnostics?.({ ...values, trackId: source().trackId, lock: source().lock ?? 'searching' });
+    }
     if (!window.visualTrackerSamples) window.visualTrackerSamples = [];
     window.visualTrackerSamples.push({ at: performance.now(), ...values });
     if (window.visualTrackerSamples.length > 2000) window.visualTrackerSamples.shift();
@@ -311,6 +319,7 @@ export default function VideoBoxes({
   trackId,
   onError,
   onTrack,
+  onDiagnostic,
 }: {
   video: HTMLVideoElement;
   frame: Frame | null;
@@ -318,10 +327,13 @@ export default function VideoBoxes({
   trackId: number | null;
   onError: (message: string) => void;
   onTrack?: TrackSample;
+  onDiagnostic?: (metrics: VideoMetrics) => void;
 }) {
   const canvas = useRef<HTMLCanvasElement>(null);
   const source = useRef<Source>({ frame, lock, trackId });
   const sample = useRef(onTrack);
+  const diagnose = useRef(onDiagnostic);
+  diagnose.current = onDiagnostic;
   useEffect(() => {
     sample.current = onTrack;
   }, [onTrack]);
@@ -342,6 +354,7 @@ export default function VideoBoxes({
       },
       onError,
       (box, at) => sample.current?.(box, at),
+      (metrics) => diagnose.current?.(metrics),
     );
     return () => tracker.dispose();
   }, [video, onError, tracking, trackId]);

@@ -55,6 +55,9 @@ function fixture(react) {
   let sample = null;
   // The page owns the shared stream; a camera view never ends it.
   const transport = {
+    observeVideo() {
+      return () => {};
+    },
     command(command) {
       const response = deferred();
       commands.push({ ...response, command });

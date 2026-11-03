@@ -69,6 +69,7 @@ function row(drone, phase, changes = {}) {
     sampling: { missed_slots: 0, last_interval_s: 1, last_cycle_s: 0.84 },
     rescue: {
       ...rescueState(),
+      selected_track_id: candidate ? 1 : null,
       phase,
       review_id: candidate ? review : null,
       reports: [],
@@ -115,6 +116,22 @@ reviewed.rescue.reports = [
     },
   },
 ];
+const photoId = '00000000-0000-4000-8000-000000000099';
+reviewed.rescue.reports[0].images.photo = {
+  frame_id: photoId,
+  frame_ref: `/api/evidence/${mission}/${photoId}-frame.jpg`,
+  sha256: 'c'.repeat(64),
+  camera_id: 'evidence_zoom',
+  width: 3840,
+  height: 2160,
+  zoom: 4,
+  horizontal_fov_deg: 28.072485,
+  captured_at_ms: 3500,
+  source_frame_id: reviewed.id,
+  source_track_id: 1,
+  source_captured_at_ms: 3000,
+  vision_session_id: mission,
+};
 const events = [
   {
     ...event('plan', 'tool_call', null, 'preview_plan'),
@@ -210,13 +227,13 @@ test('a subagent tab shows the SAM 3.1 handoff, Glimmer response and its own act
     'Brief · hiker in a red jacket',
     'search inspection scheduled',
     'SAM 3.1 → Glimmer',
-    'confidence 0.81',
-    `${live.id}-frame.jpg`,
+    'initial detector score 0.81',
+    `${photoId}-frame.jpg`,
     'following unavailable',
     'Glimmer responds',
     'Discarded',
     'Clothing does not match the red jacket.',
-    'Original 4K frame reviewed by Glimmer',
+    '4× camera photograph reviewed by Glimmer',
     'A person is visible but the jacket colour differs.',
     '120 reasoning tokens',
     'Called disregard_and_continue',

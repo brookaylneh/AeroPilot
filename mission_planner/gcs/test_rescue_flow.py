@@ -10,6 +10,7 @@ import threading
 import time
 import unittest
 import uuid
+from collections import deque
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
@@ -17,6 +18,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import cv2
 import numpy as np
 
+from mission_planner.agents.review import review_candidate
 from mission_planner.agents.test_vision import mask_box
 from mission_planner.environment import ROOT
 from mission_planner.gcs import tracking
@@ -151,6 +153,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
             directory=self.directory,
             fleet=self.fleet,
             events=self.events,
+            conversation=[],
             event=Mock(side_effect=event),
             launch=asyncio.create_task,
             plan_active=self.receipt,
@@ -160,9 +163,9 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         )
         self.capture_count = 0
 
-        async def capture():
+        async def capture(after_timestamp_ns=0):
             self.capture_count += 1
-            return {
+            metadata = {
                 "drone_id": "Drone1",
                 "camera_id": "fpv",
                 "horizontal_fov_deg": math.degrees(
@@ -181,10 +184,13 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
                 "height": 2160,
                 "timestamp_ns": self.capture_count * 200_000_000,
                 "captured_at_ms": time.time() * 1000,
-            }, jpeg
+            }
+            self.capture.video_frames.append((metadata, self.frame))
+            return metadata, jpeg
 
         self.capture = SimpleNamespace(
             capture=AsyncMock(side_effect=capture),
+            video_frames=deque(maxlen=12),
             aim=AsyncMock(),
             visual_controlled=False,
             target=None,
@@ -289,7 +295,6 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
                 ),
             ),
             ("mission_planner.gcs.inspection.vision_http", Mock(return_value=Mock())),
-            ("mission_planner.gcs.inspection.Glimmer", self.glimmer),
             ("mission_planner.gcs.inspection.VisionTrack", self.vision),
             ("mission_planner.gcs.inspection.sampling_start", lambda name, now: now),
             (
@@ -309,8 +314,36 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
             self.addCleanup(patcher.stop)
         self.inspections = Inspections(self.mission)
 
+        async def review_photo(look_for, prompt, metadata, path, detection, prefix):
+            model = self.glimmer()
+            try:
+                return await asyncio.to_thread(
+                    review_candidate,
+                    model,
+                    look_for,
+                    prompt,
+                    metadata,
+                    Path(path).read_bytes(),
+                    detection,
+                    prefix,
+                )
+            finally:
+                model.http.close()
+
+        self.inspections._review_photo = AsyncMock(side_effect=review_photo)
+
+        self.estimates = {}
+        self.inspections.visual.estimate = lambda name, track_id: self.estimates.get(
+            (name, track_id)
+        )
+
         async def centered(row, metadata, detections):
             if "rescue" in row and row["rescue"]["phase"] in ("reviewing", "tracking", "held"):
+                for detection in detections:
+                    self.estimates[(row["drone_id"], detection["track_id"])] = (
+                        metadata,
+                        [v / 4 for v in detection["box_xyxy"]],
+                    )
                 row["camera_tracking"] = {
                     "status": "moved",
                     "centering": {"error_x_px": 0, "error_y_px": 0, "centered": True},
@@ -348,6 +381,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
 
     async def test_new_search_hands_candidate_to_native_camera_and_review(self):
         del self.inspections.visual.observe
+        del self.inspections.visual.estimate
         self.capture.capture_inflight = 1
         self.capture.video_sample = None
         self.capture.follow_generation = 1
@@ -575,7 +609,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
     async def test_step_transition_during_capture_skips_inference_and_observation_count(self):
         capture = self.capture.capture.side_effect
 
-        async def finish_step():
+        async def finish_step(after_timestamp_ns=0):
             result = await capture()
             self.states["Drone1"]["mission_current"] = 3
             return result
@@ -602,7 +636,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         capture = self.capture.capture.side_effect
         self.states["Drone1"]["north_m"] = 99.5
 
-        async def outside_capture():
+        async def outside_capture(after_timestamp_ns=0):
             metadata, jpeg = await capture()
             metadata["camera_position_world_m"]["x"] = 100.5
             return metadata, jpeg
@@ -629,7 +663,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
     async def test_aircraft_leaving_sector_during_capture_still_skips_inference(self):
         capture = self.capture.capture.side_effect
 
-        async def outside_capture():
+        async def outside_capture(after_timestamp_ns=0):
             result = await capture()
             self.states["Drone1"]["north_m"] = 101
             return result
@@ -847,13 +881,13 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.vision.call_count, 1)
         evidence = self.inspections.evidence(row["id"])
         self.assertEqual(evidence["metadata"]["timestamp_ns"], 200_000_000)
-        self.assertEqual(len(evidence["images"]), 1)
+        self.assertEqual(len(evidence["image_paths"]), 1)
         images = row["rescue"]["reports"][0]["images"]
         registry = json.loads((self.directory / "evidence/assets.json").read_text())
         name = images["frame_ref"].rsplit("/", 1)[1]
         self.assertIn(name, registry)
         original = (self.directory / "evidence" / name).read_bytes()
-        self.assertEqual(evidence["images"][0], photograph_bytes())
+        self.assertEqual(Path(evidence["image_paths"][0]).read_bytes(), photograph_bytes())
         self.assertEqual(hashlib.sha256(original).hexdigest(), images["sha256"])
         self.assertNotEqual(hashlib.sha256(original).hexdigest(), images["photo"]["sha256"])
         self.assertEqual(
@@ -939,7 +973,11 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         metadata["vision_session_id"] = str(uuid.uuid4())
         self.inspections.directory.mkdir()
         await self.inspections._save_frame(metadata, jpeg)
-        detection = {"track_id": 1, "box_xyxy": [1800, 800, 1920, 1020]}
+        detection = {
+            "track_id": 1,
+            "box_xyxy": [1800, 800, 1920, 1020],
+            "mask": mask_box([1800, 800, 1920, 1020]),
+        }
         row = {
             "id": "cancelled-inspection",
             "drone_id": "Drone1",
@@ -970,7 +1008,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
             await task
         self.glimmer.return_value.http.close.assert_called_once()
         self.assertEqual(self.review_count, 1)
-        log = json.loads((self.directory / "cancelled-review-0.json").read_text())
+        log = json.loads((self.directory / "cancelled-review-1.json").read_text())
         self.assertEqual(log["result"]["report"]["decision"], "discard")
         self.assertIsNone(log["error"])
 
@@ -1196,8 +1234,8 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
     async def test_capture_failure_is_terminal_but_completed_review_remains_available(self):
         acquire = self.capture.capture.side_effect
 
-        async def capture():
-            if self.fleet.tracking_start.called:
+        async def capture(after_timestamp_ns=0):
+            if self.glimmer.called:
                 raise TimeoutError("Tracking camera RPC timed out")
             return await acquire()
 
@@ -1275,7 +1313,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
     async def test_stale_detector_evidence_cannot_start_following(self):
         acquire = self.capture.capture.side_effect
 
-        async def stale_capture():
+        async def stale_capture(after_timestamp_ns=0):
             metadata, image = await acquire()
             metadata["captured_at_ms"] -= 2000
             return metadata, image
@@ -1471,7 +1509,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         self.review_ready.set()
         await asyncio.wait_for(asyncio.gather(*self.inspections.reviews), 5)
         self.assertEqual(row["rescue"]["reports"][0]["report"]["decision"], "escalate")
-        self.assertEqual(len(self.inspections.evidence(row["id"])["images"]), 1)
+        self.assertEqual(len(self.inspections.evidence(row["id"])["image_paths"]), 1)
         self.assertEqual(self.inspections.pending_events()[0]["id"], row["id"])
         with self.assertRaisesRegex(AssertionError, "no longer available"):
             self.inspections.disregard_and_continue(row["rescue"]["review_id"], "Do not resume")
@@ -1633,7 +1671,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         acquire, create = self.capture.capture.side_effect, self.vision.side_effect
         self.dispatch_timings = []
 
-        async def capture():
+        async def capture(after_timestamp_ns=0):
             await asyncio.sleep(0.25)
             return await acquire()
 
@@ -2017,7 +2055,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         self.inspections.camera_views["Drone1"]["revision"] = 2
         acquire = self.capture.capture.side_effect
 
-        async def capture():
+        async def capture(after_timestamp_ns=0):
             metadata, jpeg = await acquire()
             metadata["camera_view_revision"] = 2
             return metadata, jpeg
@@ -2175,3 +2213,123 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         await close_track(track)
         track.close.assert_called_once()
         track.http.close.assert_called_once()
+
+    async def test_verified_second_candidate_preempts_pending_review_without_resuming_route(self):
+        self.decisions = ["discard", "escalate"]
+        self.review_ready.set()
+        pending = asyncio.Event()
+        reviewer = self.inspections._review_photo.side_effect
+        entered = set()
+
+        async def review(look_for, prompt, metadata, path, detection, prefix):
+            ident = detection["track_id"]
+            entered.add(ident)
+            if ident == 1:
+                await pending.wait()
+            result = await reviewer(look_for, prompt, metadata, path, detection, prefix)
+            result["report"]["decision"] = self.decisions[ident - 1]
+            return result
+
+        self.inspections._review_photo.side_effect = review
+        try:
+            await self.inspections.start_search(self.receipt)
+            row = next(iter(self.inspections.rows.values()))
+            await self.until(lambda: entered == {1, 2})
+            await self.until(lambda: row["rescue"]["selected_track_id"] == 2)
+            self.assertFalse(pending.is_set())
+            self.assertTrue(
+                any(r["report"]["decision"] == "escalate" for r in row["rescue"]["reports"])
+            )
+            self.fleet.tracking_start.assert_awaited_once()
+            self.fleet.tracking_resume.assert_not_awaited()
+            pending.set()
+            await self.until(lambda: len(row["rescue"]["reports"]) == 2)
+            session_id = self.tracks[0].session_id
+            self.assertIn((session_id, 1), self.inspections.rejected_tracks)
+            candidate = await self.inspections.get_candidate(row["id"])
+            self.assertEqual([d["track_id"] for d in candidate["frame"]["detections"]], [2])
+            self.assertEqual(len(self.inspections.photographs), 2)
+        finally:
+            pending.set()
+
+    async def test_first_detection_score_does_not_choose_tree_over_older_person_track(self):
+        self.decisions = ["escalate", "discard"]
+        detector = self.detect.side_effect
+
+        def reordered(*args):
+            observation = copy.deepcopy(detector(*args))
+            observation["detections"][0]["confidence"] = 0.72649574
+            observation["detections"][1]["confidence"] = 0.73443985
+            observation["detections"].reverse()
+            return observation
+
+        self.detect = Mock(side_effect=reordered)
+        await self.inspections.start_search(self.receipt)
+        row = next(iter(self.inspections.rows.values()))
+        await self.until(lambda: row["rescue"]["selected_track_id"] is not None)
+        self.assertEqual(row["rescue"]["selected_track_id"], 1)
+
+    async def test_later_candidate_review_keeps_its_source_frame_and_reaches_wonder(self):
+        self.decisions = ["recheck", "escalate"]
+        self.review_ready.set()
+        detector = self.detect.side_effect
+
+        def appear(*args):
+            observation = detector(*args)
+            if self.capture_count == 1:
+                observation["detections"] = observation["detections"][:1]
+            return observation
+
+        def photo(source, detection):
+            metadata, jpeg = photograph(source, detection)
+            if detection["track_id"] == 2:
+                ok, encoded = cv2.imencode(".jpg", self.frame)
+                assert ok
+                jpeg = encoded.tobytes()
+            return metadata, jpeg
+
+        self.detect.side_effect = appear
+        self.inspections.evidence_cameras["Drone1"] = SimpleNamespace(
+            lock=asyncio.Lock(), capture=AsyncMock(side_effect=photo), close=AsyncMock()
+        )
+        await self.inspections.start_search(self.receipt)
+        row = next(iter(self.inspections.rows.values()))
+        await self.until(lambda: len(row["rescue"]["reports"]) == 2)
+        reviews = [event for event in self.events if event["kind"] == "review"]
+        self.assertEqual(len(reviews), 2)
+        source_frames = set()
+        for event in reviews:
+            snapshot = event["result"]
+            frame = snapshot["latest"]
+            source_frames.add(frame["frame_id"])
+            (report,) = snapshot["rescue"]["reports"]
+            candidate = frame["detections"][report["candidate_index"]]
+            self.assertEqual(report["images"]["frame_id"], frame["frame_id"])
+            self.assertEqual(report["images"]["mask"], candidate["mask"])
+            self.assertEqual(report["images"]["photo"], candidate["photo"])
+            self.assertEqual(report["images"]["track_id"], candidate["track_id"])
+        self.assertEqual(len(source_frames), 2)
+        evidence = self.inspections.evidence(row["id"])
+        self.assertEqual({p["source_track_id"] for p in evidence["image_order"]}, {1, 2})
+        self.fleet.tracking_resume.assert_not_awaited()
+
+    async def test_rejected_photo_is_removed_from_future_evidence_and_existing_image_history(self):
+        self.decisions = ["recheck"]
+        row = await self.begin()
+        await self.until(lambda: bool(row["rescue"]["reports"]))
+        candidate = await self.inspections.get_candidate(row["id"])
+        evidence = self.inspections.evidence(row["id"], candidate["frame"]["frame_id"])
+        from mission_planner.gcs.service import evidence_message
+
+        self.mission.conversation = [evidence_message(evidence, [])]
+        self.inspections.disregard_and_continue(
+            row["rescue"]["review_id"], "Operator rejected the object"
+        )
+        self.assertFalse(
+            any(
+                part["type"] == "input_image"
+                for item in self.mission.conversation
+                for part in item["content"]
+            )
+        )
+        self.assertEqual(self.inspections.evidence(row["id"])["image_paths"], [])

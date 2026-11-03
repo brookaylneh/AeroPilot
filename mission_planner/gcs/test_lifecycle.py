@@ -61,7 +61,7 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
                 "os.environ",
                 {"SNR_MISSION_DATA_DIR": self.temporary.name, "SNR_SITL_MODEL": "airsim-copter"},
             ),
-            patch("mission_planner.gcs.service.Wonder"),
+            patch("mission_planner.gcs.service.WonderProcess"),
             patch(
                 "mission_planner.gcs.service.Inspections",
                 side_effect=lambda mission: Mock(

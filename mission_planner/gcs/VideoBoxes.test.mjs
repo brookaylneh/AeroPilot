@@ -214,6 +214,7 @@ test('search, review, lock and hold display their own current frames with accura
   ]) {
     const result = v.render({
       ...source,
+      camera_tracking: { status: 'moved' },
       rescue: { reports: [], phase, selected_track_id: 7, live_frame: live, held_frame: held },
     });
     assert.equal(result.props.frame, frame);
@@ -234,6 +235,22 @@ test('search, review, lock and hold display their own current frames with accura
       }).props.frame,
       null,
     );
+});
+test('an unvalidated native track is labeled acquiring instead of locked', () => {
+  const v = videoFixture(),
+    source = inspection();
+  const view = v.render({
+    ...source,
+    camera_tracking: { status: 'acquiring' },
+    rescue: {
+      reports: [],
+      phase: 'tracking',
+      selected_track_id: 7,
+      live_frame: source.latest,
+      held_frame: null,
+    },
+  });
+  assert.equal(view.props.lock, 'acquiring');
 });
 test('camera revisions and drone changes invalidate prior boxes', () => {
   const v = videoFixture(),

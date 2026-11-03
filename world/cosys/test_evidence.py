@@ -67,13 +67,17 @@ class EvidenceCameraTests(unittest.TestCase):
             self.assertIs(rpc, self.rpc)
             self.assertEqual((name, camera_id, quality), ("Drone2", CAMERA_ID, 100))
             q = self.pose.orientation
-            return {
-                "camera_id": camera_id,
-                "timestamp_ns": 11,
-                "camera_pose_local_ned": {
-                    "orientation": {k: getattr(q, k + "_val") for k in "xyzw"}
+            return (
+                {
+                    "camera_id": camera_id,
+                    "timestamp_ns": 11,
+                    "camera_pose_local_ned": {
+                        "orientation": {k: getattr(q, k + "_val") for k in "xyzw"}
+                    },
                 },
-            }, b"original-camera-jpeg"
+                b"original-camera-jpeg",
+                None,
+            )
 
         with patch("world.cosys.evidence.capture_frame", side_effect=captured) as capture:
             metadata, jpeg = self.camera._capture(self.source, self.detection)

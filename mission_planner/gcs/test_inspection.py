@@ -2,6 +2,7 @@
 
 import asyncio
 import copy
+import hashlib
 import io
 import json
 import math
@@ -19,9 +20,7 @@ from PIL import Image
 
 from mission_planner.agents.test_vision import mask_box
 from mission_planner.gcs.inspection import (
-    AIM_STEP_M,
     Inspections,
-    aim_toward,
     flight_identity,
     sampling_next,
     sampling_start,
@@ -43,6 +42,17 @@ def photograph_bytes():
         output, format="JPEG", quality=100, subsampling=0
     )
     return output.getvalue()
+
+
+def model_evidence(directory, metadata, order, images):
+    paths = []
+    assert len(order) == len(images)
+    for index, (photo, image) in enumerate(zip(order, images)):
+        photo["sha256"] = hashlib.sha256(image).hexdigest()
+        path = directory / f"model-photo-{index}.jpg"
+        path.write_bytes(image)
+        paths.append(str(path.resolve()))
+    return {"metadata": metadata, "image_order": order, "image_paths": paths}
 
 
 def photograph(source, detection):
@@ -77,17 +87,6 @@ def response(prompt="person", positive=True, observations=2):
         if positive
         else [],
     }
-
-
-class LockGeometryTests(unittest.TestCase):
-    def test_aim_moves_at_most_one_step_toward_the_target(self):
-        current = {"x": 0.0, "y": 0.0, "z": 10.0}
-        moved = aim_toward(current, {"x": 30.0, "y": 40.0, "z": 10.0})
-        self.assertAlmostEqual(math.dist(moved.values(), current.values()), AIM_STEP_M)
-        self.assertAlmostEqual(moved["y"] / moved["x"], 4 / 3)
-        near = {"x": 1.0, "y": 1.0, "z": 10.5}
-        self.assertEqual(aim_toward(current, near), near)
-        self.assertEqual(current, {"x": 0.0, "y": 0.0, "z": 10.0})
 
 
 class SamplingTests(unittest.TestCase):
@@ -205,7 +204,7 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
                     "horizontal_fov_deg": horizontal_fov_deg,
                 }
 
-            async def acquire():
+            async def acquire(after_timestamp_ns=0):
                 nonlocal count
                 count += 1
                 return {
@@ -244,9 +243,17 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
         self.clients = []
 
         def vision(http, name, prompt, threshold):
-            client = SimpleNamespace(http=http, status="new", session_id=str(uuid.uuid4()))
+            client = SimpleNamespace(
+                http=http, status="new", session_id=str(uuid.uuid4()), timestamp_ns=0
+            )
             client.open = Mock(side_effect=lambda: setattr(client, "status", "open"))
-            client.advance = Mock(side_effect=lambda *args: self.detect(*args))
+
+            def advance(image, timestamp_ns, timing):
+                result = self.detect(image, timestamp_ns, timing)
+                client.timestamp_ns = timestamp_ns
+                return result
+
+            client.advance = Mock(side_effect=advance)
             client.close = Mock(side_effect=lambda: setattr(client, "status", "closed"))
             self.clients.append(client)
             return client
@@ -466,8 +473,8 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual((actual["status"], actual["frames"]), ("candidate", 1))
             evidence = self.inspections.evidence(row["id"])
             self.assertEqual(evidence["metadata"]["drone_id"], row["drone_id"])
-            self.assertEqual(evidence["images"][0], photograph_bytes())
-            self.assertEqual(len(evidence["images"]), 1)
+            self.assertEqual(Path(evidence["image_paths"][0]).read_bytes(), photograph_bytes())
+            self.assertEqual(len(evidence["image_paths"]), 1)
             self.assertEqual(row["status"], "running")
             self.assertNotIn("heading_deg", row)
         snapshot = self.inspections.snapshot()
@@ -510,7 +517,9 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
         camera.capture.assert_awaited_once()
         for _ in range(3):
             evidence = self.inspections.evidence(row["id"])
-            self.assertEqual(evidence["images"], [photograph_bytes()])
+            self.assertEqual(
+                [Path(p).read_bytes() for p in evidence["image_paths"]], [photograph_bytes()]
+            )
             self.assertEqual(evidence["image_order"][0]["frame_id"], photos[0]["frame_id"])
         self.clients[0].advance.assert_called_once()
         self.assertEqual(self.clients[0].advance.call_args.args[0], image_bytes())
@@ -579,7 +588,8 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
                 self.assertIsNone(detection["ground"])
                 self.assertEqual(detection["location_error"], error)
                 self.assertEqual(
-                    self.inspections.evidence(row["id"])["images"][0], photograph_bytes()
+                    Path(self.inspections.evidence(row["id"])["image_paths"][0]).read_bytes(),
+                    photograph_bytes(),
                 )
 
     async def test_negative_observations_are_sampled_at_five_hz(self):

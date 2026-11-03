@@ -3,7 +3,6 @@
 import asyncio
 import copy
 import hashlib
-import io
 import json
 import math
 import threading
@@ -12,19 +11,15 @@ import uuid
 from collections import deque
 from pathlib import Path
 
-import httpx
-from PIL import Image
-
-from mission_planner.agents.models import Glimmer
-from mission_planner.agents.review import review_candidate
+from mission_planner.agents.model_process import model_pool, review_photo
 from mission_planner.agents.vision import VisionTrack, check_target, decode_mask, vision_http
 from mission_planner.gcs.geodesy import NAMES, point_in_polygon, to_local
+from mission_planner.gcs.observation import control_detections
 from mission_planner.gcs.tracking import MAX_TRACKING_AGE_S, gentle_target
 from mission_planner.gcs.visual_follow import VisualFollow, held
 from world.cosys.evidence import EvidenceCapture
 from world.cosys.inspection import ForwardCapture, route_look_ahead
 
-AIM_STEP_M = 2
 CAPTURE_PERIOD_S = 0.2
 HOLD_FRAMES = round(30 / CAPTURE_PERIOD_S)
 
@@ -43,13 +38,6 @@ def sampling_next(slot, completed):
     assert math.isfinite(slot) and math.isfinite(completed) and completed >= slot
     elapsed = math.floor((completed - slot) / CAPTURE_PERIOD_S)
     return slot + (elapsed + 1) * CAPTURE_PERIOD_S, elapsed
-
-
-def aim_toward(current, target):
-    distance = math.dist(tuple(current.values()), tuple(target[k] for k in current))
-    if distance <= AIM_STEP_M:
-        return dict(target)
-    return {k: current[k] + (target[k] - current[k]) * AIM_STEP_M / distance for k in current}
 
 
 async def close_track(track):
@@ -104,6 +92,11 @@ class Inspections:
         self.photo_tasks = {}
         self.photographs = {}
         self.evidence_cameras = {}
+        self.review_pool = None
+        self.review_limit = asyncio.Semaphore(4)
+        self.drone_review_limits = {name: asyncio.Semaphore(2) for name in NAMES}
+        self.rejected_tracks = set()
+        self.photo_sources = {}
         self.visual = VisualFollow(self)
 
     def snapshot(self):
@@ -139,16 +132,24 @@ class Inspections:
         self.cameras[name].directory = directory
         return self.cameras[name]
 
-    async def _capture(self, row, camera):
-        async with self.camera_locks[row["drone_id"]]:
-            self._check(row)
-            metadata, jpeg = await camera.capture()
-            metadata.update(frame_id=str(uuid.uuid4()), sha256=hashlib.sha256(jpeg).hexdigest())
-            metadata["vision_session_id"] = self.vision[row["drone_id"]].session_id
-            return metadata, jpeg
+    async def _capture(self, row, camera, after_timestamp_ns=None):
+        self._check(row)
+        client = self.vision[row["drone_id"]]
+        metadata, jpeg = await camera.capture(
+            client.timestamp_ns if after_timestamp_ns is None else after_timestamp_ns
+        )
+        metadata = dict(metadata)
+        metadata.update(frame_id=str(uuid.uuid4()), sha256=hashlib.sha256(jpeg).hexdigest())
+        metadata["vision_session_id"] = client.session_id
+        return metadata, jpeg
 
     def _photo_task(self, row, metadata, detection):
         key = (metadata["vision_session_id"], detection["track_id"])
+        if (
+            key not in self.photo_sources
+            or metadata["timestamp_ns"] > self.photo_sources[key][0]["timestamp_ns"]
+        ):
+            self.photo_sources[key] = (copy.deepcopy(metadata), copy.deepcopy(detection))
         if key not in self.photo_tasks:
             self.photo_tasks[key] = asyncio.create_task(
                 self._photograph(row, copy.deepcopy(metadata), copy.deepcopy(detection))
@@ -171,6 +172,9 @@ class Inspections:
             self.evidence_cameras[name] = EvidenceCapture(name, self.directory)
         camera = self.evidence_cameras[name]
         async with camera.lock:
+            source, detection = self.photo_sources[
+                (source["vision_session_id"], detection["track_id"])
+            ]
             metadata, jpeg = await camera.capture(source, detection)
             metadata.update(
                 frame_id=str(uuid.uuid4()),
@@ -221,13 +225,6 @@ class Inspections:
             key = (session_id, detection["track_id"])
             if key in self.photographs:
                 detection["photo"] = copy.deepcopy(self.photographs[key])
-
-    def _photo_bytes(self, photo):
-        jpeg = (self.directory / (photo["frame_id"] + "-frame.jpg")).read_bytes()
-        assert hashlib.sha256(jpeg).hexdigest() == photo["sha256"], "Evidence photograph changed"
-        with Image.open(io.BytesIO(jpeg)) as image:
-            assert image.format == "JPEG" and image.size == (3840, 2160)
-        return jpeg
 
     async def set_camera_view(self, drone_id, north_m, east_m, height_m, zoom=1):
         from world.cosys.terrain import terrain_height
@@ -296,7 +293,7 @@ class Inspections:
             frames.append(frame)
         selected = next((f for f in frames if f is not None and f["frame_id"] == frame_id), None)
         assert selected is not None, "The requested evidence frame is no longer available"
-        return selected
+        return self._eligible(selected)
 
     async def get_candidate(self, inspection_id):
         row = self.rows[inspection_id]
@@ -322,6 +319,7 @@ class Inspections:
                 and 0 <= time.time() * 1000 - frame["captured_at_ms"] <= MAX_TRACKING_AGE_S * 1000
             ):
                 self._attach_photos(frame)
+                frame = self._eligible(frame)
                 self.requested_frames[frame["frame_id"]] = (inspection_id, copy.deepcopy(frame))
                 return {
                     "inspection_id": inspection_id,
@@ -351,16 +349,19 @@ class Inspections:
         assert 0 <= time.time() * 1000 - entry["metadata"]["captured_at_ms"] <= 30000, (
             "The selected held frame is older than 30 seconds"
         )
-        assert 0 <= candidate_index < len(entry["detections"]), (
-            "Candidate index is outside this frame"
-        )
+        detections = [
+            d
+            for d in entry["detections"]
+            if (entry["metadata"]["vision_session_id"], d["track_id"]) not in self.rejected_tracks
+        ]
+        assert 0 <= candidate_index < len(detections), "Candidate index is outside this frame"
         view = self.camera_views[row["drone_id"]]
         assert view is not None and entry["metadata"]["camera_view_revision"] == view["revision"], (
             "The camera view has changed"
         )
         future = asyncio.get_running_loop().create_future()
         self.relocks[identity] = {
-            "track_id": entry["detections"][candidate_index]["track_id"],
+            "track_id": detections[candidate_index]["track_id"],
             "future": future,
         }
         try:
@@ -398,7 +399,7 @@ class Inspections:
             snapshot["rescue"]["reports"] = [
                 r for r in snapshot["rescue"]["reports"] if r["images"]["frame_id"] == frame_id
             ]
-            if selected is not row["latest"]:
+            if selected["frame_id"] != row["latest"]["frame_id"]:
                 snapshot["rescue"]["track"] = None
         event = self.mission.event(
             "evidence",
@@ -534,6 +535,33 @@ class Inspections:
     def acknowledge(self, identity):
         self.rows[identity]["rescue"]["pending"] = False
 
+    def _reject(self, session_id, track_id):
+        key = (session_id, track_id)
+        self.rejected_tracks.add(key)
+        if key in self.photographs:
+            sha = self.photographs[key]["sha256"]
+            for item in self.mission.conversation:
+                if "content" in item and isinstance(item["content"], list):
+                    item["content"] = [
+                        part
+                        for part in item["content"]
+                        if not (
+                            part["type"] == "input_image"
+                            and "sha256" in part
+                            and part["sha256"] == sha
+                        )
+                    ]
+
+    def _eligible(self, frame):
+        result = copy.deepcopy(frame)
+        session_id = self.metadata[frame["frame_id"]]["vision_session_id"]
+        result["detections"] = [
+            d
+            for d in result["detections"]
+            if (session_id, d["track_id"]) not in self.rejected_tracks
+        ]
+        return result
+
     def disregard_and_continue(self, review_id, reason, source="agent", call_id=None):
         assert review_id in self.releases, "The candidate lock is no longer available for release"
         release = self.releases[review_id]
@@ -558,12 +586,11 @@ class Inspections:
             assert all(r["report"]["decision"] == "discard" for r in row["rescue"]["reports"]), (
                 "Glimmer cannot release a positive or unresolved candidate"
             )
+        session_id = self.metadata[row["latest"]["frame_id"]]["vision_session_id"]
+        self._reject(session_id, row["rescue"]["selected_track_id"])
         release["reason"], release["source"] = reason, source
-        self.visual.cancel(name)
         release["call_id"] = call_id if call_id is not None else "review-" + review_id
-        row["rescue"].update(
-            phase="resuming", track=None, live_frame=None, held_frame=None, pending=False
-        )
+        row["rescue"]["pending"] = False
         if source == "glimmer":
             self.mission.event(
                 "tool_call",
@@ -611,6 +638,7 @@ class Inspections:
                     "phase": "waiting",
                     "review_id": None,
                     "reports": [],
+                    "candidates": [],
                     "selected_track_id": None,
                     "visual_hold": False,
                     "track": None,
@@ -687,22 +715,8 @@ class Inspections:
             )
         return result
 
-    async def _publish(self, row, metadata, detections, live=False, held=False):
-        from mission_planner.gcs.tracking import ground_observation
-
+    def _frame(self, metadata, detections):
         identity = metadata["frame_id"]
-        self._check(row)
-        detections = await asyncio.to_thread(self._save_masks, metadata, detections)
-        self._check(row)
-        self._register(
-            [identity + "-frame.jpg"]
-            + [f"{identity}-track-{d['track_id']}-mask.png" for d in detections]
-        )
-        if "rescue" not in row or held:
-            detections = [
-                {**d, **await asyncio.to_thread(ground_observation, metadata, d["box_xyxy"])}
-                for d in detections
-            ]
         frame = {
             "frame_id": identity,
             "captured_at_ms": metadata["captured_at_ms"],
@@ -715,6 +729,30 @@ class Inspections:
             "detections": detections,
         }
         self._attach_photos(frame)
+        return frame
+
+    async def _publish(self, row, metadata, detections, live=False, held=False):
+        from mission_planner.gcs.tracking import ground_observation
+
+        identity = metadata["frame_id"]
+        self._check(row)
+        detections = [
+            d
+            for d in detections
+            if (metadata["vision_session_id"], d["track_id"]) not in self.rejected_tracks
+        ]
+        detections = await asyncio.to_thread(self._save_masks, metadata, detections)
+        self._check(row)
+        self._register(
+            [identity + "-frame.jpg"]
+            + [f"{identity}-track-{d['track_id']}-mask.png" for d in detections]
+        )
+        if "rescue" not in row or held:
+            detections = [
+                {**d, **await asyncio.to_thread(ground_observation, metadata, d["box_xyxy"])}
+                for d in detections
+            ]
+        frame = self._frame(metadata, detections)
         for detection in detections:
             if detection["observations"] >= 2 and detection["confidence"] >= row["threshold"]:
                 self._photo_task(row, metadata, detection)
@@ -752,10 +790,29 @@ class Inspections:
             "Evidence frame changed on disk"
         )
         self._attach_photos(frame)
-        photos = [detection["photo"] for detection in frame["detections"] if "photo" in detection]
+        photos = [
+            detection["photo"]
+            for detection in frame["detections"]
+            if "photo" in detection
+            and (detection["photo"]["vision_session_id"], detection["track_id"])
+            not in self.rejected_tracks
+        ]
+        if frame_id is None and "rescue" in row:
+            for report in row["rescue"]["reports"]:
+                photo = report["images"]["photo"]
+                if (
+                    photo["vision_session_id"],
+                    photo["source_track_id"],
+                ) not in self.rejected_tracks and all(
+                    saved["sha256"] != photo["sha256"] for saved in photos
+                ):
+                    photos.append(photo)
         return {
             "metadata": copy.deepcopy(self.metadata[identity]),
-            "images": [self._photo_bytes(photo) for photo in photos],
+            "image_paths": [
+                str((self.directory / (photo["frame_id"] + "-frame.jpg")).resolve())
+                for photo in photos
+            ],
             "image_order": [{"kind": "original 4x camera photograph", **photo} for photo in photos],
         }
 
@@ -827,7 +884,9 @@ class Inspections:
             response = record["response"] = await asyncio.shield(request)
             cycle["request_s"] = time.monotonic() - tick
             self._check(row)
-            return metadata, jpeg, response, response["detections"], cycle
+            detections = await asyncio.to_thread(control_detections, metadata, response)
+            record["control_detections"] = detections
+            return metadata, jpeg, response, detections, cycle
         except asyncio.CancelledError:
             record["cancelled"] = True
             raise
@@ -996,7 +1055,7 @@ class Inspections:
             }
             self.camera_views[row["drone_id"]] = copy.deepcopy(row["camera_view"])
         else:
-            await capture.aim(world, slew=True)
+            await capture.aim(world)
 
     async def _search(self, row, receipt, branch, indices):
         name, policy = row["drone_id"], receipt["plan"]["search"]
@@ -1081,12 +1140,12 @@ class Inspections:
                 ]
                 if not candidates:
                     continue
-                chosen = max(candidates, key=lambda item: item[1]["confidence"])
+                candidates.sort(key=lambda item: item[1]["track_id"])
                 skipped = self._observation_skip(row)
                 if skipped is not None:
                     row["rescue"]["review_id"] = str(uuid.uuid4())
                     self._review_task(
-                        row, [chosen], metadata, jpeg, policy, directory, threading.Event()
+                        row, candidates, metadata, jpeg, policy, directory, threading.Event()
                     )
                     raise RuntimeError(
                         "Candidate evidence preserved after observation step ended: " + skipped
@@ -1100,7 +1159,7 @@ class Inspections:
                         capture,
                         metadata,
                         jpeg,
-                        [chosen],
+                        candidates,
                         policy,
                         step,
                         step_range,
@@ -1188,72 +1247,92 @@ class Inspections:
         finally:
             await self._close_vision(name)
 
+    async def _review_photo(self, look_for, prompt, metadata, path, detection, prefix):
+        if self.review_pool is None:
+            self.review_pool = model_pool(4)
+        return await asyncio.get_running_loop().run_in_executor(
+            self.review_pool, review_photo, look_for, prompt, metadata, path, detection, prefix
+        )
+
     async def _review_all(self, row, candidates, metadata, jpeg, policy, directory, cancelled):
         from mission_planner.gcs.tracking import ground_observation
 
         assert hashlib.sha256(jpeg).hexdigest() == metadata["sha256"], "SAM source frame changed"
-        glimmer = Glimmer()
-        glimmer.http.timeout = httpx.Timeout(60)
-        try:
-            reports = []
-            for index, detection in candidates:
+        identity = row["rescue"]["review_id"]
+
+        async def review_one(index, detection):
+            async with self.drone_review_limits[row["drone_id"]]:
                 assert not cancelled.is_set(), "Evidence review authority was revoked"
                 photo = await asyncio.shield(self._photo_task(row, metadata, detection))
                 assert not cancelled.is_set(), "Evidence review authority was revoked"
-                row["latest"]["detections"][index]["photo"] = copy.deepcopy(photo)
-                photograph = self._photo_bytes(photo)
+                photograph = self.directory / (photo["frame_id"] + "-frame.jpg")
                 photo_metadata = self.metadata[photo["frame_id"]]
                 location = await asyncio.to_thread(
                     ground_observation, metadata, detection["box_xyxy"]
                 )
-                row["latest"]["detections"][index].update(location)
+                masks = await asyncio.to_thread(self._save_masks, metadata, [detection])
                 current = self.rows[row["id"]]["latest"]
                 if current is not None and current["frame_id"] == metadata["frame_id"]:
-                    current["detections"][index].update(location)
-                request = asyncio.create_task(
-                    asyncio.to_thread(
-                        review_candidate,
-                        glimmer,
-                        policy["look_for"],
-                        row["prompt"],
-                        photo_metadata,
-                        photograph,
-                        detection,
-                        directory / (row["rescue"]["review_id"] + "-" + str(index)),
+                    next(
+                        d for d in current["detections"] if d["track_id"] == detection["track_id"]
+                    ).update(location)
+                async with self.review_limit:
+                    request = asyncio.create_task(
+                        self._review_photo(
+                            policy["look_for"],
+                            row["prompt"],
+                            photo_metadata,
+                            photograph,
+                            detection,
+                            directory / (identity + "-" + str(detection["track_id"])),
+                        )
                     )
-                )
-                try:
-                    result = await asyncio.shield(request)
-                finally:
-                    if not request.done():
-                        await request
+                    try:
+                        result = await asyncio.shield(request)
+                    finally:
+                        if not request.done():
+                            await request
                 assert result["images"]["sha256"] == photo["sha256"], "Glimmer source frame changed"
-                reports.append(
-                    {
-                        "candidate_index": index,
-                        "report": result["report"],
-                        "reasoning_tokens": result["reasoning_tokens"],
-                        "images": {
-                            "frame_id": metadata["frame_id"],
-                            "frame_ref": self.asset_url(metadata["frame_id"] + "-frame.jpg"),
-                            "sha256": metadata["sha256"],
-                            "track_id": detection["track_id"],
-                            "box_xyxy": detection["box_xyxy"],
-                            "mask": row["latest"]["detections"][index]["mask"],
-                            "photo": copy.deepcopy(photo),
-                        },
-                    }
-                )
-            row["rescue"]["reports"] = reports
-            self.mission.event(
-                "review",
-                row["drone_id"] + ": " + "; ".join(r["report"]["reason"] for r in reports),
-                result=copy.deepcopy(row),
-                source="glimmer",
-            )
-            return reports
+                report = {
+                    "candidate_index": index,
+                    "report": result["report"],
+                    "reasoning_tokens": result["reasoning_tokens"],
+                    "images": {
+                        "frame_id": metadata["frame_id"],
+                        "frame_ref": self.asset_url(metadata["frame_id"] + "-frame.jpg"),
+                        "sha256": metadata["sha256"],
+                        "track_id": detection["track_id"],
+                        "box_xyxy": detection["box_xyxy"],
+                        "mask": masks[0]["mask"],
+                        "photo": copy.deepcopy(photo),
+                    },
+                }
+                actual = self.rows[row["id"]]
+                if actual["rescue"]["review_id"] == identity:
+                    actual["rescue"]["reports"].append(report)
+                    if result["report"]["decision"] == "discard":
+                        self._reject(metadata["vision_session_id"], detection["track_id"])
+                    snapshot = copy.deepcopy(actual)
+                    snapshot["latest"] = self._frame(metadata, [{**masks[0], **location}])
+                    snapshot["rescue"]["reports"] = [{**report, "candidate_index": 0}]
+                    self.mission.event(
+                        "review",
+                        row["drone_id"] + ": " + result["report"]["reason"],
+                        result=snapshot,
+                        source="glimmer",
+                    )
+                return report
+
+        tasks = [
+            asyncio.create_task(review_one(index, detection)) for index, detection in candidates
+        ]
+        try:
+            return await asyncio.gather(*tasks)
         finally:
-            glimmer.http.close()
+            await asyncio.wait(tasks)
+            for task in tasks:
+                if not task.cancelled():
+                    task.result()
 
     def _review_task(self, row, candidates, metadata, jpeg, policy, directory, cancelled):
         identity = row["rescue"]["review_id"]
@@ -1269,9 +1348,7 @@ class Inspections:
             if task.cancelled() or row["rescue"]["review_id"] != identity:
                 return
             error = task.exception()
-            if error is None:
-                row["rescue"]["reports"] = task.result()
-            elif row["status"] in ("failed", "stopped"):
+            if error is not None and row["status"] in ("failed", "stopped"):
                 self._event(
                     row,
                     f"{row['drone_id']}: evidence review failed · {type(error).__name__}: {error}",
@@ -1346,10 +1423,12 @@ class Inspections:
         from mission_planner.gcs.tracking import follow_target, ground_observation
 
         name = row["drone_id"]
-        assert len(candidates) == 1
+        assert candidates
         _, detection = candidates[0]
         selected_id = detection["track_id"]
-        reviewed_ids = {selected_id}
+        reviewed_ids = {d["track_id"] for _, d in candidates}
+        candidates_by_id = {d["track_id"]: (metadata, d) for _, d in candidates}
+        notified = set()
         client = self.vision[name]
         review_id = str(uuid.uuid4())
         assert row["latest"]["frame_id"] == metadata["frame_id"], "Candidate seed frame changed"
@@ -1374,6 +1453,7 @@ class Inspections:
         await self.visual.observe(row, metadata, [detection])
         cancelled = threading.Event()
         review = self._review_task(row, candidates, metadata, jpeg, policy, directory, cancelled)
+        review_tasks = [review]
         start = asyncio.create_task(
             self.mission.fleet.tracking_start(
                 name, (step_range["first_seq"], step_range["last_seq"])
@@ -1390,7 +1470,6 @@ class Inspections:
         request, publication, queued = None, None, None
         review_processed = False
         latest, fresh = [None], asyncio.Event()
-        aim = {"current": None, "target": None}
 
         def record(value):
             log.write(json.dumps(value, allow_nan=False) + "\n")
@@ -1423,15 +1502,11 @@ class Inspections:
                     await lose("No fresh tracking command for two seconds")
 
         async def produce():
+            after_timestamp_ns = metadata["timestamp_ns"]
             while True:
                 tick = time.monotonic()
-                if aim["target"] is not None:
-                    async with self.camera_locks[name]:
-                        self._check(row)
-                        if self.camera_views[name] is not None:
-                            aim["current"] = aim_toward(aim["current"], aim["target"])
-                            await capture.aim(aim["current"])
-                latest[0] = await self._capture(row, capture)
+                latest[0] = await self._capture(row, capture, after_timestamp_ns)
+                after_timestamp_ns = latest[0][0]["timestamp_ns"]
                 fresh.set()
                 await asyncio.sleep(max(0, CAPTURE_PERIOD_S - (time.monotonic() - tick)))
 
@@ -1498,27 +1573,112 @@ class Inspections:
                         if queued is not None:
                             args, queued = queued, None
                             queue_publish(*args)
-                    if review.done() and not review_processed:
-                        row["rescue"]["reports"] = review.result()
-                        review_processed = True
-                        row["rescue"]["phase"] = (
-                            "held"
-                            if row["rescue"]["tracking_error"] is not None
-                            else "tracking"
-                            if following
-                            else "reviewing"
+                    for review in review_tasks:
+                        if review.done():
+                            review.result()
+                    reports = {r["images"]["track_id"]: r for r in row["rescue"]["reports"]}
+                    states = {}
+                    for track_id, (_, candidate) in candidates_by_id.items():
+                        decision = (
+                            reports[track_id]["report"]["decision"] if track_id in reports else None
                         )
-                        if all(
-                            r["report"]["decision"] == "discard" for r in row["rescue"]["reports"]
-                        ):
-                            self.disregard_and_continue(
-                                review_id,
-                                "; ".join(r["report"]["reason"] for r in row["rescue"]["reports"]),
-                                "glimmer",
+                        states[track_id] = (
+                            "rejected"
+                            if (metadata["vision_session_id"], track_id) in self.rejected_tracks
+                            else "verified"
+                            if decision == "escalate"
+                            else "recheck"
+                            if decision == "recheck"
+                            else "pending"
+                        )
+                    row["rescue"]["candidates"] = [
+                        {
+                            "track_id": track_id,
+                            "state": states[track_id],
+                            "detector_confidence": value[1]["confidence"],
+                        }
+                        for track_id, value in sorted(candidates_by_id.items())
+                    ]
+                    available = [
+                        track_id
+                        for track_id, (m, _) in candidates_by_id.items()
+                        if states[track_id] != "rejected"
+                        and time.time() * 1000 - m["captured_at_ms"] <= MAX_TRACKING_AGE_S * 1000
+                    ]
+                    rank = {"verified": 0, "recheck": 1, "pending": 2}
+                    preferred = (
+                        min(
+                            available,
+                            key=lambda ident: (rank[states[ident]], ident != selected_id, ident),
+                        )
+                        if available
+                        else None
+                    )
+                    if preferred is not None and preferred != selected_id:
+                        if following:
+                            await self.mission.fleet.execute(
+                                "hold", {"drone_id": name}, expected_mode="GUIDED"
                             )
-                        else:
-                            row["status"], row["rescue"]["pending"] = "candidate", True
-                            self._event(row, name + ": candidate evidence requires Wonder review")
+                        following, last_success, motion = False, None, None
+                        self.visual.cancel(name)
+                        old_id, selected_id = selected_id, preferred
+                        source, detection = candidates_by_id[selected_id]
+                        last_seen_ns = source["timestamp_ns"]
+                        row["rescue"].update(
+                            selected_track_id=selected_id,
+                            tracking_error=None,
+                            phase="reviewing",
+                            track=None,
+                            held_frame=None,
+                            pending=False,
+                        )
+                        await self.visual.observe(row, source, [detection])
+                        release = self.releases[review_id]
+                        if release["reason"] is not None:
+                            self.mission.event(
+                                "tool_result",
+                                "Candidate switched within the current hold",
+                                name="disregard_and_continue",
+                                call_id=release["call_id"],
+                                source=release["source"],
+                                result={
+                                    "ok": True,
+                                    "review_id": review_id,
+                                    "status": "switched",
+                                    "track_id": selected_id,
+                                },
+                            )
+                            release.update(reason=None, source=None, follow_until=None)
+                        record(
+                            {
+                                "phase": "handoff",
+                                "from_track_id": old_id,
+                                "track_id": selected_id,
+                                "timestamp_ms": time.time() * 1000,
+                            }
+                        )
+                        self._event(
+                            row,
+                            f"{name}: tracking candidate {selected_id} within the existing mission hold",
+                        )
+                    review_processed = selected_id in reports
+                    if (
+                        review_processed
+                        and states[selected_id] != "rejected"
+                        and selected_id not in notified
+                    ):
+                        notified.add(selected_id)
+                        row["status"], row["rescue"]["pending"] = "candidate", True
+                        self._event(row, name + ": candidate evidence requires Wonder review")
+                    if (
+                        all(state == "rejected" for state in states.values())
+                        and self.releases[review_id]["reason"] is None
+                    ):
+                        self.disregard_and_continue(
+                            review_id,
+                            "; ".join(r["report"]["reason"] for r in row["rescue"]["reports"]),
+                            "glimmer",
+                        )
                     release = self.releases[review_id]
                     if (
                         release["follow_until"] is not None
@@ -1532,7 +1692,10 @@ class Inspections:
                         if publication is not None:
                             await stop(publication)
                             publication = None
-                        row["rescue"].update(phase="resuming", live_frame=None, held_frame=None)
+                        self.visual.cancel(name)
+                        row["rescue"].update(
+                            phase="resuming", track=None, live_frame=None, held_frame=None
+                        )
                         self._event(
                             row,
                             name + ": candidate disregarded; restoring unfinished observation step",
@@ -1563,7 +1726,11 @@ class Inspections:
                             call_id=release["call_id"],
                             source=release["source"],
                         )
-                        return reviewed_ids
+                        return {
+                            track_id
+                            for session_id, track_id in self.rejected_tracks
+                            if session_id == metadata["vision_session_id"]
+                        }
                     if release["reason"] is not None:
                         await asyncio.sleep(0.02)
                         continue
@@ -1579,16 +1746,49 @@ class Inspections:
                     )
                     observation = await asyncio.shield(request)
                     self._search_state(row)
+                    detections = await asyncio.to_thread(control_detections, current, observation)
+                    await self.visual.observe(row, current, detections)
                     record(
                         {
                             "phase": "observation",
                             "metadata": current,
                             "response": observation,
+                            "control_detections": detections,
                             "client_timing": timing,
                         }
                     )
                     if release["reason"] is not None:
                         continue
+                    new_candidates = []
+                    for index, candidate in enumerate(detections):
+                        if (
+                            current["vision_session_id"],
+                            candidate["track_id"],
+                        ) in self.rejected_tracks:
+                            continue
+                        if (
+                            candidate["observations"] >= 2
+                            and candidate["confidence"] >= row["threshold"]
+                        ):
+                            candidates_by_id[candidate["track_id"]] = (current, candidate)
+                            self._photo_task(row, current, candidate)
+                            if candidate["track_id"] not in reviewed_ids:
+                                new_candidates.append((index, candidate))
+                                reviewed_ids.add(candidate["track_id"])
+                    if new_candidates:
+                        masks = await asyncio.to_thread(self._save_masks, current, detections)
+                        self._register(
+                            [current["frame_id"] + "-frame.jpg"]
+                            + [
+                                f"{current['frame_id']}-track-{d['track_id']}-mask.png"
+                                for d in masks
+                            ]
+                        )
+                        review_tasks.append(
+                            self._review_task(
+                                row, new_candidates, current, image, policy, directory, cancelled
+                            )
+                        )
                     view = self.camera_views[name]
                     if view is None or current["camera_view_revision"] != view["revision"]:
                         continue
@@ -1597,7 +1797,6 @@ class Inspections:
                     if age > MAX_TRACKING_AGE_S:
                         await lose("Candidate observation is too old for flight control")
                         continue
-                    detections = observation["detections"]
                     pending_relock = None
                     if review_id in self.relocks:
                         relock = self.relocks[review_id]
@@ -1648,17 +1847,6 @@ class Inspections:
                         queue_held(current, detections)
                         continue
                     target = location["ground"]
-                    aim["target"] = {
-                        "x": target["north_m"],
-                        "y": target["east_m"],
-                        "z": target["ground_m"],
-                    }
-                    if aim["current"] is None:
-                        aim["current"] = (
-                            dict(capture.target)
-                            if capture.target is not None
-                            else dict(aim["target"])
-                        )
                     if checkpoint is None:
                         queue_publish(current, [{**selected, **location}], False)
                         continue
@@ -1685,6 +1873,23 @@ class Inspections:
                         or camera["centering"] is None
                         or camera["frame_age_ms"] > MAX_TRACKING_AGE_S * 1000
                     ):
+                        continue
+                    estimate = self.visual.estimate(name, selected_id)
+                    if estimate is None:
+                        continue
+                    control_frame, control_box = estimate
+                    location = await asyncio.to_thread(
+                        ground_observation, control_frame, [v * 4 for v in control_box]
+                    )
+                    if location["ground"] is None:
+                        await lose(location["location_error"])
+                        continue
+                    target = location["ground"]
+                    movement = follow_target(
+                        state, target, policy["perimeter"], policy["stand_off_m"], step["height_m"]
+                    )
+                    if movement["error"] is not None:
+                        await lose(movement["error"])
                         continue
                     centering = camera["centering"]
                     tolerance = 0.15 if following else 0.05
@@ -1717,7 +1922,7 @@ class Inspections:
                     if row["rescue"]["tracking_error"] is not None:
                         continue
                     await self.mission.fleet.tracking_target(
-                        name, point, yaw, captured_at_ms=current["captured_at_ms"]
+                        name, point, yaw, captured_at_ms=control_frame["captured_at_ms"]
                     )
                     self._search_state(row)
                     if row["rescue"]["tracking_error"] is not None:
@@ -1756,8 +1961,8 @@ class Inspections:
                         breadcrumbs.append(position)
                     row["rescue"]["track"] = {
                         "track_id": selected_id,
-                        "box_xyxy": selected["box_xyxy"],
-                        "captured_at_ms": current["captured_at_ms"],
+                        "box_xyxy": [v * 4 for v in control_box],
+                        "captured_at_ms": control_frame["captured_at_ms"],
                         "ground": target,
                     }
                     if review_processed:
@@ -1773,7 +1978,9 @@ class Inspections:
                             "yaw_deg": yaw,
                             "command_at_ms": time.time() * 1000,
                             "command_interval_s": interval,
-                            "source_age_s": (time.time() * 1000 - current["captured_at_ms"]) / 1000,
+                            "source_age_s": (time.time() * 1000 - control_frame["captured_at_ms"])
+                            / 1000,
+                            "control_frame_timestamp_ns": control_frame["timestamp_ns"],
                         }
                     )
             finally:
@@ -1843,6 +2050,9 @@ class Inspections:
             await asyncio.wait(self.reviews)
         if self.photo_tasks:
             await asyncio.wait(self.photo_tasks.values())
+        if self.review_pool is not None:
+            await asyncio.to_thread(self.review_pool.shutdown, wait=True, cancel_futures=True)
+            self.review_pool = None
         for camera in self.evidence_cameras.values():
             await camera.close()
         self.evidence_cameras.clear()

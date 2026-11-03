@@ -8,6 +8,7 @@ import { useStreamView, type Stream } from '../../web/useStream';
 import { droneColors, type DroneId } from './droneIdentity';
 import type { Inspection } from './InspectionPanel';
 import VideoBoxes from './VideoBoxes';
+import { videoDiagnostic, type VideoMetrics } from './videoDiagnostics';
 import './droneVideo.css';
 
 type VideoState = {
@@ -21,6 +22,7 @@ export function connectDroneVideo(
   video: HTMLVideoElement,
   droneId: DroneId,
   changed: (state: VideoState) => void,
+  diagnostics?: (droneId: DroneId, metrics: VideoMetrics) => void,
 ) {
   let requested = droneId;
   let acknowledged: DroneId | null = null;
@@ -29,11 +31,20 @@ export function connectDroneVideo(
   let selecting = false;
   let visible = false;
   let advancedAt = 0;
+  let presentedFrames = 0;
+  let reportedAt = 0;
+  let rtc: VideoMetrics = {};
+  const unobserve = diagnostics
+    ? stream.observeVideo((metrics) => {
+        rtc = metrics;
+      })
+    : undefined;
 
   function dispose() {
     if (stopped) return;
     stopped = true;
     clearInterval(timer);
+    unobserve?.();
     if (frame !== undefined) video.cancelVideoFrameCallback(frame);
     document.removeEventListener('visibilitychange', visibilityChanged);
   }
@@ -47,6 +58,7 @@ export function connectDroneVideo(
     frame = video.requestVideoFrameCallback(presented);
     if (document.hidden) return;
     advancedAt = performance.now();
+    presentedFrames++;
     if (acknowledged === requested && !visible) {
       visible = true;
       changed({ type: 'live', droneId: acknowledged, message: 'Live' });
@@ -88,6 +100,21 @@ export function connectDroneVideo(
   frame = video.requestVideoFrameCallback(presented);
   document.addEventListener('visibilitychange', visibilityChanged);
   const timer = setInterval(() => {
+    const now = performance.now();
+    if (diagnostics && now - reportedAt >= 1000 && acknowledged === requested) {
+      reportedAt = now;
+      const quality = video.getVideoPlaybackQuality();
+      diagnostics(requested, {
+        ...rtc,
+        width: video.videoWidth,
+        height: video.videoHeight,
+        totalVideoFrames: quality.totalVideoFrames,
+        droppedVideoFrames: quality.droppedVideoFrames,
+        presentedFrames,
+        lastPresentedAgeMs: now - advancedAt,
+        hidden: document.hidden,
+      });
+    }
     if (document.hidden) return;
     if (acknowledged === requested && performance.now() - advancedAt >= (visible ? 5000 : 25000))
       fail(visible ? 'Live camera stopped updating.' : 'No new camera frame after selection.');
@@ -137,10 +164,16 @@ export default function DroneVideo({
     }
     const video = stream.host.querySelector('video');
     if (!video) throw new Error('The stream did not create its video element.');
-    viewer.current = connectDroneVideo(stream.transport, video, droneId, (next) => {
-      setState(next);
-      if (next.type === 'error') onError(next.message);
-    });
+    viewer.current = connectDroneVideo(
+      stream.transport,
+      video,
+      droneId,
+      (next) => {
+        setState(next);
+        if (next.type === 'error') onError(next.message);
+      },
+      (name, metrics) => videoDiagnostic('video', name, metrics),
+    );
     return () => {
       viewer.current?.dispose();
       viewer.current = null;
@@ -192,15 +225,18 @@ export default function DroneVideo({
           lock={
             persistent
               ? 'held'
-              : rescue?.phase === 'reviewing'
-                ? 'reviewing'
-                : rescue?.phase === 'tracking'
-                  ? 'locked'
-                  : rescue?.phase === 'held'
-                    ? 'held'
-                    : undefined
+              : tracking && inspection.camera_tracking?.status !== 'moved'
+                ? 'acquiring'
+                : rescue?.phase === 'reviewing'
+                  ? 'reviewing'
+                  : rescue?.phase === 'tracking'
+                    ? 'locked'
+                    : rescue?.phase === 'held'
+                      ? 'held'
+                      : undefined
           }
           onError={onError}
+          onDiagnostic={(metrics) => videoDiagnostic('tracker', droneId, metrics)}
         />
       )}
       <div className="gcs-video-top" style={{ '--drone': droneColors[droneId] } as CSSProperties}>

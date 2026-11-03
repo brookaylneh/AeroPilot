@@ -2,6 +2,7 @@ import { Config, PixelStreaming, Logger, LogLevel } from '@epicgames-ps/lib-pixe
 import { z } from 'zod';
 import { briefingSchema } from './briefing';
 import { droneIds } from '../mission_planner/gcs/droneIdentity';
+import type { VideoMetrics } from '../mission_planner/gcs/videoDiagnostics';
 // A single-editor admission gateway MUST protect the signalling endpoint before enabling commands.
 export const creatorStageSchema = z.enum(['person', 'situation', 'placement', 'briefing']);
 export type CreatorStage = z.infer<typeof creatorStageSchema>;
@@ -131,6 +132,7 @@ export class PixelStreamingTransport {
   private navigationSequence = 0;
   private echoedNavigationSequence = -1;
   private navigationLook = { yaw: 0, pitch: 0, zoom: 0 };
+  private videoListeners = new Set<(metrics: VideoMetrics) => void>();
   private cameraListeners = new Set<(camera: CameraState) => void>();
   private rejectConnect?: (error: Error) => void;
   private connectTimer?: ReturnType<typeof setTimeout>;
@@ -183,6 +185,25 @@ export class PixelStreamingTransport {
       this.pending.clear();
       onDisconnected(reason);
     };
+    this.stream.addEventListener('statsReceived', (event) => {
+      const value = event.data.aggregatedStats.inboundVideoStats;
+      const metrics: VideoMetrics = {};
+      for (const key of [
+        'bytesReceived',
+        'framesDecoded',
+        'framesDropped',
+        'framesPerSecond',
+        'freezeCount',
+        'totalFreezesDuration',
+        'totalDecodeTime',
+        'jitter',
+        'jitterBufferDelay',
+        'jitterBufferEmittedCount',
+      ] as const) {
+        metrics[key] = value[key] === undefined ? null : value[key];
+      }
+      for (const listener of this.videoListeners) listener(metrics);
+    });
     this.stream.addEventListener('webRtcDisconnected', () =>
       disconnected('The scene connection was interrupted.'),
     );
@@ -300,6 +321,12 @@ export class PixelStreamingTransport {
     this.navigationLook = { yaw: state.yaw, pitch: state.pitch, zoom: state.zoom };
     return true;
   }
+  observeVideo(listener: (metrics: VideoMetrics) => void) {
+    this.videoListeners.add(listener);
+    return () => {
+      this.videoListeners.delete(listener);
+    };
+  }
   observeCamera(listener: (camera: CameraState) => void) {
     this.cameraListeners.add(listener);
     return () => {
@@ -319,6 +346,7 @@ export class PixelStreamingTransport {
     }
     this.pending.clear();
     this.cameraListeners.clear();
+    this.videoListeners.clear();
     this.parent.replaceChildren();
   }
 }

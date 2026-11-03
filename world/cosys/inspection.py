@@ -6,6 +6,7 @@ import json
 import math
 import threading
 import time
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 
 import cosysairsim as airsim
@@ -18,7 +19,7 @@ from world.cosys import client as sim
 from world.cosys.capture import capture_time, rotation, shadow_floor, truth_sample
 
 MOUNT_NED_M = (0.6, 0, 0.05)
-SLEW_RAD_S = math.radians(45)
+SLEW_RAD_S = math.radians(12)
 
 
 def capture_frame(rpc, name, camera_id, directory, revision, *, quality):
@@ -85,7 +86,10 @@ def capture_frame(rpc, name, camera_id, directory, revision, *, quality):
         with path.with_suffix(".json").open("x") as stream:
             json.dump(metadata, stream, allow_nan=False)
         raise AssertionError(f"Forward camera returned an entirely black frame; evidence: {path}")
-    return metadata, encoded.getvalue()
+    rgb = np.frombuffer(response.image_data_uint8, np.uint8).reshape(2160, 3840, 3)
+    bgr = np.ascontiguousarray(rgb[:, :, ::-1])
+    bgr.setflags(write=False)
+    return metadata, encoded.getvalue(), bgr
 
 
 def point_camera(rpc, name, camera_id, desired):
@@ -151,7 +155,8 @@ class ForwardCapture:
         self.original_fov = None
         self.view_revision = 0
         self.target = None
-        self.slew = False
+        self.restore_target = None
+        self.aim_task = None
         self.pose_lock = threading.RLock()
         self.follow_executor = ThreadPoolExecutor(
             max_workers=1, thread_name_prefix="camera-follow-" + drone_id
@@ -163,18 +168,22 @@ class ForwardCapture:
         self.control_lock = asyncio.Lock()
         self.follow_diagnostic = None
         self.video_sample = None
-        self.capture_inflight = 0
+        self.video_frames = deque(maxlen=12)
+        self.capture_task = None
+        self.captured_at = 0.0
+        self.capture_started_at = 0.0
 
-    def _aim(self, target, slew=False):
+    def _aim(self, target):
         with self.pose_lock:
             if not self.visual_controlled:
-                self._aim_world(target, slew)
+                if self.rpc is None:
+                    self.rpc = sim.connect()
+                self.target, self.restore_target = dict(target), None
+                self._aim_world(target, self.rpc)
 
-    def _aim_world(self, target, slew):
+    def _aim_world(self, target, rpc):
         assert set(target) == {"x", "y", "z"} and all(np.isfinite(v) for v in target.values())
-        if self.rpc is None:
-            self.rpc = sim.connect()
-        rpc, name = self.rpc, self.drone_id
+        name = self.drone_id
         native = sim.native()
         assert native["mode"] == "mission", "Camera aim requires mission mode"
         origin = next(v["localNedOriginUeCm"] for v in native["vehicles"] if v["id"] == name)
@@ -192,20 +201,67 @@ class ForwardCapture:
             ]
         )
         now = time.monotonic()
-        if slew and self.aimed is not None:
-            previous, aimed_at = self.aimed
-            step = angles - previous
-            step[0] = (step[0] + math.pi) % (2 * math.pi) - math.pi
-            limit = SLEW_RAD_S * (now - aimed_at)
-            if np.linalg.norm(step) > limit:
-                angles = previous + step * limit / np.linalg.norm(step)
-        point_camera(rpc, name, "fpv", Rotation.from_euler("ZYX", [*angles, 0]))
-        self.aimed = angles, now
-        self.target = dict(target)
-        self.slew = slew
+        current = rotation(sim.quat(camera.orientation))
+        desired = Rotation.from_euler("ZYX", [*angles, 0])
+        dt = 0.05 if self.aimed is None else min(0.1, max(0.001, now - self.aimed[1]))
+        step = (current.inv() * desired).as_rotvec()
+        length = np.linalg.norm(step)
+        limit = SLEW_RAD_S * dt
+        if length > limit:
+            desired = current * Rotation.from_rotvec(step * limit / length)
+        if length > 1e-7:
+            point_camera(rpc, name, "fpv", desired)
+        self.aimed = desired.as_euler("ZYX")[:2], now
+        with (self.directory / "camera-aim.jsonl").open("a") as log:
+            log.write(
+                json.dumps(
+                    {
+                        "timestamp_ms": time.time() * 1000,
+                        "drone_id": name,
+                        "elapsed_s": dt,
+                        "step_deg": math.degrees(min(length, limit)),
+                        "remaining_deg": math.degrees(max(0, length - limit)),
+                    }
+                )
+                + "\n"
+            )
 
-    async def aim(self, target, slew=False):
-        await asyncio.get_running_loop().run_in_executor(self.executor, self._aim, target, slew)
+    def _route_aim(self):
+        with self.pose_lock:
+            if self.visual_controlled:
+                return
+            target = self.target if self.target is not None else self.restore_target
+            if target is None:
+                return
+            if self.follow_rpc is None:
+                self.follow_rpc = airsim.MultirotorClient(
+                    ip="127.0.0.1", port=sim.PORT, timeout_value=3
+                )
+            self._aim_world(target, self.follow_rpc)
+
+    async def _maintain_aim(self):
+        while True:
+            started = time.monotonic()
+            pending = asyncio.get_running_loop().run_in_executor(
+                self.follow_executor, self._route_aim
+            )
+            try:
+                await asyncio.shield(pending)
+            finally:
+                if not pending.done():
+                    await pending
+            await asyncio.sleep(max(0, 0.05 - (time.monotonic() - started)))
+
+    def _start_aim(self):
+        if self.aim_task is not None:
+            if self.aim_task.done():
+                self.aim_task.result()
+            return
+        self.aim_task = asyncio.create_task(self._maintain_aim())
+
+    async def aim(self, target):
+        await asyncio.get_running_loop().run_in_executor(self.executor, self._aim, target)
+        self._start_aim()
 
     def begin_follow(self):
         self.follow_generation += 1
@@ -331,7 +387,9 @@ class ForwardCapture:
             self.executor, self._view, target, zoom
         )
         try:
-            return await asyncio.shield(pending)
+            result = await asyncio.shield(pending)
+            self._start_aim()
+            return result
         finally:
             if not pending.done():
                 await pending
@@ -345,14 +403,23 @@ class ForwardCapture:
     def _restore(self):
         self.target = None
         if self.aimed is not None:
-            # A quaternion cannot restore the configured NaN gimbal yaw, so the camera
-            # holds this level world heading until the next aim.
             body = self.rpc.simGetVehiclePose(vehicle_name=self.drone_id)
             heading = rotation(sim.quat(body.orientation)).as_euler("ZYX")[0]
-            point_camera(
-                self.rpc, self.drone_id, "fpv", Rotation.from_euler("ZYX", [heading, 0, 0])
+            native = sim.native()
+            origin = next(
+                v["localNedOriginUeCm"] for v in native["vehicles"] if v["id"] == self.drone_id
             )
-            self.aimed = None
+            camera = self.rpc.simGetCameraInfo("fpv", vehicle_name=self.drone_id).pose
+            position = sim.to_world(self.drone_id, sim.xyz(camera.position), origin)
+            self.restore_target = {
+                "x": position["x"] + 1000 * math.cos(heading),
+                "y": position["y"] + 1000 * math.sin(heading),
+                "z": position["z"],
+            }
+            self._aim_world(self.restore_target, self.rpc)
+        self._restore_fov()
+
+    def _restore_fov(self):
         if self.original_fov is not None:
             self.rpc.simSetCameraFov("fpv", self.original_fov, vehicle_name=self.drone_id)
             measured = self.rpc.simGetCameraInfo("fpv", vehicle_name=self.drone_id).fov
@@ -365,39 +432,72 @@ class ForwardCapture:
         self.cancel_follow()
         await self.end_follow()
         await asyncio.get_running_loop().run_in_executor(self.executor, self._reset)
+        self._start_aim()
 
     def _capture(self):
-        if self.target is not None:
-            self._aim(self.target, self.slew)
         if self.rpc is None:
             self.rpc = sim.connect()
-        result = capture_frame(
+        return capture_frame(
             self.rpc, self.drone_id, "fpv", self.directory, self.view_revision, quality=95
         )
-        self.video_sample = result
-        return result
 
-    async def capture(self):
-        self.capture_inflight += 1
+    async def _next_frame(self):
+        await asyncio.sleep(max(0, 0.2 - (time.monotonic() - self.capture_started_at)))
+        self.capture_started_at = time.monotonic()
         pending = asyncio.get_running_loop().run_in_executor(self.executor, self._capture)
         try:
-            return await asyncio.shield(pending)
+            metadata, jpeg, bgr = await asyncio.shield(pending)
+            if self.video_sample is not None:
+                assert metadata["timestamp_ns"] > self.video_sample[0]["timestamp_ns"], (
+                    "The camera returned a repeated capture timestamp"
+                )
+            self.captured_at = time.monotonic()
+            self.video_sample = metadata, jpeg
+            self.video_frames.append((metadata, bgr))
+            return metadata, jpeg
         finally:
             try:
                 if not pending.done():
                     await pending
             finally:
-                self.capture_inflight -= 1
+                self.capture_task = None
+
+    async def capture(self, after_timestamp_ns=0):
+        assert type(after_timestamp_ns) is int and after_timestamp_ns >= 0
+        if self.aim_task is not None and self.aim_task.done():
+            self.aim_task.result()
+        if (
+            self.video_sample is not None
+            and self.video_sample[0]["timestamp_ns"] > after_timestamp_ns
+            and self.video_sample[0]["camera_view_revision"] == self.view_revision
+            and time.monotonic() - self.captured_at < 0.2
+        ):
+            return self.video_sample
+        if self.capture_task is None:
+            self.capture_task = asyncio.create_task(self._next_frame())
+        return await asyncio.shield(self.capture_task)
 
     async def close(self):
+        if self.capture_task is not None:
+            await self.capture_task
         self.cancel_follow()
         await self.end_follow()
+        if self.aim_task is not None:
+            if not self.aim_task.done():
+                self.aim_task.cancel()
+                await asyncio.wait([self.aim_task])
+            if not self.aim_task.cancelled():
+                self.aim_task.result()
+            self.aim_task = None
         if self.follow_rpc is not None:
             await asyncio.get_running_loop().run_in_executor(
                 self.follow_executor, self.follow_rpc.client.close
             )
         self.follow_executor.shutdown(wait=True)
         if self.rpc is not None:
-            await self.reset()
+            await asyncio.get_running_loop().run_in_executor(self.executor, self._restore_fov)
             await asyncio.get_running_loop().run_in_executor(self.executor, self.rpc.client.close)
+            self.rpc = None
+        self.follow_rpc = None
         self.executor.shutdown(wait=True)
+        self.video_frames.clear()

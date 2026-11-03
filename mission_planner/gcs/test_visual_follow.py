@@ -6,9 +6,13 @@ import json
 import tempfile
 import time
 import unittest
+from collections import deque
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
+
+import cv2
+import numpy as np
 
 from mission_planner.gcs import test_live_tracker
 from mission_planner.gcs.visual_follow import VisualFollow
@@ -159,19 +163,45 @@ class VisualFollowTests(unittest.IsolatedAsyncioTestCase):
     async def native_seed(self, jpeg):
         self.inspections.directory = self.mission.directory
         self.inspections.camera_locks = {"Drone1": asyncio.Lock()}
-        self.camera.capture_inflight = 1
         metadata = {
             "frame_id": "seed",
+            "width": 3840,
+            "height": 2160,
+            "horizontal_fov_deg": 90,
             "camera_view_revision": 3,
-            "timestamp_ns": 1,
+            "timestamp_ns": 200_000_000,
             "captured_at_ms": time.time() * 1000,
             "camera_pose_local_ned": {"orientation": dict(zip("wxyz", [1, 0, 0, 0]))},
         }
-        (self.inspections.directory / "seed-frame.jpg").write_bytes(jpeg)
-        self.camera.video_sample = (metadata, jpeg)
+        pixels = cv2.imdecode(np.frombuffer(jpeg, np.uint8), cv2.IMREAD_COLOR)
+        self.camera.video_frames = deque([(metadata, pixels)], maxlen=12)
+
+        async def capture(after_timestamp_ns):
+            await asyncio.sleep(0.02)
+            return self.camera.video_frames[-1][0], jpeg
+
+        self.camera.capture = AsyncMock(side_effect=capture)
         await self.control.observe(
             self.row, metadata, [{"track_id": 7, "box_xyxy": [1600, 900, 1700, 1060]}]
         )
+        if pixels is not None:
+            for index in (2, 3):
+                await self.until(lambda: self.control.sessions["Drone1"]["latest"] is not None)
+                metadata = {
+                    **metadata,
+                    "timestamp_ns": index * 200_000_000,
+                    "frame_id": f"seed-{index}",
+                }
+                self.camera.video_frames.append((metadata, pixels))
+                await self.control.observe(
+                    self.row, metadata, [{"track_id": 7, "box_xyxy": [1600, 900, 1700, 1060]}]
+                )
+                await self.until(
+                    lambda: (
+                        self.control.sessions["Drone1"]["latest"][0]["timestamp_ns"]
+                        == metadata["timestamp_ns"]
+                    )
+                )
         return metadata
 
     async def until(self, predicate):
@@ -191,9 +221,11 @@ class VisualFollowTests(unittest.IsolatedAsyncioTestCase):
         first = self.camera.follow.await_args.args[0]
         self.row["status"] = self.row["rescue"]["phase"] = "failed"
         self.row["rescue"]["visual_hold"] = True
-        self.camera.video_sample = (
-            {**metadata, "timestamp_ns": 2, "captured_at_ms": time.time() * 1000},
-            fixture.jpeg(1640, 920),
+        self.camera.video_frames.append(
+            (
+                {**metadata, "timestamp_ns": 800_000_000, "captured_at_ms": time.time() * 1000},
+                fixture.image(1640, 920),
+            )
         )
         await self.until(lambda: self.row["camera_tracking"]["box"][0] > first[0] + 3)
         self.assertEqual(self.row["camera_tracking"]["source"], "onboard_csrt")
@@ -207,9 +239,9 @@ class VisualFollowTests(unittest.IsolatedAsyncioTestCase):
         metadata = await self.native_seed(b"invalid JPEG")
         task = self.control.sessions["Drone1"]["task"]
         with self.assertRaisesRegex(RuntimeError, "native main-camera tracking failed"):
-            await task
+            await asyncio.wait_for(task, 3)
         self.assertEqual(self.row["camera_tracking"]["status"], "failed")
-        self.assertIn("original 4K camera image", self.row["camera_tracking"]["error"])
+        self.assertIn("4K camera pixels", self.row["camera_tracking"]["error"])
         await self.control.observe(
             self.row, metadata, [{"track_id": 7, "box_xyxy": [1600, 900, 1700, 1060]}]
         )
@@ -238,20 +270,20 @@ class VisualFollowTests(unittest.IsolatedAsyncioTestCase):
         metadata = await self.native_seed(fixture.jpeg(1600, 900))
         await self.until(lambda: self.camera.follow.await_count >= 1)
         session = self.control.sessions["Drone1"]
-        current = {**metadata, "timestamp_ns": 3, "captured_at_ms": time.time() * 1000}
-        self.camera.video_sample = (current, fixture.jpeg(1680, 900))
-        await self.until(lambda: session["latest"][0]["timestamp_ns"] == 3)
+        corrected = {**metadata, "frame_id": "correction", "timestamp_ns": 2_500_000_000}
+        current = {**metadata, "timestamp_ns": 2_700_000_000, "captured_at_ms": time.time() * 1000}
+        self.camera.video_frames.extend(
+            [(corrected, fixture.image(1640, 900)), (current, fixture.image(1680, 900))]
+        )
+        await self.until(lambda: session["latest"][0]["timestamp_ns"] == current["timestamp_ns"])
         await self.control.observe(self.row, current, [])
-        session["last_seed"] -= 2.1
-        corrected = {**metadata, "frame_id": "correction", "timestamp_ns": 2}
-        (self.inspections.directory / "correction-frame.jpg").write_bytes(fixture.jpeg(1640, 900))
         await self.control.observe(
             self.row, corrected, [{"track_id": 7, "box_xyxy": [1640, 900, 1740, 1060]}]
         )
         self.assertIsNone(session["missing_since"])
-        await self.until(lambda: session["last_seed_ns"] == 2)
+        await self.until(lambda: session["last_seed_ns"] == corrected["timestamp_ns"])
         await self.until(lambda: self.camera.follow.await_count >= 3)
-        self.assertEqual(session["latest"][0]["timestamp_ns"], 3)
+        self.assertEqual(session["latest"][0]["timestamp_ns"], current["timestamp_ns"])
         self.assertGreater(session["latest"][1][0], 415)
         rows = [
             json.loads(line)

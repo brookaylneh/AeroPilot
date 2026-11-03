@@ -6,6 +6,7 @@ import json
 import math
 import tempfile
 import threading
+import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -125,12 +126,14 @@ class ForwardCaptureTests(unittest.TestCase):
                 patch("world.cosys.inspection.sim.native", return_value=native),
                 patch("world.cosys.inspection.truth_sample", side_effect=bracket),
             ):
-                record, jpeg = capture._capture()
+                record, jpeg, pixels = capture._capture()
                 request = rpc.simGetImages.call_args.args[0][0]
                 self.assertEqual(request.camera_name, "fpv")
                 self.assertEqual(rpc.simGetImages.call_args.kwargs, {"vehicle_name": name})
                 self.assertFalse(request.pixels_as_float)
                 self.assertFalse(request.compress)
+                self.assertEqual(pixels.shape, (2160, 3840, 3))
+                self.assertFalse(pixels.flags.writeable)
                 return record, jpeg
         finally:
             asyncio.run(capture.close())
@@ -182,68 +185,44 @@ class ForwardCaptureTests(unittest.TestCase):
         self.assertEqual(metadata["timestamp_ns"], 150)
         self.assertEqual(metadata["camera_position_world_m"], {"x": 14, "y": 23, "z": 70})
 
-    def test_aim_commands_world_target_at_mount_and_restore_levels_at_heading(self):
-        capture = ForwardCapture("Drone2", self.directory)
-        body_rotation = Rotation.from_euler("z", 90, degrees=True)
-        body_position = np.array([10, 20, -30])
-        mount = np.array([0.6, 0, 0.05])
-        camera_position = body_position + body_rotation.apply(mount)
-        body = airsim.Pose(
-            airsim.Vector3r(*body_position), airsim.Quaternionr(*body_rotation.as_quat())
-        )
-        info = SimpleNamespace(
-            pose=airsim.Pose(airsim.Vector3r(*camera_position), body.orientation)
-        )
-        rpc = Mock()
-        rpc.simGetVehiclePose.return_value = body
-        rpc.simGetCameraInfo.return_value = info
-        rpc.simSetCameraPose.side_effect = lambda _, pose, **kwargs: setattr(
-            info, "pose", airsim.Pose(info.pose.position, pose.orientation)
-        )
-        capture.rpc = rpc
-        origin = {"x": 1000, "y": 2000, "z": 4000}
-        target = {"x": 50, "y": 50, "z": 20}
-        try:
-            with patch(
-                "world.cosys.inspection.sim.native",
-                return_value={
-                    "mode": "mission",
-                    "vehicles": [{"id": "Drone2", "localNedOriginUeCm": origin}],
-                },
-            ):
-                capture._aim(target)
-            args = rpc.simSetCameraPose.call_args
-            self.assertEqual(args.args[0], "fpv")
-            self.assertEqual(args.kwargs, {"vehicle_name": "Drone2"})
-            pose = args.args[1]
-            np.testing.assert_allclose(
-                [getattr(pose.position, key + "_val") for key in "xyz"], mount, atol=1e-12
+    def test_first_aim_uses_measured_pose_and_restore_slews_at_heading(self):
+        capture, rpc, info = self.camera()
+        target = {"x": 50, "y": 50, "z": 0}
+        clock = [100.0]
+        before = Rotation.from_euler("ZYX", [90, 0, 20], degrees=True)
+        info.pose.orientation = airsim.Quaternionr(*before.as_quat())
+        with patch("world.cosys.inspection.time.monotonic", side_effect=lambda: clock[0]):
+            capture._aim(target)
+            q = info.pose.orientation
+            current = Rotation.from_quat([getattr(q, k + "_val") for k in "xyzw"])
+            self.assertLessEqual(math.degrees((before.inv() * current).magnitude()), 0.600001)
+            for _ in range(200):
+                clock[0] += 0.05
+                capture._route_aim()
+            current = Rotation.from_quat(
+                [getattr(info.pose.orientation, k + "_val") for k in "xyzw"]
             )
-            world = Rotation.from_quat([getattr(pose.orientation, key + "_val") for key in "xyzw"])
-            aimed = world.apply([1, 0, 0])
-            wanted = (
-                np.array(
-                    [(target[key] - origin[key] / 100) * (1 if key != "z" else -1) for key in "xyz"]
-                )
-                - camera_position
-            )
-            np.testing.assert_allclose(aimed, wanted / np.linalg.norm(wanted), atol=1e-12)
-            self.assertAlmostEqual(world.as_euler("ZYX")[2], 0)
+            wanted = np.array([50, 50, 30.0])
+            wanted /= np.linalg.norm(wanted)
+            np.testing.assert_allclose(current.apply([1, 0, 0]), wanted, atol=1e-7)
+            self.assertEqual(rpc.simSetCameraPose.call_args.kwargs, {"vehicle_name": "Drone1"})
+            mount = rpc.simSetCameraPose.call_args.args[1].position
+            np.testing.assert_allclose([getattr(mount, k + "_val") for k in "xyz"], [0.6, 0, 0.05])
+            before = current
+            clock[0] += 0.05
             capture._reset()
-            restored = rpc.simSetCameraPose.call_args.args[1]
-            np.testing.assert_allclose(
-                [getattr(restored.position, key + "_val") for key in "xyz"], mount, atol=1e-12
+            current = Rotation.from_quat(
+                [getattr(info.pose.orientation, k + "_val") for k in "xyzw"]
             )
+            self.assertLessEqual(math.degrees((before.inv() * current).magnitude()), 0.600001)
+            for _ in range(200):
+                clock[0] += 0.05
+                capture._route_aim()
             np.testing.assert_allclose(
-                [getattr(restored.orientation, key + "_val") for key in "xyzw"],
-                body_rotation.as_quat(),
-                atol=1e-12,
+                [getattr(info.pose.orientation, k + "_val") for k in "xyzw"],
+                Rotation.from_euler("z", 90, degrees=True).as_quat(),
+                atol=1e-7,
             )
-            count = rpc.simSetCameraPose.call_count
-            capture._reset()
-            self.assertEqual(rpc.simSetCameraPose.call_count, count)
-        finally:
-            asyncio.run(capture.close())
 
     def test_camera_aim_failure_is_not_retried(self):
         capture = ForwardCapture("Drone1", self.directory)
@@ -277,7 +256,7 @@ class ForwardCaptureTests(unittest.TestCase):
         rpc.simSetCameraPose.side_effect = lambda _, pose, **kwargs: setattr(
             info, "pose", airsim.Pose(info.pose.position, pose.orientation)
         )
-        capture.rpc = rpc
+        capture.rpc = capture.follow_rpc = rpc
         self.addCleanup(lambda: asyncio.run(capture.close()))
         native = patch(
             "world.cosys.inspection.sim.native",
@@ -296,7 +275,7 @@ class ForwardCaptureTests(unittest.TestCase):
         base = info.fov
         for revision, zoom in enumerate((1, 2, 4, 4, 2, 1, 4), 1):
             capture.begin_follow()
-            result = asyncio.run(capture.view(target, zoom))
+            result = capture._view(target, zoom)
             self.assertFalse(capture.visual_controlled)
             self.assertEqual(result["revision"], revision)
             self.assertEqual(result["target"], target)
@@ -312,12 +291,23 @@ class ForwardCaptureTests(unittest.TestCase):
         self.assertEqual(capture.view_revision, 7)
         capture._reset()
         self.assertAlmostEqual(info.fov, base)
-        self.assertIsNone(capture.aimed)
+        self.assertIsNotNone(capture.restore_target)
         self.assertIsNone(capture.original_fov)
         self.assertIsNone(capture.target)
         rpc.simSetCameraFov.assert_called_with("fpv", base, vehicle_name="Drone1")
 
-    def test_capture_reaims_latest_world_target_after_aircraft_attitude_changes(self):
+    def test_close_restores_original_optics_without_moving_the_camera(self):
+        capture, rpc, info = self.camera()
+        original = info.fov
+        capture._view({"x": 20, "y": 0, "z": 0}, 4)
+        self.assertLess(info.fov, original)
+        rpc.simSetCameraPose.reset_mock()
+        asyncio.run(capture.close())
+        self.assertAlmostEqual(info.fov, original)
+        rpc.simSetCameraPose.assert_not_called()
+        self.assertIsNone(capture.original_fov)
+
+    def test_capture_records_world_stabilized_pose_after_aircraft_attitude_changes(self):
         capture, rpc, info = self.camera()
         rpc.simIsPause.return_value = False
         body = rpc.simGetVehiclePose.return_value
@@ -346,6 +336,9 @@ class ForwardCaptureTests(unittest.TestCase):
         ):
             with self.subTest(target=target):
                 capture._view(target)
+                for _ in range(120):
+                    capture.aimed = (capture.aimed[0], time.monotonic() - 0.1)
+                    capture._route_aim()
                 wanted = np.array([target["x"], target["y"], 30.0])
                 wanted /= np.linalg.norm(wanted)
                 body.orientation = airsim.Quaternionr(
@@ -356,55 +349,45 @@ class ForwardCaptureTests(unittest.TestCase):
                     for t in (100, 200)
                 ]
                 with patch("world.cosys.inspection.truth_sample", side_effect=bracket):
-                    metadata, _ = capture._capture()
+                    metadata, _, _ = capture._capture()
                 self.assertEqual(metadata["camera_view_revision"], revision)
                 self.assertEqual(capture.target, target)
 
-    def test_search_aims_slew_at_a_bounded_rate_while_views_and_relocks_jump(self):
-        capture, rpc, _ = self.camera()
+    def test_search_view_and_return_transitions_slew_without_capture_calls(self):
+        capture, rpc, info = self.camera()
         clock = [100.0]
 
-        def heading(degrees):
-            yaw = math.radians(degrees)
-            return {"x": 100 * math.cos(yaw), "y": 100 * math.sin(yaw), "z": 30}
+        def target(yaw):
+            return {
+                "x": 100 * math.cos(math.radians(yaw)),
+                "y": 100 * math.sin(math.radians(yaw)),
+                "z": 30,
+            }
 
-        def aimed_yaw():
-            q = rpc.simSetCameraPose.call_args.args[1].orientation
-            world = Rotation.from_quat([getattr(q, key + "_val") for key in "xyzw"])
-            np.testing.assert_allclose(world.as_euler("ZYX")[1:], [0, 0], atol=1e-9)
-            return math.degrees(world.as_euler("ZYX")[0])
+        def attitude():
+            return Rotation.from_quat([getattr(info.pose.orientation, k + "_val") for k in "xyzw"])
 
-        with (
-            patch("world.cosys.inspection.time.monotonic", side_effect=lambda: clock[0]),
-            patch("world.cosys.inspection.capture_frame", return_value=({}, b"")),
-        ):
-            capture._aim(heading(0), slew=True)
-            self.assertAlmostEqual(aimed_yaw(), 0)
-            clock[0] += 0.5
-            capture._aim(heading(90), slew=True)
-            self.assertAlmostEqual(aimed_yaw(), 22.5)
-            self.assertEqual(capture.target, heading(90))
-            clock[0] += 0.5
-            capture._capture()
-            self.assertAlmostEqual(aimed_yaw(), 45)
-            capture._view(heading(170))
-            self.assertAlmostEqual(aimed_yaw(), 170)
-            clock[0] += 1
-            capture._aim(heading(-170), slew=True)
-            self.assertAlmostEqual(aimed_yaw(), -170)
-            clock[0] += 0.1
-            capture._aim(heading(0))
-            self.assertAlmostEqual(aimed_yaw(), 0)
-            clock[0] += 0.1
-            capture._capture()
-            self.assertAlmostEqual(aimed_yaw(), 0)
+        with patch("world.cosys.inspection.time.monotonic", side_effect=lambda: clock[0]):
+            capture._view(target(170))
+            previous = attitude()
+            self.assertLessEqual(math.degrees(previous.magnitude()), 0.600001)
+            for _ in range(320):
+                clock[0] += 0.05
+                capture._route_aim()
+                current = attitude()
+                self.assertLessEqual(math.degrees((previous.inv() * current).magnitude()), 0.600001)
+                previous = current
+            self.assertAlmostEqual(attitude().as_euler("ZYX", degrees=True)[0], 170, places=5)
+            capture._view(target(-170))
+            self.assertLessEqual(math.degrees((previous.inv() * attitude()).magnitude()), 0.012001)
+        rpc.simGetImages.assert_not_called()
 
     def test_capture_stops_if_world_target_stabilization_fails(self):
         capture, rpc, _ = self.camera()
         capture._aim({"x": 20, "y": 0, "z": 0})
         rpc.simGetCameraInfo.side_effect = TimeoutError("camera attitude unavailable")
         with self.assertRaisesRegex(TimeoutError, "camera attitude unavailable"):
-            capture._capture()
+            capture._route_aim()
         rpc.simGetImages.assert_not_called()
         rpc.simGetCameraInfo.side_effect = None
 
@@ -433,6 +416,28 @@ class ForwardCaptureTests(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "zoom readback differs"):
             asyncio.run(capture.view({"x": 20, "y": 0, "z": 0}, 2))
         self.assertEqual(capture.view_revision, 0)
+
+    def test_sam_and_tracker_share_one_capture_and_native_pixel_buffer(self):
+        capture, _, _ = self.camera()
+        calls = []
+        pixels = np.full((2160, 3840, 3), 80, np.uint8)
+
+        def acquired():
+            calls.append(1)
+            return {"timestamp_ns": len(calls), "camera_view_revision": 0}, b"jpeg", pixels
+
+        async def exercise():
+            first, second = await asyncio.gather(capture.capture(0), capture.capture(0))
+            self.assertIs(first, second)
+            self.assertEqual(len(calls), 1)
+            self.assertIs(capture.video_frames[0][1], pixels)
+            first, second = await asyncio.gather(capture.capture(1), capture.capture(1))
+            self.assertEqual(first[0]["timestamp_ns"], 2)
+            self.assertIs(first, second)
+            self.assertEqual(len(calls), 2)
+
+        with patch.object(capture, "_capture", side_effect=acquired):
+            asyncio.run(exercise())
 
     def test_capture_waits_for_an_in_flight_camera_change(self):
         capture, rpc, info = self.camera()

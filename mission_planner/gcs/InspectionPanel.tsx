@@ -105,6 +105,15 @@ const frameSchema = z
         .object({
           box_xyxy: z.tuple([number, number, number, number]),
           confidence: number.min(0).max(1),
+          source_box_xyxy: z.tuple([number, number, number, number]).optional(),
+          mask_geometry: z
+            .object({
+              components: number.int().positive(),
+              foreground_pixels: number.int().positive(),
+              excluded_pixels: number.int().nonnegative(),
+            })
+            .strict()
+            .optional(),
           track_id: number.int().positive(),
           class_name: z.string().min(1).max(100),
           observations: number.int().positive(),
@@ -203,6 +212,17 @@ const rescueSchema = z
         })
         .strict(),
     ),
+    candidates: z
+      .array(
+        z
+          .object({
+            track_id: number.int().positive(),
+            state: z.enum(['pending', 'verified', 'recheck', 'rejected']),
+            detector_confidence: number.min(0).max(1),
+          })
+          .strict(),
+      )
+      .optional(),
     selected_track_id: number.int().positive().nullable(),
     visual_hold: z.boolean(),
     track: z
@@ -243,7 +263,14 @@ export const inspectionSchema = z
       .object({
         source: z.literal('onboard_csrt'),
         track_id: number.int().positive(),
-        status: z.enum(['moved', 'stopped', 'stale', 'failed']),
+        status: z.enum(['acquiring', 'moved', 'stopped', 'stale', 'failed']),
+        agreements: number.int().nonnegative().optional(),
+        agreement_iou: number.min(0).max(1).nullable().optional(),
+        frame_timestamp_ns: z
+          .string()
+          .regex(/^[1-9][0-9]*$/)
+          .nullable()
+          .optional(),
         sequence: number.int().positive(),
         box: z.tuple([number, number, number, number]).nullable(),
         frame_age_ms: number.nonnegative().nullable(),

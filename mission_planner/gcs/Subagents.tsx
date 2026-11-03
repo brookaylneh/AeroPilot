@@ -206,28 +206,42 @@ export function SubagentTab({
           handed.add(rescue.review_id);
           const frame = snapshot.latest;
           if (!frame) throw new Error('A Glimmer review started without its source frame.');
+          const selected = frame.detections.find(
+            (detection) => detection.track_id === rescue.selected_track_id,
+          );
+          const completed = log
+            .flatMap((entry) =>
+              entry.row.rescue?.review_id === rescue.review_id ? entry.row.rescue.reports : [],
+            )
+            .find((report) => report.images.track_id === rescue.selected_track_id);
+          const photo = completed?.images.photo ?? selected?.photo;
+
           return (
             <article key={event.id} className="gcs-subagent-entry vision" data-frame-id={frame.frame_id}>
               <header>
                 <strong>SAM 3.1 → Glimmer</strong>
-                <span>
-                  {frame.detections.length} {frame.detections.length === 1 ? 'candidate' : 'candidates'}
-                </span>
+                <span>Candidate {rescue.selected_track_id} · 4× camera</span>
                 {time}
               </header>
               <p>
-                “{snapshot.prompt}” · confidence{' '}
-                {frame.detections.map((detection) => detection.confidence.toFixed(2)).join(', ')}
+                “{snapshot.prompt}” · initial detector score {selected?.confidence.toFixed(2)}
               </p>
-              <figure className="gcs-evidence-frame">
-                <EvidenceImage
-                  src={frame.frame_ref}
-                  width={frame.width}
-                  height={frame.height}
-                  label={`${snapshot.drone_id} original 4K candidate frame`}
-                  onError={onError}
-                />
-              </figure>
+              {photo ? (
+                <figure className="gcs-evidence-frame">
+                  <EvidenceImage
+                    src={photo.frame_ref}
+                    width={photo.width}
+                    height={photo.height}
+                    label={`${snapshot.drone_id} original 4× 4K photograph of candidate ${rescue.selected_track_id}`}
+                    onError={onError}
+                  />
+                  <figcaption>
+                    Captured {relativeTime(photo.captured_at_ms, now)} · 4× optical view · single photograph
+                  </figcaption>
+                </figure>
+              ) : (
+                <p>Acquiring the candidate’s 4× 4K photograph…</p>
+              )}
             </article>
           );
         }

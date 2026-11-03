@@ -285,7 +285,13 @@ export function useMission() {
     ws.onclose = () => {
       setConnection('closed');
     };
+    const diagnostic = (event: Event) => {
+      if (ws.readyState === WebSocket.OPEN)
+        ws.send(JSON.stringify({ type: 'video_diagnostic', sample: (event as CustomEvent).detail }));
+    };
+    window.addEventListener('snr-video-diagnostic', diagnostic);
     const close = () => {
+      window.removeEventListener('snr-video-diagnostic', diagnostic);
       ws.onclose = null;
       ws.onerror = null;
       ws.close();

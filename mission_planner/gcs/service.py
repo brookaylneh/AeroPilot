@@ -16,7 +16,8 @@ import httpx
 from pymavlink.dialects.v20 import ardupilotmega as MAV
 
 from mission_planner.agents.map_context import compact_map, ground_height, ground_profile
-from mission_planner.agents.models import EFFORTS, Wonder, data_url
+from mission_planner.agents.model_process import WonderProcess, WonderRequestError
+from mission_planner.agents.models import EFFORTS
 from mission_planner.agents.tools import (
     AGENT_INSTRUCTIONS,
     CATEGORIES,
@@ -42,12 +43,14 @@ from mission_planner.gcs.geodesy import (
 from mission_planner.gcs.inspection import Inspections
 from mission_planner.gcs.rejection import PlanRejected
 from mission_planner.gcs.validation import CLEARANCE_M
+from mission_planner.gcs.video_diagnostics import record as record_video_diagnostic
 from mission_planner.gcs.waiting import ready, validate_conditions
 from world.cosys import client as sim
 from world.cosys.landmarks import directions, find, load
 from world.cosys.terrain import BOUNDS, terrain_height
 
 MESSAGE_FIELDS = {
+    "video_diagnostic": {"type", "sample"},
     "launch": {"type", "case_id"},
     "connect": {"type", "case_id"},
     "start": {"type"},
@@ -87,6 +90,18 @@ def encode(value):
 
 
 def operator_error(error):
+    if isinstance(error, WonderRequestError):
+        if error.kind == "http":
+            return (
+                "Wonder rejected the request (HTTP 400): " + error.detail
+                if error.status_code == 400
+                else f"Wonder is unavailable (HTTP {error.status_code})"
+            ) + ". No command was issued from this Wonder request."
+        assert error.kind == "timeout"
+        return (
+            "Wonder did not respond before the request timed out. "
+            "No command was issued from this Wonder request."
+        )
     if isinstance(error, httpx.HTTPStatusError):
         if error.response.status_code == 400:
             return (
@@ -273,6 +288,46 @@ def retire_images(history):
             item["content"] = [part for part in item["content"] if part["type"] != "input_image"]
 
 
+def evidence_message(evidence, history):
+    supplied = {
+        part["sha256"]
+        for item in history
+        if "content" in item and isinstance(item["content"], list)
+        for part in item["content"]
+        if part["type"] == "input_image" and "sha256" in part
+    }
+    assert len(evidence["image_paths"]) == len(evidence["image_order"])
+    content, order, previous = [], [], []
+    for path, photo in zip(evidence["image_paths"], evidence["image_order"]):
+        if photo["sha256"] in supplied:
+            previous.append(photo)
+            continue
+        supplied.add(photo["sha256"])
+        order.append(photo)
+        content.append({"type": "input_image", "image_path": path, "sha256": photo["sha256"]})
+    return {
+        "role": "user",
+        "content": [
+            {
+                "type": "input_text",
+                "text": "Sensor evidence. Each image is the object's single original 4x 4K "
+                "photograph. Its capture timestamp is recorded; it is not a current tracking "
+                "frame. SAM boxes and masks belong to the separate main camera. New images "
+                "follow image_order; previously_supplied photographs are already in this "
+                "conversation. "
+                + encode(
+                    {
+                        "metadata": evidence["metadata"],
+                        "image_order": order,
+                        "previously_supplied": previous,
+                    }
+                ),
+            },
+            *content,
+        ],
+    }
+
+
 def flight_constraints(vehicles):
     return {
         "origin_altitude_msl_m": ORIGIN["altitude_msl_m"],
@@ -322,7 +377,7 @@ class Mission:
         self.fleet_ready = False
         self.fleet_closed = False
         self.fleet_error = None
-        self.model = Wonder()
+        self.model = WonderProcess()
         self.lifecycle_lock = asyncio.Lock()
         self.clearing = False
         # The operator's effort choice outlives each run, including the one a chat starts.
@@ -1780,24 +1835,10 @@ class Mission:
                 for result in wake["results"]:
                     if "inspection" in result and result["inspection"]["latest"] is not None:
                         evidence = self.inspections.evidence(result["inspection"]["id"])
-                        content.append(
-                            {
-                                "type": "input_text",
-                                "text": "Sensor evidence; images follow the listed order. "
-                                "Each image is the object's single original 4x 4K photograph. "
-                                "Its timestamp is recorded; it is not a current tracking frame. "
-                                "SAM boxes and masks belong to the separate main camera. "
-                                + encode(
-                                    {
-                                        "metadata": evidence["metadata"],
-                                        "image_order": evidence["image_order"],
-                                    }
-                                ),
-                            }
-                        )
                         content.extend(
-                            {"type": "input_image", "image_url": data_url(image)}
-                            for image in evidence["images"]
+                            evidence_message(evidence, [*self.conversation, {"content": content}])[
+                                "content"
+                            ]
                         )
         if content:
             self.conversation.append({"role": "user", "content": content})
@@ -1826,7 +1867,7 @@ class Mission:
                     TOOLS,
                     instructions=instructions,
                     trace_path=trace,
-                    history=(*self.conversation, live),
+                    history=copy.deepcopy((*self.conversation, live)),
                     cache_key=self.id,
                 )
             )
@@ -1976,27 +2017,7 @@ class Mission:
                     evidence = self.inspections.evidence(
                         arguments["inspection_id"], result["state"]["frame"]["frame_id"]
                     )
-                    self.conversation.append(
-                        {
-                            "role": "user",
-                            "content": [
-                                {
-                                    "type": "input_text",
-                                    "text": "Requested candidate observation. "
-                                    + encode(
-                                        {
-                                            "metadata": evidence["metadata"],
-                                            "image_order": evidence["image_order"],
-                                        }
-                                    ),
-                                },
-                                *[
-                                    {"type": "input_image", "image_url": data_url(image)}
-                                    for image in evidence["images"]
-                                ],
-                            ],
-                        }
-                    )
+                    self.conversation.append(evidence_message(evidence, self.conversation))
                 if call["name"] == "wait_for" and result["ok"]:
                     return
             if self.plan_active is not flight:
@@ -2011,7 +2032,9 @@ class Mission:
         if kind in ("start", "chat", "tool"):
             # Mission work opens a general mission when none is running.
             await self.begin(None)
-        if kind == "chat":
+        if kind == "video_diagnostic":
+            record_video_diagnostic(self.directory, message["sample"])
+        elif kind == "chat":
             assert isinstance(message["text"], str) and 1 <= len(message["text"].strip()) <= 4000
             self.cancel_wait("New operator message")
             conversation = self.conversation
@@ -2175,5 +2198,5 @@ class Mission:
             if not self.fleet_closed:
                 await self.fleet.close()
                 self.fleet_closed = True
-            self.model.http.close()
+            await asyncio.to_thread(self.model.close)
             self.log.close()

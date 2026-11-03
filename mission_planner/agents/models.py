@@ -1,6 +1,7 @@
 """Typed synchronous model clients. Errors and timeouts propagate."""
 
 import base64
+import hashlib
 import io
 import json
 import os
@@ -75,6 +76,30 @@ def data_url(data):
     with Image.open(io.BytesIO(data)) as image:
         mime = Image.MIME[image.format]
     return f"data:{mime};base64," + base64.b64encode(data).decode()
+
+
+def image_inputs(history):
+    """Resolve immutable local photographs only inside the model request worker."""
+    result = []
+    for item in history:
+        if "content" not in item or not isinstance(item["content"], list):
+            result.append(item)
+            continue
+        content = []
+        for part in item["content"]:
+            if part["type"] == "input_image" and "image_path" in part:
+                assert set(part) == {"type", "image_path", "sha256"}
+                path = Path(part["image_path"])
+                assert path.is_absolute(), "Model photographs require an absolute evidence path"
+                payload = path.read_bytes()
+                assert hashlib.sha256(payload).hexdigest() == part["sha256"], (
+                    "Model photograph changed on disk"
+                )
+                content.append({"type": "input_image", "image_url": data_url(payload)})
+            else:
+                content.append(part)
+        result.append({**item, "content": content})
+    return result
 
 
 def endpoint(name):
@@ -171,6 +196,9 @@ class Wonder:
             headers={"Authorization": "Bearer " + os.environ["MODEL_API_KEY"]}, timeout=180
         )
 
+    def close(self):
+        self.http.close()
+
     def respond(
         self,
         text: str | None,
@@ -190,7 +218,7 @@ class Wonder:
             assert text is None and not images and not tool_outputs
             assert previous_response_id is None, "Explicit history cannot use a response ID"
             assert history, "Explicit history must contain input items"
-            inputs = list(history)
+            inputs = image_inputs(history)
         else:
             inputs = list(tool_outputs)
             if text is not None:

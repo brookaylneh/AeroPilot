@@ -30,6 +30,7 @@ from mission_planner.gcs.service import (
     planning_receipt,
     retire_images,
 )
+from mission_planner.gcs.test_inspection import model_evidence
 from world.cosys.landmarks import load
 
 
@@ -676,11 +677,12 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
         image = io.BytesIO()
         Image.new("RGB", (4, 4), "pink").save(image, format="JPEG")
         payload = image.getvalue()
-        self.mission.inspections.evidence.return_value = {
-            "metadata": {"frame_id": frame},
-            "image_order": [{"kind": "original", "frame_id": frame}],
-            "images": [payload],
-        }
+        self.mission.inspections.evidence.return_value = model_evidence(
+            self.mission.directory,
+            {"frame_id": frame},
+            [{"kind": "original", "frame_id": frame}],
+            [payload],
+        )
         self.replies([self.reply([call]), self.reply([])])
         await self.mission.agent("Show me the current candidate view")
         self.mission.inspections.evidence.assert_called_once_with(identity, frame)
@@ -896,7 +898,7 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
         mission.inspections = Inspections(mission)
         mission.inspections.rows[row["id"]] = row
         mission.inspections.evidence = Mock(
-            return_value={"metadata": metadata, "image_order": order, "images": images}
+            return_value=model_evidence(mission.directory, metadata, order, images)
         )
         mission.plan_preview = mission.plan_previous = None
         mission.events, mission.event_sequence = [], 0
@@ -940,7 +942,7 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
         self.assertIn("SAM boxes and masks belong to the separate main camera", content[1]["text"])
         self.assertEqual(
             json.loads(content[1]["text"][content[1]["text"].index("{") :]),
-            {"metadata": metadata, "image_order": order},
+            {"metadata": metadata, "image_order": order, "previously_supplied": []},
         )
         self.assertEqual(
             [base64.b64decode(item["image_url"].split(",")[1]) for item in content[2:]], images

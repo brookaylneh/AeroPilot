@@ -63,7 +63,7 @@ class EvidenceCapture:
             rpc.simGetCameraInfo(CAMERA_ID, vehicle_name=name).fov, FOV_DEG, abs_tol=0.01
         ), "The installed evidence camera is not fixed at 4x"
         point_camera(rpc, name, CAMERA_ID, desired)
-        metadata, jpeg = capture_frame(rpc, name, CAMERA_ID, self.directory, 0, quality=100)
+        metadata, jpeg, _ = capture_frame(rpc, name, CAMERA_ID, self.directory, 0, quality=100)
         error = math.degrees(
             (desired.inv() * rotation(metadata["camera_pose_local_ned"]["orientation"])).magnitude()
         )

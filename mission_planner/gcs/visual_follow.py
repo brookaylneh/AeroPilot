@@ -4,10 +4,11 @@ import asyncio
 import json
 import math
 import time
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 
 from mission_planner.gcs.centering import visible_box
-from mission_planner.gcs.live_tracker import LiveTracker
+from mission_planner.gcs.live_tracker import LiveTracker, agreement
 from mission_planner.gcs.tracking import MAX_TRACKING_AGE_S
 
 
@@ -91,11 +92,15 @@ class VisualFollow:
             session = {
                 "identity": identity,
                 "row": row,
-                "seed": None,
+                "observations": deque(maxlen=12),
+                "results": {},
+                "agreements": 0,
+                "agreement_iou": None,
                 "latest": None,
+                "guided": None,
+                "last_observation_ns": 0,
                 "visible": True,
                 "missing_since": None,
-                "last_seed": 0.0,
                 "last_seed_ns": 0,
                 "task": None,
             }
@@ -106,12 +111,27 @@ class VisualFollow:
             return
         session["visible"] = True
         session["missing_since"] = None
-        if metadata["timestamp_ns"] > session["last_seed_ns"] and (
-            session["latest"] is None or time.monotonic() - session["last_seed"] >= 2
+        if metadata["timestamp_ns"] <= session["last_observation_ns"]:
+            return
+        session["last_observation_ns"] = metadata["timestamp_ns"]
+        session["observations"].append((dict(metadata), list(selected[0]["box_xyxy"])))
+        self.inspections.cameras[name].visual_controlled = True
+
+    def estimate(self, name, track_id):
+        if name not in self.sessions:
+            return None
+        session = self.sessions[name]
+        latest = session["guided"]
+        if (
+            session["identity"][2] != track_id
+            or session["task"].done()
+            or session["agreements"] < 2
+            or latest is None
+            or not session["visible"]
+            or time.time() * 1000 - latest[0]["captured_at_ms"] > MAX_TRACKING_AGE_S * 1000
         ):
-            path = self.inspections.directory / (metadata["frame_id"] + "-frame.jpg")
-            jpeg = await asyncio.to_thread(path.read_bytes)
-            session["seed"] = (dict(metadata), jpeg, selected[0]["box_xyxy"])
+            return None
+        return latest
 
     async def _run_native(self, name, session):
         camera = self.inspections.cameras[name]
@@ -120,60 +140,126 @@ class VisualFollow:
         executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="csrt-" + name)
         loop = asyncio.get_running_loop()
 
+        def recorded(metadata, box):
+            session["results"][metadata["timestamp_ns"]] = box
+            while len(session["results"]) > 24:
+                del session["results"][next(iter(session["results"]))]
+            if box is None:
+                session.update(latest=None, guided=None)
+            elif (
+                session["latest"] is None
+                or metadata["timestamp_ns"] >= session["latest"][0]["timestamp_ns"]
+            ):
+                session["latest"] = (dict(metadata), box)
+
+        async def advance(frames):
+            for metadata, pixels in frames:
+                if tracker.tracker is None:
+                    break
+                if metadata["camera_view_revision"] != session["identity"][3]:
+                    continue
+                if metadata["timestamp_ns"] <= tracker.timestamp_ns:
+                    continue
+                started = time.monotonic()
+                box = await loop.run_in_executor(executor, tracker.advance, pixels, metadata)
+                recorded(metadata, box)
+                with (self.inspections.mission.directory / "native-tracking.jsonl").open(
+                    "a"
+                ) as log:
+                    log.write(
+                        json.dumps(
+                            {
+                                "timestamp_ms": time.time() * 1000,
+                                "drone_id": name,
+                                "track_id": session["identity"][2],
+                                "frame_timestamp_ns": metadata["timestamp_ns"],
+                                "phase": "update",
+                                "box": box,
+                                "processing_ms": (time.monotonic() - started) * 1000,
+                                "source_age_ms": time.time() * 1000 - metadata["captured_at_ms"],
+                            },
+                            allow_nan=False,
+                        )
+                        + "\n"
+                    )
+
         async def produce():
             while True:
                 if (
                     session["missing_since"] is not None
                     and time.monotonic() - session["missing_since"] >= MAX_TRACKING_AGE_S
                 ):
-                    session.update(seed=None, latest=None, visible=False)
+                    session.update(latest=None, visible=False, agreements=0)
+                    session["observations"].clear()
                 if not session["visible"]:
                     tracker.tracker = None
-                    session["latest"] = None
                     await asyncio.sleep(0.02)
                     continue
-                updated, result = False, None
-                seed = session["seed"]
-                if seed is not None:
-                    session["seed"] = None
-                    metadata, jpeg, box = seed
-                    if time.time() * 1000 - metadata["captured_at_ms"] <= MAX_TRACKING_AGE_S * 1000:
-                        box = await loop.run_in_executor(
-                            executor, tracker.seed, jpeg, box, metadata["timestamp_ns"]
-                        )
-                        updated, result = True, (metadata, box)
-                        session["last_seed"] = time.monotonic()
-                        session["last_seed_ns"] = metadata["timestamp_ns"]
-                if tracker.tracker is None:
-                    await asyncio.sleep(0.02)
-                    continue
-                sample = camera.video_sample
-                if not camera.capture_inflight and (
-                    sample is None or time.time() * 1000 - sample[0]["captured_at_ms"] > 200
-                ):
-                    async with self.inspections.camera_locks[name]:
-                        if not camera.capture_inflight:
-                            sample = await camera.capture()
-                if sample is not None and tracker.tracker is not None:
-                    metadata, jpeg = sample
+                while session["observations"]:
+                    metadata, reference = session["observations"].popleft()
+                    stamp = metadata["timestamp_ns"]
+                    frames = tuple(camera.video_frames)
+                    source = next(
+                        ((m, pixels) for m, pixels in frames if m["timestamp_ns"] == stamp), None
+                    )
                     if (
-                        metadata["camera_view_revision"] == session["identity"][3]
-                        and metadata["timestamp_ns"] > tracker.timestamp_ns
+                        source is None
+                        or time.time() * 1000 - metadata["captured_at_ms"]
+                        > MAX_TRACKING_AGE_S * 1000
                     ):
+                        session.update(agreements=0, latest=None)
+                        continue
+                    await advance(
+                        [(m, pixels) for m, pixels in frames if m["timestamp_ns"] <= stamp]
+                    )
+                    compared = stamp in session["results"]
+                    overlap = (
+                        agreement(session["results"][stamp], [v / 4 for v in reference])
+                        if compared
+                        else None
+                    )
+                    if compared:
+                        session["agreements"] = session["agreements"] + 1 if overlap >= 0.25 else 0
+                        session["agreement_iou"] = overlap
+                    correction = (
+                        tracker.tracker is None
+                        or overlap is not None
+                        and overlap < 0.25
+                        or (stamp - session["last_seed_ns"]) / 1e9 >= 2
+                    )
+                    if correction:
                         box = await loop.run_in_executor(
-                            executor, tracker.advance, jpeg, metadata["timestamp_ns"]
+                            executor, tracker.seed, source[1], reference, metadata
                         )
-                        updated, result = True, None if box is None else (dict(metadata), box)
-                # A delayed SAM correction is advanced to the current image before publication.
-                if updated and session["visible"]:
-                    if result is None:
-                        session["latest"] = None
-                    elif (
-                        session["latest"] is None
-                        or result[0]["timestamp_ns"] >= session["latest"][0]["timestamp_ns"]
-                    ):
-                        session["latest"] = result
-                await asyncio.sleep(0.02)
+                        recorded(metadata, box)
+                        session["last_seed_ns"] = stamp
+                    with (self.inspections.mission.directory / "native-tracking.jsonl").open(
+                        "a"
+                    ) as log:
+                        log.write(
+                            json.dumps(
+                                {
+                                    "timestamp_ms": time.time() * 1000,
+                                    "drone_id": name,
+                                    "track_id": session["identity"][2],
+                                    "frame_timestamp_ns": stamp,
+                                    "phase": "agreement",
+                                    "iou": overlap,
+                                    "agreements": session["agreements"],
+                                    "corrected": correction,
+                                },
+                                allow_nan=False,
+                            )
+                            + "\n"
+                        )
+                    await advance(frames)
+                if tracker.tracker is not None:
+                    await advance(tuple(camera.video_frames))
+                    if tracker.tracker is not None:
+                        await camera.capture(tracker.timestamp_ns)
+                else:
+                    session.update(latest=None, agreements=0)
+                    await asyncio.sleep(0.02)
 
         producer = asyncio.create_task(produce())
         producer_observed = False
@@ -189,7 +275,7 @@ class VisualFollow:
                     session["missing_since"] is None
                     or tick - session["missing_since"] < MAX_TRACKING_AGE_S
                 )
-                latest = session["latest"] if available else None
+                latest = session["latest"] if available and session["agreements"] >= 2 else None
                 sequence += 1
                 message = {
                     "type": "camera_follow",
@@ -214,10 +300,18 @@ class VisualFollow:
                         frame_timestamp_ns=metadata["timestamp_ns"],
                     )
                 result = await self.update(message, session)
+                session["guided"] = latest if result["status"] == "moved" else None
                 row["camera_tracking"] = {
                     "source": "onboard_csrt",
                     "track_id": session["identity"][2],
-                    "status": result["status"],
+                    "status": "acquiring"
+                    if available and session["agreements"] < 2
+                    else result["status"],
+                    "agreement_iou": session["agreement_iou"],
+                    "agreements": session["agreements"],
+                    "frame_timestamp_ns": None
+                    if message["frame_timestamp_ns"] is None
+                    else str(message["frame_timestamp_ns"]),
                     "sequence": sequence,
                     "box": message["box"],
                     "frame_age_ms": message["frame_age_ms"],
