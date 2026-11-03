@@ -8,12 +8,28 @@ service_group=$(stat -c %G "$project")
 service_uid=$(id -u "$service_user")
 service_gid=$(id -g "$service_user")
 test "$service_uid" = 1002 && test "$service_gid" = 1003
+release_branch=$(runuser -u "$service_user" -- git rev-parse --abbrev-ref HEAD)
+[[ "$release_branch" = HEAD ]] || {
+  echo "Install services from a detached release checkout; live worker imports must not follow an editing branch" >&2
+  exit 1
+}
+release_changes=$(runuser -u "$service_user" -- git status --porcelain --untracked-files=no)
+[[ -z "$release_changes" ]] || {
+  echo "The release checkout has uncommitted source changes" >&2
+  exit 1
+}
 test -f .local/runtime.env
 test -x .local/toolchains/bin/caddy
 test -f .local/dist/index.html
+[[ "$(realpath .local/dist)" = "$project/.local/dist" ]] || {
+  echo "The browser bundle must be inside this release checkout, separate from the editable workspace" >&2
+  exit 1
+}
 test -x .local/unreal/Live/ScenarioStudio/Binaries/Linux/ScenarioStudio
 runuser -u "$service_user" -- "$project/.venv-cosys/bin/python" -c \
   'import cv2; assert hasattr(cv2, "TrackerCSRT_create"), "Install requirements.txt in .venv-cosys: OpenCV CSRT is missing"; cv2.TrackerCSRT_create(cv2.TrackerCSRT_Params())'
+runuser -u "$service_user" -- "$project/.venv-cosys/bin/python" \
+  -m unittest mission_planner.gcs.test_host
 slots=$(sed -n 's/^SNR_SLOTS=//p' .local/runtime.env)
 [[ "$slots" =~ ^[1-9][0-9]*$ ]]
 for ((slot = 0; slot < slots; slot++)); do

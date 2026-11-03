@@ -1222,6 +1222,78 @@
       "Camera preparation is covered by mocked mission/camera regressions; live-flight acquisition and framing remain for the operator test."
     ]
   },
+  "worker_bootstrap_repair": {
+    "failure_utc": "2026-11-03T19:00:22Z",
+    "source_mission_id": "0344ee0e-a110-4f30-b4f2-ec46ce33a87c",
+    "cause": "A spawned review worker re-imported gcs.host and its flight-service dependencies from an editable deployment; geodesy.py no longer defined polygon_error while allocation.py still imported it. The worker exited and broke the review pool.",
+    "changes": [
+      "Import flight-service dependencies only when the mission host or connection handler runs.",
+      "Install clean detached source with a private browser bundle; reject editable or shared deployments.",
+      "Exercise one-worker and four-worker pools with the actual mission-host spawn entry point before installation."
+    ],
+    "worker_probe": {
+      "scope": "Five CPU request workers with the actual gcs.host spawn entry point. No model, GPU, camera or flight request.",
+      "pools": [
+        {
+          "workers": 1,
+          "elapsed_s": 0.07999304594704881,
+          "rows": [
+            {
+              "pid": 1128075,
+              "main": "mission_planner.gcs.host",
+              "flight_imported": false
+            }
+          ]
+        },
+        {
+          "workers": 4,
+          "elapsed_s": 0.09435722400667146,
+          "rows": [
+            {
+              "pid": 1128082,
+              "main": "mission_planner.gcs.host",
+              "flight_imported": false
+            },
+            {
+              "pid": 1128081,
+              "main": "mission_planner.gcs.host",
+              "flight_imported": false
+            },
+            {
+              "pid": 1128083,
+              "main": "mission_planner.gcs.host",
+              "flight_imported": false
+            },
+            {
+              "pid": 1128078,
+              "main": "mission_planner.gcs.host",
+              "flight_imported": false
+            }
+          ]
+        }
+      ]
+    },
+    "python_tests": 764,
+    "python_elapsed_s": 325.055,
+    "node_tests": 219,
+    "typecheck": "passed",
+    "ruff_check": "passed",
+    "ruff_format": "passed",
+    "prettier": "passed",
+    "browser_build": "passed",
+    "installer_attached_checkout_rejection": "passed",
+    "source": "https://docs.python.org/3.10/library/multiprocessing.html#safe-importing-of-main-module",
+    "artifacts_sha256": {
+      "worker-import-failure.log": "09d6ba12e84a715b5eed15057e99d2d264f3e76ae164f40c58546120a649abcc",
+      "worker-probe.json": "fd85107f8d59ebb4333fefe33a9c7789df6bf0abec6e6695a71ab64d644df350",
+      "python-suite.log": "e5c63c3dce6b974a54a4f19ae70d6c643681f0ce20693dffa906e7950a584fd2",
+      "node-tests.log": "ef8246d52bf0ccd939536e74e4a9a072a838e0e54ea68d7ab15721172484602d",
+      "installer-guard.log": "292d782e17bb80506b8ad4465a920bf13e731135a1a7763bcfeecd713fa66b85",
+      "python-multiprocessing.html": "6a783f5ce034fc411361f408ba0061d9afcf66fc94afbcd62257b4f9add5b9e0"
+    },
+    "verified_utc": "2026-11-03T19:16:03.064021+00:00",
+    "scope": "No Wonder, Glimmer, SAM inference or flight request. Public and loopback assignment checks both returned HTTP 200 before cutover; no proxy trace ties the reported 502 to this worker failure."
+  },
   "validation": {
     "python_tests": 762,
     "python_elapsed_s": 351.389,

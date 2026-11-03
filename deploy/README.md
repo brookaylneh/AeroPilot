@@ -115,9 +115,20 @@ set -a
 set +a
 bash deploy/fetch-caddy.sh
 bash deploy/fetch-browser.sh
-npm run build
 bash world/unreal/scripts/stage-live-release.sh .local/unreal/<new-build>/Linux
 node --env-file=.local/runtime.env --import tsx web/slots.ts write
+deploy_source=$PWD
+deploy_release="$PWD/.local/staging/release-$(git rev-parse --short=12 HEAD)"
+git worktree add --detach "$deploy_release" HEAD
+mkdir "$deploy_release/.local"
+for entry in .env .venv-cosys node_modules; do
+  ln -s "$deploy_source/$entry" "$deploy_release/$entry"
+done
+for entry in runtime.env toolchains unreal slots vendor data evidence run build; do
+  ln -s "$deploy_source/.local/$entry" "$deploy_release/.local/$entry"
+done
+cd "$deploy_release"
+npm run build
 sudo bash deploy/install-services.sh
 sudo systemctl start snr-turn snr-vision@0 snr-signalling@0 snr-unreal@0
 timeout 120 bash -c 'until ss -H -ltn sport = :41451 | rg -q "127.0.0.1:41451"; do sleep 1; done'
@@ -169,10 +180,15 @@ the build and verified source versions are documented in
 The installer checks native CSRT in the deployment checkout's `.venv-cosys` before
 changing units. Install `requirements.txt` in that environment too.
 
-When a parallel editing session has unfinished changes, build and verify an isolated
-source checkout against the installed version, then run the installer from that checkout:
-it renders the checkout as every unit's root. Keep its `.env`, `.local`, virtual
-environment and Node dependency links available while installed. Check
+Installed services use a clean detached release checkout with its own browser bundle.
+The installer rejects an attached branch, uncommitted source changes, or a bundle shared
+through a `.local` symlink. Spawned model workers import Python source after the service
+starts; an editable deployment can mix an old mission process with unfinished new code.
+Build and verify the selected commit, then install its release checkout as above.
+Keep its environment, data, toolchain and dependency links available while installed;
+leave release source and `.local/dist` unchanged. The installer also starts the one-worker
+and four-worker model pools without model requests to verify the host bootstrap.
+Check
 `systemctl show snr-web snr-mission@0 -p WorkingDirectory` before a deployment.
 
 Build the immutable SAM device image and stage its verified checkpoint, warmup

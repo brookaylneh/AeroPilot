@@ -10,10 +10,11 @@ from http import HTTPStatus
 from websockets.asyncio.server import serve
 
 from mission_planner.environment import load_env
-from mission_planner.gcs.service import MESSAGE_FIELDS, Mission, encode, operator_error
 
 
 async def connection(mission, websocket):
+    from mission_planner.gcs.service import MESSAGE_FIELDS, encode, operator_error
+
     first = json.loads(await asyncio.wait_for(websocket.recv(), timeout=10))
     kind = first["type"]
     assert kind in ("launch", "connect") and set(first) == MESSAGE_FIELDS[kind]
@@ -45,6 +46,8 @@ async def connection(mission, websocket):
 
 
 async def run():
+    from mission_planner.gcs.service import Mission, encode
+
     load_env()
     port = int(os.environ["SNR_MISSION_PORT"])
     assert 1 <= port <= 65535
