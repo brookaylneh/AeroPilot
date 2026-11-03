@@ -195,7 +195,7 @@ class AgentContext(unittest.TestCase):
         self.assertEqual(result["fences"]["Drone1"], fence)
         self.assertEqual(result["boundary_clearance_m"], 10)
         self.assertEqual(result["altitude_above_home_m"], [10, 100])
-        self.assertEqual(result["minimum_separation_m"], 0.1)
+        self.assertEqual(result["minimum_separation_m"], 4.0)
         self.assertEqual(result["origin_altitude_msl_m"], ORIGIN["altitude_msl_m"])
 
     def test_every_request_contains_map_and_briefing(self):
@@ -533,7 +533,15 @@ class AutopilotAlerts(unittest.TestCase):
         receipt = {
             "plan": {"version": 2, "drones": [{"drone_id": "Drone1", "steps": [{"kind": "fly"}]}]}
         }
-        m.fleet_event({"kind": "plan_swap", "version": 2, "stage": "uploaded", "receipt": receipt})
+        m.fleet_event(
+            {
+                "kind": "plan_swap",
+                "version": 2,
+                "stage": "uploaded",
+                "receipt": receipt,
+                "drone_ids": ["Drone1"],
+            }
+        )
         self.assertEqual(len(m.autopilot_alerts), 2)
         receipt = {
             "plan": {
@@ -541,7 +549,15 @@ class AutopilotAlerts(unittest.TestCase):
                 "drones": [{"drone_id": "Drone1", "steps": [{"kind": "takeoff"}]}],
             }
         }
-        m.fleet_event({"kind": "plan_swap", "version": 3, "stage": "uploaded", "receipt": receipt})
+        m.fleet_event(
+            {
+                "kind": "plan_swap",
+                "version": 3,
+                "stage": "uploaded",
+                "receipt": receipt,
+                "drone_ids": ["Drone1"],
+            }
+        )
         self.assertEqual([row["drone_id"] for row in m.autopilot_alerts.values()], ["Drone2"])
         m.fleet_event({**self.warning, "at_ms": 3000})
         self.assertEqual(len(m.autopilot_alerts), 2)
@@ -569,7 +585,7 @@ class AutopilotAlerts(unittest.TestCase):
         m.fleet_event(
             {"kind": "plan_swap", "stage": "holding", "version": 2, "drone_ids": ["Drone1"]}
         )
-        m.inspections.invalidate.assert_called_once_with("Flight plan changed")
+        m.inspections.invalidate.assert_called_once_with("Flight plan changed", "Drone1")
         m.cancel_wait.assert_called_once_with("Flight plan changed")
         self.assertEqual(m.events[-1]["result"]["stage"], "holding")
 

@@ -31,12 +31,12 @@ LAKE = (358.0, -124.1)
 
 
 def itinerary():
-    def fly(point):
+    def fly(point, height=40):
         return {
             "kind": "fly",
             "north_m": point[0],
             "east_m": point[1],
-            "height_m": 40,
+            "height_m": height,
             "speed_mps": 15,
         }
 
@@ -81,11 +81,16 @@ def itinerary():
             ),
         ],
         [branch("Drone1", [hover()]), branch("Drone2", [fly((-500, 200)), hover()])],
+        # The two approaches cross near the pads; Drone2 flies the layer above Drone1.
         [
             branch(
-                name, [fly((-780, east)), {"kind": "return_home", "height_m": 40, "speed_mps": 15}]
+                name,
+                [
+                    fly((-780, east), height),
+                    {"kind": "return_home", "height_m": height, "speed_mps": 15},
+                ],
             )
-            for name, east in (("Drone1", -2.5), ("Drone2", 2.5))
+            for name, east, height in (("Drone1", -2.5, 40), ("Drone2", 2.5, 48))
         ],
     ]
     return [{"version": index, "drones": drones} for index, drones in enumerate(branches, 1)]

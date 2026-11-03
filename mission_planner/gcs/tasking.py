@@ -933,10 +933,15 @@ def route_work(tasking, drones, states, settings, origins, area, known, fence):
             (identifier, known[identifier]["name"], outline(known[identifier]))
             for identifier in references["landmark_ids"]
         ]
-    if len(lines) > len(drones):
+    fleet = tasking["fleet"]
+    if fleet["drone_ids"] is None and fleet["count"] is None:
+        # An unnamed fleet takes one aircraft per route in lane order.
+        drones = drones[: len(lines)]
+    if len(lines) != len(drones):
         raise PlanRejected(
             "participants",
-            f"{len(lines)} routes for {len(drones)} aircraft; name fewer routes or more aircraft",
+            f"{len(lines)} route(s) for {len(drones)} aircraft; one aircraft follows one route, "
+            f"so name {len(lines)} aircraft in fleet.drone_ids or set fleet.count {len(lines)}",
             detail={"routes": [label for label, _, _ in lines], "aircraft": drones},
         )
     for label, name, line in lines:

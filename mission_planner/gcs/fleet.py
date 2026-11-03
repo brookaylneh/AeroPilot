@@ -106,6 +106,19 @@ def remaining_route(state, route):
     return [state, *route]
 
 
+def with_kept(receipt, kept):
+    """The receipt plus airborne drones outside the plan that keep flying: their branches and
+    missions, and their search policy when the plan has none of its own."""
+    if not kept:
+        return receipt
+    plan = {**receipt["plan"], "drones": [*receipt["plan"]["drones"], *[k["branch"] for k in kept]]}
+    searches = [k["search"] for k in kept if k["search"] is not None]
+    if "search" not in plan and searches:
+        plan["search"] = searches[0]
+    missions = {**receipt["missions"], **{k["drone_id"]: k["mission"] for k in kept}}
+    return {**receipt, "plan": plan, "missions": missions}
+
+
 class Fleet:
     def __init__(self, directory, on_event, landmarks):
         self.directory = Path(directory).resolve()
@@ -805,7 +818,10 @@ class Fleet:
         )
         return receipt
 
-    async def apply_plan(self, plan):
+    async def apply_plan(self, plan, kept=()):
+        """Brake, upload and start every drone in the plan. kept lists airborne drones outside the
+        plan that keep flying their current branch and mission: nothing is sent to them, the
+        returned receipt reports them beside the new drones."""
         async with self.command_lock:
             receipt = await self.preview_plan(plan)
             states = self.snapshot()
@@ -865,7 +881,8 @@ class Fleet:
                     "kind": "plan_swap",
                     "version": plan["version"],
                     "stage": "uploaded",
-                    "receipt": receipt,
+                    "receipt": with_kept(receipt, kept),
+                    "drone_ids": list(receipt["missions"]),
                 }
             )
             launching = []
@@ -917,7 +934,7 @@ class Fleet:
                 await self._until(name, lambda name=name: self.vehicles[name]["mode"] == "AUTO", 10)
                 timings[name]["auto_at_ms"] = time.time() * 1000
                 self.planned_routes[name] = receipt["missions"][name]["route"]
-            return {"receipt": receipt, "states": states, "timings": timings}
+            return {"receipt": with_kept(receipt, kept), "states": states, "timings": timings}
 
     async def face_heading(self, drone_id, heading_deg):
         assert drone_id in NAMES, f"Unknown drone id: {drone_id}"

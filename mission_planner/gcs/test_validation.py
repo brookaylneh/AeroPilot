@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, Mock, patch
 
 from mission_planner.gcs.fences import default_fences, fence_items
 from mission_planner.gcs.fleet import MAV, Fleet
-from mission_planner.gcs.geodesy import NAMES, ORIGIN
+from mission_planner.gcs.geodesy import MIN_SEPARATION_M, NAMES, ORIGIN
 from mission_planner.gcs.rejection import PlanRejected
 from mission_planner.gcs.validation import (
     fence_polygon,
@@ -74,11 +74,11 @@ class RouteValidation(unittest.TestCase):
     def test_centimetre_home_drift_preserves_the_separation_boundary(self):
         homes = {"Drone1": 2632.43, "Drone2": 2632.44}
         route = [point(-10, 0, 30), point(10, 0, 30)]
-        for delta in (0.1, 0.099999999):
+        for delta in (MIN_SEPARATION_M, MIN_SEPARATION_M - 1e-9):
             altitude = 30 + delta - (homes["Drone2"] - homes["Drone1"])
             reserved = [("Drone2", [point(0, -10, altitude), point(0, 10, altitude)])]
             with self.subTest(delta=delta):
-                if delta == 0.1:
+                if delta == MIN_SEPARATION_M:
                     validate_separation("Drone1", route, reserved, homes)
                 else:
                     with self.assertRaises(PlanRejected):
@@ -197,18 +197,19 @@ class RouteValidation(unittest.TestCase):
 
     def test_crossing_reservation_and_exact_separation(self):
         route = [point(-10, 0), point(10, 0)]
-        for offset in (0.10, 0.101, 1):
+        for offset in (MIN_SEPARATION_M, MIN_SEPARATION_M + 0.001, MIN_SEPARATION_M + 1):
             validate_separation(
                 "Drone1",
                 route,
                 [("Drone2", [point(0, -10, 30 + offset), point(0, 10, 30 + offset)])],
                 HOME_HEIGHTS,
             )
-        for offset in (0, 0.099):
+        for offset in (0, MIN_SEPARATION_M - 0.001):
             with (
                 self.subTest(offset=offset),
                 self.assertRaisesRegex(
-                    AssertionError, r"conflicts with Drone2; minimum separation 0\.1 m"
+                    AssertionError,
+                    rf"conflicts with Drone2; minimum separation {MIN_SEPARATION_M:g} m",
                 ),
             ):
                 validate_separation(
@@ -221,10 +222,15 @@ class RouteValidation(unittest.TestCase):
     def test_single_points_and_own_reservations(self):
         route = [point(0, 0)]
         validate_separation(
-            "Drone1", route, [("Drone1", route), ("Drone2", [point(0.10, 0)])], HOME_HEIGHTS
+            "Drone1",
+            route,
+            [("Drone1", route), ("Drone2", [point(MIN_SEPARATION_M, 0)])],
+            HOME_HEIGHTS,
         )
         with self.assertRaisesRegex(AssertionError, "conflicts with Drone2"):
-            validate_separation("Drone1", route, [("Drone2", [point(0.099, 0)])], HOME_HEIGHTS)
+            validate_separation(
+                "Drone1", route, [("Drone2", [point(MIN_SEPARATION_M - 0.001, 0)])], HOME_HEIGHTS
+            )
 
     def test_conflict_reports_closest_segments_and_preserves_inputs(self):
         route = [point(0, 0), point(10, 0), point(20, 0)]
@@ -239,7 +245,7 @@ class RouteValidation(unittest.TestCase):
                 "drone_id": "Drone1",
                 "other_drone_id": "Drone2",
                 "distance_m": 0,
-                "minimum_m": 0.1,
+                "minimum_m": MIN_SEPARATION_M,
                 "segment_index": 1,
                 "other_segment_index": 1,
                 "segment": route[1:],
@@ -286,16 +292,16 @@ class RouteValidation(unittest.TestCase):
         ):
             for axis in origin:
                 with self.subTest(origin=origin, axis=axis):
-                    other = {**origin, axis: origin[axis] + 0.10}
+                    other = {**origin, axis: origin[axis] + MIN_SEPARATION_M}
                     validate_separation("Drone1", [origin], [("Drone2", [other])], HOME_HEIGHTS)
-                    other[axis] = origin[axis] + 0.099999999
+                    other[axis] = origin[axis] + MIN_SEPARATION_M - 1e-9
                     with self.assertRaisesRegex(AssertionError, "conflicts with Drone2"):
                         validate_separation("Drone1", [origin], [("Drone2", [other])], HOME_HEIGHTS)
 
     def test_translated_crossing_legs_keep_absolute_separation_boundary(self):
         for altitude in (10, 30, 40, 60, 80, 99.8):
             route = [point(-790, -1190, altitude), point(790, 1190, altitude)]
-            for offset in (0.10, 0.099999999):
+            for offset in (MIN_SEPARATION_M, MIN_SEPARATION_M - 1e-9):
                 reserved = [
                     (
                         "Drone2",
@@ -306,7 +312,7 @@ class RouteValidation(unittest.TestCase):
                     )
                 ]
                 with self.subTest(altitude=altitude, offset=offset):
-                    if offset == 0.10:
+                    if offset == MIN_SEPARATION_M:
                         validate_separation("Drone1", route, reserved, HOME_HEIGHTS)
                     else:
                         with self.assertRaisesRegex(AssertionError, "conflicts with Drone2"):
@@ -378,9 +384,9 @@ class FlightGuardIntegration(unittest.IsolatedAsyncioTestCase):
     async def test_coordinated_return_compares_each_route_in_its_home_frame(self):
         current = [
             dict(id="Drone1", **point(-10, 0, 30)),
-            dict(id="Drone2", mode="GUIDED", **point(0, -10, 20.05)),
+            dict(id="Drone2", mode="GUIDED", **point(0, -10, 23.5)),
         ]
-        value = fleet(current, {"Drone2": [point(0, -10, 20.05), point(0, 10, 20.05)]})
+        value = fleet(current, {"Drone2": [point(0, -10, 23.5), point(0, 10, 23.5)]})
         value.snapshot.return_value[1]["home"]["altitude_msl_m"] += 10
         value.check_return = Mock(return_value=[point(-10, 0), point(10, 0)])
         value._mode = AsyncMock()

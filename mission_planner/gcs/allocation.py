@@ -371,10 +371,12 @@ def branches(sectors, states, settings, landmarks, *, next_band, aftermath):
     hovers or plain fly steps); an optional "continuing" list holds unfinished observed steps
     the airborne drone flies first from where it is. Between consecutive surveys the drone
     climbs to its lane layer for the join, so joins never share height with other drones'
-    rows. Other keys pass through to the returned metadata.
+    rows. Rows and layers belong to the aircraft by its place in LANE_ORDER, not to its place
+    in this plan, so plans compiled at different times never share a lane or a layer. Other
+    keys pass through to the returned metadata.
     """
     current = {state["id"]: state for state in states}
-    order = [name for name in LANE_ORDER if name in {s["drone_id"] for s in sectors}]
+    order = list(LANE_ORDER)
     layers = lane_layers(order, settings)
     rows = {
         name: LANE_ROW_OFFSET_M + LANE_ROW_SPACING_M * index for index, name in enumerate(order)

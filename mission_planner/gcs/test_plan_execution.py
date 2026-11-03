@@ -11,8 +11,8 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
 from mission_planner.environment import ROOT
-from mission_planner.gcs.fleet import MAV, Fleet
-from mission_planner.gcs.geodesy import NAMES
+from mission_planner.gcs.fleet import MAV, Fleet, with_kept
+from mission_planner.gcs.geodesy import MIN_SEPARATION_M, NAMES
 from mission_planner.gcs.planner import mission_readback
 from mission_planner.gcs.rejection import PlanRejected
 from mission_planner.gcs.service import Mission
@@ -176,14 +176,16 @@ class PlanApplication(unittest.IsolatedAsyncioTestCase):
         current[0].update(armed=True, landed_state=MAV.MAV_LANDED_STATE_IN_AIR)
         current[0]["altitude_above_home_m"] = 40
         owner.vehicles = lambda: current
-        with self.assertRaises(PlanRejected) as caught:
-            await owner.execute(
-                "plan_task",
-                {"tasking": transit_task(drone_ids=["Drone2"])},
-                "agent",
-                "t3",
-            )
-        self.assertEqual(caught.exception.rejection["rule"], "participants")
+        # Drone1 flies on; a tasking that names only Drone2 keeps Drone1's plan beside it.
+        third = await owner.execute(
+            "plan_task", {"tasking": transit_task(drone_ids=["Drone2"])}, "agent", "t3"
+        )
+        self.assertEqual(third["plan"]["version"], 2)
+        self.assertEqual(list(owner.plan_preview["missions"]), ["Drone2"])
+        kept = owner.kept_flights(owner.plan_preview)
+        self.assertEqual([k["drone_id"] for k in kept], ["Drone1"])
+        self.assertEqual(kept[0]["branch"], owner.plan_active["plan"]["drones"][0])
+        self.assertIsNone(kept[0]["search"])
 
     async def test_expansion_proposal_needs_approval_and_a_decline_keeps_the_compiled_hover(self):
         from mission_planner.gcs.test_expansion import airborne_mid_survey, search_receipt
@@ -405,7 +407,7 @@ class PlanApplication(unittest.IsolatedAsyncioTestCase):
         current[1].update(
             north_m=current[0]["north_m"],
             east_m=current[0]["east_m"],
-            altitude_above_home_m=top + 0.1,
+            altitude_above_home_m=top + MIN_SEPARATION_M,
             armed=True,
             landed_state=2,
             mode="BRAKE",
@@ -421,7 +423,7 @@ class PlanApplication(unittest.IsolatedAsyncioTestCase):
 
         value._command.side_effect = command
         with self.assertRaisesRegex(
-            RuntimeError, "Pre-AUTO.*no mission started:.*measured 0.090000"
+            RuntimeError, "Pre-AUTO.*no mission started:.*measured 3.990000"
         ):
             await value.apply_plan(request)
         self.assertNotIn(
@@ -866,6 +868,66 @@ class PlanApplication(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result["error"], "Operator declined")
         self.assertFalse(owner.approvals)
         owner.fleet.apply_plan.assert_not_called()
+
+    async def test_launch_beside_a_flying_drone_keeps_it_flying(self):
+        current = airborne()
+        owner = mission(current)
+        first = plan([fly(-600, 0), hover()])
+        owner.plan_active = await owner.fleet.preview_plan(first)
+        owner.fleet.planned_routes["Drone1"] = owner.plan_active["missions"]["Drone1"]["route"]
+        before = copy.deepcopy(owner.plan_active["missions"]["Drone1"])
+        owner.fleet.upload_mission = AsyncMock()
+        request = plan(
+            [{"kind": "takeoff", "height_m": 60}, fly(-700, 150, 60), hover()],
+            drone="Drone2",
+            version=2,
+        )
+        await owner.execute("preview_plan", {"plan": request}, "operator", "preview")
+        task = asyncio.create_task(
+            owner.invoke("request_launch", {"version": 2}, "operator", "launch")
+        )
+        await pending_approval(owner)
+        # Drone1 is not a participant: no hold before approval, no brake, no upload.
+        self.assertEqual(owner.fleet.vehicles["Drone1"]["mode"], "AUTO")
+        next(iter(owner.approvals.values()))["future"].set_result(True)
+        result = await task
+        self.assertTrue(result["ok"], result)
+        active = owner.plan_active
+        self.assertEqual(active["plan"]["version"], 2)
+        self.assertEqual(sorted(active["missions"]), ["Drone1", "Drone2"])
+        self.assertEqual(active["plan"]["drones"][0]["drone_id"], "Drone2")
+        self.assertEqual(active["plan"]["drones"][1], first["drones"][0])
+        self.assertEqual(active["missions"]["Drone1"], before)
+        self.assertNotIn("search", active["plan"])
+        self.assertEqual(owner.fleet.upload_mission.await_count, 1)
+        self.assertEqual(owner.fleet.upload_mission.await_args.args[0], "Drone2")
+        self.assertNotIn(("Drone1", "BRAKE"), [c.args for c in owner.fleet._mode.await_args_list])
+        self.assertEqual(owner.fleet.planned_routes["Drone1"], before["route"])
+        owner.inspections.close.assert_not_awaited()
+        owner.inspections.start_search.assert_not_awaited()
+        owner.inspections.carry.assert_called_once_with(["Drone1"], 2)
+        self.assertEqual(result["state"]["receipt"]["missions"]["Drone1"], before)
+
+    def test_kept_flights_inherit_their_search_when_the_plan_has_none(self):
+        receipt = {
+            "plan": {"version": 2, "drones": [{"drone_id": "Drone2", "steps": []}]},
+            "missions": {"Drone2": {"items": []}},
+        }
+        kept = [
+            {
+                "drone_id": "Drone1",
+                "branch": {"drone_id": "Drone1", "steps": [{"kind": "survey", "observe": True}]},
+                "mission": {"items": [1]},
+                "search": {"perimeter": []},
+            }
+        ]
+        merged = with_kept(receipt, kept)
+        self.assertEqual([b["drone_id"] for b in merged["plan"]["drones"]], ["Drone2", "Drone1"])
+        self.assertEqual(merged["plan"]["search"], {"perimeter": []})
+        self.assertEqual(merged["missions"]["Drone1"], {"items": [1]})
+        self.assertIs(with_kept(receipt, []), receipt)
+        own = {**receipt, "plan": {**receipt["plan"], "search": {"perimeter": [1]}}}
+        self.assertEqual(with_kept(own, kept)["plan"]["search"], {"perimeter": [1]})
 
     async def test_added_drone_hovers_existing_drone_before_approval(self):
         owner = mission(airborne())

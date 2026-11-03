@@ -329,8 +329,10 @@ the plan is the `band_direction` rejection; the rationale states where each band
 2026-11-02 Granite Lake Trail mission planned its first band 150° off a southbound direction
 because ring-and-wedge slivers outranked the core; this grid replaced it. `allocation.py` cuts
 each band into equal-flight-time strips parallel to the
-sweep with departure lanes and 8 m altitude layers in the fixed order Drone1, Drone3, Drone2,
-Drone4, and `compile_plan` proves the result. The sizing loop uses the compiler's own step timing
+sweep with departure lanes and 8 m altitude layers that belong to each aircraft by its place in
+the fixed order Drone1, Drone3, Drone2, Drone4 (not by its place in the plan), and `compile_plan`
+proves the result. Route tasks take exactly one aircraft per route; a tasking that names more is
+the `participants` rejection rather than a silent drop. The sizing loop uses the compiler's own step timing
 (compiled durations run 18–32 % above a single-leg estimate because every terrain-following
 waypoint carries its own speed ramps). Code assigns the plan version as the active version plus
 one. The receipt adds `tasking`, `region` (bands with status previous, planned, provisional or
@@ -409,7 +411,19 @@ errors identify the field and limit without echoing the whole request.
 
 Generated plans depart by lane: each drone climbs at its pad to its own layer, flies north to
 its own row (20 m plus 12 m per lane) and straight to its strip entry; returns reverse the lane.
-Front pads take the low layers so rear pads cross their columns above them. Different transit
+Rows and layers are fixed per aircraft, so a drone launched alone later flies the same lane it
+would in a four-drone plan and never shares a layer with one already airborne (on 2026-11-03 a
+Drone3 launch beside a flying Drone2 crossed its return lane at the same 38 m layer and was
+rejected). Front pads take the low layers so rear pads cross their columns above them. Separation
+is a 4 m three-dimensional minimum between every planned leg and every reserved route; the
+pads stand 5 m apart, which bounds it.
+
+A tasking names only the aircraft it tasks. Airborne drones of the active plan that the tasking
+leaves out keep flying their branch and uploaded mission: the service passes them to
+`Fleet.apply_plan` as kept flights, the new drones are planned around their reserved routes, the
+merged receipt reports both, nothing is braked or re-uploaded for them, their inspections carry
+over to the new plan version and only the new branches start searching. Re-tasking a flying
+drone names it and still brakes and re-uploads it. Different transit
 heights separate horizontal paths but cannot remove crossings through another aircraft's takeoff
 or landing column, so a band overlapping the pads is rejected. The complete outbound, task and
 homebound routes must pass preview.
@@ -431,7 +445,9 @@ Every version, trigger, state and result is recorded in the mission event log.
 
 `return_fleet(drone_ids)` coordinates an explicit return instruction without another
 approval. Selected aircraft hold while incompatible return paths are occupied; compatible
-returns start once. Waiting, returning, landed and failed states are visible in events and
+returns start once. The rear pads sit 5 m behind the front pads in the same columns, so with the
+4 m separation minimum a rear drone's return waits until the front drone of its column has
+cleared, then starts without another model turn. Waiting, returning, landed and failed states are visible in events and
 Wonder context. Separation reserves remaining AUTO items. RTL keeps its accepted climb/transit corridor
 until ArduPilot explicitly reports its final landing phase; then only the actual descent
 to home remains reserved. Position drift near home cannot release a future climb. Waiting is allowed only for a known returning

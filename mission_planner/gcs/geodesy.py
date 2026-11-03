@@ -18,7 +18,8 @@ LAUNCH_SOUTH_M = NORTH_MIN_M - 40.0
 LAUNCH_HALF_WIDTH_M = 25.0
 MIN_ALTITUDE_M = 10.0
 MAX_ALTITUDE_M = 100.0
-MIN_SEPARATION_M = 0.10
+# Launch pads stand 5 m apart, so their takeoff and landing columns bound this minimum.
+MIN_SEPARATION_M = 4.0
 SEPARATION_TOLERANCE_M = 1e-12
 MIN_SPEED_MPS = 0.5
 MAX_SPEED_MPS = 15.0

@@ -292,6 +292,24 @@ class Allocation(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "pattern point"):
             survey_remainder(step, 12)
 
+    def test_lanes_and_layers_are_fixed_per_aircraft(self):
+        """A drone planned alone flies the same row and layer it would in a four-drone plan, so
+        plans compiled at different times never share a lane (the 2026-11-03 Drone3 launch
+        crossed Drone2's return lane at the same 38 m layer)."""
+        fleet = states()
+        band = box(-300, -100, -100, 100)
+        for drone, layer, row in (
+            ("Drone1", 38, 20),
+            ("Drone3", 46, 32),
+            ("Drone2", 54, 44),
+            ("Drone4", 62, 56),
+        ):
+            with self.subTest(drone=drone):
+                _, _, metadata = compiled({"polygon": band}, [drone], fleet)
+                home = next(s for s in fleet if s["id"] == drone)["home"]
+                self.assertGreaterEqual(metadata[0]["layer_agl_m"], layer)
+                self.assertAlmostEqual(metadata[0]["lane_row"]["north_m"] - home["north_m"], row)
+
     def test_simplified_band_keeps_the_vertex_limit(self):
         shape = Point(0, 0).buffer(300, quad_segs=256)
         self.assertGreater(len(shape.exterior.coords), MAX_VERTICES)

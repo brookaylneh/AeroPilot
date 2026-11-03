@@ -4,7 +4,7 @@ import unittest
 
 from pymavlink.dialects.v20 import ardupilotmega as MAV
 
-from mission_planner.gcs.geodesy import NAMES, point_in_polygon, to_geodetic
+from mission_planner.gcs.geodesy import MIN_SEPARATION_M, NAMES, point_in_polygon, to_geodetic
 from mission_planner.gcs.planner import compile_plan, survey_points
 from mission_planner.gcs.rejection import PlanRejected
 from mission_planner.gcs.test_planner import fly, rectangle, search_plan, states
@@ -78,7 +78,8 @@ def complete_search(fleet, bounds, spacing, bearing):
         state = next(state for state in fleet if state["id"] == name)
         survey = branch["steps"][0]
         entry = survey_points(survey)[0]
-        lane, height = -15 + i * 10, 44 + i * 2
+        # Transit layers 8 m apart, as the lane generator stacks them.
+        lane, height = -15 + i * 10, 44 + i * 8
         transit = [
             fly(state["north_m"], lane, height, 10),
             fly(-790, lane, height, 15),
@@ -132,7 +133,7 @@ class CompleteSearchFlights(unittest.TestCase):
         for bounds, spacing in (
             ((-400, 500, -100, 800), 45),
             ((-750, -650, -100, 100), 20),
-            ((500, 700, 200, 400), 20),
+            ((300, 500, 500, 700), 20),
             ((-100, 100, -600, -400), 20),
         ):
             for bearing in (0, 90):
@@ -185,7 +186,7 @@ class CompleteSearchFlights(unittest.TestCase):
         self.assertEqual((conflict["step_index"], conflict["other_step_index"]), (1, 1))
         self.assertEqual((conflict["step_kind"], conflict["other_step_kind"]), ("fly", "fly"))
         self.assertLess(conflict["distance_m"], conflict["minimum_m"])
-        self.assertEqual(conflict["minimum_m"], 0.1)
+        self.assertEqual(conflict["minimum_m"], MIN_SEPARATION_M)
 
 
 if __name__ == "__main__":

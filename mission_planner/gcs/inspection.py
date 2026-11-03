@@ -515,6 +515,14 @@ class Inspections:
             ):
                 self._stop(row, reason)
 
+    def carry(self, drone_ids, version):
+        """Inspections of drones that keep flying under a new plan version follow that version."""
+        for row in self.rows.values():
+            if row["drone_id"] in drone_ids and (
+                row["status"] == "running" or ("rescue" in row and row["status"] == "candidate")
+            ):
+                row["plan_version"] = version
+
     async def flight_stopped(self, drone_id=None):
         for name, idle in tuple(self.control_idle.items()):
             if drone_id is None or name == drone_id:

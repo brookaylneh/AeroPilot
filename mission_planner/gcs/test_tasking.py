@@ -294,6 +294,19 @@ class Templates(unittest.TestCase):
         self.assertFalse(expandable(whole_low))
         self.assertTrue(expandable(receipt))
 
+    def test_route_search_needs_one_aircraft_per_route(self):
+        with self.assertRaises(PlanRejected) as caught:
+            compiled(
+                task(
+                    task="route_search",
+                    references={"landmark_ids": ["creek-loop"], "direction_of_travel": None},
+                    fleet={"count": 2},
+                )
+            )
+        self.assertEqual(caught.exception.rejection["rule"], "participants")
+        self.assertIn("fleet.count 1", str(caught.exception))
+        self.assertEqual(caught.exception.rejection["detail"]["aircraft"], ["Drone1", "Drone3"])
+
     def test_second_band_with_two_aircraft_marks_the_first_band_previous(self):
         receipt = compiled(
             task(

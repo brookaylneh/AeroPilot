@@ -117,17 +117,20 @@ class CoordinatedReturn(unittest.IsolatedAsyncioTestCase):
             "return_fleet", {"drone_ids": list(NAMES)}, "agent", "return"
         )
         self.assertEqual(len(result["returns"]), 4)
+        # Rear pads sit 5 m behind the front pads in the same columns, so their returns cross
+        # the front drones' approaches at the RTL altitude and wait for those columns to clear.
         await self.wait_for(lambda: self.owner.return_rows["Drone4"]["waiting_for"] == "Drone2")
+        await self.wait_for(lambda: self.owner.return_rows["Drone3"]["waiting_for"] == "Drone1")
         self.assertEqual(
             [self.owner.return_rows[n]["status"] for n in NAMES],
-            ["returning", "returning", "returning", "waiting"],
+            ["returning", "returning", "waiting", "waiting"],
         )
 
-    def clear_crossing(self):
-        two = self.current[1]
-        two.update(
-            north_m=two["home"]["north_m"],
-            east_m=two["home"]["east_m"],
+    def clear_crossing(self, index=1):
+        state = self.current[index]
+        state.update(
+            north_m=state["home"]["north_m"],
+            east_m=state["home"]["east_m"],
             altitude_above_home_m=70,
             landed_state=4,
         )
@@ -164,17 +167,20 @@ class CoordinatedReturn(unittest.IsolatedAsyncioTestCase):
         )
         self.assertFalse(self.owner.return_tasks)
 
-    async def test_three_return_one_waits_then_starts_once_without_another_model_turn(self):
+    async def test_rear_pads_wait_for_their_columns_then_start_once_without_another_model_turn(
+        self,
+    ):
         await self.queue()
         self.assertFalse(self.rtl_calls("Drone4"))
-        self.assertTrue(
-            any(
-                "holding until Drone2 clears" in call.args[1]
-                for call in self.owner.event.call_args_list
-            )
-        )
-        self.clear_crossing()
+        self.assertFalse(self.rtl_calls("Drone3"))
+        texts = [call.args[1] for call in self.owner.event.call_args_list]
+        self.assertTrue(any("holding until Drone2 clears" in text for text in texts))
+        self.assertTrue(any("holding until Drone1 clears" in text for text in texts))
+        self.clear_crossing(1)
         await self.wait_for(lambda: self.owner.return_rows["Drone4"]["status"] == "returning")
+        self.assertEqual(self.owner.return_rows["Drone3"]["status"], "waiting")
+        self.clear_crossing(0)
+        await self.wait_for(lambda: self.owner.return_rows["Drone3"]["status"] == "returning")
         self.assertTrue(self.current[1]["armed"])
         for name in NAMES:
             self.assertEqual(len(self.rtl_calls(name)), 1)

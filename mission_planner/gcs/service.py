@@ -516,16 +516,24 @@ class Mission:
         elif kind == "plan_swap":
             if item["stage"] == "holding":
                 self.cancel_wait("Flight plan changed")
-                self.inspections.invalidate("Flight plan changed")
                 self.proposal = None
                 for name in item["drone_ids"]:
+                    self.inspections.invalidate("Flight plan changed", name)
                     if name in self.return_tasks:
                         self.cancel_return(name, "Flight plan changed")
             if item["stage"] == "uploaded":
                 self.cancel_wait("Flight plan changed")
-                self.inspections.invalidate("Flight plan changed")
+                for name in item["drone_ids"]:
+                    self.inspections.invalidate("Flight plan changed", name)
                 self.plan_previous = self.plan_active
                 self.plan_active = item["receipt"]
+                kept = [
+                    branch["drone_id"]
+                    for branch in self.plan_active["plan"]["drones"]
+                    if branch["drone_id"] not in item["drone_ids"]
+                ]
+                if kept:
+                    self.inspections.carry(kept, self.plan_active["plan"]["version"])
                 if (
                     self.plan_preview is not None
                     and self.plan_preview["plan"] == self.plan_active["plan"]
@@ -542,7 +550,8 @@ class Mission:
                 launching = {
                     branch["drone_id"]
                     for branch in self.plan_active["plan"]["drones"]
-                    if branch["steps"][0]["kind"] == "takeoff"
+                    if branch["drone_id"] in item["drone_ids"]
+                    and branch["steps"][0]["kind"] == "takeoff"
                 }
                 self.inspections.reset_lock(launching)
                 self.autopilot_alerts = {
@@ -821,7 +830,6 @@ class Mission:
             finally:
                 if self.plan_task is asyncio.current_task():
                     self.plan_task = None
-            self.check_participants(receipt["plan"])
             self.plan_preview = receipt
             return {
                 **receipt,
@@ -846,7 +854,6 @@ class Mission:
                         "active": self.plan_active["plan"]["version"],
                     },
                 )
-            self.check_participants(plan)
             self.plan_task = asyncio.current_task()
             try:
                 receipt = await self.fleet.preview_plan(plan)
@@ -918,10 +925,21 @@ class Mission:
             assert self.plan_preview is receipt, (
                 "Plan changed or was overridden while approval was pending"
             )
-            applied = await self.fleet.apply_plan(receipt["plan"])
-            await self.inspections.close()
-            if "search" in receipt["plan"]:
-                await self.inspections.start_search(self.plan_active)
+            kept = self.kept_flights(receipt)
+            applied = await self.fleet.apply_plan(receipt["plan"], kept)
+            if kept and not any(v["armed"] for v in states):
+                # Launching beside flying drones: their inspections continue under the new
+                # version; only the new branches start searching.
+                if "search" in receipt["plan"]:
+                    active = self.plan_active
+                    branches = [b for b in active["plan"]["drones"] if b["drone_id"] in aircraft]
+                    await self.inspections.start_search(
+                        {**active, "plan": {**active["plan"], "drones": branches}}
+                    )
+            else:
+                await self.inspections.close()
+                if "search" in self.plan_active["plan"]:
+                    await self.inspections.start_search(self.plan_active)
             return {
                 **applied,
                 "trigger": self.plan_trigger,
@@ -934,21 +952,22 @@ class Mission:
             if self.plan_active is not None and self.plan_active is not active_before:
                 self.launch(self.watch_plan(self.plan_active))
 
-    def check_participants(self, plan):
+    def kept_flights(self, receipt):
+        """Airborne drones of the active plan that this receipt does not task keep flying it."""
         if self.plan_active is None:
-            return
-        participants = {p["drone_id"] for p in plan["drones"]}
-        flying = {
-            v["id"]
-            for v in self.vehicles()
-            if v["armed"] and v["id"] in self.plan_active["missions"]
-        }
-        if not flying <= participants:
-            raise PlanRejected(
-                "participants",
-                "Change must include every active drone's remaining plan",
-                detail={"missing": sorted(flying - participants)},
-            )
+            return []
+        armed = {v["id"] for v in self.vehicles() if v["armed"]}
+        plan = self.plan_active["plan"]
+        return [
+            {
+                "drone_id": branch["drone_id"],
+                "branch": copy.deepcopy(branch),
+                "mission": copy.deepcopy(self.plan_active["missions"][branch["drone_id"]]),
+                "search": copy.deepcopy(plan["search"]) if "search" in plan else None,
+            }
+            for branch in plan["drones"]
+            if branch["drone_id"] in armed and branch["drone_id"] not in receipt["missions"]
+        ]
 
     def operator_points(self):
         """Map points the operator clicked in the current chat, oldest first."""
