@@ -47,13 +47,18 @@ async function fleet() {
   assert(state.vehicles.every((v) => !v.armed && v.landed_state === 1 && !v.link_lost && v.ekf_healthy));
   return state.mission.id;
 }
-async function creator() {
-  await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeEnabled({ timeout: 60000 });
+async function scene() {
   await page.waitForFunction(() => {
-    const video = document.querySelector('video');
+    const video = document.querySelector('.gcs-world video');
     return video && video.videoWidth > 0 && video.getVideoPlaybackQuality().totalVideoFrames > 0;
   });
 }
+async function creator() {
+  await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeEnabled({ timeout: 60000 });
+  await scene();
+}
+const tab = (name) =>
+  page.getByRole('navigation', { name: 'Views' }).getByRole('button', { name, exact: true });
 try {
   const health = await fetch(`${origin}/healthz`, { signal: AbortSignal.timeout(5000) });
   assert(health.ok);
@@ -61,38 +66,25 @@ try {
   assert.equal(initial.renderer, 'ready', 'Close other scene tabs before acceptance');
   const response = await page.goto(origin);
   assert(response.ok());
-  assert.equal(new URL(page.url()).pathname, '/home');
-  await expect(page.getByRole('status')).toHaveText('World ready');
-  assert(sent.every((message) => message.type === 'status'));
-  await capture('home');
-  await page.getByRole('link', { name: /Proceed to AeroPilot/ }).click();
-  const general = await fleet();
+  assert.equal(new URL(page.url()).pathname, '/');
+  const idle = await fleet();
+  assert.equal(state.mission.active, false);
   assert.equal(state.mission.case_id, null);
-  assert.equal(state.mission.briefing, null);
-  assert.equal(await page.locator('.gcs-composer textarea').inputValue(), '');
-  assert.equal(await page.getByLabel('Search planner', { exact: true }).count(), 0);
-  await capture('general');
-  state = null;
-  await page.reload();
-  assert.equal(await fleet(), general);
-  await page.getByRole('link', { name: 'Home', exact: true }).click();
-  await expect(page.getByRole('status')).toHaveText('World ready');
-  state = null;
-  await page.getByRole('link', { name: /Proceed to AeroPilot/ }).click();
-  assert.equal(await fleet(), general);
-  state = null;
-  await page.goto(`${origin}/mission`);
-  assert.equal(new URL(page.url()).pathname, '/missionplanner');
-  assert.equal(await fleet(), general);
-  await capture('general-rejoined');
-  await page.goto(`${origin}/studio`);
-  await expect(page.getByRole('button', { name: 'End mission and open Studio', exact: true })).toBeEnabled();
-  const sentBefore = sent.length;
-  await capture('studio-transition');
-  assert(!sent.slice(sentBefore).some((message) => message.type === 'studio'));
-  await page.getByRole('button', { name: 'End mission and open Studio', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Start mission', exact: true })).toBeEnabled();
+  await capture('idle-map');
+  for (const path of ['/home', '/studio', '/missionplanner', '/mission']) {
+    state = null;
+    await page.goto(`${origin}${path}`);
+    assert.equal(new URL(page.url()).pathname, '/');
+    assert.equal(await fleet(), idle);
+  }
+  await tab('Explore world').click();
+  await scene();
+  await expect(page.getByRole('navigation', { name: 'Scenario stages' })).toHaveCount(0);
+  await capture('explore');
+  await tab('Search & rescue scenario').click();
   await creator();
-  await capture('studio');
+  await capture('scenario');
   await page.getByRole('tab', { name: 'Older adults', exact: true }).click();
   await page.locator('.portrait-options button').first().click();
   await creator();
@@ -112,27 +104,42 @@ try {
   await page.getByRole('textbox', { name: 'Mission brief', exact: true }).fill(brief);
   await page.getByRole('textbox', { name: 'Mission brief', exact: true }).press('Tab');
   await capture('scenario-briefing');
-  state = null;
   await page.getByRole('button', { name: 'Launch Search & Rescue Mission', exact: true }).click();
-  await page.waitForURL(`${origin}/missionplanner?case=*`);
+  await expect(tab('Map')).toHaveAttribute('aria-pressed', 'true', { timeout: 30000 });
+  await expect.poll(() => state?.mission.case_id, { timeout: 30000 }).not.toBeNull();
   const rescue = await fleet();
-  assert.notEqual(rescue, general);
-  const caseId = new URL(page.url()).searchParams.get('case');
-  assert.equal(state.mission.case_id, caseId);
+  assert.notEqual(rescue, idle);
+  assert.equal(state.mission.active, true);
   assert.equal(state.mission.briefing.brief, brief);
   await expect(page.locator('.gcs-composer textarea')).toHaveValue(brief);
   await capture('scenario-planner');
+  for (const name of ['Explore world', 'Search & rescue scenario']) {
+    await tab(name).click();
+    await expect(page.getByText('Mission in progress', { exact: true })).toBeVisible();
+    await capture(`locked-${name === 'Explore world' ? 'explore' : 'scenario'}`);
+  }
+  await page.getByRole('button', { name: 'Return to map', exact: true }).click();
   state = null;
-  await page.goto(`${origin}/mission?case=${caseId}`);
+  await page.reload();
   assert.equal(await fleet(), rescue);
-  assert.equal(state.mission.case_id, caseId);
-  await capture('scenario-rejoined');
+  await page.getByRole('button', { name: 'End mission', exact: true }).click();
+  await capture('end-mission');
+  await page
+    .getByRole('region', { name: 'End mission' })
+    .getByRole('button', { name: 'End mission' })
+    .click();
+  await expect(page.getByRole('button', { name: 'Start mission', exact: true })).toBeEnabled({
+    timeout: 60000,
+  });
+  assert.equal(state.mission.active, false);
+  assert.notEqual(await fleet(), rescue);
+  await capture('ended');
   assert.deepEqual(result.errors, []);
   assert(
-    sent.every((message) => ['status', 'connect', 'studio', 'launch'].includes(message.type)),
+    sent.every((message) => ['connect', 'launch', 'end_mission'].includes(message.type)),
     'Entry must not send model, approval or flight commands',
   );
-  result.missions = { general, rescue, case_id: caseId };
+  result.missions = { idle, rescue };
   result.passed = true;
 } catch (error) {
   result.errors.push(error.stack);

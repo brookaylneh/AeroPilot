@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Camera } from 'lucide-react';
-import { PixelStreamingTransport, droneViewSchema } from '../../scenario_creator/PixelStreamingTransport';
+import {
+  droneViewSchema,
+  type PixelStreamingTransport,
+} from '../../scenario_creator/PixelStreamingTransport';
+import { useStreamView, type Stream } from '../../web/useStream';
 import { droneColors, type DroneId } from './droneIdentity';
 import type { Inspection } from './InspectionPanel';
 import VideoBoxes from './VideoBoxes';
@@ -13,18 +17,15 @@ type VideoState = {
 };
 
 export function connectDroneVideo(
-  parent: HTMLElement,
+  stream: PixelStreamingTransport,
+  video: HTMLVideoElement,
   droneId: DroneId,
   changed: (state: VideoState) => void,
 ) {
   let requested = droneId;
   let acknowledged: DroneId | null = null;
-  let stream: PixelStreamingTransport | null = null;
-  let video: HTMLVideoElement | null = null;
-  let timer: ReturnType<typeof setInterval> | undefined;
   let frame: number | undefined;
   let stopped = false;
-  let connected = false;
   let selecting = false;
   let visible = false;
   let advancedAt = 0;
@@ -33,18 +34,17 @@ export function connectDroneVideo(
     if (stopped) return;
     stopped = true;
     clearInterval(timer);
-    if (frame !== undefined) video!.cancelVideoFrameCallback(frame);
+    if (frame !== undefined) video.cancelVideoFrameCallback(frame);
     document.removeEventListener('visibilitychange', visibilityChanged);
-    stream?.dispose();
   }
-  function fail(type: 'error' | 'disconnected', message: string) {
+  function fail(message: string) {
     if (stopped) return;
     dispose();
-    changed({ type, droneId: null, message });
+    changed({ type: 'error', droneId: null, message });
   }
   function presented() {
     if (stopped) return;
-    frame = video!.requestVideoFrameCallback(presented);
+    frame = video.requestVideoFrameCallback(presented);
     if (document.hidden) return;
     advancedAt = performance.now();
     if (acknowledged === requested && !visible) {
@@ -59,7 +59,7 @@ export function connectDroneVideo(
     changed({ type: 'connecting', droneId: null, message: 'Waiting for a live camera frame…' });
   }
   async function select() {
-    if (stopped || !connected || selecting) return;
+    if (stopped || selecting) return;
     selecting = true;
     try {
       while (!stopped && requested !== acknowledged) {
@@ -67,7 +67,6 @@ export function connectDroneVideo(
         acknowledged = null;
         visible = false;
         changed({ type: 'connecting', droneId: null, message: `Selecting ${next} camera…` });
-        if (!stream) throw new Error('The video transport is unavailable.');
         const result = droneViewSchema.parse(await stream.command({ type: 'drone-view', droneId: next }));
         if (stopped) return;
         if (result.droneId !== next)
@@ -76,47 +75,24 @@ export function connectDroneVideo(
         advancedAt = performance.now();
       }
     } catch (error) {
-      fail('error', (error as Error).message);
+      fail((error as Error).message);
     } finally {
       selecting = false;
     }
   }
-  async function start() {
-    try {
-      stream = new PixelStreamingTransport(
-        parent,
-        `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/api/stream`,
-        (reason) => fail('disconnected', reason),
-      );
-      video = parent.querySelector('video');
-      if (!video) throw new Error('The stream did not create its video element.');
-      if (
-        typeof video.requestVideoFrameCallback !== 'function' ||
-        typeof video.cancelVideoFrameCallback !== 'function'
-      )
-        throw new Error('This browser does not support live video frame notifications.');
-      await stream.connect();
-      if (stopped) return;
-      connected = true;
-      frame = video.requestVideoFrameCallback(presented);
-      document.addEventListener('visibilitychange', visibilityChanged);
-      timer = setInterval(() => {
-        if (document.hidden) return;
-        try {
-          if (acknowledged === requested && performance.now() - advancedAt >= (visible ? 5000 : 25000))
-            throw new Error(
-              visible ? 'Live camera stopped updating.' : 'No new camera frame after selection.',
-            );
-        } catch (error) {
-          fail('error', (error as Error).message);
-        }
-      }, 250);
-      await select();
-    } catch (error) {
-      fail('error', (error as Error).message);
-    }
-  }
-  void start();
+  if (
+    typeof video.requestVideoFrameCallback !== 'function' ||
+    typeof video.cancelVideoFrameCallback !== 'function'
+  )
+    throw new Error('This browser does not support live video frame notifications.');
+  frame = video.requestVideoFrameCallback(presented);
+  document.addEventListener('visibilitychange', visibilityChanged);
+  const timer = setInterval(() => {
+    if (document.hidden) return;
+    if (acknowledged === requested && performance.now() - advancedAt >= (visible ? 5000 : 25000))
+      fail(visible ? 'Live camera stopped updating.' : 'No new camera frame after selection.');
+  }, 250);
+  void select();
   return {
     select(next: DroneId) {
       if (stopped) return;
@@ -132,12 +108,14 @@ export function connectDroneVideo(
 }
 
 export default function DroneVideo({
+  stream,
   droneId,
   inset,
   onError,
   inspection,
   held,
 }: {
+  stream: Stream;
   droneId: DroneId;
   inset: boolean;
   onError: (message: string) => void;
@@ -151,17 +129,23 @@ export default function DroneVideo({
     droneId: null,
     message: 'Connecting to live camera…',
   });
+  useStreamView(stream, parent);
   useEffect(() => {
-    if (!parent.current) throw new Error('The live camera container is missing.');
-    viewer.current = connectDroneVideo(parent.current, droneId, (next) => {
+    if (!stream.transport) {
+      setState({ type: 'disconnected', droneId: null, message: stream.status.detail });
+      return;
+    }
+    const video = stream.host.querySelector('video');
+    if (!video) throw new Error('The stream did not create its video element.');
+    viewer.current = connectDroneVideo(stream.transport, video, droneId, (next) => {
       setState(next);
-      if (next.type === 'error' || next.type === 'disconnected') onError(next.message);
+      if (next.type === 'error') onError(next.message);
     });
     return () => {
       viewer.current?.dispose();
       viewer.current = null;
     };
-  }, [onError]);
+  }, [stream.transport, onError]);
   useEffect(() => viewer.current?.select(droneId), [droneId]);
   const status = state.type === 'live' && state.droneId !== droneId ? 'connecting' : state.type;
   const video = parent.current?.querySelector('video');

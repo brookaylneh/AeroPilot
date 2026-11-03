@@ -5,11 +5,12 @@ import { useUnrealSession } from './useUnrealSession';
 import { colors, situations, title } from './creator';
 import type { Briefing } from './briefing';
 import { generateBrief } from './missionBrief';
-import { missionLifecycle } from './missionLifecycle';
+import { launchMission } from './missionLifecycle';
 import type { CreatorStage } from './PixelStreamingTransport';
 import CharacterPicker from './CharacterPicker';
 import RescueBriefing from './RescueBriefing';
 import WorldNavigation from './WorldNavigation';
+import type { Stream } from '../web/useStream';
 import './unreal.css';
 import './creator.css';
 
@@ -36,7 +37,16 @@ const steps: { id: CreatorStage; title: string; description: string }[] = [
   },
 ];
 
-export default function UnrealApp() {
+// Exploring shares the scenario's world session but leaves its person and steps untouched.
+export default function UnrealApp({
+  stream,
+  explore,
+  launched,
+}: {
+  stream: Stream;
+  explore: boolean;
+  launched: () => void;
+}) {
   const {
     container,
     transport,
@@ -47,11 +57,9 @@ export default function UnrealApp() {
     setError,
     send,
     connectionStatus,
-    missionStatus,
-    openStudio,
     videoStats,
     reconnect,
-  } = useUnrealSession();
+  } = useUnrealSession(stream, explore);
   const [working, setWorking] = useState(false);
   const [library, setLibrary] = useState(false),
     [saving, setSaving] = useState(false);
@@ -156,48 +164,46 @@ export default function UnrealApp() {
       setSaving(false);
   }
   return (
-    <div className={`creator-app stage-${stage}`}>
+    <div className={`creator-app ${explore ? 'is-explore' : `stage-${stage}`}`}>
       <section className="scene native-scene" aria-label="Unreal valley scene">
         <div ref={container} className="native-stream" />
-        {packet && transport.current && region && stage !== 'briefing' && (
+        {packet && transport && region && (explore || stage !== 'briefing') && (
           <WorldNavigation
-            transport={transport.current}
+            transport={transport}
             settings={packet.catalog.navigation}
             initialCamera={packet.camera}
             bounds={region.bounds}
-            person={stage === 'placement' ? packet.authoring.position : null}
-            placing={stage === 'placement'}
+            person={!explore && stage === 'placement' ? packet.authoring.position : null}
+            placing={!explore && stage === 'placement'}
             busy={busy || working}
             send={send}
             place={place}
             hasPort={packet.catalog.droneFoundation}
-            inspectionOnly={stage !== 'placement'}
+            inspectionOnly={!explore && stage !== 'placement'}
           />
         )}
       </section>
-      <header className="creator-header">
-        <a className="creator-brand" href="/home" aria-label="Home">
-          <TreePine size={25} />
-          <span>SEARCH &amp; RESCUE</span>
-        </a>
-        <nav aria-label="Scenario stages">
-          {steps.map((step, i) => (
-            <button
-              key={step.id}
-              title={step.description}
-              type="button"
-              disabled={!packet || locked}
-              onClick={() => void moveTo(step.id)}
-              aria-current={stage === step.id ? 'step' : undefined}
-              className={i < index ? 'complete' : ''}
-            >
-              <span>{i < index ? <Check size={12} /> : `0${i + 1}`}</span>
-              {step.title}
-            </button>
-          ))}
-        </nav>
-      </header>
-      {packet && (
+      {!explore && (
+        <header className="creator-header">
+          <nav aria-label="Scenario stages">
+            {steps.map((step, i) => (
+              <button
+                key={step.id}
+                title={step.description}
+                type="button"
+                disabled={!packet || locked}
+                onClick={() => void moveTo(step.id)}
+                aria-current={stage === step.id ? 'step' : undefined}
+                className={i < index ? 'complete' : ''}
+              >
+                <span>{i < index ? <Check size={12} /> : `0${i + 1}`}</span>
+                {step.title}
+              </button>
+            ))}
+          </nav>
+        </header>
+      )}
+      {!explore && packet && (
         <>
           {(stage === 'person' || stage === 'situation') && (
             <aside className="creator-panel">
@@ -373,9 +379,8 @@ export default function UnrealApp() {
                   });
                   if (saved) {
                     if (!saved.lastSavedId) throw new Error('Saved rescue case has no id');
-                    await missionLifecycle({ type: 'launch', case_id: saved.lastSavedId });
-                    transport.current?.dispose();
-                    location.assign(`/missionplanner?case=${encodeURIComponent(saved.lastSavedId)}`);
+                    await launchMission(saved.lastSavedId);
+                    launched();
                   }
                 } catch (error) {
                   setError((error as Error).message);
@@ -397,42 +402,30 @@ export default function UnrealApp() {
               </div>
             </div>
           )}
-          <div className="creator-stream-status">
-            <i />
-            LIVE UNREAL WORLD
-            {videoStats && (
-              <span>
-                {videoStats.height}p · {videoStats.fps} fps
-              </span>
-            )}
-            {locked && <span>Applying…</span>}
-          </div>
           <button className="scenario-library-link" disabled={locked} onClick={() => setLibrary(true)}>
             Scenarios
           </button>
         </>
+      )}
+      {packet && (
+        <div className="creator-stream-status">
+          <i />
+          LIVE UNREAL WORLD
+          {videoStats && (
+            <span>
+              {videoStats.height}p · {videoStats.fps} fps
+            </span>
+          )}
+          {locked && <span>Applying…</span>}
+        </div>
       )}
       {!packet && (
         <div className="native-connecting">
           <TreePine size={36} />
           <h2>{connectionStatus.title}</h2>
           <p>{connectionStatus.detail}</p>
-          {missionStatus?.mission && (
-            <>
-              <a className="creator-secondary" href="/missionplanner">
-                Resume mission
-              </a>
-              <button
-                className="creator-secondary"
-                disabled={busy || !missionStatus.can_open_studio}
-                onClick={() => void openStudio()}
-              >
-                End mission and open Studio
-              </button>
-            </>
-          )}
           <button className="creator-secondary" disabled={busy} onClick={reconnect}>
-            {missionStatus?.mission || missionStatus?.can_open_studio === false ? 'Check again' : 'Reconnect'}
+            Reconnect
           </button>
         </div>
       )}

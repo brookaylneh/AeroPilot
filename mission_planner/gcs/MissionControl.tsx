@@ -7,15 +7,18 @@ import {
   Bell,
   Check,
   ChevronRight,
-  CircleHelp,
   Compass,
   Ellipsis,
   Home,
   Map,
+  Mountain,
+  Play,
   Radio,
   Route,
   ShieldCheck,
+  Square,
   SquarePen,
+  UserSearch,
   X,
 } from 'lucide-react';
 import MissionMap, { MapTools, mapAspect } from './MissionMap';
@@ -29,7 +32,15 @@ import InspectionPanel, {
 import { SubagentLaunch, subagentLogs, SubagentStrip, SubagentTab } from './Subagents';
 import FlightPlan, { flightPlanSchema, planReceiptSchema, taskText, taskingSchema } from './FlightPlan';
 import DroneVideo from './DroneVideo';
-import { droneColors, droneIds, linkLost, useMission, type DroneId, type MissionEvent } from './missionState';
+import {
+  droneColors,
+  droneIds,
+  linkLost,
+  type useMission,
+  type DroneId,
+  type MissionEvent,
+} from './missionState';
+import type { Stream } from '../../web/useStream';
 import {
   actionStatus,
   actionTitle,
@@ -317,12 +328,30 @@ function conversationRows(
 }
 const EFFORTS = ['low', 'medium', 'high'] as const;
 
-export default function MissionControl() {
-  const caseId = new URLSearchParams(location.search).get('case');
-  const { state, feedFocus, fenceResult, events, connection, error, setError, send, now, age } =
-    useMission(caseId);
+export type Tab = 'map' | 'explore' | 'scenario';
+const TABS = [
+  { id: 'map', label: 'Map', Icon: Map },
+  { id: 'explore', label: 'Explore world', Icon: Mountain },
+  { id: 'scenario', label: 'Search & rescue scenario', Icon: UserSearch },
+] as const;
+
+export default function MissionControl({
+  mission,
+  stream,
+  tab,
+  openTab,
+  world,
+}: {
+  mission: ReturnType<typeof useMission>;
+  stream: Stream;
+  tab: Tab;
+  openTab: (tab: Tab) => void;
+  // Explore and scenario views, or the notice that a running mission holds the world.
+  world: ReactNode;
+}) {
+  const { state, feedFocus, fenceResult, events, connection, error, setError, send, now, age } = mission;
   const activeCaseId = state ? state.mission.case_id : null;
-  const briefing = state ? state.mission.briefing : null;
+  const active = state !== null && state.mission.active;
   const [markingPlan, setMarkingPlan] = useState(false);
   const approval = state?.approvals[0];
   const launchPreview =
@@ -345,13 +374,6 @@ export default function MissionControl() {
   const chatMenu = useRef<HTMLDivElement>(null);
   const promptMission = useRef<string | null>(null);
   useEffect(() => {
-    if (connection === 'idle') {
-      setText('');
-      setChatView(null);
-      setAgentTabs([]);
-      setPanel((current) => (current === 'subagent' ? 'agent' : current));
-      promptMission.current = null;
-    }
     if (state && promptMission.current !== state.mission.id) {
       if (state.mission.briefing !== null && !events.some((event) => event.kind === 'operator'))
         setText(state.mission.briefing.brief);
@@ -360,9 +382,12 @@ export default function MissionControl() {
       setPanel((current) => (current === 'subagent' ? 'agent' : current));
       promptMission.current = state.mission.id;
     }
-  }, [state, connection]);
+  }, [state]);
   const [alertsOpen, setAlertsOpen] = useState(false);
-  const [briefingOpen, setBriefingOpen] = useState(false);
+  const [ending, setEnding] = useState<'confirm' | string | null>(null);
+  useEffect(() => {
+    if (error) setEnding(null);
+  }, [error]);
   const [flightForm, setFlightForm] = useState<'take_off' | 'fly_route' | null>(null);
   const [altitude, setAltitude] = useState(30);
   const [speed, setSpeed] = useState(5);
@@ -457,7 +482,13 @@ export default function MissionControl() {
   const canStartChat = enabled && state.chat_ready && currentChat.some((event) => event.kind === 'operator');
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if ((e.target as Element).closest('input,textarea,select') || e.ctrlKey || e.altKey || e.metaKey)
+      if (
+        tab !== 'map' ||
+        (e.target as Element).closest('input,textarea,select') ||
+        e.ctrlKey ||
+        e.altKey ||
+        e.metaKey
+      )
         return;
       if (e.key.toLowerCase() === 'v') cycleView();
       if (['1', '2', '3', '4'].includes(e.key)) {
@@ -466,7 +497,7 @@ export default function MissionControl() {
     };
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
-  }, [activeView, cameraKey]);
+  }, [activeView, cameraKey, tab]);
   const visibleEvents = shownChat.filter((event) =>
     [
       'agent',
@@ -562,22 +593,22 @@ export default function MissionControl() {
       style={{ '--gcs-map-aspect': mapAspect } as CSSProperties}
     >
       <div
-        className={mapOnly ? 'gcs-body is-map-only' : 'gcs-body'}
+        className={mapOnly || tab !== 'map' ? 'gcs-body is-map-only' : 'gcs-body'}
         ref={body}
         style={mapWidth === null ? undefined : ({ '--gcs-map-width': `${mapWidth}px` } as CSSProperties)}
       >
         <main className="gcs-main">
           <header className="gcs-header">
-            <a className="gcs-brand" href="/home" aria-label="Home">
+            <div className="gcs-brand">
               <Compass size={14} strokeWidth={1.5} />
               <strong>AeroPilot</strong>
-            </a>
+            </div>
             <div className="gcs-case">
               <h1>Mission Control</h1>
             </div>
             <div className="gcs-clock">
               <span>Mission time</span>
-              <strong>{state ? clock(state.mission.elapsed_s + age) : '—:—:—'}</strong>
+              <strong>{active ? clock(state.mission.elapsed_s + age) : '—:—:—'}</strong>
             </div>
             <div className={`gcs-link-summary ${live === 4 ? 'healthy' : ''}`}>
               <Radio size={12} />
@@ -594,39 +625,40 @@ export default function MissionControl() {
               <span>{alerts.length}</span>
             </button>
           </header>
-          <nav className="gcs-tabs" aria-label="Mission views">
-            <button
-              className={view === 'map' ? 'active' : ''}
-              aria-pressed={view === 'map'}
-              onClick={() => setCameraView(null)}
-            >
-              <Map size={16} />
-              Map
-            </button>
-            {droneIds.map((id, i) => {
-              const v = vehicles.find((item) => item.id === id);
-              return (
-                <button
-                  key={id}
-                  className={activeView === id ? 'active' : ''}
-                  aria-pressed={activeView === id}
-                  disabled={!cameras.includes(id)}
-                  onClick={() => openCamera(id)}
-                  style={{ '--drone': droneColors[id] } as CSSProperties}
-                >
-                  <i
-                    className={`gcs-drone-dot ${!v || linkLost(v, age, connected) ? 'lost' : v.landed_state === 1 ? 'ground' : ''}`}
-                  />
-                  {id}
-                  <kbd>{i + 1}</kbd>
-                </button>
-              );
-            })}
+          <nav className="gcs-tabs" aria-label="Views">
+            {TABS.map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                className={tab === id ? 'active' : ''}
+                aria-pressed={tab === id}
+                onClick={() => {
+                  if (id === 'map') setCameraView(null);
+                  openTab(id);
+                }}
+              >
+                <Icon size={16} />
+                {label}
+              </button>
+            ))}
             <span className="gcs-tabs-spacer" />
-            {briefing && (
-              <button className="gcs-briefing-button" onClick={() => setBriefingOpen(!briefingOpen)}>
-                <CircleHelp size={15} />
-                Briefing
+            {active ? (
+              <button
+                className="gcs-mission-button"
+                aria-expanded={ending === 'confirm'}
+                disabled={!enabled || ending === state.mission.id}
+                onClick={() => setEnding(ending === 'confirm' ? null : 'confirm')}
+              >
+                <Square size={12} />
+                {ending === state.mission.id ? 'Ending mission…' : 'End mission'}
+              </button>
+            ) : (
+              <button
+                className="gcs-mission-button"
+                disabled={!enabled}
+                onClick={() => send({ type: 'start' })}
+              >
+                <Play size={12} />
+                Start mission
               </button>
             )}
           </nav>
@@ -687,6 +719,7 @@ export default function MissionControl() {
               {cameraId && state ? (
                 <DroneVideo
                   key={state.mission.id}
+                  stream={stream}
                   droneId={cameraId}
                   inset={view === 'map'}
                   onError={setError}
@@ -710,16 +743,24 @@ export default function MissionControl() {
               )}
               {view === 'map' && viewSwitch}
             </div>
-            {briefingOpen && briefing && (
-              <section className="gcs-briefing">
+            {ending === 'confirm' && active && (
+              <section className="gcs-end-mission" aria-label="End mission">
                 <header>
-                  <span className="gcs-eyebrow">INCIDENT BRIEFING</span>
-                  <button aria-label="Close briefing" onClick={() => setBriefingOpen(false)}>
+                  <span className="gcs-eyebrow">END MISSION</span>
+                  <button aria-label="Keep the mission running" onClick={() => setEnding(null)}>
                     <X size={16} />
                   </button>
                 </header>
-                <h2>{state ? state.mission.case_name : 'No case loaded'}</h2>
-                <p>{briefing.brief}</p>
+                <h2>{state.mission.case_name}</h2>
+                <p>Airborne drones return to base and land. The world then resets for a new scenario.</p>
+                <button
+                  className="gcs-end-confirm"
+                  onClick={() => {
+                    if (send({ type: 'end_mission' })) setEnding(state.mission.id);
+                  }}
+                >
+                  End mission
+                </button>
               </section>
             )}
             {alertsOpen && (
@@ -761,6 +802,7 @@ export default function MissionControl() {
                 send: () => send({ type: 'reset_batteries' }),
               }}
             />
+            {world && <div className="gcs-world">{world}</div>}
           </section>
           <footer className="gcs-footer">
             <span>

@@ -3,10 +3,12 @@
 The launch-port map control and generated mission briefing identify the port in
 front of Incident Command. Its four pad positions come from `world/cosys/world.json`.
 
-`/studio` supports named, saved Unreal scenarios. A saved scenario restores the
-person, appearance, situation, placement, movement state and mission brief together.
-Use Scenarios to save, load or begin a new scenario. Launch saves the reviewed brief
-and starts that case before opening `/missionplanner?case=<saved-id>`.
+Mission Control's **Search & rescue scenario** tab supports named, saved Unreal
+scenarios. A saved scenario restores the person, appearance, situation, placement,
+movement state and mission brief together. Use Scenarios to save, load or begin a new
+scenario. Launch saves the reviewed brief and starts that case, then returns to the Map tab.
+**Explore world** uses the same Studio camera, navigation and map without a character;
+its map shows the world but does not travel.
 
 ## Authoring flow
 
@@ -18,21 +20,15 @@ and starts that case before opening `/missionplanner?case=<saved-id>`.
 4. Click the document to edit it in place, or copy it using the copy icon. Save and
    Launch write exactly the reviewed text; loading restores saved edits.
 5. Launch saves the scenario and waits for the mission service to acknowledge that case
-   before opening Mission Control. The saved brief fills the planner prompt once,
+   before returning to the Map tab. The saved brief fills the planner prompt once,
    waiting for the visitor to press Send.
 
 Launch is the editing boundary. Before Launch, the four-step header remains editable.
-After Launch, visiting `/studio` reads the active mission status before opening a stream.
-The visitor can resume the mission or explicitly choose **End mission and open Studio**.
-That action requires a healthy, landed and disarmed fleet; it ends mission work, clears
-uploaded missions and resets the person, placement and brief to character selection.
-It sends no flight commands. Idle Studio entry preserves the current draft. Saved scenarios
-remain available in the library. An old case link cannot relaunch an ended mission.
-
-`/home` navigation only closes browser sockets and preserves the mission. Opening
-`/missionplanner` resumes the active mission with its scenario attached, or starts a
-general mission when idle. Opening the planner sends no model request and launches no
-aircraft. A saved scenario's brief fills the chat composer once, waiting for Send.
+While a mission is active, both world tabs show a Mission in progress card and open no
+world view. End mission on the Map tab returns the drones, then resets the person,
+placement and brief to character selection. Saved scenarios remain available in the
+library. Opening either tab while idle preserves the current draft: the scenario tab
+returns Unreal to its current step and Explore starts at the ground camera.
 
 Page exit closes the video and mission sockets. A page restored from the browser's
 back/forward cache reloads to revalidate the launch boundary; it cannot revive the cached

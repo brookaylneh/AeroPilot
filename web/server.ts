@@ -18,10 +18,7 @@ const host = required('SNR_HOST');
 if (host !== '127.0.0.1') throw new Error('Internal web service must bind loopback');
 const development = process.argv.includes('--dev');
 const port = configuredPort(development ? 'SNR_DEV_PORT' : 'SNR_WEB_PORT');
-app.get('/', (_req, res) => res.redirect(308, '/home'));
-app.get('/mission', (req, res) =>
-  res.redirect(308, `/missionplanner${req.originalUrl.slice('/mission'.length)}`),
-);
+app.get(['/home', '/studio', '/missionplanner', '/mission'], (_req, res) => res.redirect(308, '/'));
 app.get(['/api/evidence/:mission/:asset', '/api/evidence/:mission/:asset/preview'], async (req, res) => {
   const { mission, asset } = req.params;
   const preview = req.path.endsWith('/preview');
@@ -68,7 +65,7 @@ if (development) {
   if (!existsSync(path.join(dist, 'index.html')))
     throw new Error('Missing browser build; run npm run build.');
   app.use(express.static(dist, { index: false }));
-  app.get(['/home', '/studio', '/missionplanner'], (_req, res) => res.sendFile('index.html', { root: dist }));
+  app.get('/', (_req, res) => res.sendFile('index.html', { root: dist }));
 }
 app.use((_req, res) => res.sendStatus(404));
 app.use((error: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
@@ -118,6 +115,4 @@ server.on('upgrade', (req, socket, head) => {
   socket.on('close', () => upstream.destroy());
   upstream.end();
 });
-server.listen(port, host, () =>
-  console.log(`Scenario studio: http://${host}:${port}; mission planner: /missionplanner`),
-);
+server.listen(port, host, () => console.log(`Mission control: http://${host}:${port}/`));

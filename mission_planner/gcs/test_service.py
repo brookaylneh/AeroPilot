@@ -682,6 +682,9 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
         self.mission.agent_busy = False
         self.mission.tasks = set()
         self.mission.clearing = False
+        self.mission.lifecycle_lock = asyncio.Lock()
+        self.mission.active = True
+        self.mission.admission_error = None
         self.mission.agent_wait = self.mission.wait_task = None
         self.mission.inspections = Mock(
             snapshot=Mock(return_value=[]), close=AsyncMock(), flight_stopped=AsyncMock()

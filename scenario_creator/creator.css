@@ -4,7 +4,7 @@
   --accent: #e5b875;
   position: relative;
   width: 100%;
-  height: 100dvh;
+  height: 100%;
   overflow: hidden;
   background: #111b17;
   color: var(--ink);
@@ -483,7 +483,7 @@
   top: 50%;
   left: 50%;
   width: min(880px, calc(100vw - 60px));
-  max-height: calc(100dvh - 140px);
+  max-height: calc(100dvh - var(--gcs-chrome) - 140px);
   overflow: auto;
   transform: translate(-50%, -45%);
   padding: 28px 32px;
@@ -762,7 +762,7 @@
     transform: translateX(-50%);
     padding: 22px;
     width: calc(100vw - 26px);
-    max-height: calc(100dvh - 145px);
+    max-height: calc(100dvh - var(--gcs-chrome) - 145px);
   }
   .briefing-title h1 {
     font-size: 28px;
@@ -806,7 +806,7 @@
 
 .creator-app .world-minimap.expanded {
   z-index: 4;
-  width: min(660px, calc(100dvh - 230px), calc(100vw - 40px));
+  width: min(660px, calc(100dvh - var(--gcs-chrome) - 230px), calc(100vw - 40px));
   top: 53%;
   left: 50%;
   right: auto;

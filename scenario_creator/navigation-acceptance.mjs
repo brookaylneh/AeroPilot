@@ -266,7 +266,11 @@ const clickMap = async (u, v, dbl = false) => {
   await delay(2300);
 };
 try {
-  await page.goto(`${origin}/studio`, { timeout: 30000 });
+  await page.goto(origin, { timeout: 30000 });
+  await page
+    .getByRole('navigation', { name: 'Views' })
+    .getByRole('button', { name: 'Search & rescue scenario' })
+    .click();
   await ready();
   await page.getByRole('button', { name: 'Scenarios', exact: true }).click();
   await page.getByRole('button', { name: 'New scenario', exact: true }).click();

@@ -1,4 +1,4 @@
-"""Mission admission and explicit Studio reset, retaining the coupled fleet."""
+"""Mission admission: one session that is idle until mission work or a saved case starts it."""
 
 import asyncio
 import json
@@ -16,56 +16,32 @@ from mission_planner.gcs.service import MESSAGE_FIELDS, Mission, encode, operato
 async def connection(mission, websocket):
     first = json.loads(await asyncio.wait_for(websocket.recv(), timeout=10))
     kind = first["type"]
-    assert kind in ("status", "launch", "studio", "connect") and set(first) == MESSAGE_FIELDS[kind]
-    if kind == "status":
-        await websocket.send(encode(mission.status()))
-        return
-    if kind == "launch":
-        assert isinstance(first["case_id"], str), "Launch requires a saved rescue case"
-    if "case_id" in first and first["case_id"] is not None:
+    assert kind in ("launch", "connect") and set(first) == MESSAGE_FIELDS[kind]
+    if first["case_id"] is not None:
         assert str(uuid.UUID(first["case_id"])) == first["case_id"].lower(), (
             "Case id must be a UUID"
         )
-    if kind in ("launch", "studio") or first["case_id"] is None:
-        action = mission.clear() if kind == "studio" else mission.begin(first["case_id"])
-        task = asyncio.create_task(action)
+    if kind == "launch":
+        assert first["case_id"] is not None, "Launch requires a saved rescue case"
+        task = asyncio.create_task(mission.begin(first["case_id"]))
         await asyncio.wait([task])
-        if task.exception() is not None:
-            await websocket.send(
-                encode({"type": "error", "message": operator_error(task.exception())})
+        await websocket.send(
+            encode(
+                {"type": "error", "message": operator_error(task.exception())}
+                if task.exception() is not None
+                else {"type": "launched", "case_id": task.result()}
             )
-            return
-        elif kind == "launch":
-            await websocket.send(encode({"type": "launched", "case_id": task.result()}))
-            return
-        elif kind == "studio":
-            await websocket.send(encode({"type": "studio"}))
-            return
-    async with mission.lifecycle_lock:
-        if (
-            not mission.active
-            or mission.clearing
-            or (
-                first["case_id"] is not None
-                and (mission.case is None or first["case_id"].lower() != mission.case["id"].lower())
-            )
-        ):
-            response = {"type": "idle"}
-        elif mission.admission_error is not None:
-            response = {
-                "type": "error",
-                "message": "Mission admission failed: " + mission.admission_error,
-            }
-        else:
-            response = None
-            mission.sockets.add(websocket)
-    if response is not None:
-        await websocket.send(encode(response))
+        )
         return
-    try:
-        await mission.connection(websocket, first)
-    finally:
-        mission.sockets.discard(websocket)
+    # A browser joining during admission or reset waits for its outcome.
+    async with mission.lifecycle_lock:
+        error = mission.admission_error
+    if error is not None:
+        await websocket.send(
+            encode({"type": "error", "message": "Mission admission failed: " + error})
+        )
+        return
+    await mission.connection(websocket, first)
 
 
 async def run():

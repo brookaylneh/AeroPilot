@@ -422,13 +422,15 @@ export default function WorldNavigation({
             <b>Q / E</b> to move down / up; release to keep that height above the ground.
           </p>
           <p>
-            Scroll to zoom the lens. Click the map to place the person and fly there. <b>Mouse look</b>{' '}
-            captures the cursor; <b>Esc</b> releases it.
+            Scroll to zoom the lens.{placing && ' Click the map to place the person and fly there.'}{' '}
+            <b>Mouse look</b> captures the cursor; <b>Esc</b> releases it.
           </p>
-          <p>
-            <b>Person</b> opens orbit inspection. Press any movement key or <b>Explore</b> to leave
-            inspection. WASD and drag exploration keep the placement unchanged.
-          </p>
+          {placing && (
+            <p>
+              <b>Person</b> opens orbit inspection. Press any movement key or <b>Explore</b> to leave
+              inspection. WASD and drag exploration keep the placement unchanged.
+            </p>
+          )}
         </div>
       )}
       {!inspectionOnly && (
@@ -437,7 +439,7 @@ export default function WorldNavigation({
           camera={camera}
           person={person}
           busy={busy}
-          travel={travel}
+          travel={placing ? travel : undefined}
           openPort={
             hasPort
               ? () => {

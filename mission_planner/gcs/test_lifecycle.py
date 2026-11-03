@@ -106,41 +106,34 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
         self.assertNotEqual(first, second)
         self.assertNotEqual(directory, self.mission.directory)
         self.assertEqual(self.mission.case["report"]["brief"], "Second visitor's edited text")
-        self.assertIn("Mission cancelled", (directory / "events.jsonl").read_text())
+        self.assertIn("Mission ended", (directory / "events.jsonl").read_text())
         self.assertIn("Rescue mission launched", self.mission.events[0]["text"])
         self.assertEqual(
             self.mission.events[0]["result"],
             {"case_id": self.cases[1]["id"], "case_name": self.cases[1]["name"]},
         )
 
-    async def test_airborne_studio_rejection_leaves_session_and_flight_untouched(self):
+    async def test_airborne_clear_rejection_leaves_session_and_flight_untouched(self):
         await self.mission.begin(self.cases[0]["id"])
         self.fleet.snapshot.return_value[0]["armed"] = True
         self.fleet.snapshot.return_value[0]["landed_state"] = 2
-        browser = socket({"type": "connect", "case_id": self.cases[0]["id"]})
-        self.mission.sockets.add(browser)
         tasks = set(self.mission.tasks)
         events = list(self.mission.events)
-        studio = socket({"type": "studio"})
-        await connection(self.mission, studio)
-        error = json.loads(studio.send.call_args.args[0])
-        self.assertEqual(error["type"], "error")
-        self.assertIn("landed and disarmed", error["message"])
+        with self.assertRaisesRegex(AssertionError, "landed and disarmed"):
+            await self.mission.clear()
         self.assertTrue(self.mission.active)
         self.assertFalse(self.mission.clearing)
         self.assertEqual(self.mission.events, events)
         self.assertEqual(self.mission.tasks, tasks)
         self.assertTrue(all(not task.cancelled() for task in tasks))
-        browser.close.assert_not_awaited()
         self.reset_session.assert_not_called()
         self.fleet.execute.assert_not_awaited()
         self.fleet.clear_missions.assert_not_awaited()
 
-    async def test_launch_is_required_and_browser_forward_cannot_revive_cancelled_case(self):
+    async def test_launch_is_required_and_browser_forward_cannot_revive_ended_case(self):
         message = {"type": "connect", "case_id": self.cases[0]["id"]}
-        idle = socket(message)
-        await connection(self.mission, idle)
-        self.assertEqual(json.loads(idle.send.call_args.args[0]), {"type": "idle"})
+        with self.assertRaisesRegex(AssertionError, "different mission"):
+            await connection(self.mission, socket(message))
         first = socket({"type": "launch", "case_id": self.cases[0]["id"]})
         await connection(self.mission, first)
         self.assertEqual(
@@ -153,51 +146,67 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
         self.enter_mission.assert_called_once_with()
         self.assertFalse(self.mission.agent_busy)
         self.fleet.execute.assert_not_awaited()
+        connect = self.mission.connection
         self.mission.connection = AsyncMock()
         await connection(self.mission, socket(message))
         self.mission.connection.assert_awaited_once()
-        back = socket({"type": "studio"})
-        await connection(self.mission, back)
-        self.assertEqual(json.loads(back.send.call_args.args[0]), {"type": "studio"})
-        forward = socket(message)
-        await connection(self.mission, forward)
-        self.assertEqual(json.loads(forward.send.call_args.args[0]), {"type": "idle"})
-        self.mission.connection.assert_awaited_once()
+        await self.mission.clear()
+        self.mission.connection = connect
+        with self.assertRaisesRegex(AssertionError, "different mission"):
+            await connection(self.mission, socket(message))
         self.assertIsNone(self.mission.case)
+        self.assertFalse(self.mission.active)
 
-    async def test_visiting_studio_before_launch_preserves_draft(self):
-        await connection(self.mission, socket({"type": "studio"}))
-        self.reset_session.assert_not_called()
-        self.fleet.clear_missions.assert_not_awaited()
-
-    async def test_general_entry_and_reload_retain_one_session_without_case_or_flight(self):
+    async def test_browser_attaches_idle_without_starting_a_mission(self):
         idle_directory = self.mission.directory
         self.mission.connection = AsyncMock()
-        message = {"type": "connect", "case_id": None}
-        await connection(self.mission, socket(message))
+        await connection(self.mission, socket({"type": "connect", "case_id": None}))
+        self.mission.connection.assert_awaited_once()
+        self.assertFalse(self.mission.active)
+        self.assertEqual(self.mission.directory, idle_directory)
+        self.assertFalse(self.mission.events)
+        self.enter_mission.assert_not_called()
+        self.reset_session.assert_not_called()
+
+    async def test_mission_work_opens_one_general_session_without_case_or_flight(self):
+        idle_directory = self.mission.directory
+        await self.mission.handle({"type": "start"}, None)
         directory, identity = self.mission.directory, self.mission.id
         self.assertTrue(self.mission.active)
         self.assertIsNone(self.mission.case)
         self.assertNotEqual(directory, idle_directory)
         self.assertFalse(self.mission.agent_busy)
         self.mission.conversation = [{"role": "user", "content": "Previous request"}]
-        await connection(self.mission, socket(message))
+        await self.mission.handle({"type": "start"}, None)
         self.assertEqual((self.mission.directory, self.mission.id), (directory, identity))
         self.assertEqual(
             self.mission.conversation, [{"role": "user", "content": "Previous request"}]
         )
-        self.assertEqual(self.mission.connection.await_count, 2)
-        self.assertFalse(self.mission.sockets)
         self.enter_mission.assert_called_once_with()
         self.reset_session.assert_not_called()
         self.fleet.execute.assert_not_awaited()
         self.mission.model.respond.assert_not_called()
         summary = self.mission.summary()
+        self.assertTrue(summary["active"])
         self.assertEqual(summary["case_name"], "General mission")
         self.assertIsNone(summary["case_id"])
         self.assertIsNone(summary["briefing"])
         self.mission.inspections.start.assert_not_called()
         self.assertFalse(self.mission.tasks)
+
+    async def test_chat_and_tool_open_a_general_session(self):
+        self.mission.agent = AsyncMock()
+        self.mission.invoke = AsyncMock()
+        for message in (
+            {"type": "chat", "text": "Search the north ridge"},
+            {"type": "tool", "name": "find_place", "arguments": {"query": "ridge"}},
+        ):
+            with self.subTest(kind=message["type"]):
+                await self.mission.handle(message, None)
+                self.assertTrue(self.mission.active)
+                self.assertIsNone(self.mission.case)
+                await self.mission.clear()
+        self.assertEqual(self.enter_mission.call_count, 2)
 
     async def test_null_connect_preserves_active_rescue_case(self):
         await self.mission.begin(self.cases[0]["id"])
@@ -299,45 +308,13 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
         self.mission.connection.assert_awaited_once()
 
     async def test_concurrent_general_entry_opens_once(self):
-        self.mission.connection = AsyncMock()
-        await asyncio.gather(
-            *[
-                connection(self.mission, socket({"type": "connect", "case_id": None}))
-                for _ in range(2)
-            ]
-        )
+        await asyncio.gather(*[self.mission.handle({"type": "start"}, None) for _ in range(2)])
         self.assertTrue(self.mission.active)
         self.assertIsNone(self.mission.case)
-        self.assertEqual(self.mission.connection.await_count, 2)
         self.enter_mission.assert_called_once_with()
 
-    async def test_status_is_read_only_and_reports_only_safe_studio_admission(self):
-        directory = self.mission.directory
-        request = socket({"type": "status"})
-        await connection(self.mission, request)
-        self.assertEqual(
-            json.loads(request.send.call_args.args[0]),
-            {
-                "type": "status",
-                "mission": None,
-                "can_open_studio": True,
-            },
-        )
-        self.assertFalse(self.mission.active)
-        self.assertEqual(self.mission.directory, directory)
-        self.assertFalse(self.mission.events)
-        self.enter_mission.assert_not_called()
-        self.reset_session.assert_not_called()
-        await self.mission.begin(None)
-        status = self.mission.status()
-        self.assertEqual(
-            status["mission"],
-            {
-                "id": self.mission.id,
-                "case_id": None,
-                "case_name": "General mission",
-            },
-        )
+    async def test_grounded_requires_every_drone_landed_disarmed_and_healthy(self):
+        self.assertTrue(self.mission.grounded())
         vehicle = self.fleet.snapshot.return_value[0]
         for field, value in (
             ("armed", True),
@@ -348,14 +325,17 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
             with self.subTest(field=field):
                 previous = vehicle[field]
                 vehicle[field] = value
-                self.assertFalse(self.mission.status()["can_open_studio"])
+                self.assertFalse(self.mission.grounded())
                 vehicle[field] = previous
         self.mission.fleet_ready = False
-        self.assertFalse(self.mission.status()["can_open_studio"])
+        self.assertFalse(self.mission.grounded())
         self.mission.fleet_ready = True
         self.mission.clearing = True
-        self.assertFalse(self.mission.status()["can_open_studio"])
+        self.assertFalse(self.mission.grounded())
         self.mission.clearing = False
+        self.assertFalse(self.mission.active)
+        self.assertFalse(self.mission.events)
+        self.enter_mission.assert_not_called()
 
     async def test_general_session_can_end_then_launch_a_real_case(self):
         await self.mission.begin(None)
@@ -369,7 +349,7 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.mission.active)
         self.assertEqual(self.mission.case, self.cases[0])
 
-    async def test_pending_flight_blocks_studio_even_before_arming(self):
+    async def test_pending_flight_blocks_ending_even_before_arming(self):
         await self.mission.begin(None)
         events = list(self.mission.events)
         for pending in ("flight", "plan"):
@@ -378,7 +358,7 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
                     self.mission.active_flight.add("Drone1")
                 else:
                     self.mission.plan_task = Mock()
-                self.assertFalse(self.mission.status()["can_open_studio"])
+                self.assertFalse(self.mission.grounded())
                 with self.assertRaisesRegex(AssertionError, "landed and disarmed"):
                     await self.mission.clear()
                 self.assertEqual(self.mission.events, events)
@@ -388,7 +368,7 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
         self.reset_session.assert_not_called()
         self.fleet.execute.assert_not_awaited()
 
-    async def test_clear_cancels_queued_work_before_closing_sockets(self):
+    async def test_clear_cancels_queued_work_before_resetting_the_world(self):
         await self.mission.begin(None)
         release = asyncio.Event()
         performed = []
@@ -398,41 +378,72 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
             performed.append("late command")
 
         work = self.mission.launch(pending())
-        browser = socket({"type": "connect", "case_id": None})
 
-        async def closing(**arguments):
+        async def clearing():
             release.set()
             await asyncio.sleep(0)
             self.assertTrue(work.cancelled())
             self.assertFalse(performed)
             with self.assertRaisesRegex(AssertionError, "Mission is ending"):
-                await self.mission.handle({"type": "chat", "text": "Launch now"}, browser)
+                await self.mission.handle({"type": "chat", "text": "Launch now"}, None)
 
-        browser.close.side_effect = closing
-        self.mission.sockets.add(browser)
+        self.fleet.clear_missions.side_effect = clearing
         await self.mission.clear()
-        browser.close.assert_awaited_once()
+        self.fleet.clear_missions.assert_awaited_once()
+        self.reset_session.assert_called_once_with()
         self.mission.model.respond.assert_not_called()
         self.fleet.execute.assert_not_awaited()
 
-    async def test_failed_native_admission_remains_failed_on_generic_rejoin(self):
+    async def test_end_mission_returns_airborne_drones_before_resetting(self):
+        await self.mission.begin(self.cases[0]["id"])
+        self.fleet.snapshot.return_value[1].update(armed=True, landed_state=2)
+        self.mission.interrupt_agent = AsyncMock()
+
+        async def land():
+            await asyncio.sleep(0)
+            self.fleet.snapshot.return_value[1].update(armed=False, landed_state=1)
+
+        async def return_fleet(names, source):
+            self.assertEqual((names, source), (["Drone2"], "operator"))
+            self.mission.return_tasks["Drone2"] = asyncio.create_task(land())
+
+        self.mission.return_fleet = AsyncMock(side_effect=return_fleet)
+        await self.mission.handle({"type": "end_mission"}, None)
+        self.mission.interrupt_agent.assert_awaited_once()
+        self.mission.return_fleet.assert_awaited_once()
+        self.reset_session.assert_called_once_with()
+        self.assertFalse(self.mission.active)
+        self.assertIsNone(self.mission.case)
+        with self.assertRaisesRegex(AssertionError, "No mission is running"):
+            await self.mission.handle({"type": "end_mission"}, None)
+
+    async def test_end_mission_on_the_ground_resets_without_flight(self):
+        await self.mission.begin(None)
+        self.mission.return_fleet = AsyncMock()
+        await self.mission.handle({"type": "end_mission"}, None)
+        self.mission.return_fleet.assert_not_awaited()
+        self.fleet.execute.assert_not_awaited()
+        self.reset_session.assert_called_once_with()
+        self.assertFalse(self.mission.active)
+
+    async def test_failed_native_admission_remains_failed_on_rejoin(self):
         self.enter_mission.side_effect = TimeoutError("Unreal mode acknowledgement timed out")
-        message = {"type": "connect", "case_id": None}
-        first = socket(message)
-        await connection(self.mission, first)
+        with self.assertRaisesRegex(RuntimeError, "acknowledgement timed out"):
+            await self.mission.handle({"type": "start"}, None)
         identity = self.mission.id
         self.assertTrue(self.mission.active)
         self.assertEqual(self.mission.admission_error, "Unreal mode acknowledgement timed out")
-        second = socket(message)
-        await connection(self.mission, second)
-        for browser in (first, second):
-            self.assertEqual(
-                json.loads(browser.send.call_args.args[0]),
-                {
-                    "type": "error",
-                    "message": "Mission admission failed: Unreal mode acknowledgement timed out",
-                },
-            )
+        browser = socket({"type": "connect", "case_id": None})
+        await connection(self.mission, browser)
+        self.assertEqual(
+            json.loads(browser.send.call_args.args[0]),
+            {
+                "type": "error",
+                "message": "Mission admission failed: Unreal mode acknowledgement timed out",
+            },
+        )
+        with self.assertRaisesRegex(AssertionError, "Mission admission failed"):
+            await self.mission.handle({"type": "start"}, None)
         self.assertEqual(self.mission.id, identity)
         self.assertEqual(
             self.mission.summary()["alerts"],
@@ -491,17 +502,14 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
             self.assertTrue({"resume", "preview_plan"}.isdisjoint(names))
             await self.mission.clear()
 
-    async def test_disconnect_does_not_cancel_but_returning_to_studio_does(self):
+    async def test_disconnect_does_not_end_the_mission(self):
         await self.mission.begin(self.cases[0]["id"])
         self.mission.connection = AsyncMock()
-        browser = socket({"type": "connect", "case_id": self.cases[0]["id"]})
-        await connection(self.mission, browser)
-        self.assertFalse(self.mission.sockets)
+        await connection(self.mission, socket({"type": "connect", "case_id": self.cases[0]["id"]}))
+        self.assertTrue(self.mission.active)
         self.assertEqual(self.mission.case, self.cases[0])
         self.reset_session.assert_not_called()
-        self.mission.sockets.add(browser)
         await self.mission.clear()
-        browser.close.assert_awaited_once()
         self.assertEqual(
             self.cases[0]["report"]["brief"], "A hiker, 34 years old, missing for about 3 hours."
         )

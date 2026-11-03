@@ -33,7 +33,9 @@ function rescueState() {
   };
 }
 
-function component(read, search, react, window) {
+const stream = { host: null, transport: null, status: { title: '', detail: '' }, reconnect() {} };
+
+function component(read, search, react, window, props = {}) {
   const module = { exports: {} };
   runInNewContext(code, {
     require: (name) =>
@@ -48,7 +50,9 @@ function component(read, search, react, window) {
     URLSearchParams,
     window,
   });
-  return module.exports.default;
+  const MissionControl = module.exports.default;
+  return () =>
+    MissionControl({ mission: read(), stream, tab: 'map', openTab() {}, world: null, ...props.current });
 }
 
 function snapshot(state = null) {
@@ -134,6 +138,7 @@ function state(caseId = null, vehicles = []) {
     },
     mission: {
       id: '00000000-0000-4000-8000-000000000002',
+      active: true,
       case_id: caseId,
       case_name: caseId ? 'Saved rescue scenario' : 'General mission',
       briefing: caseId ? { brief: 'Find the missing hiker.', portrait: '' } : null,
@@ -200,7 +205,8 @@ function nodes(node) {
   return node && typeof node === 'object' && node.props ? [node, ...nodes(node.props.children)] : [];
 }
 
-function view(initial) {
+function view(initial, props = {}) {
+  const shell = { current: props };
   const values = [],
     refs = [],
     effects = [],
@@ -258,9 +264,11 @@ function view(initial) {
       addEventListener: (name, listener) => listeners.set(name, listener),
       removeEventListener: (name) => listeners.delete(name),
     },
+    shell,
   );
-  function render(changes = {}) {
+  function render(changes = {}, props) {
     value = { ...value, ...changes };
+    if (props) shell.current = { ...shell.current, ...props };
     let count = 0;
     do {
       assert.ok(count++ < 10, 'Component must settle its effects');
@@ -291,7 +299,7 @@ function view(initial) {
     },
     tabs: () =>
       nodes(tree)
-        .find((node) => node.type === 'nav' && node.props['aria-label'] === 'Mission views')
+        .find((node) => node.type === 'nav' && node.props['aria-label'] === 'Views')
         .props.children.flat()
         .filter((node) => node?.type === 'button'),
     key(key, editing = false) {
@@ -310,7 +318,8 @@ test('case-free mission page renders before its first WebSocket state arrives', 
   assert.match(page, /Connecting to mission service/);
   assert.doesNotMatch(page, loadTexts);
   assert.doesNotMatch(page, /aria-label="Search planner"/);
-  assert.match(page, /href="\/home" aria-label="Home"/);
+  assert.doesNotMatch(page, /<a /);
+  assert.match(page, />Map<\/button>.*>Explore world<\/button>.*>Search &amp; rescue scenario<\/button>/);
 });
 
 test('accepted findings remain in conversation without stealing the selected tab', () => {
@@ -762,13 +771,13 @@ test('general state enables planning without rescue controls or invented briefin
   assert.match(page, /<h1>Mission Control<\/h1>/);
   assert.match(page, /aria-label="Take off Drone1"/);
   assert.doesNotMatch(page, loadTexts);
-  assert.doesNotMatch(page, /gcs-briefing-button|>Evidence /);
+  assert.doesNotMatch(page, />Evidence /);
 });
 
 test('an attached rescue case controls the UI even when entry had no case query', () => {
   const page = render('', state('00000000-0000-4000-8000-000000000001'));
   assert.match(page, /<h1>Mission Control<\/h1>/);
-  assert.match(page, /gcs-briefing-button/);
+  assert.match(page, />End mission<\/button>/);
   assert.match(page, />Evidence /);
   assert.doesNotMatch(page, loadTexts);
   assert.doesNotMatch(page, /aria-label="Search planner"/);
@@ -821,7 +830,7 @@ test('general inspections expose evidence without a rescue scenario', () => {
   ];
   const page = render('', missionState.stateSchema.parse(value));
   assert.match(page, />Evidence /);
-  assert.doesNotMatch(page, /gcs-briefing-button|Review the mission/);
+  assert.doesNotMatch(page, /Review the mission/);
 });
 
 test('operator chat can interrupt Wonder while it is working', () => {
@@ -875,19 +884,12 @@ test('camera availability is a required boolean in every vehicle snapshot', () =
   assert.equal(missionState.stateSchema.safeParse(value).success, true);
 });
 
-test('empty cameras mount no stream and disable switch, tabs and keyboard shortcuts', () => {
+test('empty cameras mount no stream and disable switch and keyboard shortcuts', () => {
   const value = view(state(null, [vehicle('Drone1')]));
   assert.equal(value.camera(), undefined);
   assert.equal(value.switch().props.disabled, true);
-  assert.ok(
-    value
-      .tabs()
-      .slice(1)
-      .every((tab) => tab.props.disabled),
-  );
   for (const key of ['v', '1', '2', '3', '4']) value.key(key);
   value.click(value.switch());
-  value.click(value.tabs()[2]);
   assert.equal(value.camera(), undefined);
   assert.equal(value.fleet().props.selected, null);
   const page = render('', state());
@@ -1296,4 +1298,54 @@ test('the composer offers a reasoning effort picker beside the model name', () =
     nodes(view(null).composer()).find((node) => node.type === 'select'),
     undefined,
   );
+});
+
+test('an idle fleet offers Start mission without a running clock', () => {
+  const idle = state();
+  idle.mission.active = false;
+  const value = view(idle),
+    sent = [];
+  value.render({ send: (message) => sent.push(message.type) });
+  const find = (name) => nodes(value.tree()).find((node) => node.props.className === name);
+  assert.equal(nodes(find('gcs-clock')).at(-1).props.children, '—:—:—');
+  assert.ok(find('gcs-mission-button').props.children.includes('Start mission'));
+  value.click(find('gcs-mission-button'));
+  assert.deepEqual(sent, ['start']);
+});
+
+test('End mission asks for confirmation and sends one request for the running mission', () => {
+  const value = view(state()),
+    sent = [];
+  value.render({ send: (message) => (sent.push(message.type), true) });
+  const find = (name) => nodes(value.tree()).find((node) => node.props.className === name);
+  assert.equal(find('gcs-end-mission'), undefined);
+  value.click(find('gcs-mission-button'));
+  assert.ok(find('gcs-end-mission'));
+  value.click(find('gcs-end-confirm'));
+  assert.deepEqual(sent, ['end_mission']);
+  assert.equal(find('gcs-end-mission'), undefined);
+  assert.equal(find('gcs-mission-button').props.disabled, true);
+  assert.ok(find('gcs-mission-button').props.children.includes('Ending mission…'));
+});
+
+test('world views cover the stage, hide the copilot and leave camera shortcuts to the map', () => {
+  const opened = [];
+  const world = createElement('div', { className: 'world-probe' });
+  const value = view(state(null, [vehicle('Drone1', { camera_available: true })]), {
+    tab: 'explore',
+    world,
+    openTab: (tab) => opened.push(tab),
+  });
+  const find = (name) => nodes(value.tree()).find((node) => node.props.className === name);
+  assert.ok(find('gcs-body is-map-only'));
+  assert.equal(find('gcs-world').props.children, world);
+  value.key('1');
+  assert.equal(value.camera().props.inset, true);
+  value.click(value.tabs()[0]);
+  assert.deepEqual(opened, ['map']);
+  value.render({}, { tab: 'map', world: null });
+  assert.ok(find('gcs-body'));
+  assert.equal(find('gcs-world'), undefined);
+  value.key('1');
+  assert.equal(value.camera().props.inset, false);
 });

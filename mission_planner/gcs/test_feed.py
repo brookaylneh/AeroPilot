@@ -51,6 +51,7 @@ class FeedTests(unittest.IsolatedAsyncioTestCase):
             mission.initialize_run(None, active=True)
         self.addCleanup(mission.log.close)
         mission.clearing = False
+        mission.effort = "high"
         mission.fleet_ready = False
         mission.fleet_error = None
         mission.fleet = Mock(

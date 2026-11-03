@@ -13,7 +13,7 @@ const { outputFiles } = buildSync({
   write: false,
 });
 
-function connect(caseId) {
+function connect() {
   const effects = [],
     sockets = [],
     values = [],
@@ -62,13 +62,13 @@ function connect(caseId) {
       removeEventListener: (name) => listeners.delete(name),
     },
   });
-  module.exports.useMission(caseId);
+  module.exports.useMission();
   const cleanups = effects.map((effect) => effect());
   return { sockets, listeners, values, close: () => cleanups.forEach((cleanup) => cleanup?.()) };
 }
 
-test('case-free entry requests the active session without launching or resetting it', () => {
-  const client = connect(null);
+test('entry attaches to the session without starting or resetting a mission', () => {
+  const client = connect();
   assert.equal(client.sockets.length, 1);
   const socket = client.sockets[0];
   socket.onopen();
@@ -79,19 +79,8 @@ test('case-free entry requests the active session without launching or resetting
   client.close();
 });
 
-test('a saved-case entry preserves its exact case and malformed ids open no socket', () => {
-  const caseId = '00000000-0000-4000-8000-000000000001';
-  const client = connect(caseId);
-  client.sockets[0].onopen();
-  assert.deepEqual(client.sockets[0].sent, [{ type: 'connect', case_id: caseId }]);
-  client.close();
-  const invalid = connect('invalid');
-  assert.equal(invalid.sockets.length, 0);
-  invalid.close();
-});
-
 test('session event history is retained beyond a thousand events', () => {
-  const client = connect(null);
+  const client = connect();
   const events = Array.from({ length: 1001 }, (_, i) => ({
     id: `event-${i}`,
     timestamp_ms: i,
@@ -116,7 +105,7 @@ test('session event history is retained beyond a thousand events', () => {
 });
 
 test('live feed focus remains valid while retired search and sensor payloads close the connection', () => {
-  const client = connect(null),
+  const client = connect(),
     socket = client.sockets[0];
   const focus = { type: 'feed_focus', id: '871bb2e7-8e63-4663-91df-32125d593a2c', drone_id: 'Drone4' };
   socket.onmessage({ data: JSON.stringify(focus) });
@@ -127,7 +116,7 @@ test('live feed focus remains valid while retired search and sensor payloads clo
     { type: 'search', search: {} },
     { type: 'sensor_frame', frame: {} },
   ]) {
-    const old = connect(null);
+    const old = connect();
     old.sockets[0].onmessage({ data: JSON.stringify(message) });
     assert.equal(old.sockets[0].closed, true);
     assert(

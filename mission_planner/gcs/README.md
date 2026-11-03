@@ -11,39 +11,36 @@ General flights and Studio rescue briefings use the same instructions, tools and
 
 ## Start and stop
 
-Use the installed services described in [deployment](../../deploy/README.md). `/home` offers
-the general planner and search-and-rescue authoring. `/missionplanner` sends
-`connect` with `case_id: null`: it opens a general session when idle or rejoins the active
-session, retaining any attached rescue case. Session activity is independent of its optional
-case. Each session has one UUID, event log, planner and fleet; no rescue record is invented.
-Opening, reloading or leaving the planner neither flies an aircraft nor calls a model.
-The service starts the fleet immediately because the coupled world blocks without motor replies.
+Use the installed services described in [deployment](../../deploy/README.md). Mission
+Control at `/` sends `connect` with `case_id: null`: it attaches to the active session or
+waits idle with the fleet on the ground. `start`, `chat` and `tool` open a general session
+when none is running; `start` is otherwise a no-op. Each session has one UUID, event log,
+planner and fleet; no rescue record is invented. Opening, reloading or leaving the page
+neither flies an aircraft nor calls a model. The service starts the fleet immediately
+because the coupled world blocks without motor replies.
 
-Studio cases use the same conversational flight planner. Wonder receives the saved
+Scenario cases use the same conversational flight planner. Wonder receives the saved
 briefing, asks for unresolved last-seen/appearance details and proposes the observation
 area, pattern and participating aircraft. Opening a case starts no sensor or inference job.
 
-Studio saves a real rescue briefing and sends `launch` with its `case_id` before navigating
-to `/missionplanner?case=<uuid>`. A `connect` containing a UUID only rejoins that active case;
-it never starts a cancelled case. `/mission` remains an alias. The mission service retains
-the session across browser disconnects and Home navigation. Mission state keeps `case_name`
-(`General mission` without a case); `case_id` and `briefing` are null for general sessions.
-Landmark lookup, directions, general flight and prompted forward inspection are available
-without a case.
+The scenario tab saves a real rescue briefing and sends `launch` with its `case_id` on its
+own socket; the service starts that case from idle and replies `launched`. An ended case
+cannot be launched again. The session survives browser disconnects. Mission state carries
+`active` and `case_name` (`General mission` without a case); `case_id` and `briefing` are
+null for general sessions. Landmark lookup, directions, general flight and prompted forward
+inspection are available without a case.
 
-The read-only `status` request returns `mission: null | {id, case_id, case_name}` and
-`can_open_studio`. Opening Studio while a mission is active requires an explicit end-session
-action. The `studio` request rejects unless all four drones have healthy telemetry and EKFs,
-are landed and disarmed, and no flight operation or cancellation is in progress. Rejection leaves mission tasks,
-sockets and flight untouched. An accepted request cancels session work, clears uploaded
-missions with acknowledgement/readback, and resets Unreal to character selection; it sends
-no hold, return or landing command. Idle Studio entry preserves the current draft. The fleet
-continues supplying motor replies throughout. The fixed loopback listener is exposed only
-through the same-origin `/api/mission` WebSocket proxy.
+`end_mission` interrupts Wonder, sends return-to-launch to every armed drone and waits for
+those returns. It then requires all four drones to report healthy telemetry and EKFs,
+landed and disarmed, with no flight operation in progress, cancels session work, clears
+uploaded missions with acknowledgement/readback and resets Unreal to character selection.
+A failed return leaves the mission active with its alert. The fleet continues supplying
+motor replies throughout. The fixed loopback listener is exposed only through the
+same-origin `/api/mission` WebSocket proxy.
 
 A failed native mission-mode acknowledgement stays a failed admission: the event log, alerts
-and service health report it, and reconnecting does not retry it. An explicit landed Studio
-reset can end that failed session. General missions retain the public landmark map and
+and service health report it, and reconnecting does not retry it. End mission on a landed fleet
+can end that failed session. General missions retain the public landmark map and
 visual evidence interface without a rescue briefing.
 
 The saved public record uses schema version 2 and a single `{brief, portrait}` report.
@@ -676,7 +673,7 @@ set -a
 . .local/runtime.env
 set +a
 node --import tsx mission_planner/gcs/accept_browser.mjs planner \
-  'http://35.81.229.78/missionplanner?case=<uuid>' .local/evidence/gcs/<new-run> 120
+  http://35.81.229.78/ .local/evidence/gcs/<new-run> 120
 ```
 
 The `planner` observer issues no flight commands or approval decisions. It requires the

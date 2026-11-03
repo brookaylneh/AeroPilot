@@ -15,7 +15,7 @@ const code = buildSync({
   platform: 'node',
   format: 'cjs',
   packages: 'external',
-  external: ['../../scenario_creator/PixelStreamingTransport'],
+  external: ['../../scenario_creator/PixelStreamingTransport', '../../web/useStream'],
   loader: { '.css': 'empty' },
   write: false,
 }).outputFiles[0].text;
@@ -30,10 +30,8 @@ function deferred() {
 }
 
 function fixture(react) {
-  const ready = deferred();
   const commands = [];
   const states = [];
-  const instances = [];
   const quality = { totalVideoFrames: 0, droppedVideoFrames: 0 };
   const callbacks = new Map();
   const listeners = new Map();
@@ -52,40 +50,29 @@ function fixture(react) {
     addEventListener: (name, callback) => listeners.set(name, callback),
     removeEventListener: (name) => listeners.delete(name),
   };
-  const parent = { querySelector: (selector) => (selector === 'video' ? video : null) };
+  const host = { querySelector: (selector) => (selector === 'video' ? video : null) };
   let now = 0;
   let sample = null;
-  class Transport {
-    constructor(element, url, disconnected) {
-      assert.equal(element, parent);
-      assert.equal(url, 'ws://mission.test/api/stream');
-      this.disconnected = disconnected;
-      this.disposals = 0;
-      instances.push(this);
-    }
-    connect() {
-      return ready.promise;
-    }
+  // The page owns the shared stream; a camera view never ends it.
+  const transport = {
     command(command) {
       const response = deferred();
       commands.push({ ...response, command });
       return response.promise;
-    }
-    dispose() {
-      this.disposals++;
-    }
-  }
+    },
+    dispose: () => assert.fail('A camera view must not dispose the shared stream'),
+  };
+  const stream = { host, transport, status: { title: 'Live', detail: 'Live' }, reconnect() {} };
   const module = { exports: {} };
   runInNewContext(code, {
     module,
     exports: module.exports,
     require: (id) => {
       if (id === 'react' && react) return react;
-      if (id === '../../scenario_creator/PixelStreamingTransport')
-        return { PixelStreamingTransport: Transport, droneViewSchema };
+      if (id === '../../scenario_creator/PixelStreamingTransport') return { droneViewSchema };
+      if (id === '../../web/useStream') return { useStreamView() {} };
       return require(id);
     },
-    location: { protocol: 'http:', host: 'mission.test' },
     document,
     performance: { now: () => now },
     setInterval: (callback, milliseconds) => {
@@ -100,15 +87,13 @@ function fixture(react) {
   });
   const viewer = react
     ? null
-    : module.exports.connectDroneVideo(parent, 'Drone1', (state) => states.push(state));
+    : module.exports.connectDroneVideo(transport, video, 'Drone1', (state) => states.push(state));
   return {
-    ready,
     commands,
     states,
-    instances,
     callbacks,
     listeners,
-    parent,
+    stream,
     viewer,
     Component: module.exports.default,
     sample(milliseconds, total = quality.totalVideoFrames, dropped = quality.droppedVideoFrames) {
@@ -128,8 +113,6 @@ function fixture(react) {
       listeners.get('visibilitychange')?.();
     },
     async live() {
-      ready.resolve();
-      await setImmediate();
       commands[0].resolve({ droneId: 'Drone1' });
       await setImmediate();
       this.frame();
@@ -138,11 +121,8 @@ function fixture(react) {
   };
 }
 
-test('video waits for connection, exact selection acknowledgement and a new displayed frame', async () => {
+test('video waits for exact selection acknowledgement and a new displayed frame', async () => {
   const value = fixture();
-  assert.equal(value.commands.length, 0);
-  value.ready.resolve();
-  await setImmediate();
   assert.equal(value.commands[0].command.type, 'drone-view');
   assert.equal(value.commands[0].command.droneId, 'Drone1');
   value.frame();
@@ -177,11 +157,10 @@ test('rapid drone selections serialize on the same stream and stay masked betwee
   value.frame();
   assert.equal(value.states.at(-1).type, 'live');
   assert.equal(value.states.at(-1).droneId, 'Drone3');
-  assert.equal(value.instances.length, 1);
   value.viewer.dispose();
 });
 
-test('playback counter changes during camera selection do not close the shared stream', async () => {
+test('playback counter changes during camera selection keep the camera on the shared stream', async () => {
   const value = fixture();
   await value.live();
   value.sample(250, 100);
@@ -201,20 +180,15 @@ test('playback counter changes during camera selection do not close the shared s
   value.frame();
   assert.equal(value.states.at(-1).type, 'live');
   assert.equal(value.states.at(-1).droneId, 'Drone1');
-  assert.equal(value.instances.length, 1);
-  assert.equal(value.instances[0].disposals, 0);
   value.viewer.dispose();
 });
 
 for (const response of [{ droneId: 'Drone2' }, { droneId: 'Drone1', authoring: {} }]) {
   test(`invalid native acknowledgement stops video: ${JSON.stringify(response)}`, async () => {
     const value = fixture();
-    value.ready.resolve();
-    await setImmediate();
     value.commands[0].resolve(response);
     await setImmediate();
     assert.equal(value.states.at(-1).type, 'error');
-    assert.equal(value.instances[0].disposals, 1);
     value.viewer.select('Drone4');
     value.frame();
     assert.equal(value.commands.length, 1);
@@ -224,15 +198,11 @@ for (const response of [{ droneId: 'Drone2' }, { droneId: 'Drone1', authoring: {
 
 test('native rejection stops without retrying the selection', async () => {
   const value = fixture();
-  value.ready.resolve();
-  await setImmediate();
   value.commands[0].reject(new Error('Mission camera is unavailable'));
   await setImmediate();
   assert.equal(value.states.at(-1).type, 'error');
   assert.equal(value.states.at(-1).message, 'Mission camera is unavailable');
   assert.equal(value.commands.length, 1);
-  assert.equal(value.instances.length, 1);
-  assert.equal(value.instances[0].disposals, 1);
 });
 
 test('dropped frames do not keep a frozen camera live', async () => {
@@ -241,15 +211,11 @@ test('dropped frames do not keep a frozen camera live', async () => {
   value.sample(5000, 21, 20);
   assert.equal(value.states.at(-1).type, 'error');
   assert.equal(value.states.at(-1).message, 'Live camera stopped updating.');
-  assert.equal(value.instances[0].disposals, 1);
   value.viewer.dispose();
-  assert.equal(value.instances[0].disposals, 1);
 });
 
 test('an acknowledged camera with no new frame fails at the first-frame deadline', async () => {
   const value = fixture();
-  value.ready.resolve();
-  await setImmediate();
   value.commands[0].resolve({ droneId: 'Drone1' });
   await setImmediate();
   value.sample(24999);
@@ -257,7 +223,6 @@ test('an acknowledged camera with no new frame fails at the first-frame deadline
   value.sample(1);
   assert.equal(value.states.at(-1).type, 'error');
   assert.equal(value.states.at(-1).message, 'No new camera frame after selection.');
-  assert.equal(value.instances[0].disposals, 1);
 });
 
 test('a hidden page suspends frame deadlines and returning requires a fresh frame', async () => {
@@ -267,7 +232,6 @@ test('a hidden page suspends frame deadlines and returning requires a fresh fram
   value.sample(60000);
   value.frame();
   assert.equal(value.states.at(-1).type, 'connecting');
-  assert.equal(value.instances[0].disposals, 0);
   value.hide(false);
   value.sample(24999);
   assert.equal(value.states.at(-1).type, 'connecting');
@@ -281,7 +245,7 @@ test('a hidden page suspends frame deadlines and returning requires a fresh fram
   assert.equal(value.listeners.size, 0);
 });
 
-test('leaving cancels frame notifications and late callbacks cannot reopen the stream', async () => {
+test('leaving cancels frame notifications and late callbacks cannot reopen the camera', async () => {
   const value = fixture();
   await value.live();
   const callback = [...value.callbacks.values()][0];
@@ -293,35 +257,10 @@ test('leaving cancels frame notifications and late callbacks cannot reopen the s
   assert.equal(value.callbacks.size, 0);
   assert.equal(value.listeners.size, 0);
   assert.equal(value.states.length, count);
-  assert.equal(value.instances[0].disposals, 1);
-});
-
-test('disconnect masks video and a late acknowledgement cannot restore it', async () => {
-  const value = fixture();
-  value.ready.resolve();
-  await setImmediate();
-  value.instances[0].disconnected('Stream disconnected');
-  value.commands[0].resolve({ droneId: 'Drone1' });
-  await setImmediate();
-  value.frame();
-  assert.equal(value.states.at(-1).type, 'disconnected');
-  assert.equal(value.instances[0].disposals, 1);
-});
-
-test('leaving during connection prevents every native command', async () => {
-  const value = fixture();
-  value.viewer.dispose();
-  value.ready.resolve();
-  await setImmediate();
-  value.viewer.select('Drone2');
-  assert.equal(value.commands.length, 0);
-  assert.equal(value.instances[0].disposals, 1);
 });
 
 test('leaving during a camera command ignores its late acknowledgement and new frames', async () => {
   const value = fixture();
-  value.ready.resolve();
-  await setImmediate();
   value.viewer.dispose();
   value.commands[0].resolve({ droneId: 'Drone1' });
   await setImmediate();
@@ -330,23 +269,27 @@ test('leaving during a camera command ignores its late acknowledgement and new f
     value.states.some((state) => state.type === 'live'),
     false,
   );
-  assert.equal(value.instances[0].disposals, 1);
 });
 
-test('switching between inset and main view preserves the mounted camera connection', async () => {
+function mounted() {
   const refs = [];
   const effects = [];
   const pending = [];
+  const states = [];
   let refIndex = 0,
-    effectIndex = 0;
+    effectIndex = 0,
+    stateIndex = 0;
   const value = fixture({
-    useCallback: (callback) => callback,
     useRef(initial) {
       const index = refIndex++;
       if (!(index in refs)) refs[index] = { current: initial };
       return refs[index];
     },
-    useState: (initial) => [initial, () => {}],
+    useState(initial) {
+      const index = stateIndex++;
+      if (!(index in states)) states[index] = initial;
+      return [states[index], (next) => (states[index] = next)];
+    },
     useEffect(callback, dependencies) {
       const index = effectIndex++;
       const previous = effects[index];
@@ -360,36 +303,56 @@ test('switching between inset and main view preserves the mounted camera connect
     },
   });
   const onError = (message) => assert.fail(message);
-  function render(droneId, inset) {
-    refIndex = effectIndex = 0;
-    value.Component({ droneId, inset, onError });
-    refs[0].current = value.parent;
-    for (const effect of pending.splice(0)) effect();
-  }
-  render('Drone1', true);
-  value.ready.resolve();
-  await setImmediate();
+  return {
+    ...value,
+    state: () => states[0],
+    render(props) {
+      refIndex = effectIndex = stateIndex = 0;
+      value.Component({ stream: value.stream, onError, ...props });
+      for (const effect of pending.splice(0)) effect();
+    },
+    unmount: () => effects.forEach((effect) => effect.cleanup?.()),
+  };
+}
+
+test('switching between inset and main view keeps one camera selection on the shared stream', async () => {
+  const value = mounted();
+  value.render({ droneId: 'Drone1', inset: true });
   value.commands[0].resolve({ droneId: 'Drone1' });
   await setImmediate();
   value.frame();
-  render('Drone1', false);
-  render('Drone2', false);
-  render('Drone2', true);
-  assert.equal(value.instances.length, 1);
-  assert.equal(value.instances[0].disposals, 0);
+  value.render({ droneId: 'Drone1', inset: false });
+  value.render({ droneId: 'Drone2', inset: false });
+  value.render({ droneId: 'Drone2', inset: true });
   assert.equal(value.commands.length, 2);
   assert.equal(value.commands[1].command.droneId, 'Drone2');
-  for (const effect of effects) effect.cleanup?.();
+  value.unmount();
   value.commands[1].resolve({ droneId: 'Drone2' });
   await setImmediate();
-  assert.equal(value.instances[0].disposals, 1);
+  assert.equal(value.callbacks.size, 0);
+});
+
+test('a missing shared stream masks the camera with the stream status and sends nothing', () => {
+  const value = mounted();
+  value.stream.transport = null;
+  value.stream.status = { title: 'Scene in use', detail: 'Another browser has the live world.' };
+  value.render({ droneId: 'Drone1', inset: true });
+  assert.equal(value.commands.length, 0);
+  assert.deepEqual(
+    { ...value.state() },
+    {
+      type: 'disconnected',
+      droneId: null,
+      message: 'Another browser has the live world.',
+    },
+  );
 });
 
 test('both video layouts start masked with the requested drone and explicit connection status', () => {
   const value = fixture();
   for (const inset of [false, true]) {
     const page = renderToStaticMarkup(
-      createElement(value.Component, { droneId: 'Drone2', inset, onError() {} }),
+      createElement(value.Component, { stream: value.stream, droneId: 'Drone2', inset, onError() {} }),
     );
     assert.match(page, /aria-label="Drone2 live camera"/);
     assert.match(page, /data-drone-id="Drone2" data-video-state="connecting"/);

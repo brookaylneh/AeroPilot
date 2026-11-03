@@ -49,10 +49,10 @@ from world.cosys.landmarks import directions, find, load
 from world.cosys.terrain import BOUNDS, terrain_height
 
 MESSAGE_FIELDS = {
-    "status": {"type"},
     "launch": {"type", "case_id"},
-    "studio": {"type"},
     "connect": {"type", "case_id"},
+    "start": {"type"},
+    "end_mission": {"type"},
     "chat": {"type", "text"},
     "new_chat": {"type"},
     "tool": {"type", "name", "arguments"},
@@ -324,9 +324,10 @@ class Mission:
         self.fleet_closed = False
         self.fleet_error = None
         self.model = Wonder()
-        self.sockets = set()
         self.lifecycle_lock = asyncio.Lock()
         self.clearing = False
+        # The operator's effort choice outlives each run, including the one a chat starts.
+        self.effort = "high"
         self.initialize_run(case, active=case is not None)
         self.fleet = Fleet(self.directory / "sitl", self.fleet_event, self.landmarks)
 
@@ -335,7 +336,6 @@ class Mission:
         self.active = active
         self.case = case
         self.id = str(uuid.uuid4())
-        self.effort = "high"
         self.directory = ROOT / ".local/data/missions" / self.id
         self.directory.mkdir(parents=True, exist_ok=False)
         self.log = (self.directory / "events.jsonl").open("x")
@@ -407,15 +407,10 @@ class Mission:
             self.event("error", "Mission admission failed: " + self.admission_error)
             raise RuntimeError("Mission admission failed: " + self.admission_error) from error
 
-    def status(self):
-        summary = self.summary() if self.active else None
+    def grounded(self):
         vehicles = self.vehicles()
-        return {
-            "type": "status",
-            "mission": None
-            if summary is None
-            else {key: summary[key] for key in ("id", "case_id", "case_name")},
-            "can_open_studio": self.fleet_ready
+        return (
+            self.fleet_ready
             and self.fleet_error is None
             and not self.clearing
             and not self.active_flight
@@ -427,21 +422,36 @@ class Mission:
                 and not v["link_lost"]
                 and v["ekf_healthy"]
                 for v in vehicles
-            ),
-        }
+            )
+        )
+
+    async def end_mission(self):
+        assert self.active, "No mission is running"
+        airborne = [v["id"] for v in self.vehicles() if v["armed"]]
+        self.event(
+            "mode",
+            "Operator ended the mission"
+            + (": returning " + ", ".join(airborne) if airborne else ""),
+            source="operator",
+        )
+        await self.interrupt_agent("operator ending the mission")
+        if airborne:
+            await self.return_fleet(airborne, "operator")
+            returns = [self.return_tasks[name] for name in airborne if name in self.return_tasks]
+            if returns:
+                await asyncio.wait(returns)
+        await self.clear()
 
     async def clear(self):
         async with self.lifecycle_lock:
             assert not self.clearing, "Mission cancellation has failed; restore the service"
-            assert self.status()["can_open_studio"], (
-                "Opening Studio requires a healthy fleet with all drones landed and disarmed"
+            assert self.active, "No mission is running"
+            assert self.grounded(), (
+                "Ending the mission requires a healthy fleet with all drones landed and disarmed"
             )
-            if not self.active:
-                return
             self.clearing = True
             self.cancel_wait("Mission ended")
             self.inspections.invalidate("Mission ended")
-            self.event("mode", "Returning to Studio; cancelling this mission")
             pending = list(self.tasks)
             for task in pending:
                 task.cancel()
@@ -455,12 +465,10 @@ class Mission:
             assert all(not v["armed"] and v["landed_state"] == 1 for v in self.vehicles()), (
                 "Fleet left the ground during mission cancellation"
             )
-            for socket in tuple(self.sockets):
-                await socket.close(code=1000, reason="Mission cancelled by returning to Studio")
             await self.inspections.close()
             await self.fleet.clear_missions()
             await asyncio.to_thread(sim.reset_session)
-            self.event("mode", "Mission cancelled; Studio reset to character selection")
+            self.event("mode", "Mission ended; world reset to character selection")
             self.log.close()
             self.initialize_run(None, active=False)
             self.clearing = False
@@ -633,6 +641,7 @@ class Mission:
         return {
             "id": self.id,
             "case_id": None if self.case is None else self.case["id"],
+            "active": self.active,
             "case_name": "General mission" if self.case is None else self.case["name"],
             "briefing": None if self.case is None else self.case["report"],
             "elapsed_s": time.monotonic() - self.started,
@@ -2000,6 +2009,9 @@ class Mission:
         kind = message["type"]
         assert kind in MESSAGE_FIELDS, f"Unknown message type: {kind}"
         assert set(message) == MESSAGE_FIELDS[kind], f"Invalid fields for {kind}"
+        if kind in ("start", "chat", "tool"):
+            # Mission work opens a general mission when none is running.
+            await self.begin(None)
         if kind == "chat":
             assert isinstance(message["text"], str) and 1 <= len(message["text"].strip()) <= 4000
             self.cancel_wait("New operator message")
@@ -2075,11 +2087,12 @@ class Mission:
             assert message["effort"] in EFFORTS, "Unknown reasoning effort"
             self.effort = message["effort"]
             self.event("mode", "Reasoning effort set to " + self.effort, source="operator")
-        else:
+        elif kind == "end_mission":
+            await self.end_mission()
+        elif kind != "start":
             raise AssertionError("Mission is already connected")
 
     async def connection(self, websocket, first=None):
-        assert self.active, "No active mission"
         assert not self.clearing, "Mission is ending; no new connections are accepted"
         assert self.admission_error is None, "Mission admission failed: " + str(
             self.admission_error
@@ -2091,13 +2104,14 @@ class Mission:
             assert self.case is not None and first["case_id"].lower() == self.case["id"].lower(), (
                 "Service is running a different mission"
             )
-        await websocket.send(encode({"type": "history", "events": self.events}))
-        cursor = self.event_sequence
 
         async def publish():
-            nonlocal cursor
-            focus_id = None
+            run = focus_id = None
             while True:
+                # Starting or ending a mission replaces the run and its event history.
+                if run != self.id:
+                    run, cursor = self.id, self.event_sequence
+                    await websocket.send(encode({"type": "history", "events": self.events}))
                 for event in [e for e in self.events if e["sequence"] > cursor]:
                     await websocket.send(encode({"type": "event", "event": event}))
                     cursor = event["sequence"]

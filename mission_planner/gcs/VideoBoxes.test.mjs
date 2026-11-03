@@ -95,7 +95,7 @@ const videoCode = buildSync({
   platform: 'node',
   format: 'cjs',
   packages: 'external',
-  external: ['./VideoBoxes', '../../scenario_creator/PixelStreamingTransport'],
+  external: ['./VideoBoxes', '../../scenario_creator/PixelStreamingTransport', '../../web/useStream'],
   loader: { '.css': 'empty' },
   write: false,
 }).outputFiles[0].text;
@@ -125,6 +125,7 @@ function videoFixture() {
         };
       if (id === './VideoBoxes') return boxes;
       if (id === '../../scenario_creator/PixelStreamingTransport') return {};
+      if (id === '../../web/useStream') return { useStreamView() {} };
       return require(id);
     },
   });
@@ -133,7 +134,7 @@ function videoFixture() {
     render(inspection, droneId = 'Drone1', held = false) {
       refIndex = 0;
       return find(
-        module.exports.default({ droneId, inspection, held, inset: false, onError() {} }),
+        module.exports.default({ stream: {}, droneId, inspection, held, inset: false, onError() {} }),
         (node) => node.type === boxes,
       );
     },

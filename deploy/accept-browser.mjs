@@ -24,14 +24,25 @@ const result = {
 const browser = await launchBrowser();
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
 page.on('pageerror', (error) => result.errors.push(error.message));
+let fleet;
+page.on('websocket', (socket) => {
+  if (!socket.url().endsWith('/api/mission')) return;
+  socket.on('framereceived', ({ payload }) => {
+    const value = JSON.parse(payload.toString());
+    if (value.type === 'state') fleet = value;
+  });
+});
 const save = () => writeFile(`${output}/result.json`, JSON.stringify(result, null, 2) + '\n');
 const screenshot = (name) => page.screenshot({ path: `${output}/${name}.png` });
 try {
   await observeScenario(page);
   const response = await page.goto(origin, { timeout: 30000 });
   assert(response.ok());
-  assert.equal(new URL(page.url()).pathname, '/home');
-  await page.getByRole('link', { name: /Create Search and Rescue Scenario/ }).click();
+  assert.equal(new URL(page.url()).pathname, '/');
+  await page
+    .getByRole('navigation', { name: 'Views' })
+    .getByRole('button', { name: 'Search & rescue scenario' })
+    .click();
   result.tls = await response.securityDetails();
   await waitForCreator(page);
   result.people = await page.evaluate(() =>
@@ -180,23 +191,14 @@ try {
   result.saveLoad = { passed: true, personId: loaded.authoring.appearance.personId };
   await page.getByRole('button', { name: /Prepare and launch/ }).click();
   await waitForCreator(page);
-  let fleet;
-  page.on('websocket', (socket) => {
-    if (!socket.url().endsWith('/api/mission')) return;
-    socket.on('framereceived', ({ payload }) => {
-      const value = JSON.parse(payload.toString());
-      if (value.type === 'state') fleet = value;
-    });
-  });
   await page.getByRole('button', { name: 'Launch Search & Rescue Mission' }).click();
-  await page.waitForURL(`${origin}/missionplanner?case=*`);
   const deadline = Date.now() + 90000;
-  while (!fleet || fleet.vehicles.length !== 4) {
+  while (!fleet?.mission.case_id || fleet.vehicles.length !== 4) {
     assert(Date.now() < deadline, 'Mission fleet did not become ready');
     await delay(250);
   }
   assert(fleet.vehicles.every((v) => !v.link_lost && v.ekf_healthy && !v.armed));
-  result.caseId = new URL(page.url()).searchParams.get('case');
+  result.caseId = fleet.mission.case_id;
   result.fleet = fleet.vehicles.map((v) => ({
     id: v.id,
     linkLost: v.link_lost,

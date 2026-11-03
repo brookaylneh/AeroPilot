@@ -155,28 +155,24 @@ autopilots before Unreal is ready exhausts their first sensor-message timeout.
 The rendering and encoding profile is documented in [streaming](../world/unreal/streaming.md);
 its startup values are defined in `runtime.env.example`.
 
-| Route or endpoint                  | Purpose                                                         | Listener / upstream                                             |
-| ---------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------- |
-| `http://35.81.229.78/`             | Redirect to `/home`                                             | Caddy, 80 TCP                                                   |
-| `/home`                            | World readiness and planner/scenario entry                      | web, `127.0.0.1:3001`                                           |
-| `/studio`                          | Scenario Creator                                                | web, `127.0.0.1:3001`                                           |
-| `/missionplanner`                  | General mission entry or active-session resume                  | web, `127.0.0.1:3001`                                           |
-| `/missionplanner?case=<uuid>`      | Mission Control with a launched rescue scenario                 | web, `127.0.0.1:3001`                                           |
-| `/mission`                         | Compatibility redirect, preserving the query                    | web, `127.0.0.1:3001`                                           |
-| `/api/mission`                     | Mission WebSocket                                               | web origin check, then `127.0.0.1:8765`                         |
-| `/api/evidence/<mission>/<asset>`  | Registered immutable original JPEGs and matching mask PNGs      | same web origin, mission-owned registry                         |
-| `/api/unreal/status`               | Renderer readiness and occupancy                                | web, signalling health                                          |
-| `/api/stream`                      | Pixel Streaming player WebSocket                                | web origin check, then `127.0.0.1:8080`                         |
-| `/healthz`                         | All seven units plus mission, renderer and TURN protocol health | web; 503 if any check fails                                     |
-| Internal streamer                  | Unreal to signalling                                            | `127.0.0.1:8888`                                                |
-| Internal Cosys RPC                 | Native simulation control                                       | `127.0.0.1:41451`                                               |
-| Internal MAVLink                   | Four SITL telemetry inputs                                      | `127.0.0.1:14600–14603` UDP                                     |
-| Internal RC input                  | Four SITL inputs                                                | `127.0.0.1:5501,5511,5521,5531` UDP                             |
-| Internal AirSim sensor and control | Cosys to SITL, SITL instances 0–3                               | `127.0.0.1:9003–9033` and `9002–9032` UDP, step 10              |
-| TURN                               | Browser relay control                                           | `172.31.61.189:3478` TCP/UDP, public EIP translation            |
-| TURN relay                         | Relayed media                                                   | `172.31.61.189:49300–49350` UDP                                 |
-| Unreal WebRTC                      | Local media endpoint reached by TURN                            | `49160–49200` UDP; no public ingress required with forced relay |
-| Development                        | One server, reached by SSH tunnel                               | `127.0.0.1:5174`                                                |
+| Route or endpoint                                 | Purpose                                                         | Listener / upstream                                             |
+| ------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------- |
+| `http://35.81.229.78/`                            | Mission Control: map, world exploration and scenario tabs       | Caddy, 80 TCP, then web `127.0.0.1:3001`                        |
+| `/home`, `/studio`, `/missionplanner`, `/mission` | Redirect to `/`                                                 | web, `127.0.0.1:3001`                                           |
+| `/api/mission`                                    | Mission WebSocket                                               | web origin check, then `127.0.0.1:8765`                         |
+| `/api/evidence/<mission>/<asset>`                 | Registered immutable original JPEGs and matching mask PNGs      | same web origin, mission-owned registry                         |
+| `/api/unreal/status`                              | Renderer readiness and occupancy                                | web, signalling health                                          |
+| `/api/stream`                                     | Pixel Streaming player WebSocket                                | web origin check, then `127.0.0.1:8080`                         |
+| `/healthz`                                        | All seven units plus mission, renderer and TURN protocol health | web; 503 if any check fails                                     |
+| Internal streamer                                 | Unreal to signalling                                            | `127.0.0.1:8888`                                                |
+| Internal Cosys RPC                                | Native simulation control                                       | `127.0.0.1:41451`                                               |
+| Internal MAVLink                                  | Four SITL telemetry inputs                                      | `127.0.0.1:14600–14603` UDP                                     |
+| Internal RC input                                 | Four SITL inputs                                                | `127.0.0.1:5501,5511,5521,5531` UDP                             |
+| Internal AirSim sensor and control                | Cosys to SITL, SITL instances 0–3                               | `127.0.0.1:9003–9033` and `9002–9032` UDP, step 10              |
+| TURN                                              | Browser relay control                                           | `172.31.61.189:3478` TCP/UDP, public EIP translation            |
+| TURN relay                                        | Relayed media                                                   | `172.31.61.189:49300–49350` UDP                                 |
+| Unreal WebRTC                                     | Local media endpoint reached by TURN                            | `49160–49200` UDP; no public ingress required with forced relay |
+| Development                                       | One server, reached by SSH tunnel                               | `127.0.0.1:5174`                                                |
 
 Caddy proxies to the web server so production and development share the same-origin WebSocket
 checks. The root redirects explicitly; unknown paths return 404. TURN and its media endpoints are the network-facing exception to the loopback service rule.

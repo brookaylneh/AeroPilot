@@ -1,14 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
+import { useStreamView, type Stream } from '../web/useStream';
 import {
-  PixelStreamingTransport,
   cameraSchema,
   navigationSettingsSchema,
   creatorStageSchema,
   type UnrealCommand,
 } from './PixelStreamingTransport';
 import { briefingSchema } from './briefing';
-import { missionLifecycle, type MissionStatus } from './missionLifecycle';
 
 export const packetSchema = z.object({
   camera: cameraSchema,
@@ -79,140 +78,53 @@ export const packetSchema = z.object({
 });
 export type Packet = z.infer<typeof packetSchema>;
 
-export function useUnrealSession() {
+export function useUnrealSession(stream: Stream, explore: boolean) {
   const container = useRef<HTMLDivElement>(null);
-  const transport = useRef<PixelStreamingTransport | null>(null);
-  const openedCreator = useRef(false);
+  useStreamView(stream, container);
+  const transport = stream.transport;
   const [packet, setPacket] = useState<Packet | null>(null);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const [transitioning, setTransitioning] = useState(false);
-  const [retry, setRetry] = useState(0);
-  const [missionStatus, setMissionStatus] = useState<MissionStatus | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState({
-    title: 'Opening the valley…',
-    detail: 'Checking scene availability.',
-  });
+  const [failure, setFailure] = useState<{ title: string; detail: string } | null>(null);
   const [videoStats, setVideoStats] = useState<{ fps: number; height: number } | null>(null);
   const connected = packet !== null;
   useEffect(() => {
-    if (!container.current) return;
-    let active = true;
-    let connection: PixelStreamingTransport | null = null;
-    const abort = new AbortController();
     setPacket(null);
-    setMissionStatus(null);
+    setFailure(null);
     setError('');
     setBusy(false);
-    const fail = (title: string, detail: string) => {
-      if (!active) return;
-      setPacket(null);
-      setBusy(false);
-      setConnectionStatus({ title, detail });
-      connection?.dispose();
-      connection = null;
-      transport.current = null;
-    };
-    const attempt = async () => {
-      if (!active || !container.current) return;
-      let current: PixelStreamingTransport | null = null;
+    if (!transport) return;
+    let active = true;
+    const stop = transport.observeCamera((camera) => {
+      if (active) setTransitioning(camera.transitioning);
+    });
+    const open = async () => {
       try {
-        setConnectionStatus({
-          title: 'Opening Studio…',
-          detail: 'Checking the current mission and fleet.',
-        });
-        const status = await missionLifecycle({ type: 'status' }, abort.signal);
+        const snapshot = packetSchema.parse(await transport.command({ type: 'snapshot' }));
+        const rect = container.current!.getBoundingClientRect();
+        await transport.command({ type: 'viewport', aspect: rect.width / rect.height });
+        await transport.waitForVideo();
         if (!active) return;
-        if (status.type !== 'status') throw new Error('The mission service did not return its status.');
-        setMissionStatus(status);
-        if (status.mission !== null || !status.can_open_studio) {
-          setConnectionStatus({
-            title: status.mission ? 'Mission in progress' : 'Studio is unavailable',
-            detail: status.mission
-              ? `${status.mission.case_name} is active. End the mission to open Studio. The fleet must be healthy, landed and disarmed.`
-              : 'Studio requires a healthy, landed and disarmed fleet.',
-          });
-          return;
-        }
-        const response = await fetch('/api/unreal/status', {
-          cache: 'no-store',
-          signal: AbortSignal.any([abort.signal, AbortSignal.timeout(5000)]),
-        });
-        const health = (await response.json()) as { state: string };
-        if (!active) return;
-        if (!response.ok || health.state === 'unavailable') {
-          setConnectionStatus({
-            title: 'Scene is unavailable',
-            detail: 'The renderer is not running. Restore the service, then select Reconnect.',
-          });
-          return;
-        }
-        if (health.state === 'occupied') {
-          fail(
-            'Scene in use',
-            'Another browser has the editing session. Close that tab, then select Reconnect.',
-          );
-          return;
-        }
-        if (health.state !== 'ready') {
-          fail('Scene is starting', 'The renderer is warming up. Select Reconnect when it is ready.');
-          return;
-        }
-        setConnectionStatus({
-          title: 'Connecting to the scene…',
-          detail: 'Opening the live video and editing controls.',
-        });
-        current = new PixelStreamingTransport(
-          container.current,
-          `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/api/stream`,
-          (reason) => {
-            if (connection === current) fail('Scene connection interrupted', reason);
-          },
-        );
-        connection = current;
-        transport.current = current;
-        current.observeCamera((camera) => {
-          if (active && connection === current) setTransitioning(camera.transitioning);
-        });
-        await current.connect();
-        let snapshot = packetSchema.parse(await current.command({ type: 'snapshot' }));
-        if (!active || connection !== current) return;
-        const rect = container.current.getBoundingClientRect();
-        await current.command({ type: 'viewport', aspect: rect.width / rect.height });
-        // A new page opens at character selection. A transport reconnect keeps
-        // the current stage and all edits made during this visit.
-        if (!openedCreator.current) {
-          snapshot = packetSchema.parse(await current.command({ type: 'creator-stage', stage: 'person' }));
-          openedCreator.current = true;
-        }
-        setConnectionStatus({
-          title: 'Preparing the scene image…',
-          detail: 'The editing session is connected. Waiting for video.',
-        });
-        await current.waitForVideo();
-        if (active && connection === current) {
-          setPacket(snapshot);
-          setTransitioning(snapshot.camera.transitioning);
-          setError('');
-        }
+        setPacket(snapshot);
+        setTransitioning(snapshot.camera.transitioning);
       } catch (e) {
-        if (active && (!current || connection === current))
-          fail('Scene connection interrupted', (e as Error).message);
+        if (active) setFailure({ title: 'Scene connection interrupted', detail: (e as Error).message });
       }
     };
-    void attempt();
-    const close = () => {
-      active = false;
-      abort.abort();
-      connection?.dispose();
-      transport.current = null;
-    };
-    window.addEventListener('pagehide', close);
+    void open();
     return () => {
-      window.removeEventListener('pagehide', close);
-      close();
+      active = false;
+      stop();
     };
-  }, [retry]);
+  }, [transport]);
+  // Exploring starts on the ground; the scenario resumes the camera of its current step.
+  useEffect(() => {
+    if (packet)
+      void send(
+        explore ? { type: 'camera', view: 'start' } : { type: 'creator-stage', stage: packet.creatorStage },
+      );
+  }, [connected, explore]);
   useEffect(() => {
     if (!connected || !container.current) return;
     let timer: ReturnType<typeof setTimeout>;
@@ -220,7 +132,7 @@ export function useUnrealSession() {
       clearTimeout(timer);
       timer = setTimeout(() => {
         const aspect = entry.contentRect.width / entry.contentRect.height;
-        void transport.current
+        void transport
           ?.command({ type: 'viewport', aspect })
           .catch((error: Error) => setError(error.message));
       }, 150);
@@ -230,7 +142,7 @@ export function useUnrealSession() {
       clearTimeout(timer);
       observer.disconnect();
     };
-  }, [connected]);
+  }, [connected, transport]);
   useEffect(() => {
     setVideoStats(null);
     if (!connected) return;
@@ -256,29 +168,17 @@ export function useUnrealSession() {
     return () => clearInterval(timer);
   }, [connected]);
   async function send(command: UnrealCommand) {
-    if (!transport.current) throw new Error('The scene is not connected.');
+    if (!transport) throw new Error('The scene is not connected.');
     setBusy(true);
     setError('');
     try {
-      const result = packetSchema.parse(await transport.current.command(command));
+      const result = packetSchema.parse(await transport.command(command));
       setPacket(result);
       setTransitioning(result.camera.transitioning);
       return result;
     } catch (error) {
       setError((error as Error).message);
       return undefined;
-    } finally {
-      setBusy(false);
-    }
-  }
-  async function openStudio() {
-    setBusy(true);
-    setError('');
-    try {
-      await missionLifecycle({ type: 'studio' });
-      setRetry((value) => value + 1);
-    } catch (error) {
-      setError((error as Error).message);
     } finally {
       setBusy(false);
     }
@@ -292,10 +192,10 @@ export function useUnrealSession() {
     error,
     setError,
     send,
-    connectionStatus,
-    missionStatus,
-    openStudio,
+    connectionStatus:
+      failure ??
+      (transport ? { title: 'Preparing the scene image…', detail: 'Waiting for video.' } : stream.status),
     videoStats,
-    reconnect: () => setRetry((value) => value + 1),
+    reconnect: stream.reconnect,
   };
 }

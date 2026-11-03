@@ -226,7 +226,7 @@
   color: #f4f6ed;
 }
 .world-minimap.expanded {
-  width: min(480px, 48vw, calc(100dvh - 285px));
+  width: min(480px, 48vw, calc(100dvh - var(--gcs-chrome) - 285px));
 }
 .minimap-heading {
   display: flex;
@@ -411,7 +411,7 @@
     max-width: calc(100% - 24px);
   }
   .world-minimap.expanded {
-    width: min(340px, calc(100vw - 24px), calc(100dvh - 285px));
+    width: min(340px, calc(100vw - 24px), calc(100dvh - var(--gcs-chrome) - 285px));
   }
 }
 .drone-panel {

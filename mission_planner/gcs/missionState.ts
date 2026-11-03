@@ -178,6 +178,7 @@ export const stateSchema = z.object({
   mission: z
     .object({
       id: z.string(),
+      active: z.boolean(),
       case_id: z.string().uuid().nullable(),
       case_name: z.string(),
       briefing: briefingSchema.nullable(),
@@ -214,7 +215,6 @@ export const stateSchema = z.object({
 });
 export type MissionState = z.infer<typeof stateSchema>;
 const messageSchema = z.discriminatedUnion('type', [
-  z.object({ type: z.literal('idle') }).strict(),
   stateSchema,
   feedFocusMessageSchema,
   fenceResultSchema,
@@ -230,12 +230,12 @@ declare global {
   }
 }
 
-export function useMission(caseId: string | null) {
+export function useMission() {
   const [state, setState] = useState<MissionState | null>(null);
   const [feedFocus, setFeedFocus] = useState<FeedFocus | null>(null);
   const [fenceResult, setFenceResult] = useState<FenceResult | null>(null);
   const [events, setEvents] = useState<MissionEvent[]>([]);
-  const [connection, setConnection] = useState<'connecting' | 'connected' | 'closed' | 'idle'>('connecting');
+  const [connection, setConnection] = useState<'connecting' | 'connected' | 'closed'>('connecting');
   const [error, setError] = useState('');
   const [now, setNow] = useState(Date.now());
   const socket = useRef<WebSocket | null>(null);
@@ -245,19 +245,13 @@ export function useMission(caseId: string | null) {
     return () => window.clearInterval(clock);
   }, []);
   useEffect(() => {
-    if (caseId !== null && !z.string().uuid().safeParse(caseId).success) {
-      setConnection('closed');
-      setError('The scenario id is invalid. Open AeroPilot from Home or a saved scenario.');
-      return;
-    }
     const ws = new WebSocket(
       `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/api/mission`,
     );
-    setFeedFocus(null);
     socket.current = ws;
     ws.onopen = () => {
       setConnection('connected');
-      ws.send(JSON.stringify({ type: 'connect', case_id: caseId }));
+      ws.send(JSON.stringify({ type: 'connect', case_id: null }));
     };
     ws.onmessage = (message) => {
       const parsed = messageSchema.safeParse(JSON.parse(message.data));
@@ -267,15 +261,7 @@ export function useMission(caseId: string | null) {
         return;
       }
       const data = parsed.data;
-      if (data.type === 'idle') {
-        setState(null);
-        setFeedFocus(null);
-        setEvents([]);
-        setError('');
-        setConnection('idle');
-        ws.onclose = null;
-        ws.close();
-      } else if (data.type === 'state') {
+      if (data.type === 'state') {
         arrived.current = Date.now();
         setState(data);
       } else if (data.type === 'feed_focus') setFeedFocus(data);
@@ -309,7 +295,7 @@ export function useMission(caseId: string | null) {
       window.removeEventListener('pagehide', close);
       close();
     };
-  }, [caseId]);
+  }, []);
   useEffect(() => {
     if (!state) return;
     const frame = requestAnimationFrame(() => {

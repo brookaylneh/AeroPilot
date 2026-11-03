@@ -212,6 +212,7 @@ test('complete mission states retain telemetry through observed route, circle, m
     },
     mission: {
       id: '00000000-0000-4000-8000-000000000001',
+      active: true,
       case_id: '00000000-0000-4000-8000-000000000002',
       case_name: 'Missing hiker',
       briefing: { brief: 'Find the missing hiker.', portrait: '' },

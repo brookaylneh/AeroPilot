@@ -354,9 +354,23 @@
 .gcs-tabs-spacer {
   flex: 1;
 }
-.gcs-tabs .gcs-briefing-button {
-  padding-right: 6px;
-  padding-left: 14px;
+.gcs-tabs .gcs-mission-button {
+  margin: 4px 0;
+  padding: 0 12px;
+  border: 1px solid var(--gcs-line-strong);
+  border-bottom-width: 1px;
+  border-radius: 8px;
+  color: var(--gcs-text);
+}
+.gcs-tabs .gcs-mission-button[aria-expanded] {
+  border-color: #ff6b5766;
+  color: #ffb1a6;
+}
+.gcs-world {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  background: var(--gcs-bg);
 }
 .gcs-app kbd {
   font: 9px var(--gcs-mono);
@@ -2117,7 +2131,7 @@
   margin-left: auto;
   padding: 0;
 }
-.gcs-briefing,
+.gcs-end-mission,
 .gcs-alerts {
   position: absolute;
   top: var(--gcs-edge);
@@ -2131,7 +2145,7 @@
   padding: 20px;
   backdrop-filter: blur(10px);
 }
-.gcs-briefing header,
+.gcs-end-mission header,
 .gcs-alerts header {
   display: flex;
   justify-content: space-between;
@@ -2143,17 +2157,28 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
-.gcs-briefing h2 {
+.gcs-end-mission h2 {
   font: 600 16px var(--gcs-display);
   letter-spacing: 0.08em;
   margin-bottom: 12px;
 }
-.gcs-briefing p,
+.gcs-end-mission p,
 .gcs-alerts p {
   font-size: 12px;
   line-height: 1.75;
   white-space: pre-wrap;
   color: #c3d0db;
+}
+.gcs-end-confirm {
+  width: 100%;
+  height: 32px;
+  margin-top: 16px;
+  border: 1px solid #ff6b5780;
+  background: #ff6b5722;
+  color: #ffd2cb;
+  font: 600 10px var(--gcs-mono);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 .gcs-alerts {
   background-color: #140f06f2;

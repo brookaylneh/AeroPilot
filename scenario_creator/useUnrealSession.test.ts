@@ -7,16 +7,10 @@ import { buildSync } from 'esbuild';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { cameraSchema, creatorStageSchema, navigationSettingsSchema } from './PixelStreamingTransport';
-import type { MissionStatus } from './missionLifecycle';
 import type { useUnrealSession } from './useUnrealSession';
 
 type Session = ReturnType<typeof useUnrealSession>;
 const require = createRequire(import.meta.url);
-const activeMission = {
-  id: '2c9a3f6b-7c88-478c-98f5-a67a9b59a08f',
-  case_id: null,
-  case_name: 'Mission planner',
-};
 
 function bundle(file: string, external: string[]) {
   return buildSync({
@@ -32,33 +26,67 @@ function bundle(file: string, external: string[]) {
   }).outputFiles[0].text;
 }
 
-const hookCode = bundle('./useUnrealSession.ts', ['./PixelStreamingTransport']);
+const hookCode = bundle('./useUnrealSession.ts', ['./PixelStreamingTransport', '../web/useStream']);
 const appCode = bundle('./UnrealApp.tsx', ['./useUnrealSession', './WorldNavigation']);
 
-function mount(context: TestContext) {
-  const sockets: Socket[] = [];
-  const healthRequests: string[] = [];
-  let streamRequests = 0;
-  class Socket {
-    onopen: (() => void) | null = null;
-    onmessage: ((event: { data: string }) => void) | null = null;
-    onerror: (() => void) | null = null;
-    onclose: (() => void) | null = null;
-    sent: unknown[] = [];
-    closed = false;
-    constructor() {
-      sockets.push(this);
-    }
-    send(message: string) {
-      this.sent.push(JSON.parse(message));
-    }
-    close() {
-      this.closed = true;
-    }
-    reply(response: unknown) {
-      this.onmessage!({ data: JSON.stringify(response) });
-    }
-  }
+const packet = {
+  camera: {
+    position: { x: 0, y: 0, z: 0 },
+    yaw: 0,
+    pitch: 0,
+    fieldOfView: 60,
+    mode: 'explore',
+    movementMode: 'walk',
+    speedCmPerSecond: 0,
+    serverTimeMs: 0,
+    groundZ: 0,
+    destination: null,
+    inputSequence: 0,
+    inputSession: '',
+    transitioning: false,
+  },
+  creatorStage: 'placement',
+  briefing: { brief: '', portrait: '' },
+  authoring: {
+    regionId: 'valley',
+    situationId: 'lost',
+    appearance: {
+      personId: 'hiker',
+      topId: 'jacket',
+      topColor: 'red',
+      bottomId: 'trousers',
+      bottomColor: 'black',
+      backpackId: 'none',
+      backpackColor: 'original',
+    },
+    position: null,
+    rotation: { pitch: 0, yaw: 0, roll: 0 },
+  },
+  catalog: {
+    environmentId: 'valley',
+    navigationVersion: 9,
+    navigation: {
+      heartbeatMs: 100,
+      boost: 3,
+      modes: [
+        { id: 'walk', label: 'Walk', key: '1', speedCm: 140, heightCm: 170 },
+        { id: 'run', label: 'Run', key: '2', speedCm: 500, heightCm: 170 },
+        { id: 'survey', label: 'Survey', key: '3', speedCm: 2000, heightCm: 3000 },
+      ],
+    },
+    creatorVersion: 1,
+    droneFoundation: true,
+    assetVersion: 'test',
+    coordinateSystem: 'UE_LH_Z_UP_CENTIMETERS',
+    regions: [{ id: 'valley', name: 'Valley', bounds: { minX: 0, maxX: 1, minY: 0, maxY: 1 } }],
+    people: [],
+    options: [],
+  },
+  scenarios: [],
+  lastSavedId: '',
+};
+
+function mount(context: TestContext, transport: unknown, explore: boolean) {
   const values: unknown[] = [];
   const effects = new Map<number, { dependencies: unknown[]; cleanup?: () => void }>();
   const pending: (() => void)[] = [];
@@ -92,174 +120,142 @@ function mount(context: TestContext) {
       });
     },
   };
-  const module = { exports: {} as { useUnrealSession: () => Session } };
+  const module = { exports: {} as { useUnrealSession: (stream: unknown, explore: boolean) => Session } };
   runInNewContext(hookCode, {
     module,
     exports: module.exports,
     require: (id: string) => {
       if (id === 'react') return react;
+      if (id === '../web/useStream') return { useStreamView() {} };
       if (id === './PixelStreamingTransport')
-        return {
-          cameraSchema,
-          creatorStageSchema,
-          navigationSettingsSchema,
-          PixelStreamingTransport: class {
-            constructor() {
-              streamRequests++;
-              throw new Error('This test must not open a native stream.');
-            }
-          },
-        };
+        return { cameraSchema, creatorStageSchema, navigationSettingsSchema };
       return require(id);
     },
-    WebSocket: Socket,
-    window: new EventTarget(),
-    location: { protocol: 'http:', host: 'mission.test' },
-    AbortController,
-    AbortSignal,
     Error,
+    ResizeObserver: class {
+      observe() {}
+      disconnect() {}
+    },
+    setInterval: () => 0,
+    clearInterval() {},
     setTimeout,
     clearTimeout,
-    fetch: async (url: string) => {
-      healthRequests.push(url);
-      return { ok: true, json: async () => ({ state: 'unavailable' }) };
-    },
   });
+  const stream = {
+    host: {},
+    transport,
+    status: { title: 'Scene in use', detail: 'Another browser has the live world.' },
+    reconnect() {},
+  };
   function render() {
     cursor = 0;
-    const session = module.exports.useUnrealSession();
-    session.container.current = {} as HTMLDivElement;
+    const session = module.exports.useUnrealSession(stream, explore);
+    session.container.current = { getBoundingClientRect: () => ({ width: 1600, height: 900 }) } as never;
     for (const effect of pending.splice(0)) effect();
     return session;
   }
-  context.after(async () => {
+  context.after(() => {
     for (const effect of effects.values()) effect.cleanup?.();
-    await setImmediate();
   });
-  render();
   return {
-    sockets,
-    healthRequests,
-    get streamRequests() {
-      return streamRequests;
-    },
+    stream,
+    render,
     async flush() {
       await setImmediate();
+      return render();
+    },
+    explore(value: boolean) {
+      explore = value;
       return render();
     },
   };
 }
 
-for (const [name, mission, canOpenStudio] of [
-  ['active general mission', activeMission, true],
-  ['active rescue mission', { ...activeMission, case_id: activeMission.id }, false],
-  ['unavailable fleet', null, false],
-] as const) {
-  test(`Studio mount only reads status for an ${name}`, async (context) => {
-    const mounted = mount(context);
-    const socket = mounted.sockets[0];
-    socket.onopen!();
-    assert.deepEqual(socket.sent, [{ type: 'status' }]);
-    assert.equal(mounted.healthRequests.length, 0);
-    socket.reply({ type: 'status', mission, can_open_studio: canOpenStudio });
-    const session = await mounted.flush();
-    assert.equal(session.missionStatus?.mission?.id ?? null, mission?.id ?? null);
-    assert.equal(session.missionStatus?.can_open_studio, canOpenStudio);
-    assert.equal(session.packet, null);
-    assert.equal(mounted.sockets.length, 1);
-    assert.equal(mounted.healthRequests.length, 0);
-    assert.equal(mounted.streamRequests, 0);
-    assert.equal(socket.closed, true);
-  });
+function transport(snapshot: unknown) {
+  const commands: { type: string }[] = [];
+  return {
+    commands,
+    observeCamera: () => () => {},
+    waitForVideo: async () => {},
+    command: async (command: { type: string }) => {
+      commands.push({ ...command });
+      return command.type === 'snapshot' ? snapshot : command.type === 'viewport' ? {} : packet;
+    },
+  };
 }
 
-test('idle Studio checks renderer health without resetting the mission or draft', async (context) => {
-  const mounted = mount(context);
-  mounted.sockets[0].onopen!();
-  mounted.sockets[0].reply({ type: 'status', mission: null, can_open_studio: true });
-  const session = await mounted.flush();
-  assert.deepEqual(mounted.sockets[0].sent, [{ type: 'status' }]);
-  assert.equal(mounted.sockets.length, 1);
-  assert.deepEqual(mounted.healthRequests, ['/api/unreal/status']);
-  assert.equal(session.connectionStatus.title, 'Scene is unavailable');
-  assert.equal(mounted.streamRequests, 0);
+test('without the shared stream the scene reports its status and sends nothing', (context) => {
+  const mounted = mount(context, null, false);
+  const session = mounted.render();
+  assert.equal(session.packet, null);
+  assert.deepEqual(session.connectionStatus, mounted.stream.status);
+  assert.equal(session.reconnect, mounted.stream.reconnect);
 });
 
-test('explicit Studio entry waits for reset acknowledgement before checking status again', async (context) => {
-  const mounted = mount(context);
-  mounted.sockets[0].reply({ type: 'status', mission: activeMission, can_open_studio: true });
-  const session = await mounted.flush();
-  const action = session.openStudio();
-  const reset = mounted.sockets[1];
-  reset.onopen!();
-  assert.deepEqual(reset.sent, [{ type: 'studio' }]);
-  assert.equal((await mounted.flush()).busy, true);
-  assert.equal(mounted.sockets.length, 2);
-  assert.equal(mounted.healthRequests.length, 0);
-  reset.reply({ type: 'studio' });
-  await action;
+test('the scenario resumes its current step and exploring starts on the ground', async (context) => {
+  const native = transport(packet);
+  const mounted = mount(context, native, false);
+  mounted.render();
   await mounted.flush();
-  assert.equal(mounted.sockets.length, 3);
-  mounted.sockets[2].onopen!();
-  assert.deepEqual(mounted.sockets[2].sent, [{ type: 'status' }]);
-  assert.equal(mounted.healthRequests.length, 0);
-  assert.equal(mounted.streamRequests, 0);
-});
-
-test('backend refusal of explicit Studio entry stops without reconnecting or opening a stream', async (context) => {
-  const mounted = mount(context);
-  mounted.sockets[0].reply({ type: 'status', mission: activeMission, can_open_studio: true });
   const session = await mounted.flush();
-  const action = session.openStudio();
-  mounted.sockets[1].reply({ type: 'error', message: 'Fleet must be landed and disarmed' });
-  await action;
-  const failed = await mounted.flush();
-  assert.equal(failed.error, 'Fleet must be landed and disarmed');
-  assert.equal(failed.busy, false);
-  assert.equal(failed.missionStatus?.mission?.id, activeMission.id);
-  assert.equal(mounted.sockets.length, 2);
-  assert.equal(mounted.healthRequests.length, 0);
-  assert.equal(mounted.streamRequests, 0);
+  assert.equal(session.packet?.creatorStage, 'placement');
+  assert.deepEqual(native.commands, [
+    { type: 'snapshot' },
+    { type: 'viewport', aspect: 16 / 9 },
+    { type: 'creator-stage', stage: 'placement' },
+  ]);
+  mounted.explore(true);
+  await mounted.flush();
+  assert.deepEqual(native.commands.at(-1), { type: 'camera', view: 'start' });
+  assert.equal(native.commands.length, 4);
 });
 
-for (const canOpenStudio of [false, true]) {
-  test(`active mission keeps Resume visible and Studio entry ${canOpenStudio ? 'enabled' : 'disabled'}`, () => {
-    const missionStatus: MissionStatus = {
-      type: 'status',
-      mission: activeMission,
-      can_open_studio: canOpenStudio,
+test('an invalid snapshot stops the scene with its cause and no authoring command', async (context) => {
+  const native = transport({ creatorStage: 'placement' });
+  const mounted = mount(context, native, false);
+  mounted.render();
+  const session = await mounted.flush();
+  assert.equal(session.packet, null);
+  assert.equal(session.connectionStatus.title, 'Scene connection interrupted');
+  assert.deepEqual(native.commands, [{ type: 'snapshot' }]);
+});
+
+for (const explore of [false, true]) {
+  test(`an unconnected ${explore ? 'world' : 'scenario'} offers only Reconnect`, () => {
+    const module = {
+      exports: {} as {
+        default: (props: { stream: unknown; explore: boolean; launched: () => void }) => null;
+      },
     };
-    const module = { exports: {} as { default: () => ReturnType<typeof createElement> } };
     runInNewContext(appCode, {
       module,
       exports: module.exports,
       require: (id: string) => {
         if (id === './WorldNavigation')
           return () => {
-            throw new Error('Inactive Studio must not render native navigation.');
+            throw new Error('An unconnected scene must not render native navigation.');
           };
         if (id === './useUnrealSession')
           return {
             useUnrealSession: () => ({
               container: { current: null },
-              transport: { current: null },
+              transport: null,
               packet: null,
               busy: false,
               transitioning: false,
               error: '',
-              connectionStatus: { title: 'Mission in progress', detail: 'End the mission to open Studio.' },
-              missionStatus,
+              connectionStatus: { title: 'Scene in use', detail: 'Another browser has the live world.' },
             }),
           };
         return require(id);
       },
     });
-    const page = renderToStaticMarkup(createElement(module.exports.default));
-    assert.match(page, /<a[^>]*href="\/home"[^>]*aria-label="Home"/);
-    assert.match(page, /<a[^>]*href="\/missionplanner"[^>]*>Resume mission<\/a>/);
-    const reset = page.match(/<button[^>]*>End mission and open Studio<\/button>/);
-    assert(reset);
-    assert.equal(reset[0].includes('disabled=""'), !canOpenStudio);
-    assert.match(page, />Check again<\/button>/);
+    const page = renderToStaticMarkup(
+      createElement(module.exports.default, { stream: {}, explore, launched() {} }),
+    );
+    assert.match(page, /<h2>Scene in use<\/h2>/);
+    assert.match(page, />Reconnect<\/button>/);
+    assert.doesNotMatch(page, /href=/);
+    assert.equal(page.includes('aria-label="Scenario stages"'), !explore);
   });
 }

@@ -43,7 +43,11 @@ async function photograph(name) {
 }
 try {
   await observeScenario(page);
-  assert((await page.goto(`${origin}/studio`, { timeout: 30000 })).ok());
+  assert((await page.goto(origin, { timeout: 30000 })).ok());
+  await page
+    .getByRole('navigation', { name: 'Views' })
+    .getByRole('button', { name: 'Search & rescue scenario' })
+    .click();
   await waitForCreator(page);
   const before = await snapshot();
   await writeFile(`${output}/before.json`, JSON.stringify(before, null, 2) + '\n');

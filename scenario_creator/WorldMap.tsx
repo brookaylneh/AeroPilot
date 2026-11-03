@@ -27,10 +27,11 @@ export default function WorldMap({
   camera?: CameraState;
   person: { x: number; y: number } | null;
   busy: boolean;
-  travel: (u: number, v: number) => Promise<boolean>;
+  // Travel places the person, so exploring shows the map without it.
+  travel?: (u: number, v: number) => Promise<boolean>;
   openPort?: () => void;
 }) {
-  const [choosingLocation, setChoosingLocation] = useState(true);
+  const [choosingLocation, setChoosingLocation] = useState(travel !== undefined);
   const [expanded, setExpanded] = useState(false),
     [view, setView] = useState(wholeWorld);
   const wide = choosingLocation || expanded;
@@ -56,7 +57,7 @@ export default function WorldMap({
     setExpanded(!expanded);
   }
   async function chooseLocation(u: number, v: number) {
-    if ((await travel(u, v)) && choosingLocation) {
+    if (travel && (await travel(u, v)) && choosingLocation) {
       setChoosingLocation(false);
       setOffset(null);
     }
@@ -174,7 +175,7 @@ export default function WorldMap({
         ref={surface}
         className="minimap-surface"
         style={{ aspectRatio: (bounds.maxY - bounds.minY) / (bounds.maxX - bounds.minX) }}
-        aria-label="World map: click anywhere to travel there"
+        aria-label={travel ? 'World map: click anywhere to travel there' : 'World map'}
         aria-describedby="map-instructions"
         data-u={view.u}
         data-v={view.v}
@@ -297,7 +298,7 @@ export default function WorldMap({
       <small id="map-instructions">
         {choosingLocation
           ? 'Click to place your character and travel there together'
-          : 'Click to travel · Scroll to zoom · Drag to pan'}
+          : `${travel ? 'Click to travel · ' : ''}Scroll to zoom · Drag to pan`}
       </small>
       {(outsideWorld || outsideView) && (
         <small role="status">

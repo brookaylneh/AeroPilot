@@ -47,9 +47,8 @@ python3 -m venv .venv-cosys
 .venv-cosys/bin/pip install -r requirements.txt
 ```
 
-`/home` offers the general planner and scenario creator. `/missionplanner` opens or rejoins a mission;
-Studio launches saved rescue briefings into `/missionplanner?case=<id>`. `/mission` is an alias.
-Opening a page starts no flight or model request. Follow the [installed-service instructions](deploy/README.md)
+`/` opens Mission Control with Map, Explore world and Search & rescue scenario tabs; see
+[web applications](web/README.md). Opening the page starts no flight or model request. Follow the [installed-service instructions](deploy/README.md)
 for startup and coupled shutdown. Development uses one `npm run dev` server on `127.0.0.1:5174`, reached
 through an SSH tunnel; do not start a second server.
 

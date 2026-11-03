@@ -3,39 +3,38 @@
 The installed public origin is configured in `.local/runtime.env`; see
 [deployment](../deploy/README.md) for the fixed ports and services.
 
-`/` redirects to `/home`. Home shows world readiness and two entry paths:
+`/` opens Mission Control; `/home`, `/studio`, `/missionplanner` and `/mission`
+redirect there. Its tabs share one Pixel Streaming connection, because the renderer
+admits one subscriber; the video element moves between views without reconnecting.
 
-- `/missionplanner` opens the planner without a rescue scenario when idle, or
-  resumes the current mission with its existing context.
-- `/studio` opens character selection and placement. A saved scenario launches
-  into `/missionplanner?case=<uuid>` with its reviewed briefing attached.
+- **Map** is the planner. With no mission running, Start mission, a Wonder chat or
+  a tool opens a general mission; End mission returns airborne drones, waits for
+  them to land and resets the world.
+- **Explore world** puts the Studio camera on the ground with no character.
+- **Search & rescue scenario** is the Studio flow: character, condition, placement
+  and briefing. Launch starts that case and returns to Map with the brief in the
+  prompt.
 
-`/mission` remains a redirect to `/missionplanner`, preserving the query string.
-Home reads status only. Its topographic backdrop is a map, not a live camera.
-The coupled world and fleet run independently of the page; opening Home starts
-neither model inference nor flight. Leaving the planner for Home preserves the
-session. Studio requires an explicit end-session action and a landed, disarmed
-fleet before resetting the world for authoring.
+While a mission is active, both world tabs show a Mission in progress card instead
+of the world. The fleet and world run independently of the page; closing the tab
+or refreshing preserves the mission.
 
 Build with `npm run build` and use the installed web service. Development uses
 only the documented `127.0.0.1:5174` listener.
 
 After offline checks and deployment, run entry acceptance with an idle mission
-and no other Studio browser open:
+and no other scene browser open:
 
 ```sh
 node --env-file=.local/runtime.env web/accept_entry.mjs \
   http://35.81.229.78 .local/evidence/mission-entry/<new-browser-run>
 ```
 
-It exercises Home, general entry, refresh, compatibility URLs, the explicit
-Studio transition, character placement and a saved-scenario handoff. It records
-screenshots and mission messages, asserts that every aircraft stays grounded,
-and sends no model requests, flight tools or approvals. The final rescue session
-and saved scenario remain available for inspection; failures are retained and
-never retried automatically. Mission Control uses the existing Pixel Streaming
-connection for the selected drone's live camera, including return and landing.
-Leaving the planner releases that video player; the mission remains active.
+It exercises the idle map, the redirected entry paths, Explore, character
+placement, a saved-scenario launch, the locked world tabs, refresh and End
+mission. It records screenshots and mission messages, asserts that every aircraft
+stays grounded, and sends no model requests, flight tools or approvals. Failures
+are retained and never retried automatically.
 
 Inspection evidence is served from the mission's registered image files at
 `/api/evidence/<mission>/<asset>`. Candidate reviews expose the same original

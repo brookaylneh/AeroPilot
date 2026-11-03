@@ -78,7 +78,7 @@ mode, horizontal velocity, collision ground Z, transition destination, server ti
 and engine/GPU timing. It is published every 50 ms, when input is accepted, and
 when deceleration ends.
 
-`navigation-acceptance.mjs` exercises real `/studio` controls with Playwright. It
+`navigation-acceptance.mjs` exercises the real scenario tab controls with Playwright. It
 records video, 100 ms RTC/playback samples, raw camera messages, sent inputs,
 authoring replies, screenshots and process contention. Every run needs a new
 output directory. Run against the isolated runtime profile with its renderer and
