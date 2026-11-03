@@ -9,6 +9,7 @@ import {
   people,
   pointLastSeen,
   reportedArea,
+  reportSubject,
   profileSchema,
 } from './missionBrief';
 
@@ -83,6 +84,13 @@ for (const person of people)
         assert.ok(report.brief.length <= 4000);
       }
   });
+
+test('studio characters are named by their distinct report full names', () => {
+  const names = people.map((person) => reportSubject(person.id).reportProfile.fullName);
+  assert.equal(new Set(names).size, people.length);
+  assert.equal(reportSubject('rocketbox-child-01').reportProfile.fullName, 'Maya Bennett');
+  assert.throws(() => reportSubject('rocketbox-child-03'), /Unknown report subject rocketbox-child-03/);
+});
 
 test('report profiles require every field and a category-compatible age', () => {
   for (const person of people)

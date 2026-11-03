@@ -4,7 +4,7 @@ import { ArrowLeft, ArrowRight, Check, Save, TreePine } from 'lucide-react';
 import { useUnrealSession } from './useUnrealSession';
 import { colors, situations, title } from './creator';
 import type { Briefing, Difficulty } from './briefing';
-import { generateBrief } from './missionBrief';
+import { generateBrief, reportSubject } from './missionBrief';
 import { launchMission } from './missionLifecycle';
 import type { CreatorStage } from './PixelStreamingTransport';
 import CharacterPicker from './CharacterPicker';
@@ -77,6 +77,7 @@ export default function UnrealApp({
   const index = steps.findIndex((step) => step.id === stage);
   const region = packet?.catalog.regions.find((r) => r.id === packet.authoring.regionId);
   const person = packet?.catalog.people.find((p) => p.id === packet.authoring.appearance.personId);
+  const profile = person && reportSubject(person.id).reportProfile;
   const reportText = JSON.stringify(packet?.briefing);
   useEffect(() => {
     if (packet) setYaw(packet.authoring.rotation.yaw);
@@ -333,12 +334,12 @@ export default function UnrealApp({
               )}
             </aside>
           )}
-          {(stage === 'person' || stage === 'situation') && (
+          {(stage === 'person' || stage === 'situation') && profile && (
             <div className="character-caption">
-              <span>LIVE CHARACTER</span>
-              <h2>{person?.name}</h2>
+              <span>Live character</span>
+              <h2>{profile.fullName}</h2>
               <p>
-                {person?.ageCategory} · {person?.description}
+                {profile.ageYears} yrs · {person?.description}
               </p>
             </div>
           )}

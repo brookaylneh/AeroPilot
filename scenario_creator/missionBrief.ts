@@ -210,6 +210,12 @@ function localTime(hoursBefore: number) {
   return `${time.slice(11, 16)} local on ${time.slice(0, 10)}`;
 }
 
+export function reportSubject(personId: string) {
+  const person = people.find((p) => p.id === personId);
+  if (!person) throw new Error(`Unknown report subject ${personId}`);
+  return person;
+}
+
 export function generateBrief(
   personId: string,
   position: Point,
@@ -224,8 +230,7 @@ export function generateBrief(
   difficulty: Difficulty,
 ): Briefing {
   difficultySchema.parse(difficulty);
-  const person = people.find((p) => p.id === personId);
-  if (!person) throw new Error('Unknown report subject');
+  const person = reportSubject(personId);
   if (
     appearance.topId !== person.topId ||
     appearance.bottomId !== person.bottomId ||

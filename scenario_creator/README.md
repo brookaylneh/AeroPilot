@@ -89,7 +89,8 @@ people. `missionBrief.ts` validates every profile field, category/age agreement,
 fixed clothing selection, coordinate frame and required weather inputs at load or
 use. Clothing descriptions match the approved original appearances. Reported small
 pocket items, names, ages, histories and witnesses are fictional reporting details.
-No claim is made that pocket items are rendered assets.
+No claim is made that pocket items are rendered assets. The studio labels each
+character with its report full name and age; the Unreal catalog keeps its preset names.
 
 Hard uses exact horizontal segment projections, polygon containment and
 point distance to choose the nearest eligible landmark whose nearest geometry
