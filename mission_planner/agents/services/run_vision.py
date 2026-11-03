@@ -9,7 +9,12 @@ import subprocess
 import time
 from pathlib import Path
 
-from mission_planner.agents.services.sam_video import GPU_BUDGET_BYTES, SAM_COMMIT, SAM_SHA256
+from mission_planner.agents.services.sam_video import (
+    GPU_BUDGET_BYTES,
+    SAM_COMMIT,
+    SAM_SHA256,
+    SAM_VARIANT,
+)
 from mission_planner.agents.vision import vision_http
 from mission_planner.environment import ROOT, load_env
 
@@ -106,6 +111,7 @@ def main():
             health = response.json()
         assert health["status"] == "ready" and health["model"] == "sam3.1"
         assert health["sam_commit"] == SAM_COMMIT and health["model_sha256"] == SAM_SHA256
+        assert health["model_variant"] == SAM_VARIANT
         assert health["compiled"] and health["model_instances"] == 1 and not health["sessions"]
         assert health["gpu_budget_bytes"] == GPU_BUDGET_BYTES
         assert 0 < health["peak_process_gpu_bytes"] <= GPU_BUDGET_BYTES

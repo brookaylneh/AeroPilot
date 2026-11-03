@@ -17,6 +17,6 @@ WORKDIR /app
 COPY mission_planner/__init__.py mission_planner/environment.py /app/mission_planner/
 COPY mission_planner/agents/__init__.py /app/mission_planner/agents/
 COPY mission_planner/agents/services/__init__.py /app/mission_planner/agents/services/
-COPY mission_planner/agents/services/sam_video.py mission_planner/agents/services/vision.py /app/mission_planner/agents/services/
+COPY mission_planner/agents/services/sam_video.py mission_planner/agents/services/vision.py mission_planner/agents/services/assemble_sam.py /app/mission_planner/agents/services/
 USER 1002:1003
 ENTRYPOINT ["python", "-m", "mission_planner.agents.services.vision"]

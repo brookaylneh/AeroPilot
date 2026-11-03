@@ -18,6 +18,7 @@ from mission_planner.agents.services.sam_video import (
     GPU_BUDGET_BYTES,
     SAM_COMMIT,
     SAM_SHA256,
+    SAM_VARIANT,
     SamVideo,
     prepare_frame,
     warmup,
@@ -60,6 +61,7 @@ class VideoService:
             **body,
             "instance_id": self.instance_id,
             "model": "sam3.1",
+            "model_variant": SAM_VARIANT,
             "tracker": "Object Multiplex",
         }
 
@@ -135,6 +137,7 @@ class VideoService:
             "error": self.error,
             "instance_id": self.instance_id,
             "model": "sam3.1",
+            "model_variant": SAM_VARIANT,
             "model_sha256": SAM_SHA256,
             "sam_commit": SAM_COMMIT,
             "tracker": "Object Multiplex",

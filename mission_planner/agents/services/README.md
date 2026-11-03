@@ -10,17 +10,43 @@ The independent Modal SAM image endpoint remains available for calibration.
 
 `sam.Dockerfile` and `vision-requirements.txt` pin the Python image, all Python
 packages, official SAM source and PyTorch/CUDA versions. `sam_video.py` verifies
-the official checkpoint hash, learned keys/shapes and the 64 derived RoPE buffers.
+the assembled checkpoint hash, learned keys/shapes and the 64 derived RoPE buffers.
 The runtime uses FP32 checkpoint weights with BF16 autocast, TF32 and the official
 component `torch.compile` path. It uses PyTorch SDPA, one frame at a time, no
 quantization and no FlashAttention 3. FA3 does not support this host's Blackwell
 SM 12.0 under its published Hopper requirements.
 
 The source is `facebookresearch/sam3` at
-`f1647e8d0c1d280991f4d1b7d974c2704537fe66`. The checkpoint is
+`f1647e8d0c1d280991f4d1b7d974c2704537fe66`. The base checkpoint is
 `facebook/sam3.1` revision `daa63191845a41281374e725f4c9e51c7a824460`,
 `sam3.1_multiplex.pt`, SHA-256
 `0567debeec80ba4ac6369540c6c248025283cb3ff2b92827509e57e2b3541cb6`.
+Live inference uses `drone-ft-v2-epoch2`, assembled with the drone detector
+fine-tune from `snn:/home/ubuntu/sam/runs/drone_ft_v2/checkpoints/checkpoint_2.pt`.
+The training artifact SHA-256 is
+`ba8dccda24588a67e10cb565ded02b1a70d32dbbc8e7755052012706d4c3f6b9`;
+the assembled video checkpoint SHA-256 is
+`6f97e110579b94e9ad5d5537bcb6f8b2a54111181f0fcd97ed021a2b575ca666`.
+Health and session creation identify this variant explicitly.
+
+`assemble_sam.py` runs on CPU in the pinned SAM image. It checks both source
+hashes, loads 1,102 detector tensors, preserves all 521 original mask-head,
+tracking-neck and tracker tensors, and excludes the four unused image-training
+FPN tensors. Missing keys, unexpected keys, shape changes, precision changes and
+nonfinite weights fail. The 3,502,740,416-byte export contains no optimizer state;
+every serialized tensor is checked against the assembled state.
+With the inputs, output directory and `.env` mounted into the container, run:
+
+```sh
+python -m mission_planner.agents.services.assemble_sam \
+  --base /models/base.pt --detector /candidate/checkpoint_2.pt \
+  --output /candidate/sam3.1_multiplex.pt
+```
+
+The output must not exist. Its adjacent JSON records source hashes and the exact
+weight mapping. This is a whole-frame detector update: inference resolution,
+camera field of view, mask contract and temporal tracker remain the same.
+
 The native predictor does not expose an indefinite append-frame API. The small
 adapter uses the pinned native detector, tracker, postprocessor and state
 initializer; a guarded reader rejects access to future images. It retains two
@@ -142,8 +168,10 @@ accuracy. Final image identity, dependencies, logged throughput, masks, memory,
 startup, soak and known limitations belong in
 [sam31.json](../../measurements/sam31.json).
 
-The target is at least 20.16 aggregate service FPS. That does not establish five
-new captures per second from each live drone: the earlier grounded acquisition
+The prior 20.16 aggregate service FPS is the comparison reference for the
+fine-tuned model. Assess measured recall, false alarms, latency and tracking
+continuity before accepting a lower rate; no lower target has been selected.
+Service throughput does not establish five new captures per second from each live drone: the earlier grounded acquisition
 run measured 430–464 ms median capture time. Capture optimization is separate.
 Compiled output agreement is not exact numerical equivalence or a ground-truth
 accuracy result. The existing Modal confidence/box equivalence gate below is

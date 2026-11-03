@@ -6,7 +6,7 @@ import threading
 import time
 from pathlib import Path
 
-from mission_planner.agents.services.sam_video import GPU_BUDGET_BYTES
+from mission_planner.agents.services.sam_video import GPU_BUDGET_BYTES, SAM_SHA256, SAM_VARIANT
 from mission_planner.agents.vision import vision_http
 from mission_planner.environment import load_env
 from mission_planner.gcs.bench_inspection import run
@@ -33,6 +33,7 @@ def main():
         response.raise_for_status()
         result = response.json()
         assert result["status"] == "ready" and result["model"] == "sam3.1"
+        assert result["model_sha256"] == SAM_SHA256 and result["model_variant"] == SAM_VARIANT
         assert result["model_instances"] == 1 and result["compiled"]
         assert 0 < result["peak_process_gpu_bytes"] <= GPU_BUDGET_BYTES
         assert all(s["usage"]["retained_images"] <= 2 for s in result["sessions"].values())

@@ -10,6 +10,7 @@ tar -cf - \
   mission_planner/agents/services/__init__.py \
   mission_planner/agents/services/sam.Dockerfile \
   mission_planner/agents/services/vision-requirements.txt \
+  mission_planner/agents/services/assemble_sam.py \
   mission_planner/agents/services/sam_video.py \
   mission_planner/agents/services/vision.py \
   | docker build --file mission_planner/agents/services/sam.Dockerfile --tag "$sam_image" -

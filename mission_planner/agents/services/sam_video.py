@@ -1,4 +1,4 @@
-"""One official SAM 3.1 model with independent, bounded, forward-only video states."""
+"""One SAM 3.1 drone detector and official tracker with independent forward-only video states."""
 
 import base64
 import copy
@@ -15,7 +15,8 @@ import numpy as np
 from PIL import Image
 
 SAM_COMMIT = "f1647e8d0c1d280991f4d1b7d974c2704537fe66"
-SAM_SHA256 = "0567debeec80ba4ac6369540c6c248025283cb3ff2b92827509e57e2b3541cb6"
+SAM_VARIANT = "drone-ft-v2-epoch2"
+SAM_SHA256 = "6f97e110579b94e9ad5d5537bcb6f8b2a54111181f0fcd97ed021a2b575ca666"
 GPU_BUDGET_BYTES = 16_000_000_000
 ALLOCATOR_BYTES = 15_000_000_000
 FRAME_FIELDS = (
