@@ -17,6 +17,9 @@ from mission_planner.gcs.centering import Centering, quaternion_rotation, target
 from world.cosys import client as sim
 from world.cosys.capture import capture_time, rotation, shadow_floor, truth_sample
 
+MOUNT_NED_M = (0.6, 0, 0.05)
+SLEW_RAD_S = math.radians(45)
+
 
 def capture_frame(rpc, name, camera_id, directory, revision, *, quality):
     started = time.monotonic()
@@ -85,6 +88,28 @@ def capture_frame(rpc, name, camera_id, directory, revision, *, quality):
     return metadata, encoded.getvalue()
 
 
+def point_camera(rpc, name, camera_id, desired):
+    # PIPCamera.cpp 5.8-v3.5.0 treats setCameraPose rotation as a world target
+    # when Gimbal.Stabilization is 1; its next Tick applies that target in world space.
+    rpc.simSetCameraPose(
+        camera_id,
+        airsim.Pose(airsim.Vector3r(*MOUNT_NED_M), airsim.Quaternionr(*desired.as_quat())),
+        vehicle_name=name,
+    )
+    deadline = time.monotonic() + 2
+    while True:
+        info = rpc.simGetCameraInfo(camera_id, vehicle_name=name)
+        error = math.degrees(
+            (desired.inv() * rotation(sim.quat(info.pose.orientation))).magnitude()
+        )
+        if error <= 0.25:
+            return info, error
+        assert time.monotonic() < deadline, (
+            f"{name}: {camera_id} camera did not settle on its target"
+        )
+        time.sleep(0.01)
+
+
 def route_look_ahead(points, position, distance_m):
     keys = ("north_m", "east_m")
     assert points and all(math.isfinite(p[k]) for p in [position, *points] for k in keys)
@@ -122,10 +147,11 @@ class ForwardCapture:
             max_workers=1, thread_name_prefix="inspection-" + drone_id
         )
         self.rpc = None
-        self.original_pose = None
+        self.aimed = None
         self.original_fov = None
         self.view_revision = 0
         self.target = None
+        self.slew = False
         self.pose_lock = threading.RLock()
         self.follow_executor = ThreadPoolExecutor(
             max_workers=1, thread_name_prefix="camera-follow-" + drone_id
@@ -139,12 +165,12 @@ class ForwardCapture:
         self.video_sample = None
         self.capture_inflight = 0
 
-    def _aim(self, target):
+    def _aim(self, target, slew=False):
         with self.pose_lock:
             if not self.visual_controlled:
-                self._aim_world(target)
+                self._aim_world(target, slew)
 
-    def _aim_world(self, target):
+    def _aim_world(self, target, slew):
         assert set(target) == {"x", "y", "z"} and all(np.isfinite(v) for v in target.values())
         if self.rpc is None:
             self.rpc = sim.connect()
@@ -152,35 +178,34 @@ class ForwardCapture:
         native = sim.native()
         assert native["mode"] == "mission", "Camera aim requires mission mode"
         origin = next(v["localNedOriginUeCm"] for v in native["vehicles"] if v["id"] == name)
-        body = rpc.simGetVehiclePose(vehicle_name=name)
         camera = rpc.simGetCameraInfo("fpv", vehicle_name=name).pose
-        body_position = np.array([getattr(body.position, k + "_val") for k in "xyz"])
         camera_position = np.array([getattr(camera.position, k + "_val") for k in "xyz"])
-        body_rotation = rotation(sim.quat(body.orientation))
-        if self.original_pose is None:
-            position = body_rotation.inv().apply(camera_position - body_position)
-            orientation = (body_rotation.inv() * rotation(sim.quat(camera.orientation))).as_quat()
-            self.original_pose = airsim.Pose(
-                airsim.Vector3r(*position), airsim.Quaternionr(*orientation)
-            )
         target_ned = np.array(
             [(target[k] - origin[k] / 100) * (1 if k != "z" else -1) for k in "xyz"]
         )
-        direction = body_rotation.inv().apply(target_ned - camera_position)
-        distance = np.linalg.norm(direction)
-        assert distance > 1, "Camera target is too close to aim"
-        yaw = math.atan2(direction[1], direction[0])
-        pitch = -math.atan2(direction[2], math.hypot(direction[0], direction[1]))
-        orientation = Rotation.from_euler("ZYX", [yaw, pitch, 0]).as_quat()
-        rpc.simSetCameraPose(
-            "fpv",
-            airsim.Pose(self.original_pose.position, airsim.Quaternionr(*orientation)),
-            vehicle_name=name,
+        direction = target_ned - camera_position
+        assert np.linalg.norm(direction) > 1, "Camera target is too close to aim"
+        angles = np.array(
+            [
+                math.atan2(direction[1], direction[0]),
+                -math.atan2(direction[2], math.hypot(direction[0], direction[1])),
+            ]
         )
+        now = time.monotonic()
+        if slew and self.aimed is not None:
+            previous, aimed_at = self.aimed
+            step = angles - previous
+            step[0] = (step[0] + math.pi) % (2 * math.pi) - math.pi
+            limit = SLEW_RAD_S * (now - aimed_at)
+            if np.linalg.norm(step) > limit:
+                angles = previous + step * limit / np.linalg.norm(step)
+        point_camera(rpc, name, "fpv", Rotation.from_euler("ZYX", [*angles, 0]))
+        self.aimed = angles, now
         self.target = dict(target)
+        self.slew = slew
 
-    async def aim(self, target):
-        await asyncio.get_running_loop().run_in_executor(self.executor, self._aim, target)
+    async def aim(self, target, slew=False):
+        await asyncio.get_running_loop().run_in_executor(self.executor, self._aim, target, slew)
 
     def begin_follow(self):
         self.follow_generation += 1
@@ -214,33 +239,19 @@ class ForwardCapture:
             desired = Rotation.from_euler(
                 "ZYX", [movement[k + "_rad"] for k in ("yaw", "pitch", "roll")]
             )
-            relative = rotation(sim.quat(body.orientation)).inv() * desired
-            assert self.original_pose is not None, (
-                "Camera view must be initialized before following"
-            )
+            assert self.aimed is not None, "Camera view must be initialized before following"
             if generation != self.follow_generation:
                 return {"status": "stopped"}, None
             if time.monotonic() >= expires:
                 return {"status": "stale"}, None
-            rpc.simSetCameraPose(
-                "fpv",
-                airsim.Pose(self.original_pose.position, airsim.Quaternionr(*relative.as_quat())),
-                vehicle_name=name,
-            )
-            measured = rpc.simGetCameraInfo("fpv", vehicle_name=name)
+            measured, readback_error = point_camera(rpc, name, "fpv", desired)
             body_after = rpc.simGetVehiclePose(vehicle_name=name)
             actual = rotation(sim.quat(measured.pose.orientation))
-            actual_relative = rotation(sim.quat(body_after.orientation)).inv() * actual
-            readback_error = math.degrees((relative.inv() * actual_relative).magnitude())
             body_motion = math.degrees(
                 (
                     rotation(sim.quat(body.orientation)).inv()
                     * rotation(sim.quat(body_after.orientation))
                 ).magnitude()
-            )
-            # Camera and body readbacks are separate RPC snapshots.
-            assert readback_error <= 0.25 + body_motion, (
-                f"{name}: camera pose did not follow command: {readback_error:.3f} degrees"
             )
             assert math.isclose(measured.fov, info.fov, abs_tol=0.01), (
                 "Camera field of view changed during centering"
@@ -333,9 +344,15 @@ class ForwardCapture:
 
     def _restore(self):
         self.target = None
-        if self.original_pose is not None:
-            self.rpc.simSetCameraPose("fpv", self.original_pose, vehicle_name=self.drone_id)
-            self.original_pose = None
+        if self.aimed is not None:
+            # A quaternion cannot restore the configured NaN gimbal yaw, so the camera
+            # holds this level world heading until the next aim.
+            body = self.rpc.simGetVehiclePose(vehicle_name=self.drone_id)
+            heading = rotation(sim.quat(body.orientation)).as_euler("ZYX")[0]
+            point_camera(
+                self.rpc, self.drone_id, "fpv", Rotation.from_euler("ZYX", [heading, 0, 0])
+            )
+            self.aimed = None
         if self.original_fov is not None:
             self.rpc.simSetCameraFov("fpv", self.original_fov, vehicle_name=self.drone_id)
             measured = self.rpc.simGetCameraInfo("fpv", vehicle_name=self.drone_id).fov
@@ -351,7 +368,7 @@ class ForwardCapture:
 
     def _capture(self):
         if self.target is not None:
-            self._aim(self.target)
+            self._aim(self.target, self.slew)
         if self.rpc is None:
             self.rpc = sim.connect()
         result = capture_frame(

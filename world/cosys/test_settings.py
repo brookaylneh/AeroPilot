@@ -7,6 +7,7 @@ import unittest
 
 from mission_planner.gcs import geodesy
 from world.cosys.evidence import CAMERA_ID, FOV_DEG
+from world.cosys.inspection import MOUNT_NED_M
 
 configure = importlib.import_module("world.cosys.configure-drones")
 
@@ -56,7 +57,7 @@ class SettingsTests(unittest.TestCase):
                     home["altitude_msl_m"],
                 )
 
-    def test_forward_capture_defaults_preserve_stock_mount_and_nadir_camera(self):
+    def test_forward_camera_is_level_stabilized_with_body_heading_and_renders_on_request(self):
         settings = configure.generate(self.world, 41451, 0)
         scene = next(
             c for c in settings["CameraDefaults"]["CaptureSettings"] if c["ImageType"] == 0
@@ -64,7 +65,14 @@ class SettingsTests(unittest.TestCase):
         self.assertEqual((scene["Width"], scene["Height"]), (3840, 2160))
         self.assertFalse(scene["ForceUpdate"])
         for vehicle in settings["Vehicles"].values():
-            self.assertNotIn("fpv", vehicle["Cameras"])
+            forward = vehicle["Cameras"]["fpv"]
+            self.assertEqual([forward[k] for k in "XYZ"], list(MOUNT_NED_M))
+            # No gimbal Yaw: the idle camera keeps the body heading while pitch and roll stay level.
+            self.assertEqual(forward["Gimbal"], {"Stabilization": 1, "Pitch": 0, "Roll": 0})
+            forward_scene = next(c for c in forward["CaptureSettings"] if c["ImageType"] == 0)
+            self.assertEqual((forward_scene["Width"], forward_scene["Height"]), (3840, 2160))
+            self.assertEqual(forward_scene["FOV_Degrees"], 90)
+            self.assertFalse(forward_scene["ForceUpdate"])
             nadir = vehicle["Cameras"]["front_center"]
             self.assertEqual(nadir["Pitch"], -90)
             self.assertEqual(nadir["CaptureSettings"][1]["Width"], 3840)

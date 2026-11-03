@@ -1115,6 +1115,23 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         self.assertGreater(self.fleet.tracking_target.await_count, commands)
         self.assertEqual(self.vision.call_count, 1)
 
+    async def test_relock_after_a_long_hold_measures_movement_from_the_relock(self):
+        real, offset = time.monotonic, [0.0]
+        with patch("time.monotonic", new=lambda: real() + offset[0]):
+            row, _ = await self.held_lock(1)
+            commands = self.fleet.tracking_target.await_count
+            self.assertGreater(commands, 0)
+            offset[0] += 6
+            self.track_error = None
+            await self.until(lambda: bool(row["rescue"]["held_frame"]["detections"]))
+            observed = await self.inspections.get_candidate(row["id"])
+            result = await self.inspections.relock_candidate(
+                row["id"], observed["frame"]["frame_id"], 0
+            )
+            self.assertEqual(result["relock"], {"status": "tracking", "track_id": 1})
+            await self.until(lambda: self.fleet.tracking_target.await_count > commands + 2)
+            self.assertIsNone(row["rescue"]["tracking_error"])
+
     async def test_requested_follow_deadline_holds_the_existing_track(self):
         self.decisions = ["recheck"]
         row = await self.begin()

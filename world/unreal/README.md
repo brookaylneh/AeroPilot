@@ -232,10 +232,11 @@ mission graph, and registers one source on each of the four front_center cameras
 cancellation and landing, Studio reset removes those sources, restores the Studio graph and
 camera source, and re-enables viewport rendering before acknowledging the reset. Texture
 streaming retains its sensor views. Mission mode keeps the viewport disabled until an admitted
-Pixel Streaming viewer selects a drone. That selection activates the existing forward `fpv`
+Pixel Streaming viewer selects a drone. That selection activates the configured forward `fpv`
 camera and enables the viewport; its game-window backbuffer supplies continuous WebRTC video.
-The stock camera follows the aircraft's position and attitude through AUTO, BRAKE, RTL, LAND
-and disarmed states. Closing the owning viewer disables mission viewport
+The stabilized camera follows the aircraft's position through AUTO, BRAKE, RTL, LAND and
+disarmed states, level at the aircraft heading until inspection aims it
+([Cosys settings](../cosys/README.md#coupled-settings)). Closing the owning viewer disables mission viewport
 rendering. Scene updates continue every frame so PCG compute and GPU Scene cleanup continue
 between sensor captures.
 OpenMeadow does not need World Partition: UE 5.8 supports partitioned PCG components in ordinary
@@ -267,7 +268,7 @@ keeps its configured nadir `front_center` camera and request-driven render targe
 The native API checks use the installed Cosys-AirSim 3.5.0 `PIPCamera.cpp::showToScreen`
 (activate the camera component and select its actor), `FlyingPawn.cpp::getCameras` (stock `fpv`),
 `PawnSimApi.cpp::setupCamerasFromSettings` and `UniqueValueMap.hpp::insert_or_assign` (the configured
-`front_center` replaces only that registry key, preserving the stock `fpv` actor), and UE 5.8.2
+`fpv` and `front_center` entries replace those registry keys), and UE 5.8.2
 `PixelStreaming2Delegates.h::OnClosedConnectionNative`.
 `EpicRtcStreamer.cpp::DeletePlayerSession` dispatches that delegate on the game thread. These
 sources and their hashes are recorded with the drone-video evidence. This change requires a
