@@ -409,10 +409,10 @@ export default function MissionControl({
   }, [approval?.id]);
   useEffect(() => {
     const el = message.current;
-    if (!el) return;
+    if (!el || mapOnly || tab !== 'map') return;
     el.style.height = 'auto';
     el.style.height = `${el.scrollHeight}px`;
-  }, [text]);
+  }, [text, tab, mapOnly]);
   const connected = connection === 'connected';
   const vehicles = state ? state.vehicles : [];
   const cameras = droneIds.filter((id) =>

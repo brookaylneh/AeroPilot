@@ -145,7 +145,7 @@ function mount(context: TestContext, transport: unknown, explore: boolean) {
   const stream = {
     host: {},
     transport,
-    status: { title: 'Scene in use', detail: 'Another browser has the live world.' },
+    status: { phase: 'error', title: 'Scene in use', detail: 'Another browser has the live world.' },
     reconnect() {},
   };
   function render() {

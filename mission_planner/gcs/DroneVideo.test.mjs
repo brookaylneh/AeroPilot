@@ -65,7 +65,12 @@ function fixture(react) {
     },
     dispose: () => assert.fail('A camera view must not dispose the shared stream'),
   };
-  const stream = { host, transport, status: { title: 'Live', detail: 'Live' }, reconnect() {} };
+  const stream = {
+    host,
+    transport,
+    status: { phase: 'live', title: 'Live', detail: 'Live' },
+    reconnect() {},
+  };
   const module = { exports: {} };
   runInNewContext(code, {
     module,
@@ -335,16 +340,50 @@ test('switching between inset and main view keeps one camera selection on the sh
   assert.equal(value.callbacks.size, 0);
 });
 
-test('a missing shared stream masks the camera with the stream status and sends nothing', () => {
+test('a pending shared stream remains loading until an explicit failure arrives', () => {
   const value = mounted();
   value.stream.transport = null;
-  value.stream.status = { title: 'Scene in use', detail: 'Another browser has the live world.' };
+  value.stream.status = {
+    phase: 'connecting',
+    title: 'Opening the valley…',
+    detail: 'Checking scene availability.',
+  };
+  value.render({ droneId: 'Drone1', inset: true });
+  assert.equal(value.state().type, 'connecting');
+  assert.equal(value.commands.length, 0);
+  value.stream.status = {
+    phase: 'connecting',
+    title: 'Connecting to the scene…',
+    detail: 'Opening the live video.',
+  };
+  value.render({ droneId: 'Drone1', inset: true });
+  assert.equal(value.state().type, 'connecting');
+  assert.equal(value.state().message, 'Opening the live video.');
+  value.stream.status = {
+    phase: 'error',
+    title: 'Scene is unavailable',
+    detail: 'The renderer is not running.',
+  };
+  value.render({ droneId: 'Drone1', inset: true });
+  assert.equal(value.state().type, 'error');
+  assert.equal(value.state().message, 'The renderer is not running.');
+  assert.equal(value.commands.length, 0);
+});
+
+test('a failed shared stream masks the camera with the stream error and sends nothing', () => {
+  const value = mounted();
+  value.stream.transport = null;
+  value.stream.status = {
+    phase: 'error',
+    title: 'Scene in use',
+    detail: 'Another browser has the live world.',
+  };
   value.render({ droneId: 'Drone1', inset: true });
   assert.equal(value.commands.length, 0);
   assert.deepEqual(
     { ...value.state() },
     {
-      type: 'disconnected',
+      type: 'error',
       droneId: null,
       message: 'Another browser has the live world.',
     },

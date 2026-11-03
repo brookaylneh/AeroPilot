@@ -4,7 +4,7 @@ import { PixelStreamingTransport } from '../scenario_creator/PixelStreamingTrans
 export type Stream = {
   host: HTMLDivElement;
   transport: PixelStreamingTransport | null;
-  status: { title: string; detail: string };
+  status: { phase: 'connecting' | 'live' | 'error'; title: string; detail: string };
   reconnect: () => void;
 };
 
@@ -17,7 +17,8 @@ export function useStream(): Stream {
     return element;
   });
   const [transport, setTransport] = useState<PixelStreamingTransport | null>(null);
-  const [status, setStatus] = useState({
+  const [status, setStatus] = useState<Stream['status']>({
+    phase: 'connecting',
     title: 'Opening the valley…',
     detail: 'Checking scene availability.',
   });
@@ -31,11 +32,15 @@ export function useStream(): Stream {
       if (!active) return;
       current?.dispose();
       setTransport(null);
-      setStatus({ title, detail });
+      setStatus({ phase: 'error', title, detail });
     };
     const open = async () => {
       try {
-        setStatus({ title: 'Opening the valley…', detail: 'Checking scene availability.' });
+        setStatus({
+          phase: 'connecting',
+          title: 'Opening the valley…',
+          detail: 'Checking scene availability.',
+        });
         const response = await fetch('/api/unreal/status', {
           cache: 'no-store',
           signal: AbortSignal.any([abort.signal, AbortSignal.timeout(5000)]),
@@ -54,7 +59,11 @@ export function useStream(): Stream {
           );
         if (health.state !== 'ready')
           return fail('Scene is starting', 'The renderer is warming up. Select Reconnect when it is ready.');
-        setStatus({ title: 'Connecting to the scene…', detail: 'Opening the live video.' });
+        setStatus({
+          phase: 'connecting',
+          title: 'Connecting to the scene…',
+          detail: 'Opening the live video.',
+        });
         const opened = new PixelStreamingTransport(
           host,
           `${location.protocol === 'https:' ? 'wss:' : 'ws:'}//${location.host}/api/stream`,
@@ -64,7 +73,10 @@ export function useStream(): Stream {
         );
         current = opened;
         await opened.connect();
-        if (active && current === opened) setTransport(opened);
+        if (active && current === opened) {
+          setTransport(opened);
+          setStatus({ phase: 'live', title: 'Scene connected', detail: 'Live video connected.' });
+        }
       } catch (error) {
         fail('Scene connection interrupted', (error as Error).message);
       }

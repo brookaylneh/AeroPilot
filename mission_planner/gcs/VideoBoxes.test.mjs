@@ -134,7 +134,14 @@ function videoFixture() {
     render(inspection, droneId = 'Drone1', held = false) {
       refIndex = 0;
       return find(
-        module.exports.default({ stream: {}, droneId, inspection, held, inset: false, onError() {} }),
+        module.exports.default({
+          stream: { status: { phase: 'live', title: 'Live', detail: 'Live' } },
+          droneId,
+          inspection,
+          held,
+          inset: false,
+          onError() {},
+        }),
         (node) => node.type === boxes,
       );
     },

@@ -33,7 +33,12 @@ function rescueState() {
   };
 }
 
-const stream = { host: null, transport: null, status: { title: '', detail: '' }, reconnect() {} };
+const stream = {
+  host: null,
+  transport: null,
+  status: { phase: 'connecting', title: '', detail: '' },
+  reconnect() {},
+};
 
 function component(read, search, react, window, props = {}) {
   const module = { exports: {} };
@@ -872,6 +877,35 @@ test('the brief pre-fills the composer only until the operator has sent a messag
   });
   reloaded.render({ state: state(caseId), connection: 'connected' });
   assert.equal(field(reloaded).props.value, '');
+});
+
+test('launching a report while the composer is hidden sizes it when the map opens', () => {
+  const idle = state();
+  idle.mission.active = false;
+  const page = view(idle);
+  const field = () => nodes(page.composer()).find((node) => node.type === 'textarea');
+  let visible = false;
+  const element = {
+    style: {},
+    get scrollHeight() {
+      return visible ? 420 : 0;
+    },
+  };
+  field().props.ref.current = element;
+  page.render({}, { tab: 'scenario' });
+  const rescue = state('00000000-0000-4000-8000-000000000001');
+  rescue.mission.id = '00000000-0000-4000-8000-000000000003';
+  page.render({ state: rescue });
+  assert.equal(field().props.value, 'Find the missing hiker.');
+  visible = true;
+  page.render({}, { tab: 'map' });
+  assert.equal(field().props.disabled, false);
+  assert.equal(element.style.height, '420px');
+  field().props.onChange({ target: { value: 'Review this report first.' } });
+  page.render();
+  page.render({}, { tab: 'explore' });
+  page.render({}, { tab: 'map' });
+  assert.equal(field().props.value, 'Review this report first.');
 });
 
 test('camera availability is a required boolean in every vehicle snapshot', () => {

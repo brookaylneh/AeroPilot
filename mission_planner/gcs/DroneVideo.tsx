@@ -12,7 +12,7 @@ import { videoDiagnostic, type VideoMetrics } from './videoDiagnostics';
 import './droneVideo.css';
 
 type VideoState = {
-  type: 'connecting' | 'live' | 'error' | 'disconnected';
+  type: 'connecting' | 'live' | 'error';
   droneId: DroneId | null;
   message: string;
 };
@@ -159,7 +159,11 @@ export default function DroneVideo({
   useStreamView(stream, parent);
   useEffect(() => {
     if (!stream.transport) {
-      setState({ type: 'disconnected', droneId: null, message: stream.status.detail });
+      setState({
+        type: stream.status.phase === 'error' ? 'error' : 'connecting',
+        droneId: null,
+        message: stream.status.detail,
+      });
       return;
     }
     const video = stream.host.querySelector('video');
@@ -178,7 +182,7 @@ export default function DroneVideo({
       viewer.current?.dispose();
       viewer.current = null;
     };
-  }, [stream.transport, onError]);
+  }, [stream.transport, stream.status.phase, stream.status.detail, onError]);
   useEffect(() => viewer.current?.select(droneId), [droneId]);
   const status = state.type === 'live' && state.droneId !== droneId ? 'connecting' : state.type;
   const video = parent.current?.querySelector('video');
