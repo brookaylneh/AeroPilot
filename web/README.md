@@ -30,7 +30,8 @@ that the scene is open in another tab.
 - **Map** is the planner. With no mission running, Start mission, a Wonder chat or
   a tool opens a general mission; End mission returns airborne drones, waits for
   them to land and resets the world.
-- **Explore world** puts the Studio camera on the ground with no character.
+- **Explore world** starts the Studio camera 7 m up behind the command van, facing north
+  over the drone port, with no character.
 - **Search & rescue scenario** is the Studio flow: character, condition, placement
   and briefing. Launch starts that case and returns to Map with the brief in the
   prompt.
