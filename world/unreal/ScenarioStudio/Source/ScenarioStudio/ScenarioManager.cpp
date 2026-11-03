@@ -417,7 +417,7 @@ bool AScenarioManager::RestoreSnapshot(const FString &Json, FString &Error)
     FString Environment, Version, Coordinates, Renderer;
     double Schema;
     if (!Root->TryGetNumberField(TEXT("schemaVersion"), Schema) ||
-        (Schema != 1 && Schema != 2 && Schema != 3) ||
+        (Schema != 1 && Schema != 2 && Schema != 3 && Schema != 4) ||
         !Root->TryGetStringField(TEXT("environmentId"), Environment) ||
         Environment != Catalog->EnvironmentId.ToString().ToLower() ||
         !Root->TryGetStringField(TEXT("assetVersion"), Version) || Version != Catalog->AssetVersion ||
@@ -489,11 +489,19 @@ bool AScenarioManager::RestoreSnapshot(const FString &Json, FString &Error)
     }
     FScenarioBehavior RestoredBehavior;
     RestoredBehavior.Origin = RestoredBehavior.Destination = P;
-    if (Schema == 3)
+    // Versions 1–3 used the original report and 10 × 10 m movement area.
+    FString RestoredDifficulty = TEXT("hard");
+    if (Schema == 4 && (!Root->TryGetStringField(TEXT("difficulty"), RestoredDifficulty) ||
+        (RestoredDifficulty != TEXT("easy") && RestoredDifficulty != TEXT("medium") && RestoredDifficulty != TEXT("hard"))))
+    {
+        Error = TEXT("Invalid saved report difficulty");
+        return false;
+    }
+    if (Schema >= 3)
     {
         const TSharedPtr<FJsonObject> *SavedBehavior;
         if (!(*State)->TryGetObjectField(TEXT("behavior"), SavedBehavior) ||
-            !ReadBehavior(*SavedBehavior, P, RestoredBehavior, Error) ||
+            !ReadBehavior(*SavedBehavior, P, RestoredDifficulty == TEXT("easy") ? 250 : 500, RestoredBehavior, Error) ||
             (RestoredBehavior.bWalking && (Situation != TEXT("lost") || !Preset->bCanWalk)))
         {
             Error = TEXT("Invalid saved character behavior");
@@ -533,5 +541,6 @@ bool AScenarioManager::RestoreSnapshot(const FString &Json, FString &Error)
     Yaw = Heading;
     bPlaced = true;
     Behavior = RestoredBehavior;
+    Difficulty = RestoredDifficulty;
     return true;
 }

@@ -10,6 +10,15 @@ telemetry, mission and fence readback, and each aircraft's forward-camera observ
 General flights and Studio rescue briefings use the same instructions, tools and versioned planner. Public map data is
 `state.landmarks`; the service does not read private target placements.
 
+Scenario reports can name a bounded **Reported search area** using distances from
+a public landmark. `get_reported_search_area` reads that paragraph from the saved
+public brief and returns its quoted source, anchor, metre offsets and polygon.
+`reported_area.py` rejects malformed, reversed, missing or out-of-map bounds. Wonder
+passes the polygon to ordinary `area_search`, preserving the report's aircraft count;
+the existing route, fence, terrain, separation and coverage checks still apply.
+Easy requests one aircraft and Medium requests two. Their three- and five-minute
+search goals do not change candidate allowances, following or flight deadlines.
+
 ## Start and stop
 
 Use the installed services described in [deployment](../../deploy/README.md). Mission

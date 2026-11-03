@@ -47,6 +47,7 @@ const packet = {
   },
   creatorStage: 'placement',
   briefing: { brief: '', portrait: '' },
+  difficulty: 'easy',
   authoring: {
     regionId: 'valley',
     situationId: 'lost',

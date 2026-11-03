@@ -3,7 +3,28 @@ import peopleDocument from '../world/unreal/creator-people.json';
 import landmarksDocument from '../world/unreal/landmarks.json';
 import world from '../world/cosys/world.json';
 import lighting from '../world/unreal/valley-lighting.json';
-import { briefingSchema, type Briefing } from './briefing';
+import { briefingSchema, difficultySchema, type Briefing, type Difficulty } from './briefing';
+
+export const difficulties = [
+  {
+    id: 'easy',
+    label: 'Easy',
+    detail: '1 drone · precise witness report',
+    goal: 'Search goal: under 3 minutes after arrival. Character movement: 5 × 5 m.',
+  },
+  {
+    id: 'medium',
+    label: 'Medium',
+    detail: '2 drones · wider search area',
+    goal: 'Search goal: under 5 minutes after arrival.',
+  },
+  {
+    id: 'hard',
+    label: 'Hard',
+    detail: 'Full fleet · broad last-seen clues',
+    goal: 'Full search planning with the original report.',
+  },
+] as const;
 
 const text = z.string().trim().min(1);
 export const profileSchema = z
@@ -143,6 +164,44 @@ export function pointLastSeen(position: Point) {
   return { ...chosen, direction };
 }
 
+export function reportedArea(position: Point, difficulty: Exclude<Difficulty, 'hard'>) {
+  pointSchema.parse(position);
+  const anchors = candidates
+    .filter((place) => ['bridge', 'structure'].includes(place.kind) || place.name.endsWith(' Signpost'))
+    .map((place) => {
+      const points = place.geometry.points;
+      if (place.geometry.type !== 'polygon' || points.length < 3)
+        throw new Error('A reported-area landmark needs a polygon footprint.');
+      const north = points.reduce((sum, point) => sum + point.x, 0) / points.length / 100;
+      const east = points.reduce((sum, point) => sum + point.y, 0) / points.length / 100;
+      return { place, north, east, distance: Math.hypot(position.x / 100 - north, position.y / 100 - east) };
+    })
+    .sort((a, b) => a.distance - b.distance || a.place.id.localeCompare(b.place.id));
+  if (!anchors.length) throw new Error('No landmark available for the reported search area.');
+  const anchor = anchors[0],
+    width = difficulty === 'easy' ? 10 : 100,
+    step = width / 2;
+  const range = (offset: number): [number, number] => {
+    const centre = Math.round(offset / step) * step;
+    return [centre - width / 2, centre + width / 2];
+  };
+  const north = range(position.x / 100 - anchor.north),
+    east = range(position.y / 100 - anchor.east);
+  if (
+    anchor.north + north[0] < world.searchBoundsCm.min.x / 100 ||
+    anchor.north + north[1] > world.searchBoundsCm.max.x / 100 ||
+    anchor.east + east[0] < world.searchBoundsCm.min.y / 100 ||
+    anchor.east + east[1] > world.searchBoundsCm.max.y / 100
+  )
+    throw new Error(
+      'The reported search area crosses the map boundary. Move the person farther inside the map.',
+    );
+  const distance = (metres: number, positive: string, negative: string) =>
+    `${Math.abs(metres)} metres ${metres < 0 ? negative : positive}`;
+  const description = `From ${distance(north[0], 'north', 'south')} to ${distance(north[1], 'north', 'south')}, and from ${distance(east[0], 'east', 'west')} to ${distance(east[1], 'east', 'west')}, measured from the centre of ${anchor.place.name}.`;
+  return { landmark: anchor.place, north, east, width, description };
+}
+
 function localTime(hoursBefore: number) {
   const local = world.sun.localTime.slice(0, 19);
   if (!/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d$/.test(local) || !Number.isFinite(Date.parse(world.sun.localTime)))
@@ -162,7 +221,9 @@ export function generateBrief(
     backpackId: string;
     backpackColor: string;
   },
+  difficulty: Difficulty,
 ): Briefing {
+  difficultySchema.parse(difficulty);
   const person = people.find((p) => p.id === personId);
   if (!person) throw new Error('Unknown report subject');
   if (
@@ -175,7 +236,8 @@ export function generateBrief(
   )
     throw new Error('Report requires the approved fixed appearance');
   const p = person.reportProfile,
-    pls = pointLastSeen(position);
+    pls = pointLastSeen(position),
+    area = difficulty === 'hard' ? null : reportedArea(position, difficulty);
   const category = {
     child_td_1_16: 'a typically developing child',
     hiker: 'a hiker',
@@ -198,14 +260,27 @@ export function generateBrief(
     '; ',
   );
   const brief = [
-    `Incident summary\n${p.fullName}, ${category}, has been missing for about ${p.hoursMissing} hours. ${p.reportingParty} reported the absence at ${localTime(5 / 60)} after ${p.activity} with ${p.companions}. The party was expected to return together; no subsequent contact has been reported.`,
+    `Incident summary\n${p.fullName}, ${category}, has been missing for about ${p.hoursMissing} hours. ${p.reportingParty} reported the absence at ${localTime(5 / 60)} after ${p.activity} with ${p.companions}. The party was expected to return together; ${area ? 'a later witness report is described below, but identity has not been confirmed' : 'no subsequent contact has been reported'}.`,
     `Subject description\n${p.fullName} is ${p.ageYears} years old, ${p.sex}, approximately ${p.heightCm} cm tall, with a ${p.build} build. ${p.distinguishingFeatures}`,
     `Clothing and footwear\nReported wearing ${clothing}.`,
     `Equipment\nReported carrying ${p.equipment.join('; ')}. No backpack, shelter or additional outdoor equipment has been reported.`,
-    `Point Last Seen and direction of travel\n${p.reportingParty} last saw the subject at ${pls.landmark.name} at ${localTime(p.hoursMissing)}, travelling ${pls.direction}. This witnessed Point Last Seen (PLS) is the initial planning point (IPP); no later verified Last Known Position (LKP) has been reported.`,
+    ...(area
+      ? [
+          `Latest witness report\n${
+            difficulty === 'easy'
+              ? `At ${localTime(2 / 60)}, a walker reported someone matching the description within a small ${area.width} × ${area.width} metre patch near ${area.landmark.name}. The witness could identify the patch but not the person's current position within it.`
+              : `At ${localTime(10 / 60)}, a walker reported a possible sighting near ${area.landmark.name}. The distance and direction were approximate, leaving an area about ${area.width} × ${area.width} metres to check. The person's current position is unknown.`
+          } This is an unconfirmed sighting; verify visible features against the subject description.`,
+          `Reported search area\n${area.description}`,
+        ]
+      : [
+          `Point Last Seen and direction of travel\n${p.reportingParty} last saw the subject at ${pls.landmark.name} at ${localTime(p.hoursMissing)}, travelling ${pls.direction}. This witnessed Point Last Seen (PLS) is the initial planning point (IPP); no later verified Last Known Position (LKP) has been reported.`,
+        ]),
     `Medical and behaviour\n${p.medicalNotes} ${p.experience}`,
     `Weather\n${weather}`,
-    'Tasking\nLocate the subject using the drone fleet operating from the launch port in front of Incident Command. Search from the reported PLS and report confirmed sightings to the ground team with an observable landmark and approach information. Coordinate ground assistance through Mission Control.',
+    area
+      ? `Tasking\nUse ${difficulty === 'easy' ? 'one drone' : 'two drones'} from the launch port in front of Incident Command to search the reported area. ${difficulty === 'medium' ? 'Divide the area between the two aircraft. ' : ''}Keep the main camera at 1×. Review detections using the separate 4× evidence camera and present supported sightings with an observable landmark and approach information. The search goal is within ${difficulty === 'easy' ? 'three' : 'five'} minutes of arrival; this is a target, not a flight or tracking deadline. If the area is checked without a supported sighting, report that result and propose the next search. Coordinate ground assistance through Mission Control.`
+      : 'Tasking\nLocate the subject using the drone fleet operating from the launch port in front of Incident Command. Search from the reported PLS and report confirmed sightings to the ground team with an observable landmark and approach information. Coordinate ground assistance through Mission Control.',
   ].join('\n\n');
   return briefingSchema.parse({ brief, portrait: '' });
 }

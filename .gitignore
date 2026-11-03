@@ -8,7 +8,7 @@ __pycache__/
 .env
 .env.*
 !.env.example
-.secrets/
+.secrets
 
 # Licensed Unreal assets and generated engine output
 world/unreal/ScenarioStudio/Content/

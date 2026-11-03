@@ -506,6 +506,52 @@
   align-items: center;
   margin-bottom: 26px;
 }
+
+.briefing-difficulties {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.briefing-difficulties button {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 15px 12px;
+  text-align: left;
+  color: #ffffffa8;
+  background: #1c1d1bc7;
+  border: 1px solid #ffffff14;
+  border-radius: 14px;
+  backdrop-filter: blur(18px) saturate(140%);
+  box-shadow: inset 0 1px 0 #ffffff0d;
+  cursor: pointer;
+}
+.briefing-difficulties button[aria-selected='true'] {
+  color: #f4f4f2;
+  border-color: #93c5a5b3;
+  box-shadow: inset 0 0 0 1px #93c5a54d;
+}
+.briefing-difficulties button:focus-visible {
+  outline: 2px solid #93c5a5;
+  outline-offset: 3px;
+}
+.briefing-difficulties button:disabled {
+  cursor: wait;
+  opacity: 0.65;
+}
+.briefing-difficulties strong {
+  font-size: 15px;
+}
+.briefing-difficulties span,
+.briefing-goal {
+  font-size: 12px;
+  line-height: 1.5;
+}
+.briefing-goal {
+  margin: 0 0 20px;
+  color: #b7c4b9;
+}
 .briefing-title > svg {
   color: var(--accent);
 }

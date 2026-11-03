@@ -15,8 +15,9 @@ its map shows the world but does not travel.
 1. Choose one of the eleven Microsoft Rocketbox people and their private situation.
 2. Place the person using the map or ground double-click. Navigation, inspection and
    the four-step header remain available while editing.
-3. Confirm placement to generate a fresh professional brief. Changes to the character
-   or placement are reflected when the visitor confirms the placement again.
+3. Confirm placement to generate a fresh professional brief. Choose Easy, Medium or Hard
+   above the document. Changes to the character or placement are reflected when the
+   visitor confirms the placement again.
 4. Click the document to edit it in place, or copy it using the copy icon. Save and
    Launch write exactly the reviewed text; loading restores saved edits.
 5. Launch saves the scenario and waits for the mission service to acknowledge that case
@@ -49,6 +50,37 @@ is shown explicitly. See the [browser API documentation](https://developer.mozil
 
 ## Mission brief
 
+New scenarios start on **Easy**. The three tabs use the Mission Control drone-card
+surface. Arrow keys, Home and End move focus; Enter or Space selects a level, following
+the [WAI-ARIA tabs pattern](https://www.w3.org/WAI/ARIA/apg/patterns/tabs/).
+Switching tabs retains each level's edited draft until the placement changes or another
+scenario loads. Save persists the selected level and reviewed text.
+
+| Level  | Witness information                                  | Tasking                                                |
+| ------ | ---------------------------------------------------- | ------------------------------------------------------ |
+| Easy   | Recent possible sighting in a 10 × 10 m patch        | One drone; search goal within three minutes of arrival |
+| Medium | Less precise possible sighting in a 100 × 100 m area | Two drones; search goal within five minutes of arrival |
+| Hard   | Original Point Last Seen and broad direction         | Normal fleet planning                                  |
+
+These are search goals, not measured detection times or flight/tracking deadlines.
+All levels use the same detector, tracking and evidence workflow. Main video remains
+1×; the separate camera provides the on-demand 4× evidence photograph.
+
+Easy and Medium describe rounded north/south and east/west distance ranges from a
+named bridge, structure or signpost. The anchor is the mean of the public footprint's
+vertices. Area centres use a grid with half the area's width as its step, so the
+private placement is not disclosed as the area's centre. Map-edge placements whose
+reported rectangle leaves the map fail explicitly. The public report contains the
+whole clue in its **Reported search area** paragraph; no private geometry accompanies it.
+Wonder's `get_reported_search_area` resolves this paragraph using only the public map,
+then ordinary polygon search checks terrain, fences, separation and coverage.
+
+The character pauses while the report is edited. Confirming a placement anchors its
+movement at its current ground position. Easy permits a 5 × 5 m walking area; Medium
+and Hard retain 10 × 10 m. Movement resumes during the mission. The generator's rounded
+reported area contains the complete permitted movement area. Switching difficulty
+does not move the character or change the walking speed.
+
 `world/unreal/creator-people.json` supplies fictional report profiles for all eleven
 people. `missionBrief.ts` validates every profile field, category/age agreement,
 fixed clothing selection, coordinate frame and required weather inputs at load or
@@ -56,7 +88,7 @@ use. Clothing descriptions match the approved original appearances. Reported sma
 pocket items, names, ages, histories and witnesses are fictional reporting details.
 No claim is made that pocket items are rendered assets.
 
-The generator uses exact horizontal segment projections, polygon containment and
+Hard uses exact horizontal segment projections, polygon containment and
 point distance to choose the nearest eligible landmark whose nearest geometry
 point lies 150–1,200 m from placement. Candidates are trails, roads, campsites,
 parking, bridges, structures and the named signposts in `world/unreal/landmarks.json`.
@@ -90,8 +122,9 @@ The reporting structure follows these sources:
 ## Saved data and planner boundary
 
 Unreal writes private authoring snapshots under `SNR_SCENARIO_DATA_DIR` and separate
-public records under its `briefings/` directory. Private snapshots retain schema
-version 3. The public rescue-case record uses schema version 2 and has only
+public records under its `briefings/` directory. Private snapshots use schema
+version 4 and include the selected `difficulty`. Versions 1–3 explicitly load as
+Hard, preserving their reviewed text and original movement bounds. The public rescue-case record uses schema version 2 and has only
 `schemaVersion`, `id`, `name`, `report`, and `world`; `report` is `{brief, portrait}`
 with a 4,000-character brief. `/api/rescue-cases/:id` and the mission service read only
 these public records. The private position, situation and movement state never enter
@@ -101,9 +134,11 @@ The mission service owns one active session with an optional saved case. Explici
 it for Studio clears that selection while retaining the coupled fleet. Per-run logs remain
 separate from saved scenarios and are retained after the session ends.
 
-`briefing.test.ts` checks every person's generated report across a placement grid,
-quoted evidence, landmark selection, local timestamps and the strict saved-record
-schema. The mission's profile-extraction tests accept only evidence from `brief`.
+`briefing.test.ts` checks every person's generated reports across a placement grid,
+movement-area containment, quoted evidence, landmark selection, local timestamps and
+the strict saved-record schema. `mission_planner/gcs/test_reported_area.py` generates
+real browser reports and resolves and compiles them without model requests. The
+mission's profile-extraction tests accept only evidence from `brief`.
 
 ## Map component acceptance
 

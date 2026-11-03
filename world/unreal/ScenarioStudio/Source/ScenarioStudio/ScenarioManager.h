@@ -25,6 +25,8 @@ class SCENARIOSTUDIO_API AScenarioManager : public AActor
     UPROPERTY(BlueprintReadOnly) FScenarioAppearance Appearance;
     UPROPERTY(BlueprintReadOnly) bool bPlaced = false;
     UPROPERTY(BlueprintReadOnly) FName SituationId = TEXT("lost");
+    FString Difficulty = TEXT("easy");
+    bool SetDifficulty(const FString &Value, FString &Error);
     bool SetSituation(FName Id, FString &Error);
     bool PreviewPerson(FString &Error);
     virtual void Tick(float DeltaSeconds) override;
@@ -47,7 +49,7 @@ class SCENARIOSTUDIO_API AScenarioManager : public AActor
     FScenarioBehavior Behavior;
     void ResetBehavior();
     TSharedRef<FJsonObject> BehaviorJson() const;
-    bool ReadBehavior(const TSharedPtr<FJsonObject> &Value, const FVector &Position,
+    bool ReadBehavior(const TSharedPtr<FJsonObject> &Value, const FVector &Position, double HalfWidthCm,
                       FScenarioBehavior &Result, FString &Error) const;
     bool ValidateGround(FName Region, const FVector &Point, const FScenarioPersonPreset &Preset,
                         FName Situation, FVector &Ground, FString &Error) const;

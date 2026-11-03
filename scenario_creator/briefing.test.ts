@@ -8,6 +8,7 @@ import {
   nearestPoint,
   people,
   pointLastSeen,
+  reportedArea,
   profileSchema,
 } from './missionBrief';
 
@@ -33,8 +34,8 @@ for (const person of people)
             (east / 12) * (world.searchBoundsCm.max.y - world.searchBoundsCm.min.y),
           z: 0,
         };
-        const report = generateBrief(person.id, position, appearance);
-        assert.deepEqual(report, generateBrief(person.id, position, appearance));
+        const report = generateBrief(person.id, position, appearance, 'hard');
+        assert.deepEqual(report, generateBrief(person.id, position, appearance, 'hard'));
         assert.deepEqual(Object.keys(report), ['brief', 'portrait']);
         const category = {
           child_td_1_16: 'typically developing',
@@ -140,4 +141,68 @@ test('nearest geometry uses segment projection and polygon interiors', () => {
     z: 0,
   });
   assert.throws(() => pointLastSeen({ x: Infinity, y: 0, z: 0 }));
+});
+
+for (const difficulty of ['easy', 'medium'] as const)
+  test(`${difficulty}: reports bound the movement area using only rounded landmark clues`, () => {
+    const width = difficulty === 'easy' ? 10 : 100;
+    const movementHalfWidth = difficulty === 'easy' ? 2.5 : 5;
+    for (
+      let north = world.searchBoundsCm.min.x / 100 + 150;
+      north <= world.searchBoundsCm.max.x / 100 - 150;
+      north += 125
+    )
+      for (
+        let east = world.searchBoundsCm.min.y / 100 + 150;
+        east <= world.searchBoundsCm.max.y / 100 - 150;
+        east += 125
+      ) {
+        const position = { x: north * 100 + 73, y: east * 100 + 19, z: 0 };
+        const area = reportedArea(position, difficulty);
+        const points = area.landmark.geometry.points;
+        const anchor = {
+          north: points.reduce((sum, p) => sum + p.x, 0) / points.length / 100,
+          east: points.reduce((sum, p) => sum + p.y, 0) / points.length / 100,
+        };
+        for (const axis of ['north', 'east'] as const) {
+          const offset = position[axis === 'north' ? 'x' : 'y'] / 100 - anchor[axis];
+          assert.equal(area[axis][1] - area[axis][0], width);
+          assert.ok(area[axis][0] <= offset - movementHalfWidth + 1e-9);
+          assert.ok(area[axis][1] >= offset + movementHalfWidth - 1e-9);
+          assert.ok(area[axis].every(Number.isInteger));
+        }
+        for (const person of people) {
+          const report = generateBrief(
+            person.id,
+            position,
+            {
+              topId: person.topId,
+              bottomId: person.bottomId,
+              topColor: 'original',
+              bottomColor: 'original',
+              backpackId: 'none',
+              backpackColor: 'original',
+            },
+            difficulty,
+          );
+          assert.deepEqual(Object.keys(report), ['brief', 'portrait']);
+          assert.ok(report.brief.includes(area.description));
+          assert.ok(report.brief.includes(person.reportProfile.clothing.upper));
+          assert.match(report.brief, difficulty === 'easy' ? /Use one drone/ : /Use two drones/);
+          assert.doesNotMatch(
+            report.brief,
+            /Point Last Seen|no subsequent contact|north_m|east_m|coordinates/,
+          );
+          assert.ok(report.brief.length <= 4000);
+          assert.ok(!report.brief.includes(String(position.x)));
+          assert.ok(!report.brief.includes(String(position.y)));
+        }
+      }
+  });
+
+test('bounded reports reject map-edge placement without changing Hard reports', () => {
+  const position = { ...world.searchBoundsCm.min };
+  for (const difficulty of ['easy', 'medium'] as const)
+    assert.throws(() => reportedArea(position, difficulty), /map boundary/);
+  assert.doesNotThrow(() => pointLastSeen(position));
 });

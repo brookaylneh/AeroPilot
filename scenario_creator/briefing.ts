@@ -1,5 +1,8 @@
 import { z } from 'zod';
 
+export const difficultySchema = z.enum(['easy', 'medium', 'hard']);
+export type Difficulty = z.infer<typeof difficultySchema>;
+
 export const briefingSchema = z
   .object({
     brief: z.string().max(4000),

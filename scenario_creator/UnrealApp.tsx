@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, Save, TreePine } from 'lucide-react';
 import { useUnrealSession } from './useUnrealSession';
 import { colors, situations, title } from './creator';
-import type { Briefing } from './briefing';
+import type { Briefing, Difficulty } from './briefing';
 import { generateBrief } from './missionBrief';
 import { launchMission } from './missionLifecycle';
 import type { CreatorStage } from './PixelStreamingTransport';
@@ -67,6 +67,11 @@ export default function UnrealApp({
     [name, setName] = useState('');
   const [yaw, setYaw] = useState(0);
   const [briefing, setBriefing] = useState<Briefing | null>(null);
+  const [drafts, setDrafts] = useState<Record<Difficulty, Briefing | null>>({
+    easy: null,
+    medium: null,
+    hard: null,
+  });
   const locked = busy || working || transitioning;
   const stage = packet?.creatorStage || 'person';
   const index = steps.findIndex((step) => step.id === stage);
@@ -79,6 +84,31 @@ export default function UnrealApp({
   useEffect(() => {
     if (reportText) setBriefing(JSON.parse(reportText));
   }, [reportText]);
+
+  async function chooseDifficulty(difficulty: Difficulty) {
+    if (!packet || !briefing || difficulty === packet.difficulty) return;
+    setWorking(true);
+    const saved = { ...drafts, [packet.difficulty]: briefing };
+    setDrafts(saved);
+    try {
+      const updated = await send({ type: 'difficulty', difficulty });
+      if (!updated) return;
+      if (!updated.authoring.behavior) throw new Error('The placed person has no movement origin.');
+      const report =
+        saved[difficulty] ??
+        generateBrief(
+          updated.authoring.appearance.personId,
+          updated.authoring.behavior.origin,
+          updated.authoring.appearance,
+          difficulty,
+        );
+      if (await send({ type: 'briefing', briefing: report })) setBriefing(report);
+    } catch (error) {
+      setError((error as Error).message);
+    } finally {
+      setWorking(false);
+    }
+  }
 
   async function changeAppearance(key: string, value: string) {
     if (!packet) return;
@@ -103,15 +133,21 @@ export default function UnrealApp({
       let report = briefing;
       if (next === 'briefing') {
         if (!packet.authoring.position) throw new Error('Place the person before reviewing the brief.');
-        if (!packet.authoring.behavior) throw new Error('The placed person has no movement origin.');
+        const updated = await send({ type: 'creator-stage', stage: next });
+        if (!updated) return;
+        if (!updated.authoring.behavior) throw new Error('The placed person has no movement origin.');
         report = generateBrief(
-          packet.authoring.appearance.personId,
-          packet.authoring.behavior.origin,
-          packet.authoring.appearance,
+          updated.authoring.appearance.personId,
+          updated.authoring.behavior.origin,
+          updated.authoring.appearance,
+          updated.difficulty,
         );
+        setDrafts({ easy: null, medium: null, hard: null });
+        if (await send({ type: 'briefing', briefing: report })) setBriefing(report);
+      } else {
+        if (await send({ type: 'briefing', briefing: report }))
+          await send({ type: 'creator-stage', stage: next });
       }
-      if (await send({ type: 'briefing', briefing: report }))
-        await send({ type: 'creator-stage', stage: next });
     } catch (error) {
       setError((error as Error).message);
     } finally {
@@ -365,6 +401,8 @@ export default function UnrealApp({
             <RescueBriefing
               briefing={briefing}
               setBriefing={setBriefing}
+              difficulty={packet.difficulty}
+              chooseDifficulty={(difficulty) => void chooseDifficulty(difficulty)}
               ready={!!packet.authoring.position}
               disabled={locked}
               editPlacement={() => void moveTo('placement')}
@@ -493,7 +531,10 @@ export default function UnrealApp({
                 className="creator-secondary"
                 disabled={locked}
                 onClick={async () => {
-                  if (await send({ type: 'reset' })) setLibrary(false);
+                  if (await send({ type: 'reset' })) {
+                    setDrafts({ easy: null, medium: null, hard: null });
+                    setLibrary(false);
+                  }
                 }}
               >
                 New scenario
@@ -518,7 +559,10 @@ export default function UnrealApp({
               className="creator-primary"
               disabled={!savedChoice || locked}
               onClick={async () => {
-                if (await send({ type: 'load', id: savedChoice })) setLibrary(false);
+                if (await send({ type: 'load', id: savedChoice })) {
+                  setDrafts({ easy: null, medium: null, hard: null });
+                  setLibrary(false);
+                }
               }}
             >
               Open scenario

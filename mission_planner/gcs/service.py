@@ -1179,6 +1179,11 @@ class Mission:
             return ground_profile(**arguments)
         if name == "find_place":
             return find(self.landmarks, arguments["name"])
+        if name == "get_reported_search_area":
+            from mission_planner.gcs.reported_area import resolve
+
+            assert self.case is not None, "Select a saved rescue case with a reported search area"
+            return resolve(self.case["report"]["brief"], self.landmarks)
         if name == "describe_location":
             return directions(self.landmarks, arguments["north_m"], arguments["east_m"])
         if name == "get_mission":

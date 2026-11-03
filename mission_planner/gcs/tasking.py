@@ -579,7 +579,7 @@ def search_work(
             ],
         }
         sentences = [
-            f"Operator-drawn polygon of {polygon.area / 1e4:.1f} ha searched whole; "
+            f"Stated search polygon of {polygon.area / 1e4:.1f} ha searched whole; "
             "no probability model applies."
         ]
         strips = survey_sectors(sectors, settings, bearing)

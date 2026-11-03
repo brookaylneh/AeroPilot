@@ -7,12 +7,13 @@ import {
   creatorStageSchema,
   type UnrealCommand,
 } from './PixelStreamingTransport';
-import { briefingSchema } from './briefing';
+import { briefingSchema, difficultySchema } from './briefing';
 
 export const packetSchema = z.object({
   camera: cameraSchema,
   creatorStage: creatorStageSchema,
   briefing: briefingSchema,
+  difficulty: difficultySchema,
   authoring: z.object({
     regionId: z.string(),
     situationId: z.enum(['lost', 'waiting', 'injured']),

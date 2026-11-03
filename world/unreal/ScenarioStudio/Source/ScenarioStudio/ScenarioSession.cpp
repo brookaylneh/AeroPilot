@@ -247,7 +247,7 @@ bool AScenarioSession::ResetScenario(FString &Error)
     for (const TCHAR *Key :
          {TEXT("brief"), TEXT("portrait")})
         Briefing->SetStringField(Key, TEXT(""));
-    return Manager->SetSituation(TEXT("lost"), Error) && SetCreatorStage(TEXT("person"), Error);
+    return Manager->SetDifficulty(TEXT("easy"), Error) && Manager->SetSituation(TEXT("lost"), Error) && SetCreatorStage(TEXT("person"), Error);
 }
 
 bool AScenarioSession::SetCreatorStage(const FString &Stage, FString &Error)
@@ -267,6 +267,12 @@ bool AScenarioSession::SetCreatorStage(const FString &Stage, FString &Error)
     }
     else if (Stage == TEXT("briefing"))
     {
+        Manager->SetBehaviorActive(false);
+        if (CreatorStage == TEXT("placement") && !Manager->SetDifficulty(Manager->Difficulty, Error))
+            return false;
+        if (CreatorStage == TEXT("placement"))
+            for (const TCHAR *Key : {TEXT("brief"), TEXT("portrait")})
+                Briefing->SetStringField(Key, TEXT(""));
         const bool Departing =
             Stage == TEXT("briefing") && CreatorStage == TEXT("placement") && Manager->bPlaced;
         if (!(Departing ? TransitionCamera(TEXT("person"), .9, Error) : SetCamera(TEXT("start"), Error)))
@@ -280,7 +286,7 @@ bool AScenarioSession::SetCreatorStage(const FString &Stage, FString &Error)
         return false;
     }
     CreatorStage = Stage;
-    Manager->SetBehaviorActive(Stage == TEXT("placement") || Stage == TEXT("briefing"));
+    Manager->SetBehaviorActive(Stage == TEXT("placement"));
     bShowMarker = false;
     UpdateMarker();
     return true;
@@ -338,6 +344,7 @@ void AScenarioSession::DisableGrassSource()
 {
     check(GrassSource);
     bMissionActive = true;
+    Manager->SetBehaviorActive(true);
     StopNavigation();
     NavigationPlayer.Empty();
     SetActorTickEnabled(false);
@@ -607,6 +614,7 @@ TSharedRef<FJsonObject> AScenarioSession::Packet() const
     Result->SetObjectField(TEXT("authoring"), Parse(Manager->ExportAuthoringJson()));
     Result->SetStringField(TEXT("lastSavedId"), LastSavedId);
     Result->SetStringField(TEXT("creatorStage"), CreatorStage);
+    Result->SetStringField(TEXT("difficulty"), Manager->Difficulty);
     Result->SetObjectField(TEXT("briefing"), Briefing.ToSharedRef());
     Result->SetObjectField(TEXT("camera"), CameraPacket());
     auto Catalog = MakeShared<FJsonObject>();
@@ -704,7 +712,8 @@ bool AScenarioSession::Save(const FString &Name, const FString &Summary, FString
     const FString Id = FGuid::NewGuid().ToString(EGuidFormats::DigitsWithHyphens);
     Snapshot->SetStringField(TEXT("id"), Id);
     Snapshot->SetStringField(TEXT("name"), Name.TrimStartAndEnd());
-    Snapshot->SetNumberField(TEXT("schemaVersion"), 3);
+    Snapshot->SetNumberField(TEXT("schemaVersion"), 4);
+    Snapshot->SetStringField(TEXT("difficulty"), Manager->Difficulty);
     Snapshot->SetStringField(TEXT("createdAt"), FDateTime::UtcNow().ToIso8601());
     Snapshot->SetStringField(TEXT("environmentId"), Manager->Catalog->EnvironmentId.ToString().ToLower());
     Snapshot->SetStringField(TEXT("assetVersion"), Manager->Catalog->AssetVersion);
@@ -762,7 +771,7 @@ bool AScenarioSession::Load(const FString &Id, FString &Error)
     FString Stage = TEXT("placement");
     double Schema;
     if (!Saved || !Saved->TryGetNumberField(TEXT("schemaVersion"), Schema) ||
-        (Schema != 1 && Schema != 2 && Schema != 3))
+        (Schema != 1 && Schema != 2 && Schema != 3 && Schema != 4))
     {
         Error = TEXT("Invalid saved scenario");
         return false;
@@ -792,6 +801,7 @@ bool AScenarioSession::Load(const FString &Id, FString &Error)
         return false;
     }
     LastSavedId = Id;
+    CreatorStage = Stage;
     return SetCreatorStage(Stage, Error);
 }
 
@@ -878,6 +888,20 @@ void AScenarioSession::HandleCommand(const FString &Player, const FString &Messa
             const TSharedPtr<FJsonObject> *Report;
             if ((*Command)->TryGetObjectField(TEXT("briefing"), Report))
                 Ok = SetBriefing(*Report, Error);
+        }
+        else if (Type == TEXT("difficulty") && Fields(*Command, {TEXT("type"), TEXT("difficulty")}) &&
+                 (*Command)->TryGetStringField(TEXT("difficulty"), Value))
+        {
+            if (CreatorStage != TEXT("briefing"))
+                Error = TEXT("Choose difficulty while reviewing the report");
+            else
+            {
+                Manager->SetBehaviorActive(false);
+                Ok = Manager->SetDifficulty(Value, Error);
+                if (Ok)
+                    for (const TCHAR *Key : {TEXT("brief"), TEXT("portrait")})
+                        Briefing->SetStringField(Key, TEXT(""));
+            }
         }
         else if (Type == TEXT("reset") && Fields(*Command, {TEXT("type")}))
             Ok = ResetScenario(Error);

@@ -1,6 +1,6 @@
 import { Config, PixelStreaming, Logger, LogLevel } from '@epicgames-ps/lib-pixelstreamingfrontend-ue5.8';
 import { z } from 'zod';
-import { briefingSchema } from './briefing';
+import { briefingSchema, difficultySchema } from './briefing';
 import { droneIds } from '../mission_planner/gcs/droneIdentity';
 import type { VideoMetrics } from '../mission_planner/gcs/videoDiagnostics';
 // A single-editor admission gateway MUST protect the signalling endpoint before enabling commands.
@@ -14,6 +14,7 @@ export const requestSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('creator-stage'), stage: creatorStageSchema }).strict(),
   z.object({ type: z.literal('situation'), situationId: z.enum(['lost', 'waiting', 'injured']) }).strict(),
   z.object({ type: z.literal('briefing'), briefing: briefingSchema }).strict(),
+  z.object({ type: z.literal('difficulty'), difficulty: difficultySchema }).strict(),
   z.object({ type: z.literal('snapshot') }).strict(),
   z.object({ type: z.literal('portrait') }).strict(),
   z.object({ type: z.literal('reset') }).strict(),

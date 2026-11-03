@@ -36,3 +36,17 @@ test('a closed data channel rejects immediately and leaves no pending command', 
   assert.equal(sent.length, 1);
   assert.equal(pending.size, 0);
 });
+
+test('difficulty changes contain only an explicit supported level', () => {
+  for (const difficulty of ['easy', 'medium', 'hard'])
+    assert.deepEqual(requestSchema.parse({ type: 'difficulty', difficulty }), {
+      type: 'difficulty',
+      difficulty,
+    });
+  for (const command of [
+    { type: 'difficulty' },
+    { type: 'difficulty', difficulty: 'automatic' },
+    { type: 'difficulty', difficulty: 'easy', position: { x: 10, y: 20 } },
+  ])
+    assert.equal(requestSchema.safeParse(command).success, false);
+});

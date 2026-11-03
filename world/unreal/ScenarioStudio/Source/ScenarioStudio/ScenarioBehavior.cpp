@@ -3,10 +3,9 @@
 
 namespace
 {
-constexpr double WanderHalfWidth = 500; // Centimetres: a 10 × 10 m box around placement.
-bool InsideWalkArea(const FVector &P, const FVector &Origin)
+bool InsideWalkArea(const FVector &P, const FVector &Origin, double HalfWidthCm)
 {
-    return FMath::Abs(P.X - Origin.X) <= WanderHalfWidth && FMath::Abs(P.Y - Origin.Y) <= WanderHalfWidth;
+    return FMath::Abs(P.X - Origin.X) <= HalfWidthCm && FMath::Abs(P.Y - Origin.Y) <= HalfWidthCm;
 }
 TSharedRef<FJsonObject> PointJson(const FVector &P)
 {
@@ -23,6 +22,19 @@ bool ReadPoint(const TSharedPtr<FJsonObject> &Json, const TCHAR *Key, FVector &P
            (*Point)->TryGetNumberField(TEXT("y"), P.Y) && (*Point)->TryGetNumberField(TEXT("z"), P.Z) &&
            !P.ContainsNaN();
 }
+}
+
+bool AScenarioManager::SetDifficulty(const FString &Value, FString &Error)
+{
+    if (Value != TEXT("easy") && Value != TEXT("medium") && Value != TEXT("hard"))
+    {
+        Error = TEXT("Unknown report difficulty");
+        return false;
+    }
+    Difficulty = Value;
+    if (bPlaced)
+        ResetBehavior();
+    return true;
 }
 
 void AScenarioManager::ResetBehavior()
@@ -62,6 +74,7 @@ void AScenarioManager::Tick(float DeltaSeconds)
     if (!Preset->bCanWalk)
         return;
     const double Dt = FMath::Min(static_cast<double>(DeltaSeconds), .1);
+    const double HalfWidthCm = Difficulty == TEXT("easy") ? 250 : 500;
     Behavior.PauseSeconds = FMath::Max(0., Behavior.PauseSeconds - Dt);
     if (Behavior.PauseSeconds > 0)
         return;
@@ -74,8 +87,8 @@ void AScenarioManager::Tick(float DeltaSeconds)
         // waits and looks around if no clear local path is found.
         for (int32 Attempt = 0; Attempt < 8 && !Behavior.bWalking; ++Attempt)
         {
-            const FVector Point = Behavior.Origin + FVector(Random.FRandRange(-500.f, 500.f),
-                                                            Random.FRandRange(-500.f, 500.f), 0);
+            const FVector Point = Behavior.Origin + FVector(Random.FRandRange(-HalfWidthCm, HalfWidthCm),
+                                                            Random.FRandRange(-HalfWidthCm, HalfWidthCm), 0);
             FVector Ground;
             if (FVector::Dist2D(Start, Point) < 120 ||
                 !ValidateGround(RegionId, Point, *Preset, SituationId, Ground, Error))
@@ -115,7 +128,7 @@ void AScenarioManager::Tick(float DeltaSeconds)
     const double Step = FMath::Min(Speed * Dt, FVector::Dist2D(Start, Behavior.Destination));
     FVector Ground;
     const FVector Next = Start + Direction * Step;
-    if (!InsideWalkArea(Next, Behavior.Origin) ||
+    if (!InsideWalkArea(Next, Behavior.Origin, HalfWidthCm) ||
         !ValidateGround(RegionId, Next, *Preset, SituationId, Ground, Error))
     {
         Behavior.bWalking = false;
@@ -146,7 +159,7 @@ TSharedRef<FJsonObject> AScenarioManager::BehaviorJson() const
     return Json;
 }
 
-bool AScenarioManager::ReadBehavior(const TSharedPtr<FJsonObject> &Json, const FVector &Position,
+bool AScenarioManager::ReadBehavior(const TSharedPtr<FJsonObject> &Json, const FVector &Position, double HalfWidthCm,
                                     FScenarioBehavior &Result, FString &Error) const
 {
     double Seed;
@@ -159,7 +172,7 @@ bool AScenarioManager::ReadBehavior(const TSharedPtr<FJsonObject> &Json, const F
         !Json->TryGetNumberField(TEXT("animationTime"), Result.AnimationTime) ||
         !FMath::IsFinite(Result.AnimationTime) || Result.AnimationTime < 0 || Result.AnimationTime > 60 ||
         !Json->TryGetBoolField(TEXT("walking"), Result.bWalking) ||
-        !InsideWalkArea(Position, Result.Origin) || !InsideWalkArea(Result.Destination, Result.Origin))
+        !InsideWalkArea(Position, Result.Origin, HalfWidthCm) || !InsideWalkArea(Result.Destination, Result.Origin, HalfWidthCm))
     {
         Error = TEXT("Invalid saved character behavior");
         return false;
