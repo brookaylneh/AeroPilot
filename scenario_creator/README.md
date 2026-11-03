@@ -63,6 +63,9 @@ scenario loads. Save persists the selected level and reviewed text.
 | Hard   | Original Point Last Seen and broad direction         | Normal fleet planning                                  |
 
 These are search goals, not measured detection times or flight/tracking deadlines.
+Generated tasking requests the current maximum permitted transit speed of 15 m/s,
+then 5 m/s for searching. Camera instructions and the demo time goals stay out of
+the report prompt; the level cards retain their time goals.
 All levels use the same detector, tracking and evidence workflow. Main video remains
 1×; the separate camera provides the on-demand 4× evidence photograph.
 

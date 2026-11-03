@@ -25,7 +25,7 @@ export const searchPolicySchema = z
         objective: text(200),
         target: text(200),
         attributes: z
-          .array(z.object({ id: z.string().regex(/^[a-z][a-z0-9_]{0,31}$/), text: text(120) }).strict())
+          .array(z.object({ id: z.string().regex(/^[a-z][a-z0-9_-]{0,31}$/), text: text(120) }).strict())
           .max(8)
           .refine((values) => new Set(values.map(({ id }) => id)).size === values.length),
         ignore: z.array(text(120)).max(4),

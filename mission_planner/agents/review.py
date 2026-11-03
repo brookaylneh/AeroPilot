@@ -9,6 +9,7 @@ import time
 from PIL import Image
 
 TEMPLATE = "zoom-analyst-v4-single-photo"
+ATTRIBUTE_ID_PATTERN = r"^[a-z][a-z0-9_-]{0,31}$"
 
 
 DECISIONS = ("escalate", "recheck", "discard")
@@ -31,7 +32,10 @@ def check_look_for(look_for):
     assert isinstance(attributes, list) and len(attributes) <= 8
     for attribute in attributes:
         assert set(attribute) == {"id", "text"}
-        assert re.fullmatch(r"[a-z][a-z0-9_]{0,31}", attribute["id"])
+        assert re.fullmatch(ATTRIBUTE_ID_PATTERN, attribute["id"]), (
+            "Attribute ids require 1–32 lowercase letters, digits, underscores or hyphens, "
+            "starting with a letter"
+        )
         assert isinstance(attribute["text"], str) and 1 <= len(attribute["text"].strip()) <= 120
     assert len({a["id"] for a in attributes}) == len(attributes), "Attribute ids must be unique"
     ignore = look_for["ignore"]

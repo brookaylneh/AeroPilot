@@ -9,6 +9,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock
 
+from jsonschema import Draft202012Validator
 from PIL import Image
 
 from mission_planner.agents.review import TEMPLATE, instructions, review_candidate
@@ -106,6 +107,19 @@ class ReviewTests(unittest.TestCase):
         text = self.glimmer.report.call_args.args[2]
         self.assertIn("selected track 17", text)
         self.assertNotIn(str(self.detection["box_xyxy"]), text)
+
+    def test_hyphenated_attribute_id_is_preserved_in_request_and_report(self):
+        self.look_for["attributes"][0]["id"] = "age-build"
+        self.result["report"]["observations"][0]["attribute_id"] = "age-build"
+        result = self.review()
+        contract = self.glimmer.report.call_args.args[3]
+        Draft202012Validator(contract).validate(result["report"])
+        self.assertEqual(
+            contract["properties"]["observations"]["items"]["properties"]["attribute_id"]["enum"],
+            ["age-build", "backpack"],
+        )
+        self.assertIn("- age-build:", self.glimmer.report.call_args.args[2])
+        self.assertEqual(result["report"]["observations"][0]["attribute_id"], "age-build")
 
     def test_lower_resolution_review_is_rejected_before_request(self):
         stream = io.BytesIO()

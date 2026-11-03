@@ -724,6 +724,9 @@ test('only an active drone card is clickable, anywhere except its command contro
 test('observation approval shows task, participating aircraft, camera aim and follow authority', () => {
   const value = structuredClone(searchPlan);
   assert.deepEqual(flightPlanSchema.parse(value), value);
+  const hyphenated = structuredClone(value);
+  hyphenated.search.look_for.attributes[0].id = 'age-build';
+  assert.deepEqual(flightPlanSchema.parse(hyphenated), hyphenated);
   const missing = structuredClone(value);
   delete missing.search.max_lock_seconds;
   assert.equal(flightPlanSchema.safeParse(missing).success, false);

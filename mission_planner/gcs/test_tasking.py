@@ -115,6 +115,25 @@ class Schema(unittest.TestCase):
         self.assertLess(len(encoded), 6000)
         self.assertIn('"maximum"', json.dumps(TASKING_SCHEMA))
 
+    def test_invalid_attribute_ids_name_the_exact_field(self):
+        for identifier in ("Age-build", "9-age", "age build", "age/build", "a" * 33):
+            with self.subTest(identifier=identifier):
+                value = task()
+                value["subject"]["look_for"]["attributes"][0]["id"] = identifier
+                with self.assertRaises(PlanRejected) as caught:
+                    validate_tasking(value, LANDMARKS, [])
+                rejection = caught.exception.rejection
+                self.assertEqual(
+                    rejection["detail"]["path"], ["subject", "look_for", "attributes", "0", "id"]
+                )
+                self.assertIn("tasking.subject.look_for.attributes.0.id", rejection["message"])
+                self.assertNotIn("not valid under any", rejection["message"])
+
+    def test_invalid_subject_threshold_names_the_exact_field(self):
+        with self.assertRaises(PlanRejected) as caught:
+            validate_tasking(task(subject={"threshold": 1.1}), LANDMARKS, [])
+        self.assertEqual(caught.exception.rejection["detail"]["path"], ["subject", "threshold"])
+
     def test_defaults_fill_null_settings_and_inapplicable_settings_are_rejected(self):
         filled = validate_tasking(task(), LANDMARKS, [])
         self.assertEqual(
@@ -206,6 +225,39 @@ class Schema(unittest.TestCase):
 
 
 class Templates(unittest.TestCase):
+    def test_hyphenated_subject_ids_survive_checked_search_at_maximum_transit_speed(self):
+        value = task(
+            subject={
+                "look_for": {
+                    "objective": "Find Maya Bennett and verify the reported visible features",
+                    "target": "Maya Bennett",
+                    "attributes": [
+                        {"id": "age-build", "text": "9-year-old child, slim build"},
+                        {"id": "hair_color", "text": "blond hair"},
+                    ],
+                    "ignore": ["rocks", "signposts"],
+                }
+            },
+            references={
+                "landmark_ids": [],
+                "direction_of_travel": None,
+                "polygon": [
+                    {"north_m": 78.5, "east_m": -76.5},
+                    {"north_m": 88.5, "east_m": -76.5},
+                    {"north_m": 88.5, "east_m": -66.5},
+                    {"north_m": 78.5, "east_m": -66.5},
+                ],
+            },
+            fleet={"count": 1},
+            settings={"transit_speed_mps": 15, "speed_mps": 5},
+        )
+        receipt = compiled(value)
+        self.assertEqual(receipt["plan"]["search"]["look_for"], value["subject"]["look_for"])
+        self.assertEqual(receipt["tasking"]["subject"], value["subject"])
+        self.assertEqual(receipt["tasking"]["settings"]["transit_speed_mps"], 15)
+        self.assertEqual(receipt["plan"]["search"]["speed_mps"], 5)
+        self.assertEqual(receipt["coverage"]["survey_percent"], 100)
+
     def test_requested_4x_reaches_the_checked_observation_policy(self):
         receipt = compiled(
             task(

@@ -5,6 +5,7 @@ import json
 import math
 
 from jsonschema import Draft202012Validator
+from jsonschema.exceptions import best_match
 from shapely import LineString, Point, Polygon, union_all
 
 from mission_planner.gcs.allocation import (
@@ -226,12 +227,12 @@ def require(condition, message, **detail):
 
 def validate_tasking(tasking, landmarks, operator_points):
     """The tasking with defaults filled, or a structured rejection naming the offending field."""
-    error = next(iter(VALIDATOR.iter_errors(tasking)), None)
+    error = best_match(VALIDATOR.iter_errors(tasking))
     if error is not None:
-        location = ".".join(str(part) for part in error.absolute_path) or "tasking"
+        location = ".".join(["tasking", *(str(part) for part in error.absolute_path)])
         raise PlanRejected(
             "schema",
-            f"tasking.{location}: {error.message}",
+            f"{location}: {error.message}",
             detail={"path": [str(part) for part in error.absolute_path]},
         )
     json.dumps(tasking, allow_nan=False)

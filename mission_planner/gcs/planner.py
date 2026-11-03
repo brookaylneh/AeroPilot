@@ -9,7 +9,7 @@ from jsonschema import Draft202012Validator
 from pymavlink.dialects.v20 import ardupilotmega as MAV
 from shapely import Polygon, union_all
 
-from mission_planner.agents.review import check_look_for
+from mission_planner.agents.review import ATTRIBUTE_ID_PATTERN, check_look_for
 from mission_planner.gcs.battery import (
     CUTOFF_PERCENT,
     LOW_VOLTAGE_V,
@@ -83,7 +83,14 @@ SEARCH_SCHEMA = object_schema(
                     "maxItems": 8,
                     "items": object_schema(
                         {
-                            "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,31}$"},
+                            "id": {
+                                "type": "string",
+                                "pattern": ATTRIBUTE_ID_PATTERN,
+                                "description": (
+                                    "Unique attribute id: 1–32 lowercase letters, digits, "
+                                    "underscores or hyphens, starting with a letter; e.g. age-build."
+                                ),
+                            },
                             "text": {"type": "string", "minLength": 1, "maxLength": 120},
                         }
                     ),

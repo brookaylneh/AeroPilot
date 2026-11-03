@@ -259,6 +259,8 @@ export function generateBrief(
   const clothing = [p.clothing.upper, p.clothing.lower, p.clothing.footwear, ...p.clothing.accessories].join(
     '; ',
   );
+  const travel =
+    'Travel to the search area at the maximum permitted speed (15 m/s), then slow to 5 m/s for searching.';
   const brief = [
     `Incident summary\n${p.fullName}, ${category}, has been missing for about ${p.hoursMissing} hours. ${p.reportingParty} reported the absence at ${localTime(5 / 60)} after ${p.activity} with ${p.companions}. The party was expected to return together; ${area ? 'a later witness report is described below, but identity has not been confirmed' : 'no subsequent contact has been reported'}.`,
     `Subject description\n${p.fullName} is ${p.ageYears} years old, ${p.sex}, approximately ${p.heightCm} cm tall, with a ${p.build} build. ${p.distinguishingFeatures}`,
@@ -279,8 +281,8 @@ export function generateBrief(
     `Medical and behaviour\n${p.medicalNotes} ${p.experience}`,
     `Weather\n${weather}`,
     area
-      ? `Tasking\nUse ${difficulty === 'easy' ? 'one drone' : 'two drones'} from the launch port in front of Incident Command to search the reported area. ${difficulty === 'medium' ? 'Divide the area between the two aircraft. ' : ''}Keep the main camera at 1×. Review detections using the separate 4× evidence camera and present supported sightings with an observable landmark and approach information. The search goal is within ${difficulty === 'easy' ? 'three' : 'five'} minutes of arrival; this is a target, not a flight or tracking deadline. If the area is checked without a supported sighting, report that result and propose the next search. Coordinate ground assistance through Mission Control.`
-      : 'Tasking\nLocate the subject using the drone fleet operating from the launch port in front of Incident Command. Search from the reported PLS and report confirmed sightings to the ground team with an observable landmark and approach information. Coordinate ground assistance through Mission Control.',
+      ? `Tasking\nUse ${difficulty === 'easy' ? 'one drone' : 'two drones'} from the launch port in front of Incident Command to search the reported area. ${difficulty === 'medium' ? 'Divide the area between the two aircraft. ' : ''}${travel} If the area is checked without a supported sighting, report that result and propose the next search. Coordinate ground assistance through Mission Control.`
+      : `Tasking\nLocate the subject using the drone fleet operating from the launch port in front of Incident Command. ${travel} Search from the reported PLS and report confirmed sightings to the ground team with an observable landmark and approach information. Coordinate ground assistance through Mission Control.`,
   ].join('\n\n');
   return briefingSchema.parse({ brief, portrait: '' });
 }
