@@ -33,6 +33,7 @@
 
 namespace
 {
+constexpr double StartBehindPortCm = 4200, StartHeightCm = 700, StartPitch = -10;
 TSharedPtr<FJsonObject> Parse(const FString &Text)
 {
     TSharedPtr<FJsonObject> Object;
@@ -44,6 +45,13 @@ FString Stringify(const TSharedRef<FJsonObject> &Object)
     FString Text;
     FJsonSerializer::Serialize(Object, TJsonWriterFactory<>::Create(&Text));
     return Text;
+}
+AActor *DronePort(UWorld *World)
+{
+    for (TActorIterator<AActor> It(World); It; ++It)
+        if (It->ActorHasTag(TEXT("drone.port")))
+            return *It;
+    return nullptr;
 }
 bool Fields(const TSharedPtr<FJsonObject> &Object, std::initializer_list<const TCHAR *> Names)
 {
@@ -453,12 +461,20 @@ bool AScenarioSession::SetCamera(const FString &View, FString &Error)
         return false;
     }
     StopNavigation();
+    AActor *Port = DronePort(GetWorld());
+    if (!Port && (View == TEXT("start") || View == TEXT("port")))
+    {
+        Error = TEXT("Drone port is unavailable in this build");
+        return false;
+    }
     if (View == TEXT("start"))
     {
         NavigationMode = 0;
         bNavigationBoost = false;
-        const FVector Entry = Region->bUsePreviewCamera ? Region->PreviewCamera.GetLocation()
-                                                        : (Region->Min + Region->Max) * .5;
+        // The incident-command van stands south of the port; this looks north past both into the world.
+        FVector PortCenter, PortExtent;
+        Port->GetActorBounds(false, PortCenter, PortExtent);
+        const FVector Entry = PortCenter - FVector(StartBehindPortCm, 0, 0);
         FHitResult Ground;
         FCollisionQueryParams Query;
         if (!GetWorld()->LineTraceSingleByChannel(Ground, FVector(Entry.X, Entry.Y, Region->Max.Z),
@@ -468,8 +484,8 @@ bool AScenarioSession::SetCamera(const FString &View, FString &Error)
             Error = TEXT("The starting camera has no terrain beneath it");
             return false;
         }
-        const double Yaw = (Region->PreviewTargetCm - Entry).Rotation().Yaw;
-        Camera->SetActorLocationAndRotation(Ground.ImpactPoint + FVector(0, 0, ScenarioNavigation::EyeHeightCm), FRotator(0, Yaw, 0));
+        Camera->SetActorLocationAndRotation(Ground.ImpactPoint + FVector(0, 0, StartHeightCm),
+                                            FRotator(StartPitch, 0, 0));
         DesiredFieldOfView = ScenarioNavigation::DefaultFov;
         Camera->GetCameraComponent()->SetFieldOfView(DesiredFieldOfView);
         if (auto *PC = UGameplayStatics::GetPlayerController(this, 0))
@@ -479,7 +495,10 @@ bool AScenarioSession::SetCamera(const FString &View, FString &Error)
         }
         bShowMarker = false;
         UpdateMarker();
+        Manager->Person->SetActorHiddenInGame(!Manager->bPlaced);
         EnterFreeCamera();
+        // Walking height would otherwise pull the raised start down to eye level.
+        bManualHeight = true;
         return true;
     }
     if (View == TEXT("explore"))
@@ -489,18 +508,6 @@ bool AScenarioSession::SetCamera(const FString &View, FString &Error)
     }
     if (View == TEXT("port"))
     {
-        AActor *Port = nullptr;
-        for (TActorIterator<AActor> It(GetWorld()); It; ++It)
-            if (It->ActorHasTag(TEXT("drone.port")))
-            {
-                Port = *It;
-                break;
-            }
-        if (!Port)
-        {
-            Error = TEXT("Drone port is unavailable in this build");
-            return false;
-        }
         CameraTarget = Port->GetActorLocation() + FVector(0, 0, 20);
         CameraDistance = 2600;
         CameraPitch = 40;
