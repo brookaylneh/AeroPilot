@@ -338,9 +338,7 @@ export default function UnrealApp({
             <div className="character-caption">
               <span>Live character</span>
               <h2>{profile.fullName}</h2>
-              <p>
-                {profile.ageYears} yrs · {person?.description}
-              </p>
+              <p>{profile.ageYears} yrs</p>
             </div>
           )}
           {stage === 'placement' && (

@@ -173,14 +173,16 @@
   flex-direction: column;
   gap: 10px;
 }
-.age-tabs {
+.age-tabs,
+.briefing-difficulties {
   display: flex;
   gap: 2px;
   padding: 3px;
   border-radius: 10px;
   background: var(--tile);
 }
-.age-tabs button {
+.age-tabs button,
+.briefing-difficulties button {
   flex: 1;
   height: 28px;
   border: 0;
@@ -191,7 +193,8 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
-.creator-app .age-tabs [aria-selected='true'] {
+.creator-app .age-tabs [aria-selected='true'],
+.creator-app .briefing-difficulties [aria-selected='true'] {
   color: #eef5fb;
   background: #ffffff1a;
 }
@@ -317,9 +320,7 @@
   flex: none;
   justify-content: space-between;
   margin-top: 4px;
-  box-shadow:
-    0 -12px 16px #1c1d1b,
-    0 16px 0 #1c1d1b;
+  box-shadow: 0 -12px 16px #1c1d1b;
 }
 .creator-back {
   display: flex;
@@ -555,44 +556,6 @@
   z-index: 0;
   opacity: 0.6;
 }
-.briefing-difficulties {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-}
-.briefing-difficulties button {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  padding: 10px 12px;
-  border: 1px solid var(--glass-line);
-  border-radius: 12px;
-  background: var(--tile);
-  color: var(--muted);
-  text-align: left;
-}
-.creator-app .briefing-difficulties button:hover:not(:disabled) {
-  background: #ffffff14;
-}
-.creator-app .briefing-difficulties button[aria-selected='true'] {
-  border-color: #ffffff73;
-  background: #ffffff14;
-  color: var(--ink);
-  box-shadow: inset 0 0 0 1px #ffffff26;
-}
-.briefing-difficulties button:disabled {
-  cursor: wait;
-}
-.briefing-difficulties strong {
-  color: var(--ink);
-  font-size: 13px;
-  font-weight: 600;
-}
-.briefing-difficulties span {
-  font: 500 9px var(--gcs-mono);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
 #difficulty-report {
   display: flex;
   flex-direction: column;
@@ -602,6 +565,14 @@
   color: var(--muted);
   font-size: 12px;
   line-height: 1.5;
+}
+.briefing-goal strong {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--gcs-muted);
+  font: 600 9px var(--gcs-mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 .briefing-title {
   display: flex;

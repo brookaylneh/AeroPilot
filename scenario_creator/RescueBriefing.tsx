@@ -25,6 +25,7 @@ export default function RescueBriefing({
   const [editing, setEditing] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
+  const selected = difficulties.find((level) => level.id === difficulty)!;
   function copy() {
     // The installed HTTP origin cannot use the secure-context Clipboard API.
     const field = document.createElement('textarea');
@@ -73,13 +74,15 @@ export default function RescueBriefing({
               document.getElementById(`difficulty-${difficulties[next].id}`)!.focus();
             }}
           >
-            <strong>{level.label}</strong>
-            <span>{level.detail}</span>
+            {level.label}
           </button>
         ))}
       </div>
       <div id="difficulty-report" role="tabpanel" aria-labelledby={`difficulty-${difficulty}`}>
-        <p className="briefing-goal">{difficulties.find((level) => level.id === difficulty)!.goal}</p>
+        <p className="briefing-goal">
+          <strong>{selected.detail}</strong>
+          {selected.goal}
+        </p>
         <header className="briefing-title">
           <ClipboardList size={20} />
           <div>
