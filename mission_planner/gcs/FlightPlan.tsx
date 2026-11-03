@@ -456,8 +456,9 @@ export default function FlightPlan({
             {formatValue(receipt.plan.search.max_lock_seconds, 's')}.
           </p>
           <p>
-            Pause on the highest-confidence stable track. Glimmer reviews its original 4K frame and releases
-            only on a clear negative. Possible matches and uncertainty go to Wonder.
+            Start with the first stable candidate. Glimmer reviews a separate 4× 4K photograph per object;
+            verified candidates take priority and clear negatives release that object. Possible matches and
+            uncertainty go to Wonder.
           </p>
         </div>
       )}

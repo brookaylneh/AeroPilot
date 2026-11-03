@@ -463,6 +463,46 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         self.detect.assert_not_called()
         self.glimmer.assert_not_called()
 
+    async def test_transit_prepares_observed_camera_without_capture_or_inference(self):
+        survey = self.receipt["plan"]["drones"][0]["steps"][0]
+        self.receipt["plan"]["drones"][0]["steps"] = [
+            {"kind": "fly", "north_m": 0, "east_m": 0, "height_m": 35, "speed_mps": 15},
+            survey,
+        ]
+        self.receipt["missions"]["Drone1"] = {
+            "step_ranges": [
+                {"first_seq": first, "last_seq": last, "duration_s": 20}
+                for first, last in ((1, 2), (3, 4))
+            ],
+            "items": [
+                mission_item({"north_m": north, "east_m": 0}, 35, 16)
+                for north in (-200, -160, 0, 40, 80)
+            ],
+        }
+        self.states["Drone1"].update(north_m=-160, mission_current=1)
+        await self.inspections.start_search(self.receipt)
+        await self.until(lambda: self.capture.view.await_count > 0)
+        row = next(iter(self.inspections.rows.values()))
+        self.assertEqual((row["rescue"]["phase"], row["frames"]), ("waiting", 0))
+        target, zoom = self.capture.view.await_args.args
+        self.assertEqual(zoom, 1)
+        self.assertEqual(target, {"x": 20, "y": 0, "z": terrain_height(20, 0)})
+        self.capture.capture.assert_not_awaited()
+        self.vision.assert_not_called()
+        self.detect.assert_not_called()
+        self.glimmer.assert_not_called()
+        self.fleet.execute.assert_not_awaited()
+
+        def sam(*args):
+            self.states["Drone1"]["mission_current"] = 5
+            return {"width": 3840, "height": 2160, "detections": []}
+
+        self.detect.side_effect = sam
+        self.states["Drone1"].update(north_m=0, mission_current=3)
+        await asyncio.wait_for(self.inspections.tasks["Drone1"], 5)
+        self.assertEqual((row["status"], row["frames"]), ("complete", 1))
+        self.fleet.execute.assert_not_awaited()
+
     async def test_observed_follow_reviews_and_restores_its_waypoint_route(self):
         self.receipt["plan"]["drones"][0]["steps"] = [
             {
@@ -748,7 +788,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
             "mission_planner.gcs.inspection.point_in_polygon", wraps=point_in_polygon
         ) as inside:
             await self.inspections.start_search(self.receipt)
-            await self.until(lambda: inside.called)
+            await self.until(lambda: inside.called and self.capture.view.await_count > 0)
             self.capture.capture.assert_not_awaited()
             self.detect.assert_not_called()
             self.states["Drone1"]["north_m"] = -50
@@ -856,9 +896,10 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
             self.fleet.execute.assert_not_awaited()
             row = next(iter(self.inspections.rows.values()))
             self.assertEqual(row["rescue"]["phase"], "waiting")
+            views_before = self.capture.view.await_count
             with self.assertRaisesRegex(AssertionError, "observation step owns its camera"):
                 await self.inspections.set_camera_view("Drone1", 30, 0, 0)
-            self.capture.view.assert_not_awaited()
+            self.assertEqual(self.capture.view.await_count, views_before)
             self.states["Drone1"]["north_m"] = 0
             await self.until(lambda: self.fleet.tracking_target.await_count >= 2)
             self.review_ready.set()

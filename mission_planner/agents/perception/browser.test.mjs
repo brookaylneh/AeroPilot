@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { runInNewContext } from 'node:vm';
 import { observeScenario, assertScenarioProtocol } from './browser.mjs';
+import { navigationProtocolVersion } from '../../../scenario_creator/PixelStreamingTransport.ts';
 
 test('scenario observer ignores multiplexed controls and fails on malformed Response payloads', async () => {
   class Peer extends EventTarget {
@@ -23,11 +24,19 @@ test('scenario observer ignores multiplexed controls and fails on malformed Resp
     channel.dispatchEvent(new MessageEvent('message', { data: Uint8Array.from(bytes).buffer }));
   };
   send(255, 'protocol control, not JSON');
-  send(1, JSON.stringify({ protocolVersion: 1, requestId: 'test-request', ok: true, state: { value: 1 } }));
   send(
     1,
     JSON.stringify({
-      protocolVersion: 1,
+      protocolVersion: navigationProtocolVersion,
+      requestId: 'test-request',
+      ok: true,
+      state: { value: 1 },
+    }),
+  );
+  send(
+    1,
+    JSON.stringify({
+      protocolVersion: navigationProtocolVersion,
       type: 'navigation-state',
       camera: { position: { x: 1, y: 2, z: 3 } },
     }),

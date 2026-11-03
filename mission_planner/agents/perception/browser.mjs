@@ -67,7 +67,7 @@ export async function observeScenario(page, { forceRelay = false } = {}) {
               window.snrLatencyReports.push({ at: performance.now(), ...value });
               return;
             }
-            if (value.protocolVersion !== 1) throw new Error('Unsupported scenario protocol');
+            if (value.protocolVersion !== 3) throw new Error('Unsupported scenario protocol');
             if (value.type === 'navigation-state') {
               if (!value.camera?.position) throw new Error('Missing navigation camera');
               window.snrCameras.push(value.camera);
@@ -127,7 +127,7 @@ export async function sendScenarioCommand(page, command) {
     ({ requestId, command }) => {
       const channels = window.snrChannels.filter((channel) => channel.readyState === 'open');
       if (channels.length !== 1) throw new Error('Expected one bidirectional Unreal data channel');
-      const text = JSON.stringify({ protocolVersion: 1, requestId, command });
+      const text = JSON.stringify({ protocolVersion: 3, requestId, command });
       if (text.length > 65535) throw new Error('UIInteraction exceeds its uint16 length');
       const bytes = new ArrayBuffer(3 + text.length * 2);
       const view = new DataView(bytes);

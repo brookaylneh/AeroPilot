@@ -1106,6 +1106,10 @@ class Inspections:
                     row["rescue"]["phase"] = "waiting"
                     await self._close_vision(name)
                     rejected.clear()
+                    if state["landed_state"] == 2 and sequence is not None:
+                        await self._aim_search(
+                            row, capture, state, receipt, step, step_range, policy
+                        )
                     await asyncio.sleep(CAPTURE_PERIOD_S)
                     continue
                 client = await self._vision(row)

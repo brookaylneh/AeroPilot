@@ -752,7 +752,9 @@ Protocol references: [SITL/multiple vehicles](https://ardupilot.org/dev/docs/usi
 Wonder follows mission progress through `wait_for` and chooses whether and when to
 inspect. A wait ends the model turn and wakes on any selected completed step,
 inspection, landing or deadline. Already-completed steps are rejected. Ordinary
-travel starts no inference. Operator messages interrupt an automatic review;
+travel starts no inference. While airborne in transit, the camera smoothly aims toward
+the next observed route so its initial slew does not wait for the search pass.
+Operator messages interrupt an automatic review;
 overrides and plan replacement invalidate old inspection authority.
 
 `start_inspection(drone_id, prompt, threshold, duration_s)` samples the actual forward

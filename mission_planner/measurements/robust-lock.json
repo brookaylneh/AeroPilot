@@ -1143,7 +1143,7 @@
     "sam_source_commit": "f1647e8d0c1d280991f4d1b7d974c2704537fe66",
     "sam_runtime_image": "sha256:1a6d5e2b8fc66e06575b247e0db719a990a48c736796d6507d52b10ecf8b3f23",
     "unreal_runtime_image": "sha256:d737ab3d1825f65286633211fbadc3c435d265b19d5d5ba3d39228544d310f78",
-    "runner_usage": "No new service, model process, GPU benchmark or paid external model request. CPU-only saved-data analyses and request serialization, passive nvidia-smi and native JSON reads.",
+    "runner_usage": "CPU-only saved-data replays and request serialization, passive GPU/telemetry reads, and four saved-photo Glimmer requests to the existing deployed server. No Wonder request, live flight, new model process, GPU benchmark or additional model deployment.",
     "sources": [
       {
         "url": "https://raw.githubusercontent.com/facebookresearch/sam3/f1647e8d0c1d280991f4d1b7d974c2704537fe66/sam3/model/sam3_video_inference.py",
@@ -1200,6 +1200,27 @@
     "tracker-final-replay.json": "acfc75ceb2f4344d10588954ca9a041b79699a1cee7fddfd1a0225f43ede8ca6",
     "process-replay.json": "ebf48f93ac74f9439e3220e83b2978062e1d21268e8c733c026fddc6c1b17256",
     "glimmer-concurrency.json": "ed5744dbbe85ccfb63fdc2976f1ed144cd568c2e203f6bb47b6cc6c8e480f50c"
+  },
+  "preparation_validation": {
+    "scope": "Camera-only aiming toward the next observed route during airborne transit; capture and model inference remain gated to the observed step and polygon. Browser observer now uses the production scenario protocol, and the flight-plan explanation matches candidate priority and separate 4x evidence.",
+    "python_tests": 763,
+    "python_elapsed_s": 353.099,
+    "node_tests": 219,
+    "transit_regressions": 2,
+    "typecheck": "passed",
+    "ruff_check": "passed",
+    "ruff_format": "passed",
+    "prettier": "passed",
+    "browser_build": "passed",
+    "logs_sha256": {
+      "python-suite-final-2.log": "39544e39ec473c66cb9700765ffae1b9ef6b24e19900ee2cc1e22e43eb75e59c",
+      "node-tests-final-2.log": "b765a05a7e2b64ec6c9e31774c1c8b13d77e876f4c15cfc79891c52a8638b9aa",
+      "transit-camera-regressions.log": "4963125c4709b10df69e1b1fa88ba2a63293de92a11e4a93b7aa932db3010c1a"
+    },
+    "completed_utc": "2026-11-03T18:23:27.842087+00:00",
+    "limitations": [
+      "Camera preparation is covered by mocked mission/camera regressions; live-flight acquisition and framing remain for the operator test."
+    ]
   },
   "validation": {
     "python_tests": 762,
