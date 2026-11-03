@@ -61,7 +61,8 @@ completed plan step (drone, version and zero-based index), terminal inspection I
 or landed/disarmed drone. Already-completed step conditions fail precisely; the next step
 wait must select remaining work. Empty conditions schedule a timer only. The service
 resumes the same conversation with fresh telemetry and, for inspection results,
-the original full 4K image, source hash, boxes and track IDs. Results persist when another drone's
+the saved 4× 4K photograph, its hash and capture age, and separate current main-camera
+boxes and track IDs. Results persist when another drone's
 review is underway. New operator messages cancel waits and interrupt automatic reviews; successful plan uploads
 and overrides also stop old inspections. A response produced against a replaced
 flight plan cannot dispatch commands. Relevant aircraft/inspection state changes and
@@ -119,8 +120,9 @@ planned view. Healthy candidate tracking centres the subject automatically;
 manual view requests fail before changing its camera or tracking state.
 For an observed plan, `plan_task.settings.zoom` selects the magnification; null defaults
 to 1×. The checked plan records it and validates survey overlap at that magnification.
-`get_candidate(inspection_id)` supplies and retains the current original 4K frame
-for review or publication without interrupting the camera controller.
+`get_candidate(inspection_id)` supplies current main-camera detections and the
+saved 4× photograph for each photographed object. The photograph retains its
+original capture time; querying tracking never acquires another photograph.
 
 `follow_candidate(inspection_id, frame_id, candidate_index, duration_s)` sets a hold
 deadline on an existing automatic follow. It does not acquire a one-shot inspection
@@ -130,11 +132,16 @@ the zero-based detection index from a reviewed hold frame. The same SAM ID
 must be observed again in a fresh frame before following resumes. Re-lock is explicit;
 no predicted position, old image or camera adjustment restores flight authority.
 
-`review.py` sends Glimmer exactly one original 3840×2160 JPEG, without crops,
-resizing or overlays, under `forward-analyst-v3-full-frame`. The selected box and
-track ID appear in the prompt. Wonder receives those same bytes. Capture, detector,
-review and evidence hashes bind decisions to their source image. Model preprocessing
-is separate from this transport contract. See [model services](services/README.md)
+`review.py` sends Glimmer exactly one original 3840×2160 JPEG from the separate
+4× evidence camera, without crops, resizing or overlays, under
+`zoom-analyst-v4-single-photo`. Wonder receives those same bytes. SAM runs only on
+the main camera, at 1× unless the operator explicitly changes its zoom. There is
+one photograph per SAM session/track, captured on acquisition and reused during
+tracking. Its timestamp and source-detection identity are explicit. An absent or
+poorly framed subject in the later zoom view requires recheck; it does not negate
+the earlier detection. Main-camera masks and boxes never apply to the photograph.
+Capture, review and evidence hashes bind decisions to the saved image. Model
+preprocessing is separate from this transport contract. See [model services](services/README.md)
 for runtime, dependencies, benchmarks and their limits.
 
 `publish_evidence(inspection_id, frame_id, candidate_index, assessment, headline, summary)`
@@ -261,7 +268,7 @@ and preserves review evidence. A clear negative permits release to the saved unf
 route; positive and uncertain results wake Wonder. Unknown appearance remains
 `cannot_tell`, and `recheck` with `action: none` remains valid. No model result establishes
 identity or calibrated search probability. Earlier template measurements do not transfer
-to the full-frame review contract.
+to the zoom-photograph review contract.
 
 Fresh model context includes deterministic landmark descriptions for observed points
 and the latest explicit operator instruction, including across automatic wakes. Wonder

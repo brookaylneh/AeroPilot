@@ -6,6 +6,7 @@ import json
 import unittest
 
 from mission_planner.gcs import geodesy
+from world.cosys.evidence import CAMERA_ID, FOV_DEG
 
 configure = importlib.import_module("world.cosys.configure-drones")
 
@@ -67,6 +68,19 @@ class SettingsTests(unittest.TestCase):
             nadir = vehicle["Cameras"]["front_center"]
             self.assertEqual(nadir["Pitch"], -90)
             self.assertEqual(nadir["CaptureSettings"][1]["Width"], 3840)
+
+    def test_four_independent_evidence_cameras_are_stabilized_and_render_only_on_request(self):
+        settings = configure.generate(self.world, 41451, 0)
+        for vehicle in settings["Vehicles"].values():
+            camera = vehicle["Cameras"][CAMERA_ID]
+            self.assertEqual(
+                camera["Gimbal"], {"Stabilization": 1, "Pitch": 0, "Yaw": 0, "Roll": 0}
+            )
+            scene = next(item for item in camera["CaptureSettings"] if item["ImageType"] == 0)
+            self.assertEqual((scene["Width"], scene["Height"]), (3840, 2160))
+            self.assertEqual(scene["FOV_Degrees"], FOV_DEG)
+            self.assertFalse(scene["ForceUpdate"])
+            self.assertEqual(scene["MotionBlurAmount"], 0)
 
     def test_rejects_wrong_frame_or_player_start(self):
         changes = [

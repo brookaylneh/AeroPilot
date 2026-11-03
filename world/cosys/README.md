@@ -147,8 +147,28 @@ camera. `CameraDefaults` configures request-driven 3840×2160 RGB with the same
 fixed exposure, white balance and Lumen settings. No named `fpv` entry is created:
 Cosys would replace the stock camera and its mount. The separately configured
 3840×2160 nadir camera and calibration capture validation remain unchanged. The original
-forward JPEG is retained for Glimmer and Wonder; the local detector alone resizes its
+forward JPEG is retained with its SAM box and mask; the local detector resizes its
 inference copy to 1920×1080. Live video uses the existing Pixel Streaming connection.
+
+Each drone also has an independent `evidence_zoom` camera: 3840×2160, fixed 4×
+optics (28.07249° horizontal FOV relative to nominal 90°), manual exposure, zero
+motion blur and world stabilization. `ForceUpdate=false` keeps its rendering on
+demand. A newly confirmed SAM object triggers one photograph; the key is the SAM
+session UUID and track ID, so subsequent tracking frames reuse that photograph.
+The evidence camera never submits an image to SAM and never changes `fpv`.
+
+`evidence.py` aims from the main frame's box-centre ray and recorded camera
+orientation, checks fresh source data and gimbal readback, then acquires one RGB
+frame and encodes JPEG quality 100 with no chroma subsampling. Capture failure is
+visible and is not retried. Glimmer and Wonder receive that same saved photograph.
+Source and photo IDs, timestamps, poses and hashes remain distinct; a SAM mask
+cannot be painted onto this second camera's image.
+
+The pinned [PIPCamera.cpp](https://github.com/Cosys-Lab/Cosys-AirSim/blob/5.8-v3.5.0/Unreal/Plugins/AirSim/Source/PIPCamera.cpp#L469)
+stores `simSetCameraPose` orientation as a world target when stabilization is 1;
+its Tick applies that target in world space. This adapter uses that verified
+behavior and checks the actual capture pose. Hardware requires corresponding
+zoom optics, camera calibration and a gimbal actuator adapter.
 
 Forward capture records the image-owned pose and timestamp, measured horizontal
 field of view, vehicle origin and simulator/UTC brackets. Wrong camera identity,

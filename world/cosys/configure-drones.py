@@ -7,6 +7,7 @@ from pathlib import Path
 
 from mission_planner.environment import load_env
 from mission_planner.gcs import geodesy
+from world.cosys.evidence import CAMERA_ID, FOV_DEG, MOUNT_NED_M
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -127,7 +128,25 @@ def generate(world, rpc_port, instance_base):
                             **exposure,
                         ),
                     ],
-                }
+                },
+                CAMERA_ID: {
+                    **dict(zip(("X", "Y", "Z"), MOUNT_NED_M)),
+                    "Pitch": 0,
+                    "Yaw": 0,
+                    "Roll": 0,
+                    "Gimbal": {"Stabilization": 1, "Pitch": 0, "Yaw": 0, "Roll": 0},
+                    "CaptureSettings": [
+                        dict(ImageType=-1, FOV_Degrees=FOV_DEG, **exposure),
+                        dict(
+                            ImageType=0,
+                            Width=3840,
+                            Height=2160,
+                            FOV_Degrees=FOV_DEG,
+                            ForceUpdate=False,
+                            **exposure,
+                        ),
+                    ],
+                },
             },
         }
         assert (

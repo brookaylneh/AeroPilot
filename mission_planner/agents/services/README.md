@@ -105,9 +105,11 @@ Clients must close sessions explicitly. Health reports the model identity,
 compilation counters, retained-state counts, GPU/CPU memory and readiness timing.
 
 The mission acquires a candidate after two consecutive valid observations of the
-same ID, preserves tracking state through review and hold, and sends Glimmer the
-unaltered detection JPEG. Masks are separate immutable registered evidence assets,
-bound to that frame and ID by reference and hash. Discard immediately clears the
+same ID and preserves tracking state through review and hold. A separate 4× camera
+takes one original 4K photograph per SAM session/track, on demand; that camera has
+no SAM pipeline. Glimmer and Wonder receive the same saved photograph. Main-camera
+masks are separate immutable assets bound to their source frame and ID; they do not
+overlay the zoom photograph. Discard immediately clears the
 lock/guidance, excludes that ID for the observation session and restores the
 verified remaining route. Recheck/escalate are sent to Wonder. Only fresh observed
 positions can authorize the existing checked flight controller.

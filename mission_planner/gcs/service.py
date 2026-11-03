@@ -1757,8 +1757,9 @@ class Mission:
                             {
                                 "type": "input_text",
                                 "text": "Sensor evidence; images follow the listed order. "
-                                "Each image is the original full 4K camera frame. "
-                                "Detector boxes use its original pixels. "
+                                "Each image is the object's single original 4x 4K photograph. "
+                                "Its timestamp is recorded; it is not a current tracking frame. "
+                                "SAM boxes and masks belong to the separate main camera. "
                                 + encode(
                                     {
                                         "metadata": evidence["metadata"],

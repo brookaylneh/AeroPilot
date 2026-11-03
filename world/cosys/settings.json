@@ -130,6 +130,53 @@
               "LumenReflectionEnable": true
             }
           ]
+        },
+        "evidence_zoom": {
+          "X": 0.6,
+          "Y": 0,
+          "Z": 0.05,
+          "Pitch": 0,
+          "Yaw": 0,
+          "Roll": 0,
+          "Gimbal": {
+            "Stabilization": 1,
+            "Pitch": 0,
+            "Yaw": 0,
+            "Roll": 0
+          },
+          "CaptureSettings": [
+            {
+              "ImageType": -1,
+              "FOV_Degrees": 28.072486935852957,
+              "AutoExposureMethod": 2,
+              "AutoExposureApplyPhysicalCameraExposure": false,
+              "AutoExposureCompensation": -13,
+              "WhiteBalanceTemperature": 6500,
+              "WhiteBalanceTint": 0,
+              "MotionBlurAmount": 0,
+              "MotionBlurMax": 0,
+              "BloomIntensity": 0,
+              "LumenGIEnable": true,
+              "LumenReflectionEnable": true
+            },
+            {
+              "ImageType": 0,
+              "Width": 3840,
+              "Height": 2160,
+              "FOV_Degrees": 28.072486935852957,
+              "ForceUpdate": false,
+              "AutoExposureMethod": 2,
+              "AutoExposureApplyPhysicalCameraExposure": false,
+              "AutoExposureCompensation": -13,
+              "WhiteBalanceTemperature": 6500,
+              "WhiteBalanceTint": 0,
+              "MotionBlurAmount": 0,
+              "MotionBlurMax": 0,
+              "BloomIntensity": 0,
+              "LumenGIEnable": true,
+              "LumenReflectionEnable": true
+            }
+          ]
         }
       }
     },
@@ -195,6 +242,53 @@
               "Width": 3840,
               "Height": 2160,
               "FOV_Degrees": 70,
+              "ForceUpdate": false,
+              "AutoExposureMethod": 2,
+              "AutoExposureApplyPhysicalCameraExposure": false,
+              "AutoExposureCompensation": -13,
+              "WhiteBalanceTemperature": 6500,
+              "WhiteBalanceTint": 0,
+              "MotionBlurAmount": 0,
+              "MotionBlurMax": 0,
+              "BloomIntensity": 0,
+              "LumenGIEnable": true,
+              "LumenReflectionEnable": true
+            }
+          ]
+        },
+        "evidence_zoom": {
+          "X": 0.6,
+          "Y": 0,
+          "Z": 0.05,
+          "Pitch": 0,
+          "Yaw": 0,
+          "Roll": 0,
+          "Gimbal": {
+            "Stabilization": 1,
+            "Pitch": 0,
+            "Yaw": 0,
+            "Roll": 0
+          },
+          "CaptureSettings": [
+            {
+              "ImageType": -1,
+              "FOV_Degrees": 28.072486935852957,
+              "AutoExposureMethod": 2,
+              "AutoExposureApplyPhysicalCameraExposure": false,
+              "AutoExposureCompensation": -13,
+              "WhiteBalanceTemperature": 6500,
+              "WhiteBalanceTint": 0,
+              "MotionBlurAmount": 0,
+              "MotionBlurMax": 0,
+              "BloomIntensity": 0,
+              "LumenGIEnable": true,
+              "LumenReflectionEnable": true
+            },
+            {
+              "ImageType": 0,
+              "Width": 3840,
+              "Height": 2160,
+              "FOV_Degrees": 28.072486935852957,
               "ForceUpdate": false,
               "AutoExposureMethod": 2,
               "AutoExposureApplyPhysicalCameraExposure": false,
@@ -286,6 +380,53 @@
               "LumenReflectionEnable": true
             }
           ]
+        },
+        "evidence_zoom": {
+          "X": 0.6,
+          "Y": 0,
+          "Z": 0.05,
+          "Pitch": 0,
+          "Yaw": 0,
+          "Roll": 0,
+          "Gimbal": {
+            "Stabilization": 1,
+            "Pitch": 0,
+            "Yaw": 0,
+            "Roll": 0
+          },
+          "CaptureSettings": [
+            {
+              "ImageType": -1,
+              "FOV_Degrees": 28.072486935852957,
+              "AutoExposureMethod": 2,
+              "AutoExposureApplyPhysicalCameraExposure": false,
+              "AutoExposureCompensation": -13,
+              "WhiteBalanceTemperature": 6500,
+              "WhiteBalanceTint": 0,
+              "MotionBlurAmount": 0,
+              "MotionBlurMax": 0,
+              "BloomIntensity": 0,
+              "LumenGIEnable": true,
+              "LumenReflectionEnable": true
+            },
+            {
+              "ImageType": 0,
+              "Width": 3840,
+              "Height": 2160,
+              "FOV_Degrees": 28.072486935852957,
+              "ForceUpdate": false,
+              "AutoExposureMethod": 2,
+              "AutoExposureApplyPhysicalCameraExposure": false,
+              "AutoExposureCompensation": -13,
+              "WhiteBalanceTemperature": 6500,
+              "WhiteBalanceTint": 0,
+              "MotionBlurAmount": 0,
+              "MotionBlurMax": 0,
+              "BloomIntensity": 0,
+              "LumenGIEnable": true,
+              "LumenReflectionEnable": true
+            }
+          ]
         }
       }
     },
@@ -351,6 +492,53 @@
               "Width": 3840,
               "Height": 2160,
               "FOV_Degrees": 70,
+              "ForceUpdate": false,
+              "AutoExposureMethod": 2,
+              "AutoExposureApplyPhysicalCameraExposure": false,
+              "AutoExposureCompensation": -13,
+              "WhiteBalanceTemperature": 6500,
+              "WhiteBalanceTint": 0,
+              "MotionBlurAmount": 0,
+              "MotionBlurMax": 0,
+              "BloomIntensity": 0,
+              "LumenGIEnable": true,
+              "LumenReflectionEnable": true
+            }
+          ]
+        },
+        "evidence_zoom": {
+          "X": 0.6,
+          "Y": 0,
+          "Z": 0.05,
+          "Pitch": 0,
+          "Yaw": 0,
+          "Roll": 0,
+          "Gimbal": {
+            "Stabilization": 1,
+            "Pitch": 0,
+            "Yaw": 0,
+            "Roll": 0
+          },
+          "CaptureSettings": [
+            {
+              "ImageType": -1,
+              "FOV_Degrees": 28.072486935852957,
+              "AutoExposureMethod": 2,
+              "AutoExposureApplyPhysicalCameraExposure": false,
+              "AutoExposureCompensation": -13,
+              "WhiteBalanceTemperature": 6500,
+              "WhiteBalanceTint": 0,
+              "MotionBlurAmount": 0,
+              "MotionBlurMax": 0,
+              "BloomIntensity": 0,
+              "LumenGIEnable": true,
+              "LumenReflectionEnable": true
+            },
+            {
+              "ImageType": 0,
+              "Width": 3840,
+              "Height": 2160,
+              "FOV_Degrees": 28.072486935852957,
               "ForceUpdate": false,
               "AutoExposureMethod": 2,
               "AutoExposureApplyPhysicalCameraExposure": false,

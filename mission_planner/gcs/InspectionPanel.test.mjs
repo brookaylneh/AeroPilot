@@ -537,6 +537,55 @@ function reviewed(drone, decision) {
   return value;
 }
 
+function withPhotograph(value) {
+  const frame = value.latest;
+  const id = '00000000-0000-4000-8000-000000000091';
+  const photo = {
+    frame_id: id,
+    frame_ref: `/api/evidence/${mission}/${id}-frame.jpg`,
+    sha256: 'c'.repeat(64),
+    camera_id: 'evidence_zoom',
+    width: 3840,
+    height: 2160,
+    zoom: 4,
+    horizontal_fov_deg: 28.0724869,
+    captured_at_ms: 3500,
+    source_frame_id: frame.frame_id,
+    source_track_id: 1,
+    source_captured_at_ms: frame.captured_at_ms,
+    vision_session_id: '00000000-0000-4000-8000-000000000092',
+  };
+  frame.detections[0].photo = photo;
+  value.rescue.reports[0].images.photo = structuredClone(photo);
+  return value;
+}
+
+test('new evidence shows the single 4x photograph without applying the main-camera mask', () => {
+  const value = withPhotograph(reviewed('Drone1', 'escalate'));
+  const finding = eventSchema.parse(event(value));
+  const html = renderToStaticMarkup(createElement(InspectionPanel, { events: [finding], onError() {} }));
+  assert.equal(html.match(/<img[^>]*src="([^"]+)"/)[1], value.latest.detections[0].photo.frame_ref);
+  assert.ok(html.includes('4× evidence camera'));
+  assert.ok(!html.includes(value.latest.detections[0].mask.ref));
+  assert.equal(eventSchema.safeParse(event(value, 'review', 'glimmer')).success, true);
+  value.rescue.reports[0].images.photo.sha256 = 'd'.repeat(64);
+  assert.equal(eventSchema.safeParse(event(value, 'review', 'glimmer')).success, false);
+});
+
+test('zoom evidence rejects another object, camera, stale timestamps or reused source pixels', () => {
+  for (const change of [
+    { source_track_id: 2 },
+    { camera_id: 'fpv' },
+    { zoom: 1 },
+    { captured_at_ms: 2999 },
+    { frame_id: inspection().latest.frame_id },
+  ]) {
+    const value = withPhotograph(reviewed('Drone1', 'escalate'));
+    Object.assign(value.latest.detections[0].photo, change);
+    assert.equal(inspectionSchema.safeParse(value).success, false);
+  }
+});
+
 test('Wonder selects the original frame and factual strength even when Glimmer discarded the candidate', () => {
   const value = reviewed('Drone1', 'discard');
   for (const [assessment, label] of [

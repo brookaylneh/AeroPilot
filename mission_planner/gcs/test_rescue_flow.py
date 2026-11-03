@@ -9,6 +9,7 @@ import tempfile
 import threading
 import time
 import unittest
+import uuid
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
@@ -22,6 +23,7 @@ from mission_planner.gcs import tracking
 from mission_planner.gcs.geodesy import NAMES, ORIGIN, point_in_polygon
 from mission_planner.gcs.inspection import Inspections, close_track
 from mission_planner.gcs.planner import compile_plan, mission_item
+from mission_planner.gcs.test_inspection import photograph, photograph_bytes
 from mission_planner.gcs.test_planner import airborne, search_plan
 from mission_planner.gcs.test_validation import readback
 from world.cosys.landmarks import load
@@ -251,7 +253,9 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         self.tracks = []
 
         def make_track(http, name, target, threshold):
-            track = SimpleNamespace(http=http, timestamp_ns=0, status="new")
+            track = SimpleNamespace(
+                http=http, timestamp_ns=0, status="new", session_id=str(uuid.uuid4())
+            )
 
             def opened():
                 track.status = "open"
@@ -276,6 +280,14 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         self.vision = Mock(side_effect=make_track)
         for name, replacement in (
             ("mission_planner.gcs.inspection.ForwardCapture", Mock(return_value=self.capture)),
+            (
+                "mission_planner.gcs.inspection.EvidenceCapture",
+                lambda *args: SimpleNamespace(
+                    lock=asyncio.Lock(),
+                    capture=AsyncMock(side_effect=photograph),
+                    close=AsyncMock(),
+                ),
+            ),
             ("mission_planner.gcs.inspection.vision_http", Mock(return_value=Mock())),
             ("mission_planner.gcs.inspection.Glimmer", self.glimmer),
             ("mission_planner.gcs.inspection.VisionTrack", self.vision),
@@ -841,10 +853,11 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         name = images["frame_ref"].rsplit("/", 1)[1]
         self.assertIn(name, registry)
         original = (self.directory / "evidence" / name).read_bytes()
-        self.assertEqual(evidence["images"], [original])
+        self.assertEqual(evidence["images"][0], photograph_bytes())
         self.assertEqual(hashlib.sha256(original).hexdigest(), images["sha256"])
+        self.assertNotEqual(hashlib.sha256(original).hexdigest(), images["photo"]["sha256"])
         self.assertEqual(
-            evidence["image_order"], [{"kind": "original 4K frame", "frame_id": images["frame_id"]}]
+            evidence["image_order"], [{"kind": "original 4x camera photograph", **images["photo"]}]
         )
         self.inspections.disregard_and_continue(
             row["rescue"]["review_id"], "Operator clarified clothing", call_id="wonder-release-1"
@@ -923,13 +936,16 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         metadata, jpeg = await self.capture.capture()
         metadata["frame_id"] = "00000000-0000-4000-8000-000000000001"
         metadata["sha256"] = hashlib.sha256(jpeg).hexdigest()
+        metadata["vision_session_id"] = str(uuid.uuid4())
+        self.inspections.directory.mkdir()
+        await self.inspections._save_frame(metadata, jpeg)
         detection = {"track_id": 1, "box_xyxy": [1800, 800, 1920, 1020]}
         row = {
             "id": "cancelled-inspection",
             "drone_id": "Drone1",
             "status": "stopped",
             "prompt": "person",
-            "rescue": {"review_id": "cancelled-review"},
+            "rescue": {"review_id": "cancelled-review", "live_frame": None, "held_frame": None},
             "latest": {"frame_id": metadata["frame_id"], "detections": [dict(detection)]},
         }
         self.inspections.rows[row["id"]] = row
@@ -1683,7 +1699,9 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
             await asyncio.wait_for(entered.wait(), 1)
             row = next(iter(self.inspections.rows.values()))
             seed = row["latest"]["frame_id"]
-            announcement = next(e for e in self.events if "pausing on visual track" in e["text"])
+            announcement = next(
+                e for e in self.events if "acquiring its 4x 4K photograph" in e["text"]
+            )
             self.assertEqual(announcement["result"]["rescue"]["live_frame"]["frame_id"], seed)
             self.assertEqual(announcement["result"]["rescue"]["selected_track_id"], 1)
             await self.until(

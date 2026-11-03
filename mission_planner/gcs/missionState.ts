@@ -148,6 +148,8 @@ export const eventSchema = z
             images.track_id !== frame.detections[candidate_index].track_id ||
             images.mask.sha256 !== frame.detections[candidate_index].mask.sha256 ||
             images.mask.ref !== frame.detections[candidate_index].mask.ref ||
+            images.photo?.frame_id !== frame.detections[candidate_index].photo?.frame_id ||
+            images.photo?.sha256 !== frame.detections[candidate_index].photo?.sha256 ||
             images.box_xyxy.some(
               (value, index) => value !== frame.detections[candidate_index].box_xyxy[index],
             ),

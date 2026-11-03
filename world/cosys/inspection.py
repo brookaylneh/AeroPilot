@@ -18,6 +18,73 @@ from world.cosys import client as sim
 from world.cosys.capture import capture_time, rotation, shadow_floor, truth_sample
 
 
+def capture_frame(rpc, name, camera_id, directory, revision, *, quality):
+    started = time.monotonic()
+    native = sim.native()
+    assert native["mode"] == "mission", "Forward inspection requires running mission physics"
+    assert not rpc.simIsPause(), "Forward inspection requires running physics"
+    origin = next(v["localNedOriginUeCm"] for v in native["vehicles"] if v["id"] == name)
+    fov = rpc.simGetCameraInfo(camera_id, vehicle_name=name).fov
+    assert math.isfinite(fov) and 1 < fov < 179, "Forward camera field of view is invalid"
+    before = truth_sample(rpc, name, origin)
+    responses = rpc.simGetImages(
+        [airsim.ImageRequest(camera_id, airsim.ImageType.Scene, False, False)], vehicle_name=name
+    )
+    after = truth_sample(rpc, name, origin)
+    assert len(responses) == 1, "Forward capture returned an unexpected image count"
+    response = responses[0]
+    assert not response.message, response.message
+    assert response.camera_name == camera_id, "Forward capture returned the wrong camera"
+    assert (response.width, response.height) == (3840, 2160), (
+        "Forward capture requires the installed 3840x2160 camera settings"
+    )
+    assert len(response.image_data_uint8) == response.width * response.height * 3
+    fraction, unix_ns = capture_time(response.time_stamp, before, after)
+    assert 0 <= fraction <= 1, "Forward image timestamp is outside its capture bracket"
+    assert (after["timestampNs"] - before["timestampNs"]) / 1e9 <= 2, (
+        "Forward image capture bracket exceeds two seconds"
+    )
+    info = rpc.simGetCameraInfo(camera_id, vehicle_name=name)
+    assert math.isclose(info.fov, fov, abs_tol=0.01), (
+        "Forward camera field of view changed during capture"
+    )
+    orientation = sim.quat(response.camera_orientation)
+    rotation(orientation)
+    position = sim.xyz(response.camera_position)
+    assert all(np.isfinite(v) for v in position.values())
+    image = Image.frombytes("RGB", (response.width, response.height), response.image_data_uint8)
+    encoded = io.BytesIO()
+    image.save(encoded, format="JPEG", quality=quality, subsampling=0)
+    metadata = {
+        "drone_id": name,
+        "camera_id": camera_id,
+        "width": response.width,
+        "height": response.height,
+        "timestamp_ns": response.time_stamp,
+        "captured_at_ms": unix_ns / 1e6,
+        "camera_pose_local_ned": {"position": position, "orientation": orientation},
+        "camera_position_world_m": sim.to_world(name, position, origin),
+        "local_ned_origin_ue_cm": origin,
+        "horizontal_fov_deg": info.fov,
+        "camera_view_revision": revision,
+        "vehicle_state_before": before,
+        "vehicle_state_after": after,
+        "shadow_floor_luminance_p1": shadow_floor(
+            response.image_data_uint8, response.width, response.height, require_fill=False
+        ),
+        "pixel_max": max(high for _, high in image.getextrema()),
+        "capture_s": time.monotonic() - started,
+    }
+    if metadata["pixel_max"] == 0:
+        path = directory / f"{response.time_stamp}-rejected.png"
+        with path.open("xb") as stream:
+            image.save(stream, format="PNG")
+        with path.with_suffix(".json").open("x") as stream:
+            json.dump(metadata, stream, allow_nan=False)
+        raise AssertionError(f"Forward camera returned an entirely black frame; evidence: {path}")
+    return metadata, encoded.getvalue()
+
+
 def route_look_ahead(points, position, distance_m):
     keys = ("north_m", "east_m")
     assert points and all(math.isfinite(p[k]) for p in [position, *points] for k in keys)
@@ -283,78 +350,13 @@ class ForwardCapture:
         await asyncio.get_running_loop().run_in_executor(self.executor, self._reset)
 
     def _capture(self):
-        started = time.monotonic()
         if self.target is not None:
             self._aim(self.target)
         if self.rpc is None:
             self.rpc = sim.connect()
-        rpc, name = self.rpc, self.drone_id
-        native = sim.native()
-        assert native["mode"] == "mission", "Forward inspection requires mission mode"
-        assert not rpc.simIsPause(), "Forward inspection requires running physics"
-        origin = next(v["localNedOriginUeCm"] for v in native["vehicles"] if v["id"] == name)
-        fov = rpc.simGetCameraInfo("fpv", vehicle_name=name).fov
-        assert math.isfinite(fov) and 1 < fov < 179, "Forward camera field of view is invalid"
-        before = truth_sample(rpc, name, origin)
-        responses = rpc.simGetImages(
-            [airsim.ImageRequest("fpv", airsim.ImageType.Scene, False, False)], vehicle_name=name
+        result = capture_frame(
+            self.rpc, self.drone_id, "fpv", self.directory, self.view_revision, quality=95
         )
-        after = truth_sample(rpc, name, origin)
-        assert len(responses) == 1, "Forward capture returned an unexpected image count"
-        response = responses[0]
-        assert not response.message, response.message
-        assert response.camera_name == "fpv", "Forward capture returned the wrong camera"
-        assert (response.width, response.height) == (3840, 2160), (
-            "Forward capture requires the installed 3840x2160 camera settings"
-        )
-        assert len(response.image_data_uint8) == response.width * response.height * 3
-        fraction, unix_ns = capture_time(response.time_stamp, before, after)
-        assert 0 <= fraction <= 1, "Forward image timestamp is outside its capture bracket"
-        assert (after["timestampNs"] - before["timestampNs"]) / 1e9 <= 2, (
-            "Forward image capture bracket exceeds two seconds"
-        )
-        info = rpc.simGetCameraInfo("fpv", vehicle_name=name)
-        assert math.isclose(info.fov, fov, abs_tol=0.01), (
-            "Forward camera field of view changed during capture"
-        )
-        orientation = sim.quat(response.camera_orientation)
-        rotation(orientation)
-        position = sim.xyz(response.camera_position)
-        assert all(np.isfinite(v) for v in position.values())
-        image = Image.frombytes("RGB", (response.width, response.height), response.image_data_uint8)
-        encoded = io.BytesIO()
-        image.save(encoded, format="JPEG", quality=95, subsampling=0)
-        metadata = {
-            "drone_id": name,
-            "camera_id": "fpv",
-            "width": response.width,
-            "height": response.height,
-            "timestamp_ns": response.time_stamp,
-            "captured_at_ms": unix_ns / 1e6,
-            "camera_pose_local_ned": {"position": position, "orientation": orientation},
-            "camera_position_world_m": sim.to_world(name, position, origin),
-            "local_ned_origin_ue_cm": origin,
-            "horizontal_fov_deg": info.fov,
-            "camera_view_revision": self.view_revision,
-            "vehicle_state_before": before,
-            "vehicle_state_after": after,
-            "shadow_floor_luminance_p1": shadow_floor(
-                response.image_data_uint8, response.width, response.height, require_fill=False
-            ),
-            "pixel_max": max(high for _, high in image.getextrema()),
-            "capture_s": time.monotonic() - started,
-        }
-        if metadata["pixel_max"] == 0:
-            path = self.directory / f"{response.time_stamp}-rejected.png"
-            with path.open("xb") as stream:
-                image.save(stream, format="PNG")
-            with path.with_suffix(".json").open("x") as stream:
-                json.dump(metadata, stream, allow_nan=False)
-                stream.write("\n")
-            raise AssertionError(
-                f"Forward camera returned an entirely black frame; evidence: {path}"
-            )
-        result = metadata, encoded.getvalue()
         self.video_sample = result
         return result
 

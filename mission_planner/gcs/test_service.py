@@ -808,12 +808,22 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
         self.assertIn("No command was issued from this Wonder request", error.args[1])
         self.assertEqual(error.kwargs["result"]["status_code"], 400)
 
-    async def test_original_4k_evidence_reaches_wonder_without_pixels_in_model_text(self):
+    async def test_single_zoom_photo_reaches_wonder_without_pixels_in_model_text(self):
         from mission_planner.gcs.inspection import Inspections
         from mission_planner.gcs.test_inspection import image_bytes
 
         images = [image_bytes()]
-        order = [{"kind": "original 4K frame", "frame_id": "source-frame"}]
+        order = [
+            {
+                "kind": "original 4x camera photograph",
+                "frame_id": "zoom-photo",
+                "source_frame_id": "source-frame",
+                "source_track_id": 1,
+                "camera_id": "evidence_zoom",
+                "zoom": 4,
+                "captured_at_ms": 1350,
+            }
+        ]
         metadata = {"frame_id": "source-frame", "captured_at_ms": 1234, "drone_id": "Drone3"}
         row = {
             "id": "review",
@@ -882,9 +892,11 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
             wake={"reason": "rescue", "results": [{"inspection": row}]},
         )
         content = self.requests[0]["input"][0]["content"]
-        self.assertIn("original full 4K camera frame", content[1]["text"])
+        self.assertIn("single original 4x 4K photograph", content[1]["text"])
+        self.assertIn("not a current tracking frame", content[1]["text"])
+        self.assertIn("SAM boxes and masks belong to the separate main camera", content[1]["text"])
         self.assertEqual(
-            json.loads(content[1]["text"].split("original pixels. ")[1]),
+            json.loads(content[1]["text"][content[1]["text"].index("{") :]),
             {"metadata": metadata, "image_order": order},
         )
         self.assertEqual(

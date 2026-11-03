@@ -8,7 +8,7 @@ import time
 
 from PIL import Image
 
-TEMPLATE = "forward-analyst-v3-full-frame"
+TEMPLATE = "zoom-analyst-v4-single-photo"
 
 
 DECISIONS = ("escalate", "recheck", "discard")
@@ -16,8 +16,9 @@ ACTIONS = ("none", "closer_look", "other_angle", "hold_and_watch")
 MAX_TOKENS = 2048
 SYSTEM = (
     "You analyse aerial drone evidence for a mission commander. The image is the original "
-    "3840x2160 forward-camera frame. The text identifies the selected detector box in its "
-    "original pixels. Judge only what is visible in that region and its surroundings; "
+    "3840x2160 photograph from a separate stabilized 4x camera, aimed at a SAM candidate. "
+    "SAM detects and tracks on the main camera; it has not segmented this photograph. "
+    "Judge the visible subject near the centre and its surroundings; "
     "the detector label is a hypothesis. Keep your reasoning brief."
 )
 
@@ -76,12 +77,15 @@ def instructions(look_for, prompt, metadata, detection):
         [
             f"Mission: {look_for['objective']}",
             f"Target: {look_for['target']}",
-            f"Detector class: {prompt}; selected track {detection['track_id']}; "
-            f"box [left, top, right, bottom] in source pixels: {detection['box_xyxy']}",
-            f"View: forward camera on {metadata['drone_id']}; capture Unix milliseconds "
-            f"{metadata['captured_at_ms']:.0f}. The single image is the full original 4K frame, "
+            f"Detector class: {prompt}; selected track {detection['track_id']}.",
+            f"View: 4x evidence camera on {metadata['drone_id']}; capture Unix milliseconds "
+            f"{metadata['captured_at_ms']:.0f}. The single image is the original 4K photograph, "
             "with no crops, resizing or overlays. "
             "Perspective varies across this view; do not infer dimensions from a nadir scale.",
+            f"The main-camera detection was captured at {metadata['source_captured_at_ms']:.0f}. "
+            "This is a later view from another camera. Its box and mask do not apply here. "
+            "If the intended subject is absent, clipped or cannot be associated with the candidate, "
+            "choose recheck; an empty zoom view does not disprove the original detection.",
             "Attributes to check:",
             *(attributes if attributes else ["- none"]),
             "Ignore: " + ("; ".join(look_for["ignore"]) or "nothing listed"),
@@ -98,13 +102,22 @@ def instructions(look_for, prompt, metadata, detection):
 
 
 def review_candidate(glimmer, look_for, prompt, metadata, payload, detection, prefix):
+    assert metadata["camera_id"] == "evidence_zoom" and metadata["zoom"] == 4
+    assert metadata["source_track_id"] == detection["track_id"], (
+        "Photograph belongs to another object"
+    )
     with Image.open(io.BytesIO(payload)) as image:
         assert image.format == "JPEG" and image.size == (3840, 2160), (
             "Glimmer review requires the original 3840x2160 JPEG"
         )
     text = instructions(look_for, prompt, metadata, detection)
     contract = schema(look_for)
-    source = {"frame_id": metadata["frame_id"], "sha256": hashlib.sha256(payload).hexdigest()}
+    source = {
+        "frame_id": metadata["frame_id"],
+        "sha256": hashlib.sha256(payload).hexdigest(),
+        "source_frame_id": metadata["source_frame_id"],
+        "source_track_id": metadata["source_track_id"],
+    }
     assert source["sha256"] == metadata["sha256"], "Review frame does not match its capture hash"
     started = time.monotonic()
     timing, result, error = {}, None, None

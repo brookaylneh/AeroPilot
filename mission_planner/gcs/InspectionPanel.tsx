@@ -6,6 +6,30 @@ import type { MissionEvent } from './missionState';
 import { formatPosition, pacificTimestamp } from './display';
 
 const number = z.number().finite();
+const photographSchema = z
+  .object({
+    frame_id: z.string().uuid(),
+    frame_ref: z.string().regex(/^\/api\/evidence\/[a-f0-9-]+\/[a-f0-9-]+-frame\.jpg$/),
+    sha256: z.string().regex(/^[a-f0-9]{64}$/),
+    camera_id: z.literal('evidence_zoom'),
+    width: z.literal(3840),
+    height: z.literal(2160),
+    zoom: z.literal(4),
+    horizontal_fov_deg: number.gt(28).lt(28.1),
+    captured_at_ms: number.nonnegative(),
+    source_frame_id: z.string().uuid(),
+    source_track_id: number.int().positive(),
+    source_captured_at_ms: number.nonnegative(),
+    vision_session_id: z.string().uuid(),
+  })
+  .strict()
+  .refine(
+    (photo) =>
+      photo.frame_ref.endsWith(`/${photo.frame_id}-frame.jpg`) &&
+      photo.frame_id !== photo.source_frame_id &&
+      photo.captured_at_ms >= photo.source_captured_at_ms,
+    'A zoom photograph must identify its own capture and the earlier main-camera detection',
+  );
 const maskSchema = z
   .object({
     origin_xy: z.tuple([number.int().nonnegative(), number.int().nonnegative()]),
@@ -85,6 +109,7 @@ const frameSchema = z
           class_name: z.string().min(1).max(100),
           observations: number.int().positive(),
           mask: maskSchema,
+          photo: photographSchema.optional(),
           ground: z
             .object({ north_m: number, east_m: number, ground_m: number })
             .strict()
@@ -101,14 +126,15 @@ const frameSchema = z
       frame.frame_ref.endsWith(`/${frame.frame_id}-frame.jpg`) &&
       new Set(frame.detections.map((detection) => detection.track_id)).size === frame.detections.length &&
       frame.detections.every(
-        ({ box_xyxy: [x1, y1, x2, y2], mask, track_id }) =>
+        ({ box_xyxy: [x1, y1, x2, y2], mask, track_id, photo }) =>
           0 <= x1 &&
           x1 < x2 &&
           x2 <= frame.width &&
           0 <= y1 &&
           y1 < y2 &&
           y2 <= frame.height &&
-          mask.ref === frame.frame_ref.replace('-frame.jpg', `-track-${track_id}-mask.png`),
+          mask.ref === frame.frame_ref.replace('-frame.jpg', `-track-${track_id}-mask.png`) &&
+          (!photo || photo.source_track_id === track_id),
       ),
     'Inspection images must identify the same frame with detections inside it',
   );
@@ -120,6 +146,7 @@ const reviewImages = z
     track_id: number.int().positive(),
     box_xyxy: z.tuple([number, number, number, number]),
     mask: maskSchema,
+    photo: photographSchema.optional(),
   })
   .strict()
   .refine((images) => {
@@ -127,6 +154,7 @@ const reviewImages = z
     return (
       images.frame_ref.endsWith(`/${images.frame_id}-frame.jpg`) &&
       images.mask.ref === images.frame_ref.replace('-frame.jpg', `-track-${images.track_id}-mask.png`) &&
+      (!images.photo || images.photo.source_track_id === images.track_id) &&
       0 <= x1 &&
       x1 < x2 &&
       x2 <= 3840 &&
@@ -430,20 +458,29 @@ export function FindingCard({
         </p>
         {confirmation && <p className="gcs-finding-confirmed">Confirmed by operator</p>}
       </header>
-      <figure className="gcs-evidence-frame gcs-finding-image" data-frame-id={frame.frame_id}>
+      <figure
+        className="gcs-evidence-frame gcs-finding-image"
+        data-frame-id={candidate.photo ? candidate.photo.frame_id : frame.frame_id}
+      >
         <EvidenceImage
-          key={frame.frame_ref}
-          src={frame.frame_ref}
+          key={candidate.photo ? candidate.photo.frame_ref : frame.frame_ref}
+          src={candidate.photo ? candidate.photo.frame_ref : frame.frame_ref}
           width={frame.width}
           height={frame.height}
-          selection={candidate.box_xyxy}
-          mask={candidate.mask}
-          label={`${inspection.drone_id} selected candidate ${finding.candidate_index + 1}, original 4K frame`}
+          selection={candidate.photo ? undefined : candidate.box_xyxy}
+          mask={candidate.photo ? undefined : candidate.mask}
+          label={`${inspection.drone_id} selected candidate ${finding.candidate_index + 1}, ${candidate.photo ? '4x camera photograph' : 'original 4K frame'}`}
           onError={onError}
         />
-        <figcaption>Original 4K frame · candidate {finding.candidate_index + 1} mask and outline</figcaption>
+        <figcaption>
+          {candidate.photo
+            ? '4× evidence camera · original 3840 × 2160 photograph'
+            : `Original 4K frame · candidate ${finding.candidate_index + 1} mask and outline`}
+        </figcaption>
       </figure>
-      <p className="gcs-evidence-provenance">Captured {pacificTimestamp(frame.captured_at_ms)}</p>
+      <p className="gcs-evidence-provenance">
+        Captured {pacificTimestamp(candidate.photo ? candidate.photo.captured_at_ms : frame.captured_at_ms)}
+      </p>
       {inspection.rescue?.tracking_error && (
         <p className="gcs-finding-recorded-status">
           Visual tracking unavailable at publication{inspection.rescue.phase === 'held' && ' · drone held'}
@@ -460,6 +497,11 @@ export function FindingCard({
       <details className="gcs-evidence-details">
         <summary>Assessment and image details</summary>
         <p className="gcs-finding-summary">{finding.summary}</p>
+        {candidate.photo && (
+          <p className="gcs-evidence-note">
+            One photograph taken when the object was detected. Current tracking uses the main camera.
+          </p>
+        )}
         <p className="gcs-evidence-provenance">
           {candidate.ground
             ? formatPosition(candidate.ground.north_m, candidate.ground.east_m)
@@ -530,18 +572,25 @@ export function ReviewDetails({
         Candidate {candidate_index + 1} · {reviewDecision[report.decision]}
       </h4>
       <p>{report.reason}</p>
-      <p className="gcs-evidence-provenance">Original 4K frame reviewed by Glimmer</p>
-      <figure className="gcs-evidence-frame" data-frame-id={images.frame_id}>
+      <p className="gcs-evidence-provenance">
+        {images.photo ? '4× camera photograph reviewed by Glimmer' : 'Original 4K frame reviewed by Glimmer'}
+      </p>
+      <figure
+        className="gcs-evidence-frame"
+        data-frame-id={images.photo ? images.photo.frame_id : images.frame_id}
+      >
         <EvidenceImage
-          src={images.frame_ref}
+          src={images.photo ? images.photo.frame_ref : images.frame_ref}
           width={3840}
           height={2160}
-          selection={images.box_xyxy}
-          mask={images.mask}
-          label={`${droneId} candidate ${candidate_index + 1}, full frame reviewed by Glimmer`}
+          selection={images.photo ? undefined : images.box_xyxy}
+          mask={images.photo ? undefined : images.mask}
+          label={`${droneId} candidate ${candidate_index + 1}, ${images.photo ? '4x photograph' : 'full frame'} reviewed by Glimmer`}
           onError={onError}
         />
-        <figcaption>Original forward camera · 3840 × 2160</figcaption>
+        <figcaption>
+          {images.photo ? 'Independent 4× camera' : 'Original forward camera'} · 3840 × 2160
+        </figcaption>
       </figure>
       <dl className="gcs-argument-values">
         {report.observations.map((observation) => (

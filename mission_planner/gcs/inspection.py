@@ -21,6 +21,7 @@ from mission_planner.agents.vision import VisionTrack, check_target, decode_mask
 from mission_planner.gcs.geodesy import NAMES, point_in_polygon, to_local
 from mission_planner.gcs.tracking import MAX_TRACKING_AGE_S, gentle_target
 from mission_planner.gcs.visual_follow import VisualFollow, held
+from world.cosys.evidence import EvidenceCapture
 from world.cosys.inspection import ForwardCapture, route_look_ahead
 
 AIM_STEP_M = 2
@@ -100,6 +101,9 @@ class Inspections:
         self.held_buffers = {}
         self.relocks = {}
         self.vision = {}
+        self.photo_tasks = {}
+        self.photographs = {}
+        self.evidence_cameras = {}
         self.visual = VisualFollow(self)
 
     def snapshot(self):
@@ -140,7 +144,90 @@ class Inspections:
             self._check(row)
             metadata, jpeg = await camera.capture()
             metadata.update(frame_id=str(uuid.uuid4()), sha256=hashlib.sha256(jpeg).hexdigest())
+            metadata["vision_session_id"] = self.vision[row["drone_id"]].session_id
             return metadata, jpeg
+
+    def _photo_task(self, row, metadata, detection):
+        key = (metadata["vision_session_id"], detection["track_id"])
+        if key not in self.photo_tasks:
+            self.photo_tasks[key] = asyncio.create_task(
+                self._photograph(row, copy.deepcopy(metadata), copy.deepcopy(detection))
+            )
+
+            def completed(task):
+                if not task.cancelled() and task.exception() is not None:
+                    self.mission.event(
+                        "error",
+                        f"{row['drone_id']}: 4x evidence capture failed: {task.exception()}",
+                        source="inspection",
+                    )
+
+            self.photo_tasks[key].add_done_callback(completed)
+        return self.photo_tasks[key]
+
+    async def _photograph(self, row, source, detection):
+        name = row["drone_id"]
+        if name not in self.evidence_cameras:
+            self.evidence_cameras[name] = EvidenceCapture(name, self.directory)
+        camera = self.evidence_cameras[name]
+        async with camera.lock:
+            metadata, jpeg = await camera.capture(source, detection)
+            metadata.update(
+                frame_id=str(uuid.uuid4()),
+                sha256=hashlib.sha256(jpeg).hexdigest(),
+                vision_session_id=source["vision_session_id"],
+            )
+            assert metadata["camera_id"] == "evidence_zoom" and metadata["zoom"] == 4
+            assert metadata["source_frame_id"] == source["frame_id"]
+            assert metadata["source_track_id"] == detection["track_id"]
+            await self._save_frame(metadata, jpeg)
+            self._register([metadata["frame_id"] + "-frame.jpg"])
+            photo = {
+                key: metadata[key]
+                for key in (
+                    "frame_id",
+                    "sha256",
+                    "camera_id",
+                    "width",
+                    "height",
+                    "captured_at_ms",
+                    "horizontal_fov_deg",
+                    "zoom",
+                    "source_frame_id",
+                    "source_track_id",
+                    "source_captured_at_ms",
+                    "vision_session_id",
+                )
+            }
+            photo["frame_ref"] = self.asset_url(metadata["frame_id"] + "-frame.jpg")
+            key = (source["vision_session_id"], detection["track_id"])
+            assert key not in self.photographs, "An object already has its evidence photograph"
+            with (self.directory / (metadata["frame_id"] + "-photo.json")).open("x") as stream:
+                json.dump(metadata, stream, allow_nan=False)
+            self.photographs[key] = photo
+            frames = [row["latest"]]
+            if "rescue" in row:
+                frames.extend((row["rescue"]["live_frame"], row["rescue"]["held_frame"]))
+            for frame in frames:
+                if frame is not None:
+                    self._attach_photos(frame)
+            return photo
+
+    def _attach_photos(self, frame):
+        if not frame["detections"]:
+            return
+        session_id = self.metadata[frame["frame_id"]]["vision_session_id"]
+        for detection in frame["detections"]:
+            key = (session_id, detection["track_id"])
+            if key in self.photographs:
+                detection["photo"] = copy.deepcopy(self.photographs[key])
+
+    def _photo_bytes(self, photo):
+        jpeg = (self.directory / (photo["frame_id"] + "-frame.jpg")).read_bytes()
+        assert hashlib.sha256(jpeg).hexdigest() == photo["sha256"], "Evidence photograph changed"
+        with Image.open(io.BytesIO(jpeg)) as image:
+            assert image.format == "JPEG" and image.size == (3840, 2160)
+        return jpeg
 
     async def set_camera_view(self, drone_id, north_m, east_m, height_m, zoom=1):
         from world.cosys.terrain import terrain_height
@@ -234,6 +321,7 @@ class Inspections:
                 and frame["camera_view_revision"] == view["revision"]
                 and 0 <= time.time() * 1000 - frame["captured_at_ms"] <= MAX_TRACKING_AGE_S * 1000
             ):
+                self._attach_photos(frame)
                 self.requested_frames[frame["frame_id"]] = (inspection_id, copy.deepcopy(frame))
                 return {
                     "inspection_id": inspection_id,
@@ -618,6 +706,10 @@ class Inspections:
             "camera_view_revision": metadata["camera_view_revision"],
             "detections": detections,
         }
+        self._attach_photos(frame)
+        for detection in detections:
+            if detection["observations"] >= 2 and detection["confidence"] >= row["threshold"]:
+                self._photo_task(row, metadata, detection)
         if live or held:
             view = self.camera_views[row["drone_id"]]
             rescue = row["rescue"]
@@ -647,16 +739,16 @@ class Inspections:
         frame = row["latest"] if frame_id is None else self._evidence_frame(row, frame_id)
         assert frame is not None, "Inspection has no completed evidence frame"
         identity = frame["frame_id"]
-        jpeg = (self.directory / (identity + "-frame.jpg")).read_bytes()
-        assert hashlib.sha256(jpeg).hexdigest() == frame["sha256"], "Evidence frame changed on disk"
-        with Image.open(io.BytesIO(jpeg)) as image:
-            assert image.format == "JPEG" and image.size == (3840, 2160), (
-                "Wonder requires the original 4K JPEG"
-            )
+        original = (self.directory / (identity + "-frame.jpg")).read_bytes()
+        assert hashlib.sha256(original).hexdigest() == frame["sha256"], (
+            "Evidence frame changed on disk"
+        )
+        self._attach_photos(frame)
+        photos = [detection["photo"] for detection in frame["detections"] if "photo" in detection]
         return {
             "metadata": copy.deepcopy(self.metadata[identity]),
-            "images": [jpeg],
-            "image_order": [{"kind": "original 4K frame", "frame_id": identity}],
+            "images": [self._photo_bytes(photo) for photo in photos],
+            "image_order": [{"kind": "original 4x camera photograph", **photo} for photo in photos],
         }
 
     async def _sample(self, row, capture, client, directory, previous, slot, aim=None):
@@ -794,6 +886,14 @@ class Inspections:
                     d["observations"] >= 2 and d["confidence"] >= row["threshold"]
                     for d in detections
                 ):
+                    await asyncio.gather(
+                        *(
+                            self._photo_task(row, metadata, detection)
+                            for detection in detections
+                            if detection["observations"] >= 2
+                            and detection["confidence"] >= row["threshold"]
+                        )
+                    )
                     row["status"] = "candidate"
                     break
                 if next_slot >= deadline:
@@ -1083,12 +1183,18 @@ class Inspections:
     async def _review_all(self, row, candidates, metadata, jpeg, policy, directory, cancelled):
         from mission_planner.gcs.tracking import ground_observation
 
+        assert hashlib.sha256(jpeg).hexdigest() == metadata["sha256"], "SAM source frame changed"
         glimmer = Glimmer()
         glimmer.http.timeout = httpx.Timeout(60)
         try:
             reports = []
             for index, detection in candidates:
                 assert not cancelled.is_set(), "Evidence review authority was revoked"
+                photo = await asyncio.shield(self._photo_task(row, metadata, detection))
+                assert not cancelled.is_set(), "Evidence review authority was revoked"
+                row["latest"]["detections"][index]["photo"] = copy.deepcopy(photo)
+                photograph = self._photo_bytes(photo)
+                photo_metadata = self.metadata[photo["frame_id"]]
                 location = await asyncio.to_thread(
                     ground_observation, metadata, detection["box_xyxy"]
                 )
@@ -1102,8 +1208,8 @@ class Inspections:
                         glimmer,
                         policy["look_for"],
                         row["prompt"],
-                        metadata,
-                        jpeg,
+                        photo_metadata,
+                        photograph,
                         detection,
                         directory / (row["rescue"]["review_id"] + "-" + str(index)),
                     )
@@ -1113,9 +1219,7 @@ class Inspections:
                 finally:
                     if not request.done():
                         await request
-                assert result["images"]["sha256"] == metadata["sha256"], (
-                    "Glimmer source frame changed"
-                )
+                assert result["images"]["sha256"] == photo["sha256"], "Glimmer source frame changed"
                 reports.append(
                     {
                         "candidate_index": index,
@@ -1128,6 +1232,7 @@ class Inspections:
                             "track_id": detection["track_id"],
                             "box_xyxy": detection["box_xyxy"],
                             "mask": row["latest"]["detections"][index]["mask"],
+                            "photo": copy.deepcopy(photo),
                         },
                     }
                 )
@@ -1268,7 +1373,8 @@ class Inspections:
         )
         self.control_tasks[name].add(start)
         self._event(
-            row, f"{name}: pausing on visual track {selected_id}; Glimmer reviewing the 4K frame"
+            row,
+            f"{name}: tracking object {selected_id}; acquiring its 4x 4K photograph for Glimmer",
         )
         checkpoint, breadcrumbs, motion = None, [], None
         following, last_command, last_success = False, None, None
@@ -1727,6 +1833,11 @@ class Inspections:
                 await asyncio.wait([task])
         if self.reviews:
             await asyncio.wait(self.reviews)
+        if self.photo_tasks:
+            await asyncio.wait(self.photo_tasks.values())
+        for camera in self.evidence_cameras.values():
+            await camera.close()
+        self.evidence_cameras.clear()
         for camera in self.cameras.values():
             await camera.close()
         self.cameras.clear()

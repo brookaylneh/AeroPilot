@@ -9,6 +9,7 @@ import tempfile
 import threading
 import time
 import unittest
+import uuid
 from functools import lru_cache
 from pathlib import Path
 from types import SimpleNamespace
@@ -33,6 +34,30 @@ def image_bytes():
     output = io.BytesIO()
     Image.new("RGB", (3840, 2160), (80, 80, 80)).save(output, format="JPEG")
     return output.getvalue()
+
+
+@lru_cache(maxsize=1)
+def photograph_bytes():
+    output = io.BytesIO()
+    Image.new("RGB", (3840, 2160), (140, 70, 30)).save(
+        output, format="JPEG", quality=100, subsampling=0
+    )
+    return output.getvalue()
+
+
+def photograph(source, detection):
+    return {
+        **source,
+        "camera_id": "evidence_zoom",
+        "zoom": 4,
+        "horizontal_fov_deg": math.degrees(2 * math.atan(0.25)),
+        "timestamp_ns": source["timestamp_ns"] + 1,
+        "captured_at_ms": source["captured_at_ms"] + 1,
+        "source_frame_id": source["frame_id"],
+        "source_sha256": source["sha256"],
+        "source_track_id": detection["track_id"],
+        "source_captured_at_ms": source["captured_at_ms"],
+    }, photograph_bytes()
 
 
 def response(prompt="person", positive=True, observations=2):
@@ -219,7 +244,7 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
         self.clients = []
 
         def vision(http, name, prompt, threshold):
-            client = SimpleNamespace(http=http, status="new")
+            client = SimpleNamespace(http=http, status="new", session_id=str(uuid.uuid4()))
             client.open = Mock(side_effect=lambda: setattr(client, "status", "open"))
             client.advance = Mock(side_effect=lambda *args: self.detect(*args))
             client.close = Mock(side_effect=lambda: setattr(client, "status", "closed"))
@@ -228,6 +253,14 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
 
         for name, replacement in (
             ("ForwardCapture", capture),
+            (
+                "EvidenceCapture",
+                lambda *args: SimpleNamespace(
+                    lock=asyncio.Lock(),
+                    capture=AsyncMock(side_effect=photograph),
+                    close=AsyncMock(),
+                ),
+            ),
             ("vision_http", Mock(return_value=Mock())),
             ("VisionTrack", vision),
         ):
@@ -433,7 +466,7 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual((actual["status"], actual["frames"]), ("candidate", 1))
             evidence = self.inspections.evidence(row["id"])
             self.assertEqual(evidence["metadata"]["drone_id"], row["drone_id"])
-            self.assertEqual(evidence["images"][0], image_bytes())
+            self.assertEqual(evidence["images"][0], photograph_bytes())
             self.assertEqual(len(evidence["images"]), 1)
             self.assertEqual(row["status"], "running")
             self.assertNotIn("heading_deg", row)
@@ -441,7 +474,7 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
         snapshot[0]["status"] = "broken"
         self.assertEqual(self.inspections.snapshot()[0]["status"], "candidate")
         assets = json.loads((self.directory / "evidence/assets.json").read_text())
-        self.assertEqual(len(assets), 8)
+        self.assertEqual(len(assets), 12)
         masks = [name for name in assets if name.endswith("-mask.png")]
         self.assertEqual(len(masks), 4)
         for name in masks:
@@ -454,7 +487,7 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
         row, task = await self.start()
         await task
         evidence = self.inspections.evidence(row["id"])
-        metadata, jpeg = evidence["metadata"], evidence["images"][0]
+        metadata, jpeg = evidence["metadata"], image_bytes()
         with self.assertRaises(FileExistsError):
             await self.inspections._save_frame({**metadata, "captured_at_ms": 0}, jpeg)
         self.assertEqual(self.inspections.evidence(row["id"]), evidence)
@@ -462,6 +495,47 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
         path.write_bytes(jpeg + b"modified")
         with self.assertRaisesRegex(AssertionError, "changed on disk"):
             self.inspections.evidence(row["id"])
+
+    async def test_one_photograph_per_object_is_reused_and_never_enters_sam(self):
+        started, pending = await self.start()
+        await pending
+        row = self.inspections.rows[started["id"]]
+        source = self.inspections.metadata[row["latest"]["frame_id"]]
+        detected = row["latest"]["detections"][0]
+        camera = self.inspections.evidence_cameras[row["drone_id"]]
+        requests = [self.inspections._photo_task(row, source, detected) for _ in range(4)]
+        self.assertTrue(all(request is requests[0] for request in requests))
+        photos = await asyncio.gather(*requests)
+        self.assertTrue(all(photo == photos[0] for photo in photos))
+        camera.capture.assert_awaited_once()
+        for _ in range(3):
+            evidence = self.inspections.evidence(row["id"])
+            self.assertEqual(evidence["images"], [photograph_bytes()])
+            self.assertEqual(evidence["image_order"][0]["frame_id"], photos[0]["frame_id"])
+        self.clients[0].advance.assert_called_once()
+        self.assertEqual(self.clients[0].advance.call_args.args[0], image_bytes())
+        camera.capture.assert_awaited_once()
+        another = await self.inspections._photo_task(row, source, {**detected, "track_id": 2})
+        self.assertNotEqual(another["frame_id"], photos[0]["frame_id"])
+        self.assertEqual(camera.capture.await_count, 2)
+        self.clients[0].advance.assert_called_once()
+        self.mission.fleet.execute.assert_not_awaited()
+
+    async def test_failed_object_photograph_is_reported_without_retry_or_substitution(self):
+        started, pending = await self.start()
+        await pending
+        row = self.inspections.rows[started["id"]]
+        source = self.inspections.metadata[row["latest"]["frame_id"]]
+        detected = {**row["latest"]["detections"][0], "track_id": 2}
+        camera = self.inspections.evidence_cameras[row["drone_id"]]
+        camera.capture.reset_mock()
+        camera.capture.side_effect = TimeoutError("zoom camera timed out")
+        for _ in range(2):
+            with self.assertRaisesRegex(TimeoutError, "zoom camera timed out"):
+                await self.inspections._photo_task(row, source, detected)
+        camera.capture.assert_awaited_once()
+        self.assertNotIn((source["vision_session_id"], 2), self.inspections.photographs)
+        self.assertEqual(len([event for event in self.events if event["kind"] == "error"]), 1)
 
     async def test_a_single_detection_does_not_trigger_a_confirmed_candidate(self):
         self.detect.side_effect = [response(observations=1), response(observations=2)]
@@ -504,7 +578,9 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
                 (detection,) = candidate["latest"]["detections"]
                 self.assertIsNone(detection["ground"])
                 self.assertEqual(detection["location_error"], error)
-                self.assertEqual(self.inspections.evidence(row["id"])["images"][0], image_bytes())
+                self.assertEqual(
+                    self.inspections.evidence(row["id"])["images"][0], photograph_bytes()
+                )
 
     async def test_negative_observations_are_sampled_at_five_hz(self):
         self.detect.side_effect = lambda *args: response(positive=False)

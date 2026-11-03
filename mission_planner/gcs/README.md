@@ -749,20 +749,29 @@ a changed mission/item fails. An operator override cancels alignment. This follo
 the [Copter mission list](https://ardupilot.org/copter/docs/mission-command-list.html)
 and [Guided commands](https://ardupilot.org/dev/docs/copter-commands-in-guided-mode.html).
 
-All capture and review images are the original **3840×2160 JPEG**. SAM prepares
-a 1920×1080 copy and uses its native 1008-pixel model input. Boxes and masks map
-back into original pixels. Glimmer and Wonder get
-exactly one full original, without crops, resizing or overlays. Capture, inference
-and review hashes identify the same bytes. Per-frame records retain timestamps,
+Main-camera captures are original **3840×2160 JPEGs**. SAM prepares a 1920×1080
+copy and uses its native 1008-pixel model input. Boxes and masks map back into
+that camera's original pixels. Main video and tracking use 1× unless the operator
+explicitly requests another zoom.
+
+A separate stabilized `evidence_zoom` camera takes one original **4× 4K photograph**
+for each newly confirmed SAM session/track. It renders only on demand, runs no SAM
+pipeline, and never changes the main camera. Glimmer and Wonder receive the same
+single photograph without crops, resizing or overlays. Continued tracking and
+`get_candidate` reuse it, with its original capture time. A capture failure is
+reported without another attempt. See the [camera contract](../../world/cosys/README.md#coupled-settings).
+Source detections and zoom photographs have separate frame IDs and hashes.
+Per-frame records retain timestamps,
 poses, prompts, model replies and timings. The existing evidence registry exposes
 immutable images through the same-origin `/api/evidence` endpoint.
 
 Only `publish_evidence` places an accepted finding in Evidence. Wonder chooses the
 candidate, factual assessment, landmark-relative headline and detailed support.
-The displayed image is the original with a separate SVG mask and precise box. The
-required binary mask is stored separately and bound to its frame/track by reference
-and hash; a missing or malformed mask fails visibly. Glimmer reviews remain
-expandable named chat cards with their actual full-frame input; rejection is a review
+New findings and Glimmer reviews display the actual zoom photograph. No main-camera
+mask or box is applied to it. The required SAM mask remains bound to the original
+main frame by reference and hash; a missing or malformed mask fails visibly.
+Earlier saved findings retain their original image and mask. Glimmer reviews remain
+expandable named chat cards with their actual input; rejection is a review
 decision, not a command failure. Operator confirmation is recorded separately and
 never inferred from a model score. Image loading failures remain visible with a direct
 link. Large photographs stay out of routine telemetry and model text.
@@ -876,9 +885,10 @@ Wonder may explicitly select an observed ID from a reviewed frame no older than
 no automatic reacquisition or target substitution. A camera adjustment must retain
 observed correspondence before movement resumes.
 
-Glimmer uses `forward-analyst-v3-full-frame`, with the existing decisions and fixed
-sampling, to assess the requested person, animal or object. It receives the full
-unaltered 4K JPEG plus the selected box in text. Unknown attributes are not mismatches.
+Glimmer uses `zoom-analyst-v4-single-photo`, with the existing decisions and fixed
+sampling, to assess the requested person, animal or object. It receives the single
+unaltered 4× 4K photograph, with capture time and source track ID in text.
+Main-camera boxes do not apply to this photograph. Unknown attributes are not mismatches.
 No observation earns calibrated negative-search credit or establishes identity.
 
 A clear negative authorizes the single `disregard_and_continue(review_id, reason)`

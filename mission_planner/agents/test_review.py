@@ -33,7 +33,11 @@ class ReviewTests(unittest.TestCase):
             "sha256": hashlib.sha256(self.jpeg).hexdigest(),
             "drone_id": "Drone2",
             "captured_at_ms": 123456789,
-            "camera_id": "fpv",
+            "camera_id": "evidence_zoom",
+            "zoom": 4,
+            "source_frame_id": "00000000-0000-4000-8000-000000000002",
+            "source_track_id": 17,
+            "source_captured_at_ms": 123456000,
             "camera_position_world_m": {"x": 20, "y": 30, "z": 40},
         }
         self.detection = {"track_id": 17, "box_xyxy": [800, 200, 1000, 900], "confidence": 0.8}
@@ -101,7 +105,7 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(list(self.prefix.parent.iterdir()), [self.prefix.with_suffix(".json")])
         text = self.glimmer.report.call_args.args[2]
         self.assertIn("selected track 17", text)
-        self.assertIn(str(self.detection["box_xyxy"]), text)
+        self.assertNotIn(str(self.detection["box_xyxy"]), text)
 
     def test_lower_resolution_review_is_rejected_before_request(self):
         stream = io.BytesIO()
@@ -113,13 +117,15 @@ class ReviewTests(unittest.TestCase):
 
     def test_forward_template_never_claims_nadir_scale_or_target_identity(self):
         text = instructions(self.look_for, "human", self.metadata, self.detection)
-        self.assertIn("forward camera on Drone2", text)
+        self.assertIn("4x evidence camera on Drone2", text)
         self.assertIn("123456789", text)
         self.assertIn("backpack: Blue backpack", text)
         self.assertIn("cannot_tell, never evidence of a mismatch", text)
         self.assertIn("Do not establish personal identity", text)
         self.assertNotIn("View: nadir", text)
-        self.assertEqual(TEMPLATE, "forward-analyst-v3-full-frame")
+        self.assertEqual(TEMPLATE, "zoom-analyst-v4-single-photo")
+        self.assertIn("empty zoom view does not disprove", text)
+        self.assertNotIn(str(self.detection["box_xyxy"]), text)
 
     def test_uncertainty_and_reasoning_counts_are_preserved_with_original_capture(self):
         before = copy.deepcopy(self.metadata)
@@ -131,7 +137,7 @@ class ReviewTests(unittest.TestCase):
         self.assertEqual(log["metadata"], before)
         self.assertEqual(log["result"], self.result)
         self.assertIsNone(log["error"])
-        self.assertEqual(len(log["images"]), 2)
+        self.assertEqual(len(log["images"]), 4)
         self.assertEqual(log["images"]["sha256"], hashlib.sha256(self.jpeg).hexdigest())
         self.glimmer.report.assert_called_once()
 
