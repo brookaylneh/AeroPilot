@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 export default defineConfig({
   root: 'web',
   plugins: [
@@ -29,7 +30,8 @@ export default defineConfig({
         '**/*.{crt,pem}',
         '**/.git/**',
         '**/.secrets/**',
-        '**/.local/**',
+        // Staged checkouts can themselves live under .local; only their private data is denied.
+        `${fileURLToPath(new URL('./.local/', import.meta.url))}**`,
         '**/*.py',
         '**/world/!(cosys)/**',
         '**/world/cosys/!(world.json)',

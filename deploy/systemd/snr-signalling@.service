@@ -1,5 +1,5 @@
 [Unit]
-Description=SNR Pixel Streaming signalling
+Description=SNR Pixel Streaming signalling, slot %i
 After=network-online.target snr-turn.service
 Wants=network-online.target
 

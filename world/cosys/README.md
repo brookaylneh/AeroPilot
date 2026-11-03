@@ -34,10 +34,15 @@ Flight planning uses each measured home and the exact read-back fence. Separate 
 lanes are a planning suggestion; the retained southern fence extension is not a mandatory detour.
 
 The fetcher requires the shared `.env`, verifies release archive hashes, and applies
-`airsim-ue58.patch`, `airsim-geodesy.patch` and `airsim-sensor.patch`. The first avoids resetting an unchanged
+`airsim-ue58.patch`, `airsim-geodesy.patch`, `airsim-sensor.patch` and
+`airsim-viewport-capture.patch`. The first avoids resetting an unchanged
 CustomDepth value during startup, which would invalidate Landscape PSO precaching in
 UE 5.8. The geodesy patch uses the global NED transform and WGS84 conversion for each
-spawn home. Coupled flight requires a game binary built with these patches.
+spawn home. Stock `PIPCamera.cpp` clears a scene capture's every-frame and on-movement
+updates only when `ForceUpdate` is true, so the first image request leaves a
+`ForceUpdate=false` camera rendering every engine frame; the viewport-capture patch sets
+both update flags explicitly from `ForceUpdate`. Coupled flight requires a game binary built
+with these patches.
 Editor and package builds run `verify-plugin.sh` before compilation. It checks
 every tracked AirSim patch in reverse without writing; a missing patch fails the
 build before a release can use inconsistent GPS or camera frames.
@@ -70,10 +75,11 @@ The local `mission-request.json` contains exactly `mode` (`mission` or `studio`)
 unique `id`. Native telemetry acknowledges both `mode` and `modeRequestId`; the bridge
 waits for its own request, not an old matching mode. Launch disables the Studio viewport
 and switches grass generation to the four drone sources. A mission viewer's acknowledged
-`drone-view` command activates the selected drone's existing forward `fpv` camera and enables
+`drone-view` command activates the selected drone's forward `fpv` camera and enables
 the viewport for continuous Pixel Streaming video. Closing that viewer disables the mission
-viewport again. The stock camera follows the aircraft's position and attitude during hover,
-return, landing and disarm, independent of AUTO capture spacing. Offline calibration
+viewport again. Until its first aim the stabilized camera stays level and follows the
+aircraft's position and heading during hover, return, landing and disarm, independent of
+AUTO capture spacing. Offline calibration
 captures retain their separate stabilized nadir `front_center` camera. Conversational
 automatic observation aims `fpv` as described below; selecting a video feed itself changes
 no camera pose or flight command.
@@ -142,10 +148,13 @@ to propagate failures. This measures turns and acceleration between image captur
 
 ## Coupled settings
 
-Flight-plan inspections use `inspection.ForwardCapture` and the stock `fpv`
-camera. `CameraDefaults` configures request-driven 3840×2160 RGB with the same
-fixed exposure, white balance and Lumen settings. No named `fpv` entry is created:
-Cosys would replace the stock camera and its mount. The separately configured
+Flight-plan inspections use `inspection.ForwardCapture` and the configured `fpv`
+camera: 3840×2160 RGB at 90° horizontal FOV on the `MOUNT_NED_M` mount, with the same
+fixed exposure, white balance and Lumen settings and `ForceUpdate=false`. The named
+entry replaces the stock `fpv` alias in the vehicle's camera registry
+(`PawnSimApi.cpp::createCamerasFromSettings`); the RPC and `ScenarioSession` drone view both
+resolve that registry entry. Its `Gimbal` holds world pitch and roll at 0° with stabilization 1
+and omits yaw, so the idle camera follows the aircraft heading. The separately configured
 3840×2160 nadir camera and calibration capture validation remain unchanged. The original
 forward JPEG is retained with its SAM box and mask; the local detector resizes its
 inference copy to 1920×1080. Live video uses the existing Pixel Streaming connection.
@@ -166,8 +175,9 @@ cannot be painted onto this second camera's image.
 
 The pinned [PIPCamera.cpp](https://github.com/Cosys-Lab/Cosys-AirSim/blob/5.8-v3.5.0/Unreal/Plugins/AirSim/Source/PIPCamera.cpp#L469)
 stores `simSetCameraPose` orientation as a world target when stabilization is 1;
-its Tick applies that target in world space. This adapter uses that verified
-behavior and checks the actual capture pose. Hardware requires corresponding
+its next Tick applies that target in world space. `inspection.point_camera` sends that
+target for both cameras and waits up to 2 seconds for `simGetCameraInfo` to agree
+within 0.25°. This adapter uses that verified behavior and checks the actual capture pose. Hardware requires corresponding
 zoom optics, camera calibration and a gimbal actuator adapter.
 
 Forward capture records the image-owned pose and timestamp, measured horizontal
@@ -183,12 +193,14 @@ the client. These are observation poses, not inferred object coordinates or SAR
 calibration claims. Changed camera settings require regenerated release settings and a coupled
 world restart.
 
-Automatic `observe: true` steps also use that forward camera. `ForwardCapture.aim` computes
-the body-relative camera rotation from an observation-derived world point and the
-measured vehicle attitude, preserving the stock mount. The capture owner remembers
-that world target and reapplies its aim before each image, compensating for changes
-in aircraft position and attitude during braking. This is capture-time compensation,
-not a native per-render-frame gimbal. Reset clears the target and restores the mount.
+Automatic `observe: true` steps also use that forward camera. `ForwardCapture.aim` commands
+the level world rotation from the measured camera position to an observation-derived world
+point. The gimbal holds that world rotation through aircraft rotation between images; the
+capture owner remembers the world target and reapplies its aim before each image as the
+aircraft moves. Route look-ahead aims and their re-aims turn at most 45°/s; an explicit view,
+the first aim and tracking aims move directly. A quaternion cannot restore the configured NaN
+yaw, so reset clears the target and levels the camera at the current aircraft heading, which
+it then holds until the next aim.
 `route_look_ahead` projects the
 aircraft onto its active leg, then follows the remaining route across short terrain
 waypoints. It receives the previous navigation point followed by current/future targets
@@ -209,15 +221,15 @@ Callers retain one capture owner per drone and serialize explicit view changes
 with capture. A healthy candidate's native tracker owns the camera; manual view
 requests fail before cancellation or state changes. Explicit aiming remains
 available before inspection or while a lost candidate is held. Reset and close
-restore the original relative mount pose and FOV.
+level the camera at the current heading and restore the original FOV.
 After candidate release, route search explicitly reclaims camera aiming on its next frame.
 
 `ForwardCapture.follow` uses `simSetCameraPose` directly on the existing `fpv` camera,
-with a separate control RPC worker and a 3-second RPC deadline. It transforms the
-bounded world-NED optical target through the current aircraft attitude, preserving
-the original body-relative mount position. The returned camera pose must agree with
-the command within 0.25° plus measured aircraft rotation across RPC snapshots.
-Centering diagnostics use the actual readback. FOV must remain unchanged.
+with a separate control RPC worker and a 3-second RPC deadline. It sends the
+bounded world-NED optical target as the gimbal's world target at the fixed mount and
+waits for the settled readback. Diagnostics record that readback error and the aircraft
+rotation across the step. Centering diagnostics use the actual readback. FOV must remain
+unchanged.
 No MAVLink mount device or emulator participates; ArduPilot continues controlling
 aircraft movement through the existing validated GUIDED path.
 
@@ -366,7 +378,7 @@ a running world. Keep the fixed ports and instance assignments from `.local/runt
 
 Land and disarm the fleet, release the viewer and use the world-first shutdown below before
 replacing binaries or settings. Start the installed signalling and web services and Unreal;
-after its loopback RPC listener is ready, start `snr-mission`. It starts all four controllers
+after its loopback RPC listener is ready, start `snr-mission@<k>`. It starts all four controllers
 immediately because the world needs their motor replies. Do not start a second fleet or listener.
 
 Verify startup homes, fence and 184 Hz parameter readback, real camera frames and persisted
@@ -381,13 +393,16 @@ Do not use the service's
 60-second Docker stop timeout while Unreal is still flushing caches. This sequence
 signals Unreal, observes only new log output, then stops Mission Control as soon as
 world EndPlay has stopped AirSim physics. The log follower is the only helper it
-terminates.
+terminates. Set `SLOT` to the [environment slot](../../deploy/README.md#environment-slots)
+being stopped.
 
 ```sh
 cd /home/brook_avionuas/snr
 set -euo pipefail
+export SLOT=0
 set -a
 . .local/runtime.env
+. ".local/slots/$SLOT/runtime.env"
 set +a
 sudo -v
 .venv-cosys/bin/python - <<'PY'
@@ -420,8 +435,9 @@ with connect(mission_url, open_timeout=10) as socket:
         while state()["mission"]["active"]:
             pass
 
+slot = os.environ["SLOT"]
 container = os.environ["SNR_CONTAINER_NAME"]
-assert container == "snr-unreal-live"
+assert container == f"snr-unreal-slot{slot}"
 since = datetime.now(timezone.utc).isoformat()
 logs = subprocess.Popen(
     ["docker", "logs", "--follow", "--since", since, container],
@@ -437,20 +453,25 @@ try:
         chunk = os.read(logs.stdout.fileno(), 65536)
         assert chunk, "Unreal log ended before EndPlay"
         buffer = (buffer + chunk)[-131072:]
-    subprocess.run(["sudo", "-n", "systemctl", "stop", "snr-mission"], check=True)
+    subprocess.run(["sudo", "-n", "systemctl", "stop", f"snr-mission@{slot}"], check=True)
 finally:
     logs.terminate()
     logs.wait(timeout=5)
 PY
-timeout 180 bash -c 'while systemctl is-active --quiet snr-unreal; do sleep 1; done'
-test "$(systemctl show snr-unreal -p ActiveState --value)" = inactive
-test "$(systemctl show snr-unreal -p Result --value)" = success
-systemctl show snr-unreal -p ExecMainStatus -p Result
-test -z "$(docker ps -aq --filter name=^/snr-unreal-live$)"
+timeout 180 bash -c "while systemctl is-active --quiet snr-unreal@$SLOT; do sleep 1; done"
+test "$(systemctl show "snr-unreal@$SLOT" -p ActiveState --value)" = inactive
+test "$(systemctl show "snr-unreal@$SLOT" -p Result --value)" = success
+systemctl show "snr-unreal@$SLOT" -p ExecMainStatus -p Result
+test -z "$(docker ps -aq --filter "name=^/$SNR_CONTAINER_NAME$")"
 .venv-cosys/bin/python - <<'PY'
+import os
 from mission_planner.gcs.sitl import check_ports
-check_ports([8765, 41451, 9002, 9012, 9022, 9032, 9003, 9013, 9023, 9033,
-             14600, 14601, 14602, 14603, 5501, 5511, 5521, 5531])
+port = lambda name: int(os.environ[name])
+instances = [port("SNR_SITL_INSTANCE_BASE") + i for i in range(4)]
+check_ports([port("SNR_MISSION_PORT"), port("SNR_COSYS_PORT"),
+             *[9002 + 10 * i for i in instances], *[9003 + 10 * i for i in instances],
+             *[port("SNR_MAVLINK_BASE_PORT") + i for i in range(4)],
+             *[port("SNR_SITL_RC_BASE_PORT") + 10 * i for i in range(4)]])
 PY
 ```
 

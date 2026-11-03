@@ -5,17 +5,15 @@ import math
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-import cosysairsim as airsim
 import numpy as np
 from scipy.spatial.transform import Rotation
 
 from world.cosys import client as sim
 from world.cosys.capture import rotation
-from world.cosys.inspection import capture_frame
+from world.cosys.inspection import capture_frame, point_camera
 
 CAMERA_ID = "evidence_zoom"
 FOV_DEG = math.degrees(2 * math.atan(1 / 4))
-MOUNT_NED_M = (0.6, 0, 0.05)
 
 
 def target_direction(metadata, box):
@@ -64,23 +62,7 @@ class EvidenceCapture:
         assert math.isclose(
             rpc.simGetCameraInfo(CAMERA_ID, vehicle_name=name).fov, FOV_DEG, abs_tol=0.01
         ), "The installed evidence camera is not fixed at 4x"
-        # PIPCamera.cpp 5.8-v3.5.0 treats setCameraPose rotation as a world target
-        # when Gimbal.Stabilization is 1; its Tick applies that target in world space.
-        rpc.simSetCameraPose(
-            CAMERA_ID,
-            airsim.Pose(airsim.Vector3r(*MOUNT_NED_M), airsim.Quaternionr(*desired.as_quat())),
-            vehicle_name=name,
-        )
-        deadline = time.monotonic() + 2
-        while True:
-            info = rpc.simGetCameraInfo(CAMERA_ID, vehicle_name=name)
-            error = math.degrees(
-                (desired.inv() * rotation(sim.quat(info.pose.orientation))).magnitude()
-            )
-            if error <= 0.25:
-                break
-            assert time.monotonic() < deadline, "Evidence camera did not settle on its target"
-            time.sleep(0.01)
+        point_camera(rpc, name, CAMERA_ID, desired)
         metadata, jpeg = capture_frame(rpc, name, CAMERA_ID, self.directory, 0, quality=100)
         error = math.degrees(
             (desired.inv() * rotation(metadata["camera_pose_local_ned"]["orientation"])).magnitude()

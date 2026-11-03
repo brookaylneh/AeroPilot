@@ -7,7 +7,8 @@ from pathlib import Path
 
 from mission_planner.environment import load_env
 from mission_planner.gcs import geodesy
-from world.cosys.evidence import CAMERA_ID, FOV_DEG, MOUNT_NED_M
+from world.cosys.evidence import CAMERA_ID, FOV_DEG
+from world.cosys.inspection import MOUNT_NED_M
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -124,6 +125,26 @@ def generate(world, rpc_port, instance_base):
                             Width=3840,
                             Height=2160,
                             FOV_Degrees=70,
+                            ForceUpdate=False,
+                            **exposure,
+                        ),
+                    ],
+                },
+                # Replaces the stock fpv alias. Without a Yaw the idle gimbal follows the body heading;
+                # every aim holds a world-frame target between captures.
+                "fpv": {
+                    **dict(zip(("X", "Y", "Z"), MOUNT_NED_M)),
+                    "Pitch": 0,
+                    "Yaw": 0,
+                    "Roll": 0,
+                    "Gimbal": {"Stabilization": 1, "Pitch": 0, "Roll": 0},
+                    "CaptureSettings": [
+                        dict(ImageType=-1, FOV_Degrees=90, **exposure),
+                        dict(
+                            ImageType=0,
+                            Width=3840,
+                            Height=2160,
+                            FOV_Degrees=90,
                             ForceUpdate=False,
                             **exposure,
                         ),

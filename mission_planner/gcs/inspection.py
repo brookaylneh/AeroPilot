@@ -996,7 +996,7 @@ class Inspections:
             }
             self.camera_views[row["drone_id"]] = copy.deepcopy(row["camera_view"])
         else:
-            await capture.aim(world)
+            await capture.aim(world, slew=True)
 
     async def _search(self, row, receipt, branch, indices):
         name, policy = row["drone_id"], receipt["plan"]["search"]
@@ -1400,7 +1400,7 @@ class Inspections:
             return time.monotonic() - started - row["rescue"]["healthy_s"]
 
         async def lose(reason):
-            nonlocal following, last_success
+            nonlocal following, last_success, motion
             if row["rescue"]["tracking_error"] is not None:
                 return
             row["rescue"].update(
@@ -1408,7 +1408,7 @@ class Inspections:
             )
             if review_id in self.relocks and not self.relocks[review_id]["future"].done():
                 self.relocks[review_id]["future"].set_result({"status": "lost", "error": reason})
-            last_success = None
+            last_success = motion = None
             if following:
                 following = False
                 self._search_state(row)

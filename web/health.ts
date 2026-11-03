@@ -1,34 +1,56 @@
-import { readFile, readdir, stat } from 'node:fs/promises';
-import path from 'node:path';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { connect } from 'node:net';
 import { randomBytes } from 'node:crypto';
 import assert from 'node:assert/strict';
 import { port, required } from './runtime';
+import type { Slot } from './slots';
+import type { Broker } from './broker';
 
 const execute = promisify(execFile);
-const services = ['web', 'mission', 'vision', 'signalling', 'unreal', 'turn', 'caddy'];
+const shared = ['web', 'turn', 'caddy'];
+const perSlot = ['mission', 'vision', 'signalling', 'unreal'];
 
-export async function rendererHealth() {
-  const response = await fetch(`http://${required('SNR_HOST')}:${port('PIXEL_PLAYER_PORT')}/health`, {
+export async function rendererHealth(slot: Slot) {
+  const response = await fetch(`http://${slot.host}:${slot.playerPort}/health`, {
     signal: AbortSignal.timeout(2000),
   });
   assert(response.ok, 'Signalling health failed');
-  const health = (await response.json()) as { streamers: { players: number }[] };
+  const health = (await response.json()) as {
+    streamers: { players: number }[];
+    renderer: { scenarioReady: boolean; telemetryAgeMs: number } | null;
+  };
   assert(Array.isArray(health.streamers), 'Invalid signalling health');
   const streamer = health.streamers[0];
-  if (streamer) {
-    const directory = required('SNR_DRONE_DATA_DIR');
-    if (!(await readdir(directory)).includes('runtime.json')) return { state: 'starting', maxEditors: 1 };
-    const file = path.join(directory, 'runtime.json');
-    const [text, info] = await Promise.all([readFile(file, 'utf8'), stat(file)]);
-    const runtime = JSON.parse(text);
-    assert(Date.now() - info.mtimeMs < 3000, 'Renderer telemetry is stale');
-    assert(typeof runtime.scenarioReady === 'boolean', 'Missing scenario readiness');
-    if (!runtime.scenarioReady) return { state: 'starting', maxEditors: 1 };
-  }
-  return { state: !streamer ? 'starting' : streamer.players > 0 ? 'occupied' : 'ready', maxEditors: 1 };
+  if (!streamer || health.renderer === null) return { state: 'starting', maxEditors: 1 };
+  assert(health.renderer.telemetryAgeMs < 3000, 'Renderer telemetry is stale');
+  assert(typeof health.renderer.scenarioReady === 'boolean', 'Missing scenario readiness');
+  if (!health.renderer.scenarioReady) return { state: 'starting', maxEditors: 1 };
+  return { state: streamer.players > 0 ? 'occupied' : 'ready', maxEditors: 1 };
+}
+
+export async function missionHealth(slot: Slot) {
+  const response = await fetch(`http://${slot.host}:${slot.missionPort}/health`, {
+    signal: AbortSignal.timeout(2000),
+  });
+  const health = (await response.json()) as { state: string; ok: boolean };
+  assert(response.ok && health.ok, `Mission health failed: ${health.state}`);
+  return health.state;
+}
+
+// The broker treats a slot whose checks fail as unavailable instead of failing every visitor.
+export async function probe(slot: Slot) {
+  const [mission, renderer] = await Promise.allSettled([missionHealth(slot), rendererHealth(slot)]);
+  for (const [name, result] of [
+    ['mission', mission],
+    ['renderer', renderer],
+  ] as const)
+    if (result.status === 'rejected')
+      console.error(`Slot ${slot.index} ${name} health failed: ${String(result.reason)}`);
+  return {
+    mission: mission.status === 'fulfilled' ? mission.value : 'unavailable',
+    renderer: renderer.status === 'fulfilled' ? renderer.value.state : 'unavailable',
+  };
 }
 
 function turnHealth() {
@@ -53,30 +75,39 @@ function turnHealth() {
   });
 }
 
-export async function health() {
-  const results = await Promise.allSettled([
-    execute(
-      '/usr/bin/systemctl',
-      ['show', '--property=ActiveState', '--value', ...services.map((s) => `snr-${s}`)],
-      {
-        timeout: 2000,
-      },
-    ),
-    rendererHealth(),
-    fetch(`http://${required('SNR_HOST')}:${port('SNR_MISSION_PORT')}/health`, {
-      signal: AbortSignal.timeout(2000),
-    }).then(async (response) => {
-      assert(response.ok, 'Mission health failed');
-      return response.json();
-    }),
+export async function health(table: Slot[], broker: Broker) {
+  const units = [
+    ...shared.map((name) => `snr-${name}`),
+    ...table.flatMap((slot) => perSlot.map((name) => `snr-${name}@${slot.index}`)),
+  ];
+  const [active, turn, ...probes] = await Promise.allSettled([
+    execute('/usr/bin/systemctl', ['show', '--property=ActiveState', '--value', ...units], { timeout: 2000 }),
     turnHealth(),
+    ...table.map(probe),
   ]);
-  const units = results[0].status === 'fulfilled' ? results[0].value.stdout.trim().split(/\s+/) : [];
-  const renderer = results[1].status === 'fulfilled' ? results[1].value.state : 'unavailable';
-  const checks = Object.fromEntries(services.map((name, index) => [name, units[index] === 'active']));
-  checks.unreal &&= renderer === 'ready' || renderer === 'occupied';
-  checks.signalling &&= results[1].status === 'fulfilled';
-  checks.mission &&= results[2].status === 'fulfilled';
-  checks.turn &&= results[3].status === 'fulfilled';
-  return { ok: Object.values(checks).every(Boolean), services: checks, renderer };
+  const states = active.status === 'fulfilled' ? active.value.stdout.trim().split(/\s+/) : [];
+  const unit = (name: string) => states[units.indexOf(name)] === 'active';
+  const services = Object.fromEntries(shared.map((name) => [name, unit(`snr-${name}`)]));
+  services.turn &&= turn.status === 'fulfilled';
+  const { faulted } = broker.status();
+  const slots = table.map((slot, index) => {
+    const result = probes[index]!;
+    const { mission, renderer } =
+      result.status === 'fulfilled' ? result.value : { mission: 'unavailable', renderer: 'unavailable' };
+    const checks = Object.fromEntries(perSlot.map((name) => [name, unit(`snr-${name}@${slot.index}`)]));
+    checks.unreal &&= renderer === 'ready' || renderer === 'occupied';
+    checks.signalling &&= renderer !== 'unavailable';
+    checks.mission &&= mission !== 'unavailable';
+    return {
+      index: slot.index,
+      ...checks,
+      renderer,
+      mission_state: mission,
+      fault: faulted[slot.index] ?? null,
+    };
+  });
+  const ok =
+    Object.values(services).every(Boolean) &&
+    slots.every((slot) => slot.fault === null && perSlot.every((name) => slot[name as keyof typeof slot]));
+  return { ok, services, slots };
 }

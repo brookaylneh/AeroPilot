@@ -8,7 +8,7 @@ export type Stream = {
   reconnect: () => void;
 };
 
-// The renderer admits one subscriber, so every view of the page shares this connection.
+// Each environment's renderer admits one subscriber, so every view of the page shares this connection.
 export function useStream(): Stream {
   const [host] = useState(() => {
     const element = document.createElement('div');
@@ -49,8 +49,8 @@ export function useStream(): Stream {
           );
         if (health.state === 'occupied')
           return fail(
-            'Scene in use',
-            'Another browser has the live world. Close that tab, then select Reconnect.',
+            'Scene open in another tab',
+            'This browser already shows your world in another tab. Close that tab, then select Reconnect.',
           );
         if (health.state !== 'ready')
           return fail('Scene is starting', 'The renderer is warming up. Select Reconnect when it is ready.');

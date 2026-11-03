@@ -756,11 +756,16 @@ async function performanceRun(browser, url, output, servicePid, seconds) {
 }
 
 async function proxy(base, output) {
+  const slot = await fetch(new URL('/api/slots', base), { signal: AbortSignal.timeout(10000) });
+  assert(slot.ok);
+  assert.equal((await slot.json()).state, 'assigned', 'All environments are busy');
+  const session = slot.headers.get('set-cookie').split(';')[0];
   const tests = [
-    { path: '/api/mission', origin: 'https://untrusted.invalid', status: 403 },
-    { path: '/api/mission', origin: null, status: 403 },
-    { path: '/api/mission?destination=elsewhere', origin: base, status: 403 },
-    { path: '/api/mission', origin: base, status: 101 },
+    { path: '/api/mission', origin: 'https://untrusted.invalid', cookie: session, status: 403 },
+    { path: '/api/mission', origin: null, cookie: session, status: 403 },
+    { path: '/api/mission?destination=elsewhere', origin: base, cookie: session, status: 403 },
+    { path: '/api/mission', origin: base, cookie: null, status: 503 },
+    { path: '/api/mission', origin: base, cookie: session, status: 101 },
   ];
   const results = [];
   for (const item of tests) {
@@ -772,6 +777,7 @@ async function proxy(base, output) {
         'Sec-WebSocket-Version': '13',
       };
       if (item.origin !== null) headers.Origin = item.origin;
+      if (item.cookie !== null) headers.Cookie = item.cookie;
       const url = new URL(item.path, base);
       const req = (url.protocol === 'https:' ? requestHttps : request)(url, { headers });
       req.setTimeout(5000, () => req.destroy(new Error('Proxy handshake timed out')));
@@ -786,13 +792,13 @@ async function proxy(base, output) {
       });
       req.end();
     });
-    results.push({ ...item, actual_status: status });
+    results.push({ ...item, cookie: item.cookie !== null, actual_status: status });
     assert.equal(status, item.status);
   }
   await writeFile(`${output}/results.json`, JSON.stringify({ passed: true, results }, null, 2) + '\n', {
     flag: 'wx',
   });
-  console.log('Mission WebSocket origin/path checks passed');
+  console.log('Mission WebSocket origin, path and session checks passed');
 }
 
 async function plannerViews(browser, url, output, seconds) {

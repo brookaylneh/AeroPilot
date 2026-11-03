@@ -182,7 +182,7 @@ class ForwardCaptureTests(unittest.TestCase):
         self.assertEqual(metadata["timestamp_ns"], 150)
         self.assertEqual(metadata["camera_position_world_m"], {"x": 14, "y": 23, "z": 70})
 
-    def test_aim_preserves_mount_and_uses_world_target_with_rotated_aircraft(self):
+    def test_aim_commands_world_target_at_mount_and_restore_levels_at_heading(self):
         capture = ForwardCapture("Drone2", self.directory)
         body_rotation = Rotation.from_euler("z", 90, degrees=True)
         body_position = np.array([10, 20, -30])
@@ -191,10 +191,15 @@ class ForwardCaptureTests(unittest.TestCase):
         body = airsim.Pose(
             airsim.Vector3r(*body_position), airsim.Quaternionr(*body_rotation.as_quat())
         )
-        camera = airsim.Pose(airsim.Vector3r(*camera_position), body.orientation)
+        info = SimpleNamespace(
+            pose=airsim.Pose(airsim.Vector3r(*camera_position), body.orientation)
+        )
         rpc = Mock()
         rpc.simGetVehiclePose.return_value = body
-        rpc.simGetCameraInfo.return_value = SimpleNamespace(pose=camera)
+        rpc.simGetCameraInfo.return_value = info
+        rpc.simSetCameraPose.side_effect = lambda _, pose, **kwargs: setattr(
+            info, "pose", airsim.Pose(info.pose.position, pose.orientation)
+        )
         capture.rpc = rpc
         origin = {"x": 1000, "y": 2000, "z": 4000}
         target = {"x": 50, "y": 50, "z": 20}
@@ -214,10 +219,8 @@ class ForwardCaptureTests(unittest.TestCase):
             np.testing.assert_allclose(
                 [getattr(pose.position, key + "_val") for key in "xyz"], mount, atol=1e-12
             )
-            relative = Rotation.from_quat(
-                [getattr(pose.orientation, key + "_val") for key in "xyzw"]
-            )
-            aimed = body_rotation.apply(relative.apply([1, 0, 0]))
+            world = Rotation.from_quat([getattr(pose.orientation, key + "_val") for key in "xyzw"])
+            aimed = world.apply([1, 0, 0])
             wanted = (
                 np.array(
                     [(target[key] - origin[key] / 100) * (1 if key != "z" else -1) for key in "xyz"]
@@ -225,10 +228,16 @@ class ForwardCaptureTests(unittest.TestCase):
                 - camera_position
             )
             np.testing.assert_allclose(aimed, wanted / np.linalg.norm(wanted), atol=1e-12)
+            self.assertAlmostEqual(world.as_euler("ZYX")[2], 0)
             capture._reset()
             restored = rpc.simSetCameraPose.call_args.args[1]
             np.testing.assert_allclose(
-                [getattr(restored.orientation, key + "_val") for key in "xyzw"], [0, 0, 0, 1]
+                [getattr(restored.position, key + "_val") for key in "xyz"], mount, atol=1e-12
+            )
+            np.testing.assert_allclose(
+                [getattr(restored.orientation, key + "_val") for key in "xyzw"],
+                body_rotation.as_quat(),
+                atol=1e-12,
             )
             count = rpc.simSetCameraPose.call_count
             capture._reset()
@@ -239,7 +248,7 @@ class ForwardCaptureTests(unittest.TestCase):
     def test_camera_aim_failure_is_not_retried(self):
         capture = ForwardCapture("Drone1", self.directory)
         capture.rpc = Mock()
-        capture.rpc.simGetVehiclePose.side_effect = TimeoutError("camera pose timed out")
+        capture.rpc.simGetCameraInfo.side_effect = TimeoutError("camera pose timed out")
         try:
             with patch(
                 "world.cosys.inspection.sim.native",
@@ -252,7 +261,7 @@ class ForwardCaptureTests(unittest.TestCase):
             ):
                 with self.assertRaisesRegex(TimeoutError, "camera pose timed out"):
                     capture._aim({"x": 10, "y": 10, "z": 0})
-            capture.rpc.simGetVehiclePose.assert_called_once()
+            capture.rpc.simGetCameraInfo.assert_called_once()
             capture.rpc.simSetCameraPose.assert_not_called()
         finally:
             asyncio.run(capture.close())
@@ -265,6 +274,9 @@ class ForwardCaptureTests(unittest.TestCase):
         info = SimpleNamespace(pose=pose, fov=89.90362548828125)
         rpc.simGetCameraInfo.return_value = info
         rpc.simSetCameraFov.side_effect = lambda _, fov, **kwargs: setattr(info, "fov", fov)
+        rpc.simSetCameraPose.side_effect = lambda _, pose, **kwargs: setattr(
+            info, "pose", airsim.Pose(info.pose.position, pose.orientation)
+        )
         capture.rpc = rpc
         self.addCleanup(lambda: asyncio.run(capture.close()))
         native = patch(
@@ -300,7 +312,7 @@ class ForwardCaptureTests(unittest.TestCase):
         self.assertEqual(capture.view_revision, 7)
         capture._reset()
         self.assertAlmostEqual(info.fov, base)
-        self.assertIsNone(capture.original_pose)
+        self.assertIsNone(capture.aimed)
         self.assertIsNone(capture.original_fov)
         self.assertIsNone(capture.target)
         rpc.simSetCameraFov.assert_called_with("fpv", base, vehicle_name="Drone1")
@@ -309,19 +321,6 @@ class ForwardCaptureTests(unittest.TestCase):
         capture, rpc, info = self.camera()
         rpc.simIsPause.return_value = False
         body = rpc.simGetVehiclePose.return_value
-
-        def moved_camera(_, relative, **kwargs):
-            body_rotation = Rotation.from_quat(
-                [getattr(body.orientation, key + "_val") for key in "xyzw"]
-            )
-            relative_rotation = Rotation.from_quat(
-                [getattr(relative.orientation, key + "_val") for key in "xyzw"]
-            )
-            info.pose = airsim.Pose(
-                body.position, airsim.Quaternionr(*(body_rotation * relative_rotation).as_quat())
-            )
-
-        rpc.simSetCameraPose.side_effect = moved_camera
         wanted = None
 
         def image(*args, **kwargs):
@@ -352,7 +351,6 @@ class ForwardCaptureTests(unittest.TestCase):
                 body.orientation = airsim.Quaternionr(
                     *Rotation.from_euler("ZYX", [10, -20, 7], degrees=True).as_quat()
                 )
-                moved_camera("fpv", rpc.simSetCameraPose.call_args.args[1])
                 bracket = [
                     {"timestampNs": t, "sampleUnixNs": 1_700_000_000_000_000_000 + t}
                     for t in (100, 200)
@@ -362,13 +360,53 @@ class ForwardCaptureTests(unittest.TestCase):
                 self.assertEqual(metadata["camera_view_revision"], revision)
                 self.assertEqual(capture.target, target)
 
+    def test_search_aims_slew_at_a_bounded_rate_while_views_and_relocks_jump(self):
+        capture, rpc, _ = self.camera()
+        clock = [100.0]
+
+        def heading(degrees):
+            yaw = math.radians(degrees)
+            return {"x": 100 * math.cos(yaw), "y": 100 * math.sin(yaw), "z": 30}
+
+        def aimed_yaw():
+            q = rpc.simSetCameraPose.call_args.args[1].orientation
+            world = Rotation.from_quat([getattr(q, key + "_val") for key in "xyzw"])
+            np.testing.assert_allclose(world.as_euler("ZYX")[1:], [0, 0], atol=1e-9)
+            return math.degrees(world.as_euler("ZYX")[0])
+
+        with (
+            patch("world.cosys.inspection.time.monotonic", side_effect=lambda: clock[0]),
+            patch("world.cosys.inspection.capture_frame", return_value=({}, b"")),
+        ):
+            capture._aim(heading(0), slew=True)
+            self.assertAlmostEqual(aimed_yaw(), 0)
+            clock[0] += 0.5
+            capture._aim(heading(90), slew=True)
+            self.assertAlmostEqual(aimed_yaw(), 22.5)
+            self.assertEqual(capture.target, heading(90))
+            clock[0] += 0.5
+            capture._capture()
+            self.assertAlmostEqual(aimed_yaw(), 45)
+            capture._view(heading(170))
+            self.assertAlmostEqual(aimed_yaw(), 170)
+            clock[0] += 1
+            capture._aim(heading(-170), slew=True)
+            self.assertAlmostEqual(aimed_yaw(), -170)
+            clock[0] += 0.1
+            capture._aim(heading(0))
+            self.assertAlmostEqual(aimed_yaw(), 0)
+            clock[0] += 0.1
+            capture._capture()
+            self.assertAlmostEqual(aimed_yaw(), 0)
+
     def test_capture_stops_if_world_target_stabilization_fails(self):
         capture, rpc, _ = self.camera()
         capture._aim({"x": 20, "y": 0, "z": 0})
-        rpc.simGetVehiclePose.side_effect = TimeoutError("camera attitude unavailable")
+        rpc.simGetCameraInfo.side_effect = TimeoutError("camera attitude unavailable")
         with self.assertRaisesRegex(TimeoutError, "camera attitude unavailable"):
             capture._capture()
         rpc.simGetImages.assert_not_called()
+        rpc.simGetCameraInfo.side_effect = None
 
     def test_invalid_optics_do_not_publish_a_revision(self):
         capture, rpc, info = self.camera()

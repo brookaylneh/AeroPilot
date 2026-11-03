@@ -33,7 +33,6 @@ from mission_planner.gcs.geodesy import (  # noqa: E402
     MIN_ALTITUDE_M,
     NAMES,
     ORIGIN,
-    ROOT,
     rtl_route,
     to_geodetic,
     to_local,
@@ -132,7 +131,7 @@ class Fleet:
         self.fences = default_fences()
         self.fences_verified = False
         self.fence_error = None
-        self.fences_path = ROOT / ".local/data/flight-fences.json"
+        self.fences_path = Path(os.environ["SNR_FENCES_PATH"])
 
     async def start(self):
         load_env()

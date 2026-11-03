@@ -5,7 +5,6 @@ import json
 import tempfile
 import unittest
 import uuid
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -47,7 +46,7 @@ class FeedTests(unittest.IsolatedAsyncioTestCase):
         temporary = tempfile.TemporaryDirectory()
         self.addCleanup(temporary.cleanup)
         mission = object.__new__(Mission)
-        with patch("mission_planner.gcs.service.ROOT", Path(temporary.name)):
+        with patch.dict("os.environ", {"SNR_MISSION_DATA_DIR": temporary.name}):
             mission.initialize_run(None, active=True)
         self.addCleanup(mission.log.close)
         mission.clearing = False

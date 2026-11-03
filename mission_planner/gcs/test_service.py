@@ -483,7 +483,7 @@ class AutopilotAlerts(unittest.TestCase):
     def setUp(self):
         directory = tempfile.TemporaryDirectory(dir=ROOT / ".local")
         self.addCleanup(directory.cleanup)
-        root = patch("mission_planner.gcs.service.ROOT", Path(directory.name))
+        root = patch.dict("os.environ", {"SNR_MISSION_DATA_DIR": directory.name})
         root.start()
         self.addCleanup(root.stop)
         self.mission = object.__new__(Mission)
@@ -591,6 +591,30 @@ class AutopilotAlerts(unittest.TestCase):
 
 
 class AgentConversation(unittest.IsolatedAsyncioTestCase):
+    async def test_model_trace_is_relative_to_slot_mission_storage(self):
+        self.replies(
+            [
+                self.reply(
+                    [
+                        {
+                            "type": "message",
+                            "role": "assistant",
+                            "content": [{"type": "output_text", "text": "Fleet ready."}],
+                        }
+                    ]
+                )
+            ]
+        )
+        await self.mission.agent("Read the current state")
+        usage = next(
+            call.kwargs["result"]
+            for call in self.mission.event.call_args_list
+            if call.args[0] == "model_usage"
+        )
+        trace = Path(usage["trace"])
+        self.assertFalse(trace.is_absolute())
+        self.assertTrue((self.mission.directory / trace).with_suffix(".request.json").is_file())
+
     async def test_context_failure_reports_operation_type_and_traceback_without_model_call(self):
         self.replies([])
         with patch("mission_planner.gcs.service.live_context", side_effect=AssertionError):

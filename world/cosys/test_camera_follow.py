@@ -1,6 +1,7 @@
-"""Direct camera actuation, body compensation, readback and cancellation."""
+"""Direct stabilized camera actuation, settled readback and cancellation."""
 
 import asyncio
+import itertools
 import math
 import threading
 import time
@@ -22,7 +23,8 @@ class CameraRPC:
         self.position = np.array([12.0, 45.0, -20.0])
         self.attitude = Rotation.from_euler("ZYX", [82, 3, 5], degrees=True)
         self.mount = np.array([0.6, 0, 0.05])
-        self.relative = Rotation.from_euler("ZYX", [10, -45, 0], degrees=True)
+        self.world = Rotation.from_euler("ZYX", [92, -45, 0], degrees=True)
+        self.target = None
         self.fov = 53.13
         self.writes = []
         self.client = SimpleNamespace(close=Mock())
@@ -35,37 +37,36 @@ class CameraRPC:
 
     def simGetCameraInfo(self, name, *, vehicle_name):
         assert (name, vehicle_name) == ("fpv", "Drone1")
-        return SimpleNamespace(
-            fov=self.fov,
-            pose=airsim.Pose(
-                airsim.Vector3r(*(self.position + self.attitude.apply(self.mount))),
-                airsim.Quaternionr(*(self.attitude * self.relative).as_quat()),
-            ),
+        pose = airsim.Pose(
+            airsim.Vector3r(*(self.position + self.attitude.apply(self.mount))),
+            airsim.Quaternionr(*self.world.as_quat()),
         )
+        # The gimbal applies a world target on the engine tick after the request.
+        if self.target is not None:
+            self.world, self.target = self.target, None
+        return SimpleNamespace(fov=self.fov, pose=pose)
 
     def simSetCameraPose(self, name, pose, *, vehicle_name):
         assert (name, vehicle_name) == ("fpv", "Drone1")
         self.mount = np.array([getattr(pose.position, key + "_val") for key in "xyz"])
         q = pose.orientation
-        self.relative = quaternion_rotation([q.w_val, q.x_val, q.y_val, q.z_val])
+        self.target = quaternion_rotation([q.w_val, q.x_val, q.y_val, q.z_val])
         self.writes.append(pose)
 
 
 class CameraFollowTests(unittest.IsolatedAsyncioTestCase):
     def camera(self):
         camera = ForwardCapture("Drone1", Path(".local"))
-        rpc = camera.follow_rpc = CameraRPC()
-        camera.original_pose = airsim.Pose(
-            airsim.Vector3r(*rpc.mount), airsim.Quaternionr(*rpc.relative.as_quat())
-        )
+        camera.follow_rpc = CameraRPC()
+        camera.aimed = np.radians([92, -45]), 0.0
         self.addAsyncCleanup(camera.close)
         return camera
 
     def observed(self, camera):
         rpc = camera.follow_rpc
-        return (rpc.attitude * rpc.relative).as_quat()[[3, 0, 1, 2]].tolist()
+        return rpc.world.as_quat()[[3, 0, 1, 2]].tolist()
 
-    def test_delayed_rays_converge_while_aircraft_turns_and_banks_without_mount_or_zoom_drift(self):
+    def test_delayed_rays_converge_in_world_while_aircraft_turns_and_banks_without_drift(self):
         camera = self.camera()
         rpc, observed = camera.follow_rpc, self.observed(camera)
         generation = camera.begin_follow()
@@ -79,8 +80,8 @@ class CameraFollowTests(unittest.IsolatedAsyncioTestCase):
             with patch("world.cosys.inspection.time.monotonic", return_value=10 + tick * 0.1):
                 result, diagnostic = camera._follow([680, 260, 740, 350], generation, 100, observed)
             self.assertEqual(result["status"], "moved")
-            self.assertLess(diagnostic["readback_error_deg"], 1e-6)
-            actual = rpc.attitude * rpc.relative
+            self.assertLessEqual(diagnostic["readback_error_deg"], 0.25)
+            actual = rpc.world
             if previous is not None:
                 self.assertLessEqual(math.degrees((previous.inv() * actual).magnitude()), 1.8)
             previous = actual
@@ -96,9 +97,10 @@ class CameraFollowTests(unittest.IsolatedAsyncioTestCase):
         generation = camera.begin_follow()
         with patch("world.cosys.inspection.time.monotonic", return_value=10):
             camera._follow([680, 260, 740, 350], generation, 100, observed)
+        clock = itertools.count(10.2, 0.5)
         with (
-            patch("world.cosys.inspection.time.monotonic", return_value=10.2),
-            self.assertRaisesRegex(AssertionError, "camera pose did not follow command"),
+            patch("world.cosys.inspection.time.monotonic", side_effect=lambda: next(clock)),
+            self.assertRaisesRegex(AssertionError, "fpv camera did not settle on its target"),
         ):
             camera._follow([680, 260, 740, 350], generation, 100, observed)
         self.assertEqual(rpc.simSetCameraPose.call_count, 2)

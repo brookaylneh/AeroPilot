@@ -117,13 +117,50 @@ bash deploy/fetch-caddy.sh
 bash deploy/fetch-browser.sh
 npm run build
 bash world/unreal/scripts/stage-live-release.sh .local/unreal/<new-build>/Linux
+node --env-file=.local/runtime.env --import tsx web/slots.ts write
 sudo bash deploy/install-services.sh
-sudo systemctl start snr-turn snr-signalling snr-unreal
+sudo systemctl start snr-turn snr-vision@0 snr-signalling@0 snr-unreal@0
 timeout 120 bash -c 'until ss -H -ltn sport = :41451 | rg -q "127.0.0.1:41451"; do sleep 1; done'
-sudo systemctl start snr-mission snr-web
+sudo systemctl start snr-mission@0 snr-web
 # Start Caddy after the security group permits HTTP on TCP 80.
 sudo systemctl start snr-caddy
 ```
+
+## Environment slots
+
+Each visitor receives a whole environment: one Unreal world, its signalling server, mission
+service with four autopilots, and local SAM container. `SNR_SLOTS` sets how many run;
+`SNR_SLOT_HOSTS` lists one IPv4 host per slot. `web/slots.ts` derives every slot value from the
+base file and asserts that no listener collides; `write` stores each slot's overrides in
+`.local/slots/<k>/runtime.env` with its Cosys settings, and the `@<k>` units read that file after
+`.local/runtime.env`. Command-line tools for a slot load both files in that order.
+
+| Value                      | Slot 0                                | Slot 1                                |
+| -------------------------- | ------------------------------------- | ------------------------------------- |
+| Player / streamer          | `8080` / `8888`                       | `8081` / `8889`                       |
+| Mission / Cosys RPC        | `8765` / `41451`                      | `8766` / `41452`                      |
+| SITL instances             | 0–3                                   | 10–13                                 |
+| MAVLink / RC UDP           | `14600–14603` / `5501–5531`           | `14610–14613` / `5601–5631`           |
+| AirSim UDP                 | `9002–9033`                           | `9102–9133`                           |
+| Unreal WebRTC UDP          | `49160–49200`                         | `49210–49250`                         |
+| Containers                 | `snr-unreal-slot0`, `snr-sam31-slot0` | `snr-unreal-slot1`, `snr-sam31-slot1` |
+| Vision socket, streamer ID | `.local/run/vision-0.sock`, `Slot0`   | `vision-1.sock`, `Slot1`              |
+| CPU limit                  | `SNR_CPU_LIMIT / SNR_SLOTS`           | same                                  |
+
+A third slot collides with the TURN relay range and fails at startup until that range moves.
+The current installed services support loopback slots on this host only; remote slot hosts
+are rejected. Each slot also has separate `scenarios/`, `missions/`, `drone-data/` and fences.
+Saved scenarios are copied explicitly during migration, never shared writable between worlds.
+Each additional slot starts a full renderer and a separate SAM instance with its own
+16-billion-byte process budget. The slot count is a capacity choice, not a throughput claim;
+measure rendering, inference and GPU memory with every configured slot running.
+Before reducing `SNR_SLOTS`, stop the removed environments with the coupled shutdown.
+The installer rejects active removed slots and disables their boot units once stopped.
+The web server gives every browser an anonymous `snr_session` cookie and assigns it the lowest
+free slot whose mission is idle and renderer ready; assignments survive web restarts in
+`.local/slots/assignments.json`. See [web](../web/README.md) for release rules and explicit
+fault recovery. The mission unit waits up to 120 seconds for its own Cosys listener before
+starting SITL, including at host boot. A timeout fails the unit without restarting it.
 
 The browser build also requires the packaged CSRT artifacts. Run
 `bash mission_planner/gcs/build-csrt.sh` once before the first `npm run build`;
@@ -131,15 +168,13 @@ the build and verified source versions are documented in
 [live camera overlays](../mission_planner/gcs/README.md#live-camera-and-overlays).
 
 When a parallel editing session has unfinished changes, build and verify an isolated
-source checkout against the installed version. The mission and web units can use an
-explicit `WorkingDirectory` in their `source.conf` drop-ins; keep that checkout and
-its `.env`, `.local`, virtual environment and Node dependency links available while
-installed. Check `systemctl show snr-mission snr-web -p WorkingDirectory` before a
-deployment, and update both source locations together after the normal coupled shutdown.
-Changing the source directory does not restart the vision service.
+source checkout against the installed version, then run the installer from that checkout:
+it renders the checkout as every unit's root. Keep its `.env`, `.local`, virtual
+environment and Node dependency links available while installed. Check
+`systemctl show snr-web snr-mission@0 -p WorkingDirectory` before a deployment.
 
 Build the immutable SAM device image and stage its verified checkpoint, warmup
-fixture and compile-cache directory before starting `snr-mission`. Set all six
+fixture and compile-cache directory before starting `snr-mission@<k>`. Set all six
 `SNR_SAM_*` values in `.local/runtime.env`; the example image ID identifies the
 qualified build and the GPU UUID must identify the intended device. See the
 [device package](../mission_planner/agents/services/README.md#local-sam-device-package).
@@ -155,24 +190,21 @@ autopilots before Unreal is ready exhausts their first sensor-message timeout.
 The rendering and encoding profile is documented in [streaming](../world/unreal/streaming.md);
 its startup values are defined in `runtime.env.example`.
 
-| Route or endpoint                                 | Purpose                                                         | Listener / upstream                                             |
-| ------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------- |
-| `http://35.81.229.78/`                            | Mission Control: map, world exploration and scenario tabs       | Caddy, 80 TCP, then web `127.0.0.1:3001`                        |
-| `/home`, `/studio`, `/missionplanner`, `/mission` | Redirect to `/`                                                 | web, `127.0.0.1:3001`                                           |
-| `/api/mission`                                    | Mission WebSocket                                               | web origin check, then `127.0.0.1:8765`                         |
-| `/api/evidence/<mission>/<asset>`                 | Registered immutable original JPEGs and matching mask PNGs      | same web origin, mission-owned registry                         |
-| `/api/unreal/status`                              | Renderer readiness and occupancy                                | web, signalling health                                          |
-| `/api/stream`                                     | Pixel Streaming player WebSocket                                | web origin check, then `127.0.0.1:8080`                         |
-| `/healthz`                                        | All seven units plus mission, renderer and TURN protocol health | web; 503 if any check fails                                     |
-| Internal streamer                                 | Unreal to signalling                                            | `127.0.0.1:8888`                                                |
-| Internal Cosys RPC                                | Native simulation control                                       | `127.0.0.1:41451`                                               |
-| Internal MAVLink                                  | Four SITL telemetry inputs                                      | `127.0.0.1:14600–14603` UDP                                     |
-| Internal RC input                                 | Four SITL inputs                                                | `127.0.0.1:5501,5511,5521,5531` UDP                             |
-| Internal AirSim sensor and control                | Cosys to SITL, SITL instances 0–3                               | `127.0.0.1:9003–9033` and `9002–9032` UDP, step 10              |
-| TURN                                              | Browser relay control                                           | `172.31.61.189:3478` TCP/UDP, public EIP translation            |
-| TURN relay                                        | Relayed media                                                   | `172.31.61.189:49300–49350` UDP                                 |
-| Unreal WebRTC                                     | Local media endpoint reached by TURN                            | `49160–49200` UDP; no public ingress required with forced relay |
-| Development                                       | One server, reached by SSH tunnel                               | `127.0.0.1:5174`                                                |
+| Route or endpoint                                 | Purpose                                                      | Listener / upstream                                             |
+| ------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------- |
+| `http://35.81.229.78/`                            | Mission Control: map, world exploration and scenario tabs    | Caddy, 80 TCP, then web `127.0.0.1:3001`                        |
+| `/home`, `/studio`, `/missionplanner`, `/mission` | Redirect to `/`                                              | web, `127.0.0.1:3001`                                           |
+| `/api/slots`                                      | This session's environment, or how many are in use           | web, slot broker                                                |
+| `/api/mission`                                    | Mission WebSocket                                            | web origin and session check, then the slot's mission port      |
+| `/api/evidence/<mission>/<asset>`                 | Registered immutable original JPEGs and matching mask PNGs   | same web origin, mission-owned registry                         |
+| `/api/unreal/status`                              | The session's renderer readiness and occupancy               | web, slot signalling health                                     |
+| `/api/stream`                                     | Pixel Streaming player WebSocket                             | web origin and session check, then the slot's player port       |
+| `/healthz`                                        | Shared units, every slot's units, mission, renderer and TURN | web; 503 if any check fails or a slot is faulted                |
+| Internal streamer, Cosys RPC, MAVLink, SITL       | Per slot                                                     | see [environment slots](#environment-slots)                     |
+| TURN                                              | Browser relay control                                        | `172.31.61.189:3478` TCP/UDP, public EIP translation            |
+| TURN relay                                        | Relayed media                                                | `172.31.61.189:49300–49350` UDP                                 |
+| Unreal WebRTC                                     | Local media endpoint reached by TURN, per slot               | `49160–49250` UDP; no public ingress required with forced relay |
+| Development                                       | One server, reached by SSH tunnel                            | `127.0.0.1:5174`                                                |
 
 Caddy proxies to the web server so production and development share the same-origin WebSocket
 checks. The root redirects explicitly; unknown paths return 404. TURN and its media endpoints are the network-facing exception to the loopback service rule.
@@ -182,7 +214,7 @@ Signalling supplies `iceTransportPolicy: relay` to browsers. Unreal advertises i
 Epic's frontend `ForceTURN` flag is unused because it also rejects those remote candidates.
 
 The Unreal world advances only while the four disarmed autopilots return motor outputs, so start
-`snr-mission` after `snr-unreal` and it starts the fleet immediately. Its health state is `starting`
+`snr-mission@<k>` after `snr-unreal@<k>` and it starts the fleet immediately. Its health state is `starting`
 until the fleet is ready, then `idle` until general planner entry or Studio's Launch request
 opens a session. A general session has no rescue case; a Studio session retains its saved
 briefing. Reload and Home navigation preserve the session. Studio requires an explicit
@@ -191,7 +223,7 @@ to character selection; it never initiates a return flight. The coupled fleet re
 A later launch can select a new case. No model inference or autonomous flight starts merely
 by opening the planner or launching the briefing. See [web entry acceptance](../web/README.md).
 General and rescue sessions use one versioned flight plan; the mission state exposes the public map
-as `landmarks`. `snr-vision.service` launches one local SAM 3.1 container; Glimmer
+as `landmarks`. Each `snr-vision@<k>` launches one local SAM 3.1 container; Glimmer
 and the standalone SAM calibration service remain on Modal. Four independent drone
 sessions share one model within a 16-billion-byte GPU budget and expose only
 `SNR_VISION_SOCKET`. See [vision installation and protocol](../mission_planner/agents/services/README.md).

@@ -117,13 +117,13 @@ test('Python camera diagnostics pass browser validation and render without the r
         `
 import json, time
 from pathlib import Path
-import cosysairsim as airsim
+import numpy as np
 from world.cosys.inspection import ForwardCapture
 from world.cosys.test_camera_follow import CameraRPC
 camera = ForwardCapture('Drone1', Path('.local'))
 rpc = camera.follow_rpc = CameraRPC()
-camera.original_pose = airsim.Pose(airsim.Vector3r(*rpc.mount), airsim.Quaternionr(*rpc.relative.as_quat()))
-observed = (rpc.attitude * rpc.relative).as_quat()[[3, 0, 1, 2]].tolist()
+camera.aimed = np.radians([92, -45]), 0.0
+observed = rpc.world.as_quat()[[3, 0, 1, 2]].tolist()
 try:
     result, diagnostic = camera._follow([440, 240, 480, 300], camera.begin_follow(), time.monotonic() + 2, observed)
     print(json.dumps({'source': 'onboard_csrt', 'track_id': 1, 'status': result['status'], 'sequence': 1,

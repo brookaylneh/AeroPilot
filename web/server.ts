@@ -5,20 +5,54 @@ import { existsSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { createServer, request } from 'node:http';
 import { required, port as configuredPort } from './runtime';
-import { health, rendererHealth } from './health';
+import { health, probe, rendererHealth } from './health';
+import { slots } from './slots';
+import { broker, endMissionOver, newSession, sessionOf } from './broker';
 import { briefingRouter } from '../scenario_creator/briefingRouter';
 import { trackerPreview } from './evidence';
 const app = express();
 app.disable('x-powered-by');
 app.use(compression());
-app.use('/api/rescue-cases', briefingRouter(path.resolve(required('SNR_SCENARIO_DATA_DIR'), 'briefings')));
-const pixelPlayerPort = configuredPort('PIXEL_PLAYER_PORT');
-const missionPort = configuredPort('SNR_MISSION_PORT');
+const table = slots();
+const idleSeconds = Number(required('SNR_SLOT_IDLE_S'));
+if (!Number.isInteger(idleSeconds) || idleSeconds < 60) throw new Error('Invalid SNR_SLOT_IDLE_S');
+const visitors = broker(
+  table,
+  path.resolve(required('SNR_ROOT'), '.local/slots/assignments.json'),
+  idleSeconds * 1000,
+  probe,
+  endMissionOver,
+);
+setInterval(() => void visitors.sweep().catch((error: Error) => console.error(error.message)), 15000);
+// Every visitor carries an anonymous session; it selects their world, drones and mission.
+app.use((req, res, next) => {
+  let session = sessionOf(req);
+  if (session === null) {
+    const created = newSession();
+    session = created.session;
+    res.setHeader('Set-Cookie', created.cookie);
+  }
+  res.locals.session = session;
+  next();
+});
 const host = required('SNR_HOST');
 if (host !== '127.0.0.1') throw new Error('Internal web service must bind loopback');
 const development = process.argv.includes('--dev');
 const port = configuredPort(development ? 'SNR_DEV_PORT' : 'SNR_WEB_PORT');
 app.get(['/home', '/studio', '/missionplanner', '/mission'], (_req, res) => res.redirect(308, '/'));
+app.use(['/api/rescue-cases', '/api/evidence'], (_req, res, next) => {
+  const slot = visitors.slotFor(res.locals.session);
+  if (slot === null) {
+    res.sendStatus(403);
+    return;
+  }
+  res.locals.slot = slot;
+  next();
+});
+const briefings = table.map((slot) =>
+  briefingRouter(path.join(slot.env.SNR_SCENARIO_DATA_DIR!, 'briefings')),
+);
+app.use('/api/rescue-cases', (req, res, next) => briefings[res.locals.slot.index]!(req, res, next));
 app.get(['/api/evidence/:mission/:asset', '/api/evidence/:mission/:asset/preview'], async (req, res) => {
   const { mission, asset } = req.params;
   const preview = req.path.endsWith('/preview');
@@ -32,7 +66,11 @@ app.get(['/api/evidence/:mission/:asset', '/api/evidence/:mission/:asset/preview
     res.sendStatus(400);
     return;
   }
-  const directory = path.resolve('.local/data/missions', mission, 'evidence');
+  const directory = path.resolve(res.locals.slot.env.SNR_MISSION_DATA_DIR, mission, 'evidence');
+  if (!existsSync(path.join(directory, 'assets.json'))) {
+    res.sendStatus(404);
+    return;
+  }
   const registry: string[] = JSON.parse(await readFile(path.join(directory, 'assets.json'), 'utf8'));
   if (!registry.includes(asset)) {
     res.sendStatus(404);
@@ -46,13 +84,22 @@ app.get(['/api/evidence/:mission/:asset', '/api/evidence/:mission/:asset/preview
   res.sendFile(asset, { root: directory });
 });
 app.get('/healthz', async (_req, res) => {
-  const result = await health();
+  const result = await health(table, visitors);
   res.setHeader('Cache-Control', 'no-store');
   res.status(result.ok ? 200 : 503).json(result);
 });
+app.get('/api/slots', async (_req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
+  res.json(await visitors.assign(res.locals.session));
+});
 app.get('/api/unreal/status', async (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
-  const result = await rendererHealth();
+  const slot = visitors.slotFor(res.locals.session);
+  if (slot === null) {
+    res.status(503).json({ state: 'unassigned' });
+    return;
+  }
+  const result = await rendererHealth(slot);
   res.status(result.state === 'unavailable' ? 503 : 200).json(result);
 });
 if (development) {
@@ -73,7 +120,7 @@ app.use((error: Error, _req: express.Request, res: express.Response, _next: expr
   res.status(503).json({ state: 'unavailable' });
 });
 const server = createServer(app);
-// A fixed local destination exposes only the player signalling service. Unreal's
+// Each session reaches only its own slot's player signalling and mission service. Unreal's
 // streamer port and native authoring files remain outside the HTTP surface.
 server.on('upgrade', (req, socket, head) => {
   let sameOrigin = false;
@@ -86,13 +133,21 @@ server.on('upgrade', (req, socket, head) => {
     socket.end('HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n');
     return;
   }
-  const upstreamPort = req.url === '/api/stream' ? pixelPlayerPort : missionPort;
+  const session = sessionOf(req);
+  const slot = visitors.slotFor(session);
+  if (slot === null) {
+    socket.end('HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n');
+    return;
+  }
+  const upstreamPort = req.url === '/api/stream' ? slot.playerPort : slot.missionPort;
+  visitors.opened(session!);
+  socket.once('close', () => visitors.closed(session!));
   const upstream = request({
-    hostname: '127.0.0.1',
+    hostname: slot.host,
     port: upstreamPort,
     path: '/',
     method: 'GET',
-    headers: { ...req.headers, host: `127.0.0.1:${upstreamPort}` },
+    headers: { ...req.headers, host: `${slot.host}:${upstreamPort}` },
   });
   upstream.setTimeout(10000, () => upstream.destroy());
   upstream.on('error', () => socket.destroy());

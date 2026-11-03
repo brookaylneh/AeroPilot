@@ -4,14 +4,13 @@ import { createInterface } from 'node:readline';
 import { readFile } from 'node:fs/promises';
 import { launchBrowser, observeScenario, waitForCreator, assertScenarioProtocol } from './browser.mjs';
 import { withScenarioBackup } from './calibration-authoring.mjs';
+import { reserveScene } from '../../../web/reserveScene.mjs';
 
 const url = process.env.SNR_NATIVE_URL;
 assert(url, 'SNR_NATIVE_URL is required');
-const status = await fetch(new URL('/api/unreal/status', url), { signal: AbortSignal.timeout(5000) });
-assert(status.ok);
-assert.equal((await status.json()).state, 'ready', 'Editing session occupied; release it first');
 const browser = await launchBrowser();
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+await reserveScene(page, new URL(url).origin);
 async function command(command) {
   const requestId = randomUUID();
   await page.evaluate(

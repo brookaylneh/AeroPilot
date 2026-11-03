@@ -8,6 +8,7 @@ import {
   enterWorld,
   assertScenarioProtocol,
 } from '../../../mission_planner/agents/perception/browser.mjs';
+import { reserveScene } from '../../../web/reserveScene.mjs';
 
 const [origin, output] = process.argv.slice(2);
 assert(origin && output, 'Usage: accept_rocketbox.mjs ORIGIN NEW_OUTPUT_DIRECTORY');
@@ -16,11 +17,9 @@ await mkdir(output, { recursive: false });
 const expected = JSON.parse(await readFile(new URL('../creator-people.json', import.meta.url), 'utf8'));
 const world = JSON.parse(await readFile(new URL('../../cosys/world.json', import.meta.url), 'utf8'));
 const result = { origin, recordedAt: new Date().toISOString(), people: [], errors: [] };
-const status = await fetch(`${origin}/api/unreal/status`, { signal: AbortSignal.timeout(5000) });
-assert(status.ok);
-assert.equal((await status.json()).state, 'ready', 'Release the current browser editing session first');
 const browser = await launchBrowser();
 const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
+await reserveScene(page, origin);
 page.on('pageerror', (error) => result.errors.push(error.message));
 const snapshot = () => page.evaluate(() => window.snrStates.at(-1));
 async function click(name) {

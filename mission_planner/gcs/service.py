@@ -24,7 +24,6 @@ from mission_planner.agents.tools import (
     TOOLS,
     validate_arguments,
 )
-from mission_planner.environment import ROOT
 from mission_planner.gcs.allocation import APPROVAL_HOVER_S
 from mission_planner.gcs.battery import available_seconds
 from mission_planner.gcs.expansion import EXPANSION_LEAD_S, due, expansion_request, reassignment
@@ -336,7 +335,7 @@ class Mission:
         self.active = active
         self.case = case
         self.id = str(uuid.uuid4())
-        self.directory = ROOT / ".local/data/missions" / self.id
+        self.directory = Path(os.environ["SNR_MISSION_DATA_DIR"]) / self.id
         self.directory.mkdir(parents=True, exist_ok=False)
         self.log = (self.directory / "events.jsonl").open("x")
         self.events = []
@@ -1840,7 +1839,7 @@ class Mission:
             error = task.exception()
             if error is not None:
                 diagnostic = {
-                    "trace": str(trace.relative_to(ROOT)),
+                    "trace": str(trace.relative_to(self.directory)),
                     "exception_type": type(error).__name__,
                     "traceback": "".join(traceback.format_exception(error)),
                     "context_preparation_s": context_preparation_s,
@@ -1869,7 +1868,7 @@ class Mission:
                         "reasoning_tokens"
                     ],
                     "request_body_bytes": trace.with_suffix(".request.json").stat().st_size,
-                    "trace": str(trace.relative_to(ROOT)),
+                    "trace": str(trace.relative_to(self.directory)),
                 },
             )
             if self.plan_active is not flight:

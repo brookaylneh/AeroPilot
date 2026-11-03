@@ -3,7 +3,8 @@
 Offline scoring of the planner against private scenario truth. The mission runtime never imports
 this package (`gcs/test_truth_isolation.py` forbids the `mission_planner.evaluation` prefix), and
 `truth.py` is the only module that opens private scenario files. Run it only for an explicitly
-requested evaluation, after loading `.local/runtime.env` (`SNR_SCENARIO_DATA_DIR`) and `.env`.
+requested evaluation, after loading `.local/runtime.env`, the selected `.local/slots/<k>/runtime.env`
+(`SNR_SCENARIO_DATA_DIR`, `SNR_MISSION_DATA_DIR`), and `.env`.
 
 - `briefs.py`: parses the scenario generator's fixed briefing sentences into the subject category,
   the Point Last Seen landmark id, the compass direction and hours missing, and builds the
@@ -18,7 +19,7 @@ requested evaluation, after loading `.local/runtime.env` (`SNR_SCENARIO_DATA_DIR
   is the 75 % dispersion angle, `band_1_touches_ipp` the first 100 m), coverage, fit headroom and
   rejections. The 2026-11-02 Granite Lake Trail miss planned a first band 150° off the stated
   direction; containment alone did not catch it, so direction agreement is a scored metric.
-- `replay.py`: scores recorded missions in `.local/data/missions/`: the case (mission start event
+- `replay.py`: scores recorded missions in `SNR_MISSION_DATA_DIR`: the case (mission start event
   or pasted briefing text), plan attempts and failures, time to first launch, and whether each
   launched plan's perimeter and assigned survey areas contain the subject.
 

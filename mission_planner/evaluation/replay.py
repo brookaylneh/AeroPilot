@@ -2,14 +2,14 @@
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 from shapely import Point, Polygon, union_all
 
-from mission_planner.environment import ROOT, load_env
+from mission_planner.environment import load_env
 from mission_planner.evaluation import truth
 
-MISSIONS = ROOT / ".local/data/missions"
 PLAN_TOOLS = ("preview_plan", "plan_task")
 
 
@@ -101,8 +101,9 @@ def run(output):
     load_env()
     output.mkdir(parents=True, exist_ok=False)
     briefings = truth.briefings()
+    missions = Path(os.environ["SNR_MISSION_DATA_DIR"])
     rows = [
-        row for d in sorted(MISSIONS.iterdir()) if d.is_dir() and (row := mission_row(d, briefings))
+        row for d in sorted(missions.iterdir()) if d.is_dir() and (row := mission_row(d, briefings))
     ]
     searched = [r for r in rows if r["plans"]]
     summary = {

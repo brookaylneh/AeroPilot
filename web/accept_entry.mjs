@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile, appendFile } from 'node:fs/promises';
 import { chromium, expect } from '@playwright/test';
+import { reserveScene } from './reserveScene.mjs';
 
 const [origin, output] = process.argv.slice(2);
 assert(origin === process.env.SNR_ORIGIN && output, 'Use the installed origin and a new evidence directory');
@@ -62,8 +63,7 @@ const tab = (name) =>
 try {
   const health = await fetch(`${origin}/healthz`, { signal: AbortSignal.timeout(5000) });
   assert(health.ok);
-  const initial = await health.json();
-  assert.equal(initial.renderer, 'ready', 'Close other scene tabs before acceptance');
+  result.slot = await reserveScene(page, origin);
   const response = await page.goto(origin);
   assert(response.ok());
   assert.equal(new URL(page.url()).pathname, '/');

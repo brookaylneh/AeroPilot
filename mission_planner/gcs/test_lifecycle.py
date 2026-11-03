@@ -2,10 +2,10 @@
 
 import asyncio
 import json
+import os
 import tempfile
 import unittest
 import uuid
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock, patch
 
@@ -57,8 +57,10 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
         self.fleet.close = AsyncMock()
         self.fleet.clear_missions = AsyncMock()
         patches = [
-            patch("mission_planner.gcs.service.ROOT", Path(self.temporary.name)),
-            patch.dict("os.environ", {"SNR_SITL_MODEL": "airsim-copter"}),
+            patch.dict(
+                "os.environ",
+                {"SNR_MISSION_DATA_DIR": self.temporary.name, "SNR_SITL_MODEL": "airsim-copter"},
+            ),
             patch("mission_planner.gcs.service.Wonder"),
             patch(
                 "mission_planner.gcs.service.Inspections",
@@ -536,7 +538,8 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
 
 class FleetReset(unittest.IsolatedAsyncioTestCase):
     async def test_clear_requires_landing_acknowledgement_and_empty_readback(self):
-        fleet = Fleet("unused", Mock(), [])
+        with patch.dict(os.environ, {"SNR_FENCES_PATH": "/nonexistent/flight-fences.json"}):
+            fleet = Fleet("unused", Mock(), [])
         state = {"id": "Drone1", "armed": False, "landed_state": MAV.MAV_LANDED_STATE_ON_GROUND}
         fleet.snapshot = Mock(return_value=[state])
         vehicle = {
