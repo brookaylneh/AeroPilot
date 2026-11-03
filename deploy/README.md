@@ -166,6 +166,8 @@ The browser build also requires the packaged CSRT artifacts. Run
 `bash mission_planner/gcs/build-csrt.sh` once before the first `npm run build`;
 the build and verified source versions are documented in
 [live camera overlays](../mission_planner/gcs/README.md#live-camera-and-overlays).
+The installer checks native CSRT in the deployment checkout's `.venv-cosys` before
+changing units. Install `requirements.txt` in that environment too.
 
 When a parallel editing session has unfinished changes, build and verify an isolated
 source checkout against the installed version, then run the installer from that checkout:

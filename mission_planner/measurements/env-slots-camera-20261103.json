@@ -240,5 +240,24 @@
   },
   "raw_evidence_directory": ".local/evidence/integration-env-camera-20261103T1535Z",
   "preserved_prior_audit": ".local/evidence/production-audit-20261103T1444Z",
-  "sources_directory": ".local/evidence/production-audit-20261103T1444Z/sources"
+  "sources_directory": ".local/evidence/production-audit-20261103T1444Z/sources",
+  "deployment_environment": {
+    "issue_found": "The original main checkout environment had opencv-python-headless, while staging used the required opencv-contrib-python-headless. The former has no native TrackerCSRT_create.",
+    "installed_opencv_distribution": "opencv-contrib-python-headless==4.10.0.84",
+    "runtime_distributions_match_staging": true,
+    "additional_installer_tools_on_main": [
+      "pip",
+      "setuptools"
+    ],
+    "installer_refuses_missing_csrt_before_modifying_units": true,
+    "installed_csrt_recorded_1x_frames": 45,
+    "installed_csrt_successful_frames": 45,
+    "dependency_requirements_changed": false,
+    "logs": [
+      "installer-missing-csrt.log",
+      "align-python-environment.log",
+      "install-main-aligned.log",
+      "main-csrt-recorded-frames.json"
+    ]
+  }
 }

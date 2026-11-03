@@ -12,6 +12,8 @@ test -f .local/runtime.env
 test -x .local/toolchains/bin/caddy
 test -f .local/dist/index.html
 test -x .local/unreal/Live/ScenarioStudio/Binaries/Linux/ScenarioStudio
+runuser -u "$service_user" -- "$project/.venv-cosys/bin/python" -c \
+  'import cv2; assert hasattr(cv2, "TrackerCSRT_create"), "Install requirements.txt in .venv-cosys: OpenCV CSRT is missing"; cv2.TrackerCSRT_create(cv2.TrackerCSRT_Params())'
 slots=$(sed -n 's/^SNR_SLOTS=//p' .local/runtime.env)
 [[ "$slots" =~ ^[1-9][0-9]*$ ]]
 for ((slot = 0; slot < slots; slot++)); do
