@@ -19,6 +19,7 @@ release_changes=$(runuser -u "$service_user" -- git status --porcelain --untrack
   exit 1
 }
 test -f .local/runtime.env
+test -r .secrets/turnserver.conf
 test -x .local/toolchains/bin/caddy
 test -f .local/dist/index.html
 [[ "$(realpath .local/dist)" = "$project/.local/dist" ]] || {
@@ -28,6 +29,8 @@ test -f .local/dist/index.html
 test -x .local/unreal/Live/ScenarioStudio/Binaries/Linux/ScenarioStudio
 runuser -u "$service_user" -- "$project/.venv-cosys/bin/python" -c \
   'import cv2; assert hasattr(cv2, "TrackerCSRT_create"), "Install requirements.txt in .venv-cosys: OpenCV CSRT is missing"; cv2.TrackerCSRT_create(cv2.TrackerCSRT_Params())'
+runuser -u "$service_user" -- "$project/.venv-cosys/bin/python" -c \
+  'from world.cosys.terrain import heights; heights()'
 runuser -u "$service_user" -- "$project/.venv-cosys/bin/python" \
   -m unittest mission_planner.gcs.test_host
 slots=$(sed -n 's/^SNR_SLOTS=//p' .local/runtime.env)

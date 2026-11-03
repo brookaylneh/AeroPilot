@@ -121,10 +121,10 @@ deploy_source=$PWD
 deploy_release="$PWD/.local/staging/release-$(git rev-parse --short=12 HEAD)"
 git worktree add --detach "$deploy_release" HEAD
 mkdir "$deploy_release/.local"
-for entry in .env .venv-cosys node_modules; do
+for entry in .env .secrets .venv-cosys node_modules; do
   ln -s "$deploy_source/$entry" "$deploy_release/$entry"
 done
-for entry in runtime.env toolchains unreal slots vendor data evidence run build; do
+for entry in runtime.env toolchains unreal slots vendor world data evidence run build; do
   ln -s "$deploy_source/.local/$entry" "$deploy_release/.local/$entry"
 done
 cd "$deploy_release"
@@ -186,7 +186,8 @@ through a `.local` symlink. Spawned model workers import Python source after the
 starts; an editable deployment can mix an old mission process with unfinished new code.
 Build and verify the selected commit, then install its release checkout as above.
 Keep its environment, data, toolchain and dependency links available while installed;
-leave release source and `.local/dist` unchanged. The installer also starts the one-worker
+leave release source and `.local/dist` unchanged. The installer verifies the terrain
+heightfield checksum and shape, requires the TURN configuration, and starts the one-worker
 and four-worker model pools without model requests to verify the host bootstrap.
 Check
 `systemctl show snr-web snr-mission@0 -p WorkingDirectory` before a deployment.
