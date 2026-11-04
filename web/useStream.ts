@@ -7,7 +7,7 @@ const rendererStatus = z.object({ state: z.enum(['unassigned', 'starting', 'occu
 export type Stream = {
   host: HTMLDivElement;
   transport: PixelStreamingTransport | null;
-  status: { phase: 'connecting' | 'live' | 'error'; title: string; detail: string };
+  status: { phase: 'connecting' | 'waiting' | 'live' | 'error'; title: string; detail: string };
   reconnect: () => void;
 };
 
@@ -55,11 +55,15 @@ export function useStream(): Stream {
             'The renderer is not running. Restore the service, then select Reconnect.',
           );
         const health = rendererStatus.parse(await response.json());
-        if (health.state === 'occupied')
-          return fail(
-            'Scene open in another tab',
-            'This browser already shows your world in another tab. Close that tab, then select Reconnect.',
-          );
+        if (health.state === 'occupied') {
+          setStatus({
+            phase: 'waiting',
+            title: 'Live video is in use',
+            detail:
+              'Another viewer controls Studio and live video. The shared map and conversation are available. Select Reconnect when they close their video.',
+          });
+          return;
+        }
         if (health.state !== 'ready')
           return fail('Scene is starting', 'The renderer is warming up. Select Reconnect when it is ready.');
         setStatus({

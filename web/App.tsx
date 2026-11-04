@@ -9,7 +9,7 @@ import './app.css';
 
 const UnrealApp = lazy(() => import('../scenario_creator/UnrealApp'));
 
-// Each visitor gets a whole environment; a new slot remounts the mission and stream connections.
+// Browsers join a shared mission; video control is admitted separately by the renderer.
 export default function App() {
   const slot = useSlot();
   if (slot.state === 'assigned') return <Environment key={slot.slot} />;

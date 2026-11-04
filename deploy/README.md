@@ -161,8 +161,9 @@ both after the new web service starts.
 
 ## Environment slots
 
-Each visitor receives a whole environment: one Unreal world, its signalling server, mission
-service with four autopilots, and local SAM container. `SNR_SLOTS` sets how many run;
+Each environment contains one Unreal world, its signalling server, mission service
+with four autopilots, and local SAM container. Browser sessions can share its mission;
+one viewer at a time controls its video and Studio. `SNR_SLOTS` sets how many environments run;
 `SNR_SLOT_HOSTS` lists one IPv4 host per slot. `web/slots.ts` derives every slot value from the
 base file and asserts that no listener collides; `write` stores each slot's overrides in
 `.local/slots/<k>/runtime.env` with its Cosys settings, and the `@<k>` units read that file after
@@ -189,8 +190,8 @@ Each additional slot starts a full renderer and a separate SAM instance with its
 measure rendering, inference and GPU memory with every configured slot running.
 Before reducing `SNR_SLOTS`, stop the removed environments with the coupled shutdown.
 The installer rejects active removed slots and disables their boot units once stopped.
-The web server gives every browser an anonymous `snr_session` cookie and assigns it the lowest
-free slot whose mission is idle and renderer ready; assignments survive web restarts in
+The web server gives every browser an anonymous `snr_session` cookie and joins it to the first
+ready mission, including an active mission already watched by other browsers; assignments survive web restarts in
 `.local/slots/assignments.json`. See [web](../web/README.md) for release rules and explicit
 fault recovery. The mission unit waits up to 120 seconds for its own Cosys listener before
 starting SITL, including at host boot. A timeout fails the unit without restarting it.

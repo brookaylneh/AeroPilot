@@ -18,15 +18,15 @@ const code = buildSync({
 const module = { exports: {} as { Waiting: FunctionComponent<{ slot: object }> } };
 new Function('module', 'exports', 'require', code)(module, module.exports, createRequire(import.meta.url));
 
-test('a visitor without a free environment sees the waiting card, never the scene', () => {
+test('a starting shared mission has a readiness message instead of an exclusive-slot queue', () => {
   const html = renderToStaticMarkup(
     createElement(module.exports.Waiting, { slot: { state: 'busy', inUse: 1, total: 1 } }),
   );
   assert.match(html, /<article class="gcs-vehicle"/);
-  assert.match(html, /All environments are busy/);
+  assert.match(html, /Mission Control is preparing/);
   assert.match(html, /WAITING/);
-  assert.match(html, /1 of 1 in use/);
-  assert.doesNotMatch(html, /Scene/);
+  assert.match(html, /shared mission is starting or resetting/);
+  assert.doesNotMatch(html, /1 of 1 in use|All environments are busy/);
 });
 
 test('a failed assignment stays failed until the visitor explicitly reloads', () => {

@@ -24,7 +24,7 @@ export function newSession() {
   return { session, cookie: `${COOKIE}=${session}; HttpOnly; SameSite=Lax; Path=/; Max-Age=604800` };
 }
 
-// Each visitor holds one slot (world, four drones, mission) until they leave and it is idle.
+// Browser sessions share a mission; the renderer separately admits one video controller.
 export function broker(
   table: Slot[],
   file: string,
@@ -41,14 +41,11 @@ export function broker(
       readFileSync(file, 'utf8'),
     );
     assert.deepEqual(Object.keys(saved).sort(), ['assignments', 'faulted']);
-    const occupied = new Set<number>();
     for (const [session, slot] of Object.entries(saved.assignments)) {
       assert(
         Number.isInteger(slot) && slot >= 0 && slot < table.length,
         `Saved slot ${slot} is not configured`,
       );
-      assert(!occupied.has(slot), `Saved slot ${slot} has multiple owners`);
-      occupied.add(slot);
       sessions.set(session, { slot, sockets: 0, idleSince: now() });
     }
     for (const [index, reason] of Object.entries(saved.faulted)) {
@@ -66,6 +63,7 @@ export function broker(
     renameSync(`${file}.tmp`, file);
   };
   const held = (slot: number) => [...sessions.values()].some((item) => item.slot === slot);
+  const members = (slot: number) => [...sessions].filter(([, item]) => item.slot === slot);
   let queue = Promise.resolve();
   const serial = <T>(work: () => Promise<T>) => {
     const result = queue.then(work);
@@ -97,10 +95,10 @@ export function broker(
             : { state: 'assigned' as const, slot: existing.slot, ...status() };
         let unavailable = false;
         for (const slot of table) {
-          if (held(slot.index) || faulted.has(slot.index) || releasing.has(slot.index)) continue;
+          if (faulted.has(slot.index) || releasing.has(slot.index)) continue;
           const health = await probe(slot);
-          unavailable ||= health.mission === 'unavailable' || health.renderer === 'unavailable';
-          if (health.mission !== 'idle' || health.renderer !== 'ready') continue;
+          unavailable ||= health.mission === 'unavailable';
+          if (!['idle', 'ready'].includes(health.mission)) continue;
           sessions.set(session, { slot: slot.index, sockets: 0, idleSince: now() });
           persist();
           return { state: 'assigned' as const, slot: slot.index, ...status() };
@@ -121,30 +119,31 @@ export function broker(
     },
     sweep: async () => {
       const abandoned = await serial(async () => {
-        const pending: { session: string; slot: Slot }[] = [];
-        for (const [session, item] of [...sessions]) {
-          const idle = now() - item.idleSince;
-          if (item.sockets > 0 || idle < RELEASE_MS || faulted.has(item.slot) || releasing.has(item.slot))
-            continue;
-          const slot = table[item.slot]!;
+        const pending: { sessions: string[]; slot: Slot }[] = [];
+        for (const slot of table) {
+          if (faulted.has(slot.index) || releasing.has(slot.index)) continue;
+          const viewers = members(slot.index);
+          if (!viewers.length || viewers.some(([, item]) => item.sockets > 0)) continue;
+          const idle = () => now() - Math.max(...viewers.map(([, item]) => item.idleSince));
+          if (idle() < RELEASE_MS) continue;
           const health = await probe(slot);
-          if (item.sockets > 0 || now() - item.idleSince < RELEASE_MS) continue;
+          if (viewers.some(([, item]) => item.sockets > 0) || idle() < RELEASE_MS) continue;
           if (
             (health.mission === 'idle' && health.renderer === 'ready') ||
-            (health.mission === 'ready' && idle >= idleMs)
+            (health.mission === 'ready' && idle() >= idleMs)
           ) {
             releasing.add(slot.index);
-            pending.push({ session, slot });
+            pending.push({ sessions: viewers.map(([session]) => session), slot });
           }
         }
         return pending;
       });
       // Aircraft can take minutes to land; other visitors must still be able to enter free slots.
       await Promise.all(
-        abandoned.map(async ({ session, slot }) => {
+        abandoned.map(async ({ sessions: viewers, slot }) => {
           try {
             await endMission(slot);
-            sessions.delete(session);
+            for (const session of viewers) sessions.delete(session);
             persist();
           } catch (error) {
             const reason = `Slot ${slot.index} could not reset its abandoned environment: ${(error as Error).message}`;

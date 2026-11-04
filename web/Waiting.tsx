@@ -2,7 +2,7 @@ import type { CSSProperties } from 'react';
 import { Hourglass } from 'lucide-react';
 import type { SlotState } from './useSlot';
 
-// Shown instead of Mission Control until this browser holds an environment of its own.
+// Shown only while the shared mission is starting or being reset.
 export function Waiting({ slot }: { slot: Exclude<SlotState, { state: 'assigned' }> }) {
   const busy = slot.state === 'busy';
   return (
@@ -14,7 +14,7 @@ export function Waiting({ slot }: { slot: Exclude<SlotState, { state: 'assigned'
               <Hourglass size={11} />
               <strong>
                 {busy
-                  ? 'All environments are busy'
+                  ? 'Mission Control is preparing'
                   : slot.state === 'error'
                     ? 'Environment unavailable'
                     : 'Preparing your environment'}
@@ -26,10 +26,10 @@ export function Waiting({ slot }: { slot: Exclude<SlotState, { state: 'assigned'
           </header>
           <p>
             {busy
-              ? `${slot.inUse} of ${slot.total} in use. Your world, drones and mission open here automatically when one is free.`
+              ? 'The shared mission is starting or resetting. Mission Control opens here when it is ready.'
               : slot.state === 'error'
                 ? `${slot.message}. Reload the page after the service is restored.`
-                : 'Reserving a world, four drones and a mission for this browser.'}
+                : 'Connecting to the shared mission and four drones.'}
           </p>
         </article>
       </div>

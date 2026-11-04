@@ -15,7 +15,7 @@ export type SlotState =
   | { state: 'checking' }
   | { state: 'error'; message: string };
 
-// The server pairs this browser's anonymous session with one environment of its own.
+// The server attaches this browser's session to a shared mission environment.
 export function useSlot(): SlotState {
   const [slot, setSlot] = useState<SlotState>({ state: 'checking' });
   useEffect(() => {

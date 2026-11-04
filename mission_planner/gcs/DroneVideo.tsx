@@ -260,8 +260,19 @@ export default function DroneVideo({
           role={status === 'connecting' ? 'status' : 'alert'}
         >
           <Camera size={inset ? 24 : 32} strokeWidth={1.3} />
-          <strong>{status === 'connecting' ? `Loading ${droneId} camera` : 'Camera unavailable'}</strong>
+          <strong>
+            {stream.status.phase === 'waiting'
+              ? stream.status.title
+              : status === 'connecting'
+                ? `Loading ${droneId} camera`
+                : 'Camera unavailable'}
+          </strong>
           <p>{state.message}</p>
+          {!stream.transport && ['waiting', 'error'].includes(stream.status.phase) && (
+            <button type="button" onClick={stream.reconnect}>
+              Reconnect
+            </button>
+          )}
         </div>
       )}
     </section>

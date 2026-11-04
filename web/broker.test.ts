@@ -51,24 +51,33 @@ test('cookies carry one anonymous session and reject malformed values', () => {
   assert.equal(sessionOf({ headers: {} } as IncomingMessage), null);
 });
 
-test('visitors receive distinct slots and the next one waits', async () => {
+test('independent browser sessions join the same mission environment', async () => {
   const { visitors, file } = setup();
   assert.equal(await slotOf(visitors, 'a'), 0);
-  assert.equal(await slotOf(visitors, 'b'), 1);
-  assert.deepEqual(await visitors.assign('c'), { state: 'busy', inUse: 2, total: 2, faulted: {} });
+  assert.equal(await slotOf(visitors, 'b'), 0);
+  assert.equal(await slotOf(visitors, 'c'), 0);
   assert.equal(await slotOf(visitors, 'a'), 0);
-  assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), { assignments: { a: 0, b: 1 }, faulted: {} });
-  assert.equal(visitors.slotFor('c'), null);
-  assert.equal(visitors.slotFor('b')!.missionPort, 8766);
+  assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')), {
+    assignments: { a: 0, b: 0, c: 0 },
+    faulted: {},
+  });
+  assert.equal(visitors.slotFor('unknown'), null);
+  assert.equal(visitors.slotFor('b')!.missionPort, 8765);
+  assert.deepEqual(visitors.status(), { inUse: 1, total: 2, faulted: {} });
 });
 
-test('a slot that is starting, running a mission or watched is not assigned', async () => {
+test('judges can join a running mission while its video is occupied or unavailable', async () => {
   const { visitors, health } = setup();
-  health[0] = { mission: 'ready', renderer: 'ready' };
-  health[1] = { mission: 'idle', renderer: 'occupied' };
+  health[0] = { mission: 'ready', renderer: 'occupied' };
+  assert.equal(await slotOf(visitors, 'a'), 0);
+  health[0].renderer = 'unavailable';
+  assert.equal(await slotOf(visitors, 'b'), 0);
+});
+
+test('starting missions still wait for readiness', async () => {
+  const { visitors, health } = setup();
+  health[0] = health[1] = { mission: 'starting', renderer: 'ready' };
   assert.equal((await visitors.assign('a')).state, 'busy');
-  health[1] = { mission: 'idle', renderer: 'ready' };
-  assert.equal(await slotOf(visitors, 'a'), 1);
 });
 
 test('an idle slot is released shortly after its last socket closes', async () => {
@@ -91,6 +100,7 @@ test('an idle slot is released shortly after its last socket closes', async () =
 test('an abandoned mission ends after the idle limit and a failure faults the slot', async () => {
   const { visitors, clock, health, ended, failures } = setup();
   await visitors.assign('a');
+  health[0].mission = 'starting';
   await visitors.assign('b');
   health[0] = { mission: 'ready', renderer: 'ready' };
   health[1] = { mission: 'ready', renderer: 'ready' };
@@ -115,9 +125,10 @@ test('an abandoned mission ends after the idle limit and a failure faults the sl
   assert.equal(await slotOf(visitors, 'c'), 0);
 });
 
-test('saved assignments survive a web restart', async () => {
+test('shared assignments survive a web restart', async () => {
   const first = setup();
   await first.visitors.assign('a');
+  await first.visitors.assign('b');
   const restarted = broker(
     table,
     first.file,
@@ -126,6 +137,30 @@ test('saved assignments survive a web restart', async () => {
     async () => {},
   );
   assert.equal(restarted.slotFor('a')!.index, 0);
+  assert.equal(restarted.slotFor('b')!.index, 0);
+});
+
+test("one judge leaving cannot reset another judge's shared mission", async () => {
+  const { visitors, clock, health, ended } = setup();
+  await visitors.assign('a');
+  await visitors.assign('b');
+  visitors.opened('a');
+  visitors.opened('b');
+  health[0].mission = 'ready';
+  visitors.closed('a');
+  clock.now = 600_000;
+  await visitors.sweep();
+  assert.deepEqual(ended, []);
+  assert.equal(visitors.slotFor('a')!.index, visitors.slotFor('b')!.index);
+  visitors.closed('b');
+  clock.now = 1_199_999;
+  await visitors.sweep();
+  assert.deepEqual(ended, []);
+  clock.now = 1_200_000;
+  await visitors.sweep();
+  assert.deepEqual(ended, [0], 'Reset once after the last viewer leaves');
+  assert.equal(visitors.slotFor('a'), null);
+  assert.equal(visitors.slotFor('b'), null);
 });
 
 test('a landing environment does not block another visitor or accept new sockets', async () => {
@@ -206,7 +241,7 @@ test('a reconnect during a health probe prevents an idle reset', async () => {
   assert.deepEqual(ended, []);
 });
 
-test('faults survive web restart and duplicate saved ownership is rejected', async () => {
+test('faults survive web restart and invalid saved environments are rejected', async () => {
   const first = setup();
   await first.visitors.assign('a');
   first.health[0] = { mission: 'ready', renderer: 'ready' };
@@ -222,8 +257,8 @@ test('faults survive web restart and duplicate saved ownership is rejected', asy
       async () => {},
     );
   assert.deepEqual(restarted().status().faulted, first.visitors.status().faulted);
-  writeFileSync(first.file, JSON.stringify({ assignments: { a: 0, b: 0 }, faulted: {} }));
-  assert.throws(restarted, /multiple owners/);
+  writeFileSync(first.file, JSON.stringify({ assignments: { a: 0, b: 2 }, faulted: {} }));
+  assert.throws(restarted, /not configured/);
 });
 
 test('an unavailable backend is an error, not a permanently busy queue', async () => {

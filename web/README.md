@@ -8,24 +8,32 @@ redirect there. Its tabs share one Pixel Streaming connection, because each
 environment's renderer admits one subscriber; the video element moves between views
 without reconnecting.
 
-Every visitor has their own environment without logging in. The server sets an
-anonymous `HttpOnly` `snr_session` cookie and `/api/slots` assigns it the lowest free
-[environment slot](../deploy/README.md#environment-slots): its world, four drones and
-mission. The mission and stream WebSockets reach only that slot. When every slot is
-taken, the page shows an All environments are busy card in the drone-card style and
-polls every 5 seconds; it never opens another visitor's scene. A slot is released
-30 seconds after its visitor's last socket closes if no mission is running, after
+Browsers share Mission Control without logging in. The server sets an anonymous
+`HttpOnly` `snr_session` cookie and `/api/slots` joins the first ready
+[environment slot](../deploy/README.md#environment-slots), including one already
+running a mission or watched by other browsers. All participants see the same
+conversation, four drones, plans and evidence. Mission and stream requests stay
+bound to that environment. A video outage does not block access to the mission.
+While missions are starting or resetting, the page waits and checks every five seconds.
+
+Unreal admits one video controller per environment. Other browsers can use the
+map and conversation; Studio and camera views explain that live video is in use.
+Closing its browser releases the video connection immediately. Select Reconnect
+in a waiting Studio or camera view to acquire it. The environment's lifetime does
+not govern video handoff.
+
+An idle environment is reset 30 seconds after its last participant disconnects, after
 resetting unsaved world placement through Start / End mission without inference. An
 abandoned mission is ended through the normal End mission request after
-`SNR_SLOT_IDLE_S` seconds without a connected browser, which returns airborne drones
+`SNR_SLOT_IDLE_S` seconds without any connected participant, which returns airborne drones
 first. If that request fails, the slot is marked faulted, excluded from assignment
 and reported by `/healthz`. Its fault survives web restarts and is never automatically
 retried. After restoring and verifying the grounded fleet, an operator explicitly removes
 that slot's `faulted` entry from `.local/slots/assignments.json` while `snr-web` is stopped.
 Landing and reset do not block assignment of another free slot. Network or schema failures
 in assignment show an error and require an explicit browser reload after repair.
-A second tab of the same browser shares the session's mission and reports
-that the scene is open in another tab.
+Shared assignments survive web restarts. A departing participant cannot reset an
+environment while another browser still has a mission connection.
 
 - **Map** is the planner. With no mission running, Start mission, a Wonder chat or
   a tool opens a general mission; End mission returns airborne drones, waits for
@@ -64,17 +72,18 @@ node --env-file=.local/runtime.env web/accept_slots.mjs \
   "$SNR_ORIGIN" .local/evidence/slots/<new-browser-run>
 ```
 
-With one slot, the second visitor sees the busy card without opening a socket, then
-receives the slot after the first closes. With two slots, the visitors receive distinct
-missions and each decodes video from its own world. The command flies nothing.
+Both independent browser contexts must receive the same mission, event history
+and registered evidence. Closing one must leave the other's state updates running
+beyond the former release grace. The command flies nothing and calls no models.
+Add `--video-handoff` with an idle mission and the video viewer closed to verify that
+only one browser controls the scene and that the second can acquire video without
+resetting the shared mission. Release and first-frame times are recorded.
 
 Each slot has its own scenario library, mission records, evidence and fence file.
 Unassigned visitors cannot request case or evidence files; file requests and WebSockets
 are routed through the same cookie assignment.
-Saved scenarios and archived evidence persist when the slot is reassigned. Their ownership
-is scoped to the reusable environment, so a later visitor assigned that slot can access
-its scenario library and known evidence URLs. Private histories per user require separate
-ownership and retention rules.
+Saved scenarios and archived evidence are shared by all participants assigned to
+that environment. This is a shared demo workspace, not private histories per user.
 Inspection evidence is served from the mission's registered image files at
 `/api/evidence/<mission>/<asset>`. Candidate reviews expose the same original
 3840×2160 JPEG sent to Glimmer and Wonder. A separate SVG layer displays the
