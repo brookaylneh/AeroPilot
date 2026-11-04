@@ -21,7 +21,6 @@ from mission_planner.agents.models import EFFORTS
 from mission_planner.agents.tools import (
     AGENT_INSTRUCTIONS,
     CATEGORIES,
-    INSPECTION_TOOLS,
     TOOLS,
     validate_arguments,
 )
@@ -67,6 +66,8 @@ MESSAGE_FIELDS = {
 
 
 PLAN_TOOLS = ("plan_task", "preview_plan", "request_launch", "apply_plan_change", "apply_proposal")
+# Flight commands share one guarded path; every other registered tool has a _tool_ handler.
+FLIGHT_TOOLS = frozenset(("take_off", "fly_route", "hold", "stop", "resume", "land"))
 TASKING_EXTRAS = ("tasking", "region", "sectors", "fit", "rationale")
 CONTEXT_PREFIX = "Current mission context (live system state, not an operator message): "
 # The browser sends an operator's map click as this chat line.
@@ -1087,191 +1088,217 @@ class Mission:
         if name in PLAN_TOOLS:
             return await self.execute_plan(name, arguments, source, call_id)
         validate_arguments(name, arguments)
-        if name == "return_fleet":
-            return await self.return_fleet(arguments["drone_ids"], source)
-        if name == "return_home" and arguments["drone_id"] in self.return_tasks:
-            drone = arguments["drone_id"]
-            if source == "operator":
-                await self.interrupt_agent("operator return home")
-            state = next(state for state in self.vehicles() if state["id"] == drone)
+        if name in FLIGHT_TOOLS:
+            return await self._execute_flight(name, arguments, source, call_id)
+        return await getattr(self, "_tool_" + name)(arguments, source, call_id)
+
+    async def _tool_return_fleet(self, arguments, source, call_id):
+        return await self.return_fleet(arguments["drone_ids"], source)
+
+    async def _tool_return_home(self, arguments, source, call_id):
+        drone = arguments["drone_id"]
+        if drone not in self.return_tasks:
+            return await self._execute_flight("return_home", arguments, source, call_id)
+        if source == "operator":
+            await self.interrupt_agent("operator return home")
+        state = next(state for state in self.vehicles() if state["id"] == drone)
+        return {
+            **compact_vehicle(state),
+            "acknowledged_command": "return_home",
+            "return": dict(self.return_rows[drone]),
+        }
+
+    async def _tool_disregard_and_continue(self, arguments, source, call_id):
+        return self.inspections.disregard_and_continue(**arguments, source=source, call_id=call_id)
+
+    async def _tool_publish_evidence(self, arguments, source, call_id):
+        assert source == "agent", "Only Wonder publishes reviewed evidence"
+        return self.inspections.publish_evidence(**arguments)
+
+    async def _tool_confirm_evidence(self, arguments, source, call_id):
+        assert source == "agent", "Only Wonder records operator identification"
+        evidence = next(
+            (
+                event
+                for event in self.events
+                if event["id"] == arguments["evidence_id"]
+                and event["kind"] == "evidence"
+                and event["source"] == "agent"
+            ),
+            None,
+        )
+        assert evidence is not None, "Unknown accepted evidence"
+        operator = next(
+            (event for event in reversed(self.events) if event["kind"] == "operator"),
+            None,
+        )
+        assert operator is not None and operator["id"] == arguments["operator_event_id"], (
+            "Identification must reference the latest operator message"
+        )
+        assert operator["timestamp_ms"] > evidence["timestamp_ms"], (
+            "Operator identification must follow evidence publication"
+        )
+        assert not any(
+            event["kind"] == "evidence_confirmation"
+            and event["result"]["evidence_id"] == evidence["id"]
+            for event in self.events
+        ), "This evidence already has operator identification"
+        return self.event(
+            "evidence_confirmation",
+            operator["text"],
+            result={
+                "evidence_id": evidence["id"],
+                "operator_event_id": operator["id"],
+                "statement": operator["text"],
+            },
+            source="agent",
+        )
+
+    async def _tool_get_candidate(self, arguments, source, call_id):
+        return await self.inspections.get_candidate(**arguments)
+
+    async def _tool_relock_candidate(self, arguments, source, call_id):
+        assert self.fleet_ready, "MAVLink fleet is unavailable"
+        assert self.plan_task is None, "A flight plan action is already in progress"
+        return await self.inspections.relock_candidate(**arguments)
+
+    async def _tool_follow_candidate(self, arguments, source, call_id):
+        assert self.fleet_ready, "MAVLink fleet is unavailable"
+        assert self.plan_task is None, "A flight plan action is already in progress"
+        return await self.inspections.follow_candidate(**arguments)
+
+    async def _tool_set_camera_view(self, arguments, source, call_id):
+        assert self.plan_task is None, "A flight plan action is already in progress"
+        return await self.inspections.set_camera_view(**arguments)
+
+    async def _tool_face_heading(self, arguments, source, call_id):
+        assert self.fleet_ready, "MAVLink fleet is unavailable"
+        assert self.plan_task is None, "A flight plan action is already in progress"
+        drone = arguments["drone_id"]
+        assert not any(
+            row["drone_id"] == drone
+            and "rescue" in row
+            and row["rescue"]["phase"] in ("reviewing", "tracking", "held", "resuming")
+            for row in self.inspections.snapshot()
+        ), "Candidate tracking owns this drone's heading; release the lock or use an override"
+        assert drone not in self.active_flight, "Aircraft already has a flight action in progress"
+        self.active_flight.add(drone)
+        self.plan_task = asyncio.current_task()
+        try:
+            state = await self.fleet.face_heading(**arguments)
             return {
                 **compact_vehicle(state),
-                "acknowledged_command": name,
-                "return": dict(self.return_rows[drone]),
+                "heading_deg": state["heading_deg"],
+                "acknowledged_command": "face_heading",
             }
-        if name in INSPECTION_TOOLS:
-            if name == "disregard_and_continue":
-                return self.inspections.disregard_and_continue(
-                    **arguments, source=source, call_id=call_id
-                )
-            if name == "publish_evidence":
-                assert source == "agent", "Only Wonder publishes reviewed evidence"
-                return self.inspections.publish_evidence(**arguments)
-            if name == "confirm_evidence":
-                assert source == "agent", "Only Wonder records operator identification"
-                evidence = next(
-                    (
-                        event
-                        for event in self.events
-                        if event["id"] == arguments["evidence_id"]
-                        and event["kind"] == "evidence"
-                        and event["source"] == "agent"
-                    ),
-                    None,
-                )
-                assert evidence is not None, "Unknown accepted evidence"
-                operator = next(
-                    (event for event in reversed(self.events) if event["kind"] == "operator"),
-                    None,
-                )
-                assert operator is not None and operator["id"] == arguments["operator_event_id"], (
-                    "Identification must reference the latest operator message"
-                )
-                assert operator["timestamp_ms"] > evidence["timestamp_ms"], (
-                    "Operator identification must follow evidence publication"
-                )
-                assert not any(
-                    event["kind"] == "evidence_confirmation"
-                    and event["result"]["evidence_id"] == evidence["id"]
-                    for event in self.events
-                ), "This evidence already has operator identification"
-                return self.event(
-                    "evidence_confirmation",
-                    operator["text"],
-                    result={
-                        "evidence_id": evidence["id"],
-                        "operator_event_id": operator["id"],
-                        "statement": operator["text"],
-                    },
-                    source="agent",
-                )
-            if name == "get_candidate":
-                return await self.inspections.get_candidate(**arguments)
-            if name == "relock_candidate":
-                assert self.fleet_ready, "MAVLink fleet is unavailable"
-                assert self.plan_task is None, "A flight plan action is already in progress"
-                return await self.inspections.relock_candidate(**arguments)
-            if name == "follow_candidate":
-                assert self.fleet_ready, "MAVLink fleet is unavailable"
-                assert self.plan_task is None, "A flight plan action is already in progress"
-                return await self.inspections.follow_candidate(**arguments)
-            if name == "set_camera_view":
-                assert self.plan_task is None, "A flight plan action is already in progress"
-                return await self.inspections.set_camera_view(**arguments)
-            if name == "face_heading":
-                assert self.fleet_ready, "MAVLink fleet is unavailable"
-                assert self.plan_task is None, "A flight plan action is already in progress"
-                drone = arguments["drone_id"]
-                assert not any(
-                    row["drone_id"] == drone
-                    and "rescue" in row
-                    and row["rescue"]["phase"] in ("reviewing", "tracking", "held", "resuming")
-                    for row in self.inspections.snapshot()
-                ), (
-                    "Candidate tracking owns this drone's heading; release the lock or use an override"
-                )
-                assert drone not in self.active_flight, (
-                    "Aircraft already has a flight action in progress"
-                )
-                self.active_flight.add(drone)
-                self.plan_task = asyncio.current_task()
-                try:
-                    state = await self.fleet.face_heading(**arguments)
-                    return {
-                        **compact_vehicle(state),
-                        "heading_deg": state["heading_deg"],
-                        "acknowledged_command": name,
-                    }
-                finally:
-                    if self.plan_task is asyncio.current_task():
-                        self.plan_task = None
-                    self.active_flight.remove(drone)
-            if name == "start_inspection":
-                return await self.inspections.start(**arguments)
-            if name == "stop_inspection":
-                return self.inspections.stop(arguments["drone_id"], "Stopped by " + source)
-            assert source == "agent", "Only Wonder can schedule its next turn"
-            return self.schedule_wait(**arguments)
-        if name == "ground_height":
-            return ground_height(**arguments)
-        if name == "ground_profile":
-            return ground_profile(**arguments)
-        if name == "find_place":
-            return find(self.landmarks, arguments["name"])
-        if name == "get_reported_search_area":
-            from mission_planner.gcs.reported_area import resolve
+        finally:
+            if self.plan_task is asyncio.current_task():
+                self.plan_task = None
+            self.active_flight.remove(drone)
 
-            assert self.case is not None, "Select a saved rescue case with a reported search area"
-            return resolve(self.case["report"]["brief"], self.landmarks)
-        if name == "describe_location":
-            return directions(self.landmarks, arguments["north_m"], arguments["east_m"])
-        if name == "get_mission":
-            vehicles = self.vehicles()
-            return {
-                **self.summary(vehicles),
-                "briefing": None
-                if self.case is None
-                else {key: self.case["report"][key] for key in ("brief",)},
-                "flight_constraints": flight_constraints(vehicles),
-            }
-        if name == "show_on_map":
-            if arguments["target"] == "drone":
-                assert self.fleet_ready, "MAVLink fleet is unavailable"
-            self.map_focus = {**arguments, "id": str(uuid.uuid4())}
-            return {"map_focus": self.map_focus}
-        if name == "open_feed":
+    async def _tool_start_inspection(self, arguments, source, call_id):
+        return await self.inspections.start(**arguments)
+
+    async def _tool_stop_inspection(self, arguments, source, call_id):
+        return self.inspections.stop(arguments["drone_id"], "Stopped by " + source)
+
+    async def _tool_wait_for(self, arguments, source, call_id):
+        assert source == "agent", "Only Wonder can schedule its next turn"
+        return self.schedule_wait(**arguments)
+
+    async def _tool_ground_height(self, arguments, source, call_id):
+        return ground_height(**arguments)
+
+    async def _tool_ground_profile(self, arguments, source, call_id):
+        return ground_profile(**arguments)
+
+    async def _tool_find_place(self, arguments, source, call_id):
+        return find(self.landmarks, arguments["name"])
+
+    async def _tool_get_reported_search_area(self, arguments, source, call_id):
+        from mission_planner.gcs.reported_area import resolve
+
+        assert self.case is not None, "Select a saved rescue case with a reported search area"
+        return resolve(self.case["report"]["brief"], self.landmarks)
+
+    async def _tool_describe_location(self, arguments, source, call_id):
+        return directions(self.landmarks, arguments["north_m"], arguments["east_m"])
+
+    async def _tool_get_mission(self, arguments, source, call_id):
+        vehicles = self.vehicles()
+        return {
+            **self.summary(vehicles),
+            "briefing": None
+            if self.case is None
+            else {key: self.case["report"][key] for key in ("brief",)},
+            "flight_constraints": flight_constraints(vehicles),
+        }
+
+    async def _tool_show_on_map(self, arguments, source, call_id):
+        if arguments["target"] == "drone":
             assert self.fleet_ready, "MAVLink fleet is unavailable"
-            vehicle = next(v for v in self.vehicles() if v["id"] == arguments["drone_id"])
-            assert not vehicle["link_lost"], f"{vehicle['id']}: telemetry link lost"
-            assert vehicle["camera_available"], (
-                f"{vehicle['id']}: no active uploaded flight plan; camera unavailable"
-            )
-            self.feed_focus = {"type": "feed_focus", "id": str(uuid.uuid4()), **arguments}
-            return {"drone_id": arguments["drone_id"], "opened": True}
+        self.map_focus = {**arguments, "id": str(uuid.uuid4())}
+        return {"map_focus": self.map_focus}
+
+    async def _tool_open_feed(self, arguments, source, call_id):
+        assert self.fleet_ready, "MAVLink fleet is unavailable"
+        vehicle = next(v for v in self.vehicles() if v["id"] == arguments["drone_id"])
+        assert not vehicle["link_lost"], f"{vehicle['id']}: telemetry link lost"
+        assert vehicle["camera_available"], (
+            f"{vehicle['id']}: no active uploaded flight plan; camera unavailable"
+        )
+        self.feed_focus = {"type": "feed_focus", "id": str(uuid.uuid4()), **arguments}
+        return {"drone_id": arguments["drone_id"], "opened": True}
+
+    async def _tool_get_fleet(self, arguments, source, call_id):
         assert self.fleet_ready, "MAVLink fleet is unavailable: " + str(self.fleet_error)
-        if name == "get_fleet":
-            return {
-                "vehicles": [
-                    {
-                        **planning_vehicle(v),
-                        "link_lost": v["link_lost"],
-                        "heartbeat_age_s": v["heartbeat_age_s"],
-                    }
-                    for v in self.vehicles()
-                ],
-                "planner": self.planner_state(self.vehicles()),
-            }
-        if name == "get_drone":
-            vehicle = next(v for v in self.vehicles() if v["id"] == arguments["drone_id"])
-            return {
-                **planning_vehicle(vehicle),
-                **{
-                    key: vehicle[key]
+        vehicles = self.vehicles()
+        return {
+            "vehicles": [
+                {
+                    **planning_vehicle(v),
+                    "link_lost": v["link_lost"],
+                    "heartbeat_age_s": v["heartbeat_age_s"],
+                }
+                for v in vehicles
+            ],
+            "planner": self.planner_state(vehicles),
+        }
+
+    async def _tool_get_drone(self, arguments, source, call_id):
+        assert self.fleet_ready, "MAVLink fleet is unavailable: " + str(self.fleet_error)
+        vehicle = next(v for v in self.vehicles() if v["id"] == arguments["drone_id"])
+        return {
+            **planning_vehicle(vehicle),
+            **{
+                key: vehicle[key]
+                for key in (
+                    "link_lost",
+                    "heartbeat_age_s",
+                    "battery_voltage_v",
+                    "gps_fix",
+                    "satellites",
+                    "ekf_healthy",
+                )
+            },
+            "waypoints": [
+                {
+                    key: p[key]
                     for key in (
-                        "link_lost",
-                        "heartbeat_age_s",
-                        "battery_voltage_v",
-                        "gps_fix",
-                        "satellites",
-                        "ekf_healthy",
+                        "seq",
+                        "north_m",
+                        "east_m",
+                        "altitude_above_home_m",
                     )
-                },
-                "waypoints": [
-                    {
-                        key: p[key]
-                        for key in (
-                            "seq",
-                            "north_m",
-                            "east_m",
-                            "altitude_above_home_m",
-                        )
-                    }
-                    for p in vehicle["mission"]
-                    if p["seq"] > 0
-                ],
-                "status_text": vehicle["status_text"][-5:],
-            }
-        assert CATEGORIES[name] == "flight"
+                }
+                for p in vehicle["mission"]
+                if p["seq"] > 0
+            ],
+            "status_text": vehicle["status_text"][-5:],
+        }
+
+    async def _execute_flight(self, name, arguments, source, call_id):
+        assert self.fleet_ready, "MAVLink fleet is unavailable: " + str(self.fleet_error)
         if name == "resume":
             assert (
                 self.plan_active is None
@@ -2264,3 +2291,10 @@ class Mission:
                 self.fleet_closed = True
             await asyncio.to_thread(self.model.close)
             self.log.close()
+
+
+HANDLED_TOOLS = {name[len("_tool_") :] for name in dir(Mission) if name.startswith("_tool_")}
+assert set(CATEGORIES) == set(PLAN_TOOLS) | FLIGHT_TOOLS | HANDLED_TOOLS, (
+    "Every registered tool needs exactly one dispatch path"
+)
+assert FLIGHT_TOOLS <= {name for name, category in CATEGORIES.items() if category == "flight"}
