@@ -8,9 +8,16 @@ import time
 import uuid
 from collections import deque
 
-from mission_planner.gcs import inspection, tracking
+from mission_planner.gcs import tracking
 from mission_planner.gcs.observation import control_detections
 from mission_planner.gcs.tracking import MAX_TRACKING_AGE_S, gentle_target
+
+CAPTURE_PERIOD_S = 0.2
+HOLD_FRAMES = round(30 / CAPTURE_PERIOD_S)
+
+
+class LockBudgetExpired(AssertionError):
+    pass
 
 
 class CandidateLock:
@@ -104,7 +111,7 @@ class CandidateLock:
             )
             after_timestamp_ns = self.latest[0][0]["timestamp_ns"]
             self.fresh.set()
-            await asyncio.sleep(max(0, inspection.CAPTURE_PERIOD_S - (time.monotonic() - tick)))
+            await asyncio.sleep(max(0, CAPTURE_PERIOD_S - (time.monotonic() - tick)))
 
     async def _publish(self, current, detections, held):
         await self.inspections._publish(self.row, current, detections, live=not held, held=held)
@@ -164,7 +171,7 @@ class CandidateLock:
             "source": None,
             "follow_until": None,
         }
-        owner.held_buffers[self.review_id] = deque(maxlen=inspection.HOLD_FRAMES)
+        owner.held_buffers[self.review_id] = deque(maxlen=HOLD_FRAMES)
         _, detection = self.candidates[0]
         await owner.visual.observe(row, metadata, [detection])
         self.review_tasks = [
@@ -231,7 +238,7 @@ class CandidateLock:
         owner, row, name = self.inspections, self.row, self.name
         owner._search_state(row)
         if self._unhealthy_s() >= self.allowance:
-            raise inspection.LockBudgetExpired(name + ": search interruption allowance exhausted")
+            raise LockBudgetExpired(name + ": search interruption allowance exhausted")
         if producer.done():
             producer.result()
         if guard.done():
@@ -658,9 +665,7 @@ class CandidateLock:
                     + "\n"
                 )
                 self.log.flush()
-                await asyncio.sleep(
-                    max(0, inspection.CAPTURE_PERIOD_S - (time.monotonic() - started))
-                )
+                await asyncio.sleep(max(0, CAPTURE_PERIOD_S - (time.monotonic() - started)))
             resume.result()
         finally:
             resume.cancel()

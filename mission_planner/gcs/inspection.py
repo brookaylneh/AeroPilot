@@ -13,19 +13,12 @@ from pathlib import Path
 from mission_planner.agents.model_process import model_pool, review_photo
 from mission_planner.agents.vision import VisionTrack, check_target, decode_mask, vision_http
 from mission_planner.gcs.geodesy import NAMES, point_in_polygon, to_local
-from mission_planner.gcs.lock import CandidateLock
+from mission_planner.gcs.lock import CAPTURE_PERIOD_S, CandidateLock, LockBudgetExpired
 from mission_planner.gcs.observation import control_detections
 from mission_planner.gcs.tracking import MAX_TRACKING_AGE_S
 from mission_planner.gcs.visual_follow import VisualFollow, held
 from world.cosys.evidence import EvidenceCapture
 from world.cosys.inspection import ForwardCapture, route_look_ahead
-
-CAPTURE_PERIOD_S = 0.2
-HOLD_FRAMES = round(30 / CAPTURE_PERIOD_S)
-
-
-class LockBudgetExpired(AssertionError):
-    pass
 
 
 def sampling_start(drone_id, now):

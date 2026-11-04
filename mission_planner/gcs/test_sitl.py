@@ -122,25 +122,6 @@ class SitlLaunch(unittest.TestCase):
         self.assertNotIn("ATC_ACC_Y_MAX", aircraft[0]["expected_parameters"])
         self.assertEqual(len(aircraft[0]["arguments"][-1].split(",")), 2)
 
-    def test_ss_detects_loopback_wildcard_and_ipv6_collisions(self):
-        for address in ("127.0.0.1", "0.0.0.0", "[::]"):
-            with self.subTest(address=address):
-                output = f"udp UNCONN 0 0 {address}:9203 0.0.0.0:*\n"
-                with patch(
-                    "subprocess.run", return_value=subprocess.CompletedProcess([], 0, output)
-                ):
-                    with self.assertRaisesRegex(AssertionError, "Listener collision"):
-                        check_ports([9203])
-
-    def test_ss_failure_propagates(self):
-        with patch("subprocess.run", side_effect=subprocess.TimeoutExpired("ss", 5)):
-            with self.assertRaises(subprocess.TimeoutExpired):
-                check_ports([9203])
-
-    def test_duplicate_listeners_fail(self):
-        with self.assertRaisesRegex(AssertionError, "Repeated listener ports"):
-            check_ports([9203, 9203])
-
     def test_patches_apply_to_pinned_upstream_without_fuzz(self):
         source = ROOT / ".local/vendor/ardupilot"
         for relative in (
@@ -173,3 +154,24 @@ class SitlLaunch(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class PortChecks(unittest.TestCase):
+    def test_ss_detects_loopback_wildcard_and_ipv6_collisions(self):
+        for address in ("127.0.0.1", "0.0.0.0", "[::]"):
+            with self.subTest(address=address):
+                output = f"udp UNCONN 0 0 {address}:9203 0.0.0.0:*\n"
+                with patch(
+                    "subprocess.run", return_value=subprocess.CompletedProcess([], 0, output)
+                ):
+                    with self.assertRaisesRegex(AssertionError, "Listener collision"):
+                        check_ports([9203])
+
+    def test_ss_failure_propagates(self):
+        with patch("subprocess.run", side_effect=subprocess.TimeoutExpired("ss", 5)):
+            with self.assertRaises(subprocess.TimeoutExpired):
+                check_ports([9203])
+
+    def test_duplicate_listeners_fail(self):
+        with self.assertRaisesRegex(AssertionError, "Repeated listener ports"):
+            check_ports([9203, 9203])

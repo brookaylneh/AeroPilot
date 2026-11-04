@@ -1166,7 +1166,8 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
     async def test_relock_rejects_unknown_index_and_frames_beyond_the_hold_buffer(self):
         with (
             patch("mission_planner.gcs.inspection.CAPTURE_PERIOD_S", 0.05),
-            patch("mission_planner.gcs.inspection.HOLD_FRAMES", 3),
+            patch("mission_planner.gcs.lock.CAPTURE_PERIOD_S", 0.05),
+            patch("mission_planner.gcs.lock.HOLD_FRAMES", 3),
         ):
             row, held = await self.held_lock(1)
             oldest = held[0]["metadata"]["frame_id"]

@@ -33,9 +33,12 @@ class MemorySocket:
             raise StopAsyncIteration
         return value
 
-    async def states(self, count):
+    def received(self, kind):
+        return [message for message in self.sent if message["type"] == kind]
+
+    async def states(self, count, kind="state"):
         async def complete():
-            while sum(message["type"] == "state" for message in self.sent) < count:
+            while len(self.received(kind)) < count:
                 await self.updated.get()
 
         await asyncio.wait_for(complete(), timeout=2)
@@ -104,6 +107,57 @@ class FeedTests(unittest.IsolatedAsyncioTestCase):
                 self.assertTrue(message["landmarks"])
         self.assertEqual(
             {message["type"] for message in socket.sent}, {"history", "plans", "state"}
+        )
+        self.mission.fleet.execute.assert_not_awaited()
+
+    async def test_plan_receipts_travel_once_per_replacement_clearing_and_reset(self):
+        socket = await self.connect()
+        await socket.states(2)
+        self.assertEqual(
+            socket.received("plans"),
+            [{"type": "plans", "preview": None, "active": None, "previous": None}],
+        )
+        self.mission.plan_preview = {"plan": {"version": 1}}
+        await socket.states(2, "plans")
+        # The service clears a receipt and installs its replacement within one tick; the
+        # replacement may occupy the discarded receipt's memory and must still travel.
+        self.mission.plan_preview = None
+        self.mission.plan_preview = {"plan": {"version": 1}}
+        await socket.states(3, "plans")
+        self.assertEqual(socket.received("plans")[-1]["preview"], {"plan": {"version": 1}})
+        self.mission.plan_preview, self.mission.plan_active = None, {"plan": {"version": 1}}
+        await socket.states(4, "plans")
+        self.assertEqual(
+            socket.received("plans")[-1],
+            {
+                "type": "plans",
+                "preview": None,
+                "active": {"plan": {"version": 1}},
+                "previous": None,
+            },
+        )
+        count = len(socket.received("state"))
+        await socket.states(count + 3)
+        self.assertEqual(len(socket.received("plans")), 4)
+        self.assertTrue(all("active" not in m["planner"] for m in socket.received("state")))
+        self.mission.id, self.mission.events = str(uuid.uuid4()), []
+        self.mission.plan_active = None
+        await socket.states(5, "plans")
+        self.assertEqual(len(socket.received("history")), 2)
+        self.assertEqual(socket.received("plans")[-1]["active"], None)
+        self.mission.plan_previous = {"plan": {"version": 2}}
+        again = await self.connect()
+        await again.states(1)
+        self.assertEqual(
+            again.received("plans"),
+            [
+                {
+                    "type": "plans",
+                    "preview": None,
+                    "active": None,
+                    "previous": {"plan": {"version": 2}},
+                }
+            ],
         )
         self.mission.fleet.execute.assert_not_awaited()
 

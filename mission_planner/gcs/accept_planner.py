@@ -232,7 +232,7 @@ def measure(samples, receipts, changes):
 class Acceptance:
     def __init__(self, socket, output):
         self.socket, self.output = socket, output
-        self.state, self.phase, self.applying = None, "connect", None
+        self.state, self.plans, self.phase, self.applying = None, None, "connect", None
         self.events, self.checkpoints, self.approved = [], [], set()
         self.receipts, self.changes, self.cards = {}, {}, {}
         self.log = (output / "websocket.jsonl").open("x")
@@ -251,9 +251,11 @@ class Acceptance:
         message = json.loads(await asyncio.wait_for(self.socket.recv(), timeout))
         self.at_ms = time.time() * 1000
         kind = message["type"]
+        if kind == "plans":
+            self.plans = message
         if kind == "state":
             self.state = message
-            active = message["planner"]["active"]
+            active = self.plans["active"]
             version = active["plan"]["version"] if active is not None else None
             if version is not None:
                 self.receipts[version] = active
@@ -367,8 +369,8 @@ class Acceptance:
         self.changes[version]["result"] = await self.tool(command, {"version": version})
         await self.wait(
             lambda: (
-                self.state["planner"]["active"] is not None
-                and self.state["planner"]["active"]["plan"]["version"] == version
+                self.plans["active"] is not None
+                and self.plans["active"]["plan"]["version"] == version
                 and all(
                     self.drone(name)["mode"] == "AUTO" for name in self.changes[version]["drones"]
                 )
@@ -400,7 +402,7 @@ class Acceptance:
         assert all(not v["armed"] and v["landed_state"] == 1 for v in self.state["vehicles"]), (
             "Acceptance requires a landed fleet"
         )
-        assert not self.state["approvals"] and self.state["planner"]["active"] is None, (
+        assert not self.state["approvals"] and self.plans["active"] is None, (
             "Acceptance requires a fresh mission"
         )
         plans = itinerary()

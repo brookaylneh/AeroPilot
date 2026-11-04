@@ -125,3 +125,76 @@ test('live feed focus remains valid while retired search and sensor payloads clo
     old.close();
   }
 });
+
+test('plan receipts arrive in their own message and stay merged into every later state', () => {
+  const client = connect(),
+    socket = client.sockets[0];
+  const send = (message) => socket.onmessage({ data: JSON.stringify(message) });
+  // Objects cross the vm realm; compare their JSON forms.
+  const planner = (values = client.values) =>
+    JSON.parse(JSON.stringify(values.find((value) => value?.type === 'state').planner));
+  const receipt = (version) => ({
+    plan: { version, drones: [{ drone_id: 'Drone1', steps: [{ kind: 'takeoff', height_m: 30 }] }] },
+    missions: {
+      Drone1: {
+        route: [{ north_m: 0, east_m: 0, altitude_above_home_m: 30 }],
+        distance_m: 0,
+        duration_s: null,
+        battery_required_percent: 1,
+        available_hover_s: 600,
+      },
+    },
+  });
+  const state = {
+    type: 'state',
+    fences: {
+      names: { inclusion: 'Inclusion', exclusions: [] },
+      version: 0,
+      inclusion: [
+        { north_m: -800, east_m: -1200 },
+        { north_m: -800, east_m: 1200 },
+        { north_m: 800, east_m: 1200 },
+        { north_m: 800, east_m: -1200 },
+      ],
+      exclusions: [],
+      verified: true,
+      editable: false,
+      error: null,
+    },
+    mission: {
+      id: '00000000-0000-4000-8000-000000000002',
+      active: true,
+      case_id: null,
+      case_name: 'General mission',
+      briefing: null,
+      elapsed_s: 0,
+      alerts: [],
+    },
+    vehicles: [],
+    agent_busy: false,
+    agent_wait: null,
+    chat_ready: false,
+    effort: 'high',
+    inspections: [],
+    returns: [],
+    approvals: [],
+    map_focus: null,
+    planner: { progress: {} },
+  };
+  send({ type: 'plans', preview: receipt(1), active: null, previous: null });
+  send(state);
+  assert.deepEqual(planner(), { preview: receipt(1), active: null, previous: null, progress: {} });
+  send({ type: 'plans', preview: null, active: receipt(2), previous: receipt(1) });
+  assert.deepEqual(planner(), { preview: null, active: receipt(2), previous: receipt(1), progress: {} });
+  send(state);
+  assert.deepEqual(planner(), { preview: null, active: receipt(2), previous: receipt(1), progress: {} });
+  send({ type: 'plans', preview: null, active: null, previous: null });
+  send(state);
+  assert.deepEqual(planner(), { preview: null, active: null, previous: null, progress: {} });
+  assert.equal(socket.closed, false);
+  client.close();
+  const again = connect();
+  again.sockets[0].onmessage({ data: JSON.stringify(state) });
+  assert.deepEqual(planner(again.values), { preview: null, active: null, previous: null, progress: {} });
+  again.close();
+});

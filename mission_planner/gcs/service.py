@@ -2224,8 +2224,9 @@ class Mission:
                 while sent < len(events):
                     await websocket.send(encode({"type": "event", "event": events[sent]}))
                     sent += 1
-                current = (id(self.plan_preview), id(self.plan_active), id(self.plan_previous))
-                if current != plans:
+                # Holding the sent receipts keeps a replacement from reusing their identity.
+                current = (self.plan_preview, self.plan_active, self.plan_previous)
+                if plans is None or any(new is not old for new, old in zip(current, plans)):
                     plans = current
                     await websocket.send(encode(self.plans()))
                 await websocket.send(encode(self.state()))

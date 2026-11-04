@@ -56,7 +56,7 @@ async function screenshots(page, output, label, approval = false, focus = null) 
 
 async function observe(browser, url) {
   const page = await browser.newPage({ viewport: { width: 1920, height: 1080 } });
-  const observation = { page, state: null, events: [], errors: [], messages: [] };
+  const observation = { page, state: null, plans: null, events: [], errors: [], messages: [] };
   page.on('pageerror', (error) => {
     observation.errors.push(error.message);
     console.error(error.message);
@@ -66,6 +66,7 @@ async function observe(browser, url) {
     socket.on('framereceived', ({ payload }) => {
       const value = JSON.parse(payload.toString());
       if (value.type === 'state') observation.state = value;
+      if (value.type === 'plans') observation.plans = value;
       if (value.type === 'event') observation.events.push(value.event);
       if (value.type === 'history') observation.events.push(...value.events);
       if (value.type === 'idle' || value.type === 'error') observation.messages.push(value);
@@ -824,7 +825,10 @@ async function plannerViews(browser, url, output, seconds) {
     while (Date.now() - started < seconds * 1000) {
       assert.equal(observation.errors.length, 0, observation.errors.join('\n'));
       assert.equal(observation.messages.length, 0, JSON.stringify(observation.messages));
-      const planner = plannerSchema.parse(observation.state.planner);
+      const planner = plannerSchema.parse({
+        ...observation.plans,
+        progress: observation.state.planner.progress,
+      });
       const approval = observation.state.approvals.find((item) =>
         ['request_launch', 'apply_plan_change'].includes(item.name),
       );

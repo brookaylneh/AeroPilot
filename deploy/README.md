@@ -133,7 +133,6 @@ for entry in runtime.env toolchains unreal slots vendor world data evidence run 
 done
 cd "$deploy_release"
 npm run build
-.venv-cosys/bin/python -m mission_planner.gcs.migrate_registry .local/data/missions .local/slots/*/missions
 sudo bash deploy/install-services.sh
 sudo systemctl start snr-turn snr-vision@0 snr-signalling@0 snr-unreal@0
 timeout 120 bash -c 'until ss -H -ltn sport = :41451 | rg -q "127.0.0.1:41451"; do sleep 1; done'
@@ -141,6 +140,24 @@ sudo systemctl start snr-mission@0 snr-web
 # Start Caddy after the security group permits HTTP on TCP 80.
 sudo systemctl start snr-caddy
 ```
+
+## Evidence registry conversion
+
+Releases before `f1a4c83` wrote each mission's evidence registry as `evidence/assets.json`; the web
+server and mission service now read and append `evidence/assets.txt`. Convert once, before the first
+release that serves `assets.txt` starts, with every mission service stopped so no old writer appends
+to a registry while it is converted:
+
+```sh
+sudo systemctl stop 'snr-mission@*'
+.venv-cosys/bin/python -m mission_planner.gcs.migrate_registry .local/data/missions .local/slots/*/missions
+```
+
+The tool checks that every registered asset exists, writes `assets.txt` beside each `assets.json`,
+refuses to overwrite one that already exists and leaves the originals in place. It is not part of the
+installation recipe above; running it again after the conversion fails on the existing files. Record
+one evidence URL from the oldest and the newest mission before stopping the services and request
+both after the new web service starts.
 
 ## Environment slots
 
