@@ -10,6 +10,7 @@ import { slots } from './slots';
 import { broker, endMissionOver, newSession, sessionOf } from './broker';
 import { briefingRouter } from '../scenario_creator/briefingRouter';
 import { trackerPreview } from './evidence';
+import { apiError } from './http';
 const app = express();
 app.disable('x-powered-by');
 app.use(compression());
@@ -83,10 +84,11 @@ app.get(['/api/evidence/:mission/:asset', '/api/evidence/:mission/:asset/preview
   }
   res.sendFile(asset, { root: directory });
 });
-app.get('/healthz', async (_req, res) => {
+app.get('/healthz', async (req, res) => {
   const result = await health(table, visitors);
   res.setHeader('Cache-Control', 'no-store');
-  res.status(result.ok ? 200 : 503).json(result);
+  // Caddy adds X-Forwarded-For; unit states and fault details are for operators on the host.
+  res.status(result.ok ? 200 : 503).json('x-forwarded-for' in req.headers ? { ok: result.ok } : result);
 });
 app.get('/api/slots', async (_req, res) => {
   res.setHeader('Cache-Control', 'no-store');
@@ -99,8 +101,7 @@ app.get('/api/unreal/status', async (_req, res) => {
     res.status(503).json({ state: 'unassigned' });
     return;
   }
-  const result = await rendererHealth(slot);
-  res.status(result.state === 'unavailable' ? 503 : 200).json(result);
+  res.json(await rendererHealth(slot));
 });
 if (development) {
   app.use('/csrt', express.static(path.resolve('.local/vendor/csrt/runtime'), { index: false }));
@@ -115,10 +116,7 @@ if (development) {
   app.get('/', (_req, res) => res.sendFile('index.html', { root: dist }));
 }
 app.use((_req, res) => res.sendStatus(404));
-app.use((error: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error(error.message);
-  res.status(503).json({ state: 'unavailable' });
-});
+app.use(apiError);
 const server = createServer(app);
 // Each session reaches only its own slot's player signalling and mission service. Unreal's
 // streamer port and native authoring files remain outside the HTTP surface.
@@ -142,12 +140,14 @@ server.on('upgrade', (req, socket, head) => {
   const upstreamPort = req.url === '/api/stream' ? slot.playerPort : slot.missionPort;
   visitors.opened(session!);
   socket.once('close', () => visitors.closed(session!));
+  // The session cookie selects the slot here; the slot's services never see it.
+  const { cookie: _cookie, ...headers } = req.headers;
   const upstream = request({
     hostname: slot.host,
     port: upstreamPort,
     path: '/',
     method: 'GET',
-    headers: { ...req.headers, host: `${slot.host}:${upstreamPort}` },
+    headers: { ...headers, host: `${slot.host}:${upstreamPort}` },
   });
   upstream.setTimeout(10000, () => upstream.destroy());
   upstream.on('error', () => socket.destroy());

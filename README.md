@@ -42,7 +42,6 @@ cp .env.example .env
 mkdir -p .local
 cp deploy/runtime.env.example .local/runtime.env
 npm ci
-npm run fonts
 python3 -m venv .venv-cosys
 .venv-cosys/bin/pip install -r requirements.txt
 ```

@@ -213,21 +213,21 @@ autopilots before Unreal is ready exhausts their first sensor-message timeout.
 The rendering and encoding profile is documented in [streaming](../world/unreal/streaming.md);
 its startup values are defined in `runtime.env.example`.
 
-| Route or endpoint                                 | Purpose                                                      | Listener / upstream                                             |
-| ------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------- |
-| `$SNR_ORIGIN/`                                    | Mission Control: map, world exploration and scenario tabs    | Caddy, 80 TCP, then web `127.0.0.1:3001`                        |
-| `/home`, `/studio`, `/missionplanner`, `/mission` | Redirect to `/`                                              | web, `127.0.0.1:3001`                                           |
-| `/api/slots`                                      | This session's environment, or how many are in use           | web, slot broker                                                |
-| `/api/mission`                                    | Mission WebSocket                                            | web origin and session check, then the slot's mission port      |
-| `/api/evidence/<mission>/<asset>`                 | Registered immutable original JPEGs and matching mask PNGs   | same web origin, mission-owned registry                         |
-| `/api/unreal/status`                              | The session's renderer readiness and occupancy               | web, slot signalling health                                     |
-| `/api/stream`                                     | Pixel Streaming player WebSocket                             | web origin and session check, then the slot's player port       |
-| `/healthz`                                        | Shared units, every slot's units, mission, renderer and TURN | web; 503 if any check fails or a slot is faulted                |
-| Internal streamer, Cosys RPC, MAVLink, SITL       | Per slot                                                     | see [environment slots](#environment-slots)                     |
-| TURN                                              | Browser relay control                                        | `$SNR_PRIVATE_IP:3478` TCP/UDP, public IP translation           |
-| TURN relay                                        | Relayed media                                                | `$SNR_PRIVATE_IP:49300–49350` UDP                               |
-| Unreal WebRTC                                     | Local media endpoint reached by TURN, per slot               | `49160–49250` UDP; no public ingress required with forced relay |
-| Development                                       | One server, reached by SSH tunnel                            | `127.0.0.1:5174`                                                |
+| Route or endpoint                                 | Purpose                                                      | Listener / upstream                                              |
+| ------------------------------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------- |
+| `$SNR_ORIGIN/`                                    | Mission Control: map, world exploration and scenario tabs    | Caddy, 80 TCP, then web `127.0.0.1:3001`                         |
+| `/home`, `/studio`, `/missionplanner`, `/mission` | Redirect to `/`                                              | web, `127.0.0.1:3001`                                            |
+| `/api/slots`                                      | This session's environment, or how many are in use           | web, slot broker                                                 |
+| `/api/mission`                                    | Mission WebSocket                                            | web origin and session check, then the slot's mission port       |
+| `/api/evidence/<mission>/<asset>`                 | Registered immutable original JPEGs and matching mask PNGs   | same web origin, mission-owned registry                          |
+| `/api/unreal/status`                              | The session's renderer readiness and occupancy               | web, slot signalling health                                      |
+| `/api/stream`                                     | Pixel Streaming player WebSocket                             | web origin and session check, then the slot's player port        |
+| `/healthz`                                        | Shared units, every slot's units, mission, renderer and TURN | web; 503 if any check fails or a slot is faulted; detail on host |
+| Internal streamer, Cosys RPC, MAVLink, SITL       | Per slot                                                     | see [environment slots](#environment-slots)                      |
+| TURN                                              | Browser relay control                                        | `$SNR_PRIVATE_IP:3478` TCP/UDP, public IP translation            |
+| TURN relay                                        | Relayed media                                                | `$SNR_PRIVATE_IP:49300–49350` UDP                                |
+| Unreal WebRTC                                     | Local media endpoint reached by TURN, per slot               | `49160–49250` UDP; no public ingress required with forced relay  |
+| Development                                       | One server, reached by SSH tunnel                            | `127.0.0.1:5174`                                                 |
 
 Caddy proxies to the web server so production and development share the same-origin WebSocket
 checks. The root redirects explicitly; unknown paths return 404. TURN and its media endpoints are the network-facing exception to the loopback service rule.

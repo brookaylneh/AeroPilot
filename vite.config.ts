@@ -37,6 +37,8 @@ export default defineConfig({
         '**/world/cosys/!(world.json)',
         '**/world/cosys/*/**',
         '**/mission_planner/agents/**',
+        '**/mission_planner/measurements/**',
+        '**/deploy/**',
       ],
     },
   },

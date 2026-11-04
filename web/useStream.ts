@@ -1,5 +1,8 @@
 import { useEffect, useLayoutEffect, useState, type RefObject } from 'react';
+import { z } from 'zod';
 import { PixelStreamingTransport } from '../scenario_creator/PixelStreamingTransport';
+
+const rendererStatus = z.object({ state: z.enum(['unassigned', 'starting', 'occupied', 'ready']) });
 
 export type Stream = {
   host: HTMLDivElement;
@@ -45,13 +48,13 @@ export function useStream(): Stream {
           cache: 'no-store',
           signal: AbortSignal.any([abort.signal, AbortSignal.timeout(5000)]),
         });
-        const health = (await response.json()) as { state: string };
         if (!active) return;
-        if (!response.ok || health.state === 'unavailable')
+        if (!response.ok)
           return fail(
             'Scene is unavailable',
             'The renderer is not running. Restore the service, then select Reconnect.',
           );
+        const health = rendererStatus.parse(await response.json());
         if (health.state === 'occupied')
           return fail(
             'Scene open in another tab',

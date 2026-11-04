@@ -1,4 +1,4 @@
-import type { RequestHandler, ErrorRequestHandler } from 'express';
+import type { ErrorRequestHandler } from 'express';
 import { z } from 'zod';
 
 export class HttpError extends Error {
@@ -9,26 +9,6 @@ export class HttpError extends Error {
     super(message);
   }
 }
-
-export const sameOrigin: RequestHandler = (req, res, next) => {
-  const origin = req.get('origin');
-  if (origin) {
-    let url: URL;
-    try {
-      url = new URL(origin);
-    } catch {
-      next(new HttpError(400, 'Invalid origin.'));
-      return;
-    }
-    if (!['http:', 'https:'].includes(url.protocol) || url.host !== req.get('host')) {
-      next(new HttpError(403, 'Cross-origin access is not allowed.'));
-      return;
-    }
-  }
-  res.setHeader('Cache-Control', 'no-store');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  next();
-};
 
 export function isMissingFile(error: unknown): boolean {
   return error instanceof Error && 'code' in error && error.code === 'ENOENT';

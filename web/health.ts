@@ -3,6 +3,7 @@ import { promisify } from 'node:util';
 import { connect } from 'node:net';
 import { randomBytes } from 'node:crypto';
 import assert from 'node:assert/strict';
+import { z } from 'zod';
 import { port, required } from './runtime';
 import type { Slot } from './slots';
 import type { Broker } from './broker';
@@ -10,30 +11,30 @@ import type { Broker } from './broker';
 const execute = promisify(execFile);
 const shared = ['web', 'turn', 'caddy'];
 const perSlot = ['mission', 'vision', 'signalling', 'unreal'];
+const signallingHealth = z.object({
+  streamers: z.array(z.object({ players: z.number().int().min(0) })),
+  renderer: z.object({ scenarioReady: z.boolean(), telemetryAgeMs: z.number() }).nullable(),
+});
+const missionHealthSchema = z.object({ state: z.string(), ok: z.boolean() });
 
 export async function rendererHealth(slot: Slot) {
   const response = await fetch(`http://${slot.host}:${slot.playerPort}/health`, {
     signal: AbortSignal.timeout(2000),
   });
   assert(response.ok, 'Signalling health failed');
-  const health = (await response.json()) as {
-    streamers: { players: number }[];
-    renderer: { scenarioReady: boolean; telemetryAgeMs: number } | null;
-  };
-  assert(Array.isArray(health.streamers), 'Invalid signalling health');
+  const health = signallingHealth.parse(await response.json());
   const streamer = health.streamers[0];
-  if (!streamer || health.renderer === null) return { state: 'starting', maxEditors: 1 };
+  if (!streamer || health.renderer === null) return { state: 'starting' };
   assert(health.renderer.telemetryAgeMs < 3000, 'Renderer telemetry is stale');
-  assert(typeof health.renderer.scenarioReady === 'boolean', 'Missing scenario readiness');
-  if (!health.renderer.scenarioReady) return { state: 'starting', maxEditors: 1 };
-  return { state: streamer.players > 0 ? 'occupied' : 'ready', maxEditors: 1 };
+  if (!health.renderer.scenarioReady) return { state: 'starting' };
+  return { state: streamer.players > 0 ? 'occupied' : 'ready' };
 }
 
 export async function missionHealth(slot: Slot) {
   const response = await fetch(`http://${slot.host}:${slot.missionPort}/health`, {
     signal: AbortSignal.timeout(2000),
   });
-  const health = (await response.json()) as { state: string; ok: boolean };
+  const health = missionHealthSchema.parse(await response.json());
   assert(response.ok && health.ok, `Mission health failed: ${health.state}`);
   return health.state;
 }
