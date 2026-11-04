@@ -1,7 +1,7 @@
 {
   "variant": "AeroPilot-v1",
   "recorded_utc": "2026-11-04T13:08:54Z",
-  "status": "Published AeroPilot-v1 checkpoint qualified in the packaged device image on this host; not yet installed as snr-vision@0, which still runs the drone-ft-v2 build.",
+  "status": "Published AeroPilot-v1 checkpoint qualified in the packaged device image on this host and installed as snr-vision@0 at 2026-11-04T14:00:05Z from release e49754c; see release.json deployment_2026_11_04.",
   "source_commit": "7ef2186bba21253e4cf176d1e541198359dbe04f",
   "image_digest": "sha256:175fda51db1d3c5e97346f5bdf2ea7520855e20672aaf2d3236ebb629c8566ba",
   "image_tag": "snr-sam31:aeropilot-v1-20261104",

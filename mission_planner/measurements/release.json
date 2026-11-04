@@ -802,5 +802,82 @@
       "Browser lifecycle checks used an intercepted mission WebSocket; no live flight commands or paid calls",
       "Tracking and inspection edits that arrived during verification remain a separate in-progress change; their partial-source check failures are retained in the raw evidence"
     ]
+  },
+  "deployment_2026_11_04": {
+    "recorded_at_utc": "2026-11-04T14:13:41.383581+00:00",
+    "scope": "Coordinated release of the public-release audit: web server, mission service, browser bundle, AeroPilot-v1 vision build and hardened systemd units installed together from one detached release checkout.",
+    "source_commit": "e49754cad46c6ba2d9236d8a2ecd463c40d07b0f",
+    "previous_installed_commit": "0fe81897961f",
+    "release_checkout": ".local/staging/release-e49754cad46c",
+    "raw_evidence": ".local/evidence/release-deploy-20261104T133139Z",
+    "checks": {
+      "log": ".local/evidence/release-deploy-20261104T133139Z/checks/all-e49754c-working-tree.log",
+      "ran_on": "the committed working tree of e49754c on this host, before the release checkout existed; the installer re-ran the host bootstrap test inside the release checkout",
+      "ruff_check": "All checks passed",
+      "ruff_format_check": "187 files already formatted",
+      "typecheck": "ok",
+      "npm_test": {
+        "pass": 226,
+        "fail": 0
+      },
+      "python_unittest": {
+        "tests": 771,
+        "result": "OK"
+      }
+    },
+    "cutover": {
+      "started_utc": "2026-11-04T13:58:01Z",
+      "executed_by": "operator, from the documented commands; verification below recorded by the agent",
+      "procedure": [
+        "deploy/stop-slot.sh 0 (mission idle; Unreal exited 143 on SIGTERM, Result=success)",
+        "systemctl stop snr-web snr-vision@0 snr-signalling@0",
+        "migrate_registry over .local/data/missions and .local/slots/0/missions: 42 registries converted, originals kept",
+        "SNR_SAM_IMAGE, SNR_SAM_CHECKPOINT, SNR_SAM_CACHE switched to the AeroPilot-v1 image, checkpoint and compile cache",
+        "web/slots.ts write; deploy/install-services.sh from the release checkout",
+        "restart snr-turn snr-caddy; start snr-vision@0 snr-signalling@0 snr-unreal@0; wait for Cosys 41451; start snr-mission@0 snr-web"
+      ],
+      "units_active_utc": {
+        "snr-caddy": "2026-11-04T13:58:08Z",
+        "snr-turn, snr-signalling@0, snr-unreal@0": "2026-11-04T13:58:13Z",
+        "snr-web": "2026-11-04T13:58:17Z",
+        "snr-vision@0, snr-mission@0": "2026-11-04T14:00:05Z"
+      }
+    },
+    "installed": {
+      "working_directory": "all seven units run from the release checkout",
+      "hardening_active_on_all_units": [
+        "NoNewPrivileges",
+        "PrivateTmp",
+        "ProtectSystem=full",
+        "ProtectKernelTunables",
+        "ProtectControlGroups",
+        "RestrictSUIDSGID"
+      ],
+      "vision": {
+        "image": "sha256:175fda51db1d3c5e97346f5bdf2ea7520855e20672aaf2d3236ebb629c8566ba",
+        "model_variant": "AeroPilot-v1",
+        "model_sha256": "9c0813310a2e82c9cbf8347216b51cc27ac0898d360693e70c4b4cdbc12b72b9",
+        "compilation": {
+          "calls_captured": 9637,
+          "unique_graphs": 29
+        },
+        "process_gpu_bytes_idle": 7948206080,
+        "ready_seconds_from_unit_start": 111
+      },
+      "unreal_package": ".local/unreal/releases/search-2x-approach-20261104, unchanged; the only native source change since 0fe8189 is an editor-only authoring parameter",
+      "unreal_image": "snr-unreal-runtime@sha256:d737ab3d1825f65286633211fbadc3c435d265b19d5d5ba3d39228544d310f78",
+      "turn_image": "coturn/coturn@sha256:bbefd3e1fdfdc0d58770fe01b581fd8b00d9f3a5580d00acb77cf719a6bc78e3"
+    },
+    "verification": {
+      "public_health": "200 {\"ok\":true} through Caddy with the public host; web /healthz ok with mission, vision, signalling and unreal true and mission idle",
+      "evidence_urls": "the oldest and newest slot-0 registered originals fetched before the switch (assets.json) and after it (assets.txt); both 200 and byte-identical",
+      "evidence_url_session": "no free slot existed after the restart, so the after-fetch used the connected visitor's saved session token from .local/slots/assignments.json",
+      "journal": "no errors from the new processes; the old mission logged websockets ConnectionClosedOK during its final publish while its client left in the coupled stop; TURN configuration warnings, the Unreal setrlimit message and LogPCG scheduling errors pre-exist in earlier launches"
+    },
+    "not_done": [
+      "deploy/accept-browser.mjs: slot 0 was held by a connected browser after the restart",
+      "live flight acceptance: video cadence, lock stability, detection and live SAM throughput",
+      "no project source license selected"
+    ]
   }
 }
