@@ -13,6 +13,10 @@ from world.cosys.configure_drones import generate
 from world.cosys.terrain import WORLD
 
 
+@unittest.skipUnless(
+    (ROOT / ".local/vendor/ardupilot").is_dir(),
+    "needs the vendored ArduPilot source under .local/vendor",
+)
 class SitlLaunch(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(dir=ROOT / ".local")
@@ -137,10 +141,6 @@ class SitlLaunch(unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "Repeated listener ports"):
             check_ports([9203, 9203])
 
-    @unittest.skipUnless(
-        (ROOT / ".local/vendor/ardupilot").is_dir(),
-        "needs the vendored ArduPilot source under .local/vendor",
-    )
     def test_patches_apply_to_pinned_upstream_without_fuzz(self):
         source = ROOT / ".local/vendor/ardupilot"
         for relative in (

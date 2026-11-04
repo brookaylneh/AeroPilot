@@ -22,7 +22,6 @@ from scipy.ndimage import (
     map_coordinates,
 )
 
-from mission_planner.environment import load_env
 from world.cosys.landmarks import LANDMARKS_PATH, _intersects, _nearest, validate
 from world.cosys.terrain import BOUNDS, COLUMNS, FIELD, ROOT, ROWS, TERRAIN_DIR, WORLD
 
@@ -1103,7 +1102,6 @@ def build(document):
 
 
 def generate(evidence_dir):
-    load_env()
     out = TERRAIN_DIR
     assert not out.exists(), f"Terrain destination already exists: {out}"
     assert not evidence_dir.exists(), f"Evidence destination already exists: {evidence_dir}"

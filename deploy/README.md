@@ -133,6 +133,7 @@ for entry in runtime.env toolchains unreal slots vendor world data evidence run 
 done
 cd "$deploy_release"
 npm run build
+.venv-cosys/bin/python -m mission_planner.gcs.migrate_registry .local/data/missions .local/slots/*/missions
 sudo bash deploy/install-services.sh
 sudo systemctl start snr-turn snr-vision@0 snr-signalling@0 snr-unreal@0
 timeout 120 bash -c 'until ss -H -ltn sport = :41451 | rg -q "127.0.0.1:41451"; do sleep 1; done'
@@ -183,6 +184,12 @@ the build and verified source versions are documented in
 [live camera overlays](../mission_planner/gcs/README.md#live-camera-and-overlays).
 The installer checks native CSRT in the deployment checkout's `.venv-cosys` before
 changing units. Install `requirements.txt` in that environment too.
+
+Evidence registries written before 2026-11-04 are JSON arrays; `migrate_registry` converts each
+mission's registry once into the line format the web server reads and leaves the original beside
+it. Fetch one registered evidence URL before and after the switch to prove access. The browser
+bundle, web server and mission service share one protocol (the public map arrives with the
+mission history), so install and restart them from the same release and reload open browsers.
 
 Installed services use a clean detached release checkout with its own browser bundle.
 The installer rejects an attached branch, uncommitted source changes, or a bundle shared
