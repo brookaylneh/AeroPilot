@@ -108,6 +108,10 @@ class Terrain(unittest.TestCase):
         ):
             terrain_height(-820, 50)
 
+    @unittest.skipUnless(
+        (ROOT / ".local/vendor/open-meadow/height.r16").exists(),
+        "needs the vendored Open Meadow heightfield under .local/vendor",
+    )
     def test_original_square_bit_identical(self):
         generator = importlib.import_module("world.unreal.scripts.generate-open-meadow")
         old = np.fromfile(ROOT / ".local/vendor/open-meadow/height.r16", dtype="<u2").reshape(

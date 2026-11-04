@@ -125,7 +125,7 @@
         "build",
         "--",
         "--outDir",
-        "/home/brook_avionuas/snr/.local/staging/fence-editor/release-dist-complete"
+        "/srv/snr/.local/staging/fence-editor/release-dist-complete"
       ],
       "started_at": "2026-11-01T22:13:29.571443+00:00",
       "duration_s": 6.56661673495546,
@@ -134,7 +134,7 @@
     }
   ],
   "installed": {
-    "origin": "http://35.81.229.78",
+    "origin": "http://203.0.113.10",
     "health": {
       "ok": true,
       "services": {
@@ -394,7 +394,7 @@
       "build",
       "--",
       "--outDir",
-      "/home/brook_avionuas/snr/.local/staging/fence-editor/release-dist-complete"
+      "/srv/snr/.local/staging/fence-editor/release-dist-complete"
     ],
     "started_at": "2026-11-01T22:13:29.571443+00:00",
     "duration_s": 6.56661673495546,

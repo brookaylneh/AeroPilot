@@ -26,9 +26,9 @@ DRESSING_PATH = ROOT / "world/unreal/valley-dressing.json"
 # receipt bank tops.
 LINE_HALF_M = {"trail": 1.2, "road": 2.8}
 CLEARED = ("structure", "obstacle", "bridge", "parking", "command_post", "campsite")
-# facts.md §8: instances taller than this stand in a polygon whose heightM covers them.
+# Instances taller than this stand in a polygon whose heightM covers them.
 TALL_M = 4.0
-# facts.md §7: no instance may top the 18 m lodgepole cap at its row's largest jittered scale.
+# No instance may top the 18 m lodgepole cap at its row's largest jittered scale.
 CAP_M = 18.0
 HOLDERS = ("forest", "structure", "obstacle", "outcrop")
 SCALE_JITTER = 0.15
@@ -55,7 +55,7 @@ class Site:
             if item["geometry"]["type"] == "polygon"
         }
         self.areas["port"] = corners
-        # centerUeCm.z is the pad top (build-drone-port.py hangs the slab below it).
+        # centerUeCm.z is the pad top; the slab hangs below it.
         self.port_top = port["centerUeCm"]["z"] / 100
         data = (ROOT / FIELD["path"]).read_bytes()
         assert hashlib.sha256(data).hexdigest() == WORLD["heightfieldSha256"]

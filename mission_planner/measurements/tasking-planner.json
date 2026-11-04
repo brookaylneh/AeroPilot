@@ -126,7 +126,7 @@
     "previous": "gcs-tools.json: 24/25 exact (96.0 %) with the free-form plan tools"
   },
   "region_eval": {
-    "run": "/home/brook_avionuas/snr/.local/evidence/evaluation/region-eval-20261102b",
+    "run": "/srv/snr/.local/evidence/evaluation/region-eval-20261102b",
     "fleet": "four landed drones at 100 % battery, default fences, disclosed defaults",
     "summary": {
       "False": {
@@ -173,7 +173,7 @@
     "first_run_before_perimeter_margin": ".local/evidence/evaluation/region-eval-20261102 (2 whole-sortie observation_area rejections, fixed by PERIMETER_MARGIN_M)"
   },
   "replay": {
-    "run": "/home/brook_avionuas/snr/.local/evidence/evaluation/replay-20261102b",
+    "run": "/srv/snr/.local/evidence/evaluation/replay-20261102b",
     "summary": {
       "rescue_missions": 21,
       "missions_with_launched_plans": 17,

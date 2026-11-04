@@ -1,0 +1,26 @@
+name: checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+jobs:
+  checks:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: pip
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run format:check
+      - run: python -m venv .venv-cosys && .venv-cosys/bin/pip install -r requirements.txt
+      - run: .venv-cosys/bin/ruff check
+      - run: .venv-cosys/bin/ruff format --check
+      - run: .venv-cosys/bin/python -m unittest

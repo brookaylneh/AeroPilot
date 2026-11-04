@@ -35,23 +35,17 @@ Invoke `UnrealEditor-Cmd` through `unreal-container.sh exec`, with `-run=pythons
 `-ExecCmds="Interchange.FeatureFlags.Import.FBX 0"` for the pinned legacy FBX importer.
 The operation writes its receipt under `SNR_EVIDENCE_DIR`.
 
-The installed scenery's accepted uncooked `Valley/Ground` and `Valley/Grass` assets are
-unavailable in this checkout. Do not replace that scenery with a cook of the older local
-Content tree. The release preserves the installed base containers and pipeline cache
-byte-for-byte, adds a `Wildlife` DLC cook, and uses the relinked game executable. UE 5.8.2
-`BuildCookRun` uses `-DLCName=Wildlife -BasedOnReleaseVersion=<base-release>` with
+The wildlife level is cooked as a `Wildlife` DLC on top of the base release: UE 5.8.2
+`BuildCookRun` with `-DLCName=Wildlife -BasedOnReleaseVersion=<base-release>` and
 `-AdditionalCookerOptions="-DlcPluginOnly -NoDefaultMaps -NoGameAlwaysCook -SkipZenStore -notraceserver"`.
 Keep every emitted plugin file, including `ScenarioStudio/Plugins/Wildlife.upluginmanifest`,
-the descriptor, asset registry, shader data and containers. The base plugin manifests
-disable recursive discovery; the DLC manifest is required. This cook stores the bear's
-material shaders inline. The base PSO cache remains unchanged and does not establish
-first-view performance for the new material.
+the descriptor, asset registry, shader data and containers; the base plugin manifests disable
+recursive discovery, so the DLC manifest is required.
 
 During component initialization `ScenarioSession` creates `DroneFoundation`, which reads
 the release's `world.json` at the world pre-BeginPlay event and relocates the existing
 14 × 14 × 0.30 m slab and four landing mats, and loads the wildlife level. Missing or
-mismatched actors fail startup; `BeginPlay` requires completed infrastructure setup.
-The obsolete editor port builder was removed. The port
+mismatched actors fail startup; `BeginPlay` requires completed infrastructure setup. The port
 centre is north −738 m, east −27 m, in front of the command van and tent; its top is
 10.93 m UE up and the four home origins are 11.13 m UE up on a 5 m grid. Native
 `infrastructure.json` records the actual placement. The parking obstacle has a southern
@@ -117,8 +111,7 @@ north, so UE yaw) for 2026-10-31 13:00 PDT at the OriginGeopoint, from NREL SPA
 (`pvlib 0.15.2`: apparent elevation 37.643379°, azimuth 185.762952°).
 `landmarks.json` owns public names, aliases, kinds and geometry in Unreal
 centimetres; it contains no subject or clue placement. North is +X and east is +Y.
-`world.cosys.landmarks` is the shared search loader, byte-identical to
-`search-planning`.
+`world.cosys.landmarks` is the shared search loader.
 
 The catalogue includes the southern trailhead and command post, the meadow,
 creek-loop, lake and lookout trails with signpost obstacles at their junctions, a
@@ -349,8 +342,8 @@ back and asserted; stored values and replaced exposure, sun rotation and fog val
 `lighting.json`. Updates preserve the single cloud actor and require a new evidence destination.
 `build-open-meadow.py` preserves `sky.clouds` and leaves sun rotation to this step.
 
-The foliage masters carry no world position offset: the T6 `SimpleGrassWind` sway made the
-Nanite lodgepole crowns fall back to bare trunks in the packaged build.
+The foliage masters carry no world position offset: a `SimpleGrassWind` sway made the Nanite
+lodgepole crowns fall back to bare trunks in the packaged build.
 
 Sun calculation uses [pvlib's NREL SPA](https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.solarposition.spa_python.html)
 at the generated settings' OriginGeopoint, altitude-derived pressure, 12 °C and delta-T 67 s.
@@ -457,13 +450,7 @@ systemd-run --user --scope -p MemoryMax=16G -p MemorySwapMax=0 \
   $B -b --online-mode -c blender_mcp --host 127.0.0.1 --port 9879
 ```
 
-Register both privately for this worktree:
-
-```sh
-claude mcp add --scope local --transport http unreal http://127.0.0.1:55570/mcp
-claude mcp add --scope local -e BLENDER_MCP_HOST=127.0.0.1 -e BLENDER_MCP_PORT=9879 \
-  blender -- "$PWD/.local/mcp/blender-venv/bin/blender-mcp"
-```
+Register both endpoints with the MCP client of your choice; registrations stay local to the checkout.
 
 ## Stream resolution and shader platform
 

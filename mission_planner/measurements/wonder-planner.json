@@ -1719,7 +1719,7 @@
       ],
       "assets": [
         {
-          "url": "http://35.81.229.78/assets/MissionControl-COg7mjaZ.js",
+          "url": "http://203.0.113.10/assets/MissionControl-COg7mjaZ.js",
           "sha256": "6c42adb0518bacfa6182ca627bb4291a93178dfeddd41854696ae2e316dd8608"
         }
       ]
@@ -2098,12 +2098,12 @@
         ".local/vendor/ardupilot/libraries/AP_Mission/AP_Mission.cpp": "1e9115fe299dea50351ab65228e9336484310c3ca7b8ed80d24788dc855618f8",
         ".local/vendor/ardupilot/libraries/AP_Logger/AP_Logger.h": "5a1b8d27c0ee385174213b95fa94cc0cd47b6688b987dd490bb2bd400850da33",
         ".local/vendor/ardupilot/ArduCopter/land_detector.cpp": "d40231a851ccd3a382f5dfed73f47cf1cb3a5ee276abb6e77341317a803c0763",
-        "/home/brook_avionuas/snr/.local/staging/wonder-planner/recover_dataflash.py": "3093d8a369d788ea0b6b56324ce87ebc73192f3d6535d67ff9a8d93f28decfc0",
+        "/srv/snr/.local/staging/wonder-planner/recover_dataflash.py": "3093d8a369d788ea0b6b56324ce87ebc73192f3d6535d67ff9a8d93f28decfc0",
         ".local/vendor/ardupilot/libraries/AP_Arming/AP_Arming.h": "daca259c79b7d0746906f3c1b84a17b6bfd8e614502e8fab4be63346b5f6cc6e",
         ".local/vendor/ardupilot/libraries/AP_Logger/LogFile.cpp": "803b5035c08b60ebcc3f032521be72e703664dacb3fe5a4994a370d92f11cad5",
         ".local/evidence/wonder-planner/20261031T165235Z/dataflash/recovery-final.json": "92b085301d3189119dafc65b188a32e95af99c75ee6c77f187f95b856c149d52",
         ".local/evidence/wonder-planner/20261031T165235Z/live/result.json": "35efa308a041f478ee437cd86750fc564c89121f69ccc1a5546dfa2c0deadab0",
-        "/home/brook_avionuas/snr/.local/staging/wonder-planner/finalize_dataflash.py": "2f2f4ee8b3d65e8f75a62ec24c172f6fd3cf5d9e32af0f1bea40203783ef0222",
+        "/srv/snr/.local/staging/wonder-planner/finalize_dataflash.py": "2f2f4ee8b3d65e8f75a62ec24c172f6fd3cf5d9e32af0f1bea40203783ef0222",
         "mission_planner/gcs/planner.py": "24595cfa53132c397d306737723c7a41d8738b7433cb1c213d5938c4ff9e2915",
         ".local/evidence/wonder-planner/20261031T165235Z/dataflash/Drone1-positions.json": "b8ed370ef0899e1ea94a1c02ba87dfecd1a57993285a8750e232d154156f1c53",
         ".local/evidence/wonder-planner/20261031T165235Z/dataflash/Drone2-positions.json": "c3b843a88d8c0b0b8bca841e4aaf612f9486505ab025d0052b4816f1241d670f"
@@ -2915,7 +2915,7 @@
       "fresh_idle_fleet_ready": true,
       "flight_commands_sent": 0,
       "model_requests_sent": 0,
-      "native_release": "/home/brook_avionuas/snr/.local/unreal/releases/drone-video-verified-20261031T201210Z",
+      "native_release": "/srv/snr/.local/unreal/releases/drone-video-verified-20261031T201210Z",
       "source_sha256": {
         "mission_planner/gcs/service.py": "4ccdc463918d58bb205b5525dc80bb667ea712b0f826171dccfaaffb8b74456c",
         "mission_planner/agents/models.py": "0025deab947bad8010323f125d36d333564bc3e555150f5fdec6a292e460e152"
@@ -3017,7 +3017,7 @@
           "build",
           "--",
           "--outDir",
-          "/home/brook_avionuas/snr/.local/staging/camera-availability/dist"
+          "/srv/snr/.local/staging/camera-availability/dist"
         ],
         "exit_code": 0,
         "elapsed_s": 5.031268595979782,
@@ -3078,7 +3078,7 @@
     },
     "activation": {
       "completed_at": "2026-10-31T20:54:38.137491+00:00",
-      "release": "/home/brook_avionuas/snr/.local/unreal/releases/drone-video-verified-20261031T201210Z",
+      "release": "/srv/snr/.local/unreal/releases/drone-video-verified-20261031T201210Z",
       "status": {
         "type": "status",
         "mission": null,
@@ -3125,8 +3125,8 @@
     "deleted_source_files": [],
     "disk_cleanup": {
       "at": "2026-10-31T20:49:19.239168+00:00",
-      "removed": "/home/brook_avionuas/snr/.local/unreal/releases/drone-video-20261031T195253Z",
-      "live_preserved": "/home/brook_avionuas/snr/.local/unreal/releases/drone-video-verified-20261031T201210Z",
+      "removed": "/srv/snr/.local/unreal/releases/drone-video-20261031T195253Z",
+      "live_preserved": "/srv/snr/.local/unreal/releases/drone-video-verified-20261031T201210Z",
       "before": {
         "total": 832314445824,
         "used": 832291897344,
@@ -3242,7 +3242,7 @@
           "build",
           "--",
           "--outDir",
-          "/home/brook_avionuas/snr/.local/staging/multi-drone-video/dist"
+          "/srv/snr/.local/staging/multi-drone-video/dist"
         ],
         "exit_code": 0,
         "elapsed_s": 5.20018588702078
@@ -3588,7 +3588,7 @@
           "build",
           "--",
           "--outDir",
-          "/home/brook_avionuas/snr/.local/staging/mission-flight-lifecycle/dist"
+          "/srv/snr/.local/staging/mission-flight-lifecycle/dist"
         ],
         "exit_code": 0,
         "elapsed_s": 5.23905382497469
@@ -3955,7 +3955,7 @@
         "used": 831554605056,
         "free": 743063552
       },
-      "release": "/home/brook_avionuas/snr/.local/unreal/releases/drone-video-verified-20261031T201210Z",
+      "release": "/srv/snr/.local/unreal/releases/drone-video-verified-20261031T201210Z",
       "source_sha256": {
         "mission_planner/gcs/service.py": "941e14114034aa7a5b79a29ea87e214aaebb8729d0efcb406f1acd887e6b2c9a",
         "mission_planner/gcs/geodesy.py": "c00997983d383c120145002fa70b80ff7b682a9a385d734dfc51d92eacd2f5b2",
@@ -4166,7 +4166,7 @@
           "build",
           "--",
           "--outDir",
-          "/home/brook_avionuas/snr/.local/staging/agentic-inspection/dist"
+          "/srv/snr/.local/staging/agentic-inspection/dist"
         ],
         "exit_code": 0,
         "elapsed_s": 5.381678442005068
@@ -4623,7 +4623,7 @@
           "used": 212400787456,
           "free": 619896881152
         },
-        "release": "/home/brook_avionuas/snr/.local/unreal/releases/drone-video-verified-20261031T201210Z",
+        "release": "/srv/snr/.local/unreal/releases/drone-video-verified-20261031T201210Z",
         "source_sha256": {
           "mission_planner/gcs/service.py": "328026c2d62ce680c049e63b3ead04e3507d44559bb5eee6747033fe5fbd2899",
           "mission_planner/gcs/inspection.py": "4693192ed2dc116cd2c98b2ccacb4bb9e6cae63255059c4aa96518f840fee5cb",
@@ -5056,7 +5056,7 @@
           "build",
           "--",
           "--outDir",
-          "/home/brook_avionuas/snr/.local/staging/moving-inspection/dist"
+          "/srv/snr/.local/staging/moving-inspection/dist"
         ],
         "exit_code": 0,
         "elapsed_s": 5.502173916000174
@@ -5323,7 +5323,7 @@
           "used": 212438978560,
           "free": 619858690048
         },
-        "release": "/home/brook_avionuas/snr/.local/unreal/releases/drone-video-verified-20261031T201210Z",
+        "release": "/srv/snr/.local/unreal/releases/drone-video-verified-20261031T201210Z",
         "source_sha256": {
           "mission_planner/gcs/service.py": "e8948b9b98d3de45d2c4ff1e0c9d05d180f9aea88080329f8c40dfc8e07caec1",
           "mission_planner/gcs/inspection.py": "2c633319ae80f93004c33c21cd2a2814ded821f32c67d0c5e74f427de8073c65",
@@ -5656,7 +5656,7 @@
         "build",
         "--",
         "--outDir",
-        "/home/brook_avionuas/snr/.local/staging/rescue-lock/dist"
+        "/srv/snr/.local/staging/rescue-lock/dist"
       ],
       "exit_code": 0,
       "elapsed_s": 5.991949338989798
@@ -6177,7 +6177,7 @@
         "build",
         "--",
         "--outDir",
-        "/home/brook_avionuas/snr/.local/staging/planner-repair/dist"
+        "/srv/snr/.local/staging/planner-repair/dist"
       ],
       "exit_code": 0,
       "elapsed_s": 5.466319711995311
@@ -7452,7 +7452,7 @@
         "build",
         "--",
         "--outDir",
-        "/home/brook_avionuas/snr/.local/staging/search-runtime/dist"
+        "/srv/snr/.local/staging/search-runtime/dist"
       ],
       "exit_code": 0,
       "elapsed_s": 5.488766486989334
@@ -7460,7 +7460,7 @@
     "sitl_build": {
       "exit_code": 0,
       "source_revision": "fb773567896014da007bca58358704d4a0d8516f",
-      "binary": "/home/brook_avionuas/snr/.local/build/search-runtime-20261101T001539Z-patch-fixed/build/sitl/bin/arducopter",
+      "binary": "/srv/snr/.local/build/search-runtime-20261101T001539Z-patch-fixed/build/sitl/bin/arducopter",
       "binary_sha256": "77a4b845a87aa1b1c0b0ba6d2fcb1bfd90fb75fb08175b136c8068c661293c82",
       "build_jobs": 4,
       "copter_build_s": 145.587,
@@ -10106,13 +10106,13 @@
         "build",
         "--",
         "--outDir",
-        "/home/brook_avionuas/snr/.local/staging/commander-camera/dist"
+        "/srv/snr/.local/staging/commander-camera/dist"
       ],
       "exit_code": 0,
       "elapsed_s": 6.815927496005315,
       "log": "build.log",
       "log_sha256": "da1047a10228a3c6500b089e9b28dab1b8cc798fde1a30db1e2c5f4e007e5f39",
-      "output_dir": "/home/brook_avionuas/snr/.local/staging/commander-camera/dist"
+      "output_dir": "/srv/snr/.local/staging/commander-camera/dist"
     },
     "readiness": {
       "at_unix_s": 1793507067.9242423,
@@ -10481,7 +10481,7 @@
   },
   "world_bear_port": {
     "results": "mission_planner/measurements/world-bear-port.json",
-    "installed_release": "/home/brook_avionuas/snr/.local/unreal/releases/world-bear-port-20261101T143600Z-final",
+    "installed_release": "/srv/snr/.local/unreal/releases/world-bear-port-20261101T143600Z-final",
     "home_up_m": 11.13,
     "rtl_altitude_m": 80,
     "conservative_rtl_clearance_m": 11.98156250000011,
@@ -10664,7 +10664,7 @@
         ],
         "exit_code": 0,
         "elapsed_s": 196.8937686550198,
-        "log": "/home/brook_avionuas/snr/.local/evidence/finding-experience/20261101T162849Z/python.log",
+        "log": "/srv/snr/.local/evidence/finding-experience/20261101T162849Z/python.log",
         "tests": 781,
         "runner_elapsed_s": 196.11
       },
@@ -10675,7 +10675,7 @@
         ],
         "exit_code": 0,
         "elapsed_s": 6.640265583002474,
-        "log": "/home/brook_avionuas/snr/.local/evidence/finding-experience/20261101T162849Z/npm-test-final.log",
+        "log": "/srv/snr/.local/evidence/finding-experience/20261101T162849Z/npm-test-final.log",
         "tests": 225
       },
       "typecheck-final": {
@@ -10686,7 +10686,7 @@
         ],
         "exit_code": 0,
         "elapsed_s": 3.561935228994116,
-        "log": "/home/brook_avionuas/snr/.local/evidence/finding-experience/20261101T162849Z/typecheck-final.log"
+        "log": "/srv/snr/.local/evidence/finding-experience/20261101T162849Z/typecheck-final.log"
       },
       "format-check-final": {
         "command": [
@@ -10696,7 +10696,7 @@
         ],
         "exit_code": 0,
         "elapsed_s": 2.2604519139858894,
-        "log": "/home/brook_avionuas/snr/.local/evidence/finding-experience/20261101T162849Z/format-check-final.log"
+        "log": "/srv/snr/.local/evidence/finding-experience/20261101T162849Z/format-check-final.log"
       },
       "ruff-check": {
         "command": [
@@ -10705,7 +10705,7 @@
         ],
         "exit_code": 0,
         "elapsed_s": 0.012148558045737445,
-        "log": "/home/brook_avionuas/snr/.local/evidence/finding-experience/20261101T162849Z/ruff-check.log"
+        "log": "/srv/snr/.local/evidence/finding-experience/20261101T162849Z/ruff-check.log"
       },
       "ruff-format": {
         "command": [
@@ -10715,7 +10715,7 @@
         ],
         "exit_code": 0,
         "elapsed_s": 0.0111553969909437,
-        "log": "/home/brook_avionuas/snr/.local/evidence/finding-experience/20261101T162849Z/ruff-format.log"
+        "log": "/srv/snr/.local/evidence/finding-experience/20261101T162849Z/ruff-format.log"
       },
       "build": {
         "command": [
@@ -10725,7 +10725,7 @@
         ],
         "exit_code": 0,
         "elapsed_s": 6.870088708004914,
-        "log": "/home/brook_avionuas/snr/.local/evidence/finding-experience/20261101T162849Z/build.log"
+        "log": "/srv/snr/.local/evidence/finding-experience/20261101T162849Z/build.log"
       }
     },
     "browser_replay": {
@@ -10763,7 +10763,7 @@
     "installation": {
       "status": "installed; idle grounded fleet; public pages and services healthy",
       "mission_pid": 3714300,
-      "unreal_release": "/home/brook_avionuas/snr/.local/unreal/releases/world-bear-port-20261101T143600Z-final",
+      "unreal_release": "/srv/snr/.local/unreal/releases/world-bear-port-20261101T143600Z-final",
       "before": ".local/evidence/finding-experience/20261101T162849Z/restart-before.json",
       "after": ".local/evidence/finding-experience/20261101T162849Z/restart-after.json",
       "log": ".local/evidence/finding-experience/20261101T162849Z/install.log",
@@ -10984,7 +10984,7 @@
       "renderer": "ready",
       "mission_service_pid": 3808326,
       "mission_service_started_utc": "2026-11-01T19:43:39Z",
-      "unreal_release": "/home/brook_avionuas/snr/.local/unreal/releases/world-bear-port-20261101T143600Z-final",
+      "unreal_release": "/srv/snr/.local/unreal/releases/world-bear-port-20261101T143600Z-final",
       "session": {
         "type": "status",
         "mission": {

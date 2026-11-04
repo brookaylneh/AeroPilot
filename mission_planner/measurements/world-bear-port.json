@@ -1,7 +1,7 @@
 {
   "recorded_at": "2026-11-01T15:15:42.161509+00:00",
   "evidence": ".local/evidence/world-bear-port/20261101T143600Z",
-  "installed_release": "/home/brook_avionuas/snr/.local/unreal/releases/world-bear-port-20261101T143600Z-final",
+  "installed_release": "/srv/snr/.local/unreal/releases/world-bear-port-20261101T143600Z-final",
   "source_changes": ".local/evidence/world-bear-port/20261101T143600Z/source-changes.json",
   "earlier_tracking_work": {
     "measurements": "mission_planner/measurements/wonder-planner.json",

@@ -2,6 +2,8 @@
 
 import asyncio
 import json
+import os
+import shutil
 import subprocess
 import unittest
 
@@ -27,9 +29,11 @@ console.log(JSON.stringify(rows));
 class ReportedArea(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
+        node = shutil.which("node", path=f"{ROOT / '.local/toolchains/bin'}:{os.environ['PATH']}")
+        assert node, "Node 22 is required on PATH or in .local/toolchains/bin"
         result = subprocess.run(
             [
-                str(ROOT / ".local/toolchains/bin/node"),
+                node,
                 "--import",
                 "tsx",
                 "--input-type=module",

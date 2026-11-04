@@ -597,7 +597,7 @@
       "mission_id": "e9792aaf-224b-4038-afff-b89bf56466a2",
       "model_response_files": 0,
       "native_image": "sha256:d737ab3d1825f65286633211fbadc3c435d265b19d5d5ba3d39228544d310f78",
-      "native_release": "/home/brook_avionuas/snr/.local/unreal/releases/world-bear-port-20261101T143600Z-final",
+      "native_release": "/srv/snr/.local/unreal/releases/world-bear-port-20261101T143600Z-final",
       "vehicles": [
         {
           "id": "Drone1",
@@ -648,7 +648,7 @@
         "tsx",
         "mission_planner/gcs/accept_browser.mjs",
         "capture",
-        "http://35.81.229.78/missionplanner",
+        "http://203.0.113.10/missionplanner",
         ".local/evidence/release-cleanup/20261101T202427Z/installed-final-browser",
         "release"
       ],

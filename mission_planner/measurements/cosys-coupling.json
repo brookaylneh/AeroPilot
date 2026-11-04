@@ -267,10 +267,10 @@
     },
     "builds": {
       "game": {
-        "release": "/home/brook_avionuas/snr-coupling/.local/unreal/releases/coupling-geodesy",
-        "base_release": "/home/brook_avionuas/snr/.local/unreal/releases/cooked-content-recovery",
+        "release": "/srv/snr-coupling/.local/unreal/releases/coupling-geodesy",
+        "base_release": "/srv/snr/.local/unreal/releases/cooked-content-recovery",
         "build_log": ".local/evidence/coupling/resume-build-01/build.log",
-        "build_command": "Running command : dotnet Engine/Binaries/DotNET/UnrealBuildTool/UnrealBuildTool.dll ScenarioStudio Linux Development -Project=/home/brook_avionuas/snr-coupling/world/unreal/ScenarioStudio/ScenarioStudio.uproject -MaxParallelActions=6 -NoUBA -NoUBTMakefiles",
+        "build_command": "Running command : dotnet Engine/Binaries/DotNET/UnrealBuildTool/UnrealBuildTool.dll ScenarioStudio Linux Development -Project=/srv/snr-coupling/world/unreal/ScenarioStudio/ScenarioStudio.uproject -MaxParallelActions=6 -NoUBA -NoUBTMakefiles",
         "maximum_parallel_actions": 6,
         "build_result": "Succeeded",
         "build_elapsed_seconds": 224.61,
@@ -306,17 +306,17 @@
       "hardlinked_unchanged_content_files": 8,
       "SITL": {
         "command": [
-          "/home/brook_avionuas/snr-coupling/.venv-cosys/bin/python",
+          "/srv/snr-coupling/.venv-cosys/bin/python",
           "modules/waf/waf-light",
           "copter",
           "-j4",
           "--no-submodule-update"
         ],
-        "working_directory": "/home/brook_avionuas/snr-coupling/.local/build/ardupilot",
+        "working_directory": "/srv/snr-coupling/.local/build/ardupilot",
         "jobs": 4,
         "wall_seconds": 3.118778629002918,
         "exit_code": 0,
-        "binary": "/home/brook_avionuas/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
+        "binary": "/srv/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
         "binary_before_sha256": "a96cebded305da9e9ede1bfbe96efcc430cecae0c804ba57618c0397bf39a0be",
         "binary_after_sha256": "00291d26dd0588c678d62d0bece78384310f3bd402594b4ca78526a1f4559aca",
         "patch": "mission_planner/gcs/sitl-gps-cadence.patch",
@@ -1597,7 +1597,7 @@
         "shutdown_elapsed_s": 1.743213816997013,
         "supervisor": {
           "arguments": [
-            "/home/brook_avionuas/snr-coupling/.venv-cosys/bin/python",
+            "/srv/snr-coupling/.venv-cosys/bin/python",
             "-m",
             "mission_planner.gcs.coupling_gate",
             "--output",
@@ -1631,7 +1631,7 @@
           "73254": {
             "start_ticks": 3390450,
             "name": "ScenarioStudio",
-            "executable": "/home/brook_avionuas/snr/.local/unreal/releases/cooked-content-recovery/ScenarioStudio/Binaries/Linux/ScenarioStudio",
+            "executable": "/srv/snr/.local/unreal/releases/cooked-content-recovery/ScenarioStudio/Binaries/Linux/ScenarioStudio",
             "samples": 752,
             "span_s": 751.5546754300012,
             "mean_cpu_percent_one_core_100": 249.1142775379328,
@@ -1640,7 +1640,7 @@
           "292395": {
             "start_ticks": 5236596,
             "name": "UnrealEditor",
-            "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
+            "executable": "/srv/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
             "samples": 15,
             "span_s": 14.011682129996188,
             "mean_cpu_percent_one_core_100": 217.46139911902438,
@@ -1649,7 +1649,7 @@
           "299658": {
             "start_ticks": 5249684,
             "name": "UnrealEditor-Cm",
-            "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
+            "executable": "/srv/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
             "samples": 62,
             "span_s": 61.04967273800139,
             "mean_cpu_percent_one_core_100": 125.9957614025339,
@@ -1658,7 +1658,7 @@
           "299710": {
             "start_ticks": 5249711,
             "name": "UnrealEditor",
-            "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
+            "executable": "/srv/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
             "samples": 117,
             "span_s": 116.08912313300243,
             "mean_cpu_percent_one_core_100": 224.3707187809331,
@@ -1667,7 +1667,7 @@
           "309083": {
             "start_ticks": 5273522,
             "name": "UnrealEditor-Cm",
-            "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
+            "executable": "/srv/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
             "samples": 330,
             "span_s": 329.24986520600214,
             "mean_cpu_percent_one_core_100": 151.66900666384743,
@@ -1676,7 +1676,7 @@
           "310363": {
             "start_ticks": 5273807,
             "name": "ScenarioStudio",
-            "executable": "/home/brook_avionuas/snr-coupling/.local/unreal/releases/coupling-geodesy/ScenarioStudio/Binaries/Linux/ScenarioStudio",
+            "executable": "/srv/snr-coupling/.local/unreal/releases/coupling-geodesy/ScenarioStudio/Binaries/Linux/ScenarioStudio",
             "samples": 752,
             "span_s": 751.5546754300012,
             "mean_cpu_percent_one_core_100": 123.75413664586088,
@@ -1685,7 +1685,7 @@
           "310693": {
             "start_ticks": 5274275,
             "name": "arducopter",
-            "executable": "/home/brook_avionuas/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
+            "executable": "/srv/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
             "samples": 752,
             "span_s": 751.5546754300012,
             "mean_cpu_percent_one_core_100": 2.927265403200735,
@@ -1694,7 +1694,7 @@
           "310695": {
             "start_ticks": 5274275,
             "name": "arducopter",
-            "executable": "/home/brook_avionuas/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
+            "executable": "/srv/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
             "samples": 752,
             "span_s": 751.5546754300012,
             "mean_cpu_percent_one_core_100": 2.995124737547661,
@@ -1703,7 +1703,7 @@
           "310698": {
             "start_ticks": 5274275,
             "name": "arducopter",
-            "executable": "/home/brook_avionuas/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
+            "executable": "/srv/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
             "samples": 752,
             "span_s": 751.5546754300012,
             "mean_cpu_percent_one_core_100": 2.9898024368145686,
@@ -1712,7 +1712,7 @@
           "310700": {
             "start_ticks": 5274275,
             "name": "arducopter",
-            "executable": "/home/brook_avionuas/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
+            "executable": "/srv/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
             "samples": 752,
             "span_s": 751.5546754300012,
             "mean_cpu_percent_one_core_100": 2.9552074820494685,
@@ -1721,7 +1721,7 @@
           "312879": {
             "start_ticks": 5280636,
             "name": "UnrealEditor",
-            "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
+            "executable": "/srv/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
             "samples": 121,
             "span_s": 120.08925002100295,
             "mean_cpu_percent_one_core_100": 189.967045310135,
@@ -1730,7 +1730,7 @@
           "315036": {
             "start_ticks": 5282939,
             "name": "UnrealEditor-Cm",
-            "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
+            "executable": "/srv/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
             "samples": 356,
             "span_s": 355.2648147910004,
             "mean_cpu_percent_one_core_100": 139.00616651005035,
@@ -1739,7 +1739,7 @@
           "317467": {
             "start_ticks": 5285326,
             "name": "UnrealEditor-Cm",
-            "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
+            "executable": "/srv/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
             "samples": 343,
             "span_s": 342.2530891290007,
             "mean_cpu_percent_one_core_100": 141.00384052869833,
@@ -1748,7 +1748,7 @@
           "320088": {
             "start_ticks": 5290810,
             "name": "UnrealEditor",
-            "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
+            "executable": "/srv/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
             "samples": 121,
             "span_s": 120.09304079299909,
             "mean_cpu_percent_one_core_100": 182.4418788576237,
@@ -1757,7 +1757,7 @@
           "321653": {
             "start_ticks": 5292864,
             "name": "UnrealEditor",
-            "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
+            "executable": "/srv/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
             "samples": 470,
             "span_s": 469.3450426260024,
             "mean_cpu_percent_one_core_100": 287.5624279418408,
@@ -1766,7 +1766,7 @@
           "325773": {
             "start_ticks": 5303020,
             "name": "UnrealEditor",
-            "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
+            "executable": "/srv/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
             "samples": 408,
             "span_s": 407.2950086600031,
             "mean_cpu_percent_one_core_100": 228.89305790099417,
@@ -1775,7 +1775,7 @@
           "329234": {
             "start_ticks": 5312155,
             "name": "UnrealEditor-Cm",
-            "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
+            "executable": "/srv/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
             "samples": 387,
             "span_s": 386.2789288999993,
             "mean_cpu_percent_one_core_100": 157.19728791036346,
@@ -1784,7 +1784,7 @@
           "334074": {
             "start_ticks": 5324055,
             "name": "UnrealEditor",
-            "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
+            "executable": "/srv/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
             "samples": 302,
             "span_s": 301.2179931960054,
             "mean_cpu_percent_one_core_100": 234.76685190577058,
@@ -1793,7 +1793,7 @@
           "338941": {
             "start_ticks": 5340080,
             "name": "UnrealEditor",
-            "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
+            "executable": "/srv/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
             "samples": 142,
             "span_s": 141.10399714600499,
             "mean_cpu_percent_one_core_100": 308.8573029926664,
@@ -1802,7 +1802,7 @@
           "341924": {
             "start_ticks": 5344018,
             "name": "UnrealEditor",
-            "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
+            "executable": "/srv/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
             "samples": 103,
             "span_s": 102.0747624200012,
             "mean_cpu_percent_one_core_100": 244.7519779395016,
@@ -1811,7 +1811,7 @@
           "344939": {
             "start_ticks": 5349365,
             "name": "UnrealEditor-Cm",
-            "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
+            "executable": "/srv/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
             "samples": 27,
             "span_s": 26.01818635199743,
             "mean_cpu_percent_one_core_100": 121.18446525608586,
@@ -1820,7 +1820,7 @@
           "346803": {
             "start_ticks": 5350936,
             "name": "UnrealEditor-Cm",
-            "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
+            "executable": "/srv/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
             "samples": 33,
             "span_s": 32.02379622000444,
             "mean_cpu_percent_one_core_100": 134.86845751604028,
@@ -1829,7 +1829,7 @@
           "348648": {
             "start_ticks": 5352177,
             "name": "UnrealEditor",
-            "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
+            "executable": "/srv/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor",
             "samples": 21,
             "span_s": 20.015376818999357,
             "mean_cpu_percent_one_core_100": 129.50043476271577,
@@ -1927,7 +1927,7 @@
           }
         },
         "gpus": {
-          "GPU-2367bf48-9a27-f54c-8234-95933828e5f7": {
+          "GPU-00000000-0000-0000-0000-000000000000": {
             "utilization_percent": {
               "count": 752,
               "min": 11.0,
@@ -1972,7 +1972,7 @@
         "causal_isolation": false,
         "interpretation": "The coupled world uses the recorded320x180 viewport and10FPS cap. Baseline and full-run windows contain different editor processes/workloads; their durations differ. Differences do not isolate coupling cost or prove unchanged editor performance. Native frame values are sampled telemetry, not exhaustive frame traces. CPU100% denotes one core.",
         "baseline": {
-          "source": "/home/brook_avionuas/snr-coupling/.local/evidence/coupling/baseline-02.jsonl",
+          "source": "/srv/snr-coupling/.local/evidence/coupling/baseline-02.jsonl",
           "sha256": "6b537262c13359fabe5937c993f82ee30dac0d1c287b4db8be3272c3cd6bc9ff",
           "samples": 30,
           "span_s": 29.02114925999922,
@@ -1982,7 +1982,7 @@
             "73254": {
               "start_ticks": 3390450,
               "name": "ScenarioStudio",
-              "executable": "/home/brook_avionuas/snr/.local/unreal/releases/cooked-content-recovery/ScenarioStudio/Binaries/Linux/ScenarioStudio",
+              "executable": "/srv/snr/.local/unreal/releases/cooked-content-recovery/ScenarioStudio/Binaries/Linux/ScenarioStudio",
               "samples": 30,
               "span_s": 29.02114925999922,
               "mean_cpu_percent_one_core_100": 221.5970133500036,
@@ -1991,7 +1991,7 @@
             "275251": {
               "start_ticks": 5203457,
               "name": "UnrealEditor-Cm",
-              "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
+              "executable": "/srv/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
               "samples": 30,
               "span_s": 29.02114925999922,
               "mean_cpu_percent_one_core_100": 306.1215777641549,
@@ -2000,7 +2000,7 @@
             "283770": {
               "start_ticks": 5218666,
               "name": "UnrealEditor-Cm",
-              "executable": "/home/brook_avionuas/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
+              "executable": "/srv/snr/.local/toolchains/UnrealEngine-5.8.2/Engine/Binaries/Linux/UnrealEditor-Cmd",
               "samples": 16,
               "span_s": 15.009423223003978,
               "mean_cpu_percent_one_core_100": 163.6305381965542,
@@ -2054,7 +2054,7 @@
             }
           },
           "gpus": {
-            "GPU-2367bf48-9a27-f54c-8234-95933828e5f7": {
+            "GPU-00000000-0000-0000-0000-000000000000": {
               "utilization_percent": {
                 "count": 30,
                 "min": 47.0,
@@ -2123,7 +2123,7 @@
             "73254": 27.517264187929186
           },
           "gpu_mean_difference": {
-            "GPU-2367bf48-9a27-f54c-8234-95933828e5f7": {
+            "GPU-00000000-0000-0000-0000-000000000000": {
               "utilization_percent": 23.349468085106388,
               "memory_utilization_percent": 3.9119680851063823,
               "memory_used_mib": 12019.441489361703,
@@ -3584,7 +3584,7 @@
       "interpretation": "184 Hz reduces every median hover target error and every median/p95 cruise cross-track error. Vertical cruise p95 is similar with a small increase; Drone4 initial-hover settling maximum increases. These runs do not establish a systematic tracking regression. Keep 184 Hz, retain both full distributions. Pose agreement remains below 1 m hover and 2 m cruise; no health faults.",
       "shutdown": {
         "arguments": [
-          "/home/brook_avionuas/snr-coupling/.venv-cosys/bin/python",
+          "/srv/snr-coupling/.venv-cosys/bin/python",
           "-m",
           "mission_planner.gcs.coupling_gate",
           "--output",
@@ -3617,7 +3617,7 @@
       "vehicles": {
         "Drone1": {
           "dataflash_files_sha256": {
-            "/home/brook_avionuas/snr/.local/evidence/coupling/stage2/rate-184-01/flight/sitl/Drone1/logs/00000001.BIN": "faaeac500cb8c754eb0063d68d00e073138293af2eef219561bf89ce6a44ef39"
+            "/srv/snr/.local/evidence/coupling/stage2/rate-184-01/flight/sitl/Drone1/logs/00000001.BIN": "faaeac500cb8c754eb0063d68d00e073138293af2eef219561bf89ce6a44ef39"
           },
           "gps_corrected_timestamp_age_ms": {
             "count": 1146,
@@ -3850,7 +3850,7 @@
         },
         "Drone2": {
           "dataflash_files_sha256": {
-            "/home/brook_avionuas/snr/.local/evidence/coupling/stage2/rate-184-01/flight/sitl/Drone2/logs/00000001.BIN": "093256f9217ea95090038bdade04ff4a1b7edade7ea594894c71a832d32b1b5f"
+            "/srv/snr/.local/evidence/coupling/stage2/rate-184-01/flight/sitl/Drone2/logs/00000001.BIN": "093256f9217ea95090038bdade04ff4a1b7edade7ea594894c71a832d32b1b5f"
           },
           "gps_corrected_timestamp_age_ms": {
             "count": 1146,
@@ -4083,7 +4083,7 @@
         },
         "Drone3": {
           "dataflash_files_sha256": {
-            "/home/brook_avionuas/snr/.local/evidence/coupling/stage2/rate-184-01/flight/sitl/Drone3/logs/00000001.BIN": "e6b32639018e6d08b4de412509bf563b37b78374d6713372be275f74ec9aef4f"
+            "/srv/snr/.local/evidence/coupling/stage2/rate-184-01/flight/sitl/Drone3/logs/00000001.BIN": "e6b32639018e6d08b4de412509bf563b37b78374d6713372be275f74ec9aef4f"
           },
           "gps_corrected_timestamp_age_ms": {
             "count": 1143,
@@ -4316,7 +4316,7 @@
         },
         "Drone4": {
           "dataflash_files_sha256": {
-            "/home/brook_avionuas/snr/.local/evidence/coupling/stage2/rate-184-01/flight/sitl/Drone4/logs/00000001.BIN": "a9a9eaf47dc480639ae623d5b38875fe221a3cbabd8250ec2432acde6138f6cf"
+            "/srv/snr/.local/evidence/coupling/stage2/rate-184-01/flight/sitl/Drone4/logs/00000001.BIN": "a9a9eaf47dc480639ae623d5b38875fe221a3cbabd8250ec2432acde6138f6cf"
           },
           "gps_corrected_timestamp_age_ms": {
             "count": 1142,
@@ -4550,7 +4550,7 @@
       },
       "shutdown": {
         "arguments": [
-          "/home/brook_avionuas/snr-coupling/.venv-cosys/bin/python",
+          "/srv/snr-coupling/.venv-cosys/bin/python",
           "-m",
           "mission_planner.gcs.coupling_gate",
           "--output",
@@ -4590,8 +4590,8 @@
   },
   "sensor_build": {
     "created_utc_s": 1793220659.5280957,
-    "release": "/home/brook_avionuas/snr-coupling/.local/unreal/releases/coupling-sensor",
-    "base_release": "/home/brook_avionuas/snr-coupling/.local/unreal/releases/coupling-geodesy",
+    "release": "/srv/snr-coupling/.local/unreal/releases/coupling-sensor",
+    "base_release": "/srv/snr-coupling/.local/unreal/releases/coupling-geodesy",
     "recooked": false,
     "max_parallel_actions": 6,
     "build_elapsed_seconds": 103.44,
@@ -4970,7 +4970,7 @@
       }
     ],
     "build_log": ".local/evidence/coupling/stage2/sensor-build-02/build.log",
-    "build_command": "Running command : dotnet Engine/Binaries/DotNET/UnrealBuildTool/UnrealBuildTool.dll ScenarioStudio Linux Development -Project=/home/brook_avionuas/snr-coupling/world/unreal/ScenarioStudio/ScenarioStudio.uproject -MaxParallelActions=6 -NoUBA -NoUBTMakefiles"
+    "build_command": "Running command : dotnet Engine/Binaries/DotNET/UnrealBuildTool/UnrealBuildTool.dll ScenarioStudio Linux Development -Project=/srv/snr-coupling/world/unreal/ScenarioStudio/ScenarioStudio.uproject -MaxParallelActions=6 -NoUBA -NoUBTMakefiles"
   },
   "sensor_settings": {
     "settings": {
@@ -5352,7 +5352,7 @@
     "calibration_profile_note": "Calibration uses the isolated streamer and its recorded calibration-preflight/slot receipts; mission capture and feed use RPC without Pixel Streaming."
   },
   "capture": {
-    "mission_directory": "/home/brook_avionuas/snr-coupling/.local/data/missions/ecba57b7-8419-4c2a-b2cf-35ea8ceb61f2",
+    "mission_directory": "/srv/snr-coupling/.local/data/missions/ecba57b7-8419-4c2a-b2cf-35ea8ceb61f2",
     "all_attempted_frames": 108,
     "accepted_frames": 108,
     "rejected_frames": [],
@@ -6086,14 +6086,14 @@
       "processes": {
         "73254": {
           "name": "ScenarioStudio",
-          "executable": "/home/brook_avionuas/snr/.local/unreal/releases/cooked-content-recovery/ScenarioStudio/Binaries/Linux/ScenarioStudio",
+          "executable": "/srv/snr/.local/unreal/releases/cooked-content-recovery/ScenarioStudio/Binaries/Linux/ScenarioStudio",
           "cpu_percent_one_core_100": 266.61851541639675,
           "rss_max_bytes": 14121463808,
           "samples": 170
         },
         "466009": {
           "name": "ScenarioStudio",
-          "executable": "/home/brook_avionuas/snr-coupling/.local/unreal/releases/coupling-sensor/ScenarioStudio/Binaries/Linux/ScenarioStudio",
+          "executable": "/srv/snr-coupling/.local/unreal/releases/coupling-sensor/ScenarioStudio/Binaries/Linux/ScenarioStudio",
           "cpu_percent_one_core_100": 134.66328148249045,
           "rss_max_bytes": 2060623872,
           "samples": 170
@@ -6107,28 +6107,28 @@
         },
         "466329": {
           "name": "arducopter",
-          "executable": "/home/brook_avionuas/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
+          "executable": "/srv/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
           "cpu_percent_one_core_100": 2.826302900049635,
           "rss_max_bytes": 8519680,
           "samples": 170
         },
         "466331": {
           "name": "arducopter",
-          "executable": "/home/brook_avionuas/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
+          "executable": "/srv/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
           "cpu_percent_one_core_100": 2.844041202769611,
           "rss_max_bytes": 8126464,
           "samples": 170
         },
         "466333": {
           "name": "arducopter",
-          "executable": "/home/brook_avionuas/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
+          "executable": "/srv/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
           "cpu_percent_one_core_100": 2.8203901324763097,
           "rss_max_bytes": 8388608,
           "samples": 170
         },
         "466335": {
           "name": "arducopter",
-          "executable": "/home/brook_avionuas/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
+          "executable": "/srv/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
           "cpu_percent_one_core_100": 2.9149944136495187,
           "rss_max_bytes": 8388608,
           "samples": 170
@@ -6205,7 +6205,7 @@
         }
       },
       "gpu": {
-        "GPU-2367bf48-9a27-f54c-8234-95933828e5f7": {
+        "GPU-00000000-0000-0000-0000-000000000000": {
           "utilization_percent": {
             "count": 170,
             "min": 67.0,
@@ -7652,8 +7652,8 @@
         "mission_planner/search/state.py": "80d994e6dc1bdc4affc144cd65273f446c711b1ba85e653f71da375ee6cdfaa2",
         "mission_planner/search/coverage.py": "47c0bf930e80f230c179dfbe63118c7d8f371928f323a9bc5c74307a16efbe3b",
         "mission_planner/search/footprint.py": "eb42ae0807b51cbcd45a554e0510ed16ac2ed283790547ed0e6973cd0faab052",
-        "/home/brook_avionuas/snr-coupling/.local/cosys-settings.json": "7535acc8642c923b8859cb77108784a1357c755e093b373aaca4b48aa5c67956",
-        "/home/brook_avionuas/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter": "00291d26dd0588c678d62d0bece78384310f3bd402594b4ca78526a1f4559aca"
+        "/srv/snr-coupling/.local/cosys-settings.json": "7535acc8642c923b8859cb77108784a1357c755e093b373aaca4b48aa5c67956",
+        "/srv/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter": "00291d26dd0588c678d62d0bece78384310f3bd402594b4ca78526a1f4559aca"
       }
     }
   },
@@ -7681,7 +7681,7 @@
   "final_mission_directories": {
     "sensor_browser_chat01": {
       "mission_id": "ecba57b7-8419-4c2a-b2cf-35ea8ceb61f2",
-      "directory": "/home/brook_avionuas/snr-coupling/.local/data/missions/ecba57b7-8419-4c2a-b2cf-35ea8ceb61f2",
+      "directory": "/srv/snr-coupling/.local/data/missions/ecba57b7-8419-4c2a-b2cf-35ea8ceb61f2",
       "records": 125,
       "accepted": 125,
       "rejected": 0,
@@ -7712,7 +7712,7 @@
     },
     "chat02": {
       "mission_id": "045c0e92-a476-462c-9952-ff043f9438f6",
-      "directory": "/home/brook_avionuas/snr-coupling/.local/data/missions/045c0e92-a476-462c-9952-ff043f9438f6",
+      "directory": "/srv/snr-coupling/.local/data/missions/045c0e92-a476-462c-9952-ff043f9438f6",
       "records": 64,
       "accepted": 64,
       "rejected": 0,
@@ -8376,7 +8376,7 @@
     }
   },
   "calibration": {
-    "run": "/home/brook_avionuas/snr-coupling/.local/evidence/coupling/stage2/calibration-adult-kelvin-03",
+    "run": "/srv/snr-coupling/.local/evidence/coupling/stage2/calibration-adult-kelvin-03",
     "condition": ["adult-kelvin", "adult-kelvin", "rust", "waiting", "none", 2160],
     "frameCount": 49,
     "rejectedFrames": 0,
@@ -8554,7 +8554,7 @@
       "shutdown_elapsed_s": 1.2634677120004199
     },
     "supervisor": {
-      "root": "/home/brook_avionuas/snr-coupling",
+      "root": "/srv/snr-coupling",
       "condition": "adult-kelvin",
       "scenario_id": "01A17F5C-5F8D-7BE0-8B42-D0BAD464E6EF",
       "status": "passed",
@@ -8568,7 +8568,7 @@
       "calibration": {
         "pid": 443845,
         "arguments": [
-          "/home/brook_avionuas/snr-coupling/.venv-cosys/bin/python",
+          "/srv/snr-coupling/.venv-cosys/bin/python",
           "-m",
           "mission_planner.agents.perception.calibrate",
           "--condition",
@@ -8576,9 +8576,9 @@
           "--scenario-id",
           "01A17F5C-5F8D-7BE0-8B42-D0BAD464E6EF",
           "--output",
-          "/home/brook_avionuas/snr/.local/evidence/coupling/stage2/calibration-adult-kelvin-03/calibration",
+          "/srv/snr/.local/evidence/coupling/stage2/calibration-adult-kelvin-03/calibration",
           "--shutdown-file",
-          "/home/brook_avionuas/snr/.local/evidence/coupling/stage2/calibration-adult-kelvin-03/world-stopped.json"
+          "/srv/snr/.local/evidence/coupling/stage2/calibration-adult-kelvin-03/world-stopped.json"
         ],
         "started_at_utc": "2026-10-28T21:01:41.981191+00:00",
         "exit_code": 0
@@ -8586,23 +8586,23 @@
       "metrics": {
         "pid": 443971,
         "arguments": [
-          "/home/brook_avionuas/snr-coupling/.venv-cosys/bin/python",
+          "/srv/snr-coupling/.venv-cosys/bin/python",
           "-m",
           "world.cosys.runtime_metrics",
           "--output",
-          "/home/brook_avionuas/snr/.local/evidence/coupling/stage2/calibration-adult-kelvin-03/runtime.jsonl",
+          "/srv/snr/.local/evidence/coupling/stage2/calibration-adult-kelvin-03/runtime.jsonl",
           "--seconds",
           "3060",
           "--native",
-          "coupling=/home/brook_avionuas/snr-coupling/.local/data/four-drones/runtime.json",
+          "coupling=/srv/snr-coupling/.local/data/four-drones/runtime.json",
           "--native",
-          "live=/home/brook_avionuas/snr/.local/data/four-drones/runtime.json"
+          "live=/srv/snr/.local/data/four-drones/runtime.json"
         ],
         "started_at_utc": "2026-10-28T21:01:44.968480+00:00",
         "exit_code": -15
       },
       "calibration_shutdown_marker": {
-        "report": "/home/brook_avionuas/snr/.local/evidence/coupling/stage2/calibration-adult-kelvin-03/calibration/report.json"
+        "report": "/srv/snr/.local/evidence/coupling/stage2/calibration-adult-kelvin-03/calibration/report.json"
       },
       "world_exit_code": 143,
       "calibration_exit_code": 0,
@@ -8617,7 +8617,7 @@
         {
           "pid": 73254,
           "name": "ScenarioStudio",
-          "executable": "/home/brook_avionuas/snr/.local/unreal/releases/cooked-content-recovery/ScenarioStudio/Binaries/Linux/ScenarioStudio",
+          "executable": "/srv/snr/.local/unreal/releases/cooked-content-recovery/ScenarioStudio/Binaries/Linux/ScenarioStudio",
           "statistics": {
             "count": 658,
             "min": 265.77968777425326,
@@ -8630,7 +8630,7 @@
         {
           "pid": 443577,
           "name": "ScenarioStudio",
-          "executable": "/home/brook_avionuas/snr-coupling/.local/unreal/releases/coupling-sensor/ScenarioStudio/Binaries/Linux/ScenarioStudio",
+          "executable": "/srv/snr-coupling/.local/unreal/releases/coupling-sensor/ScenarioStudio/Binaries/Linux/ScenarioStudio",
           "statistics": {
             "count": 658,
             "min": 176.89349737901117,
@@ -8643,7 +8643,7 @@
         {
           "pid": 443862,
           "name": "arducopter",
-          "executable": "/home/brook_avionuas/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
+          "executable": "/srv/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
           "statistics": {
             "count": 658,
             "min": 0.9990055509088865,
@@ -8656,7 +8656,7 @@
         {
           "pid": 443864,
           "name": "arducopter",
-          "executable": "/home/brook_avionuas/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
+          "executable": "/srv/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
           "statistics": {
             "count": 658,
             "min": 0.9989999920125278,
@@ -8669,7 +8669,7 @@
         {
           "pid": 443866,
           "name": "arducopter",
-          "executable": "/home/brook_avionuas/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
+          "executable": "/srv/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
           "statistics": {
             "count": 658,
             "min": 0.9990071078120408,
@@ -8682,7 +8682,7 @@
         {
           "pid": 443868,
           "name": "arducopter",
-          "executable": "/home/brook_avionuas/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
+          "executable": "/srv/snr-coupling/.local/build/ardupilot/build/sitl/bin/arducopter",
           "statistics": {
             "count": 658,
             "min": 0.9993614430148536,
@@ -8922,7 +8922,7 @@
         49516, 49517, 49518, 49519, 49520
       ],
       "checked_at_ms": 1793223753097.3357,
-      "listeners": "udp UNCONN 0      0              172.31.61.189:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              172.31.61.189:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              172.31.61.189:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              172.31.61.189:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              172.31.61.189:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              172.31.61.189:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              172.31.61.189:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              172.31.61.189:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              172.31.61.189:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              172.31.61.189:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              172.31.61.189:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              172.31.61.189:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              172.31.61.189:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              172.31.61.189:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              172.31.61.189:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              172.31.61.189:3478  0.0.0.0:*                                            \nudp UNCONN 0      0                  127.0.0.1:5601  0.0.0.0:* users:((\"arducopter\",pid=522930,fd=10))    \nudp UNCONN 0      0                  127.0.0.1:5611  0.0.0.0:* users:((\"arducopter\",pid=522932,fd=10))    \nudp UNCONN 0      0                  127.0.0.1:5621  0.0.0.0:* users:((\"arducopter\",pid=522934,fd=10))    \nudp UNCONN 0      0                  127.0.0.1:5631  0.0.0.0:* users:((\"arducopter\",pid=522936,fd=10))    \nudp UNCONN 0      0                  127.0.0.1:14610 0.0.0.0:* users:((\"python\",pid=522921,fd=8))         \nudp UNCONN 0      0                  127.0.0.1:14611 0.0.0.0:* users:((\"python\",pid=522921,fd=10))        \nudp UNCONN 0      0                  127.0.0.1:14612 0.0.0.0:* users:((\"python\",pid=522921,fd=12))        \nudp UNCONN 0      0                  127.0.0.1:14613 0.0.0.0:* users:((\"python\",pid=522921,fd=14))        \nudp UNCONN 0      0              172.31.61.189:49160 0.0.0.0:* users:((\"ScenarioStudio\",pid=73254,fd=112))\nudp UNCONN 0      0              172.31.61.189:49316 0.0.0.0:*                                            \nudp UNCONN 0      0              172.31.61.189:49348 0.0.0.0:*                                            \nudp UNCONN 0      0              127.0.0.53%lo:53    0.0.0.0:*                                            \nudp UNCONN 0      0      172.31.61.189%enp39s0:68    0.0.0.0:*                                            \nudp UNCONN 0      0                  127.0.0.1:323   0.0.0.0:*                                            \nudp UNCONN 0      0                      [::1]:323      [::]:*                                            \ntcp LISTEN 0      4096           127.0.0.53%lo:53    0.0.0.0:*                                            \ntcp LISTEN 0      1024           172.31.61.189:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           172.31.61.189:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           172.31.61.189:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           172.31.61.189:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           172.31.61.189:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           172.31.61.189:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           172.31.61.189:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           172.31.61.189:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           172.31.61.189:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           172.31.61.189:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           172.31.61.189:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           172.31.61.189:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           172.31.61.189:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           172.31.61.189:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           172.31.61.189:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           172.31.61.189:3478  0.0.0.0:*                                            \ntcp LISTEN 0      100                127.0.0.1:8765  0.0.0.0:* users:((\"python\",pid=70365,fd=6))          \ntcp LISTEN 0      100                127.0.0.1:8766  0.0.0.0:* users:((\"python\",pid=522921,fd=7))         \ntcp LISTEN 0      1                  127.0.0.1:8888  0.0.0.0:* users:((\"node\",pid=67239,fd=22))           \ntcp LISTEN 0      511                127.0.0.1:3001  0.0.0.0:* users:((\"node\",pid=67242,fd=32))           \ntcp LISTEN 0      511                127.0.0.1:5175  0.0.0.0:* users:((\"node\",pid=522999,fd=22))          \ntcp LISTEN 0      511                127.0.0.1:8080  0.0.0.0:* users:((\"node\",pid=67239,fd=23))           \ntcp LISTEN 0      511                127.0.0.1:41971 0.0.0.0:* users:((\"MainThread\",pid=201938,fd=21))    \ntcp LISTEN 0      128                127.0.0.1:41451 0.0.0.0:* users:((\"ScenarioStudio\",pid=73254,fd=102))\ntcp LISTEN 0      128                  0.0.0.0:22    0.0.0.0:*                                            \ntcp LISTEN 0      4096               127.0.0.1:44953 0.0.0.0:*                                            \ntcp LISTEN 0      5              172.31.61.189:49160 0.0.0.0:* users:((\"ScenarioStudio\",pid=73254,fd=120))\ntcp LISTEN 0      511                127.0.0.1:36367 0.0.0.0:* users:((\"MainThread\",pid=201902,fd=21))    \ntcp LISTEN 0      128                127.0.0.1:36123 0.0.0.0:* users:((\"codex\",pid=203615,fd=39))         \ntcp LISTEN 0      128                127.0.0.1:36007 0.0.0.0:* users:((\"codex\",pid=203012,fd=37))         \ntcp LISTEN 0      128                127.0.0.1:40003 0.0.0.0:* users:((\"codex\",pid=392859,fd=41))         \ntcp LISTEN 0      511                        *:24678       *:* users:((\"node\",pid=522999,fd=21))          \ntcp LISTEN 0      128                     [::]:22       [::]:*                                            \ntcp LISTEN 0      4096                       *:80          *:*                                            \n"
+      "listeners": "udp UNCONN 0      0              10.0.0.10:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              10.0.0.10:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              10.0.0.10:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              10.0.0.10:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              10.0.0.10:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              10.0.0.10:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              10.0.0.10:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              10.0.0.10:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              10.0.0.10:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              10.0.0.10:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              10.0.0.10:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              10.0.0.10:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              10.0.0.10:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              10.0.0.10:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              10.0.0.10:3478  0.0.0.0:*                                            \nudp UNCONN 0      0              10.0.0.10:3478  0.0.0.0:*                                            \nudp UNCONN 0      0                  127.0.0.1:5601  0.0.0.0:* users:((\"arducopter\",pid=522930,fd=10))    \nudp UNCONN 0      0                  127.0.0.1:5611  0.0.0.0:* users:((\"arducopter\",pid=522932,fd=10))    \nudp UNCONN 0      0                  127.0.0.1:5621  0.0.0.0:* users:((\"arducopter\",pid=522934,fd=10))    \nudp UNCONN 0      0                  127.0.0.1:5631  0.0.0.0:* users:((\"arducopter\",pid=522936,fd=10))    \nudp UNCONN 0      0                  127.0.0.1:14610 0.0.0.0:* users:((\"python\",pid=522921,fd=8))         \nudp UNCONN 0      0                  127.0.0.1:14611 0.0.0.0:* users:((\"python\",pid=522921,fd=10))        \nudp UNCONN 0      0                  127.0.0.1:14612 0.0.0.0:* users:((\"python\",pid=522921,fd=12))        \nudp UNCONN 0      0                  127.0.0.1:14613 0.0.0.0:* users:((\"python\",pid=522921,fd=14))        \nudp UNCONN 0      0              10.0.0.10:49160 0.0.0.0:* users:((\"ScenarioStudio\",pid=73254,fd=112))\nudp UNCONN 0      0              10.0.0.10:49316 0.0.0.0:*                                            \nudp UNCONN 0      0              10.0.0.10:49348 0.0.0.0:*                                            \nudp UNCONN 0      0              127.0.0.53%lo:53    0.0.0.0:*                                            \nudp UNCONN 0      0      10.0.0.10%enp39s0:68    0.0.0.0:*                                            \nudp UNCONN 0      0                  127.0.0.1:323   0.0.0.0:*                                            \nudp UNCONN 0      0                      [::1]:323      [::]:*                                            \ntcp LISTEN 0      4096           127.0.0.53%lo:53    0.0.0.0:*                                            \ntcp LISTEN 0      1024           10.0.0.10:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           10.0.0.10:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           10.0.0.10:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           10.0.0.10:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           10.0.0.10:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           10.0.0.10:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           10.0.0.10:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           10.0.0.10:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           10.0.0.10:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           10.0.0.10:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           10.0.0.10:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           10.0.0.10:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           10.0.0.10:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           10.0.0.10:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           10.0.0.10:3478  0.0.0.0:*                                            \ntcp LISTEN 0      1024           10.0.0.10:3478  0.0.0.0:*                                            \ntcp LISTEN 0      100                127.0.0.1:8765  0.0.0.0:* users:((\"python\",pid=70365,fd=6))          \ntcp LISTEN 0      100                127.0.0.1:8766  0.0.0.0:* users:((\"python\",pid=522921,fd=7))         \ntcp LISTEN 0      1                  127.0.0.1:8888  0.0.0.0:* users:((\"node\",pid=67239,fd=22))           \ntcp LISTEN 0      511                127.0.0.1:3001  0.0.0.0:* users:((\"node\",pid=67242,fd=32))           \ntcp LISTEN 0      511                127.0.0.1:5175  0.0.0.0:* users:((\"node\",pid=522999,fd=22))          \ntcp LISTEN 0      511                127.0.0.1:8080  0.0.0.0:* users:((\"node\",pid=67239,fd=23))           \ntcp LISTEN 0      511                127.0.0.1:41971 0.0.0.0:* users:((\"MainThread\",pid=201938,fd=21))    \ntcp LISTEN 0      128                127.0.0.1:41451 0.0.0.0:* users:((\"ScenarioStudio\",pid=73254,fd=102))\ntcp LISTEN 0      128                  0.0.0.0:22    0.0.0.0:*                                            \ntcp LISTEN 0      4096               127.0.0.1:44953 0.0.0.0:*                                            \ntcp LISTEN 0      5              10.0.0.10:49160 0.0.0.0:* users:((\"ScenarioStudio\",pid=73254,fd=120))\ntcp LISTEN 0      511                127.0.0.1:36367 0.0.0.0:* users:((\"MainThread\",pid=201902,fd=21))    \ntcp LISTEN 0      128                127.0.0.1:36123 0.0.0.0:* users:((\"codex\",pid=203615,fd=39))         \ntcp LISTEN 0      128                127.0.0.1:36007 0.0.0.0:* users:((\"codex\",pid=203012,fd=37))         \ntcp LISTEN 0      128                127.0.0.1:40003 0.0.0.0:* users:((\"codex\",pid=392859,fd=41))         \ntcp LISTEN 0      511                        *:24678       *:* users:((\"node\",pid=522999,fd=21))          \ntcp LISTEN 0      128                     [::]:22       [::]:*                                            \ntcp LISTEN 0      4096                       *:80          *:*                                            \n"
     },
     "initial_check": "Port3480 remained during TERM shutdown; final check occurs after container exit, no additional signal sent.",
     "live_world_pid_present": true

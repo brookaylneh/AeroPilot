@@ -144,7 +144,7 @@
         {
           "Driver": "",
           "Count": 0,
-          "DeviceIDs": ["GPU-2367bf48-9a27-f54c-8234-95933828e5f7"],
+          "DeviceIDs": ["GPU-00000000-0000-0000-0000-000000000000"],
           "Capabilities": [["gpu"]],
           "Options": {}
         }
@@ -155,7 +155,7 @@
     "readiness": "Systemd Type=notify from the host launcher after compiled warmup, socket creation and one successful HTTP health check."
   },
   "hardware": {
-    "inventory": "NVIDIA RTX PRO 6000 Blackwell Server Edition, GPU-2367bf48-9a27-f54c-8234-95933828e5f7, 580.178.04, 97887 MiB",
+    "inventory": "NVIDIA RTX PRO 6000 Blackwell Server Edition, GPU-00000000-0000-0000-0000-000000000000, 580.178.04, 97887 MiB",
     "compute_capability": [12, 0],
     "process_gpu_budget_bytes": 16000000000,
     "pytorch_allocator_budget_bytes": 15000000000,
@@ -774,8 +774,8 @@
       "negative_frames_without_detection": 2,
       "same_track_id_on_all_positives": true,
       "all_original_jpeg_hashes_matched": true,
-      "source": "/home/brook_avionuas/snr/.local/evidence/sam31-migration/20261102T132759Z/http-forward-container-02",
-      "protocol": "/home/brook_avionuas/snr/.local/evidence/sam31-migration/20261102T132759Z/forward-protocol.json",
+      "source": "/srv/snr/.local/evidence/sam31-migration/20261102T132759Z/http-forward-container-02",
+      "protocol": "/srv/snr/.local/evidence/sam31-migration/20261102T132759Z/forward-protocol.json",
       "scope": "Ten recorded original forward-camera JPEGs, manually marked visible or absent; one short sighting, not broad recognition accuracy or a live-flight test."
     }
   },
@@ -851,7 +851,7 @@
   },
   "soak": {
     "status": "complete",
-    "source": "/home/brook_avionuas/snr/.local/evidence/sam31-migration/20261102T132759Z/soak-30min-01/result.json",
+    "source": "/srv/snr/.local/evidence/sam31-migration/20261102T132759Z/soak-30min-01/result.json",
     "frames": 36004,
     "frame_elapsed_s": 1800.3157498600194,
     "scheduled_interval_s_per_drone": 0.2,
@@ -1198,8 +1198,8 @@
       "mask_iou_mean": 0.9970568494586078,
       "confidence_delta_max": 0.007453978061676025,
       "box_coordinate_delta_max_4k_px": 2,
-      "source": "/home/brook_avionuas/snr/.local/evidence/sam31-migration/20261102T132759Z/http-container-03/pass-0",
-      "reference": "/home/brook_avionuas/snr/.local/evidence/sam31-migration/20261102T132759Z/engine-compiled-01/frames-0.jsonl",
+      "source": "/srv/snr/.local/evidence/sam31-migration/20261102T132759Z/http-container-03/pass-0",
+      "reference": "/srv/snr/.local/evidence/sam31-migration/20261102T132759Z/engine-compiled-01/frames-0.jsonl",
       "scope": "Packaged output versus earlier compiled adapter, first 40 frames per lane (20-frame canonical sequence repeated twice). This is a measured comparison, not a numerical equivalence or recognition-accuracy gate. Exact detection equality failed and is retained in final-output-validation.log."
     },
     "exact_numeric_equivalence_passed": false,
@@ -2385,7 +2385,7 @@
     "owned_test_containers_removed": true,
     "owned_test_sockets_removed": true,
     "original_gpu_processes_preserved": true,
-    "restart_evidence": "/home/brook_avionuas/snr/.local/evidence/sam31-migration/20261102T132759Z/container-run-07"
+    "restart_evidence": "/srv/snr/.local/evidence/sam31-migration/20261102T132759Z/container-run-07"
   },
   "activation": {
     "status": "deployed",

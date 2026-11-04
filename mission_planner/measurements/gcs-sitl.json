@@ -615,7 +615,7 @@
     "build": {
       "exit_code": 0,
       "source_revision": "fb773567896014da007bca58358704d4a0d8516f",
-      "binary": "/home/brook_avionuas/snr/.local/build/search-runtime-20261101T001539Z-patch-fixed/build/sitl/bin/arducopter",
+      "binary": "/srv/snr/.local/build/search-runtime-20261101T001539Z-patch-fixed/build/sitl/bin/arducopter",
       "binary_sha256": "77a4b845a87aa1b1c0b0ba6d2fcb1bfd90fb75fb08175b136c8068c661293c82",
       "build_jobs": 4,
       "copter_build_s": 145.587,
@@ -1888,7 +1888,7 @@
   },
   "world_bear_port": {
     "results": "mission_planner/measurements/world-bear-port.json",
-    "installed_release": "/home/brook_avionuas/snr/.local/unreal/releases/world-bear-port-20261101T143600Z-final",
+    "installed_release": "/srv/snr/.local/unreal/releases/world-bear-port-20261101T143600Z-final",
     "home_up_m": 11.13,
     "rtl_altitude_m": 80,
     "conservative_rtl_clearance_m": 11.98156250000011,
