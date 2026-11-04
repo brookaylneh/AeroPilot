@@ -4,7 +4,7 @@ export const situations = [
     id: 'lost',
     title: 'Lost & looking around',
     label: 'Lost and moving',
-    description: 'Walks slowly within 10 × 10 m of the placement, pausing to look around.',
+    description: 'Walks slowly within 5 × 5 m of the placement, pausing to look around.',
   },
   {
     id: 'waiting',

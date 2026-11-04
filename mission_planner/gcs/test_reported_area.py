@@ -85,7 +85,7 @@ class ReportedArea(unittest.TestCase):
                 self.assertTrue(
                     any(step["kind"] == "survey" and step["observe"] for step in branch["steps"])
                 )
-                self.assertEqual(receipt["tasking"]["settings"]["zoom"], 1)
+                self.assertEqual(receipt["tasking"]["settings"]["zoom"], 2)
 
     def test_missing_ambiguous_or_invalid_clues_fail_without_substitution(self):
         brief = self.reports[0]["report"]["brief"]

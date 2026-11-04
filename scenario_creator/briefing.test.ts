@@ -79,8 +79,10 @@ for (const person of people)
           report.brief,
           /\b(?:coordinates|latitude|longitude|north_m|east_m|injured|waiting|lost)\b/i,
         );
-        assert.doesNotMatch(report.brief, /-?\d+\.\d+|\b\d+\s*(?:metres|meters|m(?!\/s))\b|[xyz]\s*[:=]/i);
-        assert.match(report.brief, /maximum permitted speed \(15 m\/s\), then slow to 5 m\/s/);
+        const [witnessReport, tasking] = report.brief.split('\n\nTasking\n');
+        assert.doesNotMatch(witnessReport, /-?\d+\.\d+|\b\d+\s*(?:metres|meters|m(?!\/s))\b|[xyz]\s*[:=]/i);
+        assert.match(tasking, /maximum permitted speed \(15 m\/s\).*Slow to 3 m\/s/);
+        assert.match(tasking, /at least 25 metres before the reported area/);
         assert.ok(report.brief.length <= 4000);
       }
   });
@@ -155,7 +157,7 @@ test('nearest geometry uses segment projection and polygon interiors', () => {
 for (const difficulty of ['easy', 'medium'] as const)
   test(`${difficulty}: reports bound the movement area using only rounded landmark clues`, () => {
     const width = difficulty === 'easy' ? 10 : 100;
-    const movementHalfWidth = difficulty === 'easy' ? 2.5 : 5;
+    const movementHalfWidth = 2.5;
     for (
       let north = world.searchBoundsCm.min.x / 100 + 150;
       north <= world.searchBoundsCm.max.x / 100 - 150;
@@ -198,7 +200,7 @@ for (const difficulty of ['easy', 'medium'] as const)
           assert.ok(report.brief.includes(area.description));
           assert.ok(report.brief.includes(person.reportProfile.clothing.upper));
           assert.match(report.brief, difficulty === 'easy' ? /Use one drone/ : /Use two drones/);
-          assert.match(report.brief, /maximum permitted speed \(15 m\/s\), then slow to 5 m\/s/);
+          assert.match(report.brief, /maximum permitted speed \(15 m\/s\).*Slow to 3 m\/s/);
           assert.doesNotMatch(
             report.brief,
             /Point Last Seen|no subsequent contact|north_m|east_m|coordinates|main camera|evidence camera|minutes of arrival|tracking deadline/,

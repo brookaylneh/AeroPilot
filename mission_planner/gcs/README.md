@@ -806,8 +806,8 @@ and [Guided commands](https://ardupilot.org/dev/docs/copter-commands-in-guided-m
 
 Main-camera captures are original **3840×2160 JPEGs**. SAM prepares a 1920×1080
 copy and uses its native 1008-pixel model input. Boxes and masks map back into
-that camera's original pixels. Main video and tracking use 1× unless the operator
-explicitly requests another zoom.
+that camera's original pixels. Main video and tracking follow the checked plan's zoom,
+which defaults to 2×.
 
 A separate stabilized `evidence_zoom` camera takes one original **4× 4K photograph**
 for each newly confirmed SAM session/track. It renders only on demand, runs no SAM
@@ -876,12 +876,21 @@ the ground resets it. Failed or cancelled acquisition time counts, and a new ins
 reset it. The perimeter and detector score make no containment, identity or calibrated
 probability claim.
 
-The disclosed search defaults are **30 m AGL, 5 m/s, 10 m/s transit, 20 m line spacing, 1× camera,
+The disclosed search defaults are **30 m AGL, 3 m/s, 10 m/s transit, 10 m line spacing, 2× camera,
 20 m camera look-ahead, 20 m stand-off and a 180 s candidate allowance**; point inspections use
 40 m and transit 40 m at 10 m/s. Observed surveys require one-third nominal horizontal overlap
-under the flat-ground 90° camera model: spacing ≤ 4 × survey height / 3. This checks a
+under the flat-ground 90° base-camera model: spacing ≤ 4 × survey height / (3 × zoom). This checks a
 planning constraint, not actual visibility or recognition accuracy. Changed settings require a
 new tasking.
+
+Observed surveys in a new search have a staging point 25 m behind their first pass. Transit reaches
+that point at the assigned transit layer; the aircraft then descends there at search
+speed and completes a two-second ArduPilot loiter before its observed approach to the
+survey edge. These are ordinary checked flight steps, included in terrain, fence,
+separation and battery validation. The reported area and candidate-follow perimeter
+are not expanded. In-flight expansions retain their unfinished rows and layered joins;
+they do not restart the entry approach. Denser rows can make an expansion conflict
+with unfinished routes; the planner rejects such a proposal without changing the active flight.
 
 `survey` expresses parallel-track or creeping-line passes. Bearings run clockwise from north;
 rows start on the minimum cross-axis side, with cross = −north × sin(bearing) + east × cos(bearing).
@@ -895,10 +904,13 @@ remain outside model context. Continuation still compiles and checks the route f
 aircraft position through the existing upload/readback path.
 
 Verified application starts an inspection job for each drone with remaining observed steps.
-It samples during those steps, within the survey polygon or general sensing perimeter, at a
+It samples during those steps at a
 staggered target of 5 Hz. `rescue.step_index` identifies the current step;
 `rescue.completed_steps` stores completed `{step_index, frames}` entries. Aircraft position
-and current navigation step gate acquisition before and after capture. The camera's offset
+inside the assigned polygon gates survey acquisition. Explicitly observed approach steps
+may image the reported area before the aircraft enters it; candidate following still checks
+the target against the search perimeter. Current navigation step gates acquisition before
+and after capture. The camera's offset
 mount may cross a sector edge without discarding a valid aircraft observation. Unobserved transit contributes
 no sensing completion. Fly/follow/survey cameras look at terrain ahead along the remaining route,
 across short terrain waypoints, and stop at its endpoint without extrapolating beyond it. Circle

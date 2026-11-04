@@ -64,10 +64,11 @@ scenario loads. Save persists the selected level and reviewed text.
 
 These are search goals, not measured detection times or flight/tracking deadlines.
 Generated tasking requests the current maximum permitted transit speed of 15 m/s,
-then 5 m/s for searching. Camera instructions and the demo time goals stay out of
+then 3 m/s and search altitude at least 25 m before the reported area, with observation
+on the approach. Camera instructions and the demo time goals stay out of
 the report prompt; the level cards retain their time goals.
 All levels use the same detector, tracking and evidence workflow. Main video remains
-1×; the separate camera provides the on-demand 4× evidence photograph.
+2× by default; the separate camera provides the on-demand 4× evidence photograph.
 
 Easy and Medium describe rounded north/south and east/west distance ranges from a
 named bridge, structure or signpost. The anchor is the mean of the public footprint's
@@ -79,10 +80,13 @@ Wonder's `get_reported_search_area` resolves this paragraph using only the publi
 then ordinary polygon search checks terrain, fences, separation and coverage.
 
 The character pauses while the report is edited. Confirming a placement anchors its
-movement at its current ground position. Easy permits a 5 × 5 m walking area; Medium
-and Hard retain 10 × 10 m. Movement resumes during the mission. The generator's rounded
+movement at its current ground position. Every difficulty permits a 5 × 5 m walking area.
+Walking speed is 37.5 cm/s at 170 cm character height, scaled by height; the walking
+animation plays at 0.325×. Movement resumes during the mission. The generator's rounded
 reported area contains the complete permitted movement area. Switching difficulty
 does not move the character or change the walking speed.
+Saved walking positions and destinations must fit the 5 × 5 m area; a wider legacy
+walking state fails validation rather than relocating the character.
 
 `world/unreal/creator-people.json` supplies fictional report profiles for all eleven
 people. `missionBrief.ts` validates every profile field, category/age agreement,

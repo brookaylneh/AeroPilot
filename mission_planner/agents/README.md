@@ -120,7 +120,7 @@ terrain. Zoom is 1×, 2× or 4×; set it before inspection. Automatic observatio
 planned view. Healthy candidate tracking centres the subject automatically;
 manual view requests fail before changing its camera or tracking state.
 For an observed plan, `plan_task.settings.zoom` selects the magnification; null defaults
-to 1×. The checked plan records it and validates survey overlap at that magnification.
+to 2×. The checked plan records it and validates survey overlap at that magnification.
 `get_candidate(inspection_id)` supplies current main-camera detections and the
 saved 4× photograph for each photographed object. The photograph retains its
 original capture time; querying tracking never acquires another photograph.
@@ -136,7 +136,7 @@ no predicted position, old image or camera adjustment restores flight authority.
 `review.py` sends Glimmer exactly one original 3840×2160 JPEG from the separate
 4× evidence camera, without crops, resizing or overlays, under
 `zoom-analyst-v4-single-photo`. Wonder receives those same bytes. SAM runs only on
-the main camera, at 1× unless the operator explicitly changes its zoom. There is
+the main camera, at 2× by default for observed plans. There is
 one photograph per SAM session/track, captured on acquisition and reused during
 tracking. Its timestamp and source-detection identity are explicit. An absent or
 poorly framed subject in the later zoom view requires recheck; it does not negate
@@ -186,7 +186,7 @@ their wording and live operation remain operator-tested.
 Wonder chooses the task, subject, references, fleet, settings and aftermath; code builds the
 geometry. `gcs/tasking.py` validates the tasking (schema plus semantic rules such as one initial
 planning point, clicked points only, published distance tables or an explicit radius), fills
-the disclosed defaults (searches 30 m above ground, 5 m/s, 10 m/s transit, 20 m spacing, 1× camera,
+the disclosed defaults (searches 30 m above ground, 3 m/s, 10 m/s transit, 10 m spacing, 2× camera,
 20 m look-ahead, 20 m stand-off, 180 s candidate allowance; point inspection 40 m; transit 40 m
 at 10 m/s) and dispatches to one template per task:
 
@@ -223,7 +223,7 @@ parallel strips; route searches follow a credible line; point inspections orbit 
 A finite pattern does not prove complete coverage; a circle observes its center from changing views.
 Terrain following alone does not provide a contour-search route.
 
-The operator selected **30 m AGL, 5 m/s, 1× camera, 20 m line spacing and 20 m camera
+The operator selected **30 m AGL, 3 m/s, 2× camera, 10 m line spacing and 20 m camera
 look-ahead as defaults for this operator's missing-person surveys**. They do not govern other tasks.
 Wonder states the selected values in the launch plan;
 takeoff, transit and return heights remain explicit choices for safe route separation.

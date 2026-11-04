@@ -1011,10 +1011,9 @@ class Inspections:
             or receipt["missions"][name]["items"][sequence]["command"] != 16
         ):
             return "selected observation waypoint is not current"
-        area = (
-            step["polygon"] if step["kind"] == "survey" else receipt["plan"]["search"]["perimeter"]
-        )
-        if not point_in_polygon(state, area):
+        # An observed approach can look into the target area before the aircraft enters it.
+        # Survey sensing still starts only inside its assigned sector.
+        if step["kind"] == "survey" and not point_in_polygon(state, step["polygon"]):
             return "aircraft is outside its observation area"
         return None
 

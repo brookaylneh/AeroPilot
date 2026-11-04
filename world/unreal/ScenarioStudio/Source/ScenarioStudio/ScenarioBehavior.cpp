@@ -3,9 +3,10 @@
 
 namespace
 {
-bool InsideWalkArea(const FVector &P, const FVector &Origin, double HalfWidthCm)
+bool InsideWalkArea(const FVector &P, const FVector &Origin)
 {
-    return FMath::Abs(P.X - Origin.X) <= HalfWidthCm && FMath::Abs(P.Y - Origin.Y) <= HalfWidthCm;
+    return FMath::Abs(P.X - Origin.X) <= FScenarioBehavior::HalfWidthCm &&
+           FMath::Abs(P.Y - Origin.Y) <= FScenarioBehavior::HalfWidthCm;
 }
 TSharedRef<FJsonObject> PointJson(const FVector &P)
 {
@@ -74,7 +75,7 @@ void AScenarioManager::Tick(float DeltaSeconds)
     if (!Preset->bCanWalk)
         return;
     const double Dt = FMath::Min(static_cast<double>(DeltaSeconds), .1);
-    const double HalfWidthCm = Difficulty == TEXT("easy") ? 250 : 500;
+    const double HalfWidthCm = FScenarioBehavior::HalfWidthCm;
     Behavior.PauseSeconds = FMath::Max(0., Behavior.PauseSeconds - Dt);
     if (Behavior.PauseSeconds > 0)
         return;
@@ -124,11 +125,11 @@ void AScenarioManager::Tick(float DeltaSeconds)
     verify(Person->ApplyMotion(true));
     if (!Facing)
         return;
-    const double Speed = 75 * Preset->HeightCm / 170.;
+    const double Speed = 37.5 * Preset->HeightCm / 170.;
     const double Step = FMath::Min(Speed * Dt, FVector::Dist2D(Start, Behavior.Destination));
     FVector Ground;
     const FVector Next = Start + Direction * Step;
-    if (!InsideWalkArea(Next, Behavior.Origin, HalfWidthCm) ||
+    if (!InsideWalkArea(Next, Behavior.Origin) ||
         !ValidateGround(RegionId, Next, *Preset, SituationId, Ground, Error))
     {
         Behavior.bWalking = false;
@@ -159,7 +160,7 @@ TSharedRef<FJsonObject> AScenarioManager::BehaviorJson() const
     return Json;
 }
 
-bool AScenarioManager::ReadBehavior(const TSharedPtr<FJsonObject> &Json, const FVector &Position, double HalfWidthCm,
+bool AScenarioManager::ReadBehavior(const TSharedPtr<FJsonObject> &Json, const FVector &Position,
                                     FScenarioBehavior &Result, FString &Error) const
 {
     double Seed;
@@ -172,7 +173,7 @@ bool AScenarioManager::ReadBehavior(const TSharedPtr<FJsonObject> &Json, const F
         !Json->TryGetNumberField(TEXT("animationTime"), Result.AnimationTime) ||
         !FMath::IsFinite(Result.AnimationTime) || Result.AnimationTime < 0 || Result.AnimationTime > 60 ||
         !Json->TryGetBoolField(TEXT("walking"), Result.bWalking) ||
-        !InsideWalkArea(Position, Result.Origin, HalfWidthCm) || !InsideWalkArea(Result.Destination, Result.Origin, HalfWidthCm))
+        !InsideWalkArea(Position, Result.Origin) || !InsideWalkArea(Result.Destination, Result.Origin))
     {
         Error = TEXT("Invalid saved character behavior");
         return false;

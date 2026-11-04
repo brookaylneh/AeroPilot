@@ -501,7 +501,7 @@ bool AScenarioManager::RestoreSnapshot(const FString &Json, FString &Error)
     {
         const TSharedPtr<FJsonObject> *SavedBehavior;
         if (!(*State)->TryGetObjectField(TEXT("behavior"), SavedBehavior) ||
-            !ReadBehavior(*SavedBehavior, P, RestoredDifficulty == TEXT("easy") ? 250 : 500, RestoredBehavior, Error) ||
+            !ReadBehavior(*SavedBehavior, P, RestoredBehavior, Error) ||
             (RestoredBehavior.bWalking && (Situation != TEXT("lost") || !Preset->bCanWalk)))
         {
             Error = TEXT("Invalid saved character behavior");

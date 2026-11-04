@@ -883,7 +883,32 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         row["rescue"]["reports"].clear()
         self.assertEqual(len(evidence["rescue"]["reports"]), 1)
 
-    async def test_transit_outside_sector_waits_for_entry_before_searching(self):
+    def test_observed_approach_can_see_inside_area_before_aircraft_enters(self):
+        self.states["Drone1"]["north_m"] = -125
+        row = {
+            "drone_id": "Drone1",
+            "plan_version": 1,
+            "status": "running",
+            "rescue": {"step_index": 0},
+        }
+        self.assertEqual(
+            self.inspections._observation_skip(row), "aircraft is outside its observation area"
+        )
+        self.receipt["plan"]["drones"][0]["steps"][0] = {
+            "kind": "fly",
+            "north_m": -100,
+            "east_m": 0,
+            "height_m": 35,
+            "speed_mps": 3,
+            "observe": True,
+        }
+        self.assertIsNone(self.inspections._observation_skip(row))
+        self.states["Drone1"]["mission_current"] = 0
+        self.assertEqual(
+            self.inspections._observation_skip(row), "selected observation waypoint is not current"
+        )
+
+    async def test_survey_outside_sector_waits_for_entry_before_searching(self):
         self.states["Drone1"]["north_m"] = -200
         with patch(
             "mission_planner.gcs.inspection.point_in_polygon", wraps=point_in_polygon

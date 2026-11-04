@@ -265,7 +265,7 @@ export function generateBrief(
     '; ',
   );
   const travel =
-    'Travel to the search area at the maximum permitted speed (15 m/s), then slow to 5 m/s for searching.';
+    'Travel towards the search area at the maximum permitted speed (15 m/s). Slow to 3 m/s and establish search altitude at least 25 metres before the reported area, then begin observing on the approach.';
   const brief = [
     `Incident summary\n${p.fullName}, ${category}, has been missing for about ${p.hoursMissing} hours. ${p.reportingParty} reported the absence at ${localTime(5 / 60)} after ${p.activity} with ${p.companions}. The party was expected to return together; ${area ? 'a later witness report is described below, but identity has not been confirmed' : 'no subsequent contact has been reported'}.`,
     `Subject description\n${p.fullName} is ${p.ageYears} years old, ${p.sex}, approximately ${p.heightCm} cm tall, with a ${p.build} build. ${p.distinguishingFeatures}`,

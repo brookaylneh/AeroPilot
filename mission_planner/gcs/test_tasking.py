@@ -2,15 +2,17 @@
 
 import copy
 import json
+import math
 import unittest
 from unittest.mock import patch
 
 from jsonschema import Draft202012Validator
 from shapely import Polygon
 
-from mission_planner.gcs.allocation import APPROVAL_HOVER_S
+from mission_planner.gcs.allocation import APPROVAL_HOVER_S, SURVEY_SETTLE_S
 from mission_planner.gcs.expansion import expandable
 from mission_planner.gcs.geodesy import NAMES
+from mission_planner.gcs.planner import survey_points
 from mission_planner.gcs.rejection import PlanRejected
 from mission_planner.gcs.tasking import (
     CONSTRAINT_KEYWORDS,
@@ -141,7 +143,7 @@ class Schema(unittest.TestCase):
         )
         explicit = validate_tasking(task(settings={"height_m": 50}), LANDMARKS, [])
         self.assertEqual(explicit["settings"]["height_m"], 50)
-        self.assertEqual(explicit["settings"]["spacing_m"], 20)
+        self.assertEqual(explicit["settings"]["spacing_m"], 10)
         transit = task(
             task="transit",
             subject=None,
@@ -225,6 +227,49 @@ class Schema(unittest.TestCase):
 
 
 class Templates(unittest.TestCase):
+    def test_small_patch_has_slow_settled_observation_before_entry(self):
+        value = task(
+            references={
+                "landmark_ids": [],
+                "direction_of_travel": None,
+                "polygon": [
+                    {"north_m": 68.5, "east_m": 48.5},
+                    {"north_m": 78.5, "east_m": 48.5},
+                    {"north_m": 78.5, "east_m": 58.5},
+                    {"north_m": 68.5, "east_m": 58.5},
+                ],
+            },
+            fleet={"count": 1},
+            settings={"transit_speed_mps": 15},
+        )
+        receipt = compiled(value)
+        policy = receipt["plan"]["search"]
+        self.assertEqual((policy["zoom"], policy["speed_mps"]), (2, 3))
+        branch = receipt["plan"]["drones"][0]
+        steps = branch["steps"]
+        index = next(i for i, s in enumerate(steps) if s["kind"] == "survey")
+        transit, staging, settle, approach, survey = steps[index - 4 : index + 1]
+        self.assertEqual((transit["kind"], transit["speed_mps"]), ("fly", 15))
+        self.assertEqual((staging["height_m"], staging["speed_mps"]), (30, 3))
+        self.assertNotIn("observe", staging)
+        self.assertEqual(settle, {"kind": "hover", "seconds": 2})
+        self.assertEqual(
+            (approach["kind"], approach["observe"], approach["speed_mps"]), ("fly", True, 3)
+        )
+        first, second = survey_points(survey)[:2]
+        keys = ("north_m", "east_m")
+        self.assertEqual({k: approach[k] for k in keys}, first)
+        self.assertEqual({k: staging[k] for k in keys}, {k: transit[k] for k in keys})
+        self.assertAlmostEqual(math.dist([staging[k] for k in keys], list(first.values())), 25)
+        self.assertLess(sum((staging[k] - first[k]) * (second[k] - first[k]) for k in keys), 0)
+        self.assertEqual((survey["height_m"], survey["spacing_m"]), (30, 10))
+        self.assertEqual(receipt["coverage"]["perimeter_area_m2"], 100)
+        self.assertEqual(receipt["coverage"]["survey_percent"], 100)
+        mission = receipt["missions"][branch["drone_id"]]
+        stop_range = mission["step_ranges"][index - 2]
+        stop = mission["items"][stop_range["last_seq"]]
+        self.assertEqual((stop["command"], stop["param1"]), (19, 2))
+
     def test_hyphenated_subject_ids_survive_checked_search_at_maximum_transit_speed(self):
         value = task(
             subject={
@@ -287,7 +332,9 @@ class Templates(unittest.TestCase):
             last_survey = len(steps) - 1 - steps[::-1].index("survey")
             self.assertEqual(steps[last_survey + 1], "hover")
             self.assertEqual(steps[-1], "return_home")
-        hover = next(s for s in receipt["plan"]["drones"][0]["steps"] if s["kind"] == "hover")
+        hover = next(
+            s for s in reversed(receipt["plan"]["drones"][0]["steps"]) if s["kind"] == "hover"
+        )
         self.assertEqual(hover["seconds"], APPROVAL_HOVER_S)
         region = receipt["region"]
         self.assertEqual(region["kind"], "doctrine")
@@ -320,7 +367,14 @@ class Templates(unittest.TestCase):
         )
         json.dumps(receipt, allow_nan=False)
         whole = compiled(task())
-        self.assertNotIn("hover", [k for steps in kinds(whole).values() for k in steps])
+        self.assertTrue(
+            all(
+                s["seconds"] == SURVEY_SETTLE_S
+                for b in whole["plan"]["drones"]
+                for s in b["steps"]
+                if s["kind"] == "hover"
+            )
+        )
         self.assertGreater(
             whole["region"]["bands"][0]["area_m2"], 1.5 * region["bands"][0]["area_m2"]
         )
@@ -340,7 +394,14 @@ class Templates(unittest.TestCase):
         whole_low = compiled(task(expansion={"automatic_proposals": True}), low)
         self.assertFalse(whole_low["region"]["in_flight_expansion"])
         self.assertTrue(region["in_flight_expansion"])
-        self.assertNotIn("hover", [k for steps in kinds(whole_low).values() for k in steps])
+        self.assertTrue(
+            all(
+                s["seconds"] == SURVEY_SETTLE_S
+                for b in whole_low["plan"]["drones"]
+                for s in b["steps"]
+                if s["kind"] == "hover"
+            )
+        )
         self.assertIn("whole sortie", whole_low["rationale"][-1])
         self.assertIn("off the stated direction", whole_low["rationale"][-2])
         self.assertFalse(expandable(whole_low))
@@ -373,7 +434,14 @@ class Templates(unittest.TestCase):
         self.assertEqual(sorted(receipt["missions"]), ["Drone1", "Drone3"])
         statuses = [b["status"] for b in receipt["region"]["bands"][:3]]
         self.assertEqual(statuses, ["previous", "planned", "provisional"])
-        self.assertNotIn("hover", [k for steps in kinds(receipt).values() for k in steps])
+        self.assertTrue(
+            all(
+                s["seconds"] == SURVEY_SETTLE_S
+                for b in receipt["plan"]["drones"]
+                for s in b["steps"]
+                if s["kind"] == "hover"
+            )
+        )
         self.assertTrue(all(row["headroom_s"] > 0 for row in receipt["fit"].values()))
 
     def test_operator_polygon_and_datum_disc_search_whole_and_coverage_is_enforced(self):

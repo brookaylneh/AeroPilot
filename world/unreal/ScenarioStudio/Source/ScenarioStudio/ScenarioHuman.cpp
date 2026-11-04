@@ -126,7 +126,7 @@ bool AScenarioHuman::ApplyMotion(bool Walking, double Time)
         Body->PlayAnimation(*Animation, true);
         PlayingAnimation = *Animation;
     }
-    Body->SetPlayRate(Walking ? .65f : 1.f);
+    Body->SetPlayRate(Walking ? .325f : 1.f);
     if (Time >= 0)
         Body->SetPosition(FMath::Fmod(Time, (*Animation)->GetPlayLength()), false);
     auto *Instance = Body->GetSingleNodeInstance();

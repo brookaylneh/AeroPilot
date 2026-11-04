@@ -13,6 +13,8 @@ from mission_planner.gcs.validation import CLEARANCE_M
 from world.cosys.terrain import terrain_height
 
 APPROVAL_HOVER_S = 180
+SURVEY_APPROACH_M = 25.0
+SURVEY_SETTLE_S = 2
 # An airborne drone with less searchable time than this returns instead of taking a strip.
 MIN_SECTOR_S = 180.0
 LAYER_STEP_M = 8.0
@@ -364,6 +366,17 @@ def survey_sectors(sectors, settings, bearing_deg):
     ]
 
 
+def survey_approach(step):
+    first, second = survey_points(step)[:2]
+    delta = [second[key] - first[key] for key in ("north_m", "east_m")]
+    length = math.hypot(*delta)
+    assert length > 0, "Survey approach requires a nonzero first leg"
+    return point(
+        first["north_m"] - SURVEY_APPROACH_M * delta[0] / length,
+        first["east_m"] - SURVEY_APPROACH_M * delta[1] / length,
+    )
+
+
 def branches(sectors, states, settings, landmarks, *, next_band, aftermath):
     """Plan branches for one task: lanes at per-drone layers, the sector's work steps, the end.
 
@@ -419,7 +432,13 @@ def branches(sectors, states, settings, landmarks, *, next_band, aftermath):
                 }
             )
             continue
-        entry, exit_ = pattern[0], pattern[-1]
+        approaches = {
+            index: survey_approach(step)
+            for index, step in enumerate(work)
+            if not before and step["kind"] == "survey" and "observe" in step
+        }
+        entry = approaches[0] if 0 in approaches else pattern[0]
+        exit_ = pattern[-1]
         pads = [current[other]["home"] for other in current]
         if any(
             math.dist((p["north_m"], p["east_m"]), (pad["north_m"], pad["east_m"])) <= PAD_RADIUS_M
@@ -437,8 +456,11 @@ def branches(sectors, states, settings, landmarks, *, next_band, aftermath):
         ingress = [row, entry] if landed else [] if before else [entry]
         egress = [row]
         joins = [
-            (pattern_points(a)[-1], pattern_points(b)[0])
-            for a, b in zip(work, work[1:])
+            (
+                pattern_points(a)[-1],
+                approaches[index + 1] if index + 1 in approaches else pattern_points(b)[0],
+            )
+            for index, (a, b) in enumerate(zip(work, work[1:]))
             if a["kind"] == "survey" and b["kind"] == "survey"
         ]
         legs = (
@@ -452,7 +474,19 @@ def branches(sectors, states, settings, landmarks, *, next_band, aftermath):
         steps.extend(fly(target, layer, transit) for target in ingress)
         for index, step in enumerate(work):
             if index and step["kind"] == "survey" and work[index - 1]["kind"] == "survey":
-                steps.append(fly(pattern_points(step)[0], layer, transit))
+                target = approaches[index] if index in approaches else pattern_points(step)[0]
+                steps.append(fly(target, layer, transit))
+            if index in approaches:
+                steps.extend(
+                    [
+                        fly(approaches[index], step["height_m"], step["speed_mps"]),
+                        {"kind": "hover", "seconds": SURVEY_SETTLE_S},
+                        {
+                            **fly(pattern_points(step)[0], step["height_m"], step["speed_mps"]),
+                            "observe": True,
+                        },
+                    ]
+                )
             steps.append(step)
         if next_band:
             steps.append({"kind": "hover", "seconds": APPROVAL_HOVER_S})

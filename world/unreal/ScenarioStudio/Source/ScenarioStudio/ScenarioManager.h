@@ -6,6 +6,7 @@
 
 struct FScenarioBehavior
 {
+    static constexpr double HalfWidthCm = 250;
     FVector Origin = FVector::ZeroVector, Destination = FVector::ZeroVector;
     int32 Seed = 74021;
     double PauseSeconds = 0, AnimationTime = 0;
@@ -49,8 +50,8 @@ class SCENARIOSTUDIO_API AScenarioManager : public AActor
     FScenarioBehavior Behavior;
     void ResetBehavior();
     TSharedRef<FJsonObject> BehaviorJson() const;
-    bool ReadBehavior(const TSharedPtr<FJsonObject> &Value, const FVector &Position, double HalfWidthCm,
-                      FScenarioBehavior &Result, FString &Error) const;
+    bool ReadBehavior(const TSharedPtr<FJsonObject> &Value, const FVector &Position, FScenarioBehavior &Result,
+                      FString &Error) const;
     bool ValidateGround(FName Region, const FVector &Point, const FScenarioPersonPreset &Preset,
                         FName Situation, FVector &Ground, FString &Error) const;
     bool ValidateAppearance(const FScenarioAppearance &Selection, const FScenarioPersonPreset *&Preset,

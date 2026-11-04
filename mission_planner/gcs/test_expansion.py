@@ -26,7 +26,16 @@ from world.cosys.terrain import terrain_height
 
 def search_receipt():
     return plan(
-        task(expansion={"automatic_proposals": True}), 1, states(), FENCES, LANDMARKS, (), []
+        task(
+            settings={"speed_mps": 5, "spacing_m": 20, "zoom": 1},
+            expansion={"automatic_proposals": True},
+        ),
+        1,
+        states(),
+        FENCES,
+        LANDMARKS,
+        (),
+        [],
     )
 
 
@@ -75,6 +84,33 @@ class Expansion(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.receipt = search_receipt()
+
+    def test_dense_search_expansion_rejects_conflicting_unfinished_rows(self):
+        receipt = plan(
+            task(expansion={"automatic_proposals": True}),
+            1,
+            states(),
+            FENCES,
+            LANDMARKS,
+            (),
+            [],
+        )
+        fleet, progress = airborne_mid_survey(receipt, battery=78, late=NAMES)
+        request, searched, continuing = expansion_request(receipt, progress, fleet)
+        with self.assertRaises(PlanRejected) as caught:
+            plan(
+                request,
+                2,
+                fleet,
+                FENCES,
+                LANDMARKS,
+                (),
+                [],
+                searched=searched,
+                continuing=continuing,
+            )
+        self.assertEqual(caught.exception.rejection["rule"], "separation")
+        self.assertIn("survey", str(caught.exception))
 
     def test_due_when_any_drone_nears_the_end_of_its_work(self):
         receipt = self.receipt

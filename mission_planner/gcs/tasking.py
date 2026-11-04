@@ -181,10 +181,10 @@ TASKING_SCHEMA = object_schema(
 VALIDATOR = Draft202012Validator(TASKING_SCHEMA)
 SEARCH_DEFAULTS = {
     "height_m": 30,
-    "speed_mps": 5,
+    "speed_mps": 3,
     "transit_speed_mps": 10,
-    "spacing_m": 20,
-    "zoom": 1,
+    "spacing_m": 10,
+    "zoom": 2,
     "look_ahead_m": 20,
     "stand_off_m": 20,
     "max_lock_seconds": 180,

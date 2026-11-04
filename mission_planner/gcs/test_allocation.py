@@ -188,7 +188,7 @@ class Allocation(unittest.TestCase):
         self.assertEqual(plan["drones"][0]["steps"][-1], {"kind": "hover", "seconds": None})
         self.assertIsNone(receipt["missions"]["Drone1"]["duration_s"])
 
-    def test_airborne_continuation_flies_straight_to_its_strip(self):
+    def test_airborne_transit_stages_before_its_new_strip(self):
         fleet = states()
         fleet[0].update(
             north_m=-400,
@@ -212,7 +212,7 @@ class Allocation(unittest.TestCase):
             aftermath="return_home",
         )
         kinds = [s["kind"] for s in plan_drones[0]["steps"]]
-        self.assertEqual(kinds[:2], ["fly", "survey"])
+        self.assertEqual(kinds[:5], ["fly", "fly", "hover", "fly", "survey"])
         self.assertEqual(plan_drones[0]["steps"][0]["north_m"], metadata[0]["entry"]["north_m"])
 
     def test_disconnected_strip_and_band_behind_pads_are_structured_rejections(self):
@@ -241,10 +241,23 @@ class Allocation(unittest.TestCase):
         )
         split = next(b for b in plan_drones if [s["kind"] for s in b["steps"]].count("survey") == 2)
         self.assertEqual(
-            [s["kind"] for s in split["steps"]][:6],
-            ["takeoff", "fly", "fly", "survey", "fly", "survey"],
+            [s["kind"] for s in split["steps"]][:12],
+            [
+                "takeoff",
+                "fly",
+                "fly",
+                "fly",
+                "hover",
+                "fly",
+                "survey",
+                "fly",
+                "fly",
+                "hover",
+                "fly",
+                "survey",
+            ],
         )
-        join = split["steps"][4]
+        join = split["steps"][7]
         self.assertEqual(join["height_m"], split["steps"][1]["height_m"])
         with self.assertRaises(PlanRejected) as caught:
             partition(box(-600, -40, -200, -10), list(LANE_ORDER), origins(fleet), SETTINGS, 0.0)
