@@ -4,7 +4,7 @@ An AI flight planner and incident commander for a simulated backcountry world. M
 one task; code generates, sizes and proves a versioned flight plan for up to four quadcopters, each
 flown by an ArduPilot autopilot over MAVLink.
 The operator reviews the checked plan and approves launch from a browser ground control station.
-Local SAM 3.1 detects, segments and tracks visual candidates. Muse Glimmer reviews
+AeroPilot-v1, a local SAM 3.1 fine-tune, detects, segments and tracks visual candidates. Muse Glimmer reviews
 their original 4K images; neither establishes identity.
 
 General missions and Studio briefings share the same tools and planning instructions. Wonder chooses
@@ -51,7 +51,7 @@ python3 -m venv .venv-cosys
 for startup and coupled shutdown. Development uses one `npm run dev` server on `127.0.0.1:5174`, reached
 through an SSH tunnel; do not start a second server.
 
-Wonder uses Meta Model API. The fleet shares one local SAM 3.1 device container and one
+Wonder uses Meta Model API. The fleet shares one local AeroPilot-v1 device container and one
 Glimmer H200 Server on Modal. A separate Modal SAM image endpoint serves calibration.
 Remote endpoints and Authorization headers come from `.env`; the local video socket and
 image digest come from runtime configuration. See [model services](mission_planner/agents/services/README.md).

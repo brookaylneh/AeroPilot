@@ -209,7 +209,7 @@ test('each search inspection is one Glimmer subagent whose log holds only its ow
   );
 });
 
-test('a subagent tab shows the SAM 3.1 handoff, Glimmer response and its own actions as they happen', () => {
+test('a subagent tab shows the AeroPilot-v1 handoff, Glimmer response and its own actions as they happen', () => {
   const live = row('Drone4', 'searching');
   const html = renderToStaticMarkup(
     createElement(SubagentTab, {
@@ -223,10 +223,10 @@ test('a subagent tab shows the SAM 3.1 handoff, Glimmer response and its own act
   assert.match(html, /<time title="1969-12-31 16:00:06.000 PST">3 min ago<\/time>/);
   const order = [
     'Glimmer · Drone4',
-    'Plan v3 · SAM 3.1 phrase “person” above 0.30 · 42 frames scanned · last cycle 0.84 s',
+    'Plan v3 · AeroPilot-v1 phrase “person” above 0.30 · 42 frames scanned · last cycle 0.84 s',
     'Brief · hiker in a red jacket',
     'search inspection scheduled',
-    'SAM 3.1 → Glimmer',
+    'AeroPilot-v1 → Glimmer',
     'initial detector score 0.81',
     `${photoId}-frame.jpg`,
     'following unavailable',
@@ -238,14 +238,14 @@ test('a subagent tab shows the SAM 3.1 handoff, Glimmer response and its own act
     '120 reasoning tokens',
     'Called disregard_and_continue',
     'candidate disregarded; restoring survey',
-    'Scanning with SAM 3.1 · 42 frames',
+    'Scanning with AeroPilot-v1 · 42 frames',
   ];
   for (const [before, after] of order.slice(1).map((text, i) => [order[i], text]))
     assert.ok(
       html.indexOf(before) >= 0 && html.indexOf(before) < html.indexOf(after),
       `${before} < ${after}`,
     );
-  assert.equal(html.match(/SAM 3.1 → Glimmer/g).length, 1);
+  assert.equal(html.match(/AeroPilot-v1 → Glimmer/g).length, 1);
   assert.equal(html.match(/Called disregard_and_continue/g).length, 1);
   assert.doesNotMatch(html, /Drone4: /);
   const done = renderToStaticMarkup(
@@ -271,7 +271,7 @@ test('launch rows open their subagent and the strip lists only running subagents
   for (const button of launch.props.children) button.type(button.props).props.onClick();
   assert.deepEqual(opened, [...rows.keys()]);
   const html = renderToStaticMarkup(launch);
-  assert.match(html, /Glimmer · Drone3.*Muse Glimmer 30B.*Scanning with SAM 3.1 · 42 frames/);
+  assert.match(html, /Glimmer · Drone3.*Muse Glimmer 30B.*Scanning with AeroPilot-v1 · 42 frames/);
   assert.match(html, /data-running="false"[^>]*>.*Glimmer · Drone4.*Complete · 42 frames/);
   const strip = renderToStaticMarkup(createElement(SubagentStrip, { rows: [...rows.values()], onOpen() {} }));
   assert.match(strip, /1 subagent running/);

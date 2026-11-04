@@ -31,7 +31,7 @@ export function subagentStatus(row: Inspection) {
   const frames = `${row.frames} ${row.frames === 1 ? 'frame' : 'frames'}`;
   return {
     waiting: 'Waiting for its observation step',
-    searching: `Scanning with SAM 3.1 · ${frames}`,
+    searching: `Scanning with AeroPilot-v1 · ${frames}`,
     reviewing: 'Reviewing a tracked candidate',
     tracking: 'Following a candidate',
     held: row.rescue!.pending ? 'Holding for Wonder' : 'Holding on a candidate',
@@ -149,7 +149,7 @@ export function SubagentTab({
           <small>Muse Glimmer 30B</small>
         </h3>
         <p>
-          Plan v{row.plan_version} · SAM 3.1 phrase “{row.prompt}” above {row.threshold.toFixed(2)} ·{' '}
+          Plan v{row.plan_version} · AeroPilot-v1 phrase “{row.prompt}” above {row.threshold.toFixed(2)} ·{' '}
           {row.frames} {row.frames === 1 ? 'frame' : 'frames'} scanned
           {row.sampling &&
             row.sampling.last_cycle_s !== null &&
@@ -219,7 +219,7 @@ export function SubagentTab({
           return (
             <article key={event.id} className="gcs-subagent-entry vision" data-frame-id={frame.frame_id}>
               <header>
-                <strong>SAM 3.1 → Glimmer</strong>
+                <strong>AeroPilot-v1 → Glimmer</strong>
                 <span>Candidate {rescue.selected_track_id} · 4× camera</span>
                 {time}
               </header>

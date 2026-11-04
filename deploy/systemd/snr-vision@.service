@@ -1,5 +1,5 @@
 [Unit]
-Description=SNR local SAM 3.1 fleet vision, slot %i
+Description=SNR local AeroPilot-v1 fleet vision, slot %i
 Wants=docker.service
 After=docker.service
 

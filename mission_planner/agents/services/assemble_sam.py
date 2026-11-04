@@ -83,7 +83,7 @@ def main():
         "Export changed tensor values"
     )
     report = {
-        "variant": "drone-ft-v2-epoch2",
+        "variant": "AeroPilot-v1",
         "base_sha256": BASE_SHA256,
         "detector_sha256": DETECTOR_SHA256,
         "model_sha256": sha256(args.output),

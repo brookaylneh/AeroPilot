@@ -17,8 +17,9 @@
   `Muse-Glimmer-30B-KQuant-17GB-Q4_K_M.gguf` with its published mmproj, served by llama.cpp
   at the release the model card requires (b10353 or later). No other quantization or
   re-quantization of any model.
-- Live inspections share one local packaged SAM 3.1 Object Multiplex model across
-  four independent drone sessions, within a 16-billion-byte process GPU budget.
+- Live inspections share one local packaged AeroPilot-v1 model (the SAM 3.1 fine-tune with
+  the official Object Multiplex tracker) across four independent drone sessions, within a
+  16-billion-byte process GPU budget.
   Glimmer remains on the shared Modal H200 Server. The independent Modal SAM H100
   image endpoint remains for calibration. Remote clients read their endpoint from
   `.env`; the local video client uses `SNR_VISION_SOCKET` from runtime configuration.
