@@ -68,11 +68,11 @@ app.get(['/api/evidence/:mission/:asset', '/api/evidence/:mission/:asset/preview
     return;
   }
   const directory = path.resolve(res.locals.slot.env.SNR_MISSION_DATA_DIR, mission, 'evidence');
-  if (!existsSync(path.join(directory, 'assets.json'))) {
+  if (!existsSync(path.join(directory, 'assets.txt'))) {
     res.sendStatus(404);
     return;
   }
-  const registry: string[] = JSON.parse(await readFile(path.join(directory, 'assets.json'), 'utf8'));
+  const registry = (await readFile(path.join(directory, 'assets.txt'), 'utf8')).split('\n');
   if (!registry.includes(asset)) {
     res.sendStatus(404);
     return;

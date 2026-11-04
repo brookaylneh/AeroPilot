@@ -98,7 +98,8 @@ class FeedTests(unittest.IsolatedAsyncioTestCase):
         socket = await self.connect()
         await socket.states(2)
         for message in socket.sent:
-            if message["type"] == "state":
+            self.assertEqual(message["type"] == "history", "landmarks" in message)
+            if message["type"] == "history":
                 self.assertEqual(message["landmarks"], self.mission.landmarks)
                 self.assertTrue(message["landmarks"])
         self.assertEqual({message["type"] for message in socket.sent}, {"history", "state"})

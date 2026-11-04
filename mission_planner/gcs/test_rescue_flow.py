@@ -949,7 +949,7 @@ class RescueFlow(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(evidence["metadata"]["timestamp_ns"], 200_000_000)
         self.assertEqual(len(evidence["image_paths"]), 1)
         images = row["rescue"]["reports"][0]["images"]
-        registry = json.loads((self.directory / "evidence/assets.json").read_text())
+        registry = (self.directory / "evidence/assets.txt").read_text().split()
         name = images["frame_ref"].rsplit("/", 1)[1]
         self.assertIn(name, registry)
         original = (self.directory / "evidence" / name).read_bytes()

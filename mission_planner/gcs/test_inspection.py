@@ -121,10 +121,10 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
         assets = self.inspections
         assets.directory.mkdir()
         self.inspections._register(("previous-frame.jpg",))
-        registry = assets.directory / "assets.json"
+        registry = assets.directory / "assets.txt"
         published = registry.read_bytes()
         with (
-            patch.object(Path, "replace", side_effect=OSError("Registry is not writable")),
+            patch.object(Path, "open", side_effect=OSError("Registry is not writable")),
             self.assertRaisesRegex(OSError, "Registry is not writable"),
         ):
             self.inspections._register(("new-frame.jpg",))
@@ -480,7 +480,7 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
         snapshot = self.inspections.snapshot()
         snapshot[0]["status"] = "broken"
         self.assertEqual(self.inspections.snapshot()[0]["status"], "candidate")
-        assets = json.loads((self.directory / "evidence/assets.json").read_text())
+        assets = (self.directory / "evidence/assets.txt").read_text().split()
         self.assertEqual(len(assets), 12)
         masks = [name for name in assets if name.endswith("-mask.png")]
         self.assertEqual(len(masks), 4)

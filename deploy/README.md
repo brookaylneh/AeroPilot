@@ -245,8 +245,8 @@ end-session action with every aircraft landed and disarmed before resetting nati
 to character selection; it never initiates a return flight. The coupled fleet remains running.
 A later launch can select a new case. No model inference or autonomous flight starts merely
 by opening the planner or launching the briefing. See [web entry acceptance](../web/README.md).
-General and rescue sessions use one versioned flight plan; the mission state exposes the public map
-as `landmarks`. Each `snr-vision@<k>` launches one local SAM 3.1 container; Glimmer
+General and rescue sessions use one versioned flight plan; the mission connection delivers the public
+map once as the history's `landmarks`. Each `snr-vision@<k>` launches one local SAM 3.1 container; Glimmer
 and the standalone SAM calibration service remain on Modal. Four independent drone
 sessions share one model within a 16-billion-byte GPU budget and expose only
 `SNR_VISION_SOCKET`. See [vision installation and protocol](../mission_planner/agents/services/README.md).

@@ -93,7 +93,7 @@ test('session event history is retained beyond a thousand events', () => {
     source: null,
   }));
   const socket = client.sockets[0];
-  socket.onmessage({ data: JSON.stringify({ type: 'history', events }) });
+  socket.onmessage({ data: JSON.stringify({ type: 'history', events, landmarks: [] }) });
   const index = client.values.findIndex((value) => Array.isArray(value) && value[0]?.id === 'event-0');
   assert.ok(index >= 0);
   assert.equal(client.values[index].length, 1001);

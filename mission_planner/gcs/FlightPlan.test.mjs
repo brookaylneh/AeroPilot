@@ -286,7 +286,6 @@ test('complete mission states retain telemetry through observed route, circle, m
     approvals: [],
     returns: [],
     map_focus: null,
-    landmarks: [],
   };
   for (const [preview, active, previous] of [
     [null, initial, null],

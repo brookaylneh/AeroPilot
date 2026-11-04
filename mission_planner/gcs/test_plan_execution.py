@@ -150,7 +150,7 @@ class PlanApplication(unittest.IsolatedAsyncioTestCase):
         owner.plan_active = await owner.fleet.preview_plan(request)
         first = owner.plan_active["missions"]["Drone1"]["step_ranges"][0]
         current[0]["mission_current"] = first["survey_seqs"][1] + 1
-        progress = owner.planner_state()["progress"]["Drone1"]
+        progress = owner.planner_state(owner.vehicles())["progress"]["Drone1"]
         self.assertEqual(progress["survey_start_at"], 2)
         self.assertEqual(progress["completed_steps"], [])
         request["version"] = 2
@@ -158,7 +158,9 @@ class PlanApplication(unittest.IsolatedAsyncioTestCase):
         owner.plan_active = await owner.fleet.preview_plan(request)
         updated = owner.plan_active["missions"]["Drone1"]["step_ranges"][0]
         current[0]["mission_current"] = updated["survey_seqs"][0] + 1
-        self.assertEqual(owner.planner_state()["progress"]["Drone1"]["survey_start_at"], 3)
+        self.assertEqual(
+            owner.planner_state(owner.vehicles())["progress"]["Drone1"]["survey_start_at"], 3
+        )
         owner.fleet._command.assert_not_awaited()
 
     async def test_plan_task_assigns_the_next_version_and_keeps_tasking_extras(self):
@@ -321,11 +323,11 @@ class PlanApplication(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(value._parameter.await_count, 8)
         owner = mission(states())
         owner.clearing = False
-        owner.chat_ready = lambda: False
+        owner.chat_ready = lambda vehicles: False
         owner.fleet.reset_batteries = AsyncMock()
         with self.assertRaisesRegex(AssertionError, "landed and disarmed at its home pad"):
             await owner.handle({"type": "reset_batteries"}, None)
-        owner.chat_ready = lambda: True
+        owner.chat_ready = lambda vehicles: True
         await owner.handle({"type": "reset_batteries"}, None)
         owner.fleet.reset_batteries.assert_awaited_once()
 
@@ -1036,7 +1038,7 @@ class PlanApplication(unittest.IsolatedAsyncioTestCase):
         current[0].update(
             armed=False, landed_state=1, mission_current=first["last_seq"], mode="LAND"
         )
-        progress = owner.planner_state()["progress"]["Drone1"]
+        progress = owner.planner_state(owner.vehicles())["progress"]["Drone1"]
         self.assertEqual(progress["completed_steps"], [])
         self.assertIsNone(progress["current_step"])
         self.assertIsNone(progress["time_remaining_s"])
@@ -1046,7 +1048,7 @@ class PlanApplication(unittest.IsolatedAsyncioTestCase):
         owner.plan_active = await owner.fleet.preview_plan(
             plan([{"kind": "takeoff", "height_m": 40}, hover()])
         )
-        progress = owner.planner_state()["progress"]["Drone1"]
+        progress = owner.planner_state(owner.vehicles())["progress"]["Drone1"]
         self.assertEqual(progress["completed_steps"], [])
         self.assertIsNone(progress["current_step"])
         self.assertIsNone(progress["time_remaining_s"])

@@ -87,8 +87,19 @@ function Arguments({ values }: { values: Record<string, unknown> }) {
     </dl>
   );
 }
-function ToolRow({ event, events }: { event: MissionEvent; events: MissionEvent[] }) {
-  const related = event.call_id === null ? [event] : events.filter((e) => e.call_id === event.call_id);
+type Related = globalThis.Map<string, MissionEvent[]>;
+function relatedByCall(events: MissionEvent[]): Related {
+  const related: Related = new globalThis.Map();
+  for (const event of events) {
+    if (event.call_id === null) continue;
+    const group = related.get(event.call_id);
+    if (group) group.push(event);
+    else related.set(event.call_id, [event]);
+  }
+  return related;
+}
+function ToolRow({ event, byCall }: { event: MissionEvent; byCall: Related }) {
+  const related = event.call_id === null ? [event] : byCall.get(event.call_id)!;
   const result = related.filter((e) => e.kind === 'tool_result').at(-1);
   const status = actionStatus(related);
   const drone = droneIds.find((id) => id === event.arguments?.drone_id);
@@ -149,13 +160,14 @@ function ToolRow({ event, events }: { event: MissionEvent; events: MissionEvent[
     </details>
   );
 }
-function FailureGroup({ attempts, events }: { attempts: MissionEvent[]; events: MissionEvent[] }) {
+function FailureGroup({ attempts, byCall }: { attempts: MissionEvent[]; byCall: Related }) {
   const reasons = [
     ...new Set(
       attempts.map((event) => {
         if (event.kind === 'error') return event.text;
-        const result = events
-          .filter((item) => item.kind === 'tool_result' && item.call_id === event.call_id)
+        const result = byCall
+          .get(event.call_id!)!
+          .filter((item) => item.kind === 'tool_result')
           .at(-1)!;
         return String(result.result!.error);
       }),
@@ -181,7 +193,7 @@ function FailureGroup({ attempts, events }: { attempts: MissionEvent[]; events: 
         </summary>
         {attempts.map((event) =>
           event.kind === 'tool_call' ? (
-            <ToolRow key={event.id} event={event} events={events} />
+            <ToolRow key={event.id} event={event} byCall={byCall} />
           ) : (
             <div key={event.id}>
               <time>{pacificClock(event.timestamp_ms)}</time>
@@ -216,6 +228,7 @@ function conversationRows(
   const launched = new Set<string>();
   let launch: string[] | null = null;
   const failures = new globalThis.Map<string, MissionEvent[]>();
+  const byCall = relatedByCall(events);
   const failed = new globalThis.Map(
     events
       .filter(
@@ -240,7 +253,7 @@ function conversationRows(
         </summary>
         <div>
           {activity.map((event) => (
-            <ToolRow key={event.id} event={event} events={events} />
+            <ToolRow key={event.id} event={event} byCall={byCall} />
           ))}
         </div>
       </details>,
@@ -290,7 +303,7 @@ function conversationRows(
       else {
         const group = [event];
         failures.set(id, group);
-        rows.push(<FailureGroup key={`failure-${id}`} attempts={group} events={events} />);
+        rows.push(<FailureGroup key={`failure-${id}`} attempts={group} byCall={byCall} />);
       }
     } else if (event.kind === 'evidence' && event.source === 'agent') {
       flush();
@@ -356,7 +369,8 @@ export default function MissionControl({
   // Explore and scenario views, or the notice that a running mission holds the world.
   world: ReactNode;
 }) {
-  const { state, feedFocus, fenceResult, events, connection, error, setError, send, now, age } = mission;
+  const { state, feedFocus, fenceResult, events, landmarks, connection, error, setError, send, now, age } =
+    mission;
   const activeCaseId = state ? state.mission.case_id : null;
   const active = state !== null && state.mission.active;
   const [markingPlan, setMarkingPlan] = useState(false);
@@ -693,7 +707,7 @@ export default function MissionControl({
           <section className="gcs-stage" aria-label="Flight operations">
             <div className={view === 'map' ? 'gcs-main-map' : 'gcs-inset gcs-inset-map'}>
               <MissionMap
-                landmarks={state ? state.landmarks : []}
+                landmarks={landmarks}
                 onMark={
                   markingPlan
                     ? (point) => {

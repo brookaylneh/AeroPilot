@@ -279,6 +279,11 @@ class Fleet:
                 raise TimeoutError(f"{name}: timed out waiting for requested vehicle state")
             await asyncio.sleep(0.05)
 
+    def _motion(self, name):
+        """Ground speed and climb rate in metres per second from the latest position."""
+        position = self.vehicles[name]["messages"]["GLOBAL_POSITION_INT"]
+        return math.hypot(position.vx, position.vy) / 100, -position.vz / 100
+
     def _check_tasks(self):
         for task in self.tasks:
             if task.done():
@@ -596,6 +601,7 @@ class Fleet:
             home_message = messages["HOME_POSITION"]
             hn, he = to_local(home_message.latitude / 1e7, home_message.longitude / 1e7)
             battery = messages["SYS_STATUS"]
+            ground_speed, climb_rate = self._motion(name)
             result.append(
                 {
                     "id": name,
@@ -614,8 +620,8 @@ class Fleet:
                     "altitude_above_home_m": position.relative_alt / 1000,
                     "heading_deg": None if position.hdg == 65535 else position.hdg / 100,
                     "course_deg": course_degrees(position.vx, position.vy),
-                    "ground_speed_mps": math.hypot(position.vx, position.vy) / 100,
-                    "climb_rate_mps": -position.vz / 100,
+                    "ground_speed_mps": ground_speed,
+                    "climb_rate_mps": climb_rate,
                     "battery_percent": None
                     if battery.battery_remaining == -1
                     else battery.battery_remaining,
@@ -737,11 +743,11 @@ class Fleet:
             for name in names:
 
                 def stopped(name=name):
-                    state = next(state for state in self.snapshot() if state["id"] == name)
+                    ground_speed, climb_rate = self._motion(name)
                     return (
-                        state["mode"] == "BRAKE"
-                        and state["ground_speed_mps"] <= STOPPED_SPEED_MPS
-                        and abs(state["climb_rate_mps"]) <= STOPPED_SPEED_MPS
+                        self.vehicles[name]["mode"] == "BRAKE"
+                        and ground_speed <= STOPPED_SPEED_MPS
+                        and abs(climb_rate) <= STOPPED_SPEED_MPS
                     )
 
                 await self._until(
@@ -929,10 +935,7 @@ class Fleet:
                     await self._mode(name, "BRAKE")
                     await self._until(
                         name,
-                        lambda name=name: (
-                            next(s for s in self.snapshot() if s["id"] == name)["ground_speed_mps"]
-                            < STOPPED_SPEED_MPS
-                        ),
+                        lambda name=name: self._motion(name)[0] < STOPPED_SPEED_MPS,
                         15,
                     )
             states = self.snapshot()

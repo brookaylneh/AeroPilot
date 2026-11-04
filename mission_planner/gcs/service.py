@@ -676,8 +676,7 @@ class Mission:
     def vehicles(self):
         return self.fleet.snapshot() if self.fleet_ready else []
 
-    def summary(self):
-        vehicles = self.vehicles()
+    def summary(self, vehicles):
         alerts = [
             row["drone_id"] + " autopilot: " + row["text"] for row in self.autopilot_alerts.values()
         ]
@@ -705,30 +704,29 @@ class Mission:
         }
 
     def state(self):
+        vehicles = self.vehicles()
         return {
             "type": "state",
-            "mission": self.summary(),
-            "vehicles": self.vehicles(),
+            "mission": self.summary(vehicles),
+            "vehicles": vehicles,
             "fences": {
                 **self.fleet.fences,
                 "verified": self.fleet.fences_verified,
                 "error": self.fleet.fence_error,
-                "editable": self.fences_editable(),
+                "editable": self.fences_editable(vehicles),
             },
             "agent_busy": self.agent_busy,
             "agent_wait": self.agent_wait,
-            "chat_ready": self.chat_ready(),
+            "chat_ready": self.chat_ready(vehicles),
             "effort": self.effort,
             "inspections": self.inspections.snapshot(),
             "returns": [dict(row) for row in self.return_rows.values()],
             "approvals": [item["card"] for item in self.approvals.values()],
             "map_focus": self.map_focus,
-            "landmarks": self.landmarks,
-            "planner": self.planner_state(),
+            "planner": self.planner_state(vehicles),
         }
 
-    def fences_editable(self):
-        vehicles = self.vehicles()
+    def fences_editable(self, vehicles):
         return (
             self.fleet_ready
             and not self.clearing
@@ -748,7 +746,7 @@ class Mission:
 
     async def set_fences(self, requested):
         async with self.lifecycle_lock:
-            assert self.fences_editable(), (
+            assert self.fences_editable(self.vehicles()), (
                 "Save flight fences when all four drones are healthy, landed and disarmed"
             )
             assert requested["version"] == self.fleet.fences["version"], (
@@ -777,8 +775,7 @@ class Mission:
             finally:
                 self.fence_change = False
 
-    def chat_ready(self):
-        vehicles = self.vehicles()
+    def chat_ready(self, vehicles):
         return (
             len(vehicles) == len(NAMES)
             and all(
@@ -795,10 +792,10 @@ class Mission:
             and self.plan_task is None
         )
 
-    def planner_state(self):
+    def planner_state(self, vehicles):
         progress = {}
         if self.plan_active is not None:
-            for vehicle in self.vehicles():
+            for vehicle in vehicles:
                 name = vehicle["id"]
                 if name not in self.plan_active["missions"]:
                     continue
@@ -1009,7 +1006,7 @@ class Mission:
             return {
                 **applied,
                 "trigger": self.plan_trigger,
-                "progress": self.planner_state()["progress"],
+                "progress": self.planner_state(self.vehicles())["progress"],
             }
         finally:
             self.active_flight.difference_update(aircraft)
@@ -1200,12 +1197,13 @@ class Mission:
         if name == "describe_location":
             return directions(self.landmarks, arguments["north_m"], arguments["east_m"])
         if name == "get_mission":
+            vehicles = self.vehicles()
             return {
-                **self.summary(),
+                **self.summary(vehicles),
                 "briefing": None
                 if self.case is None
                 else {key: self.case["report"][key] for key in ("brief",)},
-                "flight_constraints": flight_constraints(self.vehicles()),
+                "flight_constraints": flight_constraints(vehicles),
             }
         if name == "show_on_map":
             if arguments["target"] == "drone":
@@ -1232,7 +1230,7 @@ class Mission:
                     }
                     for v in self.vehicles()
                 ],
-                "planner": self.planner_state(),
+                "planner": self.planner_state(self.vehicles()),
             }
         if name == "get_drone":
             vehicle = next(v for v in self.vehicles() if v["id"] == arguments["drone_id"])
@@ -1544,7 +1542,7 @@ class Mission:
             "fence_version": self.fleet.fences["version"],
             "flight_constraints": flight_constraints(vehicles),
             "briefing": None if self.case is None else {"brief": self.case["report"]["brief"]},
-            "planner": planning_context(self.planner_state()),
+            "planner": planning_context(self.planner_state(vehicles)),
             "inspections": self.inspections.snapshot(),
             "telemetry_at_utc_ms": time.time() * 1000,
             "current_vehicles": [planning_vehicle(v) for v in vehicles],
@@ -1628,6 +1626,7 @@ class Mission:
     async def watch_plan(self, receipt):
         while self.plan_active is receipt:
             if not self.agent_busy and not self.operator_tasks and self.plan_task is None:
+                vehicles = self.vehicles()
                 rows = self.inspections.pending_events()
                 alerts = [row for row in self.autopilot_alerts.values() if row["pending"]]
                 returns = [row for row in self.return_rows.values() if row["pending"]]
@@ -1670,8 +1669,8 @@ class Mission:
                     and "tasking" in receipt
                     and due(
                         receipt,
-                        self.planner_state()["progress"],
-                        self.vehicles(),
+                        self.planner_state(vehicles)["progress"],
+                        vehicles,
                         self.lead_s(receipt),
                     )
                 ):
@@ -1696,7 +1695,7 @@ class Mission:
         return EXPANSION_LEAD_S if lead is None else lead
 
     def unfinished_work(self, receipt, name):
-        progress = self.planner_state()["progress"]
+        progress = self.planner_state(self.vehicles())["progress"]
         if name not in progress or progress[name]["current_step"] is None:
             return False
         steps = next(b["steps"] for b in receipt["plan"]["drones"] if b["drone_id"] == name)
@@ -1708,8 +1707,9 @@ class Mission:
         The result is stored once per active plan; a rejection is not retried, Wonder decides.
         """
         version = receipt["plan"]["version"] + 1
+        vehicles = self.vehicles()
         tasking, searched, continuing = expansion_request(
-            receipt, self.planner_state()["progress"], self.vehicles()
+            receipt, self.planner_state(vehicles)["progress"], vehicles
         )
         self.plan_task = asyncio.current_task()
         try:
@@ -1741,8 +1741,9 @@ class Mission:
         version = receipt["plan"]["version"] + 1
         self.plan_task = asyncio.current_task()
         try:
+            vehicles = self.vehicles()
             request = reassignment(
-                receipt, self.planner_state()["progress"], self.vehicles(), failed
+                receipt, self.planner_state(vehicles)["progress"], vehicles, failed
             )
             compiled = await self.fleet.preview_plan(request)
         except (PlanRejected, AssertionError) as error:
@@ -1822,8 +1823,9 @@ class Mission:
         assert math.isfinite(timeout_s) and 0 < timeout_s <= 65535, (
             "Wait timeout must be finite positive seconds"
         )
+        vehicles = self.vehicles()
         validate_conditions(
-            conditions, self.planner_state(), self.vehicles(), self.inspections.snapshot()
+            conditions, self.planner_state(vehicles), vehicles, self.inspections.snapshot()
         )
         self.agent_wait = {
             "description": description,
@@ -1839,10 +1841,11 @@ class Mission:
             if self.agent_busy or self.operator_tasks or self.plan_task is not None:
                 await asyncio.sleep(0.1)
                 continue
+            vehicles = self.vehicles()
             result = ready(
                 waiting["conditions"],
-                self.planner_state(),
-                self.vehicles(),
+                self.planner_state(vehicles),
+                vehicles,
                 self.inspections.snapshot(),
                 self.holds,
             )
@@ -2095,7 +2098,7 @@ class Mission:
             )
             self.agent_task = self.launch(self.agent(None))
         elif kind == "new_chat":
-            assert self.chat_ready(), (
+            assert self.chat_ready(self.vehicles()), (
                 "A new chat requires every drone landed and disarmed at its home pad"
             )
             reset = max(
@@ -2140,7 +2143,7 @@ class Mission:
             )
         elif kind == "reset_batteries":
             assert self.fleet_ready, "MAVLink fleet is unavailable"
-            assert self.chat_ready(), (
+            assert self.chat_ready(self.vehicles()), (
                 "Battery reset needs every drone landed and disarmed at its home pad"
             )
             await self.fleet.reset_batteries()
@@ -2178,11 +2181,13 @@ class Mission:
             while True:
                 # Starting or ending a mission replaces the run and its event history.
                 if run != self.id:
-                    run, cursor = self.id, self.event_sequence
-                    await websocket.send(encode({"type": "history", "events": self.events}))
-                for event in [e for e in self.events if e["sequence"] > cursor]:
-                    await websocket.send(encode({"type": "event", "event": event}))
-                    cursor = event["sequence"]
+                    run, events, sent = self.id, self.events, len(self.events)
+                    await websocket.send(
+                        encode({"type": "history", "events": events, "landmarks": self.landmarks})
+                    )
+                while sent < len(events):
+                    await websocket.send(encode({"type": "event", "event": events[sent]}))
+                    sent += 1
                 await websocket.send(encode(self.state()))
                 if self.feed_focus is not None and self.feed_focus["id"] != focus_id:
                     await websocket.send(encode(self.feed_focus))

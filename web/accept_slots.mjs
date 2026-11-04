@@ -90,7 +90,7 @@ async function evidenceIsolation(a, b) {
       .jpeg()
       .toBuffer();
     await writeFile(path.join(directory, asset), image, { flag: 'wx' });
-    await writeFile(path.join(directory, 'assets.json'), JSON.stringify([asset]), { flag: 'wx' });
+    await writeFile(path.join(directory, 'assets.txt'), asset + '\n', { flag: 'wx' });
     const url = `${origin}/api/evidence/${mission}/${asset}`;
     const own = await a.page.request.get(url);
     assert(own.ok());

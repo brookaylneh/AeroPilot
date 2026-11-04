@@ -683,12 +683,11 @@ class Inspections:
         return f"/api/evidence/{self.mission.id}/{reference}"
 
     def _register(self, names):
-        updated = self.assets | set(names)
-        registry = self.directory / "assets.json"
-        temporary = registry.with_suffix(".tmp")
-        temporary.write_text(json.dumps(sorted(updated)) + "\n")
-        temporary.replace(registry)
-        self.assets = updated
+        added = sorted(set(names) - self.assets)
+        if added:
+            with (self.directory / "assets.txt").open("a") as registry:
+                registry.write("".join(name + "\n" for name in added))
+            self.assets = self.assets | set(added)
 
     def _save_masks(self, metadata, detections):
         result = []

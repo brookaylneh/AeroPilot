@@ -510,7 +510,9 @@ class AutopilotAlerts(unittest.TestCase):
             m.fleet_event({**self.warning, "severity": 6, "text": "Normal status", "at_ms": index})
         self.assertTrue(any(e["result"] == self.warning for e in m.events))
         self.assertEqual(len(m.events), 1002)
-        self.assertEqual(m.summary()["alerts"], ["Drone1 autopilot: Potential Thrust Loss (3)"])
+        self.assertEqual(
+            m.summary(m.vehicles())["alerts"], ["Drone1 autopilot: Potential Thrust Loss (3)"]
+        )
         context = live_json(m)
         self.assertEqual(context["autopilot_alerts"], [{**self.warning, "pending": True}])
         logged = [
@@ -1457,11 +1459,11 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
         for change in ({"north_m": -732.5}, {"armed": True, "landed_state": 2}):
             with self.subTest(change=change):
                 fleet[1] = {**fleet[1], **change}
-                self.assertFalse(m.chat_ready())
+                self.assertFalse(m.chat_ready(m.vehicles()))
                 with self.assertRaisesRegex(AssertionError, "at its home pad"):
                     await m.handle({"type": "new_chat"}, None)
                 fleet[1] = {"id": "Drone2", **parked}
-        self.assertTrue(m.chat_ready())
+        self.assertTrue(m.chat_ready(m.vehicles()))
         await m.handle({"type": "new_chat"}, None)
         self.assertEqual(m.conversation, [])
         self.assertIs(m.plan_active, active)

@@ -8,7 +8,8 @@ MAVLink connections, approvals and the event log; spawned workers assemble and s
 multimodal Wonder and Glimmer requests. The browser receives actual
 telemetry, mission and fence readback, and each aircraft's forward-camera observations.
 General flights and Studio rescue briefings use the same instructions, tools and versioned planner. Public map data is
-`state.landmarks`; the service does not read private target placements.
+the `history` message's `landmarks`, sent once per connection; the service does not read
+private target placements.
 
 Scenario reports can name a bounded **Reported search area** using distances from
 a public landmark. `get_reported_search_area` reads that paragraph from the saved

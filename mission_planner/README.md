@@ -28,7 +28,7 @@ Ground views look ahead along routes or at a circle's center. Explicit camera in
 hover and elevated targets.
 
 Every model context includes exact `flight_constraints` and measured aircraft homes. Public map data
-is exposed as `state.landmarks`; evaluator placements are private. Glimmer's target-independent
+arrives once per connection as the `history` message's `landmarks`; evaluator placements are private. Glimmer's target-independent
 `forward-analyst-v3-full-frame` review does not establish identity or calibrated search probability. The
 [release validation record](measurements/release.json) records the checked revision and acceptance limits.
 

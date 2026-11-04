@@ -413,7 +413,7 @@ class FenceApprovals(unittest.IsolatedAsyncioTestCase):
 
     async def test_save_invalidates_an_existing_approval_without_arm_or_launch(self):
         task = await self.pending()
-        self.assertTrue(self.owner.fences_editable())
+        self.assertTrue(self.owner.fences_editable(self.owner.vehicles()))
         await self.owner.set_fences(fences())
         result = await task
         self.assertFalse(result["ok"])

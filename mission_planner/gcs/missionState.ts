@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { z } from 'zod';
 import { briefingSchema } from '../../scenario_creator/briefing';
-import { landmarkSchema } from './landmarks';
+import { landmarkSchema, type Landmark } from './landmarks';
 import { missionPlanSchema } from './missionPlan';
 import { plannerSchema } from './FlightPlan';
 import { fenceGeometrySchema, fenceResultSchema, fenceStateSchema, type FenceResult } from './FenceEditor';
@@ -220,7 +220,6 @@ export const stateSchema = z.object({
   ),
   map_focus: focusSchema.nullable(),
   planner: plannerSchema,
-  landmarks: z.array(landmarkSchema),
 });
 export type MissionState = z.infer<typeof stateSchema>;
 const messageSchema = z.discriminatedUnion('type', [
@@ -228,7 +227,7 @@ const messageSchema = z.discriminatedUnion('type', [
   feedFocusMessageSchema,
   fenceResultSchema,
   z.object({ type: z.literal('event'), event: eventSchema }),
-  z.object({ type: z.literal('history'), events: z.array(eventSchema) }),
+  z.object({ type: z.literal('history'), events: z.array(eventSchema), landmarks: z.array(landmarkSchema) }),
   z.object({ type: z.literal('error'), message: z.string() }),
   z.object({ type: z.literal('plan'), drone_id: z.enum(droneIds), plan: missionPlanSchema }),
 ]);
@@ -244,6 +243,7 @@ export function useMission() {
   const [feedFocus, setFeedFocus] = useState<FeedFocus | null>(null);
   const [fenceResult, setFenceResult] = useState<FenceResult | null>(null);
   const [events, setEvents] = useState<MissionEvent[]>([]);
+  const [landmarks, setLandmarks] = useState<Landmark[]>([]);
   const [connection, setConnection] = useState<'connecting' | 'connected' | 'closed'>('connecting');
   const [error, setError] = useState('');
   const [now, setNow] = useState(Date.now());
@@ -276,8 +276,10 @@ export function useMission() {
       } else if (data.type === 'feed_focus') setFeedFocus(data);
       else if (data.type === 'fence_result') setFenceResult(data);
       else if (data.type === 'event') setEvents((items) => [...items, data.event]);
-      else if (data.type === 'history') setEvents(data.events);
-      else if (data.type === 'error') {
+      else if (data.type === 'history') {
+        setEvents(data.events);
+        setLandmarks(data.landmarks);
+      } else if (data.type === 'error') {
         setError(data.message);
       } else if (data.type === 'plan') {
         const url = URL.createObjectURL(
@@ -342,6 +344,7 @@ export function useMission() {
     feedFocus,
     fenceResult,
     events,
+    landmarks,
     connection,
     error,
     setError,

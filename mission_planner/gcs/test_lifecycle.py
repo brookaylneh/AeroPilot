@@ -188,7 +188,7 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
         self.reset_session.assert_not_called()
         self.fleet.execute.assert_not_awaited()
         self.mission.model.respond.assert_not_called()
-        summary = self.mission.summary()
+        summary = self.mission.summary(self.mission.vehicles())
         self.assertTrue(summary["active"])
         self.assertEqual(summary["case_name"], "General mission")
         self.assertIsNone(summary["case_id"])
@@ -448,7 +448,7 @@ class Lifecycle(unittest.IsolatedAsyncioTestCase):
             await self.mission.handle({"type": "start"}, None)
         self.assertEqual(self.mission.id, identity)
         self.assertEqual(
-            self.mission.summary()["alerts"],
+            self.mission.summary(self.mission.vehicles())["alerts"],
             [
                 "Mission admission failed: Unreal mode acknowledgement timed out",
             ],

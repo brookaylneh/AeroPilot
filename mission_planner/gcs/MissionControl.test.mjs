@@ -66,6 +66,7 @@ function snapshot(state = null) {
     feedFocus: null,
     fenceResult: null,
     events: [],
+    landmarks: [],
     connection: state ? 'connected' : 'connecting',
     error: '',
     setError() {},
@@ -166,7 +167,6 @@ function state(caseId = null, vehicles = []) {
     returns: [],
     approvals: [],
     map_focus: null,
-    landmarks: [],
     planner: { preview: null, active: null, previous: null, progress: {} },
   });
 }
@@ -1098,7 +1098,7 @@ test('the drone video keeps full screen while map zoom and centering are disable
   assert.equal(value.camera().props.inset, false);
 });
 
-test('map facts come from the mission state and remain required without a rescue case', () => {
+test('map facts arrive once with the history and reach the map without a rescue case', () => {
   const value = state();
   const landmark = {
     id: 'command-post',
@@ -1108,11 +1108,11 @@ test('map facts come from the mission state and remain required without a rescue
     kind: 'command_post',
     geometry: { type: 'point', points: [{ x: -81400, y: 0, z: 263200 }] },
   };
-  value.landmarks = [landmark];
   const page = view(value);
+  assert.deepEqual(page.map().props.landmarks, []);
+  page.render({ landmarks: [landmark] });
   assert.deepEqual(page.map().props.landmarks, [landmark]);
-  delete value.landmarks;
-  assert.equal(missionState.stateSchema.safeParse(value).success, false);
+  assert.equal(missionState.stateSchema.safeParse(value).success, true);
 });
 
 test('manual takeoff, routes, overrides and QGC export keep their command contracts', () => {
