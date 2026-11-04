@@ -154,7 +154,7 @@ export class PixelStreamingTransport {
     Logger.InitLogging(LogLevel.Warning, false);
     const url = new URL(signallingUrl);
     if (!['ws:', 'wss:'].includes(url.protocol)) throw new Error('Invalid signalling URL');
-    const codec = z.enum(['VP8', 'VP9', 'H264', 'AV1']).parse(import.meta.env.VITE_STREAM_CODEC || 'VP8');
+    const codec = z.enum(['VP8', 'VP9', 'H264', 'AV1']).parse(import.meta.env.VITE_STREAM_CODEC);
     this.stream = new PixelStreaming(
       new Config({
         useUrlParams: false,
@@ -305,6 +305,7 @@ export class PixelStreamingTransport {
   navigate(input: NavigationInput): boolean {
     if (this.disposed) return false;
     const state = navigationInputSchema.parse(input);
+    // Library internals, so package.json pins the exact frontend version.
     const channel = this.stream.webRtcController.dataChannelSender.dataChannelProvider.dataChannel;
     // One unacknowledged state also bounds Unreal's game-thread input queue.
     if (

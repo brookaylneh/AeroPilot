@@ -9,6 +9,8 @@ movement state and mission brief together. Use Scenarios to save, load or begin 
 scenario. Launch saves the reviewed brief and starts that case, then returns to the Map tab.
 **Explore world** uses the same Studio camera, navigation and map without a character;
 its map shows the world but does not travel. Double-clicking ground flies there.
+Camera travel, movement modes, the map and the navigation protocol are described in
+[navigation](navigation.md).
 
 ## Authoring flow
 

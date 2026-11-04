@@ -446,8 +446,6 @@
 .creator-app .native-navigation {
   left: var(--edge);
   bottom: var(--edge);
-}
-.creator-app .native-navigation {
   max-width: calc(100% - 2 * var(--edge) - 380px);
 }
 .creator-app.stage-person .native-navigation,

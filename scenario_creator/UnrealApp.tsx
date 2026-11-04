@@ -14,6 +14,7 @@ import type { Stream } from '../web/useStream';
 import './unreal.css';
 import './creator.css';
 
+const defaultName = 'Open Meadow rescue case';
 const steps: { id: CreatorStage; title: string; description: string }[] = [
   {
     id: 'person',
@@ -412,7 +413,7 @@ export default function UnrealApp({
                   if (!(await send({ type: 'briefing', briefing }))) return;
                   const saved = await send({
                     type: 'save',
-                    name: name.trim() || 'Open Meadow rescue case',
+                    name: name.trim() || defaultName,
                     summary: '',
                   });
                   if (saved) {
@@ -521,7 +522,7 @@ export default function UnrealApp({
                 disabled={!packet?.authoring.position || locked}
                 onClick={() => {
                   setLibrary(false);
-                  setName('Open Meadow rescue case');
+                  setName(defaultName);
                   setSaving(true);
                 }}
               >
