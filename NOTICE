@@ -1,0 +1,32 @@
+AeroPilot
+Copyright 2026 AeroPilot contributors
+
+Original AeroPilot application code is licensed under Apache License 2.0.
+Third-party components and assets retain their respective licenses. In particular:
+
+- AeroPilot-v1 is a derivative of Meta SAM 3.1, licensed under the SAM License.
+  Weights are obtained separately: https://huggingface.co/AeroPilot/AeroPilot-v1
+  Upstream: https://github.com/facebookresearch/sam3
+- Muse Wonder is accessed through Meta Model API under its service terms.
+- Muse Glimmer 30B and its official projector retain their published model terms.
+  https://huggingface.co/meta-models/Muse-Glimmer-30B-GGUF
+- ArduPilot SITL is a separately acquired GPLv3 program. The sitl-*.patch files
+  under mission_planner/gcs/ contain upstream-derived code and retain ArduPilot's
+  GPL terms; the original-project Apache license does not relicense them.
+  https://github.com/ArduPilot/ardupilot
+- Cosys-AirSim is MIT licensed. Patches in world/cosys/ retain its upstream terms.
+  https://github.com/Cosys-Lab/Cosys-AirSim
+- llama-ready.patch retains llama.cpp's MIT terms.
+  https://github.com/ggml-org/llama.cpp
+- OpenCV supplies CSRT tracking under Apache-2.0; its build copies its license
+  beside the generated browser runtime. Those generated files are not tracked.
+- Unreal Engine and Epic Pixel Streaming retain their respective Epic licenses.
+  Unreal Engine and cooked content are not distributed in this repository.
+- web/public/portraits/rocketbox-*.jpg are renders of Microsoft Rocketbox assets,
+  licensed under MIT. The Microsoft notice is included beside the portraits.
+- Fonts under web/public/fonts/ retain their adjacent SIL Open Font License
+  notices: DM Sans, Manrope, IBM Plex Mono and Chakra Petch.
+
+Additional world-asset sources, author attributions and usage terms are recorded
+in world/unreal/assets.md and the asset manifests. No project license grants
+rights to excluded dependencies or third-party model training datasets.

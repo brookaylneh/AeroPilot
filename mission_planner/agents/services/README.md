@@ -65,8 +65,8 @@ native algorithm. No model session is reset to repair an error or reject a candi
 Build with the explicit minimal context; do not send the whole checkout to Docker:
 
 ```sh
-bash mission_planner/agents/services/build-sam.sh snr-sam31:<release>
-docker image inspect --format '{{.Id}}' snr-sam31:<release>
+bash mission_planner/agents/services/build-sam.sh snr-sam31:aeropilot-v1
+docker image inspect --format '{{.Id}}' snr-sam31:aeropilot-v1
 ```
 
 Stage the verified checkpoint and warmup fixture under `.local/vendor/sam31/`.
@@ -155,6 +155,65 @@ projected box dimension and 12 CSS pixels, clipped to the displayed image. Preci
 masks appear only on their matching evidence/review images. The independent
 WebRTC display cannot provide exact registration to a sampled inference image.
 
+## Preparing a warmup fixture
+
+The original qualification JPEGs are deployment assets and are not distributed in the source repository. A new installation can use its own fixture with the same input contract. Prepare **20 RGB JPEGs at 3840×2160 for each of four drone lanes** under:
+
+```text
+.local/vendor/sam31/warmup/
+  Drone1/000.jpg ... 019.jpg
+  Drone2/000.jpg ... 019.jpg
+  Drone3/000.jpg ... 019.jpg
+  Drone4/000.jpg ... 019.jpg
+```
+
+Use consecutive representative frames that cover initial detections, continuing tracks and empty images. The fixture must use images you have rights to process. It contains no access credentials or scenario coordinates. Startup also exercises additional text prompts and 1–16-object suppression shapes independently of these images.
+
+After copying the images, create the manifest once from the repository root:
+
+```sh
+.venv-cosys/bin/python - <<'PY'
+import hashlib
+import json
+from pathlib import Path
+from PIL import Image
+
+root = Path('.local/vendor/sam31/warmup')
+output = root / 'protocol.json'
+assert not output.exists(), 'Inspect the existing warmup protocol before replacing it'
+lanes = {}
+for name in ('Drone1', 'Drone2', 'Drone3', 'Drone4'):
+    paths = sorted((root / name).glob('*.jpg'))
+    assert len(paths) == 20, f'{name}: exactly 20 JPEGs required'
+    frames = []
+    for path in paths:
+        with Image.open(path) as image:
+            assert image.format == 'JPEG' and image.size == (3840, 2160)
+            assert image.mode == 'RGB'
+            image.verify()
+        frames.append({
+            'path': path.relative_to(root).as_posix(),
+            'sha256': hashlib.sha256(path.read_bytes()).hexdigest(),
+        })
+    lanes[name] = {'frames': frames}
+protocol = {
+    'scope': 'Operator-supplied recorded-frame fixture; not the published qualification run.',
+    'target': 'person',
+    'threshold': 0.3,
+    'source_size': [3840, 2160],
+    'resolutions': [1080],
+    'frames_per_drone': 20,
+    'lanes': lanes,
+}
+with output.open('x') as stream:
+    json.dump(protocol, stream, indent=2)
+    stream.write('\n')
+print(output)
+PY
+```
+
+Set `SNR_SAM_WARMUP` to the absolute manifest path and create an empty compile-cache directory at `SNR_SAM_CACHE`. The launcher mounts the manifest's parent directory read-only, so every frame path must be relative to that directory. Warmup checks hashes and compilation stability before marking the service ready. Run the qualification below with this protocol on the actual device; do not attribute the published throughput or recall to a different fixture.
+
 ## Qualification
 
 `bench_video.py` exercises the packaged HTTP service, including JPEG preparation,
@@ -165,10 +224,10 @@ compilation counters, one shared model and distinct sessions:
 ```sh
 .venv-cosys/bin/python -m mission_planner.agents.services.bench_video \
   --protocol .local/vendor/sam31/warmup/protocol.json \
-  --output .local/evidence/sam31/<new-run> --frames-per-drone 80 --passes 3
+  --output ".local/evidence/sam31/qualification-$(date -u +%Y%m%dT%H%M%SZ)" --frames-per-drone 80 --passes 3
 .venv-cosys/bin/python -m mission_planner.agents.services.bench_video \
   --protocol .local/vendor/sam31/warmup/protocol.json \
-  --output .local/evidence/sam31/<new-soak> \
+  --output ".local/evidence/sam31/soak-$(date -u +%Y%m%dT%H%M%SZ)" \
   --frames-per-drone 9001 --interval 0.2 --passes 1
 ```
 

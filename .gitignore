@@ -22,3 +22,23 @@ world/unreal/ScenarioStudio/Build/Linux/FileOpenOrder/CookerOpenOrder.log
 world/unreal/ScenarioStudio/Build/Linux/FileOpenOrder/EditorOpenOrder.log
 world/unreal/ScenarioStudio/Samples/PixelStreaming2/WebServers/get_ps_servers.sh
 world/unreal/ScenarioStudio/Samples/PixelStreaming2/WebServers/get_ps_servers.bat
+
+# Credentials, model artifacts and local diagnostics
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+*.pt
+*.pth
+*.safetensors
+*.gguf
+*.onnx
+*.log
+*.sqlite
+*.sqlite3
+.DS_Store
+Thumbs.db
+/dist/
+/build/

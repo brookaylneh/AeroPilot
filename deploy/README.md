@@ -1,4 +1,173 @@
-# AWS host
+# Setup and deployment
+
+## Step-by-step setup
+
+For a judge reviewing code, start with the [credential-free checks](../README.md#run-the-code-checks). For the running demo, use the [hosted application](http://35.81.229.78/). The steps below install the complete simulation on a **new, dedicated host**. They are not an upgrade procedure for an occupied demo server.
+
+### 1. Check the prerequisites
+
+| Requirement                                                                    | Needed for                                 |
+| ------------------------------------------------------------------------------ | ------------------------------------------ |
+| x86-64 Linux, Node 22 and Python 3.10                                          | Application and source checks              |
+| NVIDIA GPU, compatible driver, Vulkan, Docker and NVIDIA Container Toolkit     | Unreal rendering and local SAM inference   |
+| Dedicated service account, uid 1002 / gid 1003                                 | Current device image and systemd installer |
+| Unreal Engine 5.8.2 and the authorized world content                           | Building the matching simulation package   |
+| Meta Model API credential                                                      | Wonder mission planning                    |
+| Hugging Face access and the relevant model licenses                            | Downloading model weights                  |
+| Modal credentials and H200 capacity, or a compatible existing Glimmer endpoint | Evidence review                            |
+| A public IPv4 address and TURN networking                                      | Browser video outside the host             |
+
+The pinned host installer targets **Ubuntu 22.04 with AWS kernel 6.8.0-1066-aws**. Review [Provision](#provision) before running it; it is not a generic Linux installer. The qualified SAM process uses a 16-billion-byte software GPU budget; this is not the memory requirement for SAM and Unreal together. See the [measured hardware and scope](../mission_planner/measurements/aeropilot-v1.json).
+
+The public checkout includes source, tests, terrain, public map geometry, portrait renders and asset manifests. It excludes model weights, Unreal Engine, cooked world content, raw mission data and the original warmup fixture. Obtain the world content under the [asset terms](../world/unreal/assets.md), or follow the domain authoring instructions to rebuild it from the referenced inputs. There is no public download of the complete licensed demo world in this repository.
+
+### 2. Clone and install application dependencies
+
+Provision the service account and pinned host toolchains using [Provision](#provision). In that account's checkout, with Node 22 and Python 3.10 on `PATH`:
+
+```sh
+git clone https://github.com/brookaylneh/AeroPilot.git
+cd AeroPilot
+npm ci
+python3.10 -m venv .venv-cosys
+.venv-cosys/bin/python -m pip install -r requirements.txt
+mkdir -p .local/vendor .local/build .local/run .local/data .local/evidence
+```
+
+On a host provisioned at `SNR_ROOT`, use that existing clone instead of cloning a second time. The installed service scripts expect the toolchain executables under `.local/toolchains/bin/`; [Toolchains](#toolchains) gives their pinned versions and paths.
+
+### 3. Configure credentials and host values
+
+```sh
+cp .env.example .env
+cp deploy/runtime.env.example .local/runtime.env
+chmod 600 .env .local/runtime.env
+```
+
+Edit `.env` privately. Runtime entry points require `HF_TOKEN`, `MODEL_API_KEY`, `MODAL_TOKEN_ID` and `MODAL_TOKEN_SECRET`. Remote clients also need their own `SAM_URL`, `GLIMMER_URL`, `SAM_AUTHORIZATION` and `GLIMMER_AUTHORIZATION`. The local live-video detector uses a Unix socket rather than `SAM_URL`.
+
+Edit `.local/runtime.env`: replace `/srv/snr` paths with the actual checkout path; set `SNR_ROOT`, public/private IPs, `SNR_ORIGIN`, the GPU UUID from `nvidia-smi -L`, and the image identities and artifact paths produced below. Keep `SNR_SLOTS=1` initially. The example image identities describe a qualified build and are not downloadable registry releases. Build or explicitly import the corresponding images on the new host.
+
+```sh
+export PATH="$PWD/.local/toolchains/bin:$PATH"
+set -a
+. .local/runtime.env
+set +a
+.venv-cosys/bin/python -c 'from mission_planner.environment import load_env; load_env()'
+```
+
+The final command validates credential presence without printing values. Neither `.env` nor `.local/` belongs in Git.
+
+### 4. Build tracking and autopilot dependencies
+
+```sh
+bash mission_planner/gcs/build-csrt.sh
+bash mission_planner/gcs/build-sitl.sh .local/build/ardupilot
+```
+
+Both require new destination directories. CSRT uses a pinned Emscripten container and does not use the GPU. SITL fetches the recorded ArduPilot revision, applies all four project patches and runs the battery-reset unit test. Set `SNR_SITL_BINARY` in `.local/runtime.env` to the absolute path of `.local/build/ardupilot/build/sitl/bin/arducopter`. This patched binary is required for the demo battery reset control.
+
+### 5. Prepare the world and video transport
+
+Use [Unreal build and packaging](../world/unreal/README.md#build-and-package) and [character authoring](../world/unreal/characters/README.md) to restore or author the matching world content. Set `UE_ROOT` to the licensed engine installation. Acquire the pinned Cosys plugin and verify its required patches before building:
+
+```sh
+.venv-cosys/bin/python -m world.cosys.fetch_cosys
+bash world/cosys/verify-plugin.sh
+bash world/unreal/scripts/setup-pixel-streaming.sh
+bash deploy/fetch-caddy.sh
+bash deploy/fetch-browser.sh
+```
+
+Follow [Rendering and packaging](../world/unreal/README.md#rendering-and-packaging) with explicit world/settings manifests and the matching pipeline cache. The resulting Linux package must include the executable, cooked content, manifests and `pso-cache.txt`; a source checkout alone is not a runnable Unreal package. Build the runtime image as documented in [Run the packaged world](../world/unreal/README.md#run-the-packaged-world), and use its immutable image ID in `SNR_UNREAL_IMAGE`.
+
+For a new installation, configure TURN once:
+
+```sh
+set -a
+. .local/runtime.env
+set +a
+.venv-cosys/bin/python world/unreal/scripts/configure-turn.py \
+  --public-ip "$SNR_PUBLIC_IP" --private-ip "$SNR_PRIVATE_IP" --rotate
+```
+
+This creates private files under `.secrets/`. Configure the [security group](#security-group) for HTTP and TURN; keep Cosys, MAVLink, mission and signalling listeners private.
+
+### 6. Prepare the local AeroPilot-v1 device service
+
+Build the pinned image using its minimal context:
+
+```sh
+bash mission_planner/agents/services/build-sam.sh snr-sam31:aeropilot-v1
+
+docker image inspect --format '{{.Id}}' snr-sam31:aeropilot-v1
+```
+
+Set `SNR_SAM_IMAGE` to that returned image ID. Download the published checkpoint into a new local destination, then verify it:
+
+```sh
+mkdir -p .local/vendor/sam31/aeropilot-v1-259ecc64/cache
+test ! -e .local/vendor/sam31/aeropilot-v1-259ecc64/aeropilot_v1.pt
+curl --fail --location --retry 0 --connect-timeout 30 --max-time 1800 \
+  https://huggingface.co/AeroPilot/AeroPilot-v1/resolve/259ecc64a35dece97f443fe650d3580dd8efaf5c/aeropilot_v1.pt \
+  --output .local/vendor/sam31/aeropilot-v1-259ecc64/aeropilot_v1.pt
+printf '%s  %s\n' \
+  9c0813310a2e82c9cbf8347216b51cc27ac0898d360693e70c4b4cdbc12b72b9 \
+  .local/vendor/sam31/aeropilot-v1-259ecc64/aeropilot_v1.pt | sha256sum --check --strict
+```
+
+Set the checkpoint/cache paths and GPU UUID in `.local/runtime.env`. The checkpoint is 3,502,749,201 bytes and contains the fine-tuned detector plus the preserved official video tracker.
+
+A valid warmup manifest and its images are **required before startup**. See [Preparing a warmup fixture](../mission_planner/agents/services/README.md#preparing-a-warmup-fixture) for the exact folder layout and manifest creation. Use images you have permission to process. A newly created fixture must be qualified; it does not reproduce the committed benchmark simply by having the same dimensions. Set `SNR_SAM_WARMUP` to its absolute `protocol.json` path.
+
+### 7. Configure Glimmer and the separate calibration endpoint
+
+The live application uses Wonder through Meta Model API and Glimmer through the configured endpoint. If using an existing compatible Glimmer service, put its endpoint and full authorization header in `.env` and verify the [request contract](../mission_planner/agents/README.md).
+
+For your own Modal deployment, follow [Modal calibration SAM and Glimmer](../mission_planner/agents/services/README.md#modal-calibration-sam-and-glimmer). Before deployment, create the `snr-weights` Volume and stage these artifacts from the **pinned revisions listed there**:
+
+- `Muse-Glimmer-30B-KQuant-17GB-Q4_K_M.gguf`
+- `mmproj-Muse-Glimmer-30B-Q4_K_M.gguf`
+- `sam3.1_multiplex.pt` from `facebook/sam3.1` for the independent calibration endpoint
+
+Accept the applicable model terms and verify each file's SHA-256 against the pinned Hugging Face metadata or [recorded hashes](../mission_planner/measurements/modal.json). Upload them under those exact filenames at the Volume root. With verified downloads under `.local/vendor/modal-weights/`, the first-time commands are:
+
+```sh
+set -a
+. .env
+set +a
+.venv-cosys/bin/modal volume create snr-weights
+.venv-cosys/bin/modal volume put snr-weights \
+  .local/vendor/modal-weights/Muse-Glimmer-30B-KQuant-17GB-Q4_K_M.gguf /
+.venv-cosys/bin/modal volume put snr-weights \
+  .local/vendor/modal-weights/mmproj-Muse-Glimmer-30B-Q4_K_M.gguf /
+.venv-cosys/bin/modal volume put snr-weights \
+  .local/vendor/modal-weights/sam3.1_multiplex.pt /
+.venv-cosys/bin/modal deploy -m mission_planner.agents.services.app
+```
+
+Do not overwrite an existing workspace's weight files. Create Modal proxy credentials for the new endpoints and store their full headers in `.env`. This deployment starts both warm Servers and incurs provider charges; live detection still uses the local AeroPilot-v1 service. The services do not download weights on startup.
+
+### 8. Build a release and install the services
+
+Check all paths in `.local/runtime.env` again and load it. Follow [Installed services](#installed-services) in order: stage the prepared Unreal package, generate slot configuration, create a detached release checkout, build its own browser bundle and install the systemd units. Start vision, TURN, signalling and Unreal before the mission service; the mission service waits for its Cosys listener. Start the web server and Caddy last.
+
+The installer requires a clean detached checkout, the service uid/gid above, working CSRT artifacts, the terrain hash, TURN configuration and the prepared Unreal release. It deliberately fails when a prerequisite is missing. Do not run the evidence-registry conversion on a fresh installation; it is only for old mission data.
+
+### 9. Verify the new installation
+
+```sh
+systemctl is-active snr-web snr-mission@0 snr-vision@0 \
+  snr-signalling@0 snr-unreal@0 snr-turn snr-caddy
+curl --fail --max-time 15 http://127.0.0.1:3001/healthz
+curl --fail --max-time 15 "$SNR_ORIGIN/healthz"
+```
+
+With the mission and vision services idle, run the [SAM qualification](../mission_planner/agents/services/README.md#qualification) on the selected device. On the new host, run the [browser acceptance](#installed-services) and [shared-session acceptance](../web/README.md) before opening it to judges. Browser acceptance creates a scenario and requires an idle mission and available video controller. Follow the root README's demo flow for a manual search; unit tests alone do not establish live detection or flight performance.
+
+Development uses the single `127.0.0.1:5174` listener with `npm run dev` after the backend services are configured. Use the documented SSH tunnel. Stop a coupled simulation with [the ordered shutdown](../world/cosys/README.md#install-and-restart); stopping autopilots while Unreal is waiting for their motor replies can stall the world.
+
+## Host reference
 
 The project runs as a dedicated service user with Docker and video group membership, at the
 checkout path `SNR_ROOT` (`/srv/snr` and user `snr` in the examples below). Its uid and gid must
@@ -17,18 +186,17 @@ toolchain directories are errors. Inspect the failure before taking another acti
 The verification directory records the complete installed-package inventory. Package availability
 in the configured Ubuntu and NVIDIA repositories is required; unavailable versions fail installation.
 
-Stage the tracked `deploy/` files and a main-only Git bundle on the target. The user stage can
-run from the staging copy before the repository exists:
+Stage the tracked `deploy/` files on the target. The user stage can
+run from that staging copy before the service checkout exists:
 
 ```sh
 export SNR_SERVICE_USER=snr SNR_SERVICE_UID=1002 SNR_SERVICE_GID=1003 SNR_ROOT=/srv/snr
 sudo -E bash deploy/host.sh user
-sudo git clone --branch main --single-branch /path/to/main.bundle "$SNR_ROOT"
+sudo git clone --branch main --single-branch https://github.com/brookaylneh/AeroPilot.git "$SNR_ROOT"
 sudo chown -R "$SNR_SERVICE_USER:$SNR_SERVICE_USER" "$SNR_ROOT"
 ```
 
-Place the staged `deploy/` files in the checkout before the remaining stages. Verify the bundle with `git bundle verify` and the cloned history with `git fsck --full --strict`.
-Delete the temporary bundle and remove its local Git remote after verification.
+Verify the cloned repository with `git fsck --full --strict` before the remaining stages.
 
 ```sh
 sudo -E bash "$SNR_ROOT/deploy/host.sh" packages
@@ -51,7 +219,7 @@ Docker uses the NVIDIA runtime configured by `nvidia-ctk`.
 
 ## Toolchains
 
-All downloaded tools and archives live under `~/snr/.local/toolchains/`; nothing is installed
+All downloaded tools and archives live under `$SNR_ROOT/.local/toolchains/`; nothing is installed
 in `/opt`. Versions are defined in `host.sh`; archive hashes are in `toolchains.sha256`.
 The installer records executable hashes in `.local/toolchains/binaries.sha256`.
 
@@ -63,7 +231,7 @@ The installer records executable hashes in `.local/toolchains/binaries.sha256`.
 | `python3.10`                         | Link to the system interpreter; Cosys environment              |
 | `vulkaninfo`                         | Binary from the LunarG SDK; current Vulkan feature enumeration |
 
-Use `export PATH="$HOME/snr/.local/toolchains/bin:$PATH"` in an interactive shell.
+Use `export PATH="$SNR_ROOT/.local/toolchains/bin:$PATH"` in an interactive shell.
 Service units must use explicit tool paths. Python environment creation and Unreal Engine transfer
 are separate operations. The engine's destination is
 `.local/toolchains/UnrealEngine-5.8.2`.
@@ -287,14 +455,14 @@ Run development with `npm run dev`. Vite middleware and API/WebSocket handlers s
 listener; reload the browser after changes. Tunnel it with:
 
 ```sh
-ssh -L 5174:127.0.0.1:5174 <admin-user>@<public-ip>
+ssh -L 5174:127.0.0.1:5174 "${SNR_SSH_TARGET:?Set SNR_SSH_TARGET to your admin-user@public-ip}"
 ```
 
 Acceptance uses the installed public origin. Do not allocate temporary listening ports.
 
 ```sh
 node --env-file=.local/runtime.env deploy/accept-browser.mjs \
-  "$SNR_ORIGIN" .local/evidence/services/<new-browser-run>
+  "$SNR_ORIGIN" ".local/evidence/services/browser-$(date -u +%Y%m%dT%H%M%SZ)"
 ```
 
 The harness creates a scenario, measures one minute of navigation and selected ICE candidates,
