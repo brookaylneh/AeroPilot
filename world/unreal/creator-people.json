@@ -1,0 +1,454 @@
+[
+  {
+    "id": "rocketbox-child-01",
+    "selectionId": "child-01",
+    "name": "Child 1",
+    "ageCategory": "Child",
+    "description": "Blond hair.",
+    "topId": "pink-layered-shirt",
+    "bottomId": "jeans",
+    "supportsBackpack": false,
+    "fixedAccessories": "Trainers.",
+    "supportedSituations": [
+      "lost",
+      "waiting",
+      "injured"
+    ],
+    "reportProfile": {
+      "fullName": "Maya Bennett",
+      "ageYears": 9,
+      "sex": "female",
+      "heightCm": 143,
+      "build": "slim",
+      "distinguishingFeatures": "Blond hair.",
+      "category": "child_td_1_16",
+      "activity": "a family nature walk",
+      "companions": "her mother and younger brother",
+      "reportingParty": "Laura Bennett, her mother",
+      "medicalNotes": "No medical conditions reported. Usually responds to her name and seeks help from adults.",
+      "experience": "Familiar with short marked walks; no navigation training.",
+      "equipment": [
+        "a snack bar in a pocket"
+      ],
+      "hoursMissing": 2,
+      "clothing": {
+        "upper": "pink shirt over a white long-sleeved top",
+        "lower": "light blue jeans",
+        "footwear": "purple trainers",
+        "accessories": []
+      }
+    }
+  },
+  {
+    "id": "rocketbox-child-02",
+    "selectionId": "child-02",
+    "name": "Child 2",
+    "ageCategory": "Child",
+    "description": "Short dark hair.",
+    "topId": "blue-jumper",
+    "bottomId": "jeans",
+    "supportsBackpack": false,
+    "fixedAccessories": "Trainers.",
+    "supportedSituations": [
+      "lost",
+      "waiting",
+      "injured"
+    ],
+    "reportProfile": {
+      "fullName": "Noah Patel",
+      "ageYears": 10,
+      "sex": "male",
+      "heightCm": 143,
+      "build": "slim",
+      "distinguishingFeatures": "Short dark hair.",
+      "category": "child_td_1_16",
+      "activity": "a supervised wildlife walk",
+      "companions": "his father and two cousins",
+      "reportingParty": "Arun Patel, his father",
+      "medicalNotes": "Mild asthma; carries a reliever inhaler. Becomes quiet when anxious.",
+      "experience": "Enjoys local walks but has no independent navigation experience.",
+      "equipment": [
+        "a blue reliever inhaler"
+      ],
+      "hoursMissing": 3,
+      "clothing": {
+        "upper": "blue jumper",
+        "lower": "blue jeans",
+        "footwear": "grey trainers",
+        "accessories": []
+      }
+    }
+  },
+  {
+    "id": "rocketbox-child-04",
+    "selectionId": "child-04",
+    "name": "Child 4",
+    "ageCategory": "Child",
+    "description": "Short dark hair and dark skin.",
+    "topId": "orange-number-38-shirt",
+    "bottomId": "shorts",
+    "supportsBackpack": false,
+    "fixedAccessories": "Sandals.",
+    "supportedSituations": [
+      "lost",
+      "waiting",
+      "injured"
+    ],
+    "reportProfile": {
+      "fullName": "Caleb Brooks",
+      "ageYears": 8,
+      "sex": "male",
+      "heightCm": 143,
+      "build": "slim",
+      "distinguishingFeatures": "Short dark hair and dark skin.",
+      "category": "child_td_1_16",
+      "activity": "a picnic and a short family walk",
+      "companions": "his aunt and sister",
+      "reportingParty": "Denise Brooks, his aunt",
+      "medicalNotes": "No medical conditions reported. Easily distracted by wildlife; responds to his given name.",
+      "experience": "Has visited once before and relies on accompanying adults for directions.",
+      "equipment": [
+        "a small packet of biscuits"
+      ],
+      "hoursMissing": 2,
+      "clothing": {
+        "upper": "orange number 38 shirt",
+        "lower": "grey shorts",
+        "footwear": "brown sandals",
+        "accessories": []
+      }
+    }
+  },
+  {
+    "id": "rocketbox-adult-01",
+    "selectionId": "adult-01",
+    "name": "Adult 1",
+    "ageCategory": "Adult",
+    "description": "Blond hair and fair skin.",
+    "topId": "leather-jacket",
+    "bottomId": "cargo-trousers",
+    "supportsBackpack": false,
+    "fixedAccessories": "Boots.",
+    "supportedSituations": [
+      "lost",
+      "waiting",
+      "injured"
+    ],
+    "reportProfile": {
+      "fullName": "Elena Ward",
+      "ageYears": 34,
+      "sex": "female",
+      "heightCm": 177,
+      "build": "medium",
+      "distinguishingFeatures": "Blond hair and fair skin.",
+      "category": "hiker",
+      "activity": "a morning out-and-back hike",
+      "companions": "her friend Rebecca",
+      "reportingParty": "Rebecca Moss, her walking companion",
+      "medicalNotes": "No medical conditions reported. Normally stops to check a route when uncertain.",
+      "experience": "Regular day hiker, visiting this valley for the first time.",
+      "equipment": [
+        "a mobile phone",
+        "a folded paper map"
+      ],
+      "hoursMissing": 4,
+      "clothing": {
+        "upper": "brown leather jacket",
+        "lower": "khaki cargo trousers",
+        "footwear": "black boots",
+        "accessories": []
+      }
+    }
+  },
+  {
+    "id": "rocketbox-adult-02",
+    "selectionId": "adult-02",
+    "name": "Adult 2",
+    "ageCategory": "Adult",
+    "description": "Cap and short hair.",
+    "topId": "blue-and-white-hooded-jacket",
+    "bottomId": "jeans",
+    "supportsBackpack": false,
+    "fixedAccessories": "Trainers and cap.",
+    "supportedSituations": [
+      "lost",
+      "waiting",
+      "injured"
+    ],
+    "reportProfile": {
+      "fullName": "Marcus Reed",
+      "ageYears": 29,
+      "sex": "male",
+      "heightCm": 181,
+      "build": "medium",
+      "distinguishingFeatures": "Cap and short hair.",
+      "category": "hiker",
+      "activity": "a half-day hike to photograph the valley",
+      "companions": "his brother",
+      "reportingParty": "Daniel Reed, his brother",
+      "medicalNotes": "No medical conditions reported. Normally calls his brother if delayed.",
+      "experience": "Occasional day hiker; limited familiarity with this area.",
+      "equipment": [
+        "a mobile phone",
+        "a cereal bar"
+      ],
+      "hoursMissing": 3,
+      "clothing": {
+        "upper": "blue and white hooded jacket",
+        "lower": "blue jeans",
+        "footwear": "white trainers",
+        "accessories": [
+          "a black cap"
+        ]
+      }
+    }
+  },
+  {
+    "id": "rocketbox-adult-03",
+    "selectionId": "adult-03",
+    "name": "Adult 3",
+    "ageCategory": "Adult",
+    "description": "Dark hair.",
+    "topId": "dark-top",
+    "bottomId": "skirt",
+    "supportsBackpack": false,
+    "fixedAccessories": "Boots.",
+    "supportedSituations": [
+      "lost",
+      "waiting",
+      "injured"
+    ],
+    "reportProfile": {
+      "fullName": "Sofia Chen",
+      "ageYears": 42,
+      "sex": "female",
+      "heightCm": 174,
+      "build": "medium",
+      "distinguishingFeatures": "Dark hair.",
+      "category": "hiker",
+      "activity": "a short sightseeing walk before lunch",
+      "companions": "her partner",
+      "reportingParty": "Alex Chen, her partner",
+      "medicalNotes": "A previous ankle sprain can limit endurance on uneven ground. No acute injury has been reported.",
+      "experience": "Occasional hiker accustomed to marked paths.",
+      "equipment": [
+        "a mobile phone",
+        "a packet of tissues"
+      ],
+      "hoursMissing": 2,
+      "clothing": {
+        "upper": "dark brown top",
+        "lower": "dark brown skirt",
+        "footwear": "brown boots",
+        "accessories": []
+      }
+    }
+  },
+  {
+    "id": "rocketbox-adult-04",
+    "selectionId": "adult-04",
+    "name": "Adult 4",
+    "ageCategory": "Adult",
+    "description": "Short hair and dark skin.",
+    "topId": "denim-jacket",
+    "bottomId": "jeans",
+    "supportsBackpack": false,
+    "fixedAccessories": "Original shoes.",
+    "supportedSituations": [
+      "lost",
+      "waiting",
+      "injured"
+    ],
+    "reportProfile": {
+      "fullName": "David Okafor",
+      "ageYears": 38,
+      "sex": "male",
+      "heightCm": 181,
+      "build": "medium",
+      "distinguishingFeatures": "Short hair and dark skin.",
+      "category": "hiker",
+      "activity": "a morning recreational hike",
+      "companions": "his colleague",
+      "reportingParty": "Peter Shaw, his walking companion",
+      "medicalNotes": "No medical conditions reported. Usually follows signed paths and asks for directions.",
+      "experience": "Regular hiker with basic map-reading experience; unfamiliar with this valley.",
+      "equipment": [
+        "a mobile phone",
+        "a pocket compass"
+      ],
+      "hoursMissing": 4,
+      "clothing": {
+        "upper": "blue denim jacket over a white shirt",
+        "lower": "blue jeans",
+        "footwear": "white trainers",
+        "accessories": []
+      }
+    }
+  },
+  {
+    "id": "rocketbox-older-01",
+    "selectionId": "older-01",
+    "name": "Older adult 1",
+    "ageCategory": "Older",
+    "description": "Hair tied back and fair skin; exact age is unspecified.",
+    "topId": "formal-coat",
+    "bottomId": "black-trousers",
+    "supportsBackpack": false,
+    "fixedAccessories": "Heels.",
+    "supportedSituations": [
+      "lost",
+      "waiting",
+      "injured"
+    ],
+    "reportProfile": {
+      "fullName": "Helen Mercer",
+      "ageYears": 68,
+      "sex": "female",
+      "heightCm": 174,
+      "build": "slim",
+      "distinguishingFeatures": "Hair tied back and fair skin.",
+      "category": "elderly_non_dementia",
+      "activity": "a short scenic walk during a family outing",
+      "companions": "her daughter",
+      "reportingParty": "Alice Mercer, her daughter",
+      "medicalNotes": "Arthritis affects walking endurance. Family reports no cognitive impairment.",
+      "experience": "An older adult who takes short walks and knows little of the local trail network.",
+      "equipment": [
+        "a mobile phone",
+        "a handkerchief"
+      ],
+      "hoursMissing": 2,
+      "clothing": {
+        "upper": "brown formal coat over a white blouse",
+        "lower": "black trousers",
+        "footwear": "brown heels",
+        "accessories": []
+      }
+    }
+  },
+  {
+    "id": "rocketbox-older-02",
+    "selectionId": "older-02",
+    "name": "Older adult 2",
+    "ageCategory": "Older",
+    "description": "Grey hair and an older facial appearance.",
+    "topId": "blazer-and-red-shirt",
+    "bottomId": "trousers",
+    "supportsBackpack": false,
+    "fixedAccessories": "Original shoes.",
+    "supportedSituations": [
+      "lost",
+      "waiting",
+      "injured"
+    ],
+    "reportProfile": {
+      "fullName": "Arthur Collins",
+      "ageYears": 76,
+      "sex": "male",
+      "heightCm": 181,
+      "build": "medium",
+      "distinguishingFeatures": "Grey hair and an older facial appearance.",
+      "category": "dementia",
+      "activity": "a gentle walk before a family lunch",
+      "companions": "his son",
+      "reportingParty": "James Collins, his son",
+      "medicalNotes": "Diagnosed dementia affects orientation and recall. May not recognise that assistance is needed; use a calm approach.",
+      "experience": "Previously a keen walker; now needs a companion for unfamiliar routes.",
+      "equipment": [
+        "a wallet with identification",
+        "a house key"
+      ],
+      "hoursMissing": 3,
+      "clothing": {
+        "upper": "grey blazer and red shirt",
+        "lower": "black trousers",
+        "footwear": "black shoes",
+        "accessories": []
+      }
+    }
+  },
+  {
+    "id": "rocketbox-older-03",
+    "selectionId": "older-03",
+    "name": "Older adult 3",
+    "ageCategory": "Older",
+    "description": "Grey hair and glasses; exact age is unspecified.",
+    "topId": "business-jacket",
+    "bottomId": "black-trousers",
+    "supportsBackpack": false,
+    "fixedAccessories": "Glasses and original shoes.",
+    "supportedSituations": [
+      "lost",
+      "waiting",
+      "injured"
+    ],
+    "reportProfile": {
+      "fullName": "Margaret Ellis",
+      "ageYears": 72,
+      "sex": "female",
+      "heightCm": 173,
+      "build": "slim",
+      "distinguishingFeatures": "Grey hair and glasses.",
+      "category": "elderly_non_dementia",
+      "activity": "a brief sightseeing walk",
+      "companions": "her niece",
+      "reportingParty": "Ruth Ellis, her niece",
+      "medicalNotes": "Uses glasses for distance vision. Family reports no cognitive impairment; becomes tired on steep paths.",
+      "experience": "An older adult comfortable with short paths but unfamiliar with the valley.",
+      "equipment": [
+        "a mobile phone",
+        "a small purse"
+      ],
+      "hoursMissing": 2,
+      "clothing": {
+        "upper": "burgundy business jacket",
+        "lower": "black trousers",
+        "footwear": "black shoes",
+        "accessories": [
+          "glasses"
+        ]
+      }
+    }
+  },
+  {
+    "id": "rocketbox-older-04",
+    "selectionId": "older-04",
+    "name": "Older adult 4",
+    "ageCategory": "Older",
+    "description": "Thinning hair and an older facial appearance.",
+    "topId": "plain-shirt",
+    "bottomId": "khaki-trousers",
+    "supportsBackpack": false,
+    "fixedAccessories": "Original shoes.",
+    "supportedSituations": [
+      "lost",
+      "waiting",
+      "injured"
+    ],
+    "reportProfile": {
+      "fullName": "Thomas Hughes",
+      "ageYears": 74,
+      "sex": "male",
+      "heightCm": 180,
+      "build": "medium",
+      "distinguishingFeatures": "Thinning hair and an older facial appearance.",
+      "category": "elderly_non_dementia",
+      "activity": "a morning walk to look at birds",
+      "companions": "his spouse",
+      "reportingParty": "Anne Hughes, his spouse",
+      "medicalNotes": "Mild hearing loss; speak clearly at close range. Family reports no cognitive impairment.",
+      "experience": "An older adult with years of walking experience who prefers established paths.",
+      "equipment": [
+        "a pocket bird guide",
+        "a mobile phone"
+      ],
+      "hoursMissing": 4,
+      "clothing": {
+        "upper": "grey shirt",
+        "lower": "khaki trousers",
+        "footwear": "brown shoes",
+        "accessories": []
+      }
+    }
+  }
+]

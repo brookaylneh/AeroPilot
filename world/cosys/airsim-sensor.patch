@@ -1,0 +1,67 @@
+--- a/Source/AirLib/include/common/AirSimSettings.hpp
++++ b/Source/AirLib/include/common/AirSimSettings.hpp
+@@ -200,6 +200,9 @@
+             float auto_exposure_high_percent = Utils::nan<float>();
+             float auto_exposure_histogram_log_min = Utils::nan<float>();
+             float auto_exposure_histogram_log_max = Utils::nan<float>();
++
++            float white_balance_temperature = Utils::nan<float>();
++            float white_balance_tint = Utils::nan<float>();
+ 
+             // Chromatic aberration settings
+             float chromatic_aberration_intensity = Utils::nan<float>();
+@@ -1553,6 +1556,9 @@
+             capture_setting.auto_exposure_high_percent = settings_json.getFloat("AutoExposureHighPercent", capture_setting.auto_exposure_high_percent);
+             capture_setting.auto_exposure_histogram_log_min = settings_json.getFloat("AutoExposureHistogramLogMin", capture_setting.auto_exposure_histogram_log_min);
+             capture_setting.auto_exposure_histogram_log_max = settings_json.getFloat("AutoExposureHistogramLogMax", capture_setting.auto_exposure_histogram_log_max);
++
++            capture_setting.white_balance_temperature = settings_json.getFloat("WhiteBalanceTemperature", capture_setting.white_balance_temperature);
++            capture_setting.white_balance_tint = settings_json.getFloat("WhiteBalanceTint", capture_setting.white_balance_tint);
+ 
+             capture_setting.motion_blur_amount = settings_json.getFloat("MotionBlurAmount", capture_setting.motion_blur_amount);
+             capture_setting.motion_blur_max = settings_json.getFloat("MotionBlurMax", capture_setting.motion_blur_max);
+--- a/Source/PIPCamera.cpp
++++ b/Source/PIPCamera.cpp
+@@ -780,6 +780,16 @@
+ 
+ void APIPCamera::updateCameraPostProcessingSetting(FPostProcessSettings& obj, const CaptureSetting& setting)
+ {
++    if (!std::isnan(setting.white_balance_temperature)) {
++        obj.bOverride_TemperatureType = 1;
++        obj.TemperatureType = TEMP_WhiteBalance;
++        obj.bOverride_WhiteTemp = 1;
++        obj.WhiteTemp = setting.white_balance_temperature;
++    }
++    if (!std::isnan(setting.white_balance_tint)) {
++        obj.bOverride_WhiteTint = 1;
++        obj.WhiteTint = setting.white_balance_tint;
++    }
+     if (!std::isnan(setting.motion_blur_amount)) {
+         obj.bOverride_MotionBlurAmount = 1;
+         obj.MotionBlurAmount = setting.motion_blur_amount;
+--- a/Source/UnrealImageCapture.cpp
++++ b/Source/UnrealImageCapture.cpp
+@@ -116,6 +116,7 @@
+             auto camera_pose = camera->getPose();
+             response.camera_position = camera_pose.position;
+             response.camera_orientation = camera_pose.orientation;
++            response.time_stamp = msr::airlib::ClockFactory::get()->nowNanos();
+         }
+     };
+     RenderRequest render_request{ gameViewport, std::move(query_camera_pose_cb) };
+@@ -127,7 +128,6 @@
+         ImageResponse& response = responses.at(i);
+ 
+         response.camera_name = request.camera_name;
+-        response.time_stamp = render_results[i]->time_stamp;
+         response.image_data_uint8 = std::vector<uint8_t>(render_results[i]->image_data_uint8.GetData(), render_results[i]->image_data_uint8.GetData() + render_results[i]->image_data_uint8.Num());
+         response.image_data_float = std::vector<float>(render_results[i]->image_data_float.GetData(), render_results[i]->image_data_float.GetData() + render_results[i]->image_data_float.Num());
+ 
+@@ -137,6 +137,7 @@
+             msr::airlib::Pose pose = camera->getPose();
+             response.camera_position = pose.position;
+             response.camera_orientation = pose.orientation;
++            response.time_stamp = msr::airlib::ClockFactory::get()->nowNanos();
+         }
+         response.pixels_as_float = request.pixels_as_float;
+         response.compress = request.compress;

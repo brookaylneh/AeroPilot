@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "assets": {
+    "granite-hero-boulder": {
+      "reference": "granite-hero-boulder",
+      "seed": 31,
+      "dimensionsM": [2.85, 3.6, 3.1],
+      "toleranceM": 0.005,
+      "buriedM": 0.3,
+      "textureSize": 4096,
+      "collision": true,
+      "panels": { "front": [0, 0], "back": [1, 0], "left": [0, 1], "top": [1, 1] },
+      "correspondences": [
+        { "name": "joint back of top", "modelM": [0.445, -0.541, 2.475], "pixel": [1100, 770] },
+        { "name": "joint on top", "modelM": [0.751, -0.119, 2.221], "pixel": [1460, 980] },
+        { "name": "joint top front", "modelM": [1.129, 0.324, 2.118], "pixel": [1860, 1130] },
+        { "name": "joint turn", "modelM": [1.256, 0.55, 1.903], "pixel": [2040, 1250] },
+        { "name": "joint upper face", "modelM": [1.266, 0.681, 1.506], "pixel": [2140, 1550] },
+        { "name": "joint mid face", "modelM": [1.243, 0.785, 1.138], "pixel": [2200, 1810] },
+        { "name": "joint lower face", "modelM": [1.237, 0.86, 0.832], "pixel": [2220, 2050] },
+        { "name": "joint low on the front face", "modelM": [1.018, 0.854, 0.532], "pixel": [2230, 2270] },
+        { "name": "top of the silhouette", "modelM": [-0.253, -0.313, 2.764], "pixel": [1151, 504] },
+        { "name": "lowest contact", "modelM": [0.567, -0.314, 0.002], "pixel": [1286, 2525] }
+      ],
+      "colourRegions": {
+        "front": [[600, 1300, 1500, 2000]],
+        "top": [[1150, 700, 1900, 950]],
+        "side": [[2250, 1300, 2650, 1900]],
+        "base": [[900, 2330, 1900, 2480]]
+      }
+    }
+  }
+}

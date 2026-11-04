@@ -1,0 +1,1308 @@
+{
+  "recorded_utc": "2026-11-03",
+  "baseline_commit": "4685d5578a8810051299c35f0e781b5ed6878500",
+  "source_mission_id": "aa671a2b-d89f-4c5e-8d2a-d9a4b7229c3b",
+  "scope": "Saved-frame CPU replay, request serialization replay, original-photograph Glimmer concurrency check and offline contract regressions. No flight or Wonder inference.",
+  "native_tracker": {
+    "scope": "CPU replay of saved person-acquisition images using the actual baseline and final LiveTracker classes. Same frames, coherent SAM boxes, two-second exact-frame reseeding. No new capture, model call or flight.",
+    "limitations": [
+      "SAM agreement is a proxy, not ground-truth accuracy.",
+      "Offline frames are JPEG-decoded; deployed final tracker consumes native pixels directly.",
+      "Timing covers tracker work; baseline includes its repeated JPEG decode. Capture and SAM latency are excluded.",
+      "This does not exercise asynchronous VisualFollow or establish browser, four-drone, live-flight or real-hardware acceptance."
+    ],
+    "opencv": "4.10.0",
+    "final_source_sha256": "bcd341f99bd00215fafba2665bfdf2b09cd79c5d18e16d26786da03f099cd6ef",
+    "baseline_source_sha256": "2e0871b8211fd425568bce4b3a8ec18df13794897fca7388b8143094f19c40f0",
+    "source_mission": ".local/slots/0/missions/aa671a2b-d89f-4c5e-8d2a-d9a4b7229c3b",
+    "runs": [
+      {
+        "implementation": "baseline_actual",
+        "updates": 41,
+        "first10_updates": 21,
+        "first10_iou_under_0_1": 14,
+        "first10_median_iou": 0.0,
+        "all_median_iou": 0.40540540540540543,
+        "update_median_ms": 117.08658799761906,
+        "update_p95_ms": 129.69259801320732,
+        "values": [
+          {
+            "t": 0.0,
+            "frame_id": "88c40d4c-a5c4-4fe7-b068-4d90341d3d72",
+            "seed": true,
+            "found": true,
+            "box_960x540": [457.0, 402.5, 464.5, 413.5],
+            "iou": 1.0,
+            "processing_ms": 122.54170002415776
+          },
+          {
+            "t": 0.482066650390625,
+            "frame_id": "be91bb96-96ee-496c-8059-1cde35515b1c",
+            "seed": false,
+            "found": true,
+            "box_960x540": [450.0, 407.0, 458.0, 419.0],
+            "iou": 0.8333333333333334,
+            "processing_ms": 119.02456101961434
+          },
+          {
+            "t": 0.790159912109375,
+            "frame_id": "d5981666-81bc-47f5-b51d-4e9922b6681c",
+            "seed": false,
+            "found": true,
+            "box_960x540": [450.0, 400.0, 458.0, 412.0],
+            "iou": 0.46875,
+            "processing_ms": 121.7332270462066
+          },
+          {
+            "t": 1.14129736328125,
+            "frame_id": "2b22ca03-43f0-40ce-9ba1-97b56c262252",
+            "seed": false,
+            "found": true,
+            "box_960x540": [450.0, 402.0, 458.0, 414.0],
+            "iou": 0.0,
+            "processing_ms": 120.78684399602935
+          },
+          {
+            "t": 1.4596748046875,
+            "frame_id": "5143ffbf-7dcf-4133-9025-a7a364337a66",
+            "seed": false,
+            "found": true,
+            "box_960x540": [453.0, 405.0, 461.0, 417.0],
+            "iou": 0.0,
+            "processing_ms": 117.98323999391869
+          },
+          {
+            "t": 1.81680615234375,
+            "frame_id": "1dd8762d-2d1a-451b-909d-05c5dd770258",
+            "seed": false,
+            "found": true,
+            "box_960x540": [453.0, 411.0, 461.0, 423.0],
+            "iou": 0.0,
+            "processing_ms": 120.22842100122944
+          },
+          {
+            "t": 2.15124755859375,
+            "frame_id": "85916bc7-4450-4a32-8264-73394c4637a8",
+            "seed": true,
+            "found": true,
+            "box_960x540": [462.5, 333.5, 468.5, 340.0],
+            "iou": 1.0,
+            "processing_ms": 114.96629798784852
+          },
+          {
+            "t": 2.813988037109375,
+            "frame_id": "65f338c6-90d3-49ad-b05d-b58cd39cba9a",
+            "seed": false,
+            "found": true,
+            "box_960x540": [468.0, 331.0, 475.0, 338.0],
+            "iou": 0.0,
+            "processing_ms": 114.99638395616785
+          },
+          {
+            "t": 3.1652470703125,
+            "frame_id": "71f80fbb-c612-4a32-98b4-a96d8ecc49b8",
+            "seed": false,
+            "found": true,
+            "box_960x540": [468.0, 334.0, 475.0, 341.0],
+            "iou": 0.0,
+            "processing_ms": 113.21233998751268
+          },
+          {
+            "t": 3.501254638671875,
+            "frame_id": "f8631fd1-c9a7-4ff7-baa0-e35a2f0f5ff0",
+            "seed": false,
+            "found": true,
+            "box_960x540": [469.0, 338.0, 476.0, 345.0],
+            "iou": 0.0,
+            "processing_ms": 114.22087298706174
+          },
+          {
+            "t": 3.8728544921875,
+            "frame_id": "f79425fe-7bbf-4a61-9f0a-1f2c40e5cf60",
+            "seed": false,
+            "found": true,
+            "box_960x540": [473.0, 338.0, 480.0, 345.0],
+            "iou": 0.0,
+            "processing_ms": 120.44575397158042
+          },
+          {
+            "t": 4.19449072265625,
+            "frame_id": "e479e10b-5b40-42cd-858e-6c0f510a7e33",
+            "seed": true,
+            "found": true,
+            "box_960x540": [490.5, 236.5, 496.0, 242.5],
+            "iou": 1.0,
+            "processing_ms": 115.67363602807745
+          },
+          {
+            "t": 4.54149951171875,
+            "frame_id": "9e8e6b16-d7f9-46e8-bec3-87d7d74c947b",
+            "seed": false,
+            "found": true,
+            "box_960x540": [493.0, 236.0, 499.0, 243.0],
+            "iou": 0.0,
+            "processing_ms": 113.49838698515669
+          },
+          {
+            "t": 4.90478466796875,
+            "frame_id": "af285295-5ca8-4d9d-9546-f07a4bb594fd",
+            "seed": false,
+            "found": true,
+            "box_960x540": [498.0, 238.0, 504.0, 245.0],
+            "iou": 0.0,
+            "processing_ms": 113.2319489843212
+          },
+          {
+            "t": 5.26985009765625,
+            "frame_id": "cf3eaef5-b323-4b9b-91bf-70facdff3763",
+            "seed": false,
+            "found": true,
+            "box_960x540": [501.0, 237.0, 507.0, 244.0],
+            "iou": 0.0,
+            "processing_ms": 113.98160102544352
+          },
+          {
+            "t": 5.655605224609375,
+            "frame_id": "99e13cec-2e3e-467d-8839-8b6bd375b93f",
+            "seed": false,
+            "found": true,
+            "box_960x540": [500.0, 240.0, 506.0, 247.0],
+            "iou": 0.0,
+            "processing_ms": 116.81107699405402
+          },
+          {
+            "t": 6.00936962890625,
+            "frame_id": "f65882f2-49ee-4b6f-82af-278ed2b549ba",
+            "seed": false,
+            "found": true,
+            "box_960x540": [502.0, 242.0, 508.0, 249.0],
+            "iou": 0.0,
+            "processing_ms": 114.6484559867531
+          },
+          {
+            "t": 6.31967919921875,
+            "frame_id": "8fd8efd1-e7e1-4cc3-9a7d-88bc40b8eaae",
+            "seed": true,
+            "found": true,
+            "box_960x540": [509.0, 177.5, 516.0, 184.0],
+            "iou": 1.0,
+            "processing_ms": 112.92079801205546
+          },
+          {
+            "t": 6.65659912109375,
+            "frame_id": "a41e44b6-f193-47be-8918-0f5219338244",
+            "seed": false,
+            "found": true,
+            "box_960x540": [504.0, 184.0, 511.0, 191.0],
+            "iou": 0.5796178343949044,
+            "processing_ms": 113.40250598732382
+          },
+          {
+            "t": 7.007527099609375,
+            "frame_id": "00e77b88-77d8-40bb-bf1c-6247f698e8cc",
+            "seed": false,
+            "found": true,
+            "box_960x540": [498.0, 191.0, 505.0, 198.0],
+            "iou": 0.5611510791366906,
+            "processing_ms": 115.52355298772454
+          },
+          {
+            "t": 7.69625634765625,
+            "frame_id": "d07b0925-9590-47f8-a440-edd4b75dbc51",
+            "seed": false,
+            "found": true,
+            "box_960x540": [503.0, 192.0, 510.0, 199.0],
+            "iou": 0.0,
+            "processing_ms": 116.76011298550293
+          },
+          {
+            "t": 8.005095703125,
+            "frame_id": "3eeabd88-4853-48f5-ac3d-5dec8ac86f1e",
+            "seed": false,
+            "found": true,
+            "box_960x540": [503.0, 192.0, 510.0, 199.0],
+            "iou": 0.0,
+            "processing_ms": 118.15676098922268
+          },
+          {
+            "t": 8.362069091796876,
+            "frame_id": "268498e4-4f0a-418a-a7e1-7d15ca252439",
+            "seed": true,
+            "found": true,
+            "box_960x540": [470.0, 212.5, 478.0, 223.5],
+            "iou": 1.0,
+            "processing_ms": 124.26735402550548
+          },
+          {
+            "t": 8.70113916015625,
+            "frame_id": "5b58a92b-8cfc-44f7-91e5-7c531982b0f3",
+            "seed": false,
+            "found": true,
+            "box_960x540": [463.0, 226.0, 471.0, 238.0],
+            "iou": 0.6363636363636364,
+            "processing_ms": 120.40970695670694
+          },
+          {
+            "t": 9.070931640625,
+            "frame_id": "5e0c641c-68ed-4683-8695-d5fa63ec9f37",
+            "seed": false,
+            "found": true,
+            "box_960x540": [456.0, 239.0, 464.0, 251.0],
+            "iou": 0.4221105527638191,
+            "processing_ms": 121.27001496264711
+          },
+          {
+            "t": 9.40060205078125,
+            "frame_id": "892a5baf-11ae-4776-be0e-291297ea731a",
+            "seed": false,
+            "found": true,
+            "box_960x540": [450.0, 250.0, 458.0, 262.0],
+            "iou": 0.7291666666666666,
+            "processing_ms": 126.93751399638131
+          },
+          {
+            "t": 10.72681201171875,
+            "frame_id": "b1fa95c7-3a82-496d-963c-d0c4d6aba1c2",
+            "seed": true,
+            "found": true,
+            "box_960x540": [423.0, 289.5, 429.5, 298.5],
+            "iou": 1.0,
+            "processing_ms": 119.7029750328511
+          },
+          {
+            "t": 11.370716796875,
+            "frame_id": "847dab5b-4471-47a8-a4b3-ec43d7278aa3",
+            "seed": false,
+            "found": true,
+            "box_960x540": [423.0, 295.0, 430.0, 305.0],
+            "iou": 0.8666666666666667,
+            "processing_ms": 119.92321896832436
+          },
+          {
+            "t": 12.0812587890625,
+            "frame_id": "e2a2aebc-850a-4744-ab0a-e5a06fce5a7b",
+            "seed": false,
+            "found": true,
+            "box_960x540": [429.0, 300.0, 436.0, 310.0],
+            "iou": 0.6285714285714286,
+            "processing_ms": 116.4596020244062
+          },
+          {
+            "t": 12.732220947265626,
+            "frame_id": "dd42b7ed-0c31-4c3c-bdab-8a172b74c80b",
+            "seed": true,
+            "found": true,
+            "box_960x540": [436.0, 310.0, 442.0, 317.5],
+            "iou": 1.0,
+            "processing_ms": 113.33841201849282
+          },
+          {
+            "t": 13.086130126953124,
+            "frame_id": "a6c7d3d0-0ca8-46de-b4b5-732e4f787e67",
+            "seed": false,
+            "found": true,
+            "box_960x540": [439.0, 315.0, 445.0, 323.0],
+            "iou": 0.812807881773399,
+            "processing_ms": 115.95736304298043
+          },
+          {
+            "t": 13.446683837890625,
+            "frame_id": "deaa4fca-a847-417b-8b70-bea545090078",
+            "seed": false,
+            "found": true,
+            "box_960x540": [446.0, 310.0, 452.0, 318.0],
+            "iou": 0.44680851063829785,
+            "processing_ms": 114.32516999775544
+          },
+          {
+            "t": 13.7791982421875,
+            "frame_id": "99baa937-261d-4200-a394-660e9b34e2b0",
+            "seed": false,
+            "found": true,
+            "box_960x540": [447.0, 307.0, 453.0, 315.0],
+            "iou": 0.0,
+            "processing_ms": 116.31177400704473
+          },
+          {
+            "t": 14.50205859375,
+            "frame_id": "aec926be-6036-41bb-83ad-6337202e06d6",
+            "seed": false,
+            "found": true,
+            "box_960x540": [451.0, 307.0, 457.0, 315.0],
+            "iou": 0.0,
+            "processing_ms": 117.60913900798187
+          },
+          {
+            "t": 14.77308642578125,
+            "frame_id": "723bade8-819f-42d2-902f-c0c2ae052123",
+            "seed": true,
+            "found": true,
+            "box_960x540": [469.5, 271.5, 475.5, 280.0],
+            "iou": 1.0,
+            "processing_ms": 122.99533397890627
+          },
+          {
+            "t": 15.487439453125,
+            "frame_id": "0a48e5e2-12b9-4a5a-a40b-20613db3a2eb",
+            "seed": false,
+            "found": true,
+            "box_960x540": [471.0, 271.0, 478.0, 280.0],
+            "iou": 0.0,
+            "processing_ms": 131.21439702808857
+          },
+          {
+            "t": 15.821429931640624,
+            "frame_id": "7acf25f6-061c-4032-bc85-561355deb0eb",
+            "seed": false,
+            "found": true,
+            "box_960x540": [474.0, 272.0, 481.0, 281.0],
+            "iou": 0.0,
+            "processing_ms": 127.03044299269095
+          },
+          {
+            "t": 16.16442724609375,
+            "frame_id": "57aa63a3-4f13-49e8-a707-3f6af4273555",
+            "seed": false,
+            "found": true,
+            "box_960x540": [479.0, 273.0, 486.0, 282.0],
+            "iou": 0.0,
+            "processing_ms": 130.0063260132447
+          },
+          {
+            "t": 16.524532470703125,
+            "frame_id": "8f1abc35-b761-4e16-856f-5fa8232c0c1d",
+            "seed": false,
+            "found": true,
+            "box_960x540": [484.0, 274.0, 491.0, 283.0],
+            "iou": 0.0,
+            "processing_ms": 129.69259801320732
+          },
+          {
+            "t": 17.218325927734377,
+            "frame_id": "75e5b578-8fa5-4426-95de-ae0c42f94748",
+            "seed": true,
+            "found": true,
+            "box_960x540": [481.0, 259.5, 488.5, 268.0],
+            "iou": 1.0,
+            "processing_ms": 116.7263169772923
+          },
+          {
+            "t": 17.555827392578124,
+            "frame_id": "2b5f6d4f-ac63-4c30-9a5d-f42c0a788aa4",
+            "seed": false,
+            "found": true,
+            "box_960x540": [481.0, 263.0, 489.0, 272.0],
+            "iou": 0.7075471698113207,
+            "processing_ms": 119.16962900431827
+          },
+          {
+            "t": 17.911159912109376,
+            "frame_id": "546c3b14-3e42-4264-a1be-427a5ccd1c4e",
+            "seed": false,
+            "found": true,
+            "box_960x540": [481.0, 269.0, 489.0, 278.0],
+            "iou": 0.42452830188679247,
+            "processing_ms": 117.08658799761906
+          },
+          {
+            "t": 18.264756103515627,
+            "frame_id": "962f2040-9726-437a-b8d1-c998bb893f64",
+            "seed": false,
+            "found": true,
+            "box_960x540": [481.0, 274.0, 489.0, 283.0],
+            "iou": 0.47619047619047616,
+            "processing_ms": 118.15267597557977
+          },
+          {
+            "t": 18.604311767578125,
+            "frame_id": "bc9a1825-a000-47da-b2c4-56ef1b242c77",
+            "seed": false,
+            "found": true,
+            "box_960x540": [483.0, 275.0, 491.0, 284.0],
+            "iou": 0.40540540540540543,
+            "processing_ms": 119.18727098964155
+          },
+          {
+            "t": 18.975227783203124,
+            "frame_id": "0e34ad73-eec3-4449-870e-f70b78255792",
+            "seed": false,
+            "found": true,
+            "box_960x540": [486.0, 273.0, 494.0, 282.0],
+            "iou": 0.5899053627760252,
+            "processing_ms": 116.50882597314194
+          },
+          {
+            "t": 19.336162109375,
+            "frame_id": "31bb4c85-75c1-4991-9a0c-d8f4214a401a",
+            "seed": true,
+            "found": true,
+            "box_960x540": [487.0, 271.5, 495.5, 279.5],
+            "iou": 1.0,
+            "processing_ms": 117.32742504682392
+          },
+          {
+            "t": 19.654802978515626,
+            "frame_id": "a39200eb-ad7d-4ee8-ae6d-7489a16cb924",
+            "seed": false,
+            "found": true,
+            "box_960x540": [490.0, 271.0, 499.0, 280.0],
+            "iou": 0.6666666666666666,
+            "processing_ms": 115.79546402208507
+          },
+          {
+            "t": 20.00965380859375,
+            "frame_id": "56de603f-93f4-4ffd-ba71-50a7b3c0b98a",
+            "seed": false,
+            "found": true,
+            "box_960x540": [493.0, 271.0, 502.0, 280.0],
+            "iou": 0.6419753086419753,
+            "processing_ms": 115.8434500102885
+          },
+          {
+            "t": 20.3580263671875,
+            "frame_id": "9c3ca60b-25d7-48ec-b512-9cced142dc14",
+            "seed": false,
+            "found": true,
+            "box_960x540": [494.0, 270.0, 503.0, 279.0],
+            "iou": 0.635593220338983,
+            "processing_ms": 115.3423689538613
+          },
+          {
+            "t": 21.02123193359375,
+            "frame_id": "381b950d-8122-4c7a-aecc-8c0a9e1628f7",
+            "seed": false,
+            "found": true,
+            "box_960x540": [495.0, 268.0, 504.0, 277.0],
+            "iou": 0.5313351498637602,
+            "processing_ms": 120.33522402634844
+          },
+          {
+            "t": 21.333894775390625,
+            "frame_id": "6ce83b34-db81-42cc-bee4-5dc5739d3c7e",
+            "seed": false,
+            "found": true,
+            "box_960x540": [496.0, 269.0, 505.0, 278.0],
+            "iou": 0.6504065040650406,
+            "processing_ms": 116.66546296328306
+          }
+        ]
+      },
+      {
+        "implementation": "final_actual",
+        "updates": 41,
+        "first10_updates": 21,
+        "first10_iou_under_0_1": 0,
+        "first10_median_iou": 0.6944643375923767,
+        "all_median_iou": 0.6944643375923767,
+        "update_median_ms": 18.409770040307194,
+        "update_p95_ms": 23.67919497191906,
+        "values": [
+          {
+            "t": 0.0,
+            "frame_id": "88c40d4c-a5c4-4fe7-b068-4d90341d3d72",
+            "seed": true,
+            "found": true,
+            "box_960x540": [457.0, 402.5, 464.5, 413.5],
+            "iou": 1.0,
+            "processing_ms": 10.286357952281833
+          },
+          {
+            "t": 0.482066650390625,
+            "frame_id": "be91bb96-96ee-496c-8059-1cde35515b1c",
+            "seed": false,
+            "found": true,
+            "box_960x540": [450.50634765625, 407.4664001464844, 458.0332946777344, 418.50079345703125],
+            "iou": 0.8504036435812897,
+            "processing_ms": 15.979226038325578
+          },
+          {
+            "t": 0.790159912109375,
+            "frame_id": "d5981666-81bc-47f5-b51d-4e9922b6681c",
+            "seed": false,
+            "found": true,
+            "box_960x540": [449.30975341796875, 399.8681945800781, 456.9109191894531, 410.9109802246094],
+            "iou": 0.5361097032351191,
+            "processing_ms": 15.486805001273751
+          },
+          {
+            "t": 1.14129736328125,
+            "frame_id": "2b22ca03-43f0-40ce-9ba1-97b56c262252",
+            "seed": false,
+            "found": true,
+            "box_960x540": [450.54888916015625, 384.0886535644531, 458.3251647949219, 395.1582336425781],
+            "iou": 0.6040884765110851,
+            "processing_ms": 16.95298799313605
+          },
+          {
+            "t": 1.4596748046875,
+            "frame_id": "5143ffbf-7dcf-4133-9025-a7a364337a66",
+            "seed": false,
+            "found": true,
+            "box_960x540": [452.15618896484375, 368.68572998046875, 460.1161193847656, 379.79132080078125],
+            "iou": 0.7352963617831118,
+            "processing_ms": 17.006859998218715
+          },
+          {
+            "t": 1.81680615234375,
+            "frame_id": "1dd8762d-2d1a-451b-909d-05c5dd770258",
+            "seed": false,
+            "found": true,
+            "box_960x540": [455.6390686035156, 350.5835266113281, 463.8214111328125, 361.7458190917969],
+            "iou": 0.5748152075284448,
+            "processing_ms": 17.441909993067384
+          },
+          {
+            "t": 2.15124755859375,
+            "frame_id": "85916bc7-4450-4a32-8264-73394c4637a8",
+            "seed": true,
+            "found": true,
+            "box_960x540": [462.5, 333.5, 468.5, 340.0],
+            "iou": 1.0,
+            "processing_ms": 14.893254032358527
+          },
+          {
+            "t": 2.813988037109375,
+            "frame_id": "65f338c6-90d3-49ad-b05d-b58cd39cba9a",
+            "seed": false,
+            "found": true,
+            "box_960x540": [472.267333984375, 297.5536193847656, 478.6128845214844, 304.34576416015625],
+            "iou": 0.7191147716751124,
+            "processing_ms": 21.239239955320954
+          },
+          {
+            "t": 3.1652470703125,
+            "frame_id": "71f80fbb-c612-4a32-98b4-a96d8ecc49b8",
+            "seed": false,
+            "found": true,
+            "box_960x540": [477.4375, 279.5244140625, 483.97265625, 286.48248291015625],
+            "iou": 0.7859415621897686,
+            "processing_ms": 20.77877300325781
+          },
+          {
+            "t": 3.501254638671875,
+            "frame_id": "f8631fd1-c9a7-4ff7-baa0-e35a2f0f5ff0",
+            "seed": false,
+            "found": true,
+            "box_960x540": [481.4538269042969, 264.2182312011719, 488.1462707519531, 271.3185729980469],
+            "iou": 0.6944643375923767,
+            "processing_ms": 21.062585001345724
+          },
+          {
+            "t": 3.8728544921875,
+            "frame_id": "f79425fe-7bbf-4a61-9f0a-1f2c40e5cf60",
+            "seed": false,
+            "found": true,
+            "box_960x540": [485.2672424316406, 250.44967651367188, 492.1211853027344, 257.6999816894531],
+            "iou": 0.7194146524352979,
+            "processing_ms": 22.979663976002485
+          },
+          {
+            "t": 4.19449072265625,
+            "frame_id": "e479e10b-5b40-42cd-858e-6c0f510a7e33",
+            "seed": true,
+            "found": true,
+            "box_960x540": [490.5, 236.5, 496.0, 242.5],
+            "iou": 1.0,
+            "processing_ms": 12.516396003775299
+          },
+          {
+            "t": 4.54149951171875,
+            "frame_id": "9e8e6b16-d7f9-46e8-bec3-87d7d74c947b",
+            "seed": false,
+            "found": true,
+            "box_960x540": [494.5878601074219, 221.84634399414062, 500.2705078125, 228.02130126953125],
+            "iou": 0.9216544020881289,
+            "processing_ms": 17.6698740106076
+          },
+          {
+            "t": 4.90478466796875,
+            "frame_id": "af285295-5ca8-4d9d-9546-f07a4bb594fd",
+            "seed": false,
+            "found": true,
+            "box_960x540": [498.9224548339844, 207.41111755371094, 504.79071044921875, 213.76734924316406],
+            "iou": 0.7490468524860628,
+            "processing_ms": 17.985671991482377
+          },
+          {
+            "t": 5.26985009765625,
+            "frame_id": "cf3eaef5-b323-4b9b-91bf-70facdff3763",
+            "seed": false,
+            "found": true,
+            "box_960x540": [504.50067138671875, 191.8090362548828, 510.61334228515625, 198.40452575683594],
+            "iou": 0.7953861164268783,
+            "processing_ms": 19.04300198657438
+          },
+          {
+            "t": 5.655605224609375,
+            "frame_id": "99e13cec-2e3e-467d-8839-8b6bd375b93f",
+            "seed": false,
+            "found": true,
+            "box_960x540": [509.29901123046875, 176.0, 515.6634521484375, 182.8478546142578],
+            "iou": 0.6809807204263052,
+            "processing_ms": 18.409770040307194
+          },
+          {
+            "t": 6.00936962890625,
+            "frame_id": "f65882f2-49ee-4b6f-82af-278ed2b549ba",
+            "seed": false,
+            "found": true,
+            "box_960x540": [511.7587585449219, 171.86697387695312, 518.1985473632812, 178.7880401611328],
+            "iou": 0.7853796781613968,
+            "processing_ms": 22.304556041490287
+          },
+          {
+            "t": 6.31967919921875,
+            "frame_id": "8fd8efd1-e7e1-4cc3-9a7d-88bc40b8eaae",
+            "seed": true,
+            "found": true,
+            "box_960x540": [509.0, 177.5, 516.0, 184.0],
+            "iou": 1.0,
+            "processing_ms": 16.40616700751707
+          },
+          {
+            "t": 6.65659912109375,
+            "frame_id": "a41e44b6-f193-47be-8918-0f5219338244",
+            "seed": false,
+            "found": true,
+            "box_960x540": [503.8376770019531, 185.09959411621094, 510.7441711425781, 191.4828338623047],
+            "iou": 0.5878107720613479,
+            "processing_ms": 23.520081012975425
+          },
+          {
+            "t": 7.007527099609375,
+            "frame_id": "00e77b88-77d8-40bb-bf1c-6247f698e8cc",
+            "seed": false,
+            "found": true,
+            "box_960x540": [497.8410949707031, 191.41119384765625, 505.1837463378906, 198.21258544921875],
+            "iou": 0.6070976114261866,
+            "processing_ms": 22.4263200070709
+          },
+          {
+            "t": 7.69625634765625,
+            "frame_id": "d07b0925-9590-47f8-a440-edd4b75dbc51",
+            "seed": false,
+            "found": true,
+            "box_960x540": [484.7606506347656, 201.25900268554688, 492.73663330078125, 208.6697540283203],
+            "iou": 0.6099320619114896,
+            "processing_ms": 22.615733032580465
+          },
+          {
+            "t": 8.005095703125,
+            "frame_id": "3eeabd88-4853-48f5-ac3d-5dec8ac86f1e",
+            "seed": false,
+            "found": true,
+            "box_960x540": [478.4599914550781, 204.96075439453125, 486.5820617675781, 212.51223754882812],
+            "iou": 0.7571369019593961,
+            "processing_ms": 22.814946016296744
+          },
+          {
+            "t": 8.362069091796876,
+            "frame_id": "268498e4-4f0a-418a-a7e1-7d15ca252439",
+            "seed": true,
+            "found": true,
+            "box_960x540": [470.0, 212.5, 478.0, 223.5],
+            "iou": 1.0,
+            "processing_ms": 9.38555400352925
+          },
+          {
+            "t": 8.70113916015625,
+            "frame_id": "5b58a92b-8cfc-44f7-91e5-7c531982b0f3",
+            "seed": false,
+            "found": true,
+            "box_960x540": [462.4894104003906, 226.32386779785156, 470.82220458984375, 237.508544921875],
+            "iou": 0.6056709341063901,
+            "processing_ms": 14.945450995583087
+          },
+          {
+            "t": 9.070931640625,
+            "frame_id": "5e0c641c-68ed-4683-8695-d5fa63ec9f37",
+            "seed": false,
+            "found": true,
+            "box_960x540": [455.0748291015625, 239.14456176757812, 463.7193603515625, 250.50733947753906],
+            "iou": 0.4632180109479718,
+            "processing_ms": 15.580374980345368
+          },
+          {
+            "t": 9.40060205078125,
+            "frame_id": "892a5baf-11ae-4776-be0e-291297ea731a",
+            "seed": false,
+            "found": true,
+            "box_960x540": [449.0107116699219, 250.04847717285156, 457.90850830078125, 261.5647888183594],
+            "iou": 0.6831281090712938,
+            "processing_ms": 15.916976961307228
+          },
+          {
+            "t": 10.72681201171875,
+            "frame_id": "b1fa95c7-3a82-496d-963c-d0c4d6aba1c2",
+            "seed": true,
+            "found": true,
+            "box_960x540": [423.0, 289.5, 429.5, 298.5],
+            "iou": 1.0,
+            "processing_ms": 12.18256400898099
+          },
+          {
+            "t": 11.370716796875,
+            "frame_id": "847dab5b-4471-47a8-a4b3-ec43d7278aa3",
+            "seed": false,
+            "found": true,
+            "box_960x540": [422.894775390625, 295.37640380859375, 429.56878662109375, 304.5024719238281],
+            "iou": 0.7333385150457676,
+            "processing_ms": 17.1119169681333
+          },
+          {
+            "t": 12.0812587890625,
+            "frame_id": "e2a2aebc-850a-4744-ab0a-e5a06fce5a7b",
+            "seed": false,
+            "found": true,
+            "box_960x540": [429.4360046386719, 300.5385437011719, 436.46246337890625, 309.92132568359375],
+            "iou": 0.6620531368693531,
+            "processing_ms": 18.401207053102553
+          },
+          {
+            "t": 12.732220947265626,
+            "frame_id": "dd42b7ed-0c31-4c3c-bdab-8a172b74c80b",
+            "seed": true,
+            "found": true,
+            "box_960x540": [436.0, 310.0, 442.0, 317.5],
+            "iou": 1.0,
+            "processing_ms": 17.7921750000678
+          },
+          {
+            "t": 13.086130126953124,
+            "frame_id": "a6c7d3d0-0ca8-46de-b4b5-732e4f787e67",
+            "seed": false,
+            "found": true,
+            "box_960x540": [438.9097595214844, 315.0796203613281, 445.0163879394531, 322.676025390625],
+            "iou": 0.8232171290220421,
+            "processing_ms": 23.67919497191906
+          },
+          {
+            "t": 13.446683837890625,
+            "frame_id": "deaa4fca-a847-417b-8b70-bea545090078",
+            "seed": false,
+            "found": true,
+            "box_960x540": [444.3755187988281, 308.7295227050781, 450.63677978515625, 316.451416015625],
+            "iou": 0.8270882885510876,
+            "processing_ms": 23.168866988271475
+          },
+          {
+            "t": 13.7791982421875,
+            "frame_id": "99baa937-261d-4200-a394-660e9b34e2b0",
+            "seed": false,
+            "found": true,
+            "box_960x540": [451.0284423828125, 296.4831848144531, 457.4699401855469, 304.34393310546875],
+            "iou": 0.7797961867239789,
+            "processing_ms": 23.20440101902932
+          },
+          {
+            "t": 14.50205859375,
+            "frame_id": "aec926be-6036-41bb-83ad-6337202e06d6",
+            "seed": false,
+            "found": true,
+            "box_960x540": [464.4800109863281, 276.68218994140625, 471.3045959472656, 284.8359375],
+            "iou": 0.7349771444711019,
+            "processing_ms": 27.873548038769513
+          },
+          {
+            "t": 14.77308642578125,
+            "frame_id": "723bade8-819f-42d2-902f-c0c2ae052123",
+            "seed": true,
+            "found": true,
+            "box_960x540": [469.5, 271.5, 475.5, 280.0],
+            "iou": 1.0,
+            "processing_ms": 14.990217983722687
+          },
+          {
+            "t": 15.487439453125,
+            "frame_id": "0a48e5e2-12b9-4a5a-a40b-20613db3a2eb",
+            "seed": false,
+            "found": true,
+            "box_960x540": [482.7459716796875, 255.26910400390625, 489.2684020996094, 264.1312255859375],
+            "iou": 0.6178678799324218,
+            "processing_ms": 21.9021100201644
+          },
+          {
+            "t": 15.821429931640624,
+            "frame_id": "7acf25f6-061c-4032-bc85-561355deb0eb",
+            "seed": false,
+            "found": true,
+            "box_960x540": [489.2846984863281, 248.30433654785156, 496.06695556640625, 257.34112548828125],
+            "iou": 0.7791067467531447,
+            "processing_ms": 22.193718003109097
+          },
+          {
+            "t": 16.16442724609375,
+            "frame_id": "57aa63a3-4f13-49e8-a707-3f6af4273555",
+            "seed": false,
+            "found": true,
+            "box_960x540": [490.203125, 248.19488525390625, 497.0220642089844, 257.25543212890625],
+            "iou": 0.6231455518081027,
+            "processing_ms": 22.09013100946322
+          },
+          {
+            "t": 16.524532470703125,
+            "frame_id": "8f1abc35-b761-4e16-856f-5fa8232c0c1d",
+            "seed": false,
+            "found": true,
+            "box_960x540": [487.7406921386719, 252.6855926513672, 494.4433898925781, 261.6676940917969],
+            "iou": 0.6893734532534985,
+            "processing_ms": 23.749040032271296
+          },
+          {
+            "t": 17.218325927734377,
+            "frame_id": "75e5b578-8fa5-4426-95de-ae0c42f94748",
+            "seed": true,
+            "found": true,
+            "box_960x540": [481.0, 259.5, 488.5, 268.0],
+            "iou": 1.0,
+            "processing_ms": 12.873932020738721
+          },
+          {
+            "t": 17.555827392578124,
+            "frame_id": "2b5f6d4f-ac63-4c30-9a5d-f42c0a788aa4",
+            "seed": false,
+            "found": true,
+            "box_960x540": [480.6993408203125, 263.6459045410156, 488.3065490722656, 272.23895263671875],
+            "iou": 0.7917023057532729,
+            "processing_ms": 18.604689044877887
+          },
+          {
+            "t": 17.911159912109376,
+            "frame_id": "546c3b14-3e42-4264-a1be-427a5ccd1c4e",
+            "seed": false,
+            "found": true,
+            "box_960x540": [479.8034362792969, 269.4664611816406, 487.5766296386719, 278.2047119140625],
+            "iou": 0.6072953836537883,
+            "processing_ms": 17.835639999248087
+          },
+          {
+            "t": 18.264756103515627,
+            "frame_id": "962f2040-9726-437a-b8d1-c998bb893f64",
+            "seed": false,
+            "found": true,
+            "box_960x540": [479.7671813964844, 274.14306640625, 487.68072509765625, 283.0049133300781],
+            "iou": 0.6899856726002658,
+            "processing_ms": 18.239082011859864
+          },
+          {
+            "t": 18.604311767578125,
+            "frame_id": "bc9a1825-a000-47da-b2c4-56ef1b242c77",
+            "seed": false,
+            "found": true,
+            "box_960x540": [481.9983215332031, 274.62677001953125, 489.94091796875, 283.51434326171875],
+            "iou": 0.5551432697292992,
+            "processing_ms": 17.67506101168692
+          },
+          {
+            "t": 18.975227783203124,
+            "frame_id": "0e34ad73-eec3-4449-870e-f70b78255792",
+            "seed": false,
+            "found": true,
+            "box_960x540": [485.0776672363281, 273.0184020996094, 493.0345458984375, 281.918212890625],
+            "iou": 0.6797521045904796,
+            "processing_ms": 17.423742974642664
+          },
+          {
+            "t": 19.336162109375,
+            "frame_id": "31bb4c85-75c1-4991-9a0c-d8f4214a401a",
+            "seed": true,
+            "found": true,
+            "box_960x540": [487.0, 271.5, 495.5, 279.5],
+            "iou": 1.0,
+            "processing_ms": 12.207485968247056
+          },
+          {
+            "t": 19.654802978515626,
+            "frame_id": "a39200eb-ad7d-4ee8-ae6d-7489a16cb924",
+            "seed": false,
+            "found": true,
+            "box_960x540": [490.0, 271.5, 498.5, 279.5],
+            "iou": 0.6486486486486487,
+            "processing_ms": 17.56734203081578
+          },
+          {
+            "t": 20.00965380859375,
+            "frame_id": "56de603f-93f4-4ffd-ba71-50a7b3c0b98a",
+            "seed": false,
+            "found": true,
+            "box_960x540": [493.1479187011719, 271.3088073730469, 501.6601867675781, 279.322265625],
+            "iou": 0.7329711470527,
+            "processing_ms": 18.431133998092264
+          },
+          {
+            "t": 20.3580263671875,
+            "frame_id": "9c3ca60b-25d7-48ec-b512-9cced142dc14",
+            "seed": false,
+            "found": true,
+            "box_960x540": [493.9490051269531, 270.5377502441406, 502.5628967285156, 278.6632080078125],
+            "iou": 0.7344435004292337,
+            "processing_ms": 17.806033021770418
+          },
+          {
+            "t": 21.02123193359375,
+            "frame_id": "381b950d-8122-4c7a-aecc-8c0a9e1628f7",
+            "seed": false,
+            "found": true,
+            "box_960x540": [494.433349609375, 269.0442810058594, 503.499755859375, 277.6443176269531],
+            "iou": 0.7085430207377535,
+            "processing_ms": 18.373319995589554
+          },
+          {
+            "t": 21.333894775390625,
+            "frame_id": "6ce83b34-db81-42cc-bee4-5dc5739d3c7e",
+            "seed": false,
+            "found": true,
+            "box_960x540": [496.085693359375, 268.8690185546875, 505.1959533691406, 277.5190124511719],
+            "iou": 0.6544615215603355,
+            "processing_ms": 17.67708599800244
+          }
+        ]
+      }
+    ]
+  },
+  "request_process_isolation": {
+    "scope": "Actual Wonder request construction using original recorded 4K photographs in spawned worker processes. Mock HTTP transport only; no model, GPU or flight calls.",
+    "one_photo": {
+      "requests": [
+        {
+          "request_bytes": 27448182,
+          "hashes": ["a2d53135326f0a655fdf9a6d0f4f11e98f73e36615fe5361d6beea8c8c2b3fcc"]
+        }
+      ],
+      "elapsed_s": 0.5049498869921081,
+      "heartbeat_max_gap_s": 0.010575717024039477,
+      "heartbeat_target_s": 0.01
+    },
+    "original_three_image_pattern": {
+      "requests": [
+        {
+          "request_bytes": 83025628,
+          "hashes": [
+            "a2d53135326f0a655fdf9a6d0f4f11e98f73e36615fe5361d6beea8c8c2b3fcc",
+            "c4d91ad37a22dd753f227bbdd1224dea059c697c973787e707357d0f8f46642d",
+            "a2d53135326f0a655fdf9a6d0f4f11e98f73e36615fe5361d6beea8c8c2b3fcc"
+          ]
+        }
+      ],
+      "elapsed_s": 1.5152856069616973,
+      "heartbeat_max_gap_s": 0.01046449301065877,
+      "heartbeat_target_s": 0.01
+    },
+    "two_concurrent_photos": {
+      "requests": [
+        {
+          "request_bytes": 27448182,
+          "hashes": ["a2d53135326f0a655fdf9a6d0f4f11e98f73e36615fe5361d6beea8c8c2b3fcc"]
+        },
+        {
+          "request_bytes": 28129746,
+          "hashes": ["c4d91ad37a22dd753f227bbdd1224dea059c697c973787e707357d0f8f46642d"]
+        }
+      ],
+      "elapsed_s": 0.5127755330177024,
+      "heartbeat_max_gap_s": 0.010289539000950754,
+      "heartbeat_target_s": 0.01
+    }
+  },
+  "glimmer_review_concurrency": {
+    "scope": "Two saved original 4x 4K photographs, frozen Glimmer template and sampling, deployed Modal H200. Four review requests, no new photograph, Wonder call, flight or local GPU inference.",
+    "sequential": {
+      "wall_s": 24.278813364042435,
+      "reviews": [
+        {
+          "elapsed_s": 11.491251343977638,
+          "track_id": 1,
+          "decision": "escalate",
+          "reasoning_tokens": 128,
+          "image_sha256": "c4d91ad37a22dd753f227bbdd1224dea059c697c973787e707357d0f8f46642d",
+          "usage": {
+            "completion_tokens": 305,
+            "prompt_tokens": 4495,
+            "total_tokens": 4800,
+            "prompt_tokens_details": {
+              "cached_tokens": 4494
+            }
+          },
+          "server_timings": {
+            "cache_n": 4494,
+            "prompt_n": 1,
+            "prompt_ms": 46.012,
+            "prompt_per_token_ms": 46.012,
+            "prompt_per_second": 21.73346083630357,
+            "predicted_n": 305,
+            "predicted_ms": 4271.213,
+            "predicted_per_token_ms": 14.050042763157894,
+            "predicted_per_second": 71.17416059559662
+          }
+        },
+        {
+          "elapsed_s": 12.787549828004558,
+          "track_id": 2,
+          "decision": "recheck",
+          "reasoning_tokens": 193,
+          "image_sha256": "a2d53135326f0a655fdf9a6d0f4f11e98f73e36615fe5361d6beea8c8c2b3fcc",
+          "usage": {
+            "completion_tokens": 396,
+            "prompt_tokens": 4495,
+            "total_tokens": 4891,
+            "prompt_tokens_details": {
+              "cached_tokens": 4494
+            }
+          },
+          "server_timings": {
+            "cache_n": 4494,
+            "prompt_n": 1,
+            "prompt_ms": 45.628,
+            "prompt_per_token_ms": 45.628,
+            "prompt_per_second": 21.91636714298238,
+            "predicted_n": 396,
+            "predicted_ms": 5603.395,
+            "predicted_per_token_ms": 14.185810126582279,
+            "predicted_per_second": 70.49297791785158
+          }
+        }
+      ]
+    },
+    "concurrent": {
+      "wall_s": 12.293074560991954,
+      "reviews": [
+        {
+          "elapsed_s": 11.092321945005096,
+          "track_id": 1,
+          "decision": "escalate",
+          "reasoning_tokens": 135,
+          "image_sha256": "c4d91ad37a22dd753f227bbdd1224dea059c697c973787e707357d0f8f46642d",
+          "usage": {
+            "completion_tokens": 268,
+            "prompt_tokens": 4495,
+            "total_tokens": 4763,
+            "prompt_tokens_details": {
+              "cached_tokens": 4494
+            }
+          },
+          "server_timings": {
+            "cache_n": 4494,
+            "prompt_n": 1,
+            "prompt_ms": 62.143,
+            "prompt_per_token_ms": 62.143,
+            "prompt_per_second": 16.09191703007579,
+            "predicted_n": 268,
+            "predicted_ms": 4381.021,
+            "predicted_per_token_ms": 16.408318352059926,
+            "predicted_per_second": 60.944697594464856
+          }
+        },
+        {
+          "elapsed_s": 12.292888643045444,
+          "track_id": 2,
+          "decision": "recheck",
+          "reasoning_tokens": 189,
+          "image_sha256": "a2d53135326f0a655fdf9a6d0f4f11e98f73e36615fe5361d6beea8c8c2b3fcc",
+          "usage": {
+            "completion_tokens": 399,
+            "prompt_tokens": 4495,
+            "total_tokens": 4894,
+            "prompt_tokens_details": {
+              "cached_tokens": 4494
+            }
+          },
+          "server_timings": {
+            "cache_n": 4494,
+            "prompt_n": 1,
+            "prompt_ms": 44.241,
+            "prompt_per_token_ms": 44.241,
+            "prompt_per_second": 22.603467371894848,
+            "predicted_n": 399,
+            "predicted_ms": 6188.174,
+            "predicted_per_token_ms": 15.548175879396984,
+            "predicted_per_second": 64.31622640216645
+          }
+        }
+      ]
+    },
+    "limitations": [
+      "One pair per condition; same images and model slots may reuse cache. This does not establish four-drone or multi-environment capacity."
+    ]
+  },
+  "dependencies": {
+    "opencv-contrib-python-headless": "4.10.0.84",
+    "numpy": "1.23.5",
+    "scipy": "1.15.3",
+    "Pillow": "11.0.0",
+    "httpx": "0.28.1"
+  },
+  "provenance": {
+    "python": "3.10.12 (main, Aug 31 2026, 10:18:17) [GCC 11.4.0]",
+    "dependencies": {
+      "httpx": "0.28.1",
+      "numpy": "1.23.5",
+      "scipy": "1.15.3",
+      "Pillow": "11.0.0",
+      "opencv-contrib-python-headless": "4.10.0.84"
+    },
+    "sam_source_commit": "f1647e8d0c1d280991f4d1b7d974c2704537fe66",
+    "sam_runtime_image": "sha256:1a6d5e2b8fc66e06575b247e0db719a990a48c736796d6507d52b10ecf8b3f23",
+    "unreal_runtime_image": "sha256:d737ab3d1825f65286633211fbadc3c435d265b19d5d5ba3d39228544d310f78",
+    "runner_usage": "CPU-only saved-data replays and request serialization, passive GPU/telemetry reads, and four saved-photo Glimmer requests to the existing deployed server. No Wonder request, live flight, new model process, GPU benchmark or additional model deployment.",
+    "sources": [
+      {
+        "url": "https://raw.githubusercontent.com/facebookresearch/sam3/f1647e8d0c1d280991f4d1b7d974c2704537fe66/sam3/model/sam3_video_inference.py",
+        "file": "sam3-video-upstream.py",
+        "claim": "obj_id_to_score is first-frame detection score, used for out_probs; boxes bound the whole binary mask.",
+        "sha256": "a502cd76a845292aaf022f64667c176bad919a1bd0cfd9b542d2aa58a7d561fe"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/opencv/opencv/4.10.0/modules/imgproc/include/opencv2/imgproc.hpp",
+        "file": "opencv-imgproc.hpp",
+        "claim": "Connected-components statistics API and foreground pixel area.",
+        "sha256": "87fa3a94ef497c1c28ac1e01edd667cd7100f388410aad50f73a40b3ac6eee9c"
+      },
+      {
+        "url": "https://raw.githubusercontent.com/opencv/opencv_contrib/4.10.0/modules/tracking/include/opencv2/tracking.hpp",
+        "file": "../production-audit-20261103T1444Z/sources/opencv-tracking.hpp",
+        "claim": "Official CSRT setInitialMask API, evaluated as a candidate improvement, not a measured speed/accuracy gain.",
+        "sha256": "5362366c9e9f96f9ffca16fc1d796b0eac4d5975e465d12e7018fa4aaad73170"
+      },
+      {
+        "url": "https://docs.python.org/3.10/library/asyncio-task.html#asyncio.to_thread",
+        "file": "python-asyncio.html",
+        "claim": "to_thread is constrained by the GIL for CPU-bound code.",
+        "sha256": "0abb47975dda74a37e14ca8854b9bbd584cf593a30ab1557d3c4008929308727"
+      },
+      {
+        "url": "https://docs.opencv.org/4.10.0/d3/dc0/group__imgproc__shape.html",
+        "fetch_status": 403,
+        "claim": "Documentation page fetch failed; the separately fetched exact-version official header verified the API."
+      }
+    ]
+  },
+  "runtime_unchanged": {
+    "sam_image": "sha256:1a6d5e2b8fc66e06575b247e0db719a990a48c736796d6507d52b10ecf8b3f23",
+    "unreal_image": "sha256:d737ab3d1825f65286633211fbadc3c435d265b19d5d5ba3d39228544d310f78",
+    "sam_variant": "drone-ft-v2-epoch2",
+    "assembled_checkpoint_sha256": "6f97e110579b94e9ad5d5537bcb6f8b2a54111181f0fcd97ed021a2b575ca666",
+    "model_gpu_budget_bytes": 16000000000,
+    "main_camera_default_zoom": 1,
+    "evidence_camera_zoom": 4,
+    "evidence_resolution": [3840, 2160],
+    "glimmer_template": "zoom-analyst-v4-single-photo"
+  },
+  "acceptance_pending": [
+    "Same-case user flight with browser tracking and WebRTC diagnostics, including acquisition, turns and brief occlusion.",
+    "Four simultaneous drones and one evidence photograph per new object; the two-photo Glimmer check is not a capacity qualification.",
+    "Installed fresh-frame capture/SAM cadence and source age; offline tracker speed is not aggregate inference or video FPS.",
+    "Browser CSRT alignment remains a separate implementation and is not qualified by native-tracker replay.",
+    "Renderer/encoder startup GPU-fence timeouts are unchanged and require a separate timing investigation.",
+    "On-demand evidence framing and motion at exposure need flight verification; the one-photo-per-object policy intentionally reuses historical evidence.",
+    "Real hardware requires calibrated optics and gimbal actuation/feedback."
+  ],
+  "artifacts": {
+    "tracker-final-replay.json": "acfc75ceb2f4344d10588954ca9a041b79699a1cee7fddfd1a0225f43ede8ca6",
+    "process-replay.json": "ebf48f93ac74f9439e3220e83b2978062e1d21268e8c733c026fddc6c1b17256",
+    "glimmer-concurrency.json": "ed5744dbbe85ccfb63fdc2976f1ed144cd568c2e203f6bb47b6cc6c8e480f50c"
+  },
+  "preparation_validation": {
+    "scope": "Camera-only aiming toward the next observed route during airborne transit; capture and model inference remain gated to the observed step and polygon. Browser observer now uses the production scenario protocol, and the flight-plan explanation matches candidate priority and separate 4x evidence.",
+    "python_tests": 763,
+    "python_elapsed_s": 353.099,
+    "node_tests": 219,
+    "transit_regressions": 2,
+    "typecheck": "passed",
+    "ruff_check": "passed",
+    "ruff_format": "passed",
+    "prettier": "passed",
+    "browser_build": "passed",
+    "logs_sha256": {
+      "python-suite-final-2.log": "39544e39ec473c66cb9700765ffae1b9ef6b24e19900ee2cc1e22e43eb75e59c",
+      "node-tests-final-2.log": "b765a05a7e2b64ec6c9e31774c1c8b13d77e876f4c15cfc79891c52a8638b9aa",
+      "transit-camera-regressions.log": "4963125c4709b10df69e1b1fa88ba2a63293de92a11e4a93b7aa932db3010c1a"
+    },
+    "completed_utc": "2026-11-03T18:23:27.842087+00:00",
+    "limitations": [
+      "Camera preparation is covered by mocked mission/camera regressions; live-flight acquisition and framing remain for the operator test."
+    ]
+  },
+  "worker_bootstrap_repair": {
+    "failure_utc": "2026-11-03T19:00:22Z",
+    "source_mission_id": "0344ee0e-a110-4f30-b4f2-ec46ce33a87c",
+    "cause": "A spawned review worker re-imported gcs.host and its flight-service dependencies from an editable deployment; geodesy.py no longer defined polygon_error while allocation.py still imported it. The worker exited and broke the review pool.",
+    "changes": [
+      "Import flight-service dependencies only when the mission host or connection handler runs.",
+      "Install clean detached source with a private browser bundle; reject editable or shared deployments.",
+      "Exercise one-worker and four-worker pools with the actual mission-host spawn entry point before installation."
+    ],
+    "worker_probe": {
+      "scope": "Five CPU request workers with the actual gcs.host spawn entry point. No model, GPU, camera or flight request.",
+      "pools": [
+        {
+          "workers": 1,
+          "elapsed_s": 0.07999304594704881,
+          "rows": [
+            {
+              "pid": 1128075,
+              "main": "mission_planner.gcs.host",
+              "flight_imported": false
+            }
+          ]
+        },
+        {
+          "workers": 4,
+          "elapsed_s": 0.09435722400667146,
+          "rows": [
+            {
+              "pid": 1128082,
+              "main": "mission_planner.gcs.host",
+              "flight_imported": false
+            },
+            {
+              "pid": 1128081,
+              "main": "mission_planner.gcs.host",
+              "flight_imported": false
+            },
+            {
+              "pid": 1128083,
+              "main": "mission_planner.gcs.host",
+              "flight_imported": false
+            },
+            {
+              "pid": 1128078,
+              "main": "mission_planner.gcs.host",
+              "flight_imported": false
+            }
+          ]
+        }
+      ]
+    },
+    "python_tests": 764,
+    "python_elapsed_s": 325.055,
+    "node_tests": 219,
+    "typecheck": "passed",
+    "ruff_check": "passed",
+    "ruff_format": "passed",
+    "prettier": "passed",
+    "browser_build": "passed",
+    "installer_attached_checkout_rejection": "passed",
+    "source": "https://docs.python.org/3.10/library/multiprocessing.html#safe-importing-of-main-module",
+    "artifacts_sha256": {
+      "worker-import-failure.log": "09d6ba12e84a715b5eed15057e99d2d264f3e76ae164f40c58546120a649abcc",
+      "worker-probe.json": "fd85107f8d59ebb4333fefe33a9c7789df6bf0abec6e6695a71ab64d644df350",
+      "python-suite.log": "e5c63c3dce6b974a54a4f19ae70d6c643681f0ce20693dffa906e7950a584fd2",
+      "node-tests.log": "ef8246d52bf0ccd939536e74e4a9a072a838e0e54ea68d7ab15721172484602d",
+      "installer-guard.log": "292d782e17bb80506b8ad4465a920bf13e731135a1a7763bcfeecd713fa66b85",
+      "python-multiprocessing.html": "6a783f5ce034fc411361f408ba0061d9afcf66fc94afbcd62257b4f9add5b9e0"
+    },
+    "verified_utc": "2026-11-03T19:16:03.064021+00:00",
+    "scope": "No Wonder, Glimmer, SAM inference or flight request. Public and loopback assignment checks both returned HTTP 200 before cutover; no proxy trace ties the reported 502 to this worker failure."
+  },
+  "validation": {
+    "python_tests": 762,
+    "python_elapsed_s": 351.389,
+    "node_tests": 219,
+    "typecheck": "passed",
+    "ruff_check": "passed",
+    "ruff_format": "passed",
+    "prettier": "passed",
+    "browser_build": "passed",
+    "required_checks_completed_utc": "2026-11-03T18:00:46Z"
+  }
+}

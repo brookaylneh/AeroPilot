@@ -1,0 +1,51 @@
+name: checks
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Install test system dependencies
+        run: |
+          sudo apt-get update -o Acquire::Retries=0 -o Acquire::http::Timeout=30
+          sudo apt-get install --yes --no-install-recommends ripgrep
+          rg --version
+      - name: Scan Git history for secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --location --retry 0 --max-time 120 \
+            https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz \
+            --output "$RUNNER_TEMP/gitleaks.tar.gz"
+          printf '%s  %s\n' \
+            551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb \
+            "$RUNNER_TEMP/gitleaks.tar.gz" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C "$RUNNER_TEMP" gitleaks
+          "$RUNNER_TEMP/gitleaks" git --redact=100 --no-banner --log-opts=--all .
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: package.json
+          cache: npm
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.10'
+          cache: pip
+      - run: python -m venv .venv-cosys && .venv-cosys/bin/pip install -r requirements.txt
+      - run: npm ci
+      - run: npm audit --omit=dev
+      # Generate the receipt and masks locally; the heightfield itself is tracked.
+      - run: .venv-cosys/bin/python -m world.unreal.valley --evidence-dir .local/evidence/ci-terrain
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run format:check
+      - run: .venv-cosys/bin/ruff check
+      - run: .venv-cosys/bin/ruff format --check
+      - run: .venv-cosys/bin/python -m unittest

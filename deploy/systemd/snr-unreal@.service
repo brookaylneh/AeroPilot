@@ -1,0 +1,13 @@
+[Unit]
+Description=SNR packaged Unreal world, slot %i
+Requires=docker.service snr-signalling@%i.service
+After=docker.service nvidia-persistenced.service snr-signalling@%i.service
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/bash world/unreal/scripts/unreal-container.sh run-packaged
+# The world stops only through the coupled shutdown in world/cosys/README.md; docker kill's TERM exits 143.
+SuccessExitStatus=143
+
+[Install]
+WantedBy=multi-user.target

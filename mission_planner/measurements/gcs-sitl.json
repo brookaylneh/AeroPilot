@@ -1,0 +1,1899 @@
+{
+  "schema_version": 2,
+  "release_tag": "Copter-4.7.2",
+  "commit": "fb773567896014da007bca58358704d4a0d8516f",
+  "binary_sha256": "ca634fc62f8d4058cf94d00c374831d1c1039cc239491ab7c817669c78e5c835",
+  "build_jobs": 4,
+  "system_packages_installed": [],
+  "versions": {
+    "pymavlink": "2.4.50",
+    "websockets": "15.0.1",
+    "empy": "3.3.4",
+    "pexpect": "4.9.0",
+    "lxml": "6.1.3",
+    "fastcrc": "0.5.0"
+  },
+  "origin": {
+    "name": "Tuolumne Meadows, Yosemite National Park",
+    "latitude_deg": 37.876432,
+    "longitude_deg": -119.393421,
+    "altitude_msl_m": 2621.28
+  },
+  "run": ".local/evidence/gcs/sitl-4.7.2-01/report.json",
+  "initialization_seconds": 45.83607857298921,
+  "sample_seconds": 10.000522945003468,
+  "passed": true,
+  "upstream_sitl_baseline": {
+    "FRAME_TYPE": 0.0,
+    "FS_THR_ENABLE": 1.0,
+    "ARSPD_PIN": 1.0,
+    "ARSPD_BUS": 2.0,
+    "ATC_RAT_YAW_P": 0.3,
+    "ATC_RAT_YAW_I": 0.02,
+    "BATT_MONITOR": 4.0,
+    "COMPASS_OFS_X": 5.0,
+    "COMPASS_OFS_Y": 13.0,
+    "COMPASS_OFS_Z": -18.0,
+    "COMPASS_OFS2_X": 5.0,
+    "COMPASS_OFS2_Y": 13.0,
+    "COMPASS_OFS2_Z": -18.0,
+    "COMPASS_OFS3_X": 5.0,
+    "COMPASS_OFS3_Y": 13.0,
+    "COMPASS_OFS3_Z": -18.0,
+    "FENCE_RADIUS": 150.0,
+    "FRAME_CLASS": 1.0,
+    "RC1_MAX": 2000.0,
+    "RC1_MIN": 1000.0,
+    "RC1_TRIM": 1500.0,
+    "RC2_MAX": 2000.0,
+    "RC2_MIN": 1000.0,
+    "RC2_TRIM": 1500.0,
+    "RC3_MAX": 2000.0,
+    "RC3_MIN": 1000.0,
+    "RC3_TRIM": 1500.0,
+    "RC4_MAX": 2000.0,
+    "RC4_MIN": 1000.0,
+    "RC4_TRIM": 1500.0,
+    "RC5_MAX": 2000.0,
+    "RC5_MIN": 1000.0,
+    "RC5_TRIM": 1500.0,
+    "RC6_MAX": 2000.0,
+    "RC6_MIN": 1000.0,
+    "RC6_TRIM": 1500.0,
+    "RC7_MAX": 2000.0,
+    "RC7_MIN": 1000.0,
+    "RC7_OPTION": 7.0,
+    "RC7_TRIM": 1500.0,
+    "RC8_MAX": 2000.0,
+    "RC8_MIN": 1000.0,
+    "RC8_TRIM": 1500.0,
+    "FLTMODE1": 7.0,
+    "FLTMODE2": 9.0,
+    "FLTMODE3": 6.0,
+    "FLTMODE4": 3.0,
+    "FLTMODE5": 5.0,
+    "FLTMODE6": 0.0,
+    "SIM_BARO_RND": 0.0,
+    "INS_ACCOFFS_X": 0.001,
+    "INS_ACCOFFS_Y": 0.001,
+    "INS_ACCOFFS_Z": 0.001,
+    "INS_ACCSCAL_X": 1.001,
+    "INS_ACCSCAL_Y": 1.001,
+    "INS_ACCSCAL_Z": 1.001,
+    "INS_ACC2OFFS_X": 0.001,
+    "INS_ACC2OFFS_Y": 0.001,
+    "INS_ACC2OFFS_Z": 0.001,
+    "INS_ACC2SCAL_X": 1.001,
+    "INS_ACC2SCAL_Y": 1.001,
+    "INS_ACC2SCAL_Z": 1.001,
+    "INS_ACC3OFFS_X": 0.0,
+    "INS_ACC3OFFS_Y": 0.0,
+    "INS_ACC3OFFS_Z": 0.0,
+    "INS_ACC3SCAL_X": 1.0,
+    "INS_ACC3SCAL_Y": 1.0,
+    "INS_ACC3SCAL_Z": 1.0,
+    "MOT_THST_EXPO": 0.65,
+    "MOT_THST_HOVER": 0.39,
+    "MOT_BAT_VOLT_MIN": 9.6,
+    "MOT_BAT_VOLT_MAX": 12.8
+  },
+  "overrides": [
+    {
+      "name": "MAV_SYSID",
+      "values": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "reason": "Unique aircraft identities"
+    },
+    {
+      "name": "FENCE_TYPE",
+      "value": 5,
+      "reason": "Retain altitude maximum and use requested polygon instead of baseline150m home circle"
+    },
+    {
+      "name": "FENCE_ENABLE",
+      "value": 1,
+      "reason": "Enforce uploaded inclusion polygon"
+    }
+  ],
+  "vehicles": [
+    {
+      "id": "Drone1",
+      "sysid": 1,
+      "gps_fix": 6,
+      "satellites": 10,
+      "ekf_healthy": true,
+      "heartbeat_age_s": 0.23689253799966536,
+      "update_rate_hz": 9.999142091196372,
+      "home": {
+        "north_m": -814.1753124626327,
+        "east_m": -2.4986216219168496,
+        "latitude_deg": 37.8690967,
+        "longitude_deg": -119.3934494,
+        "altitude_msl_m": 2632.83
+      },
+      "flight_sw_version": 67568383,
+      "firmware_commit": "fb773567",
+      "readback_fence_vertices": 8,
+      "home_horizontal_error_m": 0.0035878036224521793,
+      "home_altitude_difference_m": 0.09999999999990905,
+      "received_mavlink_messages": 381
+    },
+    {
+      "id": "Drone2",
+      "sysid": 2,
+      "gps_fix": 6,
+      "satellites": 10,
+      "ekf_healthy": true,
+      "heartbeat_age_s": 0.2386421440023696,
+      "update_rate_hz": 9.996355292695778,
+      "home": {
+        "north_m": -814.1753124626327,
+        "east_m": 2.5074195861050925,
+        "latitude_deg": 37.8690967,
+        "longitude_deg": -119.3933925,
+        "altitude_msl_m": 2632.83
+      },
+      "flight_sw_version": 67568383,
+      "firmware_commit": "fb773567",
+      "readback_fence_vertices": 8,
+      "home_horizontal_error_m": 0.008125433321617595,
+      "home_altitude_difference_m": 0.09999999999990905,
+      "received_mavlink_messages": 381
+    },
+    {
+      "id": "Drone3",
+      "sysid": 3,
+      "gps_fix": 6,
+      "satellites": 10,
+      "ekf_healthy": true,
+      "heartbeat_age_s": 0.18905596500553656,
+      "update_rate_hz": 9.998536545357137,
+      "home": {
+        "north_m": -819.1811481602961,
+        "east_m": -2.4986216219168496,
+        "latitude_deg": 37.8690516,
+        "longitude_deg": -119.3934494,
+        "altitude_msl_m": 2632.83
+      },
+      "flight_sw_version": 67568383,
+      "firmware_commit": "fb773567",
+      "readback_fence_vertices": 8,
+      "home_horizontal_error_m": 0.00925141950957115,
+      "home_altitude_difference_m": 0.09999999999990905,
+      "received_mavlink_messages": 381
+    },
+    {
+      "id": "Drone4",
+      "sysid": 4,
+      "gps_fix": 6,
+      "satellites": 10,
+      "ekf_healthy": true,
+      "heartbeat_age_s": 0.18237873699399643,
+      "update_rate_hz": 9.998478228595083,
+      "home": {
+        "north_m": -819.1811481602961,
+        "east_m": 2.5074195861050925,
+        "latitude_deg": 37.8690516,
+        "longitude_deg": -119.3933925,
+        "altitude_msl_m": 2632.83
+      },
+      "flight_sw_version": 67568383,
+      "firmware_commit": "fb773567",
+      "readback_fence_vertices": 8,
+      "home_horizontal_error_m": 0.011778756079181123,
+      "home_altitude_difference_m": 0.09999999999990905,
+      "received_mavlink_messages": 381
+    }
+  ],
+  "initialization_failures": [
+    {
+      "run": ".local/evidence/gcs/sitl-01.log",
+      "error": "MAVLink decoder rejected serial0 boot console text",
+      "resolution": "Use dedicated serial1 MAVLink channel"
+    },
+    {
+      "run": ".local/evidence/gcs/sitl-02.log",
+      "error": "Diagnostic rerun identified exact serial0 Init ArduCopter preamble",
+      "resolution": "Use dedicated serial1 MAVLink channel"
+    },
+    {
+      "run": ".local/evidence/gcs/sitl-03.log",
+      "error": "Unsupported serial0 device null caused firmware PANIC",
+      "resolution": "Verified and used upstream UARTDriver none device"
+    },
+    {
+      "run": ".local/evidence/gcs/sitl-04.log",
+      "error": "Strict MAVLink decoder rejected serial1 three SiK reset words",
+      "resolution": "Assert exact pinned startup preamble before MAVLink; reject all other malformed frames"
+    }
+  ],
+  "sources": [
+    "https://github.com/ArduPilot/ardupilot/releases/tag/Copter-4.7.2",
+    "https://api.github.com/repos/ArduPilot/ardupilot/releases",
+    "https://ardupilot.org/dev/docs/using-sitl-for-ardupilot-testing.html",
+    "https://ardupilot.org/dev/docs/mavlink-mission-upload-download.html",
+    "https://docs.qgroundcontrol.com/master/en/qgc-dev-guide/file_formats/plan.html",
+    "https://ardupilot.org/copter/docs/rtl-mode.html"
+  ],
+  "build_continuation_seconds": 489.164448704003,
+  "build_segments": [
+    {
+      "log": ".local/evidence/gcs/ardupilot-4.7.2-build.log",
+      "status": "interrupted by tool infrastructure before linking",
+      "elapsed_seconds": null
+    },
+    {
+      "log": ".local/evidence/gcs/ardupilot-4.7.2-build-continuation-01.log",
+      "timing_report": ".local/evidence/gcs/ardupilot-4.7.2-build-continuation-01.json",
+      "status": "completed",
+      "elapsed_seconds": 489.164448704003,
+      "exit_code": 0
+    }
+  ],
+  "verified_safety_parameters": {
+    "values": {
+      "ARMING_SKIPCHK": 0.0,
+      "FS_THR_ENABLE": 1.0,
+      "RTL_ALT_M": 15.0,
+      "RTL_ALT_FINAL_M": 0.0,
+      "RTL_CLIMB_MIN_M": 0.0,
+      "RTL_CONE_SLOPE": 3.0,
+      "RTL_ALT_TYPE": 0.0,
+      "FENCE_ALT_MAX": 100.0,
+      "FENCE_MARGIN": 2.0
+    },
+    "verified_on": [
+      "Drone1",
+      "Drone2",
+      "Drone3",
+      "Drone4"
+    ]
+  },
+  "cleanup": {
+    "evidence": ".local/evidence/gcs/sitl-4.7.2-01/cleanup.json",
+    "passed": true,
+    "terminated_pids": [
+      282213,
+      282215,
+      282217,
+      282219
+    ],
+    "released_udp_ports": [
+      14600,
+      14601,
+      14602,
+      14603
+    ]
+  },
+  "release_verification": ".local/evidence/gcs/github-copter-releases.json",
+  "previous_accepted_runs": [
+    {
+      "schema_version": 1,
+      "release_tag": "Copter-4.7.1",
+      "commit": "dbe792162d06cab66c3475fd5556bf7a120f119e",
+      "binary_sha256": "29f2f36b4c1bb8e6c5d64af9854fb3eb3a213e8bdf36e88ba860c52b10c32c64",
+      "build_seconds": 698.61,
+      "build_jobs": 4,
+      "system_packages_installed": [],
+      "versions": {
+        "pymavlink": "2.4.50",
+        "websockets": "15.0.1",
+        "empy": "3.3.4",
+        "pexpect": "4.9.0",
+        "lxml": "6.1.3",
+        "fastcrc": "0.5.0"
+      },
+      "origin": {
+        "name": "Tuolumne Meadows, Yosemite National Park",
+        "latitude_deg": 37.876432,
+        "longitude_deg": -119.393421,
+        "altitude_msl_m": 2621.28
+      },
+      "run": ".local/evidence/gcs/sitl-05/report.json",
+      "initialization_seconds": 44.91442265700607,
+      "sample_seconds": 10.00053571999888,
+      "passed": true,
+      "upstream_sitl_baseline": {
+        "FRAME_TYPE": 0.0,
+        "FS_THR_ENABLE": 1.0,
+        "ARSPD_PIN": 1.0,
+        "ARSPD_BUS": 2.0,
+        "ATC_RAT_YAW_P": 0.3,
+        "ATC_RAT_YAW_I": 0.02,
+        "BATT_MONITOR": 4.0,
+        "COMPASS_OFS_X": 5.0,
+        "COMPASS_OFS_Y": 13.0,
+        "COMPASS_OFS_Z": -18.0,
+        "COMPASS_OFS2_X": 5.0,
+        "COMPASS_OFS2_Y": 13.0,
+        "COMPASS_OFS2_Z": -18.0,
+        "COMPASS_OFS3_X": 5.0,
+        "COMPASS_OFS3_Y": 13.0,
+        "COMPASS_OFS3_Z": -18.0,
+        "FENCE_RADIUS": 150.0,
+        "FRAME_CLASS": 1.0,
+        "RC1_MAX": 2000.0,
+        "RC1_MIN": 1000.0,
+        "RC1_TRIM": 1500.0,
+        "RC2_MAX": 2000.0,
+        "RC2_MIN": 1000.0,
+        "RC2_TRIM": 1500.0,
+        "RC3_MAX": 2000.0,
+        "RC3_MIN": 1000.0,
+        "RC3_TRIM": 1500.0,
+        "RC4_MAX": 2000.0,
+        "RC4_MIN": 1000.0,
+        "RC4_TRIM": 1500.0,
+        "RC5_MAX": 2000.0,
+        "RC5_MIN": 1000.0,
+        "RC5_TRIM": 1500.0,
+        "RC6_MAX": 2000.0,
+        "RC6_MIN": 1000.0,
+        "RC6_TRIM": 1500.0,
+        "RC7_MAX": 2000.0,
+        "RC7_MIN": 1000.0,
+        "RC7_OPTION": 7.0,
+        "RC7_TRIM": 1500.0,
+        "RC8_MAX": 2000.0,
+        "RC8_MIN": 1000.0,
+        "RC8_TRIM": 1500.0,
+        "FLTMODE1": 7.0,
+        "FLTMODE2": 9.0,
+        "FLTMODE3": 6.0,
+        "FLTMODE4": 3.0,
+        "FLTMODE5": 5.0,
+        "FLTMODE6": 0.0,
+        "SIM_BARO_RND": 0.0,
+        "INS_ACCOFFS_X": 0.001,
+        "INS_ACCOFFS_Y": 0.001,
+        "INS_ACCOFFS_Z": 0.001,
+        "INS_ACCSCAL_X": 1.001,
+        "INS_ACCSCAL_Y": 1.001,
+        "INS_ACCSCAL_Z": 1.001,
+        "INS_ACC2OFFS_X": 0.001,
+        "INS_ACC2OFFS_Y": 0.001,
+        "INS_ACC2OFFS_Z": 0.001,
+        "INS_ACC2SCAL_X": 1.001,
+        "INS_ACC2SCAL_Y": 1.001,
+        "INS_ACC2SCAL_Z": 1.001,
+        "INS_ACC3OFFS_X": 0.0,
+        "INS_ACC3OFFS_Y": 0.0,
+        "INS_ACC3OFFS_Z": 0.0,
+        "INS_ACC3SCAL_X": 1.0,
+        "INS_ACC3SCAL_Y": 1.0,
+        "INS_ACC3SCAL_Z": 1.0,
+        "MOT_THST_EXPO": 0.65,
+        "MOT_THST_HOVER": 0.39,
+        "MOT_BAT_VOLT_MIN": 9.6,
+        "MOT_BAT_VOLT_MAX": 12.8
+      },
+      "overrides": [
+        {
+          "name": "MAV_SYSID",
+          "values": [
+            1,
+            2,
+            3,
+            4
+          ],
+          "reason": "Unique aircraft identities"
+        },
+        {
+          "name": "FENCE_TYPE",
+          "value": 5,
+          "reason": "Retain altitude maximum and use requested polygon instead of baseline150m home circle"
+        },
+        {
+          "name": "FENCE_ENABLE",
+          "value": 1,
+          "reason": "Enforce uploaded inclusion polygon"
+        }
+      ],
+      "vehicles": [
+        {
+          "id": "Drone1",
+          "sysid": 1,
+          "gps_fix": 6,
+          "satellites": 10,
+          "ekf_healthy": true,
+          "heartbeat_age_s": 0.3258910449949326,
+          "update_rate_hz": 9.999870589616208,
+          "readback_fence_vertices": 8,
+          "home": {
+            "north_m": -814.1753124626327,
+            "east_m": -2.4986216219168496,
+            "latitude_deg": 37.8690967,
+            "longitude_deg": -119.3934494,
+            "altitude_msl_m": 2632.83
+          },
+          "home_horizontal_error_m": 0.0035878036224521793,
+          "home_altitude_difference_m": 0.09999999999990905,
+          "received_mavlink_messages": 381
+        },
+        {
+          "id": "Drone2",
+          "sysid": 2,
+          "gps_fix": 6,
+          "satellites": 10,
+          "ekf_healthy": true,
+          "heartbeat_age_s": 0.326008363001165,
+          "update_rate_hz": 9.996982247136115,
+          "readback_fence_vertices": 8,
+          "home": {
+            "north_m": -814.1753124626327,
+            "east_m": 2.5074195861050925,
+            "latitude_deg": 37.8690967,
+            "longitude_deg": -119.3933925,
+            "altitude_msl_m": 2632.83
+          },
+          "home_horizontal_error_m": 0.008125433321617595,
+          "home_altitude_difference_m": 0.09999999999990905,
+          "received_mavlink_messages": 382
+        },
+        {
+          "id": "Drone3",
+          "sysid": 3,
+          "gps_fix": 6,
+          "satellites": 10,
+          "ekf_healthy": true,
+          "heartbeat_age_s": 0.3264585220022127,
+          "update_rate_hz": 9.999894356898121,
+          "readback_fence_vertices": 8,
+          "home": {
+            "north_m": -819.1811481602961,
+            "east_m": -2.4986216219168496,
+            "latitude_deg": 37.8690516,
+            "longitude_deg": -119.3934494,
+            "altitude_msl_m": 2632.83
+          },
+          "home_horizontal_error_m": 0.00925141950957115,
+          "home_altitude_difference_m": 0.09999999999990905,
+          "received_mavlink_messages": 382
+        },
+        {
+          "id": "Drone4",
+          "sysid": 4,
+          "gps_fix": 6,
+          "satellites": 10,
+          "ekf_healthy": true,
+          "heartbeat_age_s": 0.27800823100551497,
+          "update_rate_hz": 9.996196399049797,
+          "readback_fence_vertices": 8,
+          "home": {
+            "north_m": -819.1811481602961,
+            "east_m": 2.5074195861050925,
+            "latitude_deg": 37.8690516,
+            "longitude_deg": -119.3933925,
+            "altitude_msl_m": 2632.83
+          },
+          "home_horizontal_error_m": 0.011778756079181123,
+          "home_altitude_difference_m": 0.09999999999990905,
+          "received_mavlink_messages": 381
+        }
+      ],
+      "initialization_failures": [
+        {
+          "run": ".local/evidence/gcs/sitl-01.log",
+          "error": "MAVLink decoder rejected serial0 boot console text",
+          "resolution": "Use dedicated serial1 MAVLink channel"
+        },
+        {
+          "run": ".local/evidence/gcs/sitl-02.log",
+          "error": "Diagnostic rerun identified exact serial0 Init ArduCopter preamble",
+          "resolution": "Use dedicated serial1 MAVLink channel"
+        },
+        {
+          "run": ".local/evidence/gcs/sitl-03.log",
+          "error": "Unsupported serial0 device null caused firmware PANIC",
+          "resolution": "Verified and used upstream UARTDriver none device"
+        },
+        {
+          "run": ".local/evidence/gcs/sitl-04.log",
+          "error": "Strict MAVLink decoder rejected serial1 three SiK reset words",
+          "resolution": "Assert exact pinned startup preamble before MAVLink; reject all other malformed frames"
+        }
+      ],
+      "sources": [
+        "https://github.com/ArduPilot/ardupilot/releases/tag/Copter-4.7.1",
+        "https://ardupilot.org/dev/docs/using-sitl-for-ardupilot-testing.html",
+        "https://ardupilot.org/dev/docs/mavlink-mission-upload-download.html",
+        "https://docs.qgroundcontrol.com/master/en/qgc-dev-guide/file_formats/plan.html"
+      ]
+    }
+  ],
+  "wonder_planner_parameter_change": {
+    "status": "installed; verified by readback on all four drones",
+    "source": "mission_planner/gcs/sitl.py",
+    "values": {
+      "RTL_ALT_M": 80,
+      "RTL_CONE_SLOPE": 0,
+      "BATT_MONITOR": 4,
+      "BATT_LOW_VOLT": 10.5,
+      "BATT_LOW_TIMER": 10,
+      "BATT_FS_LOW_ACT": 2
+    },
+    "reason": "Enable the battery RTL action and clear the logged global terrain/obstacle height envelope. Native straight RTL still has fence and fleet-separation limitations.",
+    "evidence": ".local/evidence/wonder-planner/20261031T165235Z/installed-safety-parameters.json",
+    "analysis_evidence": ".local/evidence/wonder-planner/20261031T165235Z/offline-safety-enabled.json",
+    "readback": {
+      "source": ".local/data/missions/5ec05e88-46ca-4f01-9fc1-6c4a6ba0f71d/events.jsonl",
+      "events": [
+        {
+          "drone_id": "Drone1",
+          "sequence": 96,
+          "timestamp_ms": 1793467416294.6648
+        },
+        {
+          "drone_id": "Drone2",
+          "sequence": 97,
+          "timestamp_ms": 1793467416294.8376
+        },
+        {
+          "drone_id": "Drone3",
+          "sequence": 98,
+          "timestamp_ms": 1793467416294.9304
+        },
+        {
+          "drone_id": "Drone4",
+          "sequence": 94,
+          "timestamp_ms": 1793467416204.138
+        }
+      ],
+      "values": {
+        "ARMING_SKIPCHK": 0.0,
+        "FS_THR_ENABLE": 1.0,
+        "FS_CRASH_CHECK": 1.0,
+        "DISARM_DELAY": 10.0,
+        "RTL_ALT_M": 80.0,
+        "RTL_ALT_FINAL_M": 0.0,
+        "RTL_CLIMB_MIN_M": 0.0,
+        "RTL_CONE_SLOPE": 0.0,
+        "RTL_ALT_TYPE": 0.0,
+        "FENCE_ALT_MAX": 100.0,
+        "FENCE_MARGIN": 2.0,
+        "BATT_MONITOR": 4.0,
+        "BATT_LOW_VOLT": 10.5,
+        "BATT_LOW_TIMER": 10.0,
+        "BATT_FS_LOW_ACT": 2.0,
+        "SCHED_LOOP_RATE": 184.0
+      }
+    },
+    "final_deployment_readback": {
+      "evidence": ".local/evidence/wonder-planner/20261031T165235Z/override-deploy-safety-parameters.json",
+      "mission_id": "9c59b154-aacd-40f2-a7fc-de86aba52c4d",
+      "drone_count": 4
+    }
+  },
+  "search_runtime_battery": {
+    "recorded_at_utc": "2026-11-01T00:34:48.439247+00:00",
+    "status": "Installed and healthy; awaiting user-operated flight acceptance",
+    "evidence_root": ".local/evidence/search-runtime/20261101T001539Z",
+    "operator_choice": "Use a larger documented simulation battery.",
+    "parameters": {
+      "BATT_CAPACITY": 50000,
+      "SIM_BATT_CAP_AH": 50,
+      "SIM_BATT_VOLTAGE": 12.6
+    },
+    "unchanged_battery_failsafe": {
+      "BATT_MONITOR": 4,
+      "BATT_LOW_VOLT": 10.5,
+      "BATT_LOW_TIMER": 10,
+      "BATT_FS_LOW_ACT": 2
+    },
+    "model": {
+      "capacity_ah": 50,
+      "max_current_a": 50,
+      "resistance_ohm": 0.014,
+      "planner_charge_floor_percent": 50,
+      "reserve_s": 300,
+      "real_aircraft_calibrated": false
+    },
+    "build": {
+      "exit_code": 0,
+      "source_revision": "fb773567896014da007bca58358704d4a0d8516f",
+      "binary": "/srv/snr/.local/build/search-runtime-20261101T001539Z-patch-fixed/build/sitl/bin/arducopter",
+      "binary_sha256": "77a4b845a87aa1b1c0b0ba6d2fcb1bfd90fb75fb08175b136c8068c661293c82",
+      "build_jobs": 4,
+      "copter_build_s": 145.587,
+      "cpp_test_count": 4,
+      "cpp_test_reported_ms": 80,
+      "cpp_build_and_run": [
+        {
+          "command": [
+            "python",
+            "modules/waf/waf-light",
+            "build",
+            "--targets",
+            "tests/test_sitl_battery",
+            "-j4",
+            "--no-submodule-update"
+          ],
+          "elapsed_s": 3.257610095985001,
+          "exit_code": 0
+        },
+        {
+          "command": [
+            "build/sitl/tests/test_sitl_battery"
+          ],
+          "elapsed_s": 0.08170518500264734,
+          "exit_code": 0
+        }
+      ],
+      "battery_model_curves": [
+        {
+          "full_load_a": 50.0,
+          "capacity_ah": 3.3,
+          "low_voltage_v": 10.5,
+          "crossing_s": 129.33,
+          "consumed_ah": 1.79625,
+          "voltage_v": 10.499986
+        },
+        {
+          "full_load_a": 50.0,
+          "capacity_ah": 50.0,
+          "half_charge_s": 1800.0,
+          "half_charge_voltage_v": 10.610703,
+          "low_voltage_v": 10.5,
+          "crossing_s": 1973.45
+        }
+      ],
+      "model_step_s": 0.01,
+      "build_log": ".local/evidence/search-runtime/20261101T001539Z/sitl-build-patch-fixed.log",
+      "test_log": ".local/evidence/search-runtime/20261101T001539Z/sitl-test-final-class.log",
+      "python_check_report": ".local/evidence/search-runtime/20261101T001539Z/sitl-python-checks.json",
+      "source_manifest": ".local/evidence/search-runtime/20261101T001539Z/physics-sources/manifest.json",
+      "physics_audit": ".local/evidence/search-runtime/20261101T001539Z/physics-log-audit.json",
+      "changed_files": {
+        "mission_planner/gcs/sitl.py": "c4708dd4fa596da001d07b03e056f4f34cb4b0c304b2860b622aad95e5f8fd64",
+        "mission_planner/gcs/test_sitl.py": "38b15b6244def7852211f4fd48e8e2d57bd5ca3f82c1bc6cd97fe6c606e09b85",
+        "mission_planner/gcs/build-sitl.sh": "11ab305b0d164ac510cd67d75425ae7b4255e3aeaef697c9bda2683b209b7038",
+        "mission_planner/gcs/sitl-loopback.patch": "9f9af2b4c8b8660de9fbf5882434022a18739f04e1b2867a0b7c67c3b674f487",
+        "mission_planner/gcs/sitl-airsim-battery.patch": "3608af9c2c0ea5c1b1b24b11aae454f7af7c461fec65aa75af2fc82d3234401c",
+        "mission_planner/gcs/test_sitl_battery.cpp": "ae2084ac0d0411a58464754390704c7f04a935a747b992946fc5bf9067b07514"
+      },
+      "preserved_failed_builds": [
+        {
+          "report": ".local/evidence/search-runtime/20261101T001539Z/sitl-build.json",
+          "reason": "Pre-existing loopback patch lacked trailing context for GNU patch --fuzz=0; added exact context and regression."
+        },
+        {
+          "report": ".local/evidence/search-runtime/20261101T001539Z/sitl-build-patch-fixed.json",
+          "reason": "New test used SITL::sitl_input; corrected global type; production binary successfully linked."
+        },
+        {
+          "report": ".local/evidence/search-runtime/20261101T001539Z/sitl-test-type-fixed.json",
+          "reason": "Test helper needed final because upstream polymorphic AirSim destructor is nonvirtual; marked test-only helper final."
+        }
+      ],
+      "local_patch_check_failure": "Initial new battery patch context used recv_fdm(input) before the preceding liveness patch; changed context to recv_fdm(), all patches now pass regression.",
+      "installed_changes": false,
+      "flight_tests": false
+    },
+    "physics_audit": {
+      "source_mission": "8ee66983-8002-47bd-b7b0-b4fda43e6352",
+      "aircraft": [
+        {
+          "name": "Drone1",
+          "log": ".local/data/missions/8ee66983-8002-47bd-b7b0-b4fda43e6352/sitl/Drone1/logs/00000001.BIN",
+          "battery_records": 7894,
+          "battery_span_s": 772.030469,
+          "battery_values": {
+            "Volt": [
+              12.600000381469727
+            ],
+            "Curr": [
+              0.0
+            ],
+            "RemPct": [
+              100
+            ],
+            "CurrTot": [
+              0.0
+            ]
+          },
+          "thrust_warnings": [
+            {
+              "error": {
+                "mavpackettype": "ERR",
+                "TimeUS": 211060502,
+                "Subsys": 25,
+                "ECode": 1
+              },
+              "preceding": {
+                "CTUN": {
+                  "mavpackettype": "CTUN",
+                  "TimeUS": 211054502,
+                  "ThI": 1.021875262260437,
+                  "ABst": 0.017924070358276367,
+                  "ThO": 1.0,
+                  "ThH": 0.46208456158638,
+                  "DAlt": 45.744117736816406,
+                  "Alt": 45.018409729003906,
+                  "BAlt": 45.05126953125,
+                  "DSAlt": null,
+                  "SAlt": 0.0,
+                  "TAlt": 2677.780029296875,
+                  "DCRt": 0.7109103202819824,
+                  "CRt": -1.1630510091781616
+                },
+                "ATT": {
+                  "mavpackettype": "ATT",
+                  "TimeUS": 211054502,
+                  "DesRoll": 10.477754592895508,
+                  "Roll": 9.549166679382324,
+                  "DesPitch": -0.46994489431381226,
+                  "Pitch": 4.786256790161133,
+                  "DesYaw": 315.7041015625,
+                  "Yaw": 287.8712463378906,
+                  "AEKF": 3
+                },
+                "RCOU": {
+                  "mavpackettype": "RCOU",
+                  "TimeUS": 211054502,
+                  "C1": 1946,
+                  "C2": 1950,
+                  "C3": 1692,
+                  "C4": 1705,
+                  "C5": 0,
+                  "C6": 0,
+                  "C7": 0,
+                  "C8": 0,
+                  "C9": 0,
+                  "C10": 0,
+                  "C11": 0,
+                  "C12": 0,
+                  "C13": 0,
+                  "C14": 0
+                },
+                "PSCD": {
+                  "mavpackettype": "PSCD",
+                  "TimeUS": 211054502,
+                  "DPD": -45.744117736816406,
+                  "TPD": -45.744117736816406,
+                  "PD": -45.018409729003906,
+                  "DVD": 0.0147999357432127,
+                  "TVD": -0.7109103202819824,
+                  "VD": 1.1630510091781616,
+                  "DAD": 0.024865156039595604,
+                  "TAD": -9.223950386047363,
+                  "AD": -0.5041828155517578
+                }
+              }
+            },
+            {
+              "error": {
+                "mavpackettype": "ERR",
+                "TimeUS": 212626536,
+                "Subsys": 25,
+                "ECode": 1
+              },
+              "preceding": {
+                "CTUN": {
+                  "mavpackettype": "CTUN",
+                  "TimeUS": 212620535,
+                  "ThI": 1.2734055519104004,
+                  "ABst": 0.01962733268737793,
+                  "ThO": 1.0,
+                  "ThH": 0.46208456158638,
+                  "DAlt": 45.67999267578125,
+                  "Alt": 43.7455940246582,
+                  "BAlt": 43.812744140625,
+                  "DSAlt": null,
+                  "SAlt": 0.0,
+                  "TAlt": 2676.510009765625,
+                  "DCRt": 1.8614616394042969,
+                  "CRt": -1.0987051725387573
+                },
+                "ATT": {
+                  "mavpackettype": "ATT",
+                  "TimeUS": 212620535,
+                  "DesRoll": -0.9497290849685669,
+                  "Roll": -4.376787185668945,
+                  "DesPitch": -9.935490608215332,
+                  "Pitch": -8.995268821716309,
+                  "DesYaw": 0.04308896139264107,
+                  "Yaw": 20.206533432006836,
+                  "AEKF": 3
+                },
+                "RCOU": {
+                  "mavpackettype": "RCOU",
+                  "TimeUS": 212620535,
+                  "C1": 1785,
+                  "C2": 1784,
+                  "C3": 1950,
+                  "C4": 1949,
+                  "C5": 0,
+                  "C6": 0,
+                  "C7": 0,
+                  "C8": 0,
+                  "C9": 0,
+                  "C10": 0,
+                  "C11": 0,
+                  "C12": 0,
+                  "C13": 0,
+                  "C14": 0
+                },
+                "PSCD": {
+                  "mavpackettype": "PSCD",
+                  "TimeUS": 212620535,
+                  "DPD": -45.67999267578125,
+                  "TPD": -45.67999267578125,
+                  "PD": -43.7455940246582,
+                  "DVD": 0.07293885946273804,
+                  "TVD": -1.8614616394042969,
+                  "VD": 1.0987051725387573,
+                  "DAD": 0.03726420924067497,
+                  "TAD": -14.743599891662598,
+                  "AD": -1.0127134323120117
+                }
+              }
+            },
+            {
+              "error": {
+                "mavpackettype": "ERR",
+                "TimeUS": 256130464,
+                "Subsys": 25,
+                "ECode": 1
+              },
+              "preceding": {
+                "CTUN": {
+                  "mavpackettype": "CTUN",
+                  "TimeUS": 256049462,
+                  "ThI": 0.8446658849716187,
+                  "ABst": 0.015517354011535645,
+                  "ThO": 0.8325160145759583,
+                  "ThH": 0.46208456158638,
+                  "DAlt": 43.98513412475586,
+                  "Alt": 43.609901428222656,
+                  "BAlt": 43.66259765625,
+                  "DSAlt": null,
+                  "SAlt": 0.0,
+                  "TAlt": 2676.369873046875,
+                  "DCRt": 0.01998084783554077,
+                  "CRt": -0.7835120558738708
+                },
+                "ATT": {
+                  "mavpackettype": "ATT",
+                  "TimeUS": 256049462,
+                  "DesRoll": 0.43878617882728577,
+                  "Roll": 2.568995237350464,
+                  "DesPitch": -10.973362922668457,
+                  "Pitch": -10.635683059692383,
+                  "DesYaw": 359.9580383300781,
+                  "Yaw": 348.5018005371094,
+                  "AEKF": 3
+                },
+                "RCOU": {
+                  "mavpackettype": "RCOU",
+                  "TimeUS": 256049462,
+                  "C1": 1947,
+                  "C2": 1950,
+                  "C3": 1590,
+                  "C4": 1592,
+                  "C5": 0,
+                  "C6": 0,
+                  "C7": 0,
+                  "C8": 0,
+                  "C9": 0,
+                  "C10": 0,
+                  "C11": 0,
+                  "C12": 0,
+                  "C13": 0,
+                  "C14": 0
+                },
+                "PSCD": {
+                  "mavpackettype": "PSCD",
+                  "TimeUS": 256049462,
+                  "DPD": -43.98513412475586,
+                  "TPD": -43.98513412475586,
+                  "PD": -43.609901428222656,
+                  "DVD": 0.3552534878253937,
+                  "TVD": -0.01998084783554077,
+                  "VD": 0.7835120558738708,
+                  "DAD": -0.6074689626693726,
+                  "TAD": -4.450394630432129,
+                  "AD": 0.10660934448242188
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Drone2",
+          "log": ".local/data/missions/8ee66983-8002-47bd-b7b0-b4fda43e6352/sitl/Drone2/logs/00000001.BIN",
+          "battery_records": 7752,
+          "battery_span_s": 758.140173,
+          "battery_values": {
+            "Volt": [
+              12.600000381469727
+            ],
+            "Curr": [
+              0.0
+            ],
+            "RemPct": [
+              100
+            ],
+            "CurrTot": [
+              0.0
+            ]
+          },
+          "thrust_warnings": [
+            {
+              "error": {
+                "mavpackettype": "ERR",
+                "TimeUS": 211888520,
+                "Subsys": 25,
+                "ECode": 1
+              },
+              "preceding": {
+                "CTUN": {
+                  "mavpackettype": "CTUN",
+                  "TimeUS": 211834519,
+                  "ThI": 1.0375717878341675,
+                  "ABst": 0.017290711402893066,
+                  "ThO": 1.0,
+                  "ThH": 0.4624995291233063,
+                  "DAlt": 47.7474250793457,
+                  "Alt": 47.060150146484375,
+                  "BAlt": 47.099365234375,
+                  "DSAlt": null,
+                  "SAlt": 0.0,
+                  "TAlt": 2679.829833984375,
+                  "DCRt": 0.6805013418197632,
+                  "CRt": -1.2045385837554932
+                },
+                "ATT": {
+                  "mavpackettype": "ATT",
+                  "TimeUS": 211834519,
+                  "DesRoll": -10.235078811645508,
+                  "Roll": -8.771210670471191,
+                  "DesPitch": 0.15784841775894165,
+                  "Pitch": 5.640722274780273,
+                  "DesYaw": 47.25430679321289,
+                  "Yaw": 77.66814422607422,
+                  "AEKF": 3
+                },
+                "RCOU": {
+                  "mavpackettype": "RCOU",
+                  "TimeUS": 211834519,
+                  "C1": 1644,
+                  "C2": 1655,
+                  "C3": 1945,
+                  "C4": 1950,
+                  "C5": 0,
+                  "C6": 0,
+                  "C7": 0,
+                  "C8": 0,
+                  "C9": 0,
+                  "C10": 0,
+                  "C11": 0,
+                  "C12": 0,
+                  "C13": 0,
+                  "C14": 0
+                },
+                "PSCD": {
+                  "mavpackettype": "PSCD",
+                  "TimeUS": 211834519,
+                  "DPD": -47.7474250793457,
+                  "TPD": -47.7474250793457,
+                  "PD": -47.060150146484375,
+                  "DVD": 0.006774249020963907,
+                  "TVD": -0.6805013418197632,
+                  "VD": 1.2045385837554932,
+                  "DAD": 0.011895577423274517,
+                  "TAD": -9.23399829864502,
+                  "AD": -0.19916820526123047
+                }
+              }
+            },
+            {
+              "error": {
+                "mavpackettype": "ERR",
+                "TimeUS": 213448553,
+                "Subsys": 25,
+                "ECode": 1
+              },
+              "preceding": {
+                "CTUN": {
+                  "mavpackettype": "CTUN",
+                  "TimeUS": 213400552,
+                  "ThI": 1.326027512550354,
+                  "ABst": 0.020471811294555664,
+                  "ThO": 1.0,
+                  "ThH": 0.4624995291233063,
+                  "DAlt": 47.71696853637695,
+                  "Alt": 45.73927307128906,
+                  "BAlt": 45.804931640625,
+                  "DSAlt": null,
+                  "SAlt": 0.0,
+                  "TAlt": 2678.5,
+                  "DCRt": 1.9422584772109985,
+                  "CRt": -1.1859108209609985
+                },
+                "ATT": {
+                  "mavpackettype": "ATT",
+                  "TimeUS": 213400552,
+                  "DesRoll": 1.4421296119689941,
+                  "Roll": 5.22072172164917,
+                  "DesPitch": -9.87329387664795,
+                  "Pitch": -8.545398712158203,
+                  "DesYaw": 359.9205322265625,
+                  "Yaw": 337.19281005859375,
+                  "AEKF": 3
+                },
+                "RCOU": {
+                  "mavpackettype": "RCOU",
+                  "TimeUS": 213400552,
+                  "C1": 1950,
+                  "C2": 1948,
+                  "C3": 1742,
+                  "C4": 1740,
+                  "C5": 0,
+                  "C6": 0,
+                  "C7": 0,
+                  "C8": 0,
+                  "C9": 0,
+                  "C10": 0,
+                  "C11": 0,
+                  "C12": 0,
+                  "C13": 0,
+                  "C14": 0
+                },
+                "PSCD": {
+                  "mavpackettype": "PSCD",
+                  "TimeUS": 213400552,
+                  "DPD": -47.71696853637695,
+                  "TPD": -47.71696853637695,
+                  "PD": -45.73927307128906,
+                  "DVD": 0.03543475270271301,
+                  "TVD": -1.9422584772109985,
+                  "VD": 1.1859108209609985,
+                  "DAD": 0.0192071832716465,
+                  "TAD": -15.537389755249023,
+                  "AD": -0.7486438751220703
+                }
+              }
+            },
+            {
+              "error": {
+                "mavpackettype": "ERR",
+                "TimeUS": 266918694,
+                "Subsys": 25,
+                "ECode": 1
+              },
+              "preceding": {
+                "CTUN": {
+                  "mavpackettype": "CTUN",
+                  "TimeUS": 266903693,
+                  "ThI": 1.0138298273086548,
+                  "ABst": 0.02104926109313965,
+                  "ThO": 0.9639304280281067,
+                  "ThH": 0.4624995291233063,
+                  "DAlt": 51.98490524291992,
+                  "Alt": 51.375144958496094,
+                  "BAlt": 51.484375,
+                  "DSAlt": null,
+                  "SAlt": 0.0,
+                  "TAlt": 2684.139892578125,
+                  "DCRt": -0.017985224723815918,
+                  "CRt": -1.4113249778747559
+                },
+                "ATT": {
+                  "mavpackettype": "ATT",
+                  "TimeUS": 266903693,
+                  "DesRoll": 0.31812092661857605,
+                  "Roll": 2.7697439193725586,
+                  "DesPitch": -11.625307083129883,
+                  "Pitch": -11.2739839553833,
+                  "DesYaw": 359.9832763671875,
+                  "Yaw": 347.52117919921875,
+                  "AEKF": 3
+                },
+                "RCOU": {
+                  "mavpackettype": "RCOU",
+                  "TimeUS": 266903693,
+                  "C1": 1944,
+                  "C2": 1950,
+                  "C3": 1419,
+                  "C4": 1421,
+                  "C5": 0,
+                  "C6": 0,
+                  "C7": 0,
+                  "C8": 0,
+                  "C9": 0,
+                  "C10": 0,
+                  "C11": 0,
+                  "C12": 0,
+                  "C13": 0,
+                  "C14": 0
+                },
+                "PSCD": {
+                  "mavpackettype": "PSCD",
+                  "TimeUS": 266903693,
+                  "DPD": -51.98490524291992,
+                  "TPD": -51.98490524291992,
+                  "PD": -51.375144958496094,
+                  "DVD": 0.6277462244033813,
+                  "TVD": 0.017985224723815918,
+                  "VD": 1.4113249778747559,
+                  "DAD": -0.7396784424781799,
+                  "TAD": -7.346904754638672,
+                  "AD": 0.9600858688354492
+                }
+              }
+            },
+            {
+              "error": {
+                "mavpackettype": "ERR",
+                "TimeUS": 267920715,
+                "Subsys": 25,
+                "ECode": 1
+              },
+              "preceding": {
+                "CTUN": {
+                  "mavpackettype": "CTUN",
+                  "TimeUS": 267881714,
+                  "ThI": 1.158441424369812,
+                  "ABst": 0.018283724784851074,
+                  "ThO": 1.0,
+                  "ThH": 0.4624995291233063,
+                  "DAlt": 51.55893325805664,
+                  "Alt": 49.766727447509766,
+                  "BAlt": 49.863037109375,
+                  "DSAlt": null,
+                  "SAlt": 0.0,
+                  "TAlt": 2682.530029296875,
+                  "DCRt": 1.3744627237319946,
+                  "CRt": -1.2162688970565796
+                },
+                "ATT": {
+                  "mavpackettype": "ATT",
+                  "TimeUS": 267881714,
+                  "DesRoll": 0.037855252623558044,
+                  "Roll": 0.47218653559684753,
+                  "DesPitch": -10.227971076965332,
+                  "Pitch": -10.092436790466309,
+                  "DesYaw": 359.9977111816406,
+                  "Yaw": 357.32635498046875,
+                  "AEKF": 3
+                },
+                "RCOU": {
+                  "mavpackettype": "RCOU",
+                  "TimeUS": 267881714,
+                  "C1": 1863,
+                  "C2": 1865,
+                  "C3": 1949,
+                  "C4": 1950,
+                  "C5": 0,
+                  "C6": 0,
+                  "C7": 0,
+                  "C8": 0,
+                  "C9": 0,
+                  "C10": 0,
+                  "C11": 0,
+                  "C12": 0,
+                  "C13": 0,
+                  "C14": 0
+                },
+                "PSCD": {
+                  "mavpackettype": "PSCD",
+                  "TimeUS": 267881714,
+                  "DPD": -51.55893325805664,
+                  "TPD": -51.55893325805664,
+                  "PD": -49.766727447509766,
+                  "DVD": 0.4177405536174774,
+                  "TVD": -1.3744627237319946,
+                  "VD": 1.2162688970565796,
+                  "DAD": 0.2536475956439972,
+                  "TAD": -12.909561157226562,
+                  "AD": -1.8583307266235352
+                }
+              }
+            }
+          ]
+        },
+        {
+          "name": "Drone3",
+          "log": ".local/data/missions/8ee66983-8002-47bd-b7b0-b4fda43e6352/sitl/Drone3/logs/00000001.BIN",
+          "battery_records": 7797,
+          "battery_span_s": 762.541267,
+          "battery_values": {
+            "Volt": [
+              12.600000381469727
+            ],
+            "Curr": [
+              0.0
+            ],
+            "RemPct": [
+              100
+            ],
+            "CurrTot": [
+              0.0
+            ]
+          },
+          "thrust_warnings": []
+        },
+        {
+          "name": "Drone4",
+          "log": ".local/data/missions/8ee66983-8002-47bd-b7b0-b4fda43e6352/sitl/Drone4/logs/00000001.BIN",
+          "battery_records": 8295,
+          "battery_span_s": 811.253306,
+          "battery_values": {
+            "Volt": [
+              12.600000381469727
+            ],
+            "Curr": [
+              0.0
+            ],
+            "RemPct": [
+              100
+            ],
+            "CurrTot": [
+              0.0
+            ]
+          },
+          "thrust_warnings": [
+            {
+              "error": {
+                "mavpackettype": "ERR",
+                "TimeUS": 277121911,
+                "Subsys": 25,
+                "ECode": 1
+              },
+              "preceding": {
+                "CTUN": {
+                  "mavpackettype": "CTUN",
+                  "TimeUS": 277079911,
+                  "ThI": 0.9287592768669128,
+                  "ABst": 0.018974721431732178,
+                  "ThO": 0.9128853678703308,
+                  "ThH": 0.4834621548652649,
+                  "DAlt": 48.691261291503906,
+                  "Alt": 48.06312561035156,
+                  "BAlt": 48.1826171875,
+                  "DSAlt": null,
+                  "SAlt": 0.0,
+                  "TAlt": 2680.829833984375,
+                  "DCRt": -0.18223190307617188,
+                  "CRt": -1.5289512872695923
+                },
+                "ATT": {
+                  "mavpackettype": "ATT",
+                  "TimeUS": 277079911,
+                  "DesRoll": 0.19448548555374146,
+                  "Roll": 0.6165837645530701,
+                  "DesPitch": -11.43812084197998,
+                  "Pitch": -11.481780052185059,
+                  "DesYaw": 0.4928145706653595,
+                  "Yaw": 358.0974426269531,
+                  "AEKF": 3
+                },
+                "RCOU": {
+                  "mavpackettype": "RCOU",
+                  "TimeUS": 277079911,
+                  "C1": 1949,
+                  "C2": 1950,
+                  "C3": 1656,
+                  "C4": 1656,
+                  "C5": 0,
+                  "C6": 0,
+                  "C7": 0,
+                  "C8": 0,
+                  "C9": 0,
+                  "C10": 0,
+                  "C11": 0,
+                  "C12": 0,
+                  "C13": 0,
+                  "C14": 0
+                },
+                "PSCD": {
+                  "mavpackettype": "PSCD",
+                  "TimeUS": 277079911,
+                  "DPD": -48.691261291503906,
+                  "TPD": -48.691261291503906,
+                  "PD": -48.06312561035156,
+                  "DVD": 0.810366690158844,
+                  "TVD": 0.18223190307617188,
+                  "VD": 1.5289512872695923,
+                  "DAD": -1.0746514797210693,
+                  "TAD": -7.7041778564453125,
+                  "AD": -0.8603277206420898
+                }
+              }
+            },
+            {
+              "error": {
+                "mavpackettype": "ERR",
+                "TimeUS": 278120933,
+                "Subsys": 25,
+                "ECode": 1
+              },
+              "preceding": {
+                "CTUN": {
+                  "mavpackettype": "CTUN",
+                  "TimeUS": 278057931,
+                  "ThI": 1.430469036102295,
+                  "ABst": 0.023302078247070312,
+                  "ThO": 1.0,
+                  "ThH": 0.4834621548652649,
+                  "DAlt": 48.24931335449219,
+                  "Alt": 46.17814636230469,
+                  "BAlt": 46.284423828125,
+                  "DSAlt": null,
+                  "SAlt": 0.0,
+                  "TAlt": 2678.93994140625,
+                  "DCRt": 1.809704303741455,
+                  "CRt": -1.8610750436782837
+                },
+                "ATT": {
+                  "mavpackettype": "ATT",
+                  "TimeUS": 278057931,
+                  "DesRoll": 0.10362321883440018,
+                  "Roll": 2.1705007553100586,
+                  "DesPitch": -10.364228248596191,
+                  "Pitch": -10.02418327331543,
+                  "DesYaw": 359.9935607910156,
+                  "Yaw": 348.1159362792969,
+                  "AEKF": 3
+                },
+                "RCOU": {
+                  "mavpackettype": "RCOU",
+                  "TimeUS": 278057931,
+                  "C1": 1946,
+                  "C2": 1950,
+                  "C3": 1876,
+                  "C4": 1878,
+                  "C5": 0,
+                  "C6": 0,
+                  "C7": 0,
+                  "C8": 0,
+                  "C9": 0,
+                  "C10": 0,
+                  "C11": 0,
+                  "C12": 0,
+                  "C13": 0,
+                  "C14": 0
+                },
+                "PSCD": {
+                  "mavpackettype": "PSCD",
+                  "TimeUS": 278057931,
+                  "DPD": -48.24931335449219,
+                  "TPD": -48.24931335449219,
+                  "PD": -46.17814636230469,
+                  "DVD": 0.2602394223213196,
+                  "TVD": -1.809704303741455,
+                  "VD": 1.8610750436782837,
+                  "DAD": -0.0544029176235199,
+                  "TAD": -18.39185333251953,
+                  "AD": -1.7027521133422852
+                }
+              }
+            },
+            {
+              "error": {
+                "mavpackettype": "ERR",
+                "TimeUS": 279437961,
+                "Subsys": 25,
+                "ECode": 1
+              },
+              "preceding": {
+                "CTUN": {
+                  "mavpackettype": "CTUN",
+                  "TimeUS": 279425961,
+                  "ThI": 1.206937551498413,
+                  "ABst": 0.01858043670654297,
+                  "ThO": 1.0,
+                  "ThH": 0.4834621548652649,
+                  "DAlt": 47.812686920166016,
+                  "Alt": 44.72570037841797,
+                  "BAlt": 44.79248046875,
+                  "DSAlt": null,
+                  "SAlt": 0.0,
+                  "TAlt": 2677.489990234375,
+                  "DCRt": 2.490508794784546,
+                  "CRt": -0.22670678794384003
+                },
+                "ATT": {
+                  "mavpackettype": "ATT",
+                  "TimeUS": 279425961,
+                  "DesRoll": 0.30682992935180664,
+                  "Roll": 0.47776371240615845,
+                  "DesPitch": -9.995698928833008,
+                  "Pitch": -9.978549003601074,
+                  "DesYaw": 359.97381591796875,
+                  "Yaw": 359.06634521484375,
+                  "AEKF": 3
+                },
+                "RCOU": {
+                  "mavpackettype": "RCOU",
+                  "TimeUS": 279425961,
+                  "C1": 1950,
+                  "C2": 1949,
+                  "C3": 1844,
+                  "C4": 1845,
+                  "C5": 0,
+                  "C6": 0,
+                  "C7": 0,
+                  "C8": 0,
+                  "C9": 0,
+                  "C10": 0,
+                  "C11": 0,
+                  "C12": 0,
+                  "C13": 0,
+                  "C14": 0
+                },
+                "PSCD": {
+                  "mavpackettype": "PSCD",
+                  "TimeUS": 279425961,
+                  "DPD": -47.812686920166016,
+                  "TPD": -47.812686920166016,
+                  "PD": -44.72570037841797,
+                  "DVD": 0.39877229928970337,
+                  "TVD": -2.490508794784546,
+                  "VD": 0.22670678794384003,
+                  "DAD": 0.08789707720279694,
+                  "TAD": -13.78709888458252,
+                  "AD": -1.5725374221801758
+                }
+              }
+            }
+          ]
+        }
+      ],
+      "live_actions": false
+    },
+    "live_flight_tested": false,
+    "installation": {
+      "activated_at_utc": "2026-11-01T00:35:49.104186+00:00",
+      "published_at_utc": "2026-11-01T00:35:53.486834+00:00",
+      "boot_mission_id": "e9b7ceec-7f84-4acb-8978-56a121c45f81",
+      "health": {
+        "ok": true,
+        "services": {
+          "web": true,
+          "mission": true,
+          "signalling": true,
+          "unreal": true,
+          "turn": true,
+          "caddy": true
+        },
+        "renderer": "ready"
+      },
+      "can_open_studio": true,
+      "verified_parameters": {
+        "Drone1": {
+          "ARMING_SKIPCHK": 0.0,
+          "FS_THR_ENABLE": 1.0,
+          "FS_CRASH_CHECK": 1.0,
+          "DISARM_DELAY": 10.0,
+          "RTL_ALT_M": 80.0,
+          "RTL_ALT_FINAL_M": 0.0,
+          "RTL_CLIMB_MIN_M": 0.0,
+          "RTL_CONE_SLOPE": 0.0,
+          "RTL_ALT_TYPE": 0.0,
+          "FENCE_ALT_MAX": 100.0,
+          "FENCE_MARGIN": 2.0,
+          "BATT_MONITOR": 4.0,
+          "BATT_LOW_VOLT": 10.5,
+          "BATT_LOW_TIMER": 10.0,
+          "BATT_FS_LOW_ACT": 2.0,
+          "SCHED_LOOP_RATE": 184.0,
+          "BATT_CAPACITY": 50000.0,
+          "SIM_BATT_CAP_AH": 50.0,
+          "SIM_BATT_VOLTAGE": 12.600000381469727
+        },
+        "Drone4": {
+          "ARMING_SKIPCHK": 0.0,
+          "FS_THR_ENABLE": 1.0,
+          "FS_CRASH_CHECK": 1.0,
+          "DISARM_DELAY": 10.0,
+          "RTL_ALT_M": 80.0,
+          "RTL_ALT_FINAL_M": 0.0,
+          "RTL_CLIMB_MIN_M": 0.0,
+          "RTL_CONE_SLOPE": 0.0,
+          "RTL_ALT_TYPE": 0.0,
+          "FENCE_ALT_MAX": 100.0,
+          "FENCE_MARGIN": 2.0,
+          "BATT_MONITOR": 4.0,
+          "BATT_LOW_VOLT": 10.5,
+          "BATT_LOW_TIMER": 10.0,
+          "BATT_FS_LOW_ACT": 2.0,
+          "SCHED_LOOP_RATE": 184.0,
+          "BATT_CAPACITY": 50000.0,
+          "SIM_BATT_CAP_AH": 50.0,
+          "SIM_BATT_VOLTAGE": 12.600000381469727
+        },
+        "Drone2": {
+          "ARMING_SKIPCHK": 0.0,
+          "FS_THR_ENABLE": 1.0,
+          "FS_CRASH_CHECK": 1.0,
+          "DISARM_DELAY": 10.0,
+          "RTL_ALT_M": 80.0,
+          "RTL_ALT_FINAL_M": 0.0,
+          "RTL_CLIMB_MIN_M": 0.0,
+          "RTL_CONE_SLOPE": 0.0,
+          "RTL_ALT_TYPE": 0.0,
+          "FENCE_ALT_MAX": 100.0,
+          "FENCE_MARGIN": 2.0,
+          "BATT_MONITOR": 4.0,
+          "BATT_LOW_VOLT": 10.5,
+          "BATT_LOW_TIMER": 10.0,
+          "BATT_FS_LOW_ACT": 2.0,
+          "SCHED_LOOP_RATE": 184.0,
+          "BATT_CAPACITY": 50000.0,
+          "SIM_BATT_CAP_AH": 50.0,
+          "SIM_BATT_VOLTAGE": 12.600000381469727
+        },
+        "Drone3": {
+          "ARMING_SKIPCHK": 0.0,
+          "FS_THR_ENABLE": 1.0,
+          "FS_CRASH_CHECK": 1.0,
+          "DISARM_DELAY": 10.0,
+          "RTL_ALT_M": 80.0,
+          "RTL_ALT_FINAL_M": 0.0,
+          "RTL_CLIMB_MIN_M": 0.0,
+          "RTL_CONE_SLOPE": 0.0,
+          "RTL_ALT_TYPE": 0.0,
+          "FENCE_ALT_MAX": 100.0,
+          "FENCE_MARGIN": 2.0,
+          "BATT_MONITOR": 4.0,
+          "BATT_LOW_VOLT": 10.5,
+          "BATT_LOW_TIMER": 10.0,
+          "BATT_FS_LOW_ACT": 2.0,
+          "SCHED_LOOP_RATE": 184.0,
+          "BATT_CAPACITY": 50000.0,
+          "SIM_BATT_CAP_AH": 50.0,
+          "SIM_BATT_VOLTAGE": 12.600000381469727
+        }
+      },
+      "binary_before_sha256": "00291d26dd0588c678d62d0bece78384310f3bd402594b4ca78526a1f4559aca",
+      "binary_after_sha256": "77a4b845a87aa1b1c0b0ba6d2fcb1bfd90fb75fb08175b136c8068c661293c82",
+      "verified_http_assets": [
+        {
+          "route": "/missionplanner",
+          "sha256": "b7f25202bfa59dc65e7fa688db0948e098fa1d0035d029a44cb25908da1ad45e"
+        },
+        {
+          "route": "/assets/Home-6kYtTTDC.js",
+          "sha256": "02126f4c5f55d6590b6621af8630a53c64942c7b964e85c725afacbb18cae70b"
+        },
+        {
+          "route": "/assets/MissionControl-Cz8k5pvB.js",
+          "sha256": "099eae626d327480bdc5957930d7392493f7bbe77400f7da8457695fb2ae3f53"
+        },
+        {
+          "route": "/assets/Team-4K3P53Qn.js",
+          "sha256": "304a690c09a4aff238d26e43ec7a64b44a8029b2820ce44e77d3094a7cc951dc"
+        },
+        {
+          "route": "/assets/UnrealApp-CcjkWw7V.js",
+          "sha256": "873da9a334ff8b19b8698c6b8c7d84b53959cc364c811bfb46f48573195159c0"
+        },
+        {
+          "route": "/assets/commander-DRBqNBzF.js",
+          "sha256": "b3b83a818f1b3fa694e80cdbb27abdb229450dcdd8c223b0810d82c840c358bf"
+        },
+        {
+          "route": "/assets/compass-DOcSOElf.js",
+          "sha256": "61f262ad38db1d02e0592f3a3102430c1a36a2508a2187048b068d46e8a04611"
+        },
+        {
+          "route": "/assets/index-Dfus1uer.js",
+          "sha256": "c656a877371fa7582b25c1259cac5dfadd4d2b17bc31f1d36988d94b94e530ee"
+        },
+        {
+          "route": "/assets/missionLifecycle-D-18pQz0.js",
+          "sha256": "baa6aa628aa9da80e0eebe840d8bb141486f447b3f13d7fc490e3f6aa3b87bed"
+        },
+        {
+          "route": "/assets/radio-DaNBPOJ7.js",
+          "sha256": "7f898a2588b3af0c8ed9d170d3e21174e90bcfa5c900f48eade677e5332ba65c"
+        },
+        {
+          "route": "/assets/schemas-B99H9DV5.js",
+          "sha256": "91ae9f7aabaa6af24b8d2f408a8d23c55560571c27c9cd9fc094fe649a31e736"
+        },
+        {
+          "route": "/assets/worldMap-DWHV642Z.js",
+          "sha256": "1f84e682abec34032dbca46c4e24fb5788497e217880adae841316597adb38c1"
+        }
+      ],
+      "activation_evidence": "activation.json",
+      "publication_evidence": "publish.json"
+    }
+  },
+  "search_workflow_yaw": {
+    "recorded_at_utc": "2026-11-01T01:21:31.093764+00:00",
+    "status": "Installed and healthy; awaiting user-operated flight acceptance",
+    "evidence_root": ".local/evidence/search-workflow/20261101T005139Z",
+    "parameter_change": {
+      "parameter": "ATC_ACC_Y_MAX",
+      "unit": "deg/s/s",
+      "old": 270,
+      "new": 20,
+      "applies_to": "airsim-copter only; emitted in safety.parm and included in startup expected_parameters for each drone",
+      "legacy_parameter_warning": "ATC_ACCEL_Y_MAX used centidegrees; pinned current ATC_ACC_Y_MAX uses degrees. No legacy parameter is emitted.",
+      "activation": "New fleet startup after service install; no in-flight mutation.",
+      "unchanged": [
+        "yaw PID gains",
+        "roll/pitch limits",
+        "MOT_SPIN_MAX",
+        "50 Ah battery",
+        "battery and crash failsafes"
+      ]
+    },
+    "finding": "Motor mapping and yaw direction agree in the pinned ArduPilot and Cosys implementations. The default 270 deg/s2 yaw acceleration exceeds the simulated high-altitude propulsion yaw authority while preserving vertical lift. The mixer can preserve yaw by reducing collective. Recorded reversals show large yaw-rate error, motor-pair saturation and real descent; this supports reducing commanded yaw acceleration, not suppressing thrust-loss warnings.",
+    "comparison": {
+      "cases": 72,
+      "cases_each_setting": 36,
+      "baseline_minimum_lift_weight_ratio": 0.618985,
+      "new_minimum_lift_weight_ratio": 1.0,
+      "baseline_cases_below_weight": 36,
+      "new_cases_below_weight": 0,
+      "new_max_final_yaw_error_deg": 0.0221,
+      "assumptions": {
+        "altitude_msl_m": 2740,
+        "controller_hz": 184,
+        "constant_tilt_degrees": [
+          0,
+          15,
+          30
+        ],
+        "compensation_gain": [
+          1,
+          1.36,
+          1.8
+        ],
+        "turn_degrees": [
+          90,
+          180
+        ],
+        "reversal_at_s": 2.2,
+        "rotor_lag_s": 0.005,
+        "actuator_delay_controller_ticks": 2
+      },
+      "log": "yaw-envelope-comparison.log",
+      "results": "yaw-envelope-comparison-results.json",
+      "source": "test_sitl_yaw_envelope.cpp",
+      "execution": [
+        {
+          "command": [
+            "python",
+            "modules/waf/waf-light",
+            "build",
+            "--targets",
+            "tests/test_sitl_yaw_envelope",
+            "-j4",
+            "--no-submodule-update"
+          ],
+          "elapsed_s": 2.5848197050218005,
+          "exit_code": 0
+        },
+        {
+          "command": [
+            "build/sitl/tests/test_sitl_yaw_envelope"
+          ],
+          "elapsed_s": 0.055345580010907724,
+          "exit_code": 0
+        }
+      ]
+    },
+    "limits": [
+      "This reduced model uses pinned AP command-shaping and AC_PID code plus a simplified yaw-only mixer/propulsion model; it is not a full six-degree-of-freedom flight simulation.",
+      "Tilt is held fixed; concurrent roll/pitch torques, drag, changing vertical demand, estimator error and actual network delay are not modeled.",
+      "A modeled lift/weight ratio of 1 is the zero-climb requirement, not a climb reserve or proof every saturation is eliminated.",
+      "Reduced acceleration makes turns slower; actual route, clearance, tracking and thrust-warning behavior require the operator live test.",
+      "No physical motor fault was established. No live result with the changed parameter is claimed."
+    ],
+    "source_evidence": "physics/summary.json",
+    "binary_change": false,
+    "installation": {
+      "activated_at_utc": "2026-11-01T01:22:27.823651+00:00",
+      "published_at_utc": "2026-11-01T01:23:01.834917+00:00",
+      "boot_mission_id": "e764a6c4-5b2c-49d7-b3bc-5ec604868839",
+      "health": {
+        "ok": true,
+        "services": {
+          "web": true,
+          "mission": true,
+          "signalling": true,
+          "unreal": true,
+          "turn": true,
+          "caddy": true
+        },
+        "renderer": "ready"
+      },
+      "can_open_studio": true,
+      "verified_parameters": {
+        "Drone1": {
+          "ARMING_SKIPCHK": 0.0,
+          "FS_THR_ENABLE": 1.0,
+          "FS_CRASH_CHECK": 1.0,
+          "DISARM_DELAY": 10.0,
+          "RTL_ALT_M": 80.0,
+          "RTL_ALT_FINAL_M": 0.0,
+          "RTL_CLIMB_MIN_M": 0.0,
+          "RTL_CONE_SLOPE": 0.0,
+          "RTL_ALT_TYPE": 0.0,
+          "FENCE_ALT_MAX": 100.0,
+          "FENCE_MARGIN": 2.0,
+          "BATT_MONITOR": 4.0,
+          "BATT_LOW_VOLT": 10.5,
+          "BATT_LOW_TIMER": 10.0,
+          "BATT_FS_LOW_ACT": 2.0,
+          "SCHED_LOOP_RATE": 184.0,
+          "ATC_ACC_Y_MAX": 20.0,
+          "BATT_CAPACITY": 50000.0,
+          "SIM_BATT_CAP_AH": 50.0,
+          "SIM_BATT_VOLTAGE": 12.600000381469727
+        },
+        "Drone2": {
+          "ARMING_SKIPCHK": 0.0,
+          "FS_THR_ENABLE": 1.0,
+          "FS_CRASH_CHECK": 1.0,
+          "DISARM_DELAY": 10.0,
+          "RTL_ALT_M": 80.0,
+          "RTL_ALT_FINAL_M": 0.0,
+          "RTL_CLIMB_MIN_M": 0.0,
+          "RTL_CONE_SLOPE": 0.0,
+          "RTL_ALT_TYPE": 0.0,
+          "FENCE_ALT_MAX": 100.0,
+          "FENCE_MARGIN": 2.0,
+          "BATT_MONITOR": 4.0,
+          "BATT_LOW_VOLT": 10.5,
+          "BATT_LOW_TIMER": 10.0,
+          "BATT_FS_LOW_ACT": 2.0,
+          "SCHED_LOOP_RATE": 184.0,
+          "ATC_ACC_Y_MAX": 20.0,
+          "BATT_CAPACITY": 50000.0,
+          "SIM_BATT_CAP_AH": 50.0,
+          "SIM_BATT_VOLTAGE": 12.600000381469727
+        },
+        "Drone3": {
+          "ARMING_SKIPCHK": 0.0,
+          "FS_THR_ENABLE": 1.0,
+          "FS_CRASH_CHECK": 1.0,
+          "DISARM_DELAY": 10.0,
+          "RTL_ALT_M": 80.0,
+          "RTL_ALT_FINAL_M": 0.0,
+          "RTL_CLIMB_MIN_M": 0.0,
+          "RTL_CONE_SLOPE": 0.0,
+          "RTL_ALT_TYPE": 0.0,
+          "FENCE_ALT_MAX": 100.0,
+          "FENCE_MARGIN": 2.0,
+          "BATT_MONITOR": 4.0,
+          "BATT_LOW_VOLT": 10.5,
+          "BATT_LOW_TIMER": 10.0,
+          "BATT_FS_LOW_ACT": 2.0,
+          "SCHED_LOOP_RATE": 184.0,
+          "ATC_ACC_Y_MAX": 20.0,
+          "BATT_CAPACITY": 50000.0,
+          "SIM_BATT_CAP_AH": 50.0,
+          "SIM_BATT_VOLTAGE": 12.600000381469727
+        },
+        "Drone4": {
+          "ARMING_SKIPCHK": 0.0,
+          "FS_THR_ENABLE": 1.0,
+          "FS_CRASH_CHECK": 1.0,
+          "DISARM_DELAY": 10.0,
+          "RTL_ALT_M": 80.0,
+          "RTL_ALT_FINAL_M": 0.0,
+          "RTL_CLIMB_MIN_M": 0.0,
+          "RTL_CONE_SLOPE": 0.0,
+          "RTL_ALT_TYPE": 0.0,
+          "FENCE_ALT_MAX": 100.0,
+          "FENCE_MARGIN": 2.0,
+          "BATT_MONITOR": 4.0,
+          "BATT_LOW_VOLT": 10.5,
+          "BATT_LOW_TIMER": 10.0,
+          "BATT_FS_LOW_ACT": 2.0,
+          "SCHED_LOOP_RATE": 184.0,
+          "ATC_ACC_Y_MAX": 20.0,
+          "BATT_CAPACITY": 50000.0,
+          "SIM_BATT_CAP_AH": 50.0,
+          "SIM_BATT_VOLTAGE": 12.600000381469727
+        }
+      },
+      "binary_before_sha256": "77a4b845a87aa1b1c0b0ba6d2fcb1bfd90fb75fb08175b136c8068c661293c82",
+      "binary_after_sha256": "77a4b845a87aa1b1c0b0ba6d2fcb1bfd90fb75fb08175b136c8068c661293c82",
+      "verified_http_assets": [
+        {
+          "route": "/missionplanner",
+          "sha256": "5b18fdc2848e9bc2bbcc036935bd720ebefaf5c6882dfae164af74c56df60483"
+        },
+        {
+          "route": "/assets/Home-Dhs_lB57.js",
+          "sha256": "c70886d7bf35f5f8b91d603b04cfad48fe22098ae8361d338f7c35c8cacd70cb"
+        },
+        {
+          "route": "/assets/MissionControl-wh3lF6_W.js",
+          "sha256": "d8720bc063daf41203c87626b1cdef9fcf23f719a5385b450b7b7af96f800169"
+        },
+        {
+          "route": "/assets/Team-BjQ6juBa.js",
+          "sha256": "f06601704c8f47c310ef7eb0b2a4335e293f58f14c43a31838a3e785b9d18520"
+        },
+        {
+          "route": "/assets/UnrealApp-Cg6-s4nY.js",
+          "sha256": "e08b81b1e144b7e4a41b445563f8c2ce7e0483bb3ce292db40ac99e369c700d2"
+        },
+        {
+          "route": "/assets/commander-DNw9ejV4.js",
+          "sha256": "2b8a382a98408bbd1f68cc2cde6fcf30b32b01eb00b30ee864a2ba8da411cab9"
+        },
+        {
+          "route": "/assets/compass-DVlfuE9b.js",
+          "sha256": "8ec7df8bbd5ff3b028de1826fb3632d6e339b61410de7b1c26caa8d7300824f5"
+        },
+        {
+          "route": "/assets/index-_c34IklC.js",
+          "sha256": "c7c8d8db26284fae449838d15a905d6a2c42e80d6f22054b64373b3d1e967a64"
+        },
+        {
+          "route": "/assets/missionLifecycle-Df6TW00M.js",
+          "sha256": "aaea6ff79ec4ca586566271d6f5d00a1f4b4e6874aeff0ce81c84d74bc7ab250"
+        },
+        {
+          "route": "/assets/radio-Czjleu-1.js",
+          "sha256": "6da98203be3dc14d8c24a5d8d778ba4d8010db45124a53bc498a106a79fd9bf0"
+        },
+        {
+          "route": "/assets/schemas-Bcsrfm8h.js",
+          "sha256": "b56ae496875d106eac4239a8c9d97e4d450ea4323c50f146647dbc07a7792aa2"
+        },
+        {
+          "route": "/assets/worldMap-LTyixdz-.js",
+          "sha256": "61541a7d507c388ba8e002b9c295dd32501b78fa45d1c0d562ee0b84fb6541cb"
+        }
+      ],
+      "activation_evidence": "activation.json",
+      "publication_evidence": "publish.json"
+    }
+  },
+  "general_planner_battery_budget_correction": {
+    "charge_floor_percent": 10,
+    "fixed_reserve_s": 0,
+    "voltage_floor_percent": 45.54555555555557,
+    "parameter_changes": [],
+    "recorded_replays": 6,
+    "previous_battery_rejections_now_pass": 4,
+    "reported_106_54_percent_plan_required_percent": 93.75265077876847,
+    "evidence": ".local/evidence/temporal-follow/20261101T132438Z/battery/recorded-preview-replay.json",
+    "note": "Planned flight, return and explicit candidate allowance remain charged. The separate voltage floor is conservative arithmetic from the pinned 50 A electrical model, not observed flight endurance. Legacy statistical search budget unchanged.",
+    "evidence_root": ".local/evidence/temporal-follow/20261101T132438Z/battery"
+  },
+  "world_bear_port": {
+    "results": "mission_planner/measurements/world-bear-port.json",
+    "installed_release": "/srv/snr/.local/unreal/releases/world-bear-port-20261101T143600Z-final",
+    "home_up_m": 11.13,
+    "rtl_altitude_m": 80,
+    "conservative_rtl_clearance_m": 11.98156250000011,
+    "parameters_changed": false,
+    "flight_commands": 0,
+    "evidence": ".local/evidence/world-bear-port/20261101T143600Z"
+  }
+}

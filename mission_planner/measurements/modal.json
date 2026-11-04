@@ -1,0 +1,1815 @@
+{
+  "schema_version": 1,
+  "evidence": ".local/evidence/models/modal-01/",
+  "provider": "Modal",
+  "app": "snr",
+  "app_id": "ap-wYTwEzdLgHuUxUmOBZ7eSZ",
+  "mission_host_region": "AWS us-west-2 (user-provided deployment location)",
+  "sources": {
+    "modal_servers": "https://docs.modal.com/guide/servers",
+    "modal_app": "https://docs.modal.com/sdk/py/latest/modal.App",
+    "modal_server": "https://docs.modal.com/sdk/py/latest/modal.Server",
+    "modal_volume": "https://docs.modal.com/sdk/py/latest/modal.Volume",
+    "modal_image": "https://docs.modal.com/sdk/py/latest/modal.Image",
+    "modal_secret": "https://docs.modal.com/sdk/py/latest/modal.Secret",
+    "modal_proxy_auth": "https://docs.modal.com/guide/webhook-proxy-auth",
+    "modal_billing": "https://docs.modal.com/guide/billing",
+    "modal_workspace": "https://docs.modal.com/sdk/py/latest/modal.Workspace",
+    "modal_pricing": "https://modal.com/pricing",
+    "llama_server": "https://github.com/ggml-org/llama.cpp/tree/b12004/tools/server",
+    "llama_cuda_image": "https://github.com/ggml-org/llama.cpp/blob/b12004/.devops/cuda.Dockerfile",
+    "llama_schema_parser": "https://github.com/ggml-org/llama.cpp/blob/b12004/tools/server/server-common.cpp#L1392",
+    "sam_builder": "https://github.com/facebookresearch/sam3/blob/f1647e8d0c1d280991f4d1b7d974c2704537fe66/sam3/model_builder.py",
+    "glimmer_weights": "https://huggingface.co/meta-models/Muse-Glimmer-30B-GGUF/tree/b44f1072cf75e918a1b82a3a17b45c4389b076e7",
+    "sam_weights": "https://huggingface.co/facebook/sam3.1/tree/daa63191845a41281374e725f4c9e51c7a824460"
+  },
+  "published_starter_gpu_limit": 10,
+  "production": {
+    "sam": {
+      "id": "fu-nLLjhOaGp2jfkRO9knsWAu",
+      "info": {
+        "server_url": "https://brook--snr-sam.us-west.modal.direct",
+        "port": 8000,
+        "unauthenticated": false,
+        "h2_enabled": false,
+        "routing_region": "us-west",
+        "sessioned": false,
+        "startup_timeout": 1800,
+        "exit_grace_period": 0,
+        "image_info": {
+          "image_name": null,
+          "image_id": "im-jBj9a0QawCwEdsHrH4yEMb"
+        },
+        "cpu": null,
+        "memory_mib": null,
+        "gpus": [
+          [
+            "H100!",
+            1
+          ]
+        ],
+        "ephemeral_disk_mib": null,
+        "nonpreemptible": false,
+        "compute_regions": null,
+        "cloud": null,
+        "cluster_info": null,
+        "volumes": {
+          "/weights": {
+            "name": null,
+            "volume_id": "vo-greIbIg1ztOOTBUxar6JSC",
+            "read_only": true,
+            "sub_path": null
+          }
+        },
+        "cloud_bucket_mounts": {},
+        "secrets": []
+      },
+      "autoscaler": {
+        "target_concurrency": null,
+        "min_containers": 1,
+        "max_containers": null,
+        "buffer_containers": null,
+        "scaleup_window": 1,
+        "scaledown_window": 60
+      },
+      "max_concurrency": 8,
+      "final_oci_digest": null,
+      "digest_evidence": "production-servers.json and modal-types.html expose immutable image IDs, not final OCI digests."
+    },
+    "glimmer": {
+      "id": "fu-YvIz4v4bUzrTJYdI8DcXP7",
+      "info": {
+        "server_url": "https://brook--snr-glimmer.us-west.modal.direct",
+        "port": 8000,
+        "unauthenticated": false,
+        "h2_enabled": false,
+        "routing_region": "us-west",
+        "sessioned": false,
+        "startup_timeout": 1800,
+        "exit_grace_period": 0,
+        "image_info": {
+          "image_name": null,
+          "image_id": "im-k1Fmx0230EtH0CIAmMSQ4x"
+        },
+        "cpu": null,
+        "memory_mib": null,
+        "gpus": [
+          [
+            "H200",
+            1
+          ]
+        ],
+        "ephemeral_disk_mib": null,
+        "nonpreemptible": false,
+        "compute_regions": null,
+        "cloud": null,
+        "cluster_info": null,
+        "volumes": {
+          "/weights": {
+            "name": null,
+            "volume_id": "vo-greIbIg1ztOOTBUxar6JSC",
+            "read_only": true,
+            "sub_path": null
+          }
+        },
+        "cloud_bucket_mounts": {},
+        "secrets": []
+      },
+      "autoscaler": {
+        "target_concurrency": null,
+        "min_containers": 1,
+        "max_containers": null,
+        "buffer_containers": null,
+        "scaleup_window": 1,
+        "scaledown_window": 60
+      },
+      "max_concurrency": 4,
+      "final_oci_digest": null,
+      "digest_evidence": "production-servers.json and modal-types.html expose immutable image IDs, not final OCI digests."
+    }
+  },
+  "actual_gpus": {
+    "sam": "NVIDIA H100 80GB HBM3",
+    "glimmer": "NVIDIA H200"
+  },
+  "packages": {
+    "modal_client": "1.6.3",
+    "mission": [
+      {
+        "name": "aiohappyeyeballs",
+        "version": "2.7.1"
+      },
+      {
+        "name": "aiohttp",
+        "version": "3.14.5"
+      },
+      {
+        "name": "aiosignal",
+        "version": "1.4.0"
+      },
+      {
+        "name": "anyio",
+        "version": "4.15.1"
+      },
+      {
+        "name": "async-timeout",
+        "version": "5.0.1"
+      },
+      {
+        "name": "attrs",
+        "version": "26.1.0"
+      },
+      {
+        "name": "cbor2",
+        "version": "6.1.5"
+      },
+      {
+        "name": "certifi",
+        "version": "2026.10.23"
+      },
+      {
+        "name": "click",
+        "version": "8.5.0"
+      },
+      {
+        "name": "contourpy",
+        "version": "1.3.2"
+      },
+      {
+        "name": "cosysairsim",
+        "version": "3.5.0"
+      },
+      {
+        "name": "cycler",
+        "version": "0.12.1"
+      },
+      {
+        "name": "empy",
+        "version": "3.3.4"
+      },
+      {
+        "name": "exceptiongroup",
+        "version": "1.3.1"
+      },
+      {
+        "name": "fastcrc",
+        "version": "0.5.0"
+      },
+      {
+        "name": "fonttools",
+        "version": "4.65.0"
+      },
+      {
+        "name": "frozenlist",
+        "version": "1.8.0"
+      },
+      {
+        "name": "grpclib",
+        "version": "0.4.9"
+      },
+      {
+        "name": "h11",
+        "version": "0.16.0"
+      },
+      {
+        "name": "h2",
+        "version": "4.4.1"
+      },
+      {
+        "name": "hpack",
+        "version": "4.2.0"
+      },
+      {
+        "name": "httpcore",
+        "version": "1.0.9"
+      },
+      {
+        "name": "httpx",
+        "version": "0.28.1"
+      },
+      {
+        "name": "hyperframe",
+        "version": "6.1.0"
+      },
+      {
+        "name": "idna",
+        "version": "3.20"
+      },
+      {
+        "name": "jsonschema",
+        "version": "4.26.0"
+      },
+      {
+        "name": "jsonschema-specifications",
+        "version": "2025.9.1"
+      },
+      {
+        "name": "kiwisolver",
+        "version": "1.5.1"
+      },
+      {
+        "name": "lxml",
+        "version": "6.1.3"
+      },
+      {
+        "name": "markdown-it-py",
+        "version": "4.2.0"
+      },
+      {
+        "name": "matplotlib",
+        "version": "3.10.9"
+      },
+      {
+        "name": "mdurl",
+        "version": "0.1.2"
+      },
+      {
+        "name": "modal",
+        "version": "1.6.3"
+      },
+      {
+        "name": "msgpack",
+        "version": "1.1.2"
+      },
+      {
+        "name": "multidict",
+        "version": "7.1.0"
+      },
+      {
+        "name": "numpy",
+        "version": "1.23.5"
+      },
+      {
+        "name": "packaging",
+        "version": "26.3"
+      },
+      {
+        "name": "pexpect",
+        "version": "4.9.0"
+      },
+      {
+        "name": "pillow",
+        "version": "11.0.0"
+      },
+      {
+        "name": "pip",
+        "version": "22.0.2"
+      },
+      {
+        "name": "propcache",
+        "version": "0.5.4"
+      },
+      {
+        "name": "protobuf",
+        "version": "7.36.2"
+      },
+      {
+        "name": "ptyprocess",
+        "version": "0.7.0"
+      },
+      {
+        "name": "Pygments",
+        "version": "2.21.0"
+      },
+      {
+        "name": "pymavlink",
+        "version": "2.4.50"
+      },
+      {
+        "name": "pyparsing",
+        "version": "3.3.3"
+      },
+      {
+        "name": "python-dateutil",
+        "version": "3.0.0"
+      },
+      {
+        "name": "python-dotenv",
+        "version": "1.2.4"
+      },
+      {
+        "name": "referencing",
+        "version": "0.37.0"
+      },
+      {
+        "name": "rich",
+        "version": "15.0.0"
+      },
+      {
+        "name": "rpc-msgpack",
+        "version": "0.6"
+      },
+      {
+        "name": "rpds-py",
+        "version": "0.30.0"
+      },
+      {
+        "name": "ruff",
+        "version": "0.17.3"
+      },
+      {
+        "name": "scipy",
+        "version": "1.15.3"
+      },
+      {
+        "name": "setuptools",
+        "version": "59.6.0"
+      },
+      {
+        "name": "six",
+        "version": "1.17.0"
+      },
+      {
+        "name": "synchronicity",
+        "version": "0.12.7"
+      },
+      {
+        "name": "toml",
+        "version": "0.10.2"
+      },
+      {
+        "name": "tornado",
+        "version": "6.4.1"
+      },
+      {
+        "name": "types-certifi",
+        "version": "2021.10.8.3"
+      },
+      {
+        "name": "types-toml",
+        "version": "0.10.8.20260518"
+      },
+      {
+        "name": "typing_extensions",
+        "version": "4.16.0"
+      },
+      {
+        "name": "tzdata",
+        "version": "2026.5"
+      },
+      {
+        "name": "watchfiles",
+        "version": "1.3.0"
+      },
+      {
+        "name": "websockets",
+        "version": "15.0.1"
+      },
+      {
+        "name": "yarl",
+        "version": "1.25.1"
+      }
+    ],
+    "sam_container": {
+      "filelock": "4.2.6",
+      "nvidia-cuda-nvrtc-cu12": "12.8.93",
+      "fastapi": "0.136.3",
+      "nvidia-cufft-cu12": "11.3.3.83",
+      "triton": "3.6.0",
+      "httpx2": "2.16.0",
+      "nvidia-curand-cu12": "10.3.9.90",
+      "regex": "2026.9.29",
+      "cuda-pathfinder": "1.8.5",
+      "nvidia-cufile-cu12": "1.13.1.3",
+      "wcwidth": "0.9.4",
+      "annotated-types": "0.8.0",
+      "idna": "3.20",
+      "nvidia-cuda-cupti-cu12": "12.8.90",
+      "timm": "1.0.30",
+      "pip": "26.2.2",
+      "hf-xet": "1.8.0",
+      "scipy": "1.17.1",
+      "nvidia-nvjitlink-cu12": "12.8.93",
+      "mpmath": "1.3.0",
+      "nvidia-cusolver-cu12": "11.7.3.90",
+      "nvidia-cuda-runtime-cu12": "12.8.90",
+      "nvidia-cusparselt-cu12": "0.7.1",
+      "torch": "2.10.0",
+      "decord": "0.6.0",
+      "psutil": "7.2.2",
+      "pydantic_core": "2.50.1",
+      "safetensors": "0.8.0",
+      "pydantic": "2.14.1",
+      "nvidia-cusparse-cu12": "12.5.8.93",
+      "typing_extensions": "4.16.0",
+      "portalocker": "4.4.2",
+      "starlette": "1.10.0",
+      "nvidia-nccl-cu12": "2.27.5",
+      "anyio": "4.15.1",
+      "torchvision": "0.25.0",
+      "MarkupSafe": "3.0.4",
+      "nvidia-nvshmem-cu12": "3.4.5",
+      "einops": "0.8.2",
+      "nvidia-cublas-cu12": "12.8.4.1",
+      "h11": "0.16.0",
+      "fsspec": "2026.9.0",
+      "pycocotools": "2.0.11",
+      "nvidia-nvtx-cu12": "12.8.90",
+      "sam3": "0.1.0",
+      "numpy": "1.26.4",
+      "annotated-doc": "0.0.5",
+      "packaging": "26.3",
+      "ftfy": "6.1.1",
+      "networkx": "3.7",
+      "Jinja2": "3.1.6",
+      "wheel": "0.48.0",
+      "typing-inspection": "0.4.4",
+      "uv": "0.13.6",
+      "PyYAML": "6.0.3",
+      "iopath": "0.1.10",
+      "setuptools": "80.10.2",
+      "truststore": "0.10.5",
+      "cuda-bindings": "12.9.4",
+      "tqdm": "4.70.1",
+      "huggingface_hub": "2.3.0",
+      "pillow": "13.0.0",
+      "httpcore2": "2.16.0",
+      "nvidia-cudnn-cu12": "9.10.2.21",
+      "click": "8.5.0",
+      "uvicorn": "0.54.0",
+      "sympy": "1.14.0",
+      "yarl": "1.25.1",
+      "propcache": "0.5.4",
+      "aiohappyeyeballs": "2.7.1",
+      "aiohttp": "3.14.5",
+      "h2": "4.4.1",
+      "protobuf": "7.36.2",
+      "aiosignal": "1.4.0",
+      "attrs": "26.1.0",
+      "hyperframe": "6.1.0",
+      "frozenlist": "1.8.0",
+      "grpclib": "0.4.9",
+      "cbor2": "5.9.0",
+      "multidict": "7.1.0",
+      "hpack": "4.2.0",
+      "certifi": "2026.10.19"
+    }
+  },
+  "weights": [
+    {
+      "repository": "meta-models/Muse-Glimmer-30B-GGUF",
+      "revision": "b44f1072cf75e918a1b82a3a17b45c4389b076e7",
+      "filename": "Muse-Glimmer-30B-KQuant-17GB-Q4_K_M.gguf",
+      "sha256": "4cc57c0f51040a226e5a72cc47b7613f7772950e460a665f7083de89f183f60e",
+      "size": 16756683904,
+      "verified_sha256": "4cc57c0f51040a226e5a72cc47b7613f7772950e460a665f7083de89f183f60e"
+    },
+    {
+      "repository": "meta-models/Muse-Glimmer-30B-GGUF",
+      "revision": "b44f1072cf75e918a1b82a3a17b45c4389b076e7",
+      "filename": "mmproj-Muse-Glimmer-30B-Q4_K_M.gguf",
+      "sha256": "f48b452316f9b213758e8659444029b961a24a07f99a1abb2a9f88b06f7c00c6",
+      "size": 1400328928,
+      "verified_sha256": "f48b452316f9b213758e8659444029b961a24a07f99a1abb2a9f88b06f7c00c6"
+    },
+    {
+      "repository": "facebook/sam3.1",
+      "revision": "daa63191845a41281374e725f4c9e51c7a824460",
+      "filename": "sam3.1_multiplex.pt",
+      "sha256": "0567debeec80ba4ac6369540c6c248025283cb3ff2b92827509e57e2b3541cb6",
+      "size": 3502755717,
+      "verified_sha256": "0567debeec80ba4ac6369540c6c248025283cb3ff2b92827509e57e2b3541cb6"
+    }
+  ],
+  "llama_cpp": {
+    "release": "b12004",
+    "commit": "3c809f44383bcebc318b8cddd8c6d11aaa861e9b",
+    "binary_version_output": "version: 0.8.0-dev (build 1, commit 3c809f4)\nbuilt with GNU 13.3.0 for Linux x86_64",
+    "build_number_note": "The shallow source checkout reports build 1; its commit is the independently verified b12004 tag commit.",
+    "original_image_architectures": {
+      "tool": "NVIDIA cuobjdump 12.8.90",
+      "image_digest": "sha256:4a448514d1cc75f172ede6a2ddd48642adfd817b1ba3d37338de9bb61b9d59e0",
+      "compiled_architectures": [
+        "120a",
+        "86",
+        "89"
+      ],
+      "sm_90_present": false,
+      "decision": "Build b12004 from source with CMAKE_CUDA_ARCHITECTURES=90"
+    },
+    "built_cuda_architecture": "sm_90",
+    "cuda_base_manifest_digest": "sha256:4b9ed5fa8361736996499f64ecebf25d4ec37ff56e4d11323ccde10aa36e0c43",
+    "llama_server_sha256": "1eee3e1a5ed62fd46faf9e2908fd25b39caaaf092b7ade8e6a1615433cbf3da8",
+    "libggml_cuda_sha256": "3b64dc2f78f84ca8efdf57509bc072d0149f085909134aa37f937483d38f1598",
+    "readiness_patch_sha256": "9a48e0703b0451433e8ad56eaf6eddcb087ff1618d430c4968c6d73edb93ab4b",
+    "load_mode": "mmap",
+    "mmap_evidence": "stage-weights-static-dependencies.log and glimmer-startup-loaded.log",
+    "slots": 4,
+    "context_tokens_per_slot": 32768,
+    "projector_loaded": true,
+    "parallel_measurement_scope": "Corrected Glimmer benchmark: 140 valid reports on one H200 container; server logs show peaks of 1, 2 and 4 simultaneously occupied slots."
+  },
+  "startup": {
+    "sam": {
+      "deploy_started_utc": "2026-10-31T18:28:08+00:00",
+      "port_ready_utc": "2026-10-31T18:34:51+00:00",
+      "deploy_to_ready_s": 403.0,
+      "timestamp_resolution_s": 1,
+      "modal_container_startup_s": 20.817819,
+      "container": "ta-01M69KVTJ6YNEGAEA7MEA5R2SR"
+    },
+    "glimmer": {
+      "deploy_started_utc": "2026-10-31T18:28:08+00:00",
+      "port_ready_utc": "2026-10-31T18:34:55+00:00",
+      "deploy_to_ready_s": 407.0,
+      "timestamp_resolution_s": 1,
+      "modal_container_startup_s": 24.959939,
+      "container": "ta-01M69KVTJ6WQWH72N5C4KM1W6R"
+    }
+  },
+  "health_roundtrip": {
+    "sam": {
+      "n": 50,
+      "latency_s": {
+        "p50": 0.14623046151245944,
+        "p95": 0.3048331371057421
+      }
+    },
+    "glimmer": {
+      "n": 50,
+      "latency_s": {
+        "p50": 0.14905167250253726,
+        "p95": 0.3112356822952271
+      }
+    }
+  },
+  "health_scope": "Mission-host GET /health roundtrip, including network, proxy and handler; first connection included.",
+  "sam": {
+    "protocol": {
+      "sam_threshold": 0.3,
+      "prompts": [
+        "person"
+      ],
+      "tolerance": {
+        "box_px": 0.5,
+        "confidence": 0.001,
+        "mask_area_px": 8,
+        "mask_area_fraction": 0.005
+      },
+      "equivalence": "Prompt keys and counts identical; one-to-one box matching by minimum maximum-coordinate distance, then all numeric tolerances must pass.",
+      "sam_requests_per_stream": 40,
+      "glimmer_requests_per_stream": 20,
+      "health_requests_per_server": 50,
+      "frames": [
+        {
+          "path": ".local/data/calibration/adult-etta/frame-00-+00-Drone1.jpg",
+          "sha256": "1a80e5dfa8b451eb731640421f1b158bc99af2438c577febd47216cb28c2763d"
+        },
+        {
+          "path": ".local/data/calibration/adult-etta/frame-04--36-Drone1.jpg",
+          "sha256": "e33644df91d744c01eb5b024f9691203d16643a053c41068a9c01355a12a353e"
+        },
+        {
+          "path": ".local/data/calibration/adult-etta/frame-12--36-Drone1.jpg",
+          "sha256": "6524ba73cb33ad2b0701bc8317097f2bedef648dff3f2b7d2b10fa062b820625"
+        },
+        {
+          "path": ".local/data/calibration/adult-etta/frame-20--36-Drone1.jpg",
+          "sha256": "30170cc27fcef3ff47319e4ddaa020ab77eafc7e9d35884ad0dfb53e94a3d593"
+        },
+        {
+          "path": ".local/data/calibration/adult-kelvin/frame-00--36-Drone1.jpg",
+          "sha256": "a6ba0f291158e5f20add5e0d1f44f90e68906de1ccfd39e7b092ade7f84661db"
+        },
+        {
+          "path": ".local/data/calibration/adult-kelvin/frame-08--24-Drone1.jpg",
+          "sha256": "80ff9eb6880ddfe125e85e738e07e19abeae733f7e634187c7c709899508f9bd"
+        },
+        {
+          "path": ".local/data/calibration/adult-kelvin/frame-16--24-Drone1.jpg",
+          "sha256": "5677a5b12eef027c5d31a89bc2e608a5da7c80922b59ba720959911e3df9a4b1"
+        },
+        {
+          "path": ".local/data/calibration/adult-kelvin/frame-24--24-Drone1.jpg",
+          "sha256": "32ce589114bc7857990a9720d5e7da4b562f5e989fddd126eaa507d4ac473c34"
+        },
+        {
+          "path": ".local/data/calibration/adult-kelvin-blue/frame-04--24-Drone1.jpg",
+          "sha256": "14c02f49adf53a1be258a68c0162c90acd66b926e72ca8cad8f27d80efff8f8f"
+        },
+        {
+          "path": ".local/data/calibration/adult-kelvin-blue/frame-12--24-Drone1.jpg",
+          "sha256": "165c730bd7adcd4c5a3a98b5d3e754f2dd504ef1c74417b5efaa7b1a3d69fb31"
+        },
+        {
+          "path": ".local/data/calibration/adult-kelvin-blue/frame-20--12-Drone1.jpg",
+          "sha256": "017173644e445da15fc522fed06afa3973433c7ff37ba85c9e67c7b313406963"
+        },
+        {
+          "path": ".local/data/calibration/adult-kelvin-forest/frame-00--12-Drone1.jpg",
+          "sha256": "4a503f0cb984cadee44f5c23f04380c8699035f63de61917621f5936e9ee1a63"
+        },
+        {
+          "path": ".local/data/calibration/adult-kelvin-forest/frame-08--12-Drone1.jpg",
+          "sha256": "4ddb63158fca69e3a978a0c3506542a87c70e01ed8c9ab6bc611998482f06707"
+        },
+        {
+          "path": ".local/data/calibration/adult-kelvin-forest/frame-16--12-Drone1.jpg",
+          "sha256": "748a809900c2c849482014d7a2968118f4394821249aa75ba8e5e15adb97c071"
+        },
+        {
+          "path": ".local/data/calibration/adult-kelvin-forest/frame-24--12-Drone1.jpg",
+          "sha256": "53434db7b35ca2f28506bf709793c64a6a6a9b1e525b9f2e4263047acf2b4c42"
+        },
+        {
+          "path": ".local/data/calibration/child-01/frame-04-+36-Drone1.jpg",
+          "sha256": "d585b6d3b99b339380f82ed3fa896fff0593ee7af3bf520a87111a348d099430"
+        },
+        {
+          "path": ".local/data/calibration/child-01/frame-12-+36-Drone1.jpg",
+          "sha256": "0b10d6be18913917aa374635a95751a061eeff9d00bf612c31107b01d182fa12"
+        },
+        {
+          "path": ".local/data/calibration/child-01/frame-20-+36-Drone1.jpg",
+          "sha256": "6da39344ed6b50e5db3807287debd03ed964b0fb4ad38d286415c4c23a2c5906"
+        },
+        {
+          "path": ".local/data/calibration/child-02/frame-00-+36-Drone1.jpg",
+          "sha256": "957edc9453899efef16211ef2cd02b49c7fefb4f9d19d9c960660ac43c9848a7"
+        },
+        {
+          "path": ".local/data/calibration/child-02/frame-08-+36-Drone1.jpg",
+          "sha256": "ef0fe5215a9cda7b216b5868e0fb59aca1c5f5652342efefd9037033dec9d263"
+        },
+        {
+          "path": ".local/data/calibration/child-02/frame-16-+24-Drone1.jpg",
+          "sha256": "7d05a5713a9375f8398049ce99ad9a01f8e21ae242a4d3febbed3b6ffb5bfb03"
+        },
+        {
+          "path": ".local/data/calibration/child-02/frame-24-+24-Drone1.jpg",
+          "sha256": "39de7afba4139d7df796cdb0ad6f3e05efbcc664c576a412fa833dd11836d996"
+        },
+        {
+          "path": ".local/data/calibration/child-03/frame-04-+24-Drone1.jpg",
+          "sha256": "3ec7f8d91f389bb19029fb5b1ce0e355bc1ecac66d86dfd1b91cca2f29e83aa6"
+        },
+        {
+          "path": ".local/data/calibration/child-03/frame-12-+24-Drone1.jpg",
+          "sha256": "2bc58f59ada042063edb607e5fadabd459168562f06234865d218a998420f4bc"
+        },
+        {
+          "path": ".local/data/calibration/child-03/frame-20-+24-Drone1.jpg",
+          "sha256": "38559a9e3e98e02e96eacc8c9c5a0be73a969c9f3d8e0d652fb1f530bb7de346"
+        },
+        {
+          "path": ".local/data/calibration/child-04/frame-00-+12-Drone1.jpg",
+          "sha256": "fbecf31da1a6cb83327c5f4c0a1e13c4cd18e9b32b6ac2b0cc80e86eb7188f8a"
+        },
+        {
+          "path": ".local/data/calibration/child-04/frame-08-+12-Drone1.jpg",
+          "sha256": "3e4e3a3a4668dbc4d01fcafd7de8c748b31d2d9cc8cdc22d27beacdb261849f7"
+        },
+        {
+          "path": ".local/data/calibration/child-04/frame-16-+12-Drone1.jpg",
+          "sha256": "30ce5976ecfdfd1099ce9858332e721a3c7568c38b9756c46f7f15d417251eb5"
+        },
+        {
+          "path": ".local/data/calibration/child-04/frame-24-+12-Drone1.jpg",
+          "sha256": "9d221ba46da6f65cc490985c760ff4ffa24142fce6faa87eb23eb9d9a5ce05bd"
+        },
+        {
+          "path": ".local/data/calibration/child-05/frame-04-+12-Drone1.jpg",
+          "sha256": "9134b3bd4ae0d0bbe6c36af55a5d5ec2b55b3a0a26983a7b04b622bfe39d6a96"
+        },
+        {
+          "path": ".local/data/calibration/child-05/frame-12-+00-Drone1.jpg",
+          "sha256": "68f4e8f2780383f8afa076d7811c626f144cddf86a1b9c627b1cc5ddd3d0f979"
+        },
+        {
+          "path": ".local/data/calibration/child-05/frame-20-+00-Drone1.jpg",
+          "sha256": "d8f7e9c8c91c7234a8b48248377237de31ac5739c9d46abf7011bef94e097acb"
+        },
+        {
+          "path": ".local/data/calibration/senior-sookja/frame-00-+00-Drone1.jpg",
+          "sha256": "16164413af1208ff4c2d432f31a7a2879cad2f5199ca8a3673274bb98298bfb8"
+        },
+        {
+          "path": ".local/data/calibration/senior-sookja/frame-08-+00-Drone1.jpg",
+          "sha256": "dff7a2c96ea6695b2f3f8ee44a8e87fa6109194d505fb2c3401c57025fc58800"
+        },
+        {
+          "path": ".local/data/calibration/senior-sookja/frame-16-+00-Drone1.jpg",
+          "sha256": "8fde102ca76f6c475f6931f7d51d8b3aef070ba784969b0393497829cf84d27b"
+        },
+        {
+          "path": ".local/data/calibration/senior-sookja/frame-20--36-Drone1.jpg",
+          "sha256": "4f33620cbf3a4ab7e28a55fa66b81188ea958a6f1cb2ca39b1a8d08afe637335"
+        },
+        {
+          "path": ".local/data/calibration/senior-walter/frame-00--36-Drone1.jpg",
+          "sha256": "2b10eff3f452e9900b02bac26163531633a1cd2d855b5798061e11d5e79c1cb3"
+        },
+        {
+          "path": ".local/data/calibration/senior-walter/frame-08--36-Drone1.jpg",
+          "sha256": "2aafb4db2c6d216d42acc0a68da5d76ff8edcfa891804a8e7787cbd5938f0ce6"
+        },
+        {
+          "path": ".local/data/calibration/senior-walter/frame-16--36-Drone1.jpg",
+          "sha256": "c41ffe4e970c5b20b03abda54ca72624a396d5079c2d9aa315449d71fae7d2a9"
+        },
+        {
+          "path": ".local/data/calibration/senior-walter/frame-24--36-Drone1.jpg",
+          "sha256": "d6b17a710e09485f593d175aa9d58f52212b0660fd57f240cb92bc5119904ecd"
+        }
+      ],
+      "template": "analyst-v1",
+      "sampling": {
+        "temperature": 1.0,
+        "top_p": 0.95,
+        "top_k": 64,
+        "seed": 0
+      }
+    },
+    "runs": [
+      {
+        "requests": 40,
+        "concurrency": 1,
+        "total_s": {
+          "p50": 0.6569488480017753,
+          "p95": 1.3578066867528833
+        },
+        "failures": [],
+        "started_at_unix_s": 1793471776.0215535,
+        "finished_at_unix_s": 1793471804.8184407,
+        "server_stage_s": {
+          "decode_s": {
+            "p50": 0.026480212999992148,
+            "p95": 0.02723733904999648
+          },
+          "tiling_s": {
+            "p50": 0.0462306939999948,
+            "p95": 0.04762228410001512
+          },
+          "forward_s": {
+            "p50": 0.11581409649999586,
+            "p95": 0.11686121579999523
+          },
+          "postprocess_s": {
+            "p50": 0.0010143255000087947,
+            "p95": 0.001504570650012482
+          },
+          "dispatch_wait_s": {
+            "p50": 5.155000010859112e-06,
+            "p95": 6.225049995833842e-06
+          },
+          "handler_total_s": {
+            "p50": 0.19090402850000032,
+            "p95": 0.1925019087000031
+          }
+        },
+        "variant": "baseline",
+        "raw_responses": "sam-baseline-1.responses.jsonl"
+      },
+      {
+        "requests": 160,
+        "concurrency": 4,
+        "total_s": {
+          "p50": 0.719266111496836,
+          "p95": 0.8414975254214369
+        },
+        "failures": [],
+        "started_at_unix_s": 1793471862.2691853,
+        "finished_at_unix_s": 1793471892.8407352,
+        "server_stage_s": {
+          "decode_s": {
+            "p50": 0.028042720499996676,
+            "p95": 0.03102894225001192
+          },
+          "tiling_s": {
+            "p50": 0.05463255700000502,
+            "p95": 0.061749307499965767
+          },
+          "forward_s": {
+            "p50": 0.11979211300000259,
+            "p95": 0.1288997652500157
+          },
+          "postprocess_s": {
+            "p50": 0.0014072159999898304,
+            "p95": 0.004305515199997954
+          },
+          "dispatch_wait_s": {
+            "p50": 0.03817428800000755,
+            "p95": 0.15983904855001893
+          },
+          "handler_total_s": {
+            "p50": 0.24402319050000187,
+            "p95": 0.3713871525000016
+          }
+        },
+        "variant": "baseline",
+        "raw_responses": "sam-baseline-4.responses.jsonl"
+      },
+      {
+        "requests": 40,
+        "concurrency": 1,
+        "total_s": {
+          "p50": 0.402482739998959,
+          "p95": 0.7802489702022285
+        },
+        "failures": [],
+        "started_at_unix_s": 1793471132.481503,
+        "finished_at_unix_s": 1793471149.8593569,
+        "server_stage_s": {
+          "decode_s": {
+            "p50": 0.03313466999999548,
+            "p95": 0.03491576979999422
+          },
+          "tiling_s": {
+            "p50": 0.05699654450000935,
+            "p95": 0.07036376749999673
+          },
+          "forward_s": {
+            "p50": 0.11078662549999763,
+            "p95": 0.11249135404998327
+          },
+          "postprocess_s": {
+            "p50": 0.001340662499998757,
+            "p95": 0.0019805009000009475
+          },
+          "dispatch_wait_s": {
+            "p50": 4.9794999910091065e-06,
+            "p95": 8.47240001320414e-06
+          },
+          "handler_total_s": {
+            "p50": 0.2047752044999811,
+            "p95": 0.21863638145002112
+          }
+        },
+        "variant": "compile",
+        "raw_responses": "sam-compile-1.responses.jsonl"
+      },
+      {
+        "requests": 160,
+        "concurrency": 4,
+        "total_s": {
+          "p50": 0.7564506409980822,
+          "p95": 0.7890189207610092
+        },
+        "failures": [],
+        "started_at_unix_s": 1793471177.8022237,
+        "finished_at_unix_s": 1793471208.6829739,
+        "server_stage_s": {
+          "decode_s": {
+            "p50": 0.035158378500028675,
+            "p95": 0.03811976235000429
+          },
+          "tiling_s": {
+            "p50": 0.0694617019999555,
+            "p95": 0.084642037050034
+          },
+          "forward_s": {
+            "p50": 0.11305498899997701,
+            "p95": 0.12077364064997198
+          },
+          "postprocess_s": {
+            "p50": 0.0013668810000240228,
+            "p95": 0.012034877850061316
+          },
+          "dispatch_wait_s": {
+            "p50": 0.32891234900000654,
+            "p95": 0.36638599934999544
+          },
+          "handler_total_s": {
+            "p50": 0.5511786109999832,
+            "p95": 0.5870499146500435
+          }
+        },
+        "variant": "compile",
+        "raw_responses": "sam-compile-4.responses.jsonl"
+      }
+    ],
+    "run_order": [
+      "compile-1",
+      "compile-4",
+      "baseline-1",
+      "baseline-4"
+    ],
+    "compile_accepted": false,
+    "equivalence": {
+      "tolerance": {
+        "box_px": 0.5,
+        "confidence": 0.001,
+        "mask_area_px": 8,
+        "mask_area_fraction": 0.005
+      },
+      "frames": 40,
+      "compiled_responses_compared": 200,
+      "matched_detections": 50,
+      "failed_comparisons": 20,
+      "maximum_differences": {
+        "box_px": 0.1590576171875,
+        "confidence": 0.00390625,
+        "mask_area_px": 2
+      },
+      "reason": "Confidence differences exceed the predeclared 0.001 tolerance; keep the uncompiled build."
+    },
+    "compile_runner": {
+      "object_id": "fu-IWD8yRu1yUXhl0kPabRVGK",
+      "since": "2026-10-31T17:27:32.664491+00:00",
+      "until": "2026-10-31T18:27:32.664491+00:00",
+      "request_count": 200,
+      "request_count_by_status_code": {
+        "2xx": 200
+      },
+      "request_rate_per_second": 0.05555555555555555,
+      "container_started_count": 1,
+      "container_error_count": 0,
+      "container_total_count": 1,
+      "container_creating_at_end_count": 0,
+      "request_percentile_stats": {
+        "Request latency 2xx (s)": {
+          "unit": "seconds",
+          "percentiles": {
+            "p50": 0.7174717655,
+            "p90": 0.7493845398,
+            "p99": 0.9844815418299997
+          }
+        }
+      },
+      "container_percentile_stats": {
+        "CPU usage (cores)": {
+          "unit": "cores",
+          "percentiles": {
+            "p50": 0.7926096801783594,
+            "p90": 1.2691678594497646,
+            "p99": 2.8244110094262704
+          }
+        },
+        "Startup time (s)": {
+          "unit": "seconds",
+          "percentiles": {
+            "p50": 153.216378,
+            "p90": 153.216378,
+            "p99": 153.216378
+          }
+        },
+        "Memory usage (GiB)": {
+          "unit": "GiB",
+          "percentiles": {
+            "p50": 8.268239974975586,
+            "p90": 10.33774185180664,
+            "p99": 10.33774185180664
+          }
+        },
+        "GPU utilization (%)": {
+          "unit": "percentage",
+          "percentiles": {
+            "p50": 0.0,
+            "p90": 22.99999999999997,
+            "p99": 77.77999999999997
+          }
+        }
+      },
+      "inference": null
+    },
+    "compile_image_id": "im-2yCbUuS53UseytSAwyQqUP",
+    "comparison_scope": "Identical 40 frames at the production person prompt and threshold 0.3. Two different H100 containers; network latency is not an isolated compile effect. The compiled handler differs only in compile=True and excluding decode from its unused total_s aggregate; reported stage and handler timings are comparable.",
+    "source_commit": "f1647e8d0c1d280991f4d1b7d974c2704537fe66",
+    "precision": {
+      "weights": "FP32",
+      "autocast": "BF16",
+      "tf32": false,
+      "quantization": null
+    },
+    "input": {
+      "recorded_frame_size_px": [
+        3840,
+        2160
+      ],
+      "production_request_size_px": [
+        1920,
+        1080
+      ],
+      "resize": "Pillow Lanczos",
+      "tiles_per_request": 4,
+      "tile_size_px": 1008,
+      "overlap_px": 64,
+      "tile_batch_size": 4,
+      "nms_iou": 0.5
+    },
+    "timing_scope": "End-to-end timing starts after local prepare_frame preprocessing. Server stage timings and lock wait are separately recorded.",
+    "response_audit": {
+      "verified_utc": "2026-10-31T19:00:08.649823+00:00",
+      "accepted_source_hashes_match": true,
+      "runs": {
+        "sam-baseline-1": {
+          "requests": 40,
+          "width": 1920,
+          "height": 1080,
+          "tiles": 4,
+          "http_status": 200,
+          "unique_request_ids": 40
+        },
+        "sam-baseline-4": {
+          "requests": 160,
+          "width": 1920,
+          "height": 1080,
+          "tiles": 4,
+          "http_status": 200,
+          "unique_request_ids": 160
+        },
+        "sam-compile-1": {
+          "requests": 40,
+          "width": 1920,
+          "height": 1080,
+          "tiles": 4,
+          "http_status": 200,
+          "unique_request_ids": 40
+        },
+        "sam-compile-4": {
+          "requests": 160,
+          "width": 1920,
+          "height": 1080,
+          "tiles": 4,
+          "http_status": 200,
+          "unique_request_ids": 160
+        }
+      }
+    }
+  },
+  "glimmer": {
+    "status": "complete",
+    "evidence": ".local/evidence/models/modal-01/glimmer-schema-02/",
+    "client_field": "response_format.json_schema.schema",
+    "source": "https://github.com/ggml-org/llama.cpp/blob/b12004/tools/server/server-common.cpp#L1392",
+    "client_changed": true,
+    "client_change": "Nest the existing report schema under json_schema; no other models.py changes in this follow-up.",
+    "template": "analyst-v1",
+    "sampling": {
+      "temperature": 1.0,
+      "top_p": 0.95,
+      "top_k": 64,
+      "seed": 0
+    },
+    "source_hashes": {
+      "mission_planner/agents/models.py": "65146309c54341704b0207c8071f708ba0ec2db9b529aa63b6ff656653551b38",
+      "mission_planner/agents/perception/analyst.py": "1061d3735de0cd3c57d55f0c74ba86e9e50d6ca74949f5770c395c643be91c09",
+      "mission_planner/agents/perception/test_analyst.py": "9a52633968438ab7ae24edd796ace0062bc9f87e142de75acc138838a48141b6",
+      "mission_planner/agents/services/benchmark.py": "b939272344d2e4325fddd707d7c03b2071cae6e4f2044192d021243698c827b5"
+    },
+    "runs": [
+      {
+        "requests": 20,
+        "concurrency": 1,
+        "total_s": {
+          "p50": 4.377593304001493,
+          "p95": 5.538830649062584
+        },
+        "failures": [],
+        "started_at_unix_s": 1793475429.4265401,
+        "finished_at_unix_s": 1793475522.690684,
+        "prompt_processing_s": {
+          "p50": 0.316117,
+          "p95": 0.6332406000000003
+        },
+        "decoding_tokens_per_second": {
+          "p50": 84.14476705361643,
+          "p95": 85.68511735877706
+        },
+        "reasoning_tokens": {
+          "p50": 185.0,
+          "p95": 220.05
+        },
+        "schema_valid": 20,
+        "requests_per_stream": 20,
+        "http_status_counts": {
+          "200": 40
+        },
+        "http_429_count": 0,
+        "per_stream": {
+          "0": {
+            "requests": 20,
+            "total_s": {
+              "p50": 4.377593304001493,
+              "p95": 5.538830649062584
+            }
+          }
+        },
+        "cached_prompt_tokens": {
+          "p50": 491.5,
+          "p95": 918.0
+        },
+        "processed_prompt_tokens": {
+          "p50": 431.5,
+          "p95": 923.0
+        },
+        "reasoning_tokens_total": 3738,
+        "unique_image_pairs": 10,
+        "evidence": "glimmer-1.jsonl",
+        "raw_responses": "glimmer-1.responses.jsonl"
+      },
+      {
+        "requests": 40,
+        "concurrency": 2,
+        "total_s": {
+          "p50": 7.5791003159974935,
+          "p95": 10.625256866644484
+        },
+        "failures": [],
+        "started_at_unix_s": 1793475541.0203023,
+        "finished_at_unix_s": 1793475697.8892357,
+        "prompt_processing_s": {
+          "p50": 0.08145650000000002,
+          "p95": 0.1122745
+        },
+        "decoding_tokens_per_second": {
+          "p50": 46.931151527050076,
+          "p95": 55.11696778041315
+        },
+        "reasoning_tokens": {
+          "p50": 176.5,
+          "p95": 240.0499999999999
+        },
+        "schema_valid": 40,
+        "requests_per_stream": 20,
+        "http_status_counts": {
+          "200": 80
+        },
+        "http_429_count": 0,
+        "per_stream": {
+          "0": {
+            "requests": 20,
+            "total_s": {
+              "p50": 7.7222955114993965,
+              "p95": 9.1440395279089
+            }
+          },
+          "1": {
+            "requests": 20,
+            "total_s": {
+              "p50": 7.28742858399346,
+              "p95": 11.038079278483929
+            }
+          }
+        },
+        "cached_prompt_tokens": {
+          "p50": 918.0,
+          "p95": 918.0
+        },
+        "processed_prompt_tokens": {
+          "p50": 5.0,
+          "p95": 5.0
+        },
+        "reasoning_tokens_total": 7280,
+        "unique_image_pairs": 10,
+        "evidence": "glimmer-2.jsonl",
+        "raw_responses": "glimmer-2.responses.jsonl"
+      },
+      {
+        "requests": 80,
+        "concurrency": 4,
+        "total_s": {
+          "p50": 7.668659430491971,
+          "p95": 10.27017138950032
+        },
+        "failures": [],
+        "started_at_unix_s": 1793475738.318816,
+        "finished_at_unix_s": 1793475908.5352876,
+        "prompt_processing_s": {
+          "p50": 0.0965095,
+          "p95": 0.1472196
+        },
+        "decoding_tokens_per_second": {
+          "p50": 44.28445656095823,
+          "p95": 49.00844400918172
+        },
+        "reasoning_tokens": {
+          "p50": 182.0,
+          "p95": 240.39999999999998
+        },
+        "schema_valid": 80,
+        "requests_per_stream": 20,
+        "http_status_counts": {
+          "200": 160
+        },
+        "http_429_count": 0,
+        "per_stream": {
+          "0": {
+            "requests": 20,
+            "total_s": {
+              "p50": 7.5425266299862415,
+              "p95": 8.370716329971037
+            }
+          },
+          "1": {
+            "requests": 20,
+            "total_s": {
+              "p50": 7.697272660487215,
+              "p95": 9.876476118632127
+            }
+          },
+          "2": {
+            "requests": 20,
+            "total_s": {
+              "p50": 8.793954709981335,
+              "p95": 10.4906936209125
+            }
+          },
+          "3": {
+            "requests": 20,
+            "total_s": {
+              "p50": 7.37737238201953,
+              "p95": 8.575014013084003
+            }
+          }
+        },
+        "cached_prompt_tokens": {
+          "p50": 918.0,
+          "p95": 918.0
+        },
+        "processed_prompt_tokens": {
+          "p50": 5.0,
+          "p95": 5.0
+        },
+        "reasoning_tokens_total": 14669,
+        "unique_image_pairs": 10,
+        "evidence": "glimmer-4.jsonl",
+        "raw_responses": "glimmer-4.responses.jsonl"
+      }
+    ],
+    "total_reports": 140,
+    "schema_valid_reports": 140,
+    "failures": [],
+    "http_429_count": 0,
+    "total_reasoning_tokens": 25687,
+    "timing_scope": "Glimmer.report plus frozen analyst validation. Includes the separate /tokenize request used to count reasoning tokens; local crop preparation is outside the timed interval.",
+    "prompt_cache_scope": "Ten recorded crop/context image pairs are reused, partitioned among the streams. The same warm server is used in order 1, 2, 4 without clearing its prompt cache. Per-request cache_n and prompt_n are logged; prompt-processing percentiles include cache reuse.",
+    "runner": {
+      "object_id": "fu-YvIz4v4bUzrTJYdI8DcXP7",
+      "since": "2026-10-31T19:37:09.426540+00:00",
+      "until": "2026-10-31T19:45:09.535288+00:00",
+      "request_count": 280,
+      "request_count_by_status_code": {
+        "2xx": 280
+      },
+      "request_rate_per_second": 0.5832012040005266,
+      "container_started_count": 0,
+      "container_error_count": 0,
+      "container_total_count": 1,
+      "container_creating_at_end_count": 0,
+      "request_percentile_stats": {
+        "Request latency 2xx (s)": {
+          "unit": "seconds",
+          "percentiles": {
+            "p50": 1.6977452105000002,
+            "p90": 8.6554544693,
+            "p99": 10.913637470649999
+          }
+        }
+      },
+      "container_percentile_stats": {
+        "GPU utilization (%)": {
+          "unit": "percentage",
+          "percentiles": {
+            "p50": 85.5,
+            "p90": 95.0,
+            "p99": 95.0
+          }
+        },
+        "CPU usage (cores)": {
+          "unit": "cores",
+          "percentiles": {
+            "p50": 1.0310520596205577,
+            "p90": 1.0582284768147059,
+            "p99": 1.0895969227642222
+          }
+        },
+        "Memory usage (GiB)": {
+          "unit": "GiB",
+          "percentiles": {
+            "p50": 2.1202735900878906,
+            "p90": 2.262866973876953,
+            "p99": 2.5792893981933576
+          }
+        }
+      },
+      "inference": null
+    },
+    "runner_window": {
+      "start": "2026-10-31T19:37:09.426540+00:00",
+      "end": "2026-10-31T19:45:09.535288+00:00"
+    },
+    "container": "ta-01M69P7SJ9P2VNDFYGWPTFXVTR",
+    "gpu": "NVIDIA H200",
+    "gpu_evidence": "../glimmer-final-lifecycle.log:77",
+    "image_id": "im-k1Fmx0230EtH0CIAmMSQ4x",
+    "llama_cpp_release": "b12004",
+    "llama_cpp_commit": "3c809f44383bcebc318b8cddd8c6d11aaa861e9b",
+    "server_slot_peak_by_stream_count": {
+      "1": 1,
+      "2": 2,
+      "4": 4
+    },
+    "server_slot_evidence": "server-logs.log",
+    "container_errors": 0,
+    "extra_deployments_created": false,
+    "experimental_apps_stopped": true,
+    "billing": "Remains cancelled. No billing calls were made.",
+    "previous_flat_schema_attempt": {
+      "item": "Frozen Glimmer.report latency benchmark",
+      "status": "blocked",
+      "client_field": "response_format.schema",
+      "required_by_b12004": "response_format.json_schema.schema",
+      "source": "https://github.com/ggml-org/llama.cpp/blob/b12004/tools/server/server-common.cpp#L1392",
+      "documentation_conflict": "tools/server/README.md at b12004 advertises the flat schema form, but server-common.cpp only reads nested json_schema.schema for type=json_schema.",
+      "attempted_reports": 1,
+      "schema_valid_reports": 0,
+      "http_status": 200,
+      "response_fields": [
+        "decision",
+        "reason",
+        "best_next_action"
+      ],
+      "reasoning_tokens": 190,
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 923,
+        "prompt_ms": 813.465,
+        "prompt_per_token_ms": 0.8813271939328278,
+        "prompt_per_second": 1134.6523820938821,
+        "predicted_n": 354,
+        "predicted_ms": 4007.163,
+        "predicted_per_token_ms": 11.351736543909348,
+        "predicted_per_second": 88.09224880545165
+      },
+      "remaining_concurrencies": [
+        2,
+        4
+      ],
+      "client_changed": false,
+      "total_s_failed_attempt": 5.768524261016864,
+      "failure_type": "jsonschema.ValidationError",
+      "http_429_count": 0,
+      "raw_response": "glimmer-1.responses.jsonl",
+      "sampling": {
+        "temperature": 1.0,
+        "top_p": 0.95,
+        "top_k": 64,
+        "seed": 0
+      },
+      "template": "analyst-v1",
+      "planned_requests_per_stream": 20,
+      "concurrency_results": {
+        "1": "Stopped on first schema-invalid report; 1 attempted, 0 valid.",
+        "2": "Blocked by the same client contract.",
+        "4": "Blocked by the same client contract."
+      },
+      "client_change_required": "Nest the schema under response_format.json_schema.schema. Not applied because the task explicitly requires stopping if models.py needs changes.",
+      "reasoning_token_count_scope": "Separate /tokenize request on the preserved failed response; outside the measured report latency.",
+      "reasoning_token_evidence": "glimmer-failed-report-reasoning.json"
+    },
+    "input_audit": {
+      "recorded_frames_sha256_match": true,
+      "unique_crop_context_pairs": 10,
+      "same_images_in_all_concurrency_runs": true,
+      "same_images_as_original_flat_schema_attempt": true
+    }
+  },
+  "checks": {
+    "npm test": {
+      "passed": true,
+      "tests": 80,
+      "evidence": "glimmer-schema-02/check-npm-test.log"
+    },
+    "npm run typecheck": {
+      "passed": true,
+      "evidence": "glimmer-schema-02/check-typecheck.log"
+    },
+    "npm run format:check": {
+      "passed": true,
+      "evidence": "glimmer-schema-02/check-format-check.log"
+    },
+    ".venv-cosys/bin/ruff check": {
+      "passed": true,
+      "evidence": "glimmer-schema-02/check-ruff-check.log"
+    },
+    ".venv-cosys/bin/ruff format --check": {
+      "passed": true,
+      "evidence": "glimmer-schema-02/check-ruff-format.log"
+    },
+    ".venv-cosys/bin/python -m unittest": {
+      "passed": true,
+      "tests": 448,
+      "seconds": 94.77,
+      "evidence": "glimmer-schema-02/check-unittest.log"
+    },
+    "summary_validation": {
+      "passed": true,
+      "evidence": "glimmer-schema-02/check-summary.log"
+    }
+  },
+  "source_hashes": {
+    "requirements.txt": "1c6285491613dab1eb2088a6ab1737f05edf7b1357a927b2bd660cc757fde091",
+    "mission_planner/agents/models.py": "ef3d08f130faf2aefad1cac00001531ff5a9b70e94d165149f8e0884a98cf305",
+    "mission_planner/agents/perception/analyst.py": "1061d3735de0cd3c57d55f0c74ba86e9e50d6ca74949f5770c395c643be91c09",
+    "mission_planner/agents/services/test_benchmark.py": "93ddddf6bc371121f8fc6e95c917586b9e4b20845cf41b63db471388b342f6db",
+    "mission_planner/agents/services/__init__.py": "d832dcb531630501a577b1c223f26dcbd9d4b01cd5ac79d463258d90c2c41908",
+    "mission_planner/agents/services/sam_server.py": "b39c43916fc7b83cdabf7cfd5891530a958241ac9e3b5744d850b341a829e876",
+    "mission_planner/agents/services/benchmark.py": "b939272344d2e4325fddd707d7c03b2071cae6e4f2044192d021243698c827b5",
+    "mission_planner/agents/services/app.py": "8b29c4f1832cf4355b3f8a40c5ecbb2b2eeeefb53c8bed04b1f6343204e39f71",
+    "mission_planner/agents/services/llama-ready.patch": "9a48e0703b0451433e8ad56eaf6eddcb087ff1618d430c4968c6d73edb93ab4b"
+  },
+  "build_and_staging_failures": [
+    {
+      "evidence": "stage-weights.log",
+      "failure": "Local environment import was unavailable in the staging container; function body never ran."
+    },
+    {
+      "evidence": "stage-weights-packaging-fixed.log",
+      "failure": "Conditional ephemeral Secret changed the Modal dependency graph; function body never ran."
+    },
+    {
+      "evidence": "deploy.log",
+      "failure": "Upstream UI downloader fell back from a missing b1 asset to latest; build stopped and both UI provisioning paths disabled."
+    },
+    {
+      "evidence": "deploy-ui-disabled.log",
+      "failure": "Linking failed because the image builder has no CUDA driver library."
+    },
+    {
+      "evidence": "deploy-linker-fixed.log",
+      "failure": "The intended text edit had not inserted the linker flag; the same failed build was inadvertently invoked again."
+    },
+    {
+      "evidence": "compile-startup-first.log",
+      "failure": "Experimental server could not import the repository package; stopped, then corrected to reference the immutable image ID."
+    }
+  ],
+  "image_digest_limitation": "Modal exposes immutable image IDs through ServerInfo.ImageInfo, but no OCI digest for its built image. Registry manifest and binary hashes are recorded separately; they are not represented as final Modal image digests.",
+  "recorded_utc": "2026-10-31T19:48:09.956043+00:00",
+  "status": "Deployed; SAM and corrected Glimmer benchmarks complete; billing measurements cancelled by user.",
+  "runner_records": {
+    "sam_loaded_hour": {
+      "object_id": "fu-nLLjhOaGp2jfkRO9knsWAu",
+      "since": "2026-10-31T18:00:00+00:00",
+      "until": "2026-10-31T19:00:00+00:00",
+      "request_count": 250,
+      "request_count_by_status_code": {
+        "2xx": 250
+      },
+      "request_rate_per_second": 0.06944444444444445,
+      "container_started_count": 1,
+      "container_error_count": 0,
+      "container_total_count": 1,
+      "container_creating_at_end_count": 0,
+      "request_percentile_stats": {
+        "Request latency 2xx (s)": {
+          "unit": "seconds",
+          "percentiles": {
+            "p50": 0.678240154,
+            "p90": 0.7961451628999999,
+            "p99": 1.3144449673299998
+          }
+        }
+      },
+      "container_percentile_stats": {
+        "CPU usage (cores)": {
+          "unit": "cores",
+          "percentiles": {
+            "p50": 0.005275292753997473,
+            "p90": 0.007713779877038648,
+            "p99": 1.1772103966919674
+          }
+        },
+        "Startup time (s)": {
+          "unit": "seconds",
+          "percentiles": {
+            "p50": 20.817819,
+            "p90": 20.817819,
+            "p99": 20.817819
+          }
+        },
+        "GPU utilization (%)": {
+          "unit": "percentage",
+          "percentiles": {
+            "p50": 0.0,
+            "p90": 0.0,
+            "p99": 75.13999999999999
+          }
+        },
+        "Memory usage (GiB)": {
+          "unit": "GiB",
+          "percentiles": {
+            "p50": 7.042697906494141,
+            "p90": 7.042697906494141,
+            "p99": 7.0426979064941415
+          }
+        }
+      },
+      "inference": null
+    },
+    "glimmer_loaded_hour": {
+      "object_id": "fu-YvIz4v4bUzrTJYdI8DcXP7",
+      "since": "2026-10-31T18:00:00+00:00",
+      "until": "2026-10-31T19:00:00+00:00",
+      "request_count": 52,
+      "request_count_by_status_code": {
+        "2xx": 52
+      },
+      "request_rate_per_second": 0.014444444444444444,
+      "container_started_count": 2,
+      "container_error_count": 0,
+      "container_total_count": 2,
+      "container_creating_at_end_count": 0,
+      "request_percentile_stats": {
+        "Request latency 2xx (s)": {
+          "unit": "seconds",
+          "percentiles": {
+            "p50": 0.14656466950000002,
+            "p90": 0.15200861510000002,
+            "p99": 3.04763545478001
+          }
+        }
+      },
+      "container_percentile_stats": {
+        "CPU usage (cores)": {
+          "unit": "cores",
+          "percentiles": {
+            "p50": 0.00553928962950455,
+            "p90": 0.008012629049515935,
+            "p99": 0.8290114432907963
+          }
+        },
+        "GPU utilization (%)": {
+          "unit": "percentage",
+          "percentiles": {
+            "p50": 0.0,
+            "p90": 0.0,
+            "p99": 2.5399999999999636
+          }
+        },
+        "Startup time (s)": {
+          "unit": "seconds",
+          "percentiles": {
+            "p50": 21.4373645,
+            "p90": 24.2554241,
+            "p99": 24.88948751
+          }
+        },
+        "Memory usage (GiB)": {
+          "unit": "GiB",
+          "percentiles": {
+            "p50": 0.7454414367675781,
+            "p90": 0.7454566955566406,
+            "p99": 0.7454566955566407
+          }
+        }
+      },
+      "inference": null
+    },
+    "final_apps": [
+      {
+        "app_id": "ap-wYTwEzdLgHuUxUmOBZ7eSZ",
+        "description": "snr",
+        "state": "deployed",
+        "tasks": "2",
+        "created_at": "2026-10-31 18:28:08+00:00",
+        "stopped_at": null
+      },
+      {
+        "app_id": "ap-yX1PSNyQspqEZGyZAwNcmH",
+        "description": "snr",
+        "state": "stopped",
+        "tasks": "0",
+        "created_at": "2026-10-31 18:21:19+00:00",
+        "stopped_at": "2026-10-31 18:27:50+00:00"
+      },
+      {
+        "app_id": "ap-blWOJxhxWy14zYrhrBTGUi",
+        "description": "snr-sam-compile",
+        "state": "stopped",
+        "tasks": "0",
+        "created_at": "2026-10-31 18:21:19+00:00",
+        "stopped_at": "2026-10-31 18:27:40+00:00"
+      },
+      {
+        "app_id": "ap-HNPGd2cm2Ww3TkQHNlYlGl",
+        "description": "snr-sam-compile",
+        "state": "stopped",
+        "tasks": "0",
+        "created_at": "2026-10-31 18:20:39+00:00",
+        "stopped_at": "2026-10-31 18:21:18+00:00"
+      },
+      {
+        "app_id": "ap-TBgZAaKWKLJD1Bco5eNR2q",
+        "description": "snr",
+        "state": "stopped",
+        "tasks": "0",
+        "created_at": "2026-10-31 18:16:18+00:00",
+        "stopped_at": "2026-10-31 18:20:45+00:00"
+      },
+      {
+        "app_id": "ap-ktn26RUt8kMkM1q90AETTo",
+        "description": "snr",
+        "state": "stopped",
+        "tasks": "0",
+        "created_at": "2026-10-31 18:12:51+00:00",
+        "stopped_at": "2026-10-31 18:16:18+00:00"
+      },
+      {
+        "app_id": "ap-gPR0bKVly1SJRCezadtZeZ",
+        "description": "snr",
+        "state": "stopped",
+        "tasks": "0",
+        "created_at": "2026-10-31 18:11:53+00:00",
+        "stopped_at": "2026-10-31 18:20:31+00:00"
+      },
+      {
+        "app_id": "ap-oigIi9g2qyYoWrKCPg4V7j",
+        "description": "snr",
+        "state": "stopped",
+        "tasks": "0",
+        "created_at": "2026-10-31 18:11:23+00:00",
+        "stopped_at": "2026-10-31 18:11:52+00:00"
+      },
+      {
+        "app_id": "ap-98wM8zYinClpWh19wANSCj",
+        "description": "snr",
+        "state": "stopped",
+        "tasks": "0",
+        "created_at": "2026-10-31 18:10:27+00:00",
+        "stopped_at": "2026-10-31 18:11:23+00:00"
+      }
+    ],
+    "final_containers": [
+      {
+        "container_id": "ta-01M69P7SJ9P2VNDFYGWPTFXVTR",
+        "app_id": "ap-wYTwEzdLgHuUxUmOBZ7eSZ",
+        "app_name": "snr",
+        "start_time": "2026-10-31 19:16:17+00:00"
+      },
+      {
+        "container_id": "ta-01M69KVTJ6YNEGAEA7MEA5R2SR",
+        "app_id": "ap-wYTwEzdLgHuUxUmOBZ7eSZ",
+        "app_name": "snr",
+        "start_time": "2026-10-31 18:34:51+00:00"
+      }
+    ],
+    "glimmer_lifecycle": [
+      {
+        "container": "ta-01M69KVTJ6WQWH72N5C4KM1W6R",
+        "gpu": "NVIDIA H200",
+        "port_ready_utc": "2026-10-31T18:34:55+00:00",
+        "drained_utc": "2026-10-31T18:53:10+00:00"
+      },
+      {
+        "container": "ta-01M69MX7BPPGG5YHM98ZG485QR",
+        "gpu": "NVIDIA H200",
+        "port_ready_utc": "2026-10-31T18:53:03+00:00",
+        "drained_utc": "2026-10-31T19:15:59+00:00"
+      },
+      {
+        "container": "ta-01M69P70EMTSCFGHDBEKMQP5KR",
+        "gpu": "NVIDIA H200",
+        "port_ready_utc": "2026-10-31T19:15:51+00:00",
+        "drained_utc": "2026-10-31T19:16:24+00:00"
+      },
+      {
+        "container": "ta-01M69P7SJ9P2VNDFYGWPTFXVTR",
+        "gpu": "NVIDIA H200",
+        "port_ready_utc": "2026-10-31T19:16:16+00:00",
+        "drained_utc": null
+      }
+    ],
+    "lifecycle_evidence": [
+      "glimmer-startup-loaded.log",
+      "glimmer-after-benchmark.log",
+      "glimmer-final-lifecycle.log",
+      "containers-idle-interim.json",
+      "containers-final.json"
+    ],
+    "lifecycle_note": "The collected logs do not state why Glimmer containers were replaced. New listeners opened before the preceding containers drained. No endpoint uptime measurement was made during these replacements."
+  },
+  "experimental_cleanup": {
+    "verified": true,
+    "only_production_containers_remain": true,
+    "evidence": [
+      "apps-final.json",
+      "containers-final.json"
+    ]
+  },
+  "cost": {
+    "status": "Measurements cancelled at the user's request; no billed hourly rates reported.",
+    "cancellation": {
+      "status": "cancelled_by_user",
+      "cancelled_utc": "2026-10-31T19:30:50.416333+00:00",
+      "request": "Skip billing tests; proceed with remaining tests. No more billing tests.",
+      "terminated_processes": [
+        3116410,
+        3127596
+      ],
+      "exit_statuses": [
+        143,
+        143
+      ],
+      "idle_billing_export_attempted": false,
+      "idle_window_start": {
+        "boundary_utc": "2026-10-31T19:00:00+00:00",
+        "observed_utc": "2026-10-31T19:00:00.012512+00:00"
+      },
+      "idle_window_completed": false,
+      "billed_hourly_cost": null,
+      "further_billing_calls": false
+    },
+    "list_price_source": "billing-rates.json, obtained before cancellation",
+    "list_usd_per_hour": {
+      "sam_h100_gpu": "3.95000",
+      "glimmer_h200_gpu": "4.54000",
+      "combined_gpus": "8.49000",
+      "cpu_per_core": "0.04730",
+      "memory_per_gib": "0.00800"
+    },
+    "list_scope": "GPU prices exclude CPU, RAM and storage. These are published rates, not measured spend.",
+    "billed_usd_per_hour": {
+      "sam": null,
+      "glimmer": null,
+      "combined": null
+    },
+    "loaded_hour_export": {
+      "status": "blocked",
+      "attempted_utc": "2026-10-31T19:05:00+00:00",
+      "api_request_sent": false,
+      "reason": "CLI rejected the ISO timestamp ending in Z under Python 3.10, before calling Modal. Export was not repeated.",
+      "stderr": "loaded-hour-billing.stderr",
+      "collector_log": "billing-collection.log"
+    },
+    "documented_limitations": "Billing reports cover completed hourly or daily intervals, before credits and adjustments. Short loaded test windows cannot be isolated by those reports. See billing.text and modal/cli/billing.py in the pinned client.",
+    "programmatic_source": "Documented Workspace.billing and modal billing CLI. Initial rates and summary calls succeeded; collection was cancelled before the idle export."
+  },
+  "files_changed": [
+    "AGENTS.md",
+    "requirements.txt",
+    "mission_planner/agents/services/__init__.py",
+    "mission_planner/agents/services/app.py",
+    "mission_planner/agents/services/sam_server.py",
+    "mission_planner/agents/services/llama-ready.patch",
+    "mission_planner/agents/services/benchmark.py",
+    "mission_planner/agents/services/test_benchmark.py",
+    "mission_planner/agents/services/README.md",
+    "mission_planner/agents/perception/hosting.py (deleted)",
+    "mission_planner/agents/perception/infer_calibration.py",
+    "mission_planner/agents/perception/bench_commander.py",
+    "mission_planner/agents/perception/bench_prompt_equivalence.py",
+    "mission_planner/agents/perception/README.md",
+    "mission_planner/search/commander.py",
+    "mission_planner/search/test_commander.py",
+    "mission_planner/search/test_planner.py",
+    "mission_planner/search/README.md",
+    "mission_planner/measurements/modal.json",
+    "mission_planner/agents/models.py",
+    "mission_planner/agents/perception/test_analyst.py"
+  ],
+  "local_configuration": ".env contains production URLs and proxy authorization values; credentials are excluded from this report and from the commit.",
+  "commit_scope": "Only mission_planner/measurements/modal.json; existing staged deletions and other work in progress are preserved.",
+  "blockers": [
+    {
+      "item": "Final Modal OCI image digests",
+      "reason": "Modal exposes immutable image IDs through ServerInfo.ImageInfo, but no OCI digest for its built image. Registry manifest and binary hashes are recorded separately; they are not represented as final Modal image digests.",
+      "evidence": [
+        "production-servers.json",
+        "modal-types.html"
+      ]
+    }
+  ],
+  "source_hashes_scope": "Original deployment/SAM measurements and the initial failed Glimmer request. Corrected Glimmer source hashes are in glimmer.source_hashes."
+}

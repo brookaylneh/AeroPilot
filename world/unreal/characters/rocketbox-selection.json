@@ -1,0 +1,49 @@
+{
+  "review": {
+    "title": "Rocketbox \u00b7 outdoor selection review",
+    "description": "Adult candidate 2 has been replaced with a blue hooded jacket, jeans, trainers and a cap. The rejected Child candidate 3 is removed from this active selection. Eleven models are shown; its replacement is pending.",
+    "assessment": "Outdoor clothing is the selection priority. Child slot 3 needs a newly authored child variant or another source model: the library has only three remaining stock children. Formal outfits on Adult 3 and Older 1, 2 and 3 still need replacement or body/outfit authoring. Senior age and diversity gaps also remain."
+  },
+  "sources": [
+    {
+      "manifest": "world/unreal/characters/rocketbox-candidates.lock.json",
+      "render": ".local/evidence/characters/rocketbox-roster/render",
+      "ids": [
+        "child-01",
+        "child-02",
+        "child-04",
+        "adult-01",
+        "adult-03",
+        "adult-04",
+        "older-01",
+        "older-02",
+        "older-03",
+        "older-04"
+      ]
+    },
+    {
+      "manifest": "world/unreal/characters/rocketbox-outdoor.lock.json",
+      "render": ".local/evidence/characters/rocketbox-outdoor-jacket/render",
+      "ids": ["adult-02"]
+    }
+  ],
+  "order": [
+    "child-01",
+    "child-02",
+    "child-04",
+    "adult-01",
+    "adult-02",
+    "adult-03",
+    "adult-04",
+    "older-01",
+    "older-02",
+    "older-03",
+    "older-04"
+  ],
+  "assessments": {
+    "adult-03": "Skirt and boots: low priority for the outdoor roster. A casual trouser outfit or a different clothed body is still needed. The requested plus-size build and middle-aged appearance remain unverified.",
+    "older-01": "Formal coat and heels: low priority for the outdoor roster. This model also does not convincingly establish a senior age.",
+    "older-02": "Approved senior appearance, but the blazer outfit needs an outdoor body/outfit replacement. Exact age and the requested heavy build are unverified.",
+    "older-03": "Business outfit: low priority for the outdoor roster. It also does not establish an 81-year-old appearance or the requested medium-deep skin tone and thin build."
+  }
+}

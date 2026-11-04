@@ -1,0 +1,44 @@
+{
+  "name": "aeropilot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file=.local/runtime.env --import tsx web/server.ts --dev",
+    "build": "tsc --noEmit && node --env-file=.local/runtime.env node_modules/vite/bin/vite.js build",
+    "start": "node --env-file=.local/runtime.env --import tsx web/server.ts",
+    "test": "tsx --test 'web/*.test.ts' 'scenario_creator/*.test.ts' 'scenario_creator/*.test.mjs' 'world/**/*.test.ts' 'world/**/*.test.mjs' 'mission_planner/**/*.test.mjs'",
+    "fonts": "python3 web/fetch-fonts.py",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write web scenario_creator world/unreal/scripts world/unreal/characters mission_planner/gcs '*.ts' '*.json'",
+    "format:check": "prettier --check web scenario_creator world/unreal/scripts world/unreal/characters mission_planner/gcs '*.ts' '*.json'"
+  },
+  "dependencies": {
+    "@epicgames-ps/lib-pixelstreamingfrontend-ue5.8": "0.1.3",
+    "compression": "^1.8.2",
+    "express": "^5.3.0",
+    "lucide-react": "^1.61.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "sharp": "0.35.5",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1",
+    "@types/compression": "^1.8.1",
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.20.5",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^4.7.0",
+    "esbuild": "^0.28.2",
+    "prettier": "3.6.2",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.5"
+  },
+  "engines": {
+    "node": ">=22.12.0 <23"
+  },
+  "license": "Apache-2.0"
+}

@@ -1,0 +1,41 @@
+--- a/libraries/SITL/SIM_GPS.cpp
++++ b/libraries/SITL/SIM_GPS.cpp
+@@ -11,6 +11,8 @@
+ #if AP_SIM_GPS_ENABLED
+ 
+ #include <time.h>
++#include <stdio.h>
++#include <stdlib.h>
+ #include <sys/time.h>
+ 
+ #include <AP_BoardConfig/AP_BoardConfig.h>
+@@ -475,8 +477,14 @@
+ 
+     const auto &params = _sitl->gps[instance];
+ 
++    if (params.hertz <= 0) {
++        fprintf(stderr, "Simulated GPS frequency must be positive\n");
++        exit(1);
++    }
++    const uint32_t period_ms = 1000 / params.hertz;
++    const uint32_t elapsed_ms = now_ms - last_write_update_ms;
+     // Only let physics run and GPS write at configured GPS rate (default 5Hz).
+-    if ((now_ms - last_write_update_ms) < (uint32_t)(1000/params.hertz)) {
++    if (elapsed_ms < period_ms) {
+         // Reading runs every iteration.
+         // Beware- physics don't update every iteration with this approach.
+         // Currently, none of the drivers rely on quickly updated physics.
+@@ -484,7 +492,12 @@
+         return;
+     }
+ 
+-    last_write_update_ms = now_ms;
++    if (last_write_update_ms != 0 && elapsed_ms >= 2 * period_ms) {
++        fprintf(stderr, "Simulated GPS %u missed update period\n", unsigned(instance + 1));
++        exit(1);
++    }
++    // Preserve the epoch used by receiver iTOW despite discrete physics steps.
++    last_write_update_ms = now_ms - elapsed_ms % period_ms;
+ 
+     struct GPS_Data d {};
+ 

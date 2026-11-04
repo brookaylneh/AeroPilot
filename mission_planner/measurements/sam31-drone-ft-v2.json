@@ -1,0 +1,174 @@
+{
+  "variant": "drone-ft-v2-epoch2",
+  "implementation_commit": "1b26fe5df56e85946ddfbe2e2cd4bc2d51979120",
+  "image_digest": "sha256:1a6d5e2b8fc66e06575b247e0db719a990a48c736796d6507d52b10ecf8b3f23",
+  "checkpoint": {
+    "variant": "drone-ft-v2-epoch2",
+    "base_sha256": "0567debeec80ba4ac6369540c6c248025283cb3ff2b92827509e57e2b3541cb6",
+    "detector_sha256": "ba8dccda24588a67e10cb565ded02b1a70d32dbbc8e7755052012706d4c3f6b9",
+    "model_sha256": "6f97e110579b94e9ad5d5537bcb6f8b2a54111181f0fcd97ed021a2b575ca666",
+    "bytes": 3502740416,
+    "training_epoch": 2,
+    "torch_version": "2.10.0+cu128",
+    "tensors": 1623,
+    "detector_tensors_loaded": 1102,
+    "tensors_changed": 753,
+    "preserved_tensors": 521,
+    "preserved_components": [
+      "tracker.",
+      "detector.segmentation_head.",
+      "detector.backbone.vision_backbone.interactive_convs.",
+      "detector.backbone.vision_backbone.propagation_convs."
+    ],
+    "unused_training_keys": [
+      "backbone.vision_backbone.convs.3.conv_1x1.bias",
+      "backbone.vision_backbone.convs.3.conv_1x1.weight",
+      "backbone.vision_backbone.convs.3.conv_3x3.bias",
+      "backbone.vision_backbone.convs.3.conv_3x3.weight"
+    ],
+    "all_saved_tensors_verified": true,
+    "optimizer_included": false
+  },
+  "sam_source_commit": "f1647e8d0c1d280991f4d1b7d974c2704537fe66",
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+  "gpu_budget_bytes": 16000000000,
+  "peak_process_gpu_bytes": 7967080448,
+  "precision": "FP32 weights, BF16 autocast, TF32",
+  "compiled": true,
+  "compile_counters_before": {
+    "calls_captured": 9637,
+    "unique_graphs": 29
+  },
+  "compile_counters_after": {
+    "calls_captured": 9637,
+    "unique_graphs": 29
+  },
+  "warmup": {
+    "protocol_sha256": "f3c8830203ca2c3eed7d0ab578ec8689f096dbccc212135fa983a7684b50a35c",
+    "shape_passes": [
+      {
+        "pass": 0,
+        "max_objects": 16,
+        "seconds": 3.6269843429909088,
+        "compilation": {
+          "calls_captured": 255,
+          "unique_graphs": 16
+        }
+      },
+      {
+        "pass": 1,
+        "max_objects": 16,
+        "seconds": 0.0037686009891331196,
+        "compilation": {
+          "calls_captured": 255,
+          "unique_graphs": 16
+        }
+      }
+    ],
+    "passes": [
+      {
+        "pass": 0,
+        "frames": 86,
+        "seconds": 96.04007249500137,
+        "compilation": {
+          "calls_captured": 9637,
+          "unique_graphs": 29
+        }
+      },
+      {
+        "pass": 1,
+        "frames": 86,
+        "seconds": 5.375434148998465,
+        "compilation": {
+          "calls_captured": 9637,
+          "unique_graphs": 29
+        }
+      },
+      {
+        "pass": 2,
+        "frames": 86,
+        "seconds": 5.414693944039755,
+        "compilation": {
+          "calls_captured": 9637,
+          "unique_graphs": 29
+        }
+      }
+    ]
+  },
+  "startup_seconds": 135.25754386000335,
+  "packages": {
+    "torch": "2.10.0+cu128",
+    "torchvision": "0.25.0+cu128",
+    "sam3": "0.1.0",
+    "fastapi": "0.136.3",
+    "uvicorn": "0.54.0",
+    "opencv-python": "4.10.0.84"
+  },
+  "client_packages": {
+    "httpx": "0.28.1",
+    "numpy": "1.23.5",
+    "pillow": "11.0.0",
+    "opencv-contrib-python-headless": "4.10.0.84"
+  },
+  "qualification": {
+    "status": "passed",
+    "scope": "Synthetic camera translation, rotation and zoom of recorded native 4K nadir images; not live forward tracking or moving-person acceptance.",
+    "protocol_sha256": "f3c8830203ca2c3eed7d0ab578ec8689f096dbccc212135fa983a7684b50a35c",
+    "prompt": "person",
+    "threshold": 0.3,
+    "drone_sessions": 4,
+    "model_instances": 1,
+    "frames_per_drone_per_pass": 80,
+    "passes": 3,
+    "measured_frames": 960,
+    "aggregate_fps": [
+      17.792796709102152,
+      17.742841983900178,
+      17.818011706441634
+    ],
+    "median_aggregate_fps": 17.792796709102152,
+    "request_latency_seconds": {
+      "median": 0.22120100699248724,
+      "p95": 0.23824893466371577
+    },
+    "sam_stage_seconds": {
+      "median": 0.05665677451179363,
+      "p95": 0.06017977090668864
+    },
+    "validated_detection_masks": 717,
+    "sessions_after": {},
+    "notes": [
+      "Final timing run began after the Python test suite exited. Unreal and the mission services remained running.",
+      "Each session repeats 20 prerecorded images; this measures service throughput and contract/state integrity, not live capture or recognition accuracy.",
+      "An earlier 960-frame functional run completed while CPU tests were running and is retained separately."
+    ]
+  },
+  "checks": {
+    "python_unittest": {
+      "passed": 742,
+      "seconds": 361.238
+    },
+    "npm_test": {
+      "passed": 200
+    },
+    "typecheck": "passed",
+    "format_check": "passed",
+    "ruff_check": "passed",
+    "ruff_format": "passed"
+  },
+  "deployment": {
+    "vision_instance_id": "b971ef073b51432186146abc6e902a36",
+    "other_services_unchanged": true,
+    "unified_tabs_commit": "49bbd1f",
+    "unified_tabs_already_in_main": true,
+    "live_web_and_mission_source": ".local/staging/unified-app-20261103T015837Z",
+    "operator_flight_test": "pending"
+  },
+  "limitations": [
+    "20.16 aggregate FPS remains a reference; no lower throughput target has been accepted.",
+    "Software memory budget on RTX PRO 6000 hardware; not qualification on a physical 16 GB GPU.",
+    "No ground-truth mask, live search recall or real moving-person tracking accuracy was measured during this deployment.",
+    "The existing 16-object-per-session capacity and fail-loud behavior are unchanged."
+  ],
+  "evidence": ".local/evidence/sam31-drone-ft-v2-deploy-20261103"
+}

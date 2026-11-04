@@ -1,0 +1,841 @@
+{
+  "schema_version": 1,
+  "model": "muse-wonder-1.0",
+  "effort": "low",
+  "created_at_s": 1793152004.506253,
+  "fresh_conversation_each_case": true,
+  "flight_execution": false,
+  "scoring": "Exact unordered list of tool names and JSON arguments; no-call cases require zero calls. No-tool prose correctness is not scored.",
+  "prompt_sha256": "aee37c1be9783fb5f72afba9200b6074e96a5a1099cd5bbf18a07fa8589137e3",
+  "tools_sha256": "3cc9bb14ca32bef11aac8b9a7e6b8c1f4b2a259b14163790a6567b3015fb013b",
+  "correct": 24,
+  "total": 25,
+  "accuracy": 0.96,
+  "misses": [
+    20
+  ],
+  "raw_directory": ".local/evidence/gcs/fixes-1/tools",
+  "cases": [
+    {
+      "case": 1,
+      "request": "Read me the current rescue briefing and mission alerts.",
+      "expected": [
+        {
+          "name": "get_mission",
+          "arguments": {}
+        }
+      ],
+      "actual": [
+        {
+          "name": "get_mission",
+          "arguments": {}
+        }
+      ],
+      "passed": true,
+      "seconds": 1.3541362280084286,
+      "usage": {
+        "input_tokens": 2148,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 61,
+        "output_tokens_details": {
+          "reasoning_tokens": 10
+        },
+        "total_tokens": 2209
+      }
+    },
+    {
+      "case": 2,
+      "request": "How is the whole fleet doing right now?",
+      "expected": [
+        {
+          "name": "get_fleet",
+          "arguments": {}
+        }
+      ],
+      "actual": [
+        {
+          "name": "get_fleet",
+          "arguments": {}
+        }
+      ],
+      "passed": true,
+      "seconds": 1.7056586160033476,
+      "usage": {
+        "input_tokens": 2147,
+        "input_tokens_details": {
+          "cached_tokens": 0
+        },
+        "output_tokens": 59,
+        "output_tokens_details": {
+          "reasoning_tokens": 9
+        },
+        "total_tokens": 2206
+      }
+    },
+    {
+      "case": 3,
+      "request": "Give me Drone3's battery, GPS and flight mode.",
+      "expected": [
+        {
+          "name": "get_drone",
+          "arguments": {
+            "drone_id": "Drone3"
+          }
+        }
+      ],
+      "actual": [
+        {
+          "name": "get_drone",
+          "arguments": {
+            "drone_id": "Drone3"
+          }
+        }
+      ],
+      "passed": true,
+      "seconds": 1.4234976759762503,
+      "usage": {
+        "input_tokens": 2150,
+        "input_tokens_details": {
+          "cached_tokens": 2036
+        },
+        "output_tokens": 78,
+        "output_tokens_details": {
+          "reasoning_tokens": 7
+        },
+        "total_tokens": 2228
+      }
+    },
+    {
+      "case": 4,
+      "request": "Centre the map on Drone2.",
+      "expected": [
+        {
+          "name": "show_on_map",
+          "arguments": {
+            "target": "drone",
+            "drone_id": "Drone2"
+          }
+        }
+      ],
+      "actual": [
+        {
+          "name": "show_on_map",
+          "arguments": {
+            "target": "drone",
+            "drone_id": "Drone2"
+          }
+        }
+      ],
+      "passed": true,
+      "seconds": 2.2009469000040554,
+      "usage": {
+        "input_tokens": 2145,
+        "input_tokens_details": {
+          "cached_tokens": 2036
+        },
+        "output_tokens": 111,
+        "output_tokens_details": {
+          "reasoning_tokens": 26
+        },
+        "total_tokens": 2256
+      }
+    },
+    {
+      "case": 5,
+      "request": "Show the point 150 metres north, 80 metres west on the map.",
+      "expected": [
+        {
+          "name": "show_on_map",
+          "arguments": {
+            "target": "point",
+            "north_m": 150,
+            "east_m": -80
+          }
+        }
+      ],
+      "actual": [
+        {
+          "name": "show_on_map",
+          "arguments": {
+            "target": "point",
+            "north_m": 150.0,
+            "east_m": -80.0
+          }
+        }
+      ],
+      "passed": true,
+      "seconds": 3.0483066019951366,
+      "usage": {
+        "input_tokens": 2154,
+        "input_tokens_details": {
+          "cached_tokens": 2036
+        },
+        "output_tokens": 151,
+        "output_tokens_details": {
+          "reasoning_tokens": 39
+        },
+        "total_tokens": 2305
+      }
+    },
+    {
+      "case": 6,
+      "request": "Show a 100 metre radius area centred 200 metres north and 50 metres east.",
+      "expected": [
+        {
+          "name": "show_on_map",
+          "arguments": {
+            "target": "area",
+            "north_m": 200,
+            "east_m": 50,
+            "radius_m": 100
+          }
+        }
+      ],
+      "actual": [
+        {
+          "name": "show_on_map",
+          "arguments": {
+            "target": "area",
+            "north_m": 200.0,
+            "east_m": 50.0,
+            "radius_m": 100.0
+          }
+        }
+      ],
+      "passed": true,
+      "seconds": 1.4355594730004668,
+      "usage": {
+        "input_tokens": 2156,
+        "input_tokens_details": {
+          "cached_tokens": 2036
+        },
+        "output_tokens": 161,
+        "output_tokens_details": {
+          "reasoning_tokens": 34
+        },
+        "total_tokens": 2317
+      }
+    },
+    {
+      "case": 7,
+      "request": "Take off Drone1 to 30 metres above home.",
+      "expected": [
+        {
+          "name": "take_off",
+          "arguments": {
+            "drone_id": "Drone1",
+            "altitude_above_home_m": 30
+          }
+        }
+      ],
+      "actual": [
+        {
+          "name": "take_off",
+          "arguments": {
+            "drone_id": "Drone1",
+            "altitude_above_home_m": 30.0
+          }
+        }
+      ],
+      "passed": true,
+      "seconds": 1.3345493410015479,
+      "usage": {
+        "input_tokens": 2149,
+        "input_tokens_details": {
+          "cached_tokens": 2036
+        },
+        "output_tokens": 102,
+        "output_tokens_details": {
+          "reasoning_tokens": 13
+        },
+        "total_tokens": 2251
+      }
+    },
+    {
+      "case": 8,
+      "request": "Launch Drone4 to 40 metres above its home.",
+      "expected": [
+        {
+          "name": "take_off",
+          "arguments": {
+            "drone_id": "Drone4",
+            "altitude_above_home_m": 40
+          }
+        }
+      ],
+      "actual": [
+        {
+          "name": "take_off",
+          "arguments": {
+            "drone_id": "Drone4",
+            "altitude_above_home_m": 40.0
+          }
+        }
+      ],
+      "passed": true,
+      "seconds": 2.020783569983905,
+      "usage": {
+        "input_tokens": 2149,
+        "input_tokens_details": {
+          "cached_tokens": 2036
+        },
+        "output_tokens": 115,
+        "output_tokens_details": {
+          "reasoning_tokens": 23
+        },
+        "total_tokens": 2264
+      }
+    },
+    {
+      "case": 9,
+      "request": "Send Drone2 in GUIDED to 120 metres north and 60 metres east, 30 metres above home, at 5 metres per second.",
+      "expected": [
+        {
+          "name": "fly_to",
+          "arguments": {
+            "drone_id": "Drone2",
+            "north_m": 120,
+            "east_m": 60,
+            "altitude_above_home_m": 30,
+            "speed_mps": 5
+          }
+        }
+      ],
+      "actual": [
+        {
+          "name": "fly_to",
+          "arguments": {
+            "drone_id": "Drone2",
+            "north_m": 120.0,
+            "east_m": 60.0,
+            "altitude_above_home_m": 30.0,
+            "speed_mps": 5.0
+          }
+        }
+      ],
+      "passed": true,
+      "seconds": 1.7797763400012627,
+      "usage": {
+        "input_tokens": 2168,
+        "input_tokens_details": {
+          "cached_tokens": 2036
+        },
+        "output_tokens": 191,
+        "output_tokens_details": {
+          "reasoning_tokens": 34
+        },
+        "total_tokens": 2359
+      }
+    },
+    {
+      "case": 10,
+      "request": "Move Drone3 to 50 metres south, 100 metres west, at 45 metres above home and 4 metres per second.",
+      "expected": [
+        {
+          "name": "fly_to",
+          "arguments": {
+            "drone_id": "Drone3",
+            "north_m": -50,
+            "east_m": -100,
+            "altitude_above_home_m": 45,
+            "speed_mps": 4
+          }
+        }
+      ],
+      "actual": [
+        {
+          "name": "fly_to",
+          "arguments": {
+            "drone_id": "Drone3",
+            "north_m": -50.0,
+            "east_m": -100.0,
+            "altitude_above_home_m": 45.0,
+            "speed_mps": 4.0
+          }
+        }
+      ],
+      "passed": true,
+      "seconds": 2.5108942080114502,
+      "usage": {
+        "input_tokens": 2165,
+        "input_tokens_details": {
+          "cached_tokens": 2036
+        },
+        "output_tokens": 311,
+        "output_tokens_details": {
+          "reasoning_tokens": 150
+        },
+        "total_tokens": 2476
+      }
+    },
+    {
+      "case": 11,
+      "request": "Fly Drone1 an AUTO route through (north 100, east 20) then (north 200, east 20), all at 30 metres above home and 5 metres per second.",
+      "expected": [
+        {
+          "name": "fly_route",
+          "arguments": {
+            "drone_id": "Drone1",
+            "waypoints": [
+              {
+                "north_m": 100,
+                "east_m": 20,
+                "altitude_above_home_m": 30
+              },
+              {
+                "north_m": 200,
+                "east_m": 20,
+                "altitude_above_home_m": 30
+              }
+            ],
+            "speed_mps": 5
+          }
+        }
+      ],
+      "actual": [
+        {
+          "name": "fly_route",
+          "arguments": {
+            "drone_id": "Drone1",
+            "waypoints": [
+              {
+                "north_m": 100.0,
+                "east_m": 20.0,
+                "altitude_above_home_m": 30.0
+              },
+              {
+                "north_m": 200.0,
+                "east_m": 20.0,
+                "altitude_above_home_m": 30.0
+              }
+            ],
+            "speed_mps": 5.0
+          }
+        }
+      ],
+      "passed": true,
+      "seconds": 2.218514656997286,
+      "usage": {
+        "input_tokens": 2178,
+        "input_tokens_details": {
+          "cached_tokens": 2036
+        },
+        "output_tokens": 226,
+        "output_tokens_details": {
+          "reasoning_tokens": 42
+        },
+        "total_tokens": 2404
+      }
+    },
+    {
+      "case": 12,
+      "request": "Drone4 should follow waypoints north -200 east 100 then north -100 east 150. Use 50 metres above home at both and 6 metres per second.",
+      "expected": [
+        {
+          "name": "fly_route",
+          "arguments": {
+            "drone_id": "Drone4",
+            "waypoints": [
+              {
+                "north_m": -200,
+                "east_m": 100,
+                "altitude_above_home_m": 50
+              },
+              {
+                "north_m": -100,
+                "east_m": 150,
+                "altitude_above_home_m": 50
+              }
+            ],
+            "speed_mps": 6
+          }
+        }
+      ],
+      "actual": [
+        {
+          "name": "fly_route",
+          "arguments": {
+            "drone_id": "Drone4",
+            "speed_mps": 6.0,
+            "waypoints": [
+              {
+                "north_m": -200.0,
+                "east_m": 100.0,
+                "altitude_above_home_m": 50.0
+              },
+              {
+                "north_m": -100.0,
+                "east_m": 150.0,
+                "altitude_above_home_m": 50.0
+              }
+            ]
+          }
+        }
+      ],
+      "passed": true,
+      "seconds": 2.863241787010338,
+      "usage": {
+        "input_tokens": 2173,
+        "input_tokens_details": {
+          "cached_tokens": 2036
+        },
+        "output_tokens": 278,
+        "output_tokens_details": {
+          "reasoning_tokens": 104
+        },
+        "total_tokens": 2451
+      }
+    },
+    {
+      "case": 13,
+      "request": "Brake and hold Drone1 now.",
+      "expected": [
+        {
+          "name": "hold",
+          "arguments": {
+            "drone_id": "Drone1"
+          }
+        }
+      ],
+      "actual": [
+        {
+          "name": "hold",
+          "arguments": {
+            "drone_id": "Drone1"
+          }
+        }
+      ],
+      "passed": true,
+      "seconds": 1.8808773109922186,
+      "usage": {
+        "input_tokens": 2146,
+        "input_tokens_details": {
+          "cached_tokens": 2036
+        },
+        "output_tokens": 104,
+        "output_tokens_details": {
+          "reasoning_tokens": 37
+        },
+        "total_tokens": 2250
+      }
+    },
+    {
+      "case": 14,
+      "request": "Pause Drone2 in place.",
+      "expected": [
+        {
+          "name": "hold",
+          "arguments": {
+            "drone_id": "Drone2"
+          }
+        }
+      ],
+      "actual": [
+        {
+          "name": "hold",
+          "arguments": {
+            "drone_id": "Drone2"
+          }
+        }
+      ],
+      "passed": true,
+      "seconds": 2.238294593000319,
+      "usage": {
+        "input_tokens": 2144,
+        "input_tokens_details": {
+          "cached_tokens": 2036
+        },
+        "output_tokens": 107,
+        "output_tokens_details": {
+          "reasoning_tokens": 39
+        },
+        "total_tokens": 2251
+      }
+    },
+    {
+      "case": 15,
+      "request": "Resume Drone1's uploaded mission from its current item.",
+      "expected": [
+        {
+          "name": "resume",
+          "arguments": {
+            "drone_id": "Drone1"
+          }
+        }
+      ],
+      "actual": [
+        {
+          "name": "resume",
+          "arguments": {
+            "drone_id": "Drone1"
+          }
+        }
+      ],
+      "passed": true,
+      "seconds": 1.8261968750157394,
+      "usage": {
+        "input_tokens": 2149,
+        "input_tokens_details": {
+          "cached_tokens": 2036
+        },
+        "output_tokens": 101,
+        "output_tokens_details": {
+          "reasoning_tokens": 28
+        },
+        "total_tokens": 2250
+      }
+    },
+    {
+      "case": 16,
+      "request": "Send Drone3 back to its launch point.",
+      "expected": [
+        {
+          "name": "return_home",
+          "arguments": {
+            "drone_id": "Drone3"
+          }
+        }
+      ],
+      "actual": [
+        {
+          "name": "return_home",
+          "arguments": {
+            "drone_id": "Drone3"
+          }
+        }
+      ],
+      "passed": true,
+      "seconds": 1.4412670390156563,
+      "usage": {
+        "input_tokens": 2147,
+        "input_tokens_details": {
+          "cached_tokens": 2036
+        },
+        "output_tokens": 102,
+        "output_tokens_details": {
+          "reasoning_tokens": 30
+        },
+        "total_tokens": 2249
+      }
+    },
+    {
+      "case": 17,
+      "request": "Land Drone4 where it is.",
+      "expected": [
+        {
+          "name": "land",
+          "arguments": {
+            "drone_id": "Drone4"
+          }
+        }
+      ],
+      "actual": [
+        {
+          "name": "land",
+          "arguments": {
+            "drone_id": "Drone4"
+          }
+        }
+      ],
+      "passed": true,
+      "seconds": 1.3447647190187126,
+      "usage": {
+        "input_tokens": 2145,
+        "input_tokens_details": {
+          "cached_tokens": 2036
+        },
+        "output_tokens": 90,
+        "output_tokens_details": {
+          "reasoning_tokens": 24
+        },
+        "total_tokens": 2235
+      }
+    },
+    {
+      "case": 18,
+      "request": "Hold Drone1 and Drone2.",
+      "expected": [
+        {
+          "name": "hold",
+          "arguments": {
+            "drone_id": "Drone1"
+          }
+        },
+        {
+          "name": "hold",
+          "arguments": {
+            "drone_id": "Drone2"
+          }
+        }
+      ],
+      "actual": [
+        {
+          "name": "hold",
+          "arguments": {
+            "drone_id": "Drone1"
+          }
+        },
+        {
+          "name": "hold",
+          "arguments": {
+            "drone_id": "Drone2"
+          }
+        }
+      ],
+      "passed": true,
+      "seconds": 1.1099289020057768,
+      "usage": {
+        "input_tokens": 2145,
+        "input_tokens_details": {
+          "cached_tokens": 2036
+        },
+        "output_tokens": 156,
+        "output_tokens_details": {
+          "reasoning_tokens": 36
+        },
+        "total_tokens": 2301
+      }
+    },
+    {
+      "case": 19,
+      "request": "Thanks, that's helpful.",
+      "expected": [],
+      "actual": [],
+      "passed": true,
+      "seconds": 1.3900132660055533,
+      "usage": {
+        "input_tokens": 2143,
+        "input_tokens_details": {
+          "cached_tokens": 2036
+        },
+        "output_tokens": 45,
+        "output_tokens_details": {
+          "reasoning_tokens": 27
+        },
+        "total_tokens": 2188
+      }
+    },
+    {
+      "case": 20,
+      "request": "Explain the difference between Supervised and Autonomous mode.",
+      "expected": [],
+      "actual": [
+        {
+          "name": "get_mission",
+          "arguments": {}
+        }
+      ],
+      "passed": false,
+      "seconds": 1.6908797489886638,
+      "usage": {
+        "input_tokens": 2148,
+        "input_tokens_details": {
+          "cached_tokens": 2036
+        },
+        "output_tokens": 194,
+        "output_tokens_details": {
+          "reasoning_tokens": 133
+        },
+        "total_tokens": 2342
+      }
+    },
+    {
+      "case": 21,
+      "request": "Fly Drone1 to 900 metres north, zero east, 30 metres above home, at 5 metres per second.",
+      "expected": [],
+      "actual": [],
+      "passed": true,
+      "seconds": 1.738952618004987,
+      "usage": {
+        "input_tokens": 2163,
+        "input_tokens_details": {
+          "cached_tokens": 2036
+        },
+        "output_tokens": 139,
+        "output_tokens_details": {
+          "reasoning_tokens": 102
+        },
+        "total_tokens": 2302
+      }
+    },
+    {
+      "case": 22,
+      "request": "Take off Drone9 to 30 metres above home.",
+      "expected": [],
+      "actual": [],
+      "passed": true,
+      "seconds": 1.0416455309896264,
+      "usage": {
+        "input_tokens": 2149,
+        "input_tokens_details": {
+          "cached_tokens": 2036
+        },
+        "output_tokens": 65,
+        "output_tokens_details": {
+          "reasoning_tokens": 27
+        },
+        "total_tokens": 2214
+      }
+    },
+    {
+      "case": 23,
+      "request": "Fly Drone2 to north 100 east 100 at 150 metres above home and 5 metres per second.",
+      "expected": [],
+      "actual": [],
+      "passed": true,
+      "seconds": 1.2163197819900233,
+      "usage": {
+        "input_tokens": 2161,
+        "input_tokens_details": {
+          "cached_tokens": 2036
+        },
+        "output_tokens": 76,
+        "output_tokens_details": {
+          "reasoning_tokens": 32
+        },
+        "total_tokens": 2237
+      }
+    },
+    {
+      "case": 24,
+      "request": "Show me the person detections from Drone1's camera.",
+      "expected": [],
+      "actual": [],
+      "passed": true,
+      "seconds": 2.8048168369859923,
+      "usage": {
+        "input_tokens": 2149,
+        "input_tokens_details": {
+          "cached_tokens": 2036
+        },
+        "output_tokens": 76,
+        "output_tokens_details": {
+          "reasoning_tokens": 51
+        },
+        "total_tokens": 2225
+      }
+    },
+    {
+      "case": 25,
+      "request": "Take off Drone2.",
+      "expected": [],
+      "actual": [],
+      "passed": true,
+      "seconds": 1.538120658020489,
+      "usage": {
+        "input_tokens": 2143,
+        "input_tokens_details": {
+          "cached_tokens": 2036
+        },
+        "output_tokens": 62,
+        "output_tokens_details": {
+          "reasoning_tokens": 36
+        },
+        "total_tokens": 2205
+      }
+    }
+  ],
+  "scoring_output": "24/25 exact tool selections (96.0%). Misses: [20]"
+}

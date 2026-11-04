@@ -1,0 +1,11 @@
+[Unit]
+Description=SNR Pixel Streaming signalling, slot %i
+After=network-online.target snr-turn.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=@ROOT@/.local/toolchains/bin/node world/unreal/scripts/start-pixel-streaming.cjs
+
+[Install]
+WantedBy=multi-user.target

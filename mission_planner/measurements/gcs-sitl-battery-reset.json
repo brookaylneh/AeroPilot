@@ -1,0 +1,37 @@
+{
+  "schema_version": 1,
+  "purpose": "SITL AirSim battery re-initialises its state of charge when SIM_BATT_VOLTAGE or SIM_BATT_CAP_AH changes, so a landed fleet can be refilled from Mission Control without restarting the coupled world.",
+  "release_tag": "Copter-4.7.2",
+  "commit": "fb773567896014da007bca58358704d4a0d8516f",
+  "patches": [
+    "sitl-loopback.patch",
+    "sitl-airsim-liveness.patch",
+    "sitl-gps-cadence.patch",
+    "sitl-airsim-battery.patch"
+  ],
+  "binary": ".local/build/ardupilot-battery-reset-20261102/build/sitl/bin/arducopter",
+  "binary_bytes": 5651816,
+  "binary_sha256": "09ed4157cab135e0be4ec143669fe6bd749227ec153956c1e7d16cad8bd99f04",
+  "compiler": "11.4.0",
+  "build_jobs": 4,
+  "build_seconds": 220.339,
+  "build_log": ".local/evidence/gcs/sitl-build-battery-reset-20261102.txt",
+  "gtest": {
+    "binary": "build/sitl/tests/test_sitl_battery",
+    "passed": [
+      "MotorChannelsAndDisarmedBattery",
+      "DischargeReachesLowVoltageAndDoesNotRecharge",
+      "ParameterChangeReinitialisesStateOfCharge",
+      "UnlimitedCapacityFails",
+      "FiftyAhProfileSupportsThirtyMinutesBeforeReserve"
+    ],
+    "reset": {
+      "drained_v": 10.587445,
+      "refilled_v": 12.6,
+      "full_load_a": 50,
+      "capacity_ah": 50
+    }
+  },
+  "reset_procedure": "Fleet.reset_batteries: every drone landed and disarmed; SIM_BATT_VOLTAGE 12.61 then 12.6; MAV_CMD_BATTERY_RESET (1, 100); wait for SYS_STATUS battery_remaining 100.",
+  "runtime_env": "SNR_SITL_BINARY updated in deploy/runtime.env.example and .local/runtime.env; snr-mission restart required to load it."
+}

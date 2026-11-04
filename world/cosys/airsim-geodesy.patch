@@ -1,0 +1,21 @@
+--- a/Source/SimMode/SimModeBase.cpp
++++ b/Source/SimMode/SimModeBase.cpp
+@@ -21,0 +22 @@
++#include "common/GeodeticConverter.hpp"
+@@ -1799,2 +1800,4 @@
+-    const auto& pawn_ned_pos = ned_transform.toLocalNed(vehicle_pawn->GetActorLocation());
+-    const auto& home_geopoint = msr::airlib::EarthUtils::nedToGeodetic(pawn_ned_pos, getSettings().origin_geopoint);
++    const auto& pawn_ned_pos = ned_transform.toGlobalNed(vehicle_pawn->GetActorLocation());
++    msr::airlib::GeodeticConverter converter(getSettings().origin_geopoint.home_geo_point);
++    msr::airlib::GeoPoint home_geopoint;
++    converter.ned2Geodetic(pawn_ned_pos, home_geopoint);
+--- a/Source/PawnSimApi.cpp
++++ b/Source/PawnSimApi.cpp
+@@ -12 +12 @@
+-#include "common/EarthUtils.hpp"
++#include "common/GeodeticConverter.hpp"
+@@ -72,2 +72,2 @@
+-    home_geo_point_ = msr::airlib::EarthUtils::nedToGeodetic(nedWrtOrigin,
+-                                                             AirSimSettings::singleton().origin_geopoint);
++    msr::airlib::GeodeticConverter converter(AirSimSettings::singleton().origin_geopoint.home_geo_point);
++    converter.ned2Geodetic(nedWrtOrigin, home_geo_point_);

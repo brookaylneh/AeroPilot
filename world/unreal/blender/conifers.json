@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "assets": {
+    "lodgepole-mature": {
+      "reference": "lodgepole-mature",
+      "seed": 43,
+      "dimensionsM": [6.766, 6.531, 17.063],
+      "toleranceM": 0.005,
+      "buriedM": 0.25,
+      "textureSize": 2048,
+      "collision": false,
+      "panels": { "front": [0, 0], "back": [1, 0], "left": [0, 1], "top": [1, 1] },
+      "correspondences": [
+        { "name": "trunk axis at grade", "modelM": [0.131, -0.021, 0.0], "pixel": [1468, 2786] },
+        { "name": "trunk axis, 1.5 m", "modelM": [0.131, -0.029, 1.5], "pixel": [1470, 2541] },
+        { "name": "trunk axis, 3 m", "modelM": [0.118, -0.052, 3.0], "pixel": [1469, 2297] },
+        { "name": "crown top", "modelM": [0.151, -0.367, 16.764], "pixel": [1393, 52] },
+        { "name": "crown edge -Y, 79 m front view", "modelM": [-0.575, -3.036, 7.866], "pixel": [990, 1509] },
+        { "name": "crown edge +Y, 79 m front view", "modelM": [0.124, 3.013, 9.54], "pixel": [1968, 1236] }
+      ],
+      "colourRegions": {
+        "bark": [[1445, 2300, 1495, 2650]],
+        "foliage": [[1250, 500, 1550, 800]]
+      }
+    }
+  }
+}

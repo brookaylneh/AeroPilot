@@ -1,0 +1,197 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-02",
+  "model": "muse-wonder-1.0",
+  "prices_usd_per_million_tokens": {
+    "input": 4.0,
+    "cached_input": 0.2,
+    "output": 20.0,
+    "source": "https://dev.meta.ai/docs/pricing-rate-limits"
+  },
+  "commit_base": "35eca87",
+  "working_tree": "uncommitted tasking planner redesign (steps 1-12, 14 of the approved plan; step 13 deferred)",
+  "prompt": {
+    "sha256": "9990fd5016b9a9e51da98a1f2b3ff3f2cfcfc9ff833c31a00b49c650628467f6",
+    "characters": 8962
+  },
+  "tools": {
+    "sha256": "307407da44474598bfc3d64c6e21cb098d99e5ee13154511db65e9be599bc25f",
+    "count": 30,
+    "names": [
+      "set_camera_view",
+      "get_candidate",
+      "center_candidate",
+      "follow_candidate",
+      "relock_candidate",
+      "publish_evidence",
+      "confirm_evidence",
+      "disregard_and_continue",
+      "start_inspection",
+      "face_heading",
+      "stop_inspection",
+      "wait_for",
+      "get_mission",
+      "get_fleet",
+      "get_drone",
+      "show_on_map",
+      "open_feed",
+      "hold",
+      "stop",
+      "return_fleet",
+      "return_home",
+      "land",
+      "ground_height",
+      "ground_profile",
+      "request_launch",
+      "apply_plan_change",
+      "apply_proposal",
+      "plan_task",
+      "find_place",
+      "describe_location"
+    ],
+    "plan_task_schema_characters": 4411,
+    "deferred_loading": "not adopted; tool_search replay with store:false is undocumented"
+  },
+  "checks": {
+    "source": "/tmp run on the final tree",
+    "python_unittest": "Ran 694 tests in 281.987s",
+    "python_result": "OK",
+    "web_tests": ["# pass 206", "# fail 0"],
+    "prettier": true,
+    "ruff": true
+  },
+  "accept_chat": {
+    "run": ".local/evidence/wonder-planner/20261102T182643Z-tasking/conversations",
+    "scripts": {
+      "cabin": "FAIL",
+      "map_click": "FAIL",
+      "impossible": "PASS",
+      "orbit": "PASS",
+      "route": "PASS",
+      "boundary": "PASS",
+      "child": "PASS",
+      "hiker": "PASS",
+      "dementia": "PASS",
+      "change_high": "FAIL",
+      "change_medium": "FAIL"
+    },
+    "tokens": {
+      "turns": 26,
+      "input_tokens": 524115,
+      "output_tokens": 11424,
+      "max_input_tokens_per_turn": 30383
+    },
+    "spent_usd": 2.32494,
+    "notes": "Three scripts failed only because the stub rejected Wonder's closing wait_for; cabin failed the ask-first criterion because the new instructions plan a clear destination directly. Fixed stub and script, then rerun below.",
+    "rerun": {
+      "run": ".local/evidence/wonder-planner/20261102T182643Z-tasking/conversations-rerun",
+      "scripts": {
+        "trail": "PASS",
+        "map_click": "FAIL",
+        "change_high": "PASS",
+        "change_medium": "PASS"
+      },
+      "tokens": {
+        "turns": 14,
+        "input_tokens": 253650,
+        "output_tokens": 7140,
+        "max_input_tokens_per_turn": 20076
+      },
+      "spent_usd": 1.1574
+    },
+    "map_click_rescored": {
+      "map_click_rescored_pass": true,
+      "transcript": ".local/evidence/wonder-planner/20261102T182643Z-tasking/conversations-rerun/map_click/conversation.json"
+    },
+    "rescoring_note": "The rerun scored map_click with the literal question-mark criterion; the corrected criterion (phase 0 produced text and no plan_task call) was applied offline to its logged transcript."
+  },
+  "bench_tools": {
+    "run": ".local/evidence/wonder-planner/20261102T182643Z-tasking/bench-tools.json",
+    "scoring_output": "32/34 exact tool selections (94.1%). Misses: [13, 14]",
+    "misses": [
+      {
+        "case": 13,
+        "request": "Send Drone3 back to its launch point.",
+        "actual": ["get_mission", "get_fleet"]
+      },
+      {
+        "case": 14,
+        "request": "Return Drone1 and Drone2 to their launch points together.",
+        "actual": ["get_mission", "get_fleet"]
+      }
+    ],
+    "input_tokens": 275287,
+    "output_tokens": 5081,
+    "spent_usd": 1.2028,
+    "previous": "gcs-tools.json: 24/25 exact (96.0 %) with the free-form plan tools"
+  },
+  "region_eval": {
+    "run": "/srv/snr/.local/evidence/evaluation/region-eval-20261102b",
+    "fleet": "four landed drones at 100 % battery, default fences, disclosed defaults",
+    "summary": {
+      "False": {
+        "cases": 26,
+        "rejected": 1,
+        "in_band_1": 16,
+        "in_band_1_or_2": 24,
+        "in_any_band": 25,
+        "unparsed_briefs": 1,
+        "median_band_1_ha": 31.72652823017633
+      },
+      "True": {
+        "cases": 26,
+        "rejected": 1,
+        "in_band_1": 12,
+        "in_band_1_or_2": 18,
+        "in_any_band": 25,
+        "unparsed_briefs": 1,
+        "median_band_1_ha": 17.837947246861425
+      }
+    },
+    "containing_band_distribution": {
+      "False": {
+        "1": 16,
+        "2": 8,
+        "3": 0,
+        "4": 0,
+        "6": 1,
+        "11": 0
+      },
+      "True": {
+        "1": 12,
+        "2": 6,
+        "3": 3,
+        "4": 2,
+        "6": 1,
+        "11": 1
+      }
+    },
+    "slowest_case_s": {
+      "False": 137.93545645696577,
+      "True": 12.536472135980148
+    },
+    "first_run_before_perimeter_margin": ".local/evidence/evaluation/region-eval-20261102 (2 whole-sortie observation_area rejections, fixed by PERIMETER_MARGIN_M)"
+  },
+  "replay": {
+    "run": "/srv/snr/.local/evidence/evaluation/replay-20261102b",
+    "summary": {
+      "rescue_missions": 21,
+      "missions_with_launched_plans": 17,
+      "subject_in_a_launched_perimeter": 13,
+      "subject_under_an_assigned_survey": 6,
+      "failed_plan_attempts": 55,
+      "plan_attempts": 87
+    }
+  },
+  "sitl_battery_reset": {
+    "binary_sha256": "09ed4157cab135e0be4ec143669fe6bd749227ec153956c1e7d16cad8bd99f04",
+    "gtest_passed": [
+      "MotorChannelsAndDisarmedBattery",
+      "DischargeReachesLowVoltageAndDoesNotRecharge",
+      "ParameterChangeReinitialisesStateOfCharge",
+      "UnlimitedCapacityFails",
+      "FiftyAhProfileSupportsThirtyMinutesBeforeReserve"
+    ]
+  },
+  "total_paid_usd": 4.6851
+}

@@ -1,0 +1,21 @@
+--- a/libraries/AP_RCProtocol/AP_RCProtocol_UDP.cpp
++++ b/libraries/AP_RCProtocol/AP_RCProtocol_UDP.cpp
+@@ -46,7 +46,7 @@
+     if (!rc_in.reuseaddress()) {
+         return false;
+     }
+-    if (!rc_in.bind("0.0.0.0", sitl->rcin_port)) {
++    if (!rc_in.bind("127.0.0.1", sitl->rcin_port)) {
+         return false;
+     }
+     if (!rc_in.set_blocking(false)) {
+--- a/libraries/SITL/SIM_AirSim.cpp
++++ b/libraries/SITL/SIM_AirSim.cpp
+@@ -58,6 +58,6 @@
+ void AirSim::set_interface_ports(const char* address, const int port_in, const int port_out)
+ {
+-    static const char *port_in_addr = "0.0.0.0";
++    static const char *port_in_addr = "127.0.0.1";
+ 
+     if (!sock.bind(port_in_addr, port_in)) {
+ 		printf("Unable to bind Airsim sensor_in socket at port %u - Error: %s\n",

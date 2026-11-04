@@ -1,0 +1,5 @@
+.local/
+node_modules/
+web/public/
+world/unreal/ScenarioStudio/
+package-lock.json

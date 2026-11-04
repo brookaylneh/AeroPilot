@@ -1,0 +1,453 @@
+"""Onboard main-camera tracking, independent of the browser and SAM's lifetime."""
+
+import asyncio
+import json
+import math
+import time
+from collections import deque
+from concurrent.futures import ThreadPoolExecutor
+
+from mission_planner.gcs.centering import visible_box
+from mission_planner.gcs.live_tracker import LiveTracker, agreement
+from mission_planner.gcs.tracking import MAX_TRACKING_AGE_S
+
+
+def airborne_camera(vehicle):
+    return (
+        vehicle["armed"]
+        and vehicle["landed_state"] == 2
+        and not vehicle["link_lost"]
+        and vehicle["ekf_healthy"]
+        and vehicle["camera_available"]
+        and 0 <= time.time() * 1000 - vehicle["received_at_ms"] <= 2000
+    )
+
+
+def held(vehicle):
+    return airborne_camera(vehicle) and vehicle["mode"] in ("BRAKE", "LOITER")
+
+
+class VisualFollow:
+    def __init__(self, inspections):
+        self.inspections = inspections
+        self.owners = {}
+        self.sessions = {}
+        self.tasks = set()
+
+    def _launch(self, coroutine):
+        task = self.inspections.mission.launch(coroutine)
+        self.tasks.add(task)
+        task.add_done_callback(self.tasks.discard)
+        return task
+
+    async def close(self):
+        for name in set(self.sessions) | set(self.owners):
+            self.cancel(name)
+        if self.tasks:
+            tasks = tuple(self.tasks)
+            await asyncio.wait(tasks)
+            for task in tasks:
+                if not task.cancelled():
+                    task.result()
+
+    def cancel(self, drone_id):
+        if drone_id in self.sessions:
+            session = self.sessions.pop(drone_id)
+            session["task"].cancel()
+            session["row"]["camera_tracking"] = None
+        self._release_camera(drone_id)
+
+    def _release_camera(self, drone_id):
+        if drone_id in self.owners:
+            camera = self.inspections.cameras[drone_id]
+            camera.cancel_follow()
+            self._launch(camera.end_follow(camera.follow_generation))
+            del self.owners[drone_id]
+
+    async def observe(self, row, metadata, detections):
+        if "rescue" not in row or row["rescue"]["phase"] not in ("reviewing", "tracking", "held"):
+            return
+        rescue = row["rescue"]
+        selected = [d for d in detections if d["track_id"] == rescue["selected_track_id"]]
+        if row["camera_changing"] or row["camera_view"] is None:
+            return
+        if metadata["camera_view_revision"] != row["camera_view"]["revision"]:
+            return
+        name = row["drone_id"]
+        if not selected:
+            if name in self.sessions:
+                session = self.sessions[name]
+                if session["missing_since"] is None:
+                    session["missing_since"] = time.monotonic()
+            return
+        identity = (
+            row["id"],
+            rescue["review_id"],
+            rescue["selected_track_id"],
+            row["camera_view"]["revision"],
+        )
+        if name in self.sessions and self.sessions[name]["identity"] != identity:
+            self.cancel(name)
+        if name not in self.sessions:
+            session = {
+                "identity": identity,
+                "row": row,
+                "observations": deque(maxlen=12),
+                "results": {},
+                "agreements": 0,
+                "agreement_iou": None,
+                "latest": None,
+                "guided": None,
+                "last_observation_ns": 0,
+                "visible": True,
+                "missing_since": None,
+                "last_seed_ns": 0,
+                "task": None,
+            }
+            self.sessions[name] = session
+            session["task"] = self._launch(self._run_native(name, session))
+        session = self.sessions[name]
+        if session["task"].done():
+            return
+        session["visible"] = True
+        session["missing_since"] = None
+        if metadata["timestamp_ns"] <= session["last_observation_ns"]:
+            return
+        session["last_observation_ns"] = metadata["timestamp_ns"]
+        session["observations"].append((dict(metadata), list(selected[0]["box_xyxy"])))
+        self.inspections.cameras[name].visual_controlled = True
+
+    def estimate(self, name, track_id):
+        if name not in self.sessions:
+            return None
+        session = self.sessions[name]
+        latest = session["guided"]
+        if (
+            session["identity"][2] != track_id
+            or session["task"].done()
+            or session["agreements"] < 2
+            or latest is None
+            or not session["visible"]
+            or time.time() * 1000 - latest[0]["captured_at_ms"] > MAX_TRACKING_AGE_S * 1000
+        ):
+            return None
+        return latest
+
+    async def _run_native(self, name, session):
+        camera = self.inspections.cameras[name]
+        row = session["row"]
+        tracker = LiveTracker()
+        executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="csrt-" + name)
+        loop = asyncio.get_running_loop()
+
+        def recorded(metadata, box):
+            session["results"][metadata["timestamp_ns"]] = box
+            while len(session["results"]) > 24:
+                del session["results"][next(iter(session["results"]))]
+            if box is None:
+                session.update(latest=None, guided=None)
+            elif (
+                session["latest"] is None
+                or metadata["timestamp_ns"] >= session["latest"][0]["timestamp_ns"]
+            ):
+                session["latest"] = (dict(metadata), box)
+
+        async def advance(frames):
+            for metadata, pixels in frames:
+                if tracker.tracker is None:
+                    break
+                if metadata["camera_view_revision"] != session["identity"][3]:
+                    continue
+                if metadata["timestamp_ns"] <= tracker.timestamp_ns:
+                    continue
+                started = time.monotonic()
+                box = await loop.run_in_executor(executor, tracker.advance, pixels, metadata)
+                recorded(metadata, box)
+                with (self.inspections.mission.directory / "native-tracking.jsonl").open(
+                    "a"
+                ) as log:
+                    log.write(
+                        json.dumps(
+                            {
+                                "timestamp_ms": time.time() * 1000,
+                                "drone_id": name,
+                                "track_id": session["identity"][2],
+                                "frame_timestamp_ns": metadata["timestamp_ns"],
+                                "phase": "update",
+                                "box": box,
+                                "processing_ms": (time.monotonic() - started) * 1000,
+                                "source_age_ms": time.time() * 1000 - metadata["captured_at_ms"],
+                            },
+                            allow_nan=False,
+                        )
+                        + "\n"
+                    )
+
+        async def produce():
+            while True:
+                if (
+                    session["missing_since"] is not None
+                    and time.monotonic() - session["missing_since"] >= MAX_TRACKING_AGE_S
+                ):
+                    session.update(latest=None, visible=False, agreements=0)
+                    session["observations"].clear()
+                if not session["visible"]:
+                    tracker.tracker = None
+                    await asyncio.sleep(0.02)
+                    continue
+                while session["observations"]:
+                    metadata, reference = session["observations"].popleft()
+                    stamp = metadata["timestamp_ns"]
+                    frames = tuple(camera.video_frames)
+                    source = next(
+                        ((m, pixels) for m, pixels in frames if m["timestamp_ns"] == stamp), None
+                    )
+                    if (
+                        source is None
+                        or time.time() * 1000 - metadata["captured_at_ms"]
+                        > MAX_TRACKING_AGE_S * 1000
+                    ):
+                        session.update(agreements=0, latest=None)
+                        continue
+                    await advance(
+                        [(m, pixels) for m, pixels in frames if m["timestamp_ns"] <= stamp]
+                    )
+                    compared = stamp in session["results"]
+                    overlap = (
+                        agreement(session["results"][stamp], [v / 4 for v in reference])
+                        if compared
+                        else None
+                    )
+                    if compared:
+                        session["agreements"] = session["agreements"] + 1 if overlap >= 0.25 else 0
+                        session["agreement_iou"] = overlap
+                    correction = (
+                        tracker.tracker is None
+                        or overlap is not None
+                        and overlap < 0.25
+                        or (stamp - session["last_seed_ns"]) / 1e9 >= 2
+                    )
+                    if correction:
+                        box = await loop.run_in_executor(
+                            executor, tracker.seed, source[1], reference, metadata
+                        )
+                        recorded(metadata, box)
+                        session["last_seed_ns"] = stamp
+                    with (self.inspections.mission.directory / "native-tracking.jsonl").open(
+                        "a"
+                    ) as log:
+                        log.write(
+                            json.dumps(
+                                {
+                                    "timestamp_ms": time.time() * 1000,
+                                    "drone_id": name,
+                                    "track_id": session["identity"][2],
+                                    "frame_timestamp_ns": stamp,
+                                    "phase": "agreement",
+                                    "iou": overlap,
+                                    "agreements": session["agreements"],
+                                    "corrected": correction,
+                                },
+                                allow_nan=False,
+                            )
+                            + "\n"
+                        )
+                    await advance(frames)
+                if tracker.tracker is not None:
+                    await advance(tuple(camera.video_frames))
+                    if tracker.tracker is not None:
+                        await camera.capture(tracker.timestamp_ns)
+                else:
+                    session.update(latest=None, agreements=0)
+                    await asyncio.sleep(0.02)
+
+        producer = asyncio.create_task(produce())
+        producer_observed = False
+        sequence = 0
+        try:
+            while True:
+                tick = time.monotonic()
+                if producer.done():
+                    producer_observed = True
+                    producer.result()
+                    raise RuntimeError(name + ": main-camera frame producer stopped")
+                available = session["visible"] and (
+                    session["missing_since"] is None
+                    or tick - session["missing_since"] < MAX_TRACKING_AGE_S
+                )
+                latest = session["latest"] if available and session["agreements"] >= 2 else None
+                sequence += 1
+                message = {
+                    "type": "camera_follow",
+                    "inspection_id": session["identity"][0],
+                    "review_id": session["identity"][1],
+                    "track_id": session["identity"][2],
+                    "camera_revision": session["identity"][3],
+                    "sequence": sequence,
+                    "box": None,
+                    "frame_age_ms": 0,
+                    "frame_timestamp_ns": None,
+                    "observed_q": [1, 0, 0, 0],
+                }
+                if latest is not None:
+                    metadata, box = latest
+                    age = time.time() * 1000 - metadata["captured_at_ms"]
+                    q = metadata["camera_pose_local_ned"]["orientation"]
+                    message.update(
+                        box=box,
+                        frame_age_ms=age,
+                        observed_q=[q[k] for k in "wxyz"],
+                        frame_timestamp_ns=metadata["timestamp_ns"],
+                    )
+                result = await self.update(message, session)
+                session["guided"] = latest if result["status"] == "moved" else None
+                row["camera_tracking"] = {
+                    "source": "onboard_csrt",
+                    "track_id": session["identity"][2],
+                    "status": "acquiring"
+                    if available and session["agreements"] < 2
+                    else result["status"],
+                    "agreement_iou": session["agreement_iou"],
+                    "agreements": session["agreements"],
+                    "frame_timestamp_ns": None
+                    if message["frame_timestamp_ns"] is None
+                    else str(message["frame_timestamp_ns"]),
+                    "sequence": sequence,
+                    "box": message["box"],
+                    "frame_age_ms": message["frame_age_ms"],
+                    "centering": camera.follow_diagnostic,
+                    "error": None,
+                }
+                await asyncio.sleep(max(0, 0.1 - (time.monotonic() - tick)))
+        except Exception as error:
+            row["camera_tracking"] = {
+                "source": "onboard_csrt",
+                "track_id": session["identity"][2],
+                "status": "failed",
+                "sequence": sequence,
+                "box": None,
+                "frame_age_ms": None,
+                "centering": None,
+                "error": f"{type(error).__name__}: {error}",
+            }
+            raise RuntimeError(f"{name}: native main-camera tracking failed: {error}") from error
+        finally:
+            producer.cancel()
+            try:
+                await asyncio.wait([producer])
+                if not producer.cancelled() and not producer_observed:
+                    producer.result()
+            finally:
+                executor.shutdown(wait=True, cancel_futures=True)
+                if name in self.owners and self.owners[name]["socket"] is session:
+                    camera.cancel_follow()
+                    del self.owners[name]
+                    await camera.end_follow(camera.follow_generation)
+
+    async def update(self, message, socket):
+        received = time.monotonic()
+        inspections = self.inspections
+        mission = inspections.mission
+        sequence = message["sequence"]
+        assert type(sequence) is int and sequence > 0, "Invalid camera guidance sequence"
+        assert type(message["track_id"]) is int and message["track_id"] > 0, (
+            "Invalid camera track identity"
+        )
+        assert type(message["camera_revision"]) is int and message["camera_revision"] >= 0, (
+            "Invalid camera revision"
+        )
+        age = message["frame_age_ms"]
+        assert type(age) in (float, int) and math.isfinite(age) and age >= 0, (
+            "Invalid camera frame age"
+        )
+        box = message["box"]
+        if box is not None:
+            assert isinstance(box, list) and len(box) == 4, "Expected four xyxy tracker coordinates"
+            assert all(type(v) in (int, float) and math.isfinite(v) for v in box), (
+                "Tracker coordinates must be finite numbers"
+            )
+            if visible_box(box) is None:
+                box = None
+        row = inspections.rows[message["inspection_id"]]
+        name, rescue = row["drone_id"], row["rescue"]
+        context = (row["id"], message["review_id"], message["track_id"], message["camera_revision"])
+        result = {"type": "camera_follow", "sequence": sequence, "status": "stopped"}
+        if box is None:
+            if (
+                name in self.owners
+                and self.owners[name]["socket"] is socket
+                and self.owners[name]["context"] == context
+            ):
+                self._release_camera(name)
+            return result
+        vehicle = next(v for v in mission.vehicles() if v["id"] == name)
+        active = row["status"] in ("running", "candidate") and rescue["phase"] in (
+            "reviewing",
+            "tracking",
+            "held",
+        )
+        budget_hold = row["status"] == "failed" and rescue["visual_hold"]
+        following = (
+            active
+            and rescue["phase"] in ("reviewing", "tracking")
+            and airborne_camera(vehicle)
+            and vehicle["mode"] == "GUIDED"
+        )
+        if (
+            not (held(vehicle) or following)
+            or not (active or budget_hold)
+            or mission.plan_active is None
+            or mission.plan_active["plan"]["version"] != row["plan_version"]
+            or rescue["review_id"] != message["review_id"]
+            or rescue["selected_track_id"] != message["track_id"]
+            or row["camera_changing"]
+            or row["camera_view"]["revision"] != message["camera_revision"]
+        ):
+            if name in self.owners and self.owners[name]["socket"] is socket:
+                self._release_camera(name)
+            return result
+        if age > MAX_TRACKING_AGE_S * 1000:
+            return {**result, "status": "stale"}
+        camera = inspections.cameras[name]
+        if name in self.owners:
+            owner = self.owners[name]
+            assert owner["socket"] is socket, "Another tracking session owns this drone's camera"
+            assert sequence > owner["sequence"], "Out-of-order camera guidance"
+            if owner["context"] != context:
+                self._release_camera(name)
+        if name not in self.owners:
+            self.owners[name] = {
+                "socket": socket,
+                "context": context,
+                "sequence": sequence,
+                "generation": camera.begin_follow(),
+            }
+        owner = self.owners[name]
+        owner["sequence"] = sequence
+        moved = await camera.follow(
+            box,
+            owner["generation"],
+            received + MAX_TRACKING_AGE_S - age / 1000,
+            message["observed_q"],
+        )
+        with (mission.directory / "camera-follow.jsonl").open("a") as stream:
+            stream.write(
+                json.dumps(
+                    {
+                        "timestamp_ms": time.time() * 1000,
+                        "drone_id": name,
+                        "inspection_id": row["id"],
+                        "track_id": message["track_id"],
+                        "camera_revision": message["camera_revision"],
+                        "sequence": sequence,
+                        "frame_age_ms": age,
+                        "frame_timestamp_ns": message["frame_timestamp_ns"],
+                        "box": box,
+                        "centering": camera.follow_diagnostic,
+                        **moved,
+                    },
+                    allow_nan=False,
+                )
+                + "\n"
+            )
+        return {**result, "status": moved["status"], "motion": moved}

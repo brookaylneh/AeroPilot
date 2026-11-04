@@ -1,0 +1,44 @@
+# Local state, dependencies and build output
+.local/
+node_modules/
+.venv*
+__pycache__/
+*.py[cod]
+.ruff_cache/
+.env
+.env.*
+!.env.example
+.secrets
+.claude/
+
+# Licensed Unreal assets and generated engine output
+world/unreal/ScenarioStudio/Content/
+world/unreal/ScenarioStudio/Plugins/
+world/unreal/ScenarioStudio/Binaries/
+world/unreal/ScenarioStudio/Intermediate/
+world/unreal/ScenarioStudio/Saved/
+world/unreal/ScenarioStudio/DerivedDataCache/
+world/unreal/ScenarioStudio/Build/Linux/FileOpenOrder/CookerOpenOrder.log
+world/unreal/ScenarioStudio/Build/Linux/FileOpenOrder/EditorOpenOrder.log
+world/unreal/ScenarioStudio/Samples/PixelStreaming2/WebServers/get_ps_servers.sh
+world/unreal/ScenarioStudio/Samples/PixelStreaming2/WebServers/get_ps_servers.bat
+
+# Credentials, model artifacts and local diagnostics
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+*.pt
+*.pth
+*.safetensors
+*.gguf
+*.onnx
+*.log
+*.sqlite
+*.sqlite3
+.DS_Store
+Thumbs.db
+/dist/
+/build/

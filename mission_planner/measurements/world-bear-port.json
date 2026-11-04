@@ -1,0 +1,559 @@
+{
+  "recorded_at": "2026-11-01T15:15:42.161509+00:00",
+  "evidence": ".local/evidence/world-bear-port/20261101T143600Z",
+  "installed_release": "/srv/snr/.local/unreal/releases/world-bear-port-20261101T143600Z-final",
+  "source_changes": ".local/evidence/world-bear-port/20261101T143600Z/source-changes.json",
+  "earlier_tracking_work": {
+    "measurements": "mission_planner/measurements/wonder-planner.json",
+    "evidence": ".local/evidence/temporal-follow/20261101T132438Z"
+  },
+  "checks": {
+    "npm-test": {
+      "command": [
+        "npm",
+        "test"
+      ],
+      "exit_code": 0,
+      "elapsed_s": 8.065122494008392,
+      "log": ".local/evidence/world-bear-port/20261101T143600Z/checks/npm-test.log",
+      "tests": 218
+    },
+    "typecheck": {
+      "command": [
+        "npm",
+        "run",
+        "typecheck"
+      ],
+      "exit_code": 0,
+      "elapsed_s": 5.5585719420341775,
+      "log": ".local/evidence/world-bear-port/20261101T143600Z/checks/typecheck.log"
+    },
+    "format-check-final": {
+      "command": [
+        "npm",
+        "run",
+        "format:check"
+      ],
+      "exit_code": 0,
+      "elapsed_s": 2.215987916046288,
+      "log": ".local/evidence/world-bear-port/20261101T143600Z/checks/format-check-delivery.log"
+    },
+    "ruff-check-color": {
+      "command": [
+        ".venv-cosys/bin/ruff",
+        "check"
+      ],
+      "exit_code": 0,
+      "elapsed_s": 0.009767696028575301,
+      "log": ".local/evidence/world-bear-port/20261101T143600Z/checks/ruff-check-color.log"
+    },
+    "ruff-format-color": {
+      "command": [
+        ".venv-cosys/bin/ruff",
+        "format",
+        "--check"
+      ],
+      "exit_code": 0,
+      "elapsed_s": 0.00956445001065731,
+      "log": ".local/evidence/world-bear-port/20261101T143600Z/checks/ruff-format-color.log"
+    },
+    "build": {
+      "command": [
+        "npm",
+        "run",
+        "build",
+        "--",
+        "--outDir",
+        "../.local/staging/world-bear-port/web-build"
+      ],
+      "exit_code": 0,
+      "elapsed_s": 7.600660851050634,
+      "log": ".local/evidence/world-bear-port/20261101T143600Z/checks/build.log"
+    },
+    "unittest": {
+      "command": [
+        ".venv-cosys/bin/python",
+        "-m",
+        "unittest",
+        "-v"
+      ],
+      "returncode": 0,
+      "seconds": 199.70669773500413,
+      "tests": 761,
+      "test_seconds": 198.811
+    }
+  },
+  "asset": {
+    "source": "https://opengameart.org/content/low-poly-bear",
+    "author": "Mathilde_Lea",
+    "license": "CC-BY-4.0",
+    "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+    "files": {
+      "mesh": {
+        "path": ".local/vendor/wildlife/mathilde-lea-bear/Bear.fbx",
+        "sha256": "f6b8e5396b88e8ab1b3649ccd34e1dcaaf1f35408021847c432f527bca110e1f"
+      },
+      "color": {
+        "path": ".local/vendor/wildlife/mathilde-lea-bear/Bear Base Color.png",
+        "sha256": "48f6fe70647e52fe23592056ab1e569e9b2214be466494da018805c80412fd49"
+      }
+    },
+    "baseColorLinear": [
+      0.07421356838014963,
+      0.04518620438567554,
+      0.043735029256973465
+    ],
+    "lengthM": 2.2,
+    "positionMetres": {
+      "north": -530,
+      "east": -230
+    },
+    "yawDegrees": 45,
+    "changes": "Uniformly scaled to 2.2 m length and placed on open ground; original geometry and UVs preserved. The supplied UVs mismatch the supplied texture, so the rendered material uses its measured dominant body color (sRGB 77, 60, 59) uniformly. Original FBX and PNG retained with hashes. Static pose; no animation supplied."
+  },
+  "asset_audit": {
+    "source_and_license": ".local/evidence/world-bear-port/20261101T143600Z/asset/result.json",
+    "authored_geometry": ".local/evidence/world-bear-port/20261101T143600Z/author-bear/wildlife.json",
+    "initial_material_audit": ".local/evidence/world-bear-port/20261101T143600Z/asset-audit/result.json",
+    "corrected_material": ".local/evidence/world-bear-port/20261101T143600Z/material-fix/result.json",
+    "source_uv_comparison": ".local/evidence/world-bear-port/20261101T143600Z/uv-audit/comparison.json",
+    "deleted_unused_cooked_asset": "world/unreal/ScenarioStudio/Plugins/Wildlife/Content/Bear/T_Bear.uasset"
+  },
+  "native_build": {
+    "log": ".local/evidence/world-bear-port/20261101T143600Z/build-game-initialization.log",
+    "succeeded": true,
+    "total_execution_seconds": 28.71
+  },
+  "wildlife_cook": {
+    "passed": true,
+    "packages": 3,
+    "textureRemoved": true,
+    "shaderDataIncluded": true,
+    "buildCookRunSeconds": 17.92,
+    "log": ".local/evidence/world-bear-port/20261101T143600Z/package-bear-color/package.log"
+  },
+  "port_geometry": {
+    "centreNorthEastM": [
+      -738,
+      -27
+    ],
+    "sizeM": [
+      14,
+      14,
+      0.3
+    ],
+    "method": "Bilinear extrema occur at corners of each heightfield cell clipped to the slab rectangle. Enumerated both rectangle edges and every intersecting sample row/column.",
+    "vertices": 380,
+    "minimumGroundM": [
+      10.671875,
+      -731.2297142857143,
+      -29.536571428571506
+    ],
+    "maximumGroundM": [
+      10.821601076182525,
+      -731,
+      -20
+    ],
+    "portTopUeM": 10.93,
+    "portBottomUeM": 10.63,
+    "spawnUeM": 11.13,
+    "heightfieldSha256": "d44a5a9545de404844be1b03c81225abf4156f990d26ec931d893ed15b491766"
+  },
+  "regeneration": {
+    "landmarkCount": 33,
+    "dressingRows": 59,
+    "dressingInstances": 10911,
+    "changedRows": {
+      "port-mats": [
+        "z",
+        "north",
+        "east"
+      ]
+    },
+    "port": {
+      "padTopM": 10.93,
+      "slabBottomM": 10.629999999999999,
+      "groundMinimumM": 10.671875,
+      "groundMaximumM": 10.821601076182525,
+      "nearestObstacleM": 1.0
+    },
+    "routeClearancesM": {
+      "trailhead-access": 70.00714249274856,
+      "creek-loop": 698.0822131542153,
+      "pond-spur": 956.7309511039942,
+      "fire-road": 41.0,
+      "lake-trail": 1028.8885343418344,
+      "lookout-trail": 1149.699451017967
+    },
+    "seconds": 3.231022934021894
+  },
+  "rtl_envelope": {
+    "heightfieldSha256": "d44a5a9545de404844be1b03c81225abf4156f990d26ec931d893ed15b491766",
+    "maximumGroundM": 61.1484375,
+    "maximumLandmarkHeightM": 18,
+    "requiredClearanceM": 10.0,
+    "method": "Conservative envelope: minimum RTL cruise height above UE origin minus global heightfield maximum minus maximum landmark height. Bounds terrain/obstacles only; does not assert separation, fence crossing, climb/descent or dynamic obstacle safety.",
+    "drones": {
+      "Drone1": {
+        "homeUpM": 11.13000000000011,
+        "rtlAltitudeAboveHomeM": 80.0,
+        "conservativeTerrainAndObstacleClearanceM": 11.98156250000011
+      },
+      "Drone2": {
+        "homeUpM": 11.13000000000011,
+        "rtlAltitudeAboveHomeM": 80.0,
+        "conservativeTerrainAndObstacleClearanceM": 11.98156250000011
+      },
+      "Drone3": {
+        "homeUpM": 11.13000000000011,
+        "rtlAltitudeAboveHomeM": 80.0,
+        "conservativeTerrainAndObstacleClearanceM": 11.98156250000011
+      },
+      "Drone4": {
+        "homeUpM": 11.13000000000011,
+        "rtlAltitudeAboveHomeM": 80.0,
+        "conservativeTerrainAndObstacleClearanceM": 11.98156250000011
+      }
+    }
+  },
+  "rtl_fence": {
+    "current_apron_start": {
+      "north_m": -842,
+      "east_m": -23
+    },
+    "straight_rtl_inside_fence": {
+      "Drone1": false,
+      "Drone2": true,
+      "Drone3": false,
+      "Drone4": true
+    },
+    "old_documented_start": {
+      "north_m": -790,
+      "east_m": 500
+    },
+    "old_start_now_inside_fence": {
+      "Drone1": true,
+      "Drone2": true,
+      "Drone3": true,
+      "Drone4": true
+    },
+    "main_rectangle": "Every new home is within the convex main search rectangle, so straight cruise from every start in that rectangle remains inside the fence. The retained southern apron can still produce a crossing for western homes.",
+    "limitations": "2D fence geometry only; does not prove separation or climb/descent."
+  },
+  "fleet_baseline": {
+    "mission_id": "cd67c238-6f1e-4ca3-b47a-8b9e7fb7f687",
+    "parameters": [
+      {
+        "kind": "safety_parameters_verified",
+        "drone_id": "Drone2",
+        "values": {
+          "ARMING_SKIPCHK": 0.0,
+          "FS_THR_ENABLE": 1.0,
+          "FS_CRASH_CHECK": 1.0,
+          "DISARM_DELAY": 10.0,
+          "RTL_ALT_M": 80.0,
+          "RTL_ALT_FINAL_M": 0.0,
+          "RTL_CLIMB_MIN_M": 0.0,
+          "RTL_CONE_SLOPE": 0.0,
+          "RTL_ALT_TYPE": 0.0,
+          "FENCE_ALT_MAX": 100.0,
+          "FENCE_MARGIN": 2.0,
+          "BATT_MONITOR": 4.0,
+          "BATT_LOW_VOLT": 10.5,
+          "BATT_LOW_TIMER": 10.0,
+          "BATT_FS_LOW_ACT": 2.0,
+          "SCHED_LOOP_RATE": 184.0,
+          "ATC_ACC_Y_MAX": 20.0,
+          "BATT_CAPACITY": 50000.0,
+          "SIM_BATT_CAP_AH": 50.0,
+          "SIM_BATT_VOLTAGE": 12.600000381469727
+        }
+      },
+      {
+        "kind": "safety_parameters_verified",
+        "drone_id": "Drone3",
+        "values": {
+          "ARMING_SKIPCHK": 0.0,
+          "FS_THR_ENABLE": 1.0,
+          "FS_CRASH_CHECK": 1.0,
+          "DISARM_DELAY": 10.0,
+          "RTL_ALT_M": 80.0,
+          "RTL_ALT_FINAL_M": 0.0,
+          "RTL_CLIMB_MIN_M": 0.0,
+          "RTL_CONE_SLOPE": 0.0,
+          "RTL_ALT_TYPE": 0.0,
+          "FENCE_ALT_MAX": 100.0,
+          "FENCE_MARGIN": 2.0,
+          "BATT_MONITOR": 4.0,
+          "BATT_LOW_VOLT": 10.5,
+          "BATT_LOW_TIMER": 10.0,
+          "BATT_FS_LOW_ACT": 2.0,
+          "SCHED_LOOP_RATE": 184.0,
+          "ATC_ACC_Y_MAX": 20.0,
+          "BATT_CAPACITY": 50000.0,
+          "SIM_BATT_CAP_AH": 50.0,
+          "SIM_BATT_VOLTAGE": 12.600000381469727
+        }
+      },
+      {
+        "kind": "safety_parameters_verified",
+        "drone_id": "Drone1",
+        "values": {
+          "ARMING_SKIPCHK": 0.0,
+          "FS_THR_ENABLE": 1.0,
+          "FS_CRASH_CHECK": 1.0,
+          "DISARM_DELAY": 10.0,
+          "RTL_ALT_M": 80.0,
+          "RTL_ALT_FINAL_M": 0.0,
+          "RTL_CLIMB_MIN_M": 0.0,
+          "RTL_CONE_SLOPE": 0.0,
+          "RTL_ALT_TYPE": 0.0,
+          "FENCE_ALT_MAX": 100.0,
+          "FENCE_MARGIN": 2.0,
+          "BATT_MONITOR": 4.0,
+          "BATT_LOW_VOLT": 10.5,
+          "BATT_LOW_TIMER": 10.0,
+          "BATT_FS_LOW_ACT": 2.0,
+          "SCHED_LOOP_RATE": 184.0,
+          "ATC_ACC_Y_MAX": 20.0,
+          "BATT_CAPACITY": 50000.0,
+          "SIM_BATT_CAP_AH": 50.0,
+          "SIM_BATT_VOLTAGE": 12.600000381469727
+        }
+      },
+      {
+        "kind": "safety_parameters_verified",
+        "drone_id": "Drone4",
+        "values": {
+          "ARMING_SKIPCHK": 0.0,
+          "FS_THR_ENABLE": 1.0,
+          "FS_CRASH_CHECK": 1.0,
+          "DISARM_DELAY": 10.0,
+          "RTL_ALT_M": 80.0,
+          "RTL_ALT_FINAL_M": 0.0,
+          "RTL_CLIMB_MIN_M": 0.0,
+          "RTL_CONE_SLOPE": 0.0,
+          "RTL_ALT_TYPE": 0.0,
+          "FENCE_ALT_MAX": 100.0,
+          "FENCE_MARGIN": 2.0,
+          "BATT_MONITOR": 4.0,
+          "BATT_LOW_VOLT": 10.5,
+          "BATT_LOW_TIMER": 10.0,
+          "BATT_FS_LOW_ACT": 2.0,
+          "SCHED_LOOP_RATE": 184.0,
+          "ATC_ACC_Y_MAX": 20.0,
+          "BATT_CAPACITY": 50000.0,
+          "SIM_BATT_CAP_AH": 50.0,
+          "SIM_BATT_VOLTAGE": 12.600000381469727
+        }
+      }
+    ],
+    "homes": [
+      {
+        "kind": "home_comparison",
+        "drone_id": "Drone2",
+        "intended": {
+          "north_m": -735.5,
+          "east_m": -24.5,
+          "latitude_deg": 37.86980552402189,
+          "longitude_deg": -119.39369947353664,
+          "altitude_msl_m": 2632.4100000000003,
+          "heading_deg": 0
+        },
+        "actual": {
+          "latitude_deg": 37.8698082,
+          "longitude_deg": -119.3936993,
+          "altitude_msl_m": 2632.44,
+          "north_m": -735.2029821123898,
+          "east_m": -24.484732309199018
+        },
+        "home_error_m": 0.29741003335936245,
+        "actualHomeRtlEnvelopeClearanceM": 12.011562499999854
+      },
+      {
+        "kind": "home_comparison",
+        "drone_id": "Drone3",
+        "intended": {
+          "north_m": -740.5,
+          "east_m": -29.5,
+          "latitude_deg": 37.86976047659852,
+          "longitude_deg": -119.39375630487065,
+          "altitude_msl_m": 2632.4100000000003,
+          "heading_deg": 0
+        },
+        "actual": {
+          "latitude_deg": 37.8697632,
+          "longitude_deg": -119.3937561,
+          "altitude_msl_m": 2632.44,
+          "north_m": -740.1977183959599,
+          "east_m": -29.481975555533253
+        },
+        "home_error_m": 0.30281850792082216,
+        "actualHomeRtlEnvelopeClearanceM": 12.011562499999854
+      },
+      {
+        "kind": "home_comparison",
+        "drone_id": "Drone4",
+        "intended": {
+          "north_m": -740.5,
+          "east_m": -24.5,
+          "latitude_deg": 37.86976047659852,
+          "longitude_deg": -119.39369947353664,
+          "altitude_msl_m": 2632.4100000000003,
+          "heading_deg": 0
+        },
+        "actual": {
+          "latitude_deg": 37.8697632,
+          "longitude_deg": -119.3936993,
+          "altitude_msl_m": 2632.44,
+          "north_m": -740.1977183959599,
+          "east_m": -24.484732309199018
+        },
+        "home_error_m": 0.3026669300129312,
+        "actualHomeRtlEnvelopeClearanceM": 12.011562499999854
+      },
+      {
+        "kind": "home_comparison",
+        "drone_id": "Drone1",
+        "intended": {
+          "north_m": -735.5,
+          "east_m": -29.5,
+          "latitude_deg": 37.86980552402189,
+          "longitude_deg": -119.39375630487065,
+          "altitude_msl_m": 2632.4100000000003,
+          "heading_deg": 0
+        },
+        "actual": {
+          "latitude_deg": 37.8698082,
+          "longitude_deg": -119.3937561,
+          "altitude_msl_m": 2632.44,
+          "north_m": -735.2029821123898,
+          "east_m": -29.481975555533253
+        },
+        "home_error_m": 0.2975642891187676,
+        "actualHomeRtlEnvelopeClearanceM": 12.011562499999854
+      }
+    ],
+    "flightEvents": []
+  },
+  "installed_validation": {
+    "runtime": ".local/evidence/world-bear-port/20261101T143600Z/runtime-final/result.json",
+    "native_infrastructure": {
+      "infrastructureVersion": "four-drone-port-3-command-post",
+      "portTopUeCm": {
+        "x": -73800,
+        "y": -2700,
+        "z": 1093
+      },
+      "landingMatsUeCm": [
+        {
+          "x": -73550,
+          "y": -2950,
+          "z": 1093
+        },
+        {
+          "x": -73550,
+          "y": -2450,
+          "z": 1093
+        },
+        {
+          "x": -74050,
+          "y": -2950,
+          "z": 1093
+        },
+        {
+          "x": -74050,
+          "y": -2450,
+          "z": 1093
+        }
+      ],
+      "bearCenterUeCm": {
+        "x": -53000,
+        "y": -23000,
+        "z": 958.6047195064643
+      },
+      "bearExtentCm": {
+        "x": 115.06999603819713,
+        "y": 115.06999603820077,
+        "z": 65.0157021675891
+      }
+    },
+    "spawn_position_error_m": {
+      "Drone1": 0.007115347745625513,
+      "Drone2": 0.007115347745625513,
+      "Drone3": 0.007115347745625513,
+      "Drone4": 0.007115347745625513
+    },
+    "public_health": {
+      "ok": true,
+      "services": {
+        "web": true,
+        "mission": true,
+        "signalling": true,
+        "unreal": true,
+        "turn": true,
+        "caddy": true
+      },
+      "renderer": "ready"
+    },
+    "visual": ".local/evidence/world-bear-port/20261101T143600Z/visual-material-fixed/result.json",
+    "placement_rejection": "The drone port is reserved for aircraft",
+    "port_site_image": ".local/evidence/world-bear-port/20261101T143600Z/placement-ready/port-site-frame.png",
+    "final_visual_review": ".local/evidence/world-bear-port/20261101T143600Z/visual-material-fixed/review.json",
+    "delivery_health": ".local/evidence/world-bear-port/20261101T143600Z/delivery-health.json"
+  },
+  "failures_and_resolutions": [
+    {
+      "issue": "Preferred Sketchfab page/API returned HTTP202 and empty bodies; no downloadable license verified.",
+      "resolution": "Used explicitly attributed CC-BY4.0 static low-poly bear from OpenGameArt.",
+      "evidence": ".local/evidence/world-bear-port/20261101T143600Z/asset/result.json"
+    },
+    {
+      "issue": "Matching accepted uncooked Ground/Grass source absent.",
+      "resolution": "Preserved all base containers and pipeline cache; added content-only Wildlife DLC and native relink."
+    },
+    {
+      "issue": "First UAT cook could not write logs into read-only SDK mount.",
+      "resolution": "Passed explicit writable commandlet/automation log paths inside container.",
+      "evidence": ".local/evidence/world-bear-port/20261101T143600Z/package-bear/package.log"
+    },
+    {
+      "issue": "Initial full Python regression run had11failures from old-home diagnostics, fixed ingress, and performance-plan hash.",
+      "resolution": "Updated home-derived ingress and affected fixtures; final761tests pass.",
+      "evidence": ".local/evidence/world-bear-port/20261101T143600Z/port-full-python/unittest.log"
+    },
+    {
+      "issue": "First installed infrastructure callback missed pre-BeginPlay because Foundation was spawned during BeginPlay.",
+      "resolution": "Moved actor creation to Session component initialization and asserted completed infrastructure before BeginPlay.",
+      "evidence": ".local/evidence/world-bear-port/20261101T143600Z/runtime.log"
+    },
+    {
+      "issue": "Supplied bear texture/UV combination has misplaced eye-colour stripes and blotches in both Blender and Unreal.",
+      "resolution": "Replaced material with measured dominant brown body colour; removed unused cooked texture.",
+      "evidence": ".local/evidence/world-bear-port/20261101T143600Z/uv-audit/comparison.json"
+    },
+    {
+      "issue": "First placement harness attempted a command before the browser channel was unbuffered.",
+      "resolution": "Added an explicit readiness gate; the distinct corrected test verified rejection and unchanged authoring.",
+      "evidence": ".local/evidence/world-bear-port/20261101T143600Z/placement.log"
+    },
+    {
+      "issue": "Host Blender lacks libSM/libICE; commandlet static-mesh editor subsystem unavailable.",
+      "resolution": "Used existing authoring image and direct static-mesh read APIs.",
+      "evidence": ".local/evidence/world-bear-port/20261101T143600Z/uv-audit"
+    },
+    {
+      "issue": "One build invocation lacked runtime environment; scratch staging invocation lacked PYTHONPATH.",
+      "resolution": "Loaded documented runtime env and supplied workspace PYTHONPATH before execution."
+    }
+  ],
+  "limitations": [
+    "No live flights, SAM bear detections, or moving-target/four-camera flight acceptance performed; operator owns flight testing.",
+    "Bear substitute is static and faceted, not the requested realistic animated Sketchfab pack.",
+    "RTL result bounds terrain/obstacle cruise clearance; it does not prove fence, climb/descent or simultaneous RTL separation.",
+    "New bear shader data are included; no refreshed base PSO cache or sustained new-material performance benchmark is claimed.",
+    "Existing non-failing ResourceWarning in measure_performance.py remains."
+  ],
+  "additional_model_calls_for_world_task": 0,
+  "flight_commands": 0
+}

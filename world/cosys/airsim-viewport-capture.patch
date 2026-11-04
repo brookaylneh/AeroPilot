@@ -1,0 +1,13 @@
+--- a/Source/PIPCamera.cpp
++++ b/Source/PIPCamera.cpp
+@@ -728,7 +728,8 @@
+         }
+     }
+-    if (camera_setting.capture_settings.at(Utils::toNumeric(ImageType::Scene)).force_update){
++    const bool force_update = camera_setting.capture_settings.at(Utils::toNumeric(ImageType::Scene)).force_update;
++    setCameraTypeUpdate(ImageType::Scene, !force_update);
++    if (force_update) {
+         setCameraTypeEnabled(ImageType::Scene, true);
+-        setCameraTypeUpdate(ImageType::Scene, false);
+     }
+ }

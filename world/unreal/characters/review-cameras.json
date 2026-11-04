@@ -1,0 +1,48 @@
+{
+  "field_of_view_degrees": 35,
+  "image_size_px": 4096,
+  "console_variables": {
+    "r.RayTracing": 1,
+    "r.DynamicGlobalIlluminationMethod": 1,
+    "r.ReflectionMethod": 1,
+    "r.Lumen.HardwareRayTracing": 1,
+    "r.Shadow.Virtual.Enable": 1
+  },
+  "views": [
+    {
+      "name": "face",
+      "position_cm": [0, 85, 166],
+      "target_cm": [0, 0, 166]
+    },
+    {
+      "name": "front",
+      "position_cm": [0, 380, 90],
+      "target_cm": [0, 0, 90]
+    },
+    {
+      "name": "side",
+      "position_cm": [380, 0, 90],
+      "target_cm": [0, 0, 90]
+    },
+    {
+      "name": "back",
+      "position_cm": [0, -380, 90],
+      "target_cm": [0, 0, 90]
+    },
+    {
+      "name": "three-quarter",
+      "position_cm": [270, 270, 95],
+      "target_cm": [0, 0, 95]
+    },
+    {
+      "name": "hand-left",
+      "position_cm": [-60, 130, 95],
+      "target_cm": [-60, 0, 95]
+    },
+    {
+      "name": "hand-right",
+      "position_cm": [60, 130, 95],
+      "target_cm": [60, 0, 95]
+    }
+  ]
+}

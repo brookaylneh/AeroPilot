@@ -1,0 +1,2524 @@
+{
+  "schema_version": 1,
+  "recorded_utc": "2026-11-02T15:30:41.384439+00:00",
+  "status": "Local SAM 3.1 deployed on the installed vision, mission and web services; package, recorded-video and endurance qualification complete. Live operator flight acceptance is separate.",
+  "evidence": ".local/evidence/sam31-migration/20261102T132759Z",
+  "model": {
+    "name": "Official SAM 3.1 Object Multiplex",
+    "source_commit": "f1647e8d0c1d280991f4d1b7d974c2704537fe66",
+    "checkpoint": "facebook/sam3.1/sam3.1_multiplex.pt",
+    "checkpoint_revision": "daa63191845a41281374e725f4c9e51c7a824460",
+    "checkpoint_sha256": "0567debeec80ba4ac6369540c6c248025283cb3ff2b92827509e57e2b3541cb6",
+    "weight_dtype": "float32",
+    "autocast_dtype": "bfloat16",
+    "tf32": true,
+    "torch_compile": true,
+    "attention": "PyTorch SDPA",
+    "flash_attention_3": false,
+    "quantized": false,
+    "model_instances": 1,
+    "independent_sessions": 4,
+    "max_active_objects_per_session": 16,
+    "multiplex_count": 16,
+    "hotstart_delay_frames": 0,
+    "detection_batch_frames": 1,
+    "postprocess_batch_frames": 1,
+    "preparation_workers": 4,
+    "input_wh": [3840, 2160],
+    "inference_wh": [1920, 1080],
+    "model_wh": [1008, 1008],
+    "live_adapter": "Pinned native state initializer, detector, tracker and postprocessing; guarded append-only frames and native-selected bounded tracking memories. No indefinite append-frame API is claimed for the unmodified upstream predictor."
+  },
+  "package": {
+    "image_id": "sha256:e13809fcb86aec5454fce16fa3941d2c693294c5345ae7488280b41708e64a8c",
+    "repo_digests": ["snr-sam31@sha256:e13809fcb86aec5454fce16fa3941d2c693294c5345ae7488280b41708e64a8c"],
+    "image_bytes": 4620814004,
+    "base_image": "python:3.12.12-slim-bookworm@sha256:593bd06efe90efa80dc4eee3948be7c0fde4134606dd40d8dd8dbcade98e669c",
+    "architecture": "amd64",
+    "os": "linux",
+    "build_log": ".local/evidence/sam31-migration/20261102T132759Z/container-build-07.log",
+    "provenance": ".local/evidence/sam31-migration/20261102T132759Z/container-run-06/provenance.json",
+    "image_source_sha256": {
+      "mission_planner/agents/services/sam_video.py": "69b7d981cc08f290f82b426a39e2124a7f7ca1cd2b29d5d350db571469a2af91",
+      "mission_planner/agents/services/vision.py": "fc4b4e86b272b787add0a64467df44a92467a42ebb37c85090e81830b4d865b6",
+      "mission_planner/environment.py": "3e444267dc699a4c025d420ee7ad4c74bc7b89637a32f2bd1667c0fba8bb72ca"
+    },
+    "image_code_matches_workspace": true,
+    "python_packages": [
+      "annotated-doc==0.0.5",
+      "annotated-types==0.8.0",
+      "anyio==4.16.0",
+      "certifi==2026.10.23",
+      "click==8.5.0",
+      "cuda-bindings==12.9.4",
+      "cuda-pathfinder==1.6.0",
+      "decord==0.6.0",
+      "einops==0.8.2",
+      "fastapi==0.136.3",
+      "filelock==4.2.4",
+      "fsspec==2026.9.0",
+      "ftfy==6.1.1",
+      "h11==0.16.0",
+      "hf-xet==1.8.0",
+      "httpcore==1.0.9",
+      "httpcore2==2.16.0",
+      "httpx==0.28.1",
+      "httpx2==2.16.0",
+      "huggingface_hub==2.3.0",
+      "idna==3.20",
+      "iopath==0.1.10",
+      "Jinja2==3.1.6",
+      "MarkupSafe==3.0.3",
+      "mpmath==1.3.0",
+      "networkx==3.7",
+      "numpy==1.26.4",
+      "nvidia-cublas-cu12==12.8.4.1",
+      "nvidia-cuda-cupti-cu12==12.8.90",
+      "nvidia-cuda-nvrtc-cu12==12.8.93",
+      "nvidia-cuda-runtime-cu12==12.8.90",
+      "nvidia-cudnn-cu12==9.10.2.21",
+      "nvidia-cufft-cu12==11.3.3.83",
+      "nvidia-cufile-cu12==1.13.1.3",
+      "nvidia-curand-cu12==10.3.9.90",
+      "nvidia-cusolver-cu12==11.7.3.90",
+      "nvidia-cusparse-cu12==12.5.8.93",
+      "nvidia-cusparselt-cu12==0.7.1",
+      "nvidia-ml-py==13.615.71",
+      "nvidia-nccl-cu12==2.27.5",
+      "nvidia-nvjitlink-cu12==12.8.93",
+      "nvidia-nvshmem-cu12==3.4.5",
+      "nvidia-nvtx-cu12==12.8.90",
+      "opencv-python==4.10.0.84",
+      "packaging==26.3",
+      "pillow==13.0.0",
+      "portalocker==4.4.2",
+      "psutil==7.2.2",
+      "pycocotools==2.0.11",
+      "pydantic==2.14.1",
+      "pydantic_core==2.50.1",
+      "python-dotenv==1.2.4",
+      "PyYAML==6.0.3",
+      "regex==2026.9.29",
+      "safetensors==0.8.0",
+      "sam3 @ git+https://github.com/facebookresearch/sam3.git@f1647e8d0c1d280991f4d1b7d974c2704537fe66",
+      "scipy==1.17.1",
+      "setuptools==80.10.2",
+      "starlette==1.10.0",
+      "sympy==1.14.0",
+      "timm==1.0.30",
+      "torch==2.10.0+cu128",
+      "torchvision==0.25.0+cu128",
+      "tqdm==4.70.1",
+      "triton==3.6.0",
+      "truststore==0.10.5",
+      "typing-inspection==0.4.4",
+      "typing_extensions==4.16.0",
+      "uvicorn==0.54.0",
+      "wcwidth==0.9.4",
+      "wheel==0.46.3"
+    ],
+    "debian_packages": {
+      "path": ".local/evidence/sam31-migration/20261102T132759Z/container-run-06/debian-packages.txt",
+      "sha256": "00c636aa00b3c8545ea50fb45fed9ed89be3fe8b0cc5eb4ffada8dcaaeadc10e"
+    },
+    "sam_direct_url": {
+      "url": "https://github.com/facebookresearch/sam3.git",
+      "vcs_info": {
+        "commit_id": "f1647e8d0c1d280991f4d1b7d974c2704537fe66",
+        "requested_revision": "f1647e8d0c1d280991f4d1b7d974c2704537fe66",
+        "vcs": "git"
+      }
+    },
+    "user": "1002:1003",
+    "limits": {
+      "NanoCpus": 8000000000,
+      "Memory": 25769803776,
+      "ShmSize": 536870912,
+      "ReadonlyRootfs": true,
+      "NetworkMode": "none",
+      "PidMode": "host",
+      "CapDrop": ["ALL"],
+      "SecurityOpt": ["no-new-privileges", "label=disable"],
+      "AutoRemove": true,
+      "DeviceRequests": [
+        {
+          "Driver": "",
+          "Count": 0,
+          "DeviceIDs": ["GPU-00000000-0000-0000-0000-000000000000"],
+          "Capabilities": [["gpu"]],
+          "Options": {}
+        }
+      ]
+    },
+    "runtime_network": "none",
+    "weights_and_credentials": "Read-only mounts; neither is baked into the image.",
+    "readiness": "Systemd Type=notify from the host launcher after compiled warmup, socket creation and one successful HTTP health check."
+  },
+  "hardware": {
+    "inventory": "NVIDIA RTX PRO 6000 Blackwell Server Edition, GPU-00000000-0000-0000-0000-000000000000, 580.178.04, 97887 MiB",
+    "compute_capability": [12, 0],
+    "process_gpu_budget_bytes": 16000000000,
+    "pytorch_allocator_budget_bytes": 15000000000,
+    "nvml_sample_interval_s": 0.02,
+    "scope": "Software budgets on a larger RTX PRO 6000; not a physical 16 GB device qualification. Existing detector and Unreal GPU processes were left running during qualification.",
+    "original_processes": "    PID                  STARTED COMMAND\n4062775 Mon Nov  2 02:18:49 2026 python\n4132348 Mon Nov  2 04:24:37 2026 ScenarioStudio\n"
+  },
+  "protocol": {
+    "path": ".local/vendor/sam31/warmup/protocol.json",
+    "sha256": "f3c8830203ca2c3eed7d0ab578ec8689f096dbccc212135fa983a7684b50a35c",
+    "scope": "Synthetic camera translation, rotation and zoom of recorded native 4K nadir images; not live forward tracking or moving-person acceptance.",
+    "frames_per_drone_in_fixture": 20,
+    "target": "person",
+    "threshold": 0.3,
+    "live_prompt_policy": "Visible text up to 100 characters and 30 tokenizer tokens. Warmup phrases are coverage fixtures, not a production whitelist.",
+    "timing_scope": "Original JPEG preparation, SAM inference, PNG mask encoding, local HTTP transfer and production client source/mask validation. Excludes new camera acquisition, Glimmer, flight control and browser transport."
+  },
+  "startup": {
+    "source": ".local/evidence/sam31-migration/20261102T132759Z/container-run-06/service.log",
+    "ready_s": 147.6828674559947,
+    "compiler_cache_preexisted": true,
+    "warmup": {
+      "protocol_sha256": "f3c8830203ca2c3eed7d0ab578ec8689f096dbccc212135fa983a7684b50a35c",
+      "shape_passes": [
+        {
+          "pass": 0,
+          "max_objects": 16,
+          "seconds": 8.771898832987063,
+          "compilation": {
+            "calls_captured": 255,
+            "unique_graphs": 16
+          }
+        },
+        {
+          "pass": 1,
+          "max_objects": 16,
+          "seconds": 0.0027215720037929714,
+          "compilation": {
+            "calls_captured": 255,
+            "unique_graphs": 16
+          }
+        }
+      ],
+      "passes": [
+        {
+          "pass": 0,
+          "frames": 86,
+          "seconds": 112.14926966099301,
+          "compilation": {
+            "calls_captured": 9637,
+            "unique_graphs": 29
+          }
+        },
+        {
+          "pass": 1,
+          "frames": 86,
+          "seconds": 4.438327345007565,
+          "compilation": {
+            "calls_captured": 9637,
+            "unique_graphs": 29
+          }
+        },
+        {
+          "pass": 2,
+          "frames": 86,
+          "seconds": 4.4059175059664994,
+          "compilation": {
+            "calls_captured": 9637,
+            "unique_graphs": 29
+          }
+        }
+      ]
+    },
+    "full_fresh_cache_startup_measured_for_final_image": false
+  },
+  "throughput": {
+    "required_aggregate_fps": 20.16,
+    "all_three_passes_meet_target": true,
+    "source": ".local/evidence/sam31-migration/20261102T132759Z/http-container-03/result.json",
+    "status": "complete",
+    "passes": [
+      {
+        "pass": 0,
+        "frames": 320,
+        "frame_elapsed_s": 14.868000600021333,
+        "aggregate_fps": 21.522732518556722,
+        "per_drone": {
+          "Drone1": {
+            "frames": 80,
+            "frames_with_tracks": 80,
+            "session_id": "c5383347-849e-4ec1-9742-4861b2f938f8",
+            "timings": {
+              "request_s": {
+                "median": 0.182037788501475,
+                "p95": 0.2047289813926909,
+                "max": 0.317931180994492
+              },
+              "decode_s": {
+                "median": 0.0787491254741326,
+                "p95": 0.09531813604698981,
+                "max": 0.09961331397062168
+              },
+              "preprocess_s": {
+                "median": 0.03281056048581377,
+                "p95": 0.04488255908363498,
+                "max": 0.0472699009696953
+              },
+              "inference_s": {
+                "median": 0.04650826001306996,
+                "p95": 0.05004336773126851,
+                "max": 0.0586589039885439
+              },
+              "postprocess_s": {
+                "median": 0.0007449705444741994,
+                "p95": 0.0009464086673688142,
+                "max": 0.0015890179784037173
+              },
+              "queue_s": {
+                "median": 0.003438901010667905,
+                "p95": 0.025894525164039797,
+                "max": 0.04739697196055204
+              }
+            }
+          },
+          "Drone2": {
+            "frames": 80,
+            "frames_with_tracks": 0,
+            "session_id": "c660e4b9-b097-4288-b980-229716d4c162",
+            "timings": {
+              "request_s": {
+                "median": 0.18354478699620813,
+                "p95": 0.20076163134654051,
+                "max": 0.2628885269514285
+              },
+              "decode_s": {
+                "median": 0.08135711849899963,
+                "p95": 0.09597723156039137,
+                "max": 0.10515254200436175
+              },
+              "preprocess_s": {
+                "median": 0.0343457565177232,
+                "p95": 0.04706448109645862,
+                "max": 0.04930993204470724
+              },
+              "inference_s": {
+                "median": 0.03767235449049622,
+                "p95": 0.039074127594358285,
+                "max": 0.04750629997579381
+              },
+              "postprocess_s": {
+                "median": 7.09634623490274e-5,
+                "p95": 0.0001398077409248799,
+                "max": 0.00017024599947035313
+              },
+              "queue_s": {
+                "median": 0.009536730009131134,
+                "p95": 0.03235650065762456,
+                "max": 0.03890285000670701
+              }
+            }
+          },
+          "Drone3": {
+            "frames": 80,
+            "frames_with_tracks": 0,
+            "session_id": "08bfa720-f771-488d-ba51-ef865554d68d",
+            "timings": {
+              "request_s": {
+                "median": 0.18211184750543907,
+                "p95": 0.20249782033788505,
+                "max": 0.3632082379772328
+              },
+              "decode_s": {
+                "median": 0.08197522300179116,
+                "p95": 0.09362726545659825,
+                "max": 0.10008494602516294
+              },
+              "preprocess_s": {
+                "median": 0.03373442048905417,
+                "p95": 0.04759149496967439,
+                "max": 0.05361686600372195
+              },
+              "inference_s": {
+                "median": 0.03748777398141101,
+                "p95": 0.038824416283750905,
+                "max": 0.0449921180261299
+              },
+              "postprocess_s": {
+                "median": 6.711599417030811e-5,
+                "p95": 0.00010019479668699205,
+                "max": 0.0001358850277028978
+              },
+              "queue_s": {
+                "median": 0.012179538025520742,
+                "p95": 0.03611702127091121,
+                "max": 0.10114536399487406
+              }
+            }
+          },
+          "Drone4": {
+            "frames": 80,
+            "frames_with_tracks": 80,
+            "session_id": "cc9d2ad0-9c0f-47ad-a02d-c63e4cc2e219",
+            "timings": {
+              "request_s": {
+                "median": 0.18171189897111617,
+                "p95": 0.20342960602720267,
+                "max": 0.41819005098659545
+              },
+              "decode_s": {
+                "median": 0.07757299649529159,
+                "p95": 0.09614797463873401,
+                "max": 0.1066162750357762
+              },
+              "preprocess_s": {
+                "median": 0.03260787250474095,
+                "p95": 0.04461506316729355,
+                "max": 0.05004931701114401
+              },
+              "inference_s": {
+                "median": 0.04647865652805194,
+                "p95": 0.04883303607348353,
+                "max": 0.053899754013400525
+              },
+              "postprocess_s": {
+                "median": 0.0007474365120287985,
+                "p95": 0.0009150268655503168,
+                "max": 0.001368291035760194
+              },
+              "queue_s": {
+                "median": 0.0019519035413395613,
+                "p95": 0.021479464840376744,
+                "max": 0.132990701997187
+              }
+            }
+          }
+        }
+      },
+      {
+        "pass": 1,
+        "frames": 320,
+        "frame_elapsed_s": 14.203247044002637,
+        "aggregate_fps": 22.53005942997527,
+        "per_drone": {
+          "Drone1": {
+            "frames": 80,
+            "frames_with_tracks": 80,
+            "session_id": "83897523-8322-4cba-a796-fdcbf2e5e3f1",
+            "timings": {
+              "request_s": {
+                "median": 0.1727689340186771,
+                "p95": 0.19369078091112896,
+                "max": 0.23529368499293923
+              },
+              "decode_s": {
+                "median": 0.0764268604980316,
+                "p95": 0.08846658648690209,
+                "max": 0.09324645501328632
+              },
+              "preprocess_s": {
+                "median": 0.03161469800397754,
+                "p95": 0.0420861396647524,
+                "max": 0.047119950002525
+              },
+              "inference_s": {
+                "median": 0.04486518650082871,
+                "p95": 0.04819874825479927,
+                "max": 0.05849549296544865
+              },
+              "postprocess_s": {
+                "median": 0.0007352445099968463,
+                "p95": 0.0008341748209204525,
+                "max": 0.0011933540226891637
+              },
+              "queue_s": {
+                "median": 0.00016573851462453604,
+                "p95": 0.017763515128171994,
+                "max": 0.030905447027180344
+              }
+            }
+          },
+          "Drone2": {
+            "frames": 80,
+            "frames_with_tracks": 0,
+            "session_id": "bfc370d2-a044-4c76-b3af-15fc632b8866",
+            "timings": {
+              "request_s": {
+                "median": 0.1725499759777449,
+                "p95": 0.19314456973515917,
+                "max": 0.3137169730034657
+              },
+              "decode_s": {
+                "median": 0.0777027125004679,
+                "p95": 0.09086846205464097,
+                "max": 0.1025642899912782
+              },
+              "preprocess_s": {
+                "median": 0.03215786599321291,
+                "p95": 0.04344527892535552,
+                "max": 0.04726538504473865
+              },
+              "inference_s": {
+                "median": 0.0358160890173167,
+                "p95": 0.0373487233358901,
+                "max": 0.045822913001757115
+              },
+              "postprocess_s": {
+                "median": 6.89005246385932e-5,
+                "p95": 9.415869717486202e-5,
+                "max": 0.00010198797099292278
+              },
+              "queue_s": {
+                "median": 0.010202047997154295,
+                "p95": 0.031939204258378595,
+                "max": 0.08604821201879531
+              }
+            }
+          },
+          "Drone3": {
+            "frames": 80,
+            "frames_with_tracks": 0,
+            "session_id": "2ee247e9-5843-40e5-82a1-6445b2b4f77d",
+            "timings": {
+              "request_s": {
+                "median": 0.17304118050378747,
+                "p95": 0.19308163075183984,
+                "max": 0.2798592390026897
+              },
+              "decode_s": {
+                "median": 0.07701121846912429,
+                "p95": 0.09164758423576132,
+                "max": 0.10129786701872945
+              },
+              "preprocess_s": {
+                "median": 0.03259012653143145,
+                "p95": 0.036831903582788074,
+                "max": 0.047478663036599755
+              },
+              "inference_s": {
+                "median": 0.035993409488582984,
+                "p95": 0.03733519726374652,
+                "max": 0.04934813204454258
+              },
+              "postprocess_s": {
+                "median": 6.567049422301352e-5,
+                "p95": 9.868136548902838e-5,
+                "max": 0.00011194299440830946
+              },
+              "queue_s": {
+                "median": 0.010722067469032481,
+                "p95": 0.03043159601802472,
+                "max": 0.036229513003490865
+              }
+            }
+          },
+          "Drone4": {
+            "frames": 80,
+            "frames_with_tracks": 80,
+            "session_id": "45b69dd1-7991-4f2a-a8bc-0d72f3481cb1",
+            "timings": {
+              "request_s": {
+                "median": 0.17181328099104576,
+                "p95": 0.1923727835994214,
+                "max": 0.3859821980004199
+              },
+              "decode_s": {
+                "median": 0.07627224500174634,
+                "p95": 0.0953746437531663,
+                "max": 0.09922059701057151
+              },
+              "preprocess_s": {
+                "median": 0.03251342099974863,
+                "p95": 0.038724160802667024,
+                "max": 0.04366527998354286
+              },
+              "inference_s": {
+                "median": 0.04462205449817702,
+                "p95": 0.046658951777499166,
+                "max": 0.05261197203071788
+              },
+              "postprocess_s": {
+                "median": 0.0007398345042020082,
+                "p95": 0.0008782193734077736,
+                "max": 0.001459707971662283
+              },
+              "queue_s": {
+                "median": 4.501023795455694e-6,
+                "p95": 0.019803946523461485,
+                "max": 0.13118064298760146
+              }
+            }
+          }
+        }
+      },
+      {
+        "pass": 2,
+        "frames": 320,
+        "frame_elapsed_s": 14.210500040964689,
+        "aggregate_fps": 22.51856015464158,
+        "per_drone": {
+          "Drone1": {
+            "frames": 80,
+            "frames_with_tracks": 80,
+            "session_id": "c1499001-7ec4-4116-abea-bf50b44ff13b",
+            "timings": {
+              "request_s": {
+                "median": 0.17416149895871058,
+                "p95": 0.19411552757374012,
+                "max": 0.23443037102697417
+              },
+              "decode_s": {
+                "median": 0.0770891229622066,
+                "p95": 0.09248070771864149,
+                "max": 0.10145733098033816
+              },
+              "preprocess_s": {
+                "median": 0.032108304993016645,
+                "p95": 0.040571631348575464,
+                "max": 0.046537330956198275
+              },
+              "inference_s": {
+                "median": 0.04452074851724319,
+                "p95": 0.04787221596343442,
+                "max": 0.056148920964915305
+              },
+              "postprocess_s": {
+                "median": 0.0007470135169569403,
+                "p95": 0.0008844228636007756,
+                "max": 0.0013725439785048366
+              },
+              "queue_s": {
+                "median": 4.513509338721633e-6,
+                "p95": 0.015697859393549143,
+                "max": 0.036754112981725484
+              }
+            }
+          },
+          "Drone2": {
+            "frames": 80,
+            "frames_with_tracks": 0,
+            "session_id": "10f08931-be26-45d2-9f23-604db2cea479",
+            "timings": {
+              "request_s": {
+                "median": 0.1732800470199436,
+                "p95": 0.1934221895324299,
+                "max": 0.3792127009946853
+              },
+              "decode_s": {
+                "median": 0.0850685240002349,
+                "p95": 0.0994889380846871,
+                "max": 0.10600570600945503
+              },
+              "preprocess_s": {
+                "median": 0.03264833000139333,
+                "p95": 0.038814298628130926,
+                "max": 0.04680181900039315
+              },
+              "inference_s": {
+                "median": 0.03579313098452985,
+                "p95": 0.03801452478801366,
+                "max": 0.046608856006059796
+              },
+              "postprocess_s": {
+                "median": 6.892799865454435e-5,
+                "p95": 9.969758975785222e-5,
+                "max": 0.00021350901806727052
+              },
+              "queue_s": {
+                "median": 0.005551531008677557,
+                "p95": 0.024267988491919818,
+                "max": 0.14075015595881268
+              }
+            }
+          },
+          "Drone3": {
+            "frames": 80,
+            "frames_with_tracks": 0,
+            "session_id": "2a3ede2b-0a4d-4eaf-88ac-f78524c07917",
+            "timings": {
+              "request_s": {
+                "median": 0.17282301498926245,
+                "p95": 0.193411636466044,
+                "max": 0.3336961949826218
+              },
+              "decode_s": {
+                "median": 0.07951804299955256,
+                "p95": 0.09354240453685633,
+                "max": 0.10229920200072229
+              },
+              "preprocess_s": {
+                "median": 0.03302624300704338,
+                "p95": 0.03974511747946962,
+                "max": 0.04691004299093038
+              },
+              "inference_s": {
+                "median": 0.03583681251620874,
+                "p95": 0.03688542385934852,
+                "max": 0.044584212999325246
+              },
+              "postprocess_s": {
+                "median": 6.590600241906941e-5,
+                "p95": 9.134257561527193e-5,
+                "max": 0.00011126499157398939
+              },
+              "queue_s": {
+                "median": 0.008613247016910464,
+                "p95": 0.022265834949212145,
+                "max": 0.09736847702879459
+              }
+            }
+          },
+          "Drone4": {
+            "frames": 80,
+            "frames_with_tracks": 80,
+            "session_id": "c81f8605-6354-494f-bca6-0b4811268d8f",
+            "timings": {
+              "request_s": {
+                "median": 0.17325682850787416,
+                "p95": 0.19372771676571574,
+                "max": 0.28869680501520634
+              },
+              "decode_s": {
+                "median": 0.07770335450186394,
+                "p95": 0.08999142821121495,
+                "max": 0.0969701919821091
+              },
+              "preprocess_s": {
+                "median": 0.03181232052156702,
+                "p95": 0.034356006889720445,
+                "max": 0.04745237895986065
+              },
+              "inference_s": {
+                "median": 0.04473834647797048,
+                "p95": 0.0463505780993728,
+                "max": 0.052606275014113635
+              },
+              "postprocess_s": {
+                "median": 0.0007327180064748973,
+                "p95": 0.0009971542283892625,
+                "max": 0.002169070008676499
+              },
+              "queue_s": {
+                "median": 5.617475835606456e-6,
+                "p95": 0.01633440005825832,
+                "max": 0.05203755997354165
+              }
+            }
+          }
+        }
+      }
+    ],
+    "peak_process_gpu_bytes": 7874805760,
+    "stable_compilation": {
+      "calls_captured": 9637,
+      "unique_graphs": 29
+    }
+  },
+  "forward_camera_replay": {
+    "source": ".local/evidence/sam31-migration/20261102T132759Z/http-forward-container-02/result.json",
+    "status": "complete",
+    "passes": [
+      {
+        "pass": 0,
+        "frames": 10,
+        "frame_elapsed_s": 1.958421352028381,
+        "aggregate_fps": 5.106153478996118,
+        "per_drone": {
+          "Drone1": {
+            "frames": 10,
+            "frames_with_tracks": 8,
+            "session_id": "fe9e09ae-7fc3-46d0-bed8-4bfe4c21fd77",
+            "timings": {
+              "request_s": {
+                "median": 0.1937671589839738,
+                "p95": 0.20591320322710088,
+                "max": 0.21336228004656732
+              },
+              "decode_s": {
+                "median": 0.09788560803281143,
+                "p95": 0.10197317031270359,
+                "max": 0.10254016402177513
+              },
+              "preprocess_s": {
+                "median": 0.03219650196842849,
+                "p95": 0.03281010732462164,
+                "max": 0.03283663303591311
+              },
+              "inference_s": {
+                "median": 0.045799470477504656,
+                "p95": 0.04752376074902713,
+                "max": 0.04776246100664139
+              },
+              "postprocess_s": {
+                "median": 0.000714649009751156,
+                "p95": 0.0007431286183418706,
+                "max": 0.0007448170217685401
+              },
+              "queue_s": {
+                "median": 4.398520104587078e-6,
+                "p95": 5.1725219236686826e-6,
+                "max": 5.186011549085379e-6
+              }
+            }
+          }
+        }
+      }
+    ],
+    "peak_process_gpu_bytes": 7874805760,
+    "stable_compilation": {
+      "calls_captured": 9637,
+      "unique_graphs": 29
+    },
+    "validation": {
+      "status": "complete",
+      "frames": 10,
+      "positive_frames_with_mask_and_box": 8,
+      "negative_frames_without_detection": 2,
+      "same_track_id_on_all_positives": true,
+      "all_original_jpeg_hashes_matched": true,
+      "source": "/srv/snr/.local/evidence/sam31-migration/20261102T132759Z/http-forward-container-02",
+      "protocol": "/srv/snr/.local/evidence/sam31-migration/20261102T132759Z/forward-protocol.json",
+      "scope": "Ten recorded original forward-camera JPEGs, manually marked visible or absent; one short sighting, not broad recognition accuracy or a live-flight test."
+    }
+  },
+  "independent_session_contract": {
+    "source": ".local/evidence/sam31-migration/20261102T132759Z/http-session-contract-03/result.json",
+    "status": "complete",
+    "sessions": [
+      {
+        "session_id": "6184ad02-6cac-4b99-904d-8798fb7b535d",
+        "drone_id": "Drone1",
+        "target": "person",
+        "threshold": 0.317,
+        "inference_height": 1080,
+        "instance_id": "f3f9439c1fbd4f85a879a056542d2aeb",
+        "model": "sam3.1",
+        "tracker": "Object Multiplex"
+      },
+      {
+        "session_id": "55bced28-2295-4082-883b-b06c45aabe69",
+        "drone_id": "Drone2",
+        "target": "helicopter",
+        "threshold": 0.5,
+        "inference_height": 1080,
+        "instance_id": "f3f9439c1fbd4f85a879a056542d2aeb",
+        "model": "sam3.1",
+        "tracker": "Object Multiplex"
+      },
+      {
+        "session_id": "e315554f-b671-4aaa-a607-3827d4da6b25",
+        "drone_id": "Drone3",
+        "target": "orange life jacket",
+        "threshold": 0.4,
+        "inference_height": 1080,
+        "instance_id": "f3f9439c1fbd4f85a879a056542d2aeb",
+        "model": "sam3.1",
+        "tracker": "Object Multiplex"
+      },
+      {
+        "session_id": "a9961acf-4c96-4a5b-8661-46318379415d",
+        "drone_id": "Drone4",
+        "target": "person",
+        "threshold": 0.3,
+        "inference_height": 1080,
+        "instance_id": "f3f9439c1fbd4f85a879a056542d2aeb",
+        "model": "sam3.1",
+        "tracker": "Object Multiplex"
+      }
+    ],
+    "detections_by_drone": {
+      "Drone1": [1, 1, 1, 1, 1, 1, 1, 1],
+      "Drone2": [0, 0, 0, 0, 0, 0, 0, 0],
+      "Drone3": [0, 0, 0, 0, 0, 0, 0, 0],
+      "Drone4": [1, 1, 1, 1, 1, 1, 1, 1]
+    },
+    "remaining_session_after_other_three_closed": {
+      "a9961acf-4c96-4a5b-8661-46318379415d": {
+        "drone_id": "Drone4",
+        "target": "person",
+        "frame_index": 15,
+        "status": "open",
+        "error": null,
+        "usage": {
+          "frames": 16,
+          "retained_images": 2,
+          "retained_input_frames": 16,
+          "retained_score_frames": 16,
+          "active_objects": 1,
+          "retained_tracking_frames": 16
+        }
+      }
+    },
+    "stable_compilation": true
+  },
+  "soak": {
+    "status": "complete",
+    "source": "/srv/snr/.local/evidence/sam31-migration/20261102T132759Z/soak-30min-01/result.json",
+    "frames": 36004,
+    "frame_elapsed_s": 1800.3157498600194,
+    "scheduled_interval_s_per_drone": 0.2,
+    "paced_aggregate_fps": 19.998714116009612,
+    "per_drone": {
+      "Drone1": {
+        "frames": 9001,
+        "session_id": "6b3bcd2d-c5ca-45ec-b379-2aa65ad479df",
+        "frames_with_tracks": 9001,
+        "track_ids": [1],
+        "timings": {
+          "request_s": {
+            "median": 0.17616790003376082,
+            "p95": 0.21530661499127746,
+            "max": 0.5796088799834251
+          },
+          "decode_s": {
+            "median": 0.0757331809727475,
+            "p95": 0.09152060799533501,
+            "max": 0.35514089599018916
+          },
+          "preprocess_s": {
+            "median": 0.0313408020301722,
+            "p95": 0.03964018198894337,
+            "max": 0.088437493017409
+          },
+          "inference_s": {
+            "median": 0.0451949909911491,
+            "p95": 0.05261089495616034,
+            "max": 0.4368741969810799
+          },
+          "postprocess_s": {
+            "median": 0.0007611510227434337,
+            "p95": 0.001141363987699151,
+            "max": 0.005084879987407476
+          },
+          "queue_s": {
+            "median": 5.197012796998024e-6,
+            "p95": 0.034979977004695684,
+            "max": 0.08287153299897909
+          },
+          "age_s": {
+            "median": 0.1784472719882615,
+            "p95": 0.2484605039935559,
+            "max": 0.67594945296878
+          }
+        },
+        "scheduled_replay_age_over_one_second": 0
+      },
+      "Drone2": {
+        "frames": 9001,
+        "session_id": "49ba98d9-b21e-4371-a645-f708c3fc63f0",
+        "frames_with_tracks": 0,
+        "track_ids": [],
+        "timings": {
+          "request_s": {
+            "median": 0.19569287600461394,
+            "p95": 0.21964592899894342,
+            "max": 0.6322745710494928
+          },
+          "decode_s": {
+            "median": 0.07862077699974179,
+            "p95": 0.0966011980199255,
+            "max": 0.16072602098574862
+          },
+          "preprocess_s": {
+            "median": 0.031877789995633066,
+            "p95": 0.0405959629570134,
+            "max": 0.06584825995378196
+          },
+          "inference_s": {
+            "median": 0.03612012998200953,
+            "p95": 0.037658829998690635,
+            "max": 0.3087318369653076
+          },
+          "postprocess_s": {
+            "median": 7.213500794023275e-5,
+            "p95": 0.00010156701318919659,
+            "max": 0.0010826209909282625
+          },
+          "queue_s": {
+            "median": 0.030055406037718058,
+            "p95": 0.052442682965192944,
+            "max": 0.4276833580224775
+          },
+          "age_s": {
+            "median": 0.22086143697379157,
+            "p95": 0.2938071059761569,
+            "max": 0.9199706799699925
+          }
+        },
+        "scheduled_replay_age_over_one_second": 0
+      },
+      "Drone3": {
+        "frames": 9001,
+        "session_id": "59be419e-a16a-4b6d-b841-204c46df72fc",
+        "frames_with_tracks": 0,
+        "track_ids": [],
+        "timings": {
+          "request_s": {
+            "median": 0.19686455302871764,
+            "p95": 0.21933165402151644,
+            "max": 0.618352601013612
+          },
+          "decode_s": {
+            "median": 0.07980671001132578,
+            "p95": 0.09801894298288971,
+            "max": 0.3508798599941656
+          },
+          "preprocess_s": {
+            "median": 0.03182800201466307,
+            "p95": 0.03998493799008429,
+            "max": 0.39409252698533237
+          },
+          "inference_s": {
+            "median": 0.036123375000897795,
+            "p95": 0.037688611017074436,
+            "max": 0.045060902019031346
+          },
+          "postprocess_s": {
+            "median": 7.181800901889801e-5,
+            "p95": 0.00010119500802829862,
+            "max": 0.000713077955879271
+          },
+          "queue_s": {
+            "median": 0.030058254022151232,
+            "p95": 0.05187145702075213,
+            "max": 0.10328178701456636
+          },
+          "age_s": {
+            "median": 0.2364953719661571,
+            "p95": 0.26118870300706476,
+            "max": 0.7572300300234929
+          }
+        },
+        "scheduled_replay_age_over_one_second": 0
+      },
+      "Drone4": {
+        "frames": 9001,
+        "session_id": "83684fb5-fa07-4a6c-bc83-a5434e962bdd",
+        "frames_with_tracks": 9001,
+        "track_ids": [1],
+        "timings": {
+          "request_s": {
+            "median": 0.19963009102502838,
+            "p95": 0.22179823397891596,
+            "max": 0.620637027954217
+          },
+          "decode_s": {
+            "median": 0.07730062102200463,
+            "p95": 0.09622701304033399,
+            "max": 0.45704670302802697
+          },
+          "preprocess_s": {
+            "median": 0.03238014300586656,
+            "p95": 0.03872088500065729,
+            "max": 0.07007155299652368
+          },
+          "inference_s": {
+            "median": 0.04449613200267777,
+            "p95": 0.04612370696850121,
+            "max": 0.05651069601299241
+          },
+          "postprocess_s": {
+            "median": 0.0007357569993473589,
+            "p95": 0.0008832329767756164,
+            "max": 0.0027098999707959592
+          },
+          "queue_s": {
+            "median": 0.027580738009419292,
+            "p95": 0.04837283800588921,
+            "max": 0.08480956597486511
+          },
+          "age_s": {
+            "median": 0.29143568099243566,
+            "p95": 0.3118455259827897,
+            "max": 0.8185982499853708
+          }
+        },
+        "scheduled_replay_age_over_one_second": 0
+      }
+    },
+    "model_instances": 1,
+    "persistent_distinct_sessions": 4,
+    "instance_id": "f3f9439c1fbd4f85a879a056542d2aeb",
+    "compilation_unchanged": {
+      "calls_captured": 9637,
+      "unique_graphs": 29
+    },
+    "session_resets": 0,
+    "frame_failures": 0,
+    "health_samples": 361,
+    "health_failures": [],
+    "sampled_process_gpu_bytes": {
+      "min": 7874805760,
+      "max": 7874805760,
+      "first": 7874805760,
+      "last": 7874805760
+    },
+    "peak_process_gpu_bytes": 7874805760,
+    "sampled_rss_bytes": {
+      "min": 8728186880,
+      "max": 8891121664,
+      "first": 8746065920,
+      "last": 8732569600
+    },
+    "peak_rss_bytes": 8929128448,
+    "rss_five_minute_windows": [
+      {
+        "start_minute": 0,
+        "samples": 60,
+        "min_bytes": 8728186880,
+        "median_bytes": 8778045440.0,
+        "max_bytes": 8863498240
+      },
+      {
+        "start_minute": 5,
+        "samples": 60,
+        "min_bytes": 8731090944,
+        "median_bytes": 8762109952.0,
+        "max_bytes": 8867999744
+      },
+      {
+        "start_minute": 10,
+        "samples": 60,
+        "min_bytes": 8731537408,
+        "median_bytes": 8804757504.0,
+        "max_bytes": 8891121664
+      },
+      {
+        "start_minute": 15,
+        "samples": 60,
+        "min_bytes": 8735911936,
+        "median_bytes": 8818249728.0,
+        "max_bytes": 8880209920
+      },
+      {
+        "start_minute": 20,
+        "samples": 60,
+        "min_bytes": 8731545600,
+        "median_bytes": 8781182976.0,
+        "max_bytes": 8842641408
+      },
+      {
+        "start_minute": 25,
+        "samples": 61,
+        "min_bytes": 8731545600,
+        "median_bytes": 8801828864.0,
+        "max_bytes": 8869531648
+      }
+    ],
+    "maximum_retained_state": {
+      "Drone1": {
+        "retained_images": 2,
+        "retained_input_frames": 16,
+        "retained_score_frames": 16,
+        "retained_tracking_frames": 17,
+        "active_objects": 1
+      },
+      "Drone2": {
+        "retained_images": 2,
+        "retained_input_frames": 16,
+        "retained_score_frames": 16,
+        "retained_tracking_frames": 0,
+        "active_objects": 0
+      },
+      "Drone3": {
+        "retained_images": 2,
+        "retained_input_frames": 16,
+        "retained_score_frames": 16,
+        "retained_tracking_frames": 0,
+        "active_objects": 0
+      },
+      "Drone4": {
+        "retained_images": 2,
+        "retained_input_frames": 16,
+        "retained_score_frames": 16,
+        "retained_tracking_frames": 17,
+        "active_objects": 1
+      }
+    },
+    "all_sessions_closed": true,
+    "scope": "Paced repetition of 20 recorded synthetic-motion frames per drone through persistent HTTP sessions. Age is measured against scheduled replay time, not physical camera capture. Paced throughput is not the saturated-throughput benchmark or proof of recognition accuracy."
+  },
+  "browser": {
+    "status": "complete",
+    "scope": "Actual React components in Chromium, recorded image assets and simulated video transport; no connection to mission or Unreal.",
+    "checks": [
+      "high-DPI letterboxed live canvas draws guidance",
+      "browser receives exact original JPEG and matching mask PNG",
+      "matching mask and precise box render over evidence image",
+      "stale guidance clears pixels",
+      "stalled video clears guidance",
+      "visibility-change fixture clears actual canvas",
+      "camera switch removes previous-drone guidance",
+      "camera change revokes guidance",
+      "release and return to search cannot resurrect reviewed-frame guidance"
+    ],
+    "geometry": {
+      "rect": [384.125, 186.625, 62.375, 74.875],
+      "width": 1200,
+      "height": 800,
+      "dpr": 2
+    },
+    "hashes": {
+      "jpeg": "7e46d248293f3439fec8f9d6a5a0861a7ae85cdfcc3623bb9467789a50d1ca5c",
+      "mask": "a3546b511106c42f3e22d3a7b3ed8a15565164a6e4761067585a264d05a0e77e"
+    },
+    "source": ".local/evidence/sam31-migration/20261102T132759Z/browser-02/result.json",
+    "screenshot": ".local/evidence/sam31-migration/20261102T132759Z/browser-02/evidence-and-guidance.png",
+    "rendered_mask_pixels": {
+      "changed_pixels": 638,
+      "image_size": [1136, 640],
+      "bbox_xyxy": [383, 137, 402, 168],
+      "green_mask_pixels": 145
+    }
+  },
+  "output_agreement": {
+    "eager_adapter_vs_earlier_native_video": {
+      "frames": 80,
+      "matching_ids": true,
+      "mask_pixels_identical": true,
+      "confidence_identical": true,
+      "boxes_match_4k_projection": true,
+      "source": ".local/evidence/sam31-optimized/20261102T045105Z/causal-parallel-warm-02"
+    },
+    "earlier_compiled_adapter_vs_native_reference": {
+      "frames": 80,
+      "same_ids": true,
+      "mask_iou_min": 0.9903846153846154,
+      "mask_iou_mean": 0.9974416551101093,
+      "confidence_delta_max": 0.003692150115966797,
+      "reference": ".local/evidence/sam31-optimized/20261102T045105Z/causal-compiled-parallel-03"
+    },
+    "final_package_vs_earlier_compiled_adapter": {
+      "status": "complete",
+      "frames": 160,
+      "positive_frames": 80,
+      "same_ids_and_observation_counts": true,
+      "matched_masks": 80,
+      "identical_mask_pixels_count": 28,
+      "identical_encoded_png_count": 28,
+      "mask_iou_min": 0.9766081871345029,
+      "mask_iou_mean": 0.9970568494586078,
+      "confidence_delta_max": 0.007453978061676025,
+      "box_coordinate_delta_max_4k_px": 2,
+      "source": "/srv/snr/.local/evidence/sam31-migration/20261102T132759Z/http-container-03/pass-0",
+      "reference": "/srv/snr/.local/evidence/sam31-migration/20261102T132759Z/engine-compiled-01/frames-0.jsonl",
+      "scope": "Packaged output versus earlier compiled adapter, first 40 frames per lane (20-frame canonical sequence repeated twice). This is a measured comparison, not a numerical equivalence or recognition-accuracy gate. Exact detection equality failed and is retained in final-output-validation.log."
+    },
+    "exact_numeric_equivalence_passed": false,
+    "recognition_accuracy_measured": false,
+    "modal_gate": "The existing 0.001 confidence and 0.5-pixel Modal gate is unchanged; these local video comparisons do not pass or replace that gate."
+  },
+  "supporting_prefinal_runs": {
+    "engine_without_http": {
+      "source": ".local/evidence/sam31-migration/20261102T132759Z/engine-compiled-01/result.json",
+      "passes": [
+        {
+          "run": "frames-0",
+          "frames": 160,
+          "elapsed_s": 7.176331935042981,
+          "fps": 22.29551272826425,
+          "compile": {
+            "calls_captured": 8359,
+            "unique_graphs": 13
+          },
+          "usage": {
+            "Drone1": {
+              "frames": 40,
+              "retained_images": 2,
+              "retained_tracking_frames": 17
+            },
+            "Drone2": {
+              "frames": 40,
+              "retained_images": 2,
+              "retained_tracking_frames": 0
+            },
+            "Drone3": {
+              "frames": 40,
+              "retained_images": 2,
+              "retained_tracking_frames": 0
+            },
+            "Drone4": {
+              "frames": 40,
+              "retained_images": 2,
+              "retained_tracking_frames": 17
+            }
+          }
+        },
+        {
+          "run": "frames-1",
+          "frames": 160,
+          "elapsed_s": 6.991605623974465,
+          "fps": 22.88458597426524,
+          "compile": {
+            "calls_captured": 8359,
+            "unique_graphs": 13
+          },
+          "usage": {
+            "Drone1": {
+              "frames": 40,
+              "retained_images": 2,
+              "retained_tracking_frames": 17
+            },
+            "Drone2": {
+              "frames": 40,
+              "retained_images": 2,
+              "retained_tracking_frames": 0
+            },
+            "Drone3": {
+              "frames": 40,
+              "retained_images": 2,
+              "retained_tracking_frames": 0
+            },
+            "Drone4": {
+              "frames": 40,
+              "retained_images": 2,
+              "retained_tracking_frames": 17
+            }
+          }
+        },
+        {
+          "run": "frames-2",
+          "frames": 160,
+          "elapsed_s": 6.997810169006698,
+          "fps": 22.86429556329493,
+          "compile": {
+            "calls_captured": 8359,
+            "unique_graphs": 13
+          },
+          "usage": {
+            "Drone1": {
+              "frames": 40,
+              "retained_images": 2,
+              "retained_tracking_frames": 17
+            },
+            "Drone2": {
+              "frames": 40,
+              "retained_images": 2,
+              "retained_tracking_frames": 0
+            },
+            "Drone3": {
+              "frames": 40,
+              "retained_images": 2,
+              "retained_tracking_frames": 0
+            },
+            "Drone4": {
+              "frames": 40,
+              "retained_images": 2,
+              "retained_tracking_frames": 17
+            }
+          }
+        }
+      ],
+      "peak_process_gpu_bytes": 7426015232
+    },
+    "mask_encoding": {
+      "masks": 160,
+      "byte_identical_pngs": true,
+      "bbox_seconds": {
+        "nonzero": 0.00334788415627069,
+        "axis_reductions": 0.00014264907088848606
+      }
+    },
+    "object_changes": {
+      "source": ".local/evidence/sam31-migration/20261102T132759Z/object-changes-http-02/result.json",
+      "frames": 74,
+      "scope": "Prefinal image, synthetic collage with changing counts, a blank gap and return; not recognition-accuracy validation.",
+      "final_usage": {
+        "780dd484-bd3d-4656-8361-3d93a57a6fa7": {
+          "drone_id": "Drone1",
+          "target": "person",
+          "frame_index": 73,
+          "status": "open",
+          "error": null,
+          "usage": {
+            "frames": 74,
+            "retained_images": 2,
+            "retained_input_frames": 16,
+            "retained_score_frames": 16,
+            "active_objects": 9,
+            "retained_tracking_frames": 17
+          }
+        }
+      },
+      "peak_process_gpu_bytes": 8038383616
+    },
+    "http_initial": {
+      "source": ".local/evidence/sam31-migration/20261102T132759Z/http-container-01/result.json",
+      "status": "complete",
+      "passes": [
+        {
+          "pass": 0,
+          "frames": 320,
+          "frame_elapsed_s": 16.600608039996587,
+          "aggregate_fps": 19.27640236002258,
+          "per_drone": {
+            "Drone1": {
+              "frames": 80,
+              "frames_with_tracks": 80,
+              "session_id": "de8dda77-b07d-4f25-9510-65838090ce0b",
+              "timings": {
+                "request_s": {
+                  "median": 0.19621865000226535,
+                  "p95": 0.26224332492856767,
+                  "max": 0.3709358989726752
+                },
+                "decode_s": {
+                  "median": 0.08899530599592254,
+                  "p95": 0.11456518658087589,
+                  "max": 0.13885815400863066
+                },
+                "preprocess_s": {
+                  "median": 0.035008766513783485,
+                  "p95": 0.047032467497047,
+                  "max": 0.06291472900193185
+                },
+                "inference_s": {
+                  "median": 0.046907801006454974,
+                  "p95": 0.05636570813367143,
+                  "max": 0.07126479799626395
+                },
+                "postprocess_s": {
+                  "median": 0.0046856004919391125,
+                  "p95": 0.006644137567491271,
+                  "max": 0.00937654305016622
+                },
+                "queue_s": {
+                  "median": 8.072995115071535e-6,
+                  "p95": 0.02961376546882092,
+                  "max": 0.0785276570240967
+                }
+              }
+            },
+            "Drone2": {
+              "frames": 80,
+              "frames_with_tracks": 0,
+              "session_id": "d557c515-e295-4fa1-aa48-76518512fdeb",
+              "timings": {
+                "request_s": {
+                  "median": 0.19640433447784744,
+                  "p95": 0.30962160955241413,
+                  "max": 0.39182661299128085
+                },
+                "decode_s": {
+                  "median": 0.09185609701671638,
+                  "p95": 0.1153374321409501,
+                  "max": 0.1885930870193988
+                },
+                "preprocess_s": {
+                  "median": 0.03650103899417445,
+                  "p95": 0.04966862655128351,
+                  "max": 0.06938532600179315
+                },
+                "inference_s": {
+                  "median": 0.03784445402561687,
+                  "p95": 0.0398666258493904,
+                  "max": 0.04729095398215577
+                },
+                "postprocess_s": {
+                  "median": 7.902650395408273e-5,
+                  "p95": 0.00011837258643936363,
+                  "max": 0.0001832520356401801
+                },
+                "queue_s": {
+                  "median": 0.014770404523005709,
+                  "p95": 0.0883500453142915,
+                  "max": 0.11195594200398773
+                }
+              }
+            },
+            "Drone3": {
+              "frames": 80,
+              "frames_with_tracks": 0,
+              "session_id": "6119112b-93de-413a-98c6-0630e95afee0",
+              "timings": {
+                "request_s": {
+                  "median": 0.19642987553379498,
+                  "p95": 0.2951499080809299,
+                  "max": 0.4356768209836446
+                },
+                "decode_s": {
+                  "median": 0.08470994248636998,
+                  "p95": 0.11543016637442632,
+                  "max": 0.14974126394372433
+                },
+                "preprocess_s": {
+                  "median": 0.036073671508347616,
+                  "p95": 0.050391322872019376,
+                  "max": 0.0769250449957326
+                },
+                "inference_s": {
+                  "median": 0.038075423013651744,
+                  "p95": 0.040329984010895714,
+                  "max": 0.04566197004169226
+                },
+                "postprocess_s": {
+                  "median": 7.666600868105888e-5,
+                  "p95": 0.00013265416200738394,
+                  "max": 0.00020848499843850732
+                },
+                "queue_s": {
+                  "median": 0.01802220699028112,
+                  "p95": 0.060792731484980315,
+                  "max": 0.15935330698266625
+                }
+              }
+            },
+            "Drone4": {
+              "frames": 80,
+              "frames_with_tracks": 80,
+              "session_id": "6525d1b6-cf03-4e6e-89ad-825ca1e2fc67",
+              "timings": {
+                "request_s": {
+                  "median": 0.1980545439873822,
+                  "p95": 0.26815127823792856,
+                  "max": 0.4016391679761
+                },
+                "decode_s": {
+                  "median": 0.08522969149635173,
+                  "p95": 0.10849332879879511,
+                  "max": 0.1623469530022703
+                },
+                "preprocess_s": {
+                  "median": 0.03605842698016204,
+                  "p95": 0.05239294712955597,
+                  "max": 0.06155005801701918
+                },
+                "inference_s": {
+                  "median": 0.047292977484175935,
+                  "p95": 0.051939809438772494,
+                  "max": 0.071498506993521
+                },
+                "postprocess_s": {
+                  "median": 0.004125558509258553,
+                  "p95": 0.006108362390659749,
+                  "max": 0.010561153991147876
+                },
+                "queue_s": {
+                  "median": 7.216527592390776e-6,
+                  "p95": 0.03573678247048519,
+                  "max": 0.05790997302392498
+                }
+              }
+            }
+          }
+        },
+        {
+          "pass": 1,
+          "frames": 320,
+          "frame_elapsed_s": 15.331984832009766,
+          "aggregate_fps": 20.871400768145254,
+          "per_drone": {
+            "Drone1": {
+              "frames": 80,
+              "frames_with_tracks": 80,
+              "session_id": "2c41f9e9-b2d1-43a0-80fd-3351c5a85966",
+              "timings": {
+                "request_s": {
+                  "median": 0.18618793701170944,
+                  "p95": 0.2149500419734977,
+                  "max": 0.4131793880369514
+                },
+                "decode_s": {
+                  "median": 0.08435452947742306,
+                  "p95": 0.10005922861746512,
+                  "max": 0.1335293099982664
+                },
+                "preprocess_s": {
+                  "median": 0.03280838602222502,
+                  "p95": 0.04448261661746073,
+                  "max": 0.054175449011381716
+                },
+                "inference_s": {
+                  "median": 0.04537369351601228,
+                  "p95": 0.048649509658571316,
+                  "max": 0.05785973399179056
+                },
+                "postprocess_s": {
+                  "median": 0.003997813008027151,
+                  "p95": 0.005694339846377261,
+                  "max": 0.006313085032161325
+                },
+                "queue_s": {
+                  "median": 1.4100485714152455e-5,
+                  "p95": 0.032866172058857036,
+                  "max": 0.10665212600724772
+                }
+              }
+            },
+            "Drone2": {
+              "frames": 80,
+              "frames_with_tracks": 0,
+              "session_id": "6eda091e-e3f7-4f53-b7eb-1eb9d4365389",
+              "timings": {
+                "request_s": {
+                  "median": 0.1861873340094462,
+                  "p95": 0.21965804748761,
+                  "max": 0.35392562398919836
+                },
+                "decode_s": {
+                  "median": 0.09037550952052698,
+                  "p95": 0.11350770040880886,
+                  "max": 0.1268324870034121
+                },
+                "preprocess_s": {
+                  "median": 0.032779917994048446,
+                  "p95": 0.042099812088417815,
+                  "max": 0.05577742599416524
+                },
+                "inference_s": {
+                  "median": 0.036157691007247195,
+                  "p95": 0.03823536305862944,
+                  "max": 0.04915414797142148
+                },
+                "postprocess_s": {
+                  "median": 7.807501242496073e-5,
+                  "p95": 0.00010102330124936997,
+                  "max": 0.00011840404476970434
+                },
+                "queue_s": {
+                  "median": 0.01196153400815092,
+                  "p95": 0.038525682667386714,
+                  "max": 0.059167762054130435
+                }
+              }
+            },
+            "Drone3": {
+              "frames": 80,
+              "frames_with_tracks": 0,
+              "session_id": "e05ffd42-1b21-4964-91bb-95fd7ee6c428",
+              "timings": {
+                "request_s": {
+                  "median": 0.18791394148138352,
+                  "p95": 0.2128655169595731,
+                  "max": 0.2322492819512263
+                },
+                "decode_s": {
+                  "median": 0.0842747645219788,
+                  "p95": 0.10894032559299376,
+                  "max": 0.11591983604012057
+                },
+                "preprocess_s": {
+                  "median": 0.03323605452897027,
+                  "p95": 0.041671169671462845,
+                  "max": 0.044517711037769914
+                },
+                "inference_s": {
+                  "median": 0.036319773993454874,
+                  "p95": 0.038376024033641445,
+                  "max": 0.05325121898204088
+                },
+                "postprocess_s": {
+                  "median": 7.454553269781172e-5,
+                  "p95": 0.00010668465984053907,
+                  "max": 0.00011679099407047033
+                },
+                "queue_s": {
+                  "median": 0.01577964099124074,
+                  "p95": 0.04354632494505495,
+                  "max": 0.057899080973584205
+                }
+              }
+            },
+            "Drone4": {
+              "frames": 80,
+              "frames_with_tracks": 80,
+              "session_id": "f7c2a647-674d-4bf3-b764-a42bb86d0e1a",
+              "timings": {
+                "request_s": {
+                  "median": 0.18789789048605599,
+                  "p95": 0.22037783686828333,
+                  "max": 0.3060449410113506
+                },
+                "decode_s": {
+                  "median": 0.08159874600823969,
+                  "p95": 0.10731730420666281,
+                  "max": 0.11198308499297127
+                },
+                "preprocess_s": {
+                  "median": 0.032751333026681095,
+                  "p95": 0.042226132701034653,
+                  "max": 0.05328547098906711
+                },
+                "inference_s": {
+                  "median": 0.045322668011067435,
+                  "p95": 0.04767498397559393,
+                  "max": 0.05579544900683686
+                },
+                "postprocess_s": {
+                  "median": 0.003977708023739979,
+                  "p95": 0.005917377059813589,
+                  "max": 0.006246177013963461
+                },
+                "queue_s": {
+                  "median": 0.0009713729959912598,
+                  "p95": 0.025671656083432023,
+                  "max": 0.03222133300732821
+                }
+              }
+            }
+          }
+        },
+        {
+          "pass": 2,
+          "frames": 320,
+          "frame_elapsed_s": 15.521285956026986,
+          "aggregate_fps": 20.61684843038038,
+          "per_drone": {
+            "Drone1": {
+              "frames": 80,
+              "frames_with_tracks": 80,
+              "session_id": "91e74480-1078-4f16-8452-f561166f0b7d",
+              "timings": {
+                "request_s": {
+                  "median": 0.19184335198951885,
+                  "p95": 0.21266266524035018,
+                  "max": 0.24678884400054812
+                },
+                "decode_s": {
+                  "median": 0.0856781369948294,
+                  "p95": 0.10129698060918599,
+                  "max": 0.1123544360161759
+                },
+                "preprocess_s": {
+                  "median": 0.0329213030054234,
+                  "p95": 0.0456643548241118,
+                  "max": 0.048300481983460486
+                },
+                "inference_s": {
+                  "median": 0.04502023052191362,
+                  "p95": 0.049618527878192244,
+                  "max": 0.056479595019482076
+                },
+                "postprocess_s": {
+                  "median": 0.003950363985495642,
+                  "p95": 0.0057255095336586235,
+                  "max": 0.006306399998720735
+                },
+                "queue_s": {
+                  "median": 0.0016103830130305141,
+                  "p95": 0.029083181638270613,
+                  "max": 0.03895899304188788
+                }
+              }
+            },
+            "Drone2": {
+              "frames": 80,
+              "frames_with_tracks": 0,
+              "session_id": "0057e308-3ebf-4dc8-a9f5-a639b10a782d",
+              "timings": {
+                "request_s": {
+                  "median": 0.19014286098536104,
+                  "p95": 0.2096813745534746,
+                  "max": 0.35334733000490814
+                },
+                "decode_s": {
+                  "median": 0.08060457196552306,
+                  "p95": 0.10061503163597081,
+                  "max": 0.11131013801787049
+                },
+                "preprocess_s": {
+                  "median": 0.033060364017728716,
+                  "p95": 0.0423033430619398,
+                  "max": 0.048459931043908
+                },
+                "inference_s": {
+                  "median": 0.03586326047661714,
+                  "p95": 0.03746124728641007,
+                  "max": 0.048603322997223586
+                },
+                "postprocess_s": {
+                  "median": 7.512050797231495e-5,
+                  "p95": 0.00011457657965365793,
+                  "max": 0.00018437497783452272
+                },
+                "queue_s": {
+                  "median": 0.02636757495929487,
+                  "p95": 0.040328008992946675,
+                  "max": 0.09280635201139376
+                }
+              }
+            },
+            "Drone3": {
+              "frames": 80,
+              "frames_with_tracks": 0,
+              "session_id": "9989c18a-7f43-438a-bcef-357453e3132d",
+              "timings": {
+                "request_s": {
+                  "median": 0.19199949447647668,
+                  "p95": 0.21155126561643556,
+                  "max": 0.303967799001839
+                },
+                "decode_s": {
+                  "median": 0.08126675398671068,
+                  "p95": 0.10492023392871487,
+                  "max": 0.10906339803477749
+                },
+                "preprocess_s": {
+                  "median": 0.03378476950456388,
+                  "p95": 0.04259758566913661,
+                  "max": 0.045391451043542475
+                },
+                "inference_s": {
+                  "median": 0.03590717149199918,
+                  "p95": 0.037494172726292165,
+                  "max": 0.04517629597103223
+                },
+                "postprocess_s": {
+                  "median": 7.032247958704829e-5,
+                  "p95": 0.00010914236190728842,
+                  "max": 0.00015307700959965587
+                },
+                "queue_s": {
+                  "median": 0.020839636505115777,
+                  "p95": 0.04628065031138249,
+                  "max": 0.05817662295885384
+                }
+              }
+            },
+            "Drone4": {
+              "frames": 80,
+              "frames_with_tracks": 80,
+              "session_id": "226d2562-78e5-48fc-a02f-27231fdd46af",
+              "timings": {
+                "request_s": {
+                  "median": 0.18981113398331217,
+                  "p95": 0.20945724768971558,
+                  "max": 0.41117571998620406
+                },
+                "decode_s": {
+                  "median": 0.08888043201295659,
+                  "p95": 0.10305537045933306,
+                  "max": 0.10824606299865991
+                },
+                "preprocess_s": {
+                  "median": 0.03261206948081963,
+                  "p95": 0.04050414422817993,
+                  "max": 0.048969655006658286
+                },
+                "inference_s": {
+                  "median": 0.044933855009730905,
+                  "p95": 0.04733508843346499,
+                  "max": 0.054373710008803755
+                },
+                "postprocess_s": {
+                  "median": 0.004008361021988094,
+                  "p95": 0.005502797482768073,
+                  "max": 0.006178273004479706
+                },
+                "queue_s": {
+                  "median": 5.984999006614089e-6,
+                  "p95": 0.022394988487940276,
+                  "max": 0.14159087103325874
+                }
+              }
+            }
+          }
+        }
+      ],
+      "peak_process_gpu_bytes": 9693036544,
+      "stable_compilation": {
+        "calls_captured": 8359,
+        "unique_graphs": 13
+      }
+    },
+    "http_after_mask_bounds_optimization": {
+      "source": ".local/evidence/sam31-migration/20261102T132759Z/http-container-02/result.json",
+      "status": "complete",
+      "passes": [
+        {
+          "pass": 0,
+          "frames": 320,
+          "frame_elapsed_s": 14.937769633019343,
+          "aggregate_fps": 21.42220745543249,
+          "per_drone": {
+            "Drone1": {
+              "frames": 80,
+              "frames_with_tracks": 80,
+              "session_id": "087b1054-a46b-4839-87f7-287138c5e336",
+              "timings": {
+                "request_s": {
+                  "median": 0.18228155150427483,
+                  "p95": 0.20306994421407581,
+                  "max": 0.3591900889878161
+                },
+                "decode_s": {
+                  "median": 0.0786686780047603,
+                  "p95": 0.09659055182128214,
+                  "max": 0.10704368102597073
+                },
+                "preprocess_s": {
+                  "median": 0.03278029398643412,
+                  "p95": 0.04508835000160616,
+                  "max": 0.05298605700954795
+                },
+                "inference_s": {
+                  "median": 0.046146061533363536,
+                  "p95": 0.048935328560764886,
+                  "max": 0.055805380980018526
+                },
+                "postprocess_s": {
+                  "median": 0.0007356079877354205,
+                  "p95": 0.0009007823973661286,
+                  "max": 0.0017139429692178965
+                },
+                "queue_s": {
+                  "median": 0.003550636989530176,
+                  "p95": 0.030158658686559644,
+                  "max": 0.09207146597327664
+                }
+              }
+            },
+            "Drone2": {
+              "frames": 80,
+              "frames_with_tracks": 0,
+              "session_id": "a62b97ce-38f9-4f05-be69-47ca0df56cb2",
+              "timings": {
+                "request_s": {
+                  "median": 0.18237705950741656,
+                  "p95": 0.20491839418536983,
+                  "max": 0.25696491496637464
+                },
+                "decode_s": {
+                  "median": 0.08113383300951682,
+                  "p95": 0.09844267612788826,
+                  "max": 0.11638497101375833
+                },
+                "preprocess_s": {
+                  "median": 0.03380224297870882,
+                  "p95": 0.046190438282792456,
+                  "max": 0.046876601001713425
+                },
+                "inference_s": {
+                  "median": 0.03729544798261486,
+                  "p95": 0.038552352736587636,
+                  "max": 0.047514524951111525
+                },
+                "postprocess_s": {
+                  "median": 6.837953696958721e-5,
+                  "p95": 9.567536180838942e-5,
+                  "max": 0.00021376501535996795
+                },
+                "queue_s": {
+                  "median": 0.01059708499815315,
+                  "p95": 0.04212894508382304,
+                  "max": 0.05214407201856375
+                }
+              }
+            },
+            "Drone3": {
+              "frames": 80,
+              "frames_with_tracks": 0,
+              "session_id": "47abf24b-116b-40c1-9f47-8da0d78560bf",
+              "timings": {
+                "request_s": {
+                  "median": 0.18181934749009088,
+                  "p95": 0.20277914508769754,
+                  "max": 0.3039528160006739
+                },
+                "decode_s": {
+                  "median": 0.08410325599834323,
+                  "p95": 0.09902684788103215,
+                  "max": 0.10484396002721041
+                },
+                "preprocess_s": {
+                  "median": 0.033704276982462034,
+                  "p95": 0.043742870879941616,
+                  "max": 0.04688023199560121
+                },
+                "inference_s": {
+                  "median": 0.037312600994482636,
+                  "p95": 0.038596618053270505,
+                  "max": 0.04626240802463144
+                },
+                "postprocess_s": {
+                  "median": 7.104201358743012e-5,
+                  "p95": 0.00011093452339991926,
+                  "max": 0.00020311097614467144
+                },
+                "queue_s": {
+                  "median": 0.008605980459833518,
+                  "p95": 0.041056309957639314,
+                  "max": 0.04586099804146215
+                }
+              }
+            },
+            "Drone4": {
+              "frames": 80,
+              "frames_with_tracks": 80,
+              "session_id": "c5de3efb-d746-4857-af05-594f9af9a61d",
+              "timings": {
+                "request_s": {
+                  "median": 0.1820499965106137,
+                  "p95": 0.20751955562736837,
+                  "max": 0.4160461850115098
+                },
+                "decode_s": {
+                  "median": 0.08061298800748773,
+                  "p95": 0.10746304030762985,
+                  "max": 0.1134947320097126
+                },
+                "preprocess_s": {
+                  "median": 0.032191414007684216,
+                  "p95": 0.04467568959807977,
+                  "max": 0.05080731603084132
+                },
+                "inference_s": {
+                  "median": 0.04641556699061766,
+                  "p95": 0.0487983400846133,
+                  "max": 0.055233759980183095
+                },
+                "postprocess_s": {
+                  "median": 0.0007389179954770952,
+                  "p95": 0.0008760378055740148,
+                  "max": 0.0012722350074909627
+                },
+                "queue_s": {
+                  "median": 6.807997124269605e-6,
+                  "p95": 0.023315270175226027,
+                  "max": 0.13617717596935108
+                }
+              }
+            }
+          }
+        },
+        {
+          "pass": 1,
+          "frames": 320,
+          "frame_elapsed_s": 14.526470387005247,
+          "aggregate_fps": 22.028751064419488,
+          "per_drone": {
+            "Drone1": {
+              "frames": 80,
+              "frames_with_tracks": 80,
+              "session_id": "8e5a3d57-5300-43e9-8a08-38bcfedba983",
+              "timings": {
+                "request_s": {
+                  "median": 0.17761792804230936,
+                  "p95": 0.19776249954593367,
+                  "max": 0.38925213494803756
+                },
+                "decode_s": {
+                  "median": 0.07739795595989563,
+                  "p95": 0.09935505674802697,
+                  "max": 0.10431767499540001
+                },
+                "preprocess_s": {
+                  "median": 0.033272387023316696,
+                  "p95": 0.042652759246993806,
+                  "max": 0.04683300602482632
+                },
+                "inference_s": {
+                  "median": 0.04463101748842746,
+                  "p95": 0.047544088767608614,
+                  "max": 0.05721578805241734
+                },
+                "postprocess_s": {
+                  "median": 0.0007334149850066751,
+                  "p95": 0.0008538547495845703,
+                  "max": 0.0011138159898109734
+                },
+                "queue_s": {
+                  "median": 0.00035194901283830404,
+                  "p95": 0.020257141653564757,
+                  "max": 0.12911019299644977
+                }
+              }
+            },
+            "Drone2": {
+              "frames": 80,
+              "frames_with_tracks": 0,
+              "session_id": "d552416f-8838-45bd-adf4-787245f78d8e",
+              "timings": {
+                "request_s": {
+                  "median": 0.178182726027444,
+                  "p95": 0.20073886633617802,
+                  "max": 0.33149876398965716
+                },
+                "decode_s": {
+                  "median": 0.07753701851470396,
+                  "p95": 0.09540694146126043,
+                  "max": 0.12452033802401274
+                },
+                "preprocess_s": {
+                  "median": 0.0328450785309542,
+                  "p95": 0.041962004819652066,
+                  "max": 0.0487150140106678
+                },
+                "inference_s": {
+                  "median": 0.03593918000115082,
+                  "p95": 0.037567507909261624,
+                  "max": 0.04351459298050031
+                },
+                "postprocess_s": {
+                  "median": 7.140901288948953e-5,
+                  "p95": 0.00010014869912993163,
+                  "max": 0.00016576098278164864
+                },
+                "queue_s": {
+                  "median": 0.015374706475995481,
+                  "p95": 0.03908656538987998,
+                  "max": 0.09258037898689508
+                }
+              }
+            },
+            "Drone3": {
+              "frames": 80,
+              "frames_with_tracks": 0,
+              "session_id": "3d259990-d14a-408b-abf6-d1525c35bbdc",
+              "timings": {
+                "request_s": {
+                  "median": 0.17850928995176218,
+                  "p95": 0.19499078904045744,
+                  "max": 0.2881998890079558
+                },
+                "decode_s": {
+                  "median": 0.07961791052366607,
+                  "p95": 0.09918164309929124,
+                  "max": 0.10587283002678305
+                },
+                "preprocess_s": {
+                  "median": 0.03307313297409564,
+                  "p95": 0.04293057690665591,
+                  "max": 0.0472264569834806
+                },
+                "inference_s": {
+                  "median": 0.03589893796015531,
+                  "p95": 0.03779501261014957,
+                  "max": 0.045688654005061835
+                },
+                "postprocess_s": {
+                  "median": 7.138799992389977e-5,
+                  "p95": 0.00010817078873515126,
+                  "max": 0.00019258103566244245
+                },
+                "queue_s": {
+                  "median": 0.012194929993711412,
+                  "p95": 0.029480068676639347,
+                  "max": 0.05338223197031766
+                }
+              }
+            },
+            "Drone4": {
+              "frames": 80,
+              "frames_with_tracks": 80,
+              "session_id": "57fac919-3a8e-4568-8d11-36ce3d6e62b9",
+              "timings": {
+                "request_s": {
+                  "median": 0.17919236948364414,
+                  "p95": 0.19741722555772867,
+                  "max": 0.24205859599169344
+                },
+                "decode_s": {
+                  "median": 0.07871578197227791,
+                  "p95": 0.09597219900751951,
+                  "max": 0.10500596300698817
+                },
+                "preprocess_s": {
+                  "median": 0.032399817486293614,
+                  "p95": 0.04247986532282084,
+                  "max": 0.04830831498838961
+                },
+                "inference_s": {
+                  "median": 0.04496548601309769,
+                  "p95": 0.04800921494606882,
+                  "max": 0.05575966596370563
+                },
+                "postprocess_s": {
+                  "median": 0.0007332050008699298,
+                  "p95": 0.000855920001049526,
+                  "max": 0.001692954043392092
+                },
+                "queue_s": {
+                  "median": 5.274487193673849e-6,
+                  "p95": 0.018009114317828787,
+                  "max": 0.030148404010105878
+                }
+              }
+            }
+          }
+        },
+        {
+          "pass": 2,
+          "frames": 320,
+          "frame_elapsed_s": 14.568131420004647,
+          "aggregate_fps": 21.965754616997952,
+          "per_drone": {
+            "Drone1": {
+              "frames": 80,
+              "frames_with_tracks": 80,
+              "session_id": "2a711d1f-d87a-4737-9fe0-d4a1f0a82d87",
+              "timings": {
+                "request_s": {
+                  "median": 0.1800362560315989,
+                  "p95": 0.19635289824218488,
+                  "max": 0.2359890720108524
+                },
+                "decode_s": {
+                  "median": 0.07690155500313267,
+                  "p95": 0.09438089576433413,
+                  "max": 0.09956970100756735
+                },
+                "preprocess_s": {
+                  "median": 0.03261635600938462,
+                  "p95": 0.04078650810115505,
+                  "max": 0.04973837098805234
+                },
+                "inference_s": {
+                  "median": 0.04441058050724678,
+                  "p95": 0.04625446658756116,
+                  "max": 0.058652197010815144
+                },
+                "postprocess_s": {
+                  "median": 0.000730862986529246,
+                  "p95": 0.0008471134846331551,
+                  "max": 0.0008788770064711571
+                },
+                "queue_s": {
+                  "median": 0.003840200020931661,
+                  "p95": 0.02644587050308473,
+                  "max": 0.04091651999624446
+                }
+              }
+            },
+            "Drone2": {
+              "frames": 80,
+              "frames_with_tracks": 0,
+              "session_id": "c8a36525-54b6-4a95-8a3e-c58ec4e7052c",
+              "timings": {
+                "request_s": {
+                  "median": 0.17839931300841272,
+                  "p95": 0.19782753736362793,
+                  "max": 0.2828959200414829
+                },
+                "decode_s": {
+                  "median": 0.07765354897128418,
+                  "p95": 0.09580421425052918,
+                  "max": 0.10618929896736518
+                },
+                "preprocess_s": {
+                  "median": 0.03352472200640477,
+                  "p95": 0.04233007146394811,
+                  "max": 0.05639720999170095
+                },
+                "inference_s": {
+                  "median": 0.035786914522759616,
+                  "p95": 0.03638300124439411,
+                  "max": 0.045360705989878625
+                },
+                "postprocess_s": {
+                  "median": 7.409800309687853e-5,
+                  "p95": 9.914397087413816e-5,
+                  "max": 0.00015750800957903266
+                },
+                "queue_s": {
+                  "median": 0.012388745992211625,
+                  "p95": 0.038309289660537614,
+                  "max": 0.04490022495156154
+                }
+              }
+            },
+            "Drone3": {
+              "frames": 80,
+              "frames_with_tracks": 0,
+              "session_id": "058897aa-acac-4d45-8a3b-774fc6e3d3f7",
+              "timings": {
+                "request_s": {
+                  "median": 0.17815891752252355,
+                  "p95": 0.19735936020733788,
+                  "max": 0.38248602801468223
+                },
+                "decode_s": {
+                  "median": 0.07911025351495482,
+                  "p95": 0.09656955436221323,
+                  "max": 0.10258266399614513
+                },
+                "preprocess_s": {
+                  "median": 0.032784534501843154,
+                  "p95": 0.04290568357973825,
+                  "max": 0.04629912896780297
+                },
+                "inference_s": {
+                  "median": 0.03577488596783951,
+                  "p95": 0.03752991732908413,
+                  "max": 0.04572033998556435
+                },
+                "postprocess_s": {
+                  "median": 7.501701475121081e-5,
+                  "p95": 9.511361713521181e-5,
+                  "max": 0.00014499499229714274
+                },
+                "queue_s": {
+                  "median": 0.012508044019341469,
+                  "p95": 0.036338590134982945,
+                  "max": 0.13548643596004695
+                }
+              }
+            },
+            "Drone4": {
+              "frames": 80,
+              "frames_with_tracks": 80,
+              "session_id": "7b7393a4-2812-4efc-a7eb-76e68a726e20",
+              "timings": {
+                "request_s": {
+                  "median": 0.17814391598221846,
+                  "p95": 0.19793478844221682,
+                  "max": 0.334360535023734
+                },
+                "decode_s": {
+                  "median": 0.08038135099923238,
+                  "p95": 0.09632471697404979,
+                  "max": 0.10562934103654698
+                },
+                "preprocess_s": {
+                  "median": 0.03305891947820783,
+                  "p95": 0.04116950877360068,
+                  "max": 0.046544176002498716
+                },
+                "inference_s": {
+                  "median": 0.04500280649517663,
+                  "p95": 0.04778591630165465,
+                  "max": 0.05198036500951275
+                },
+                "postprocess_s": {
+                  "median": 0.0007455685117747635,
+                  "p95": 0.0009302755119279027,
+                  "max": 0.002287080977112055
+                },
+                "queue_s": {
+                  "median": 5.114998202770948e-6,
+                  "p95": 0.011335985915502528,
+                  "max": 0.08770147897303104
+                }
+              }
+            }
+          }
+        }
+      ],
+      "peak_process_gpu_bytes": 7583301632,
+      "stable_compilation": {
+        "calls_captured": 8614,
+        "unique_graphs": 28
+      }
+    }
+  },
+  "earlier_live_acquisition": {
+    "source": ".local/evidence/sam31-migration/20261102T132759Z/retired-vision-measurement.json#/integration/installed_capture_and_tracking",
+    "evidence": ".local/evidence/sam31-migration/20261102T132759Z/retired-vision-measurement.json",
+    "scope": "Stationary, disarmed aircraft; real 4K capture plus local 1080p inference, no flight commands or reviewer requests.",
+    "median_capture_s_by_drone": {
+      "Drone1": 0.4544817699934356,
+      "Drone2": 0.4295535294513684,
+      "Drone3": 0.4640543150017038,
+      "Drone4": 0.4298324185074307
+    },
+    "capture_optimization": "Deferred. Packaged replay throughput does not establish five new live captures per second per drone."
+  },
+  "checks": {
+    "python_unittest": {
+      "passed": 645,
+      "log": ".local/evidence/sam31-migration/20261102T132759Z/unittest-02.log"
+    },
+    "javascript_tests": {
+      "passed": 190,
+      "failed": 0,
+      "log": ".local/evidence/sam31-migration/20261102T132759Z/npm-test-02.log"
+    },
+    "typecheck": {
+      "passed": true,
+      "log": ".local/evidence/sam31-migration/20261102T132759Z/typecheck-02.log"
+    },
+    "format_check": {
+      "passed": true,
+      "log": ".local/evidence/sam31-migration/20261102T132759Z/format-check-02.log"
+    },
+    "ruff_check": {
+      "passed": true,
+      "log": ".local/evidence/sam31-migration/20261102T132759Z/ruff-02.log"
+    },
+    "ruff_format_check": {
+      "passed": true,
+      "log": ".local/evidence/sam31-migration/20261102T132759Z/ruff-format-02.log"
+    },
+    "web_build": {
+      "passed": true,
+      "log": ".local/evidence/sam31-migration/20261102T132759Z/build-web-01.log",
+      "installed_dist_replaced": true
+    },
+    "systemd_unit_verify": {
+      "passed": true,
+      "log": ".local/evidence/sam31-migration/20261102T132759Z/systemd-unit-check.log"
+    }
+  },
+  "lifecycle": {
+    "status": "complete",
+    "recorded_utc": "2026-11-02T15:16:17.558490+00:00",
+    "initial_shutdown": {
+      "status": "complete",
+      "recorded_utc": "2026-11-02T15:10:47.559059+00:00",
+      "unit": "snr-sam31-qualification-20261102t132759z.service",
+      "container": "snr-sam31-qual-20261102t132759z-06",
+      "shutdown_s": 0.732325,
+      "shutdown_timing_source": "systemd journal monotonic Stopping/Stopped events",
+      "systemd_success": true,
+      "container_removed": true,
+      "socket_removed": true,
+      "gpu_pid_exited": true,
+      "protected_processes": {
+        "4062775": {
+          "start_ticks": 34601818,
+          "comm": "python"
+        },
+        "4132348": {
+          "start_ticks": 35356615,
+          "comm": "ScenarioStudio"
+        }
+      },
+      "journal_read_note": "Initial unprivileged journal query had no accessible records; the privileged read above establishes service success."
+    },
+    "cached_restart_ready_s": 117.45769910002127,
+    "restart_model_sha256": "0567debeec80ba4ac6369540c6c248025283cb3ff2b92827509e57e2b3541cb6",
+    "restart_compilation": {
+      "calls_captured": 9637,
+      "unique_graphs": 29
+    },
+    "restart_peak_process_gpu_bytes": 7839154176,
+    "final_shutdown_s": 0.714706450002268,
+    "final_shutdown_systemd_success": true,
+    "owned_test_containers_removed": true,
+    "owned_test_sockets_removed": true,
+    "original_gpu_processes_preserved": true,
+    "restart_evidence": "/srv/snr/.local/evidence/sam31-migration/20261102T132759Z/container-run-07"
+  },
+  "activation": {
+    "status": "deployed",
+    "image_id": "sha256:e13809fcb86aec5454fce16fa3941d2c693294c5345ae7488280b41708e64a8c",
+    "artifacts": ".local/evidence/sam31-migration/20261102T132759Z/installed-artifacts.json",
+    "readiness": ".local/evidence/sam31-migration/20261102T132759Z/installed-readiness-01.json",
+    "coordinated_shutdown": ".local/evidence/sam31-migration/20261102T132759Z/cutover-stopped.json",
+    "runtime_sha256": "2ec4cab209a640db3e24ee5e5ca7eb0f9e0ba43da220979aa014ac4fe98cc5da",
+    "vision_unit_sha256": "ef07f50700ed339bfc525bd90fda893cf36abf6444bb4a246cba546e93e2f8f0",
+    "retired_runtime_removed": true,
+    "retired_web_bundle_removed": true,
+    "services_restarted": ["snr-vision", "snr-unreal", "snr-mission", "snr-web"],
+    "web_health_http_status": 200,
+    "sam_ready_s": 107.307914229983,
+    "sam_model_instances": 1,
+    "sam_source_sha256": "0567debeec80ba4ac6369540c6c248025283cb3ff2b92827509e57e2b3541cb6",
+    "restored_fleet_ready": true,
+    "cleanup_audit": ".local/evidence/sam31-migration/20261102T132759Z/retired-runtime-audit.json"
+  },
+  "retained_failures": [
+    {
+      "source": ".local/evidence/sam31-migration/20261102T132759Z/engine-eager-01.log",
+      "reason": "Initial adapter used a field absent in the pinned multiplex state; corrected against upstream."
+    },
+    {
+      "source": ".local/evidence/sam31-migration/20261102T132759Z/engine-eager-02.log",
+      "reason": "Native detector modulo input-ring indexing; corrected with the one-frame current-input ring."
+    },
+    {
+      "source": ".local/evidence/sam31-migration/20261102T132759Z/http-container-01/result.json",
+      "reason": "First measured pass was below 20.16 FPS; later mask bounds extraction optimization is separately measured."
+    },
+    {
+      "source": ".local/evidence/sam31-migration/20261102T132759Z/object-changes-http-01.log",
+      "reason": "More than 16 active objects failed explicitly; capacity was not silently expanded or candidates dropped."
+    },
+    {
+      "source": ".local/evidence/sam31-migration/20261102T132759Z/prompt-threshold-diagnostic.log",
+      "reason": "Previously unseen threshold caused compilation; startup now warms threshold variation and verifies stable counters."
+    },
+    {
+      "source": ".local/evidence/sam31-migration/20261102T132759Z/browser-01.log",
+      "reason": "Browser fixture navigation/body handling failed; corrected fixture passed in browser-02."
+    },
+    {
+      "source": ".local/evidence/sam31-migration/20261102T132759Z/qualification-final.log",
+      "reason": "Session runner lacked PYTHONPATH after the successful throughput and forward runs. Corrected session qualification is recorded separately; successful benchmarks were preserved."
+    },
+    {
+      "source": ".local/evidence/sam31-migration/20261102T132759Z/final-output-validation.log",
+      "reason": "Exact detection equality to earlier compiled output failed. Subsequent comparison records actual mask, confidence and box differences; the exact gate was not passed."
+    }
+  ],
+  "limitations": [
+    "No installed end-to-end rescue flight or live Glimmer escalation/rejection acceptance has run with this SAM image.",
+    "The 30-minute soak repeats recorded footage; it does not establish mission-long recognition quality, moving-person reacquisition or high-object-count endurance.",
+    "Warmup covers the tested prompts, thresholds and object shapes. Performance for every possible live scene is not established.",
+    "Native capacity is 16 active objects per drone; exceeding it is a terminal failure.",
+    "The physical deployment GPU still needs its own throughput and memory qualification.",
+    "The displayed WebRTC video and inference samples have independent timing. Live boxes are padded guidance; precise masks are restricted to matching evidence images.",
+    "Installed throughput varied across passes: 19.23\u201322.12 FPS after fleet readiness, and 18.69 FPS during fleet startup. The 20.16 FPS target is not a demonstrated per-pass lower bound under all shared-simulator workloads."
+  ],
+  "sources": {
+    "sam_builder": "https://github.com/facebookresearch/sam3/blob/f1647e8d0c1d280991f4d1b7d974c2704537fe66/sam3/model_builder.py",
+    "sam_multiplex": "https://github.com/facebookresearch/sam3/blob/f1647e8d0c1d280991f4d1b7d974c2704537fe66/sam3/model/sam3_multiplex_video_predictor.py",
+    "checkpoint": "https://huggingface.co/facebook/sam3.1/tree/daa63191845a41281374e725f4c9e51c7a824460",
+    "flash_attention_3_hardware": "https://github.com/Dao-AILab/flash-attention#flashattention-3-beta-release",
+    "coupled_shutdown": "world/cosys/README.md#install-and-restart"
+  },
+  "source_sha256": {
+    "mission_planner/agents/services/sam_video.py": "69b7d981cc08f290f82b426a39e2124a7f7ca1cd2b29d5d350db571469a2af91",
+    "mission_planner/agents/services/vision.py": "fc4b4e86b272b787add0a64467df44a92467a42ebb37c85090e81830b4d865b6",
+    "mission_planner/agents/services/run_vision.py": "e7699b27db84adfd827ebb05eba78d7d73fb98c2838541bbd1c91356643a89af",
+    "mission_planner/agents/services/bench_video.py": "b2fcdb07b871eb075534341d8f6ba21d1860dacbc8ff56f40c528bde54e1d881",
+    "mission_planner/agents/services/sam.Dockerfile": "0575517968eab66bc320f12db55773cb155e233f10f8069157d6baa09bea66da",
+    "mission_planner/agents/services/build-sam.sh": "aaee0f013b8ec396865c41aa2aaae0ae152aef27e874ccd38dfeaeff5e7daaa4",
+    "mission_planner/agents/services/vision-requirements.txt": "1ed178cfe29f09d2305fa1ce310797ab0da4768d6108e4aac6b1f79fe73fe8e8",
+    "mission_planner/agents/vision.py": "7c6c4c5c934d83df6758c701da6d23b154c9fd341d004d46bfdbc6a53523d5c6",
+    "mission_planner/gcs/inspection.py": "6e38a60be8e4695eabe76ee90018893ce6e1aef29ab5c946bd68181ae5ecfcea",
+    "mission_planner/gcs/bench_inspection.py": "619cee47b3e1b73667b9756b229d5db019788e44b34f027f6d67b0d4eab6c904",
+    "mission_planner/gcs/DroneVideo.tsx": "508a0524086c8bc316d0123378ad6529ee19f981aa851710385cfa51bb53f39b",
+    "mission_planner/gcs/VideoBoxes.tsx": "992a4746298f767b9fa03a6f856478d28ac548225092db395af6e5c8219a4ac8",
+    "mission_planner/gcs/InspectionPanel.tsx": "d2994fdde2de1861b96a5ec7e4e6440b0fe57bb3680e212637c30e126f28d77a",
+    "mission_planner/gcs/missionState.ts": "883b73e6fc55de8b5765b41749bc5ae4719e053462deb596216fe13d88a945d9",
+    "web/server.ts": "f5a171b75c955d9dcff016eccf3427ea894891e0b91c11d6e6a56f778579afc0",
+    "deploy/systemd/snr-vision.service": "4b41b8cf658b7f58b570cc132f6da91ac7590e2782302b773a07a0d698670950"
+  },
+  "source_scope": "Source hashes identify the qualified SAM implementation. The integrated change preserves the existing mission-planning and flight-diagnostics work that was included in the full passing test run.",
+  "repo_head": "86edeab8bdf24319d3f3d7b891da32d855c64795",
+  "installed_benchmarks": {
+    "installed-http-01": {
+      "source": ".local/evidence/sam31-migration/20261102T132759Z/installed-http-01/result.json",
+      "passes": [
+        {
+          "frames": 320,
+          "frame_elapsed_s": 17.11927864298923,
+          "aggregate_fps": 18.692376394670575
+        }
+      ],
+      "combined_aggregate_fps": 18.692376394670575,
+      "all_passes_meet_20_16_fps": false,
+      "compilation": {
+        "calls_captured": 9637,
+        "unique_graphs": 29
+      },
+      "peak_process_gpu_bytes": 7855931392
+    },
+    "installed-http-steady-01": {
+      "source": ".local/evidence/sam31-migration/20261102T132759Z/installed-http-steady-01/result.json",
+      "passes": [
+        {
+          "frames": 320,
+          "frame_elapsed_s": 14.5372152570053,
+          "aggregate_fps": 22.01246898685056
+        },
+        {
+          "frames": 320,
+          "frame_elapsed_s": 14.464131832995918,
+          "aggregate_fps": 22.123692157590025
+        },
+        {
+          "frames": 320,
+          "frame_elapsed_s": 16.638137720001396,
+          "aggregate_fps": 19.23292169984353
+        }
+      ],
+      "combined_aggregate_fps": 21.03441798250976,
+      "all_passes_meet_20_16_fps": false,
+      "compilation": {
+        "calls_captured": 9637,
+        "unique_graphs": 29
+      },
+      "peak_process_gpu_bytes": 7855931392
+    }
+  }
+}

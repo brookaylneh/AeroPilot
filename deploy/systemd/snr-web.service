@@ -1,0 +1,11 @@
+[Unit]
+Description=SNR web applications and same-origin WebSockets
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=@ROOT@/.local/toolchains/bin/node --import tsx web/server.ts
+
+[Install]
+WantedBy=multi-user.target

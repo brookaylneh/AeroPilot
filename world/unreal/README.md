@@ -1,0 +1,523 @@
+# Unreal
+
+`ScenarioStudio/` is the UE 5.8.2 project: scenario catalog, person placement, persistence, navigation, drone
+port and telemetry. The JSON files beside it are asset manifests and locks. [Assets](assets.md) lists licences;
+[streaming](streaming.md) covers Pixel Streaming quality.
+
+| Path                      | Purpose                                                                                     |
+| ------------------------- | ------------------------------------------------------------------------------------------- |
+| `ScenarioStudio/Source/`  | C++ game module                                                                             |
+| `ScenarioStudio/Scripts/` | Editor Python operations, run with `scripts/author-unreal.sh <name>`                        |
+| `scripts/`                | Build, package, stage, run and stream                                                       |
+| `docker/`                 | Editor, runtime and authoring images; runtime configuration in `deploy/runtime.env.example` |
+
+Licensed content (`Content/`, `Plugins/`) and engine output are not tracked. Packaged builds, releases and the
+`Live` link live in `.local/unreal/`.
+
+## Wildlife and command-post port
+
+The wildlife demo uses [Low Poly Bear by Mathilde_Lea](https://opengameart.org/content/low-poly-bear),
+licensed [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Its original geometry and UVs
+are preserved, uniformly scaled to a 2.2 m body length and placed at north −530 m,
+east −230 m on open ground southwest of Ranger Cabin. The supplied UVs mismatch the supplied
+texture in both Blender and Unreal. The material instead uses the texture's measured dominant
+body colour, sRGB (77, 60, 59), uniformly with roughness 0.85; the unused texture is not cooked.
+Original FBX/PNG hashes, attribution, linear material colour and placement are in `wildlife.json`.
+It is a static, faceted model; the requested Sketchfab asset could not be downloaded.
+The bear is not a public landmark or known detection in Wonder's context.
+
+`ScenarioStudio/Scripts/build-wildlife.py` imports the manifest's local mesh into
+the content-only `Wildlife` plugin and saves `/Wildlife/BearHabitat`. It requires a new
+asset destination and checks materials, bounds, ground contact and package dependencies.
+Invoke `UnrealEditor-Cmd` through `unreal-container.sh exec`, with `-run=pythonscript`,
+`-script=<absolute-path>/ScenarioStudio/Scripts/build-wildlife.py`, `-nullrhi`,
+`-EnablePlugins=PythonScriptPlugin,EditorScriptingUtilities`, and
+`-ExecCmds="Interchange.FeatureFlags.Import.FBX 0"` for the pinned legacy FBX importer.
+The operation writes its receipt under `SNR_EVIDENCE_DIR`.
+
+The wildlife level is cooked as a `Wildlife` DLC on top of the base release: UE 5.8.2
+`BuildCookRun` with `-DLCName=Wildlife -BasedOnReleaseVersion=<base-release>` and
+`-AdditionalCookerOptions="-DlcPluginOnly -NoDefaultMaps -NoGameAlwaysCook -SkipZenStore -notraceserver"`.
+Keep every emitted plugin file, including `ScenarioStudio/Plugins/Wildlife.upluginmanifest`,
+the descriptor, asset registry, shader data and containers; the base plugin manifests disable
+recursive discovery, so the DLC manifest is required.
+
+During component initialization `ScenarioSession` creates `DroneFoundation`, which reads
+the release's `world.json` at the world pre-BeginPlay event and relocates the existing
+14 × 14 × 0.30 m slab and four landing mats, and loads the wildlife level. Missing or
+mismatched actors fail startup; `BeginPlay` requires completed infrastructure setup. The port
+centre is north −738 m, east −27 m, in front of the command van and tent; its top is
+10.93 m UE up and the four home origins are 11.13 m UE up on a 5 m grid. Native
+`infrastructure.json` records the actual placement. The parking obstacle has a southern
+notch around the port; physical gravel grading and vegetation masks retain the original
+outer rectangle, and the command-post/mast obstacles remain protected. Character
+placement excludes the slab footprint plus the selected person's body margin.
+Release hashes, placement checks and installed visual evidence are recorded in
+[`world-bear-port.json`](../../mission_planner/measurements/world-bear-port.json).
+
+## Run the packaged world
+
+A compatible NVIDIA driver, NVIDIA Container Toolkit and Docker are required; the editor is not.
+
+```sh
+docker build --build-arg SNR_UID="$(id -u)" --build-arg SNR_GID="$(id -g)" \
+  -t snr-unreal-runtime:5.8.2-ubuntu24.04 -f world/unreal/docker/runtime.Dockerfile world/unreal/docker
+bash world/unreal/scripts/setup-pixel-streaming.sh
+node world/unreal/scripts/start-pixel-streaming.cjs      # signalling
+bash world/unreal/scripts/unreal-container.sh run-packaged
+```
+
+A release must contain its executable, cooked content, `scenario-map.txt`, `world.json` and
+`cosys-settings.json`; select it with `SNR_PACKAGE_ROOT`. Navigation validation also needs
+the heightfield at `world.json`'s `heightfield.path`. `SNR_STREAM_CODEC=H264` selects NVENC (build the browser with
+`VITE_STREAM_CODEC=H264`). For remote viewers configure TURN with `scripts/configure-turn.py`. Never expose
+Cosys RPC, editor debugging or the streamer endpoint.
+
+The launcher requires `SNR_UNREAL_HOME` for each instance's writable cache and
+`SNR_PIXEL_STREAMING=0|1`. Packaged releases are mounted read-only; Unreal's user
+directory holds logs and saved state. `SNR_PIXEL_STREAMING=0` disables creation
+and automatic start of the default streamer using the packaged Pixel Streaming 2
+settings. It requires no signalling or WebRTC ports. A streaming instance requires
+`SNR_STREAMER_PORT`, `SNR_WEBRTC_MIN_PORT` and `SNR_WEBRTC_MAX_PORT`.
+A non-streaming instance accepts a
+320×180 viewport and an explicit 1–60 FPS cap; flight physics runs independently.
+
+## Build and package
+
+Set `UE_ROOT` to a licensed UE 5.8.2 installation, restore the licensed Open Meadow content, then:
+
+```sh
+docker build --build-arg SNR_UID="$(id -u)" --build-arg SNR_GID="$(id -g)" \
+  -t snr-unreal:5.8.2-ubuntu24.04 - < world/unreal/docker/editor.Dockerfile
+.venv-cosys/bin/python -m world.cosys.fetch_cosys
+bash world/unreal/scripts/unreal-container.sh build
+```
+
+Package only after selecting the matching Content and explicit manifests described
+under [Rendering and packaging](#rendering-and-packaging).
+
+Run `bash world/cosys/verify-plugin.sh` before invoking `Build.sh` directly, including
+code-only game relinks. It verifies the required geodesy, sensor and UE 5.8 patches
+in the local plugin source; an installed release may have been built in another checkout.
+
+The `character-authoring` mode of `unreal-container.sh` adds a private X display:
+`docker build -t snr-unreal-authoring:5.8.2 - < world/unreal/docker/authoring.Dockerfile`.
+
+## Valley foundations
+
+`world/cosys/world.json` owns the rectangular search bounds, heightfield layout,
+version, hash and the fixed sun: apparent elevation and azimuth (clockwise from
+north, so UE yaw) for 2026-10-31 13:00 PDT at the OriginGeopoint, from NREL SPA
+(`pvlib 0.15.2`: apparent elevation 37.643379°, azimuth 185.762952°).
+`landmarks.json` owns public names, aliases, kinds and geometry in Unreal
+centimetres; it contains no subject or clue placement. North is +X and east is +Y.
+`world.cosys.landmarks` is the shared search loader.
+
+The catalogue includes the southern trailhead and command post, the meadow,
+creek-loop, lake and lookout trails with signpost obstacles at their junctions, a
+footbridge, Beaver Pond, Granite Lake and its Snow Survey Hut, Granite Dome, Lookout
+Tarn and its talus, Aspen Bend, lodgepole woodland, the granite ridge and lookout.
+The cabin, fence, fire road, campsite, fire ring and boulder field also have public
+geometry. Their presence in the catalogue is an authoring specification, not proof
+of built scenery. Every landmark has `heightM`, the tallest permitted part above
+local terrain. Raised features have polygon footprints; roads, trails, creeks and
+ponds have zero height. Forest and dome heights are the measured dressing tops (rounded up to
+0.5 m); authoring must stay within every height. Same-kind polygons may neither
+overlap nor touch, and the catalogue supplies every class required by the behavior
+prior.
+
+Generate the numeric terrain with a new evidence path:
+
+```sh
+.venv-cosys/bin/python -m world.unreal.valley \
+  --evidence-dir .local/evidence/world/valley/<new-terrain-run>
+```
+
+The generator reconstructs the analytic meadow and verifies its reference hash. It
+then shapes the landforms, each from design values in `valley.py`:
+
+- Granite Dome replaces the northern hill as a roche moutonnée: a whaleback stoss
+  rising from the north to a rounded summit, and a lee face toward the meadow cut
+  by a plane across the ice flow. Each joint block plucks the face back and offsets
+  its ledges, which leave flat bases for cliff meshes; the ledged face curves around
+  the dome. Exfoliation sheets step along wandering contours, joint grooves mark the
+  gentler upper dome and lumpy talus cones run from the face into the meadow, at most
+  60 m above its median.
+- Granite Lake holds a flat 15 m surface, deep under stepped north-shore slabs and
+  shallow off the southern beach and outlet moraine; its bench merges into the
+  terrain over noise-varied widths. Lookout Tarn's cirque floor reaches into the
+  ridge flank under a horseshoe headwall, with a talus fan down to the east shore
+  and a rock threshold on the open west side. Granite Lake spills over a notched
+  granite sill. Beaver Pond's irregular shore holds a silt floor behind a dam line
+  across its outlet.
+  Pond polygons are the shorelines: the basin checks hold each waterline to its
+  polygon, so bays and points are authored in `landmarks.json`.
+- Structures stand on pads feathered over 15 m; road and trail beds are graded, the
+  fire road carries a crown between two wheel tracks and edge berms, and the meadow
+  carries hummocks and swales. Trail and road corners are circular arcs.
+- Meadow Creek leaves the lake's south-east spillway, passes Aspen Bend, the
+  footbridge reach and the pond, then follows priority-flood/D8 drainage to the east
+  boundary within 12 m. It meanders in sine-generated bends with a narrow bank band,
+  widens into a ford at the footbridge, and the receipt lists its seeded bed boulders
+  for placement.
+
+Shaping keeps every grid triangle, on either diagonal, within 36°, and the quantized
+field is asserted at 37°. Nadir footprints require corner rays to descend faster
+than the steepest axis gradient, which fails above 41.4° at any yaw, so steep looks
+come from shape and rock meshes. The generator also asserts the 18° walking limit
+under every trail tread, fire-road grades of at most 12%
+([USFS Low-Volume Roads BMP Field Guide, ch. 4](https://www.fs.usda.gov/t-d/programs/forest_mgmt/projects/lowvolroads/ch4.pdf)),
+a descending creek bed and water surface, dry banks, basin water held inside each
+footprint, pad clearance, bridge crossings and an unchanged southern buffer. It
+writes the tracked heightfield `valley-height.r16` (the path in `world.json`), and the receipt
+and eight uint8 layer masks (`mask-<layer>.png`: pond silt, cobble bed, granite, gravel road,
+trail tread, needle floor, wet meadow, dry meadow; 255 per sample in the heightfield
+row/column layout) to `.local/world/valley/terrain/`; an existing destination is an error. The original
+square's regression checks the uncarved analytic meadow independently.
+
+`horizon.crests` builds four seeded, overlapping granite crest layers 3.5–17 km
+beyond the rectangle, in UE centimetres with upward normals. Import them without
+collision, each layer with its own aerial-perspective material. `horizon.apron` builds
+the meadow ground from the landscape edge out beneath them: radial spokes start on
+edge samples at their exact heights over a skirt that hides LOD cracks, keep the
+drone port's ground flat, and rise within 1 km into rolling foothills that bury the
+crest feet.
+
+`author-unreal.sh build-open-meadow GeometryScripting` (with `SNR_EVIDENCE_DIR`) replaces the
+OpenMeadow landscape from `height.r16`, asserting the hash, layout and spacing against `world.json`
+and the receipt, and imports the eight masks as weight-blended paint layers. Each layer gets a CC0
+Poly Haven scan pinned in `blender/polyhaven.lock.json` (fetch with `fetch_polyhaven`), hex-tiled at
+full scan resolution (three hashed rotations and offsets on a 150 cm triangle grid, blended by
+luminance-weighted vertex weights) and tinted by 16 m and 120 m colour fields. Samples are measured
+on the tangent plane, so slopes keep the scan scale, and each scan's mean normal is removed before
+the per-cell rotation. The script rebuilds every asset in `/Game/Valley/Ground`, adds flat Single
+Layer Water surfaces for the lake, tarn and pond at their receipt levels and a creek ribbon at the
+receipt water surface out to the bank tops, the four crest layers and the apron in `MI_ValleyApron`,
+whose `Apron` static switch feeds the dry-meadow layer straight to the outputs (a static mesh gets
+no landscape layer weights), removes the legacy horizon plane and port plinth, asserts the kept actors, and sets the
+directional light to the `world.json` sun. Single Layer Water needs Opacity 0: the unconnected default of 1
+replaces the water volume with a black base colour. Do not label unchanged cooked scenery with the
+valley manifest.
+
+`valley-grass.json` owns GPU runtime grass: landscape layers, mesh densities per 100 m², uniform
+scales, foliage transmission/specular, ground scan/tints, Nanite shape preservation, and
+studio/mission grid profiles. `author-unreal.sh build-valley-grass` derives both graphs from UE
+5.8's `TPL_Showcase_RuntimeGrassGPU` and authors `valley.grass` plus `valley.pcg` in OpenMeadow.
+Run it before the meadow step, then dressing and the content audit. The meadow step preserves
+these actors, sky.clouds and the sun. Apply `build-valley-lighting` after dressing to update the
+existing daylight actors, then audit.
+
+The graph uses Generate Landscape Textures (the 5.8 replacement for Generate Grass Maps), GPU HLSL
+point generators and GPU Static Mesh Spawners. Every point stays on the GPU; 5.8 defers texture
+readback and this graph has no CPU texture consumer. Empty LandscapeGrassType assets are required
+by the engine's named mask exporter and have no varieties. The cooked level strips CPU grass-map
+data. There is no Landscape Grass instance generation or ring split. The game module enables
+`grass.GrassMap.AlwaysBuildRuntimeGenerationResources` before cooking and loading materials: UE
+5.8's PCG exporter requires that resource flag in game worlds. It enables the GPU mask shaders and
+resources, not Landscape Grass instance generation.
+
+The studio camera supplies a PCGGenSourceComponent. Hierarchical partitioned generation uses 32 m
+near cells and 64 m middle cells; middle clumps widen in XY to compensate for lower density
+without changing blade heights. Mission entry destroys the studio source, switches to the authored
+mission graph, and registers one source on each of the four front_center cameras. After mission
+cancellation and landing, Studio reset removes those sources, restores the Studio graph and
+camera source, and re-enables viewport rendering before acknowledging the reset. Texture
+streaming retains its sensor views. Mission mode keeps the viewport disabled until an admitted
+Pixel Streaming viewer selects a drone. That selection activates the configured forward `fpv`
+camera and enables the viewport; its game-window backbuffer supplies continuous WebRTC video.
+The stabilized camera follows the aircraft's position through AUTO, BRAKE, RTL, LAND and
+disarmed states, level at the aircraft heading until inspection aims it
+([Cosys settings](../cosys/README.md#coupled-settings)). Closing the owning viewer disables mission viewport
+rendering. Scene updates continue every frame so PCG compute and GPU Scene cleanup continue
+between sensor captures.
+OpenMeadow does not need World Partition: UE 5.8 supports partitioned PCG components in ordinary
+levels, with a saved PCGWorldActor and explicit generation sources. The runtime scheduler ticks
+every frame, with 64 concurrent components and a 10 ms PCG frame budget. Nanite instance draw
+distances hide middle clumps inside the near reach minus one near grid cell, leaving a transition
+overlap; each band's maximum draw distance equals its authored reach. `ground` selects the scanned
+grass-covered ground and its mild colour variation at all distances, including the apron. The
+ground retains scanned roughness and nonzero dielectric specular. Grass overrides use Two Sided
+Foliage with leaf transmission, the original normal/roughness maps, and no brightness boost.
+`SourceAlbedoGain` reverses the pinned reference-render colour gains in `blender/external.json` to
+remove that colour bias while retaining texture detail, including dry tips. It does not replace
+texture luminance with a uniform green palette.
+
+The content audit enforces a 12,000,000-instance GPU Scene budget. It counts allocated slots
+before mask rejection, every band inside its cleanup radius, four independent mission sources,
+64 in-flight cells, every authored primitive and foliage instance, and a 65,536-instance reserve
+for runtime actors. `grass_budget.py` bounds every possible camera position within a grid cell;
+mission uses 16 m cells to retain the original density and 160 m reach within that budget.
+
+`ScenarioSession` accepts only `{type: "drone-view", droneId: "Drone1"…"Drone4"}` for
+mission video. Its acknowledged state is exactly `{droneId}`. Studio authoring commands remain
+locked, and authoring packets and navigation-state messages are not sent to the mission viewer.
+Selection changes neither camera pose nor flight commands. Studio camera ticking is disabled
+during missions so it cannot replace the selected aircraft view. The existing single-peer
+signalling admission, video producer, encoder and TURN route are reused; search RGB acquisition
+keeps its configured nadir `front_center` camera and request-driven render targets.
+
+The native API checks use the installed Cosys-AirSim 3.5.0 `PIPCamera.cpp::showToScreen`
+(activate the camera component and select its actor), `FlyingPawn.cpp::getCameras` (stock `fpv`),
+`PawnSimApi.cpp::setupCamerasFromSettings` and `UniqueValueMap.hpp::insert_or_assign` (the configured
+`fpv` and `front_center` entries replace those registry keys), and UE 5.8.2
+`PixelStreaming2Delegates.h::OnClosedConnectionNative`.
+`EpicRtcStreamer.cpp::DeletePlayerSession` dispatches that delegate on the game thread. These
+sources and their hashes are recorded with the drone-video evidence. This change requires a
+new native executable; cooked scene assets are unchanged.
+Near studio grass uses the original full density; larger density needs a visible coverage benefit.
+The 12 million budget is an authoring check, not a runtime crash threshold. UE 5.8 time-slices
+out-of-range cell cleanup while continuing to schedule generation, so registered component counts
+can temporarily exceed that model during travel. Telemetry retains those counts; the engine's
+24-bit GPU Scene instance address limit remains in force.
+
+Source verification: UE 5.8.2 `Engine/Plugins/PCG`, particularly PCGGenerateLandscapeTextures,
+PCGCustomHLSL, PCGStaticMeshSpawner, PCGComponent and RuntimeGen; Landscape.cpp's cooked grass
+stripping; EngineTypes.h's mutually exclusive PreserveArea/Voxelize enum. The second reference is
+PCGBiomeSample's BroadleafForestGroundScatter_RuntimeGrass. Epic's
+[GPU processing](https://dev.epicgames.com/documentation/en-us/unreal-engine/using-pcg-with-gpu-processing-in-unreal-engine?application_version=5.8)
+and [generation modes](https://dev.epicgames.com/documentation/en-us/unreal-engine/using-pcg-generation-modes-in-unreal-engine?application_version=5.8)
+describe the pipeline; the installed 5.8 source supersedes the documentation's old readback checkbox.
+
+`valley-dressing.json` places every mesh under `/Game/Valley`: each mesh records its Unreal bounds
+and collision profile (`ScenarioTerrain` for the bridge, rocks and logs, `ScenarioObstacle` for
+structures and props, `NoCollision` for vegetation and small debris). Scatter rows fill stratified
+cells, keep the fraction under a seeded cluster noise and accept points inside their `polygon`
+edge band (one band across a list of disjoint polygons), creek `line` band, `box` or layer `mask`.
+Centres keep `clearM` from the ponds, so shore rows may overhang the water, and `clearM` plus the
+row's widest bounding radius at its largest scale from the trail and road treads, creek bank tops,
+the drone port and structure-like polygons; instances get a random yaw and ±15% scale, and no
+row's tallest mesh at its largest scale may top 18 m. Explicit rows (`at`) give poses whose
+footprints must lie in their area.
+Instances taller than 4 m must stand in a forest, structure, obstacle or outcrop polygon whose
+`heightM` covers them. Adding an asset is one mesh entry and one row. Plan into a new directory, then author it after `build-open-meadow`:
+
+```sh
+.venv-cosys/bin/python -m world.unreal.valley_dressing \
+  --output .local/evidence/world/valley/<new-dressing-run>/placements.json
+SNR_EVIDENCE_DIR=.local/evidence/world/valley/<new-dressing-run> \
+  bash world/unreal/scripts/author-unreal.sh build-valley-dressing
+```
+
+Ground heights are the bilinear heightfield (explicit footprints use the median of centre and
+corners, so the footbridge rests on its banks); landing mats lie on the drone port's top. The
+placements name each instance's mesh by index into its row's mesh list. The editor step
+writes one foliage type per mesh into the `valley.dressing` foliage actor, then proves that
+scenario ground traces reach only terrain or `ScenarioTerrain` meshes and that a walker-sized
+capsule standing every 5 m along each trail and road overlaps nothing.
+
+## Rendering and packaging
+
+The project requests Vulkan SM6, Lumen GI/reflections with hardware ray tracing,
+virtual shadow maps and Nanite. Cosys scene captures explicitly opt into Lumen;
+viewport settings alone do not establish the sensor lighting path. Startup checks
+the capture component settings and reports whether the `r.Lumen.DiffuseIndirect.Allow` and
+`r.Lumen.Reflections.Allow` scalability switches leave Lumen on; with them at 0 every view
+falls back to the sky light and screen-space reflections. Each capture keeps its own Lumen scene
+that starts without surface-cache cards, so its first renders shade card-less hits black. Every
+captured frame asserts that its first-percentile luminance (Rec. 709, every 4th pixel) is above
+zero. Actual rendered passes and performance still need measurement on the packaged profile;
+configuration checks are not that proof.
+
+`valley-lighting.json` fixes the look after the level step:
+
+```sh
+SNR_EVIDENCE_DIR=.local/evidence/world/valley/<new-lighting-run> \
+  bash world/unreal/scripts/author-unreal.sh build-valley-lighting
+```
+
+It owns and asserts the `world.json` sun rotation and the explicit sun/skylight intensities, sets
+`look.daylight` to manual exposure at `exposureEv100` with no physical camera and so no eye
+adaptation (the drone captures use the same EV through `configure_drones.py`), sets the `sky.haze`
+density from the Koschmieder visibility and its half height (density 0.0002, falloff 0.2, 50 m
+half height), and enables volumetric fog over 1600 m with scattering distribution 0.2. It requires
+the existing `sky.clouds` VolumetricCloud and updates it using
+`/Engine/EngineSky/VolumetricClouds/m_SimpleVolumetricCloud_Inst` at 2 km with a 3 km layer, sets
+sun cloud shadows (strength 0.35, extent 2 km, resolution scale 2), and enables sky light
+real-time capture. The sun is 50,000 lux and the skylight multiplier is 2.4. White balance is 6500
+K; local highlight/shadow contrast is 0.85 with fixed global exposure. These are authored daylight
+settings, not a measured photometric calibration. SkyAtmosphere's aerial-perspective view distance
+scale is 1.5 to soften distant crests; their authored material colours are unchanged. Changing
+those colours requires rebuilding the landscape with `build-open-meadow.py`. Every setting is read
+back and asserted; stored values and replaced exposure, sun rotation and fog values go to
+`lighting.json`. Updates preserve the single cloud actor and require a new evidence destination.
+`build-open-meadow.py` preserves `sky.clouds` and leaves sun rotation to this step.
+
+The foliage masters carry no world position offset: a `SimpleGrassWind` sway made the Nanite
+lodgepole crowns fall back to bare trunks in the packaged build.
+
+Sun calculation uses [pvlib's NREL SPA](https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.solarposition.spa_python.html)
+at the generated settings' OriginGeopoint, altitude-derived pressure, 12 °C and delta-T 67 s.
+The UE 5.8.2 component headers define cloud distances in km and volumetric fog distance in cm.
+Shared lighting and material changes alter drone imagery and require recapturing perception
+calibration frames before reusing previous calibration results. Deployment does not run calibration
+automatically.
+
+Packaging requires explicit manifests for the Content being cooked. Override any
+installed `Live` paths inherited from the runtime profile. Generate settings for
+the installed RPC port and instance base, then supply both files:
+
+```sh
+export SNR_WORLD_CONFIG="$PWD/world/cosys/world.json"
+export SNR_COSYS_SETTINGS="$PWD/.local/cosys-settings.json"
+export SNR_PSO_CACHE=bundled
+.venv-cosys/bin/python -m world.cosys.configure_drones \
+  --rpc-port "$SNR_COSYS_PORT" --instance-base "$SNR_SITL_INSTANCE_BASE" \
+  --output "$SNR_COSYS_SETTINGS"
+bash world/unreal/scripts/unreal-container.sh exec \
+  bash world/unreal/scripts/package-unreal.sh \
+  .local/unreal/<new-build> .local/evidence/world/valley/<new-package-run>
+bash world/unreal/scripts/stage-live-release.sh .local/unreal/<new-build>/Linux
+```
+
+Use these current source manifests only after authoring their corresponding
+Content. A rendering-only baseline instead uses explicit snapshots of the
+unchanged world's manifest and matching Cosys settings. The package retains both
+manifests and records its shader platform; the launcher requires that record.
+
+Content must be a real worktree-owned copy holding exactly the cook closure.
+`SNR_EVIDENCE_DIR=<new-directory> bash world/unreal/scripts/author-unreal.sh audit-content`
+follows hard and soft package references from the cooked map and the always-cooked
+directories and writes `content-manifest.json` with each kept package's size and SHA-256.
+It fails on a missing `/Game` reference, a redirector, an empty or unreferenced package, or
+a catalog whose people, Rocketbox actor classes, region bounds or asset version disagree with
+`creator-people.json` and `world.json`. Dangling references inside the pinned Cosys plugin
+content are recorded separately. Check disk space before each copy, build and package, and
+keep the editor at six parallel actions.
+
+## Engine plugin overrides
+
+`PixelStreaming2` and `LibVpxCodecs` are reconstructed from the licensed engine plugins by
+`UE_ROOT=/path/to/UnrealEngine-5.8.2 bash world/unreal/scripts/fetch-engine-plugins.sh NEW_DIRECTORY`.
+The fetcher checks the engine changelist and original-file hashes, excludes build outputs and applies
+`pixelstreaming2-ue58.patch` and `libvpxcodecs-ue58.patch` without fuzz. Existing destinations fail.
+The patches preserve the project include path, VP8 thread budget and encoder diagnostics.
+
+## Blender assets
+
+`blender/` builds environment assets in Blender 5.2.3 from seeded, deterministic scripts. Each family
+has a builder `<family>.py` and a spec `<family>.json` (reference id, seed, bounding dimensions in metres
+with tolerance, depth buried below grade, texture budget, collision flag, turnaround panel cells, master
+correspondences and colour regions; schema in `spec.py`). `common.py` holds the shared parts, materials,
+export and `build.json`. Assets use metres, +Z up and front +X, with the origin at the ground-contact
+centre at grade; the GLB (glTF +Y up) holds meshes and material slots, and textures ship as PNGs.
+Builds fail when the extents leave the spec tolerance. A build with `--repeat-of <earlier build>`
+asserts the same `geometrySha256` and GLB sha256, and textures within 2 levels in at most 1e-5 of
+channel values, since OptiX bakes are not bit-exact; it records the measured differences.
+
+```sh
+B=".local/toolchains/blender-5.2.3-linux-x64/blender -b --factory-startup --python"
+export LD_LIBRARY_PATH=$PWD/.local/toolchains/runtime-libs/usr/lib/x86_64-linux-gnu
+P=world/unreal/blender O=.local/evidence/world/valley-art/NEW
+.venv-cosys/bin/python -m world.unreal.blender.fetch_polyhaven
+$B $P/structures.py -- ranger-cabin --output $O/build
+$B $P/structures.py -- ranger-cabin --output $O/build-repeat --repeat-of $O/build
+```
+
+The approved reference images were generated through fal under the provider's terms
+(`LicenseRef-fal-provider-output`), which are not CC0 or MIT. They are design targets, not geometry
+or textures, and their provenance record stays with the deployment rather than in the repository.
+
+## MCP toolchain
+
+MCP is for inspection and iteration only; shipped content comes from tracked scripts.
+
+| Server  | Source, pin, licence                                                                                                   | Endpoint                          |
+| ------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------- |
+| Unreal  | Epic `Engine/Plugins/Experimental/ModelContextProtocol` with `EditorToolset`, UE 5.8.2 CL 56702186, UE EULA (NoRedist) | HTTP `http://127.0.0.1:55570/mcp` |
+| Blender | `https://projects.blender.org/lab/blender_mcp` at `dbbf836ad4b1025f14a2b3b504c43903f39e0b04`, GPL-3.0-or-later         | add-on TCP `127.0.0.1:9879`       |
+
+Both plugins have `TargetAllowList: ["Editor"]` in the `.uproject`, so packaged games exclude them.
+The editor's HTTP listener binds `localhost` by default. Start it under the 56 GiB memory cap:
+
+```sh
+UE_ROOT=... SNR_UNREAL_HOME=$PWD/.local/unreal/editor-home SNR_MEMORY_LIMIT=56g SNR_UNREAL_MCP_PORT=55570 \
+  systemd-run --user --scope -p MemoryMax=56G -p MemorySwapMax=0 \
+  bash world/unreal/scripts/unreal-container.sh mcp-editor
+docker stop snr-unreal-mcp-55570
+```
+
+The Blender Lab server has no telemetry. Clone it into `.local/vendor/mcp/blender-lab`, install `mcp/` into
+`.local/mcp/blender-venv`, then build the add-on into `.local/blender-user` and serve the scene headless:
+
+```sh
+export BLENDER_USER_RESOURCES=$PWD/.local/blender-user
+export LD_LIBRARY_PATH=$PWD/.local/toolchains/runtime-libs/usr/lib/x86_64-linux-gnu
+B=.local/toolchains/blender-5.2.3-linux-x64/blender
+$B -b --factory-startup -c extension build --source-dir .local/vendor/mcp/blender-lab/addon/blender_mcp_addon \
+  --output-dir .local/mcp
+$B -b -c extension install-file -r user_default -e .local/mcp/mcp-1.0.0.zip
+systemd-run --user --scope -p MemoryMax=16G -p MemorySwapMax=0 \
+  $B -b --online-mode -c blender_mcp --host 127.0.0.1 --port 9879
+```
+
+Register both endpoints with the MCP client of your choice; registrations stay local to the checkout.
+
+## Stream resolution and shader platform
+
+The launcher accepts `SNR_STREAM_HEIGHT=2160` for 3840×2160 and `1440` for 2560×1440.
+Each package records its cooked shader platform in `shader-platform.txt`; the launcher requires
+that manifest and starts the matching SM5 or SM6 RHI. Packaging saves the exact engine configuration
+beside its log. Missing or unsupported shader platforms fail before starting Unreal.
+A resolution experiment requires restarting `snr-unreal@<k>`; changing the setting does not alter the
+cooked lighting features or automatically select a different quality profile.
+
+Check SM6 and hardware ray-tracing support using UE's generated Vulkan profile implementation:
+
+```sh
+UE_ROOT="$PWD/.local/toolchains/UnrealEngine-5.8.2" \
+  bash world/unreal/scripts/unreal-container.sh exec \
+  bash world/unreal/scripts/check-vulkan-profile.sh
+```
+
+The check creates only temporary Vulkan instances and uses the NVIDIA ICD. It does not start another
+renderer or listener. Both profile results must pass; it does not bypass the engine's profile checks.
+A supported device still needs SM6 shaders and the project's uncooked assets for a complete rebuild.
+
+## Measure packaged performance
+
+`measure_performance.py` launches the release in `SNR_PACKAGE_ROOT` at 3840×2160, 60 FPS cap, no
+Pixel Streaming, under the 56G scope, with four coupled autopilots. After a warm-up capture
+it flies the pinned lanes at 5 m/s with a 4K capture every 16 m per drone (1.25 Hz fleet-wide), then
+runs 40 back-to-back captures per hovering drone. Frame and GPU times come from the CSV profiler
+(`FrameTime`, `GPUTime` = `RHIGetGPUFrameCycles`), anchored to host time by the timestamped
+`CsvProfile STOP` event. VRAM is sampled per process with `nvidia-smi`; RAM is the reset `VmHWM`.
+Any GPU process other than a ScenarioStudio world fails the run. `--lumen on|off` sets both Lumen
+scalability switches before the warm-up and waits until DroneFoundation reports them. The warm-up
+frames, each drone's first render at an identical pose, are saved in the run directory, and every
+capture records its shadow floor, so the two arms compare frames, capture time and GPU time.
+
+```sh
+set -a; . .local/runtime.env; set +a   # SNR_PACKAGE_ROOT, SNR_COSYS_SETTINGS, SNR_WORLD_CONFIG: the release
+.venv-cosys/bin/python -m world.unreal.measure_performance --lumen on \
+  --output .local/evidence/world/<new>.json
+```
+
+## Characters
+
+[Character authoring](characters/README.md) imports the approved Microsoft Rocketbox selection,
+retargets its pinned animations to each original skeleton, and builds the runtime catalog.
+The eleven-character selection uses fixed original clothing.
+
+## Render resolution and pipeline cache
+
+`SNR_RENDER_PERCENTAGE` fixes the browser's internal render percentage at startup;
+TSR reconstructs the configured output resolution. Drone capture uses independent
+render targets: UE's scene-capture path renders at a resolution fraction of 1.0 unless
+explicitly configured to inherit the main view. Sensor resolution remains 3840×2160.
+
+The launcher enables Vulkan's pipeline file cache alongside PSO precaching. Set
+`SNR_PROFILE=1` before starting an instance to collect PSOs with `-logPSO`; this also
+enables Pixel Streaming diagnostics. Keep `SNR_PROFILE=0` for normal serving, because
+`-logPSO` clears Unreal's writable PSO cache at startup. UE 5.8 disables the file cache
+by default when Vulkan precaching is active, so the launcher explicitly enables it.
+A bundled cache is valid only for the Content it was recorded from. Package with
+`SNR_PSO_CACHE=recording` while no `.spc` exists, run that package with `SNR_PROFILE=1`
+and exercise the final profile, then use
+`bundle-pso-cache.py RECORDINGS_DIRECTORY SHADER_KEYS_DIRECTORY NEW_EVIDENCE_DIRECTORY`
+with `UE_ROOT` set. It expands the recorded caches, records input/output hashes and
+installs `Build/Linux/PipelineCaches/ScenarioStudio_SF_VULKAN_SM6.spc`; it fails if that
+output already exists. Package again with `SNR_PSO_CACHE=bundled`, which verifies the cook
+picked up the stable cache and records its hash in `pso-cache.txt`. Only bundled packages
+can be staged. The bundled cache contains graphics, compute and ray-tracing shader entries.
+UE 5.8.2 reconstructs partial ray-tracing pipelines from those entries; this does not
+prove coverage of every complete runtime ray-tracing pipeline.

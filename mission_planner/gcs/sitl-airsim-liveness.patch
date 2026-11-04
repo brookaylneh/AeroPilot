@@ -1,0 +1,47 @@
+--- a/libraries/SITL/SIM_AirSim.cpp
++++ b/libraries/SITL/SIM_AirSim.cpp
+@@ -25,0 +26 @@
++#include <stdlib.h>
+@@ -32,2 +33,5 @@
+-
+-#define UDP_TIMEOUT_MS 100
++#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
++#include <AP_HAL_SITL/Scheduler.h>
++#endif
++
++#define UDP_TIMEOUT_MS 1000
+@@ -269 +273 @@
+-void AirSim::recv_fdm(const sitl_input& input)
++void AirSim::recv_fdm()
+@@ -273,13 +277,10 @@
+-    uint32_t wait_ms = UDP_TIMEOUT_MS;
+-    while (ret <= 0) {
+-        // printf("No sensor message received - %s\n", strerror(errno));
+-        ret = sock.recv(&sensor_buffer[sensor_buffer_len], sizeof(sensor_buffer)-sensor_buffer_len, UDP_TIMEOUT_MS);
+-        wait_ms += UDP_TIMEOUT_MS;
+-
+-        // If no sensor message is received after 1 second, resend servos
+-        // this helps if messages are lost on the way, and both AP & Airsim are waiting for each ther
+-        if (wait_ms > 1000) {
+-            wait_ms = 0;
+-            printf("No sensor message received in last 1s, error - %s, resending servos\n", strerror(errno));
+-            output_servos(input);
+-        }
++    if (ret <= 0) {
++#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
++        if (HALSITL::Scheduler::_should_exit) {
++            fprintf(stderr, "AirSim stopping on requested shutdown\n");
++            exit(0);
++        }
++#endif
++        fprintf(stderr, "No sensor message: AirSim receive failed on port %u (timeout=%u ms, bytes=%zd, errno=%d)\n",
++                airsim_sensor_port, UDP_TIMEOUT_MS, ret, errno);
++        exit(1);
+@@ -415 +416 @@
+-    recv_fdm(input);
++    recv_fdm();
+--- a/libraries/SITL/SIM_AirSim.h
++++ b/libraries/SITL/SIM_AirSim.h
+@@ -89 +89 @@
+-    void recv_fdm(const sitl_input& input);
++    void recv_fdm();

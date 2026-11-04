@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 1,
+  "worldId": "open-meadow-unreal",
+  "environmentAssetVersion": "open-meadow-unreal-0.5.0",
+  "infrastructureVersion": "four-drone-port-3-command-post",
+  "coordinateSystem": "UE_LH_Z_UP_CENTIMETERS",
+  "north": "+X",
+  "east": "+Y",
+  "searchBoundsCm": {
+    "min": {
+      "x": -80467.2,
+      "y": -120700.8,
+      "z": -10000.0
+    },
+    "max": {
+      "x": 80467.2,
+      "y": 120700.8,
+      "z": 30000.0
+    }
+  },
+  "playerStartUeCm": {
+    "x": 0.0,
+    "y": 0.0,
+    "z": 4000.0
+  },
+  "moveWorldOrigin": false,
+  "port": {
+    "centerUeCm": {
+      "x": -73800,
+      "y": -2700,
+      "z": 1093
+    },
+    "dimensionsMetres": [
+      14,
+      14,
+      0.3
+    ],
+    "searchable": false
+  },
+  "heightfieldSha256": "d44a5a9545de404844be1b03c81225abf4156f990d26ec931d893ed15b491766",
+  "sun": {
+    "localTime": "2026-10-31T13:00:00-07:00",
+    "apparentElevationDegrees": 37.64337939590742,
+    "azimuthDegreesClockwiseFromNorth": 185.76295165808904,
+    "source": "NREL SPA (pvlib 0.15.2, spa_python) at OriginGeopoint; altitude-derived pressure, 12 C, delta_t=67 s"
+  },
+  "vehicles": {
+    "Drone1": {
+      "spawnUeCm": {
+        "x": -73550,
+        "y": -2950,
+        "z": 1113
+      },
+      "yawDegrees": 0
+    },
+    "Drone2": {
+      "spawnUeCm": {
+        "x": -73550,
+        "y": -2450,
+        "z": 1113
+      },
+      "yawDegrees": 0
+    },
+    "Drone3": {
+      "spawnUeCm": {
+        "x": -74050,
+        "y": -2950,
+        "z": 1113
+      },
+      "yawDegrees": 0
+    },
+    "Drone4": {
+      "spawnUeCm": {
+        "x": -74050,
+        "y": -2450,
+        "z": 1113
+      },
+      "yawDegrees": 0
+    }
+  },
+  "heightfield": {
+    "path": "world/unreal/valley-height.r16",
+    "rows": 3025,
+    "columns": 2017,
+    "sampleSpacingMetres": 0.7982857142857143,
+    "rowAxis": "+Y",
+    "columnAxis": "+X",
+    "encoding": "uint16-little-endian",
+    "zeroSample": 32768,
+    "samplesPerMetre": 128
+  }
+}

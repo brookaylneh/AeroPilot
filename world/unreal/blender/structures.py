@@ -1,0 +1,1600 @@
+"""Build valley structures from real-world dimensions and CC0 materials.
+
+blender -b --factory-startup --python world/unreal/blender/structures.py -- <asset> --output <dir>
+Writes <asset>.blend, <asset>.glb, derived albedo PNGs and build.json into a new .local directory.
+The ranger cabin, the snow survey hut and the fire lookout cab are one cabin kit with different
+parameters. Every asset is one render mesh SM_<Name> plus box hulls UCX_SM_<Name>_## that Unreal
+Interchange imports as its collision.
+"""
+
+import math
+import sys
+from collections import namedtuple
+from functools import partial
+from pathlib import Path
+
+import bmesh
+import bpy
+import numpy as np
+from mathutils import Matrix, Vector
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+from world.unreal.blender.common import (  # noqa: E402
+    TEXTURES,
+    add,
+    beam,
+    box,
+    emit,
+    frame,
+    image,
+    lin,
+    main,
+    matched,
+    pixels,
+    placed,
+    plank_bands,
+    principled,
+    saved,
+)
+from world.unreal.blender.spec import ROOT, load  # noqa: E402
+
+# Cabin kit frame: -Y is the front, y = 0 the front wall, x = 0 the ridge line. A kit has the body
+# outside the siding (w across the ridge, l along it), the sill-beam base `plinth` (the top of the
+# stone ring), floor, wall plate and ceiling heights, roof pitch and overhangs, the openings per
+# wall with their casing width, the stone ring's mesh step (column, row) or None, and whether it
+# has the porch and a hip roof.
+Kit = namedtuple(
+    "Kit", "w l plinth floor plate ceiling pitch eave rake openings casing porch stone hip"
+)
+SEAT = 0.12
+PORCH_PITCH = math.radians(30)
+POST, POST_Y, DECK_Y = 0.30, -1.40, -1.58
+HEADER = (2.87, 3.12)
+PORCH_POSTS = (-2.735, 2.02, 2.735)
+NEWEL_X = -0.50
+STAIR = (-0.42, 1.90)
+TREAD = 0.28
+EXPOSURE, BOARD_T = 0.19, 0.022
+SEAM_SPACING = 0.40
+TURN = Matrix.Rotation(math.pi / 2, 4, "Z")  # kit front (-Y) to the asset front (+X)
+# The cabin body outside the siding and its opening layout come from the camera/proportion fit of
+# the approved reference; heights follow standard framing and stair practice.
+CABIN = Kit(
+    w=5.72,
+    l=6.90,
+    plinth=0.50,
+    floor=0.65,
+    plate=3.20,
+    ceiling=3.0,
+    pitch=math.radians(40),
+    eave=0.40,
+    rake=0.30,
+    openings={
+        # wall: [(kind, centre along the wall, rough width, sill height, rough height)]
+        "front": [("door", 0.26, 0.97, 0.65, 2.16), ("window", -1.47, 0.96, 1.70, 0.98)],
+        "right": [("window", 2.07, 0.74, 1.60, 1.15), ("window", 4.72, 0.74, 1.60, 1.15)],
+        "rear": [("window", 0.0, 0.74, 1.60, 1.15)],
+        "left": [
+            ("window", 6.90 - 2.07, 0.74, 1.60, 1.15),
+            ("window", 6.90 - 4.72, 0.74, 1.60, 1.15),
+        ],
+    },
+    casing=0.11,
+    porch=True,
+    stone=(0.012, 0.0125),
+    hip=False,
+)
+# Snow survey hut: the kit at shelter scale on a taller stone ring, without the porch, under a
+# 40 degree snow roof; a 2.05 m door and sills 0.92 m above the floor.
+HUT = CABIN._replace(
+    w=3.6,
+    l=4.2,
+    plinth=0.75,
+    floor=0.93,
+    plate=3.10,
+    ceiling=2.90,
+    eave=0.35,
+    stone=(0.02, 0.02),
+    openings={
+        "front": [("door", 0.45, 0.90, 0.93, 2.05), ("window", -1.05, 0.66, 1.85, 0.90)],
+        "right": [("window", 2.1, 0.74, 1.85, 0.90)],
+        "rear": [],
+        "left": [("window", 2.1, 0.74, 1.85, 0.90)],
+    },
+    porch=False,
+)
+# Fire lookout cab: the kit as a square glazed cab on the catwalk under a hip roof with 1.1 m
+# boxed eaves; six double-hung units a side in narrow casings, the door next to the stair head.
+DECK, UNITS, SILL, GLAZING = 7.0, (-2.15, -1.29, -0.43, 0.43, 1.29, 2.15), 0.95, 1.55
+CAB = CABIN._replace(
+    w=5.5,
+    l=5.5,
+    plinth=DECK - 0.18,
+    floor=DECK,
+    plate=9.82,
+    ceiling=9.62,
+    pitch=math.radians(24),
+    eave=1.1,
+    openings={
+        "front": [("window", a, 0.655, DECK + SILL, GLAZING) for a in UNITS[:4]]
+        + [("door", 1.72, 0.84, DECK, 2.16)],
+        "right": [("window", 2.75 + a, 0.655, DECK + SILL, GLAZING) for a in UNITS],
+        "rear": [("window", a, 0.655, DECK + SILL, GLAZING) for a in UNITS],
+        "left": [("window", 2.75 + a, 0.655, DECK + SILL, GLAZING) for a in UNITS],
+    },
+    casing=0.05,
+    porch=False,
+    stone=None,
+    hip=True,
+)
+FASCIA = 0.36
+# Reference-region sRGB mean and luminance standard deviation on the approved master.
+TARGETS = {
+    "timber": ((172, 157, 143), 24),
+    "siding": ((123, 116, 110), 22),
+    "stone": ((168, 154, 142), 37),
+    "deck": ((138, 127, 119), 32),
+}
+CABIN_ROOF = (((84, 92, 85), 0.42), ((80, 89, 82), 0.46), ((88, 95, 88), 0.39))
+HUT_ROOF = (((74, 72, 68), 0.50), ((70, 68, 64), 0.53), ((78, 75, 70), 0.47))
+LOOKOUT_ROOF = (((128, 140, 128), 0.42), ((122, 134, 122), 0.46), ((132, 144, 131), 0.40))
+# Cabin targets rescaled by the lookout master's leg, cab-board and tread regions over the first
+# studio render's.
+LOOKOUT_TARGETS = {
+    "timber": ((150, 133, 123), 24),
+    "siding": ((109, 100, 97), 22),
+    "deck": ((105, 90, 85), 30),
+}
+PLANK_TILE = 3.06  # metres per texture width so a 0.14 m scanned plank spans a 0.19 m board
+
+
+def roof_under(k, x):
+    return k.plate + SEAT + (k.w / 2 - abs(x)) * math.tan(k.pitch)
+
+
+def porch_under(k, x):
+    return HEADER[1] + 0.03 + (k.w / 2 - abs(x)) * math.tan(PORCH_PITCH)
+
+
+def under_beam(parts, under, pitch, x0, x1, y, width, depth, rng, **kwargs):
+    """Timber in the x-z plane at `y` whose top face lies on the underside `under`."""
+    sx = 1 if x1 + x0 >= 0 else -1
+    normal = Vector((sx * math.sin(pitch), 0, math.cos(pitch)))
+    a = Vector((x0, y, under(x0))) - normal * depth / 2
+    b = Vector((x1, y, under(x1))) - normal * depth / 2
+    beam(parts, "timber", a, b, width, depth, normal, rng, **kwargs)
+
+
+def walls(k):
+    """Outer siding planes: origin at a = 0, unit along-wall axis, outward normal, extent."""
+    return {
+        "front": (Vector((0, 0, 0)), Vector((1, 0, 0)), Vector((0, -1, 0)), (-k.w / 2, k.w / 2)),
+        "right": (Vector((k.w / 2, 0, 0)), Vector((0, 1, 0)), Vector((1, 0, 0)), (0, k.l)),
+        "rear": (Vector((0, k.l, 0)), Vector((-1, 0, 0)), Vector((0, 1, 0)), (-k.w / 2, k.w / 2)),
+        "left": (Vector((-k.w / 2, k.l, 0)), Vector((0, -1, 0)), Vector((-1, 0, 0)), (0, k.l)),
+    }
+
+
+def siding(parts, k, rng, bands):
+    board = partial(box, parts, "siding", rng=rng, bevel=0.003, tile=PLANK_TILE)
+    for name, (origin, along, out, (a0, a1)) in walls(k).items():
+        lo, hi = a0 + 0.13, a1 - 0.13
+        holes = [(c - w / 2, c + w / 2, z, z + h) for _, c, w, z, h in k.openings[name]]
+        z0 = k.floor if name == "front" and k.porch else k.plinth + 0.18
+        gable = name in ("front", "rear") and not k.hip
+        top = roof_under(k, 0) if gable else k.plate - 0.14
+        row = 0
+        while z0 + row * EXPOSURE < top:
+            zb = z0 + row * EXPOSURE
+            height = EXPOSURE - 0.006 + rng.uniform(-0.004, 0.004)
+            row += 1
+            spans = [(lo, hi)]
+            for h0, h1, hz0, hz1 in holes:
+                if zb < hz1 and zb + height > hz0:
+                    # Courses crossing a sill or head keep the part outside the opening.
+                    for p0, p1 in ((zb, hz0), (hz1, zb + height)):
+                        if p1 - p0 > 0.015:
+                            centre = origin + along * ((h0 + h1) / 2) + out * (BOARD_T / 2)
+                            centre.z = (p0 + p1) / 2
+                            size = (h1 - h0, BOARD_T, p1 - p0)
+                            board(size, frame(centre, along, out), band=rng.choice(bands))
+                    spans = [
+                        s
+                        for a, b in spans
+                        for s in ((a, min(b, h0)), (max(a, h1), b))
+                        if s[1] - s[0] > 0.02
+                    ]
+            for a, b in spans:
+                cuts = [a]
+                while b - cuts[-1] > 3.4:
+                    cuts.append(cuts[-1] + rng.uniform(1.6, 3.2))
+                cuts.append(b)
+                for s0, s1 in zip(cuts, cuts[1:]):
+                    s0, s1 = s0 + 0.002, s1 - 0.002
+                    centre = (
+                        origin
+                        + along * ((s0 + s1) / 2)
+                        + out * (BOARD_T / 2 + rng.uniform(0, 0.003))
+                    )
+                    centre.z = zb + height / 2
+                    tilt = Matrix.Rotation(rng.uniform(-0.006, 0.006), 4, along)
+                    matrix = Matrix.Translation(centre) @ tilt @ frame((0, 0, 0), along, out)
+                    clip = ()
+                    if gable:
+                        apex = Vector((0, 0, roof_under(k, 0) - 0.01))
+                        clip = tuple(
+                            (apex, Vector((s * math.sin(k.pitch), 0, math.cos(k.pitch))))
+                            for s in (-1, 1)
+                        )
+                    size = (s1 - s0, BOARD_T, height)
+                    board(size, matrix, clip=clip, band=rng.choice(bands))
+        sheathing(parts, k, name, origin, along, out, a0, a1, holes, rng)
+
+
+def panel(parts, material, origin, along, out, a0, a1, z0, z1, holes, depth, rng):
+    """Flat wall panel with rectangular holes, facing `out`, set `depth` behind the siding face."""
+    xs = sorted({a0, a1, *[v for h in holes for v in h[:2] if a0 < v < a1]})
+    zs = sorted({z0, z1, *[v for h in holes for v in h[2:] if z0 < v < z1]})
+    for xa, xb in zip(xs, xs[1:]):
+        for za, zb in zip(zs, zs[1:]):
+            mid = ((xa + xb) / 2, (za + zb) / 2)
+            if any(h[0] <= mid[0] <= h[1] and h[2] <= mid[1] <= h[3] for h in holes):
+                continue
+            centre = origin + along * mid[0] - out * depth
+            centre.z = mid[1]
+            box(parts, material, (xb - xa, 0.01, zb - za), frame(centre, along, out), rng, bevel=0)
+
+
+def sheathing(parts, k, name, origin, along, out, a0, a1, holes, rng):
+    depth = BOARD_T + 0.006
+    panel(parts, "sheathing", origin, along, out, a0, a1, k.plinth, k.plate, holes, depth, rng)
+    panel(
+        parts,
+        "interior",
+        origin,
+        along,
+        -out,
+        a0 + 0.15,
+        a1 - 0.15,
+        k.floor,
+        k.ceiling,
+        holes,
+        -0.145,
+        rng,
+    )
+    if name in ("front", "rear") and not k.hip:
+        bm = bmesh.new()
+        uv = bm.loops.layers.uv.new("UVMap")
+        corners = [(-k.w / 2, k.plate), (k.w / 2, k.plate), (0, roof_under(k, 0))]
+        verts = [bm.verts.new(Vector((x, origin.y, z)) - out * depth) for x, z in corners]
+        face = bm.faces.new(verts if name == "front" else verts[::-1])
+        for loop in face.loops:
+            loop[uv].uv = (loop.vert.co.x, loop.vert.co.z)
+        add(parts, "sheathing", bm)
+
+
+def openings(parts, k, rng):
+    for name, (origin, along, out, _) in walls(k).items():
+        for kind, c, w, z, h in k.openings[name]:
+
+            def at(a, zz, d):
+                return Vector((*(origin + along * a + out * d).xy, zz))
+
+            def trim(material, size, a, zz, d, **kwargs):
+                box(parts, material, size, frame(at(a, zz, d), along, out), rng, **kwargs)
+
+            # Jambs line the 0.145 m wall reveal; timber casing sits proud of the siding.
+            for a in (c - w / 2 + 0.015, c + w / 2 - 0.015):
+                trim("paint", (0.03, 0.15, h), a, z + h / 2, -0.07, bevel=0.002)
+            trim("paint", (w, 0.15, 0.03), c, z + h - 0.015, -0.07, bevel=0.002)
+            casing = k.casing
+            bottom = z if kind == "door" else z - 0.05
+            for a in (c - w / 2 - casing / 2, c + w / 2 + casing / 2):
+                size = (casing, 0.03, h + 0.05 + (z - bottom))
+                trim("timber", size, a, (bottom + z + h + 0.05) / 2, BOARD_T + 0.015, segments=2)
+            size = (w + 2 * casing + 0.06, 0.035, 0.15)
+            trim("timber", size, c, z + h + 0.075, BOARD_T + 0.0175, segments=2)
+            size = (w + 2 * casing + 0.10, 0.07, 0.03)
+            trim("timber", size, c, z + h + 0.165, BOARD_T + 0.035, segments=2)
+            if kind == "door":
+                door(parts, at, along, out, c, w - 0.06, z, h - 0.03, rng)
+                continue
+            trim("timber", (w + 2 * casing + 0.08, 0.10, 0.045), c, z - 0.0225, 0.02, segments=2)
+            trim("timber", (w + 2 * casing, 0.025, 0.08), c, z - 0.085, BOARD_T + 0.0125)
+            half = (h - 0.03) / 2
+            sash(
+                parts, at, along, out, c, w - 0.06, z + half - 0.02, half + 0.02, -0.075, 2, 2, rng
+            )
+            sash(parts, at, along, out, c, w - 0.06, z, half + 0.02, -0.035, 2, 1, rng)
+
+
+def sash(parts, at, along, out, c, w, z0, h, d, cols, rows, rng):
+    stile, rail, t = 0.05, 0.05, 0.04
+
+    def paint(size, a, zz, bevel):
+        box(parts, "paint", size, frame(at(a, zz, d), along, out), rng, bevel=bevel)
+
+    for a in (c - w / 2 + stile / 2, c + w / 2 - stile / 2):
+        paint((stile, t, h), a, z0 + h / 2, 0.003)
+    for zz in (z0 + rail / 2, z0 + h - rail / 2):
+        paint((w, t, rail), c, zz, 0.003)
+    inner_w, inner_h = w - 2 * stile, h - 2 * rail
+    for i in range(1, cols):
+        paint((0.02, 0.025, inner_h), c - inner_w / 2 + inner_w * i / cols, z0 + h / 2, 0.002)
+    for j in range(1, rows):
+        paint((inner_w, 0.025, 0.02), c, z0 + rail + inner_h * j / rows, 0.002)
+    glass = frame(at(c, z0 + h / 2, d - 0.005), along, out)
+    box(parts, "glass", (inner_w, 0.006, inner_h), glass, rng, bevel=0)
+
+
+def door(parts, at, along, out, c, w, z, h, rng):
+    d, t = -0.05, 0.045
+    stile, top, lock, bottom = 0.12, 0.12, 0.16, 0.22
+    for a in (c - w / 2 + stile / 2, c + w / 2 - stile / 2):
+        box(parts, "paint", (stile, t, h), frame(at(a, z + h / 2, d), along, out), rng, bevel=0.003)
+    lock_z = z + 1.0
+    for zz, rh in ((z + h - top / 2, top), (lock_z, lock), (z + bottom / 2, bottom)):
+        rail = frame(at(c, zz, d), along, out)
+        box(parts, "paint", (w - 2 * stile, t, rh), rail, rng, bevel=0.003)
+    inner = w - 2 * stile
+    glass_z0, glass_z1 = lock_z + lock / 2, z + h - top
+    sash(parts, at, along, out, c, inner, glass_z0, glass_z1 - glass_z0, d, 2, 3, rng)
+    boards, low0, low1 = 5, z + bottom, lock_z - lock / 2
+    for i in range(boards):
+        a = c - inner / 2 + inner * (i + 0.5) / boards
+        board = frame(at(a, (low0 + low1) / 2, d - 0.004), along, out)
+        size = (inner / boards - 0.006, 0.03, low1 - low0)
+        box(parts, "paint", size, board, rng, bevel=0.004, segments=2)
+    knob = at(c - w / 2 + 0.075, z + 0.95, -0.0215)
+    box(parts, "iron", (0.05, 0.012, 0.16), frame(knob, along, out), rng, bevel=0.004, segments=2)
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=16, v_segments=10, radius=0.028)
+    bm.loops.layers.uv.new("UVMap")
+    bm.transform(Matrix.Translation(knob + out * 0.03))
+    add(parts, "iron", bm)
+
+
+def stone_plinth(parts, k):
+    """One continuous ring, displaced outward from the scanned stone height map."""
+    disp = image(TEXTURES / "stone_wall/stone_wall_disp_4k.png")
+    # Flip so row 0 is the image top, as the plinth's UV lookup expects.
+    height = pixels(disp)[::-1, :, 0].copy()
+    bpy.data.images.remove(disp)
+    y0 = DECK_Y + 0.06 if k.porch else -0.06
+    x0, x1, y1 = -k.w / 2 - 0.06, k.w / 2 + 0.06, k.l + 0.06
+    corners = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+    edges = [(Vector((*corners[i], 0)), Vector((*corners[(i + 1) % 4], 0))) for i in range(4)]
+    perimeter = sum((b - a).length for a, b in edges)
+    step, rows, tile, relief = k.stone[0], int(round(k.plinth / k.stone[1])), 3.2, 0.035
+    columns = int(perimeter / step)
+    hh, hw = height.shape
+    bm = bmesh.new()
+    uv = bm.loops.layers.uv.new("UVMap")
+    grid = []
+    for i in range(columns):
+        s = i * perimeter / columns
+        for a, b in edges:
+            if s <= (b - a).length:
+                grid.append(a + (b - a).normalized() * s)
+                break
+            s -= (b - a).length
+    assert len(grid) == columns
+    normals = []
+    for i in range(columns):
+        tangent = (grid[(i + 1) % columns] - grid[i - 1]).normalized()
+        normals.append(Vector((tangent.y, -tangent.x, 0)))
+    verts = []
+    for i, (p, n) in enumerate(zip(grid, normals)):
+        u = i * perimeter / columns / tile
+        column = []
+        for j in range(rows + 1):
+            z = k.plinth * j / rows
+            v = z / tile
+            sample = height[int((1 - v % 1) * (hh - 1)), int((u % 1) * (hw - 1))]
+            taper = min(1.0, (k.plinth - z) / 0.04)
+            column.append(
+                (bm.verts.new(p + n * (relief * sample - 0.02) * taper + Vector((0, 0, z))), (u, v))
+            )
+        verts.append(column)
+    for i in range(columns):
+        a, b = verts[i], verts[(i + 1) % columns]
+        for j in range(rows):
+            face = bm.faces.new((a[j][0], b[j][0], b[j + 1][0], a[j + 1][0]))
+            for loop, (u, v) in zip(face.loops, (a[j][1], b[j][1], b[j + 1][1], a[j + 1][1])):
+                if i == columns - 1 and loop.vert in (b[j][0], b[j + 1][0]):
+                    u = perimeter / tile
+                loop[uv].uv = (u, v)
+    bm.normal_update()
+    bm.faces.ensure_lookup_table()
+    assert bm.faces[0].normal.dot(normals[0]) > 0
+    add(parts, "stone", bm)
+    cap = bmesh.new()
+    cap_uv = cap.loops.layers.uv.new("UVMap")
+    inset = 0.3
+    outer = [Vector((x, y, k.plinth)) for x, y in corners]
+    inner = [
+        Vector((x - math.copysign(inset, x), y - math.copysign(inset, y - (y0 + y1) / 2), k.plinth))
+        for x, y in corners
+    ]
+    vo, vi = [cap.verts.new(v) for v in outer], [cap.verts.new(v) for v in inner]
+    for i in range(4):
+        f = cap.faces.new((vo[i], vo[(i + 1) % 4], vi[(i + 1) % 4], vi[i]))
+        for loop in f.loops:
+            loop[cap_uv].uv = (loop.vert.co.x / tile, loop.vert.co.y / tile)
+    cap.normal_update()
+    cap.faces.ensure_lookup_table()
+    assert cap.faces[0].normal.z > 0
+    add(parts, "stone", cap)
+
+
+def frame_timbers(parts, k, rng):
+    timber = partial(placed, parts, "timber", rng=rng)
+    # Corner posts, sill beam and frieze of the body.
+    for sx in (-1, 1):
+        for y in (0.055, k.l - 0.055):
+            centre = (sx * (k.w / 2 - 0.055), y, (k.plinth + k.plate) / 2)
+            timber((0.16, 0.16, k.plate - k.plinth), centre, segments=2, grain=2)
+        timber((0.07, k.l + 0.06, 0.18), (sx * (k.w / 2 + 0.03), k.l / 2, k.plinth + 0.09), grain=1)
+        timber((0.05, k.l - 0.2, 0.14), (sx * (k.w / 2 + 0.025), k.l / 2, k.plate - 0.07), grain=1)
+    for y in (k.l + 0.03,) if k.porch else (-0.03, k.l + 0.03):
+        timber((k.w + 0.06, 0.07, 0.18), (0, y, k.plinth + 0.09), grain=0)
+    if k.hip:
+        for y in (-0.025, k.l + 0.025):
+            timber((k.w - 0.2, 0.05, 0.14), (0, y, k.plate - 0.07), grain=0)
+        return
+    under = partial(roof_under, k)
+    # Main roof: rafter tails, fascia and barge rafters.
+    for sx in (-1, 1):
+        y = 0.25
+        while y < k.l - 0.15:
+            x0, x1 = sx * (k.w / 2 - 0.02), sx * (k.w / 2 + k.eave - 0.05)
+            under_beam(parts, under, k.pitch, x0, x1, y, 0.05, 0.14, rng)
+            y += 0.61
+        xf = sx * (k.w / 2 + k.eave - 0.03)
+        timber((0.04, k.l + 2 * k.rake, 0.2), (xf, k.l / 2, under(xf) - 0.09), grain=1)
+        for yb in (-k.rake + 0.04, k.l + k.rake - 0.04):
+            x0, x1 = sx * 0.001, sx * (k.w / 2 + k.eave)
+            under_beam(parts, under, k.pitch, x0, x1, yb, 0.08, 0.24, rng, segments=2)
+        # Purlins carrying the rake overhang.
+        for frac in (0.35, 0.75):
+            x = sx * (k.w / 2) * frac
+            for y0, y1 in ((-k.rake + 0.08, 0.2), (k.l - 0.2, k.l + k.rake - 0.08)):
+                timber((0.1, y1 - y0, 0.14), (x, (y0 + y1) / 2, under(x) - 0.115), grain=1)
+    if k.porch:
+        # Front gable king post and collar visible above the porch roof.
+        zc = under(0) - 0.32
+        xc = k.w / 2 - (zc - k.plate - SEAT) / math.tan(k.pitch)
+        timber((2 * xc, 0.12, 0.14), (0, -0.12, zc), segments=2)
+        size = (0.16, 0.14, under(0) - zc - 0.05)
+        timber(size, (0, -0.12, (zc + under(0)) / 2 - 0.02), segments=2, grain=2)
+
+
+def standing_seam(parts, rng, mid, down, along, normal, length, y0, y1, clip=()):
+    """Timber deck, standing-seam panels and seams on the slope strip y0..y1 along `along`."""
+
+    def sheet(material, size, centre, y, **kwargs):
+        box(parts, material, size, frame(centre + along * y, down, along), rng, clip=clip, **kwargs)
+
+    sheet(
+        "timber",
+        (length, y1 - y0, 0.025),
+        mid + normal * 0.0125,
+        (y0 + y1) / 2,
+        bevel=0.002,
+        tile=1.2,
+    )
+    panels = int(round((y1 - y0) / SEAM_SPACING))
+    for i in range(panels):
+        py0 = y0 + (y1 - y0) * i / panels
+        py1 = y0 + (y1 - y0) * (i + 1) / panels
+        centre = mid + normal * 0.031 + down * 0.02
+        size = (length + 0.04, py1 - py0, 0.012)
+        sheet(f"roof{rng.randrange(3)}", size, centre, (py0 + py1) / 2, bevel=0.002)
+        if i:
+            seam = mid + normal * 0.05 + down * 0.02
+            size = (length + 0.04, 0.022, 0.03)
+            sheet("roof0", size, seam, py0, bevel=0.006, segments=2)
+
+
+def roof(parts, k, rng):
+    def slope(under, pitch, x_end, y0, y1):
+        along = Vector((0, 1, 0))
+        for sx in (-1, 1):
+            a = Vector((0, 0, under(0)))
+            b = Vector((sx * x_end, 0, under(x_end)))
+            down = (b - a).normalized()
+            normal = Vector((sx * math.sin(pitch), 0, math.cos(pitch)))
+            standing_seam(parts, rng, (a + b) / 2, down, along, normal, (b - a).length, y0, y1)
+            cap = a + normal * 0.075 + down * 0.08 + along * ((y0 + y1) / 2)
+            size = (0.17, y1 - y0 + 0.02, 0.012)
+            box(parts, "roof0", size, frame(cap, down, along), rng, bevel=0.003)
+
+    slope(partial(roof_under, k), k.pitch, k.w / 2 + k.eave, -k.rake, k.l + k.rake)
+    if k.porch:
+        y0 = POST_Y - POST / 2 - 0.30
+        slope(partial(porch_under, k), PORCH_PITCH, k.w / 2 + 0.30, y0, -0.005)
+
+
+def hip_roof(parts, k, rng, bands):
+    """Pyramidal roof over boxed eaves: seams mitred at the hips, hip caps, fascia of two scanned
+    boards a side, plank soffit and apex cap."""
+    assert k.w == k.l
+    half, top = k.w / 2 + k.eave, k.plate + FASCIA
+    centre, z = Vector((0, k.l / 2, 0)), Vector((0, 0, 1))
+    apex = centre + z * (top + half * math.tan(k.pitch))
+    length = half / math.cos(k.pitch)
+    for turn in range(4):
+        rotation = Matrix.Rotation(turn * math.pi / 2, 3, "Z")
+        u, v = rotation @ Vector((1, 0, 0)), rotation @ Vector((0, 1, 0))
+        down = u * math.cos(k.pitch) - z * math.sin(k.pitch)
+        normal = u * math.sin(k.pitch) + z * math.cos(k.pitch)
+        clip = ((centre, v - u), (centre, -v - u))
+        mid = apex + down * (length / 2)
+        standing_seam(parts, rng, mid, down, v, normal, length, -half, half, clip)
+        corner = centre + (u + v) * half + z * top
+        beam(parts, "roof0", corner + z * 0.05, apex + z * 0.05, 0.17, 0.05, z, rng, bevel=0.006)
+        for row in range(2):
+            fascia = centre + u * (half - 0.02) + z * (top - FASCIA * (row + 0.5) / 2)
+            size = (2 * half - 0.08 * (turn % 2), 0.04, FASCIA / 2 - 0.003)
+            matrix, band = frame(fascia, v, u), rng.choice(bands)
+            box(parts, "siding", size, matrix, rng, bevel=0.003, tile=PLANK_TILE, band=band)
+    size = (2 * half - 0.08, 2 * half - 0.08, 0.02)
+    placed(parts, "deck", size, centre + z * (k.plate + 0.01), rng, bevel=0, tile=2.25, grain=1)
+    placed(parts, "roof0", (0.26, 0.26, 0.10), apex + z * 0.07, rng, bevel=0.03)
+
+
+def railing(parts, rng, p0, p1):
+    """Guard rails 0.885 m and 0.10 m above the line p0-p1, balusters under 0.1 m apart."""
+    p0, p1 = Vector(p0), Vector(p1)
+    length = (p1 - p0).length
+    d = (p1 - p0).normalized()
+    side = Vector((-d.y, d.x, 0))
+    for z, t, h in ((0.885, 0.09, 0.05), (0.10, 0.07, 0.045)):
+        c = (p0 + p1) / 2
+        matrix = frame(Vector((c.x, c.y, c.z + z)), d, side)
+        box(parts, "timber", (length, t, h), matrix, rng, bevel=0.006, segments=2)
+    count = int(length / 0.135)
+    for i in range(count):
+        p = p0 + d * (length * (i + 0.5) / count)
+        centre = (p.x, p.y, p.z + 0.495)
+        placed(parts, "timber", (0.04, 0.04, 0.74), centre, rng, bevel=0.004, grain=2)
+
+
+def porch(parts, k, rng):
+    def timber(size, centre, material="timber", **kwargs):
+        placed(parts, material, size, centre, rng, **kwargs)
+
+    # Deck boards run across the porch; rim boards close the edge above the stone.
+    deck = (k.w + 0.08, -DECK_Y + 0.02, 0.04)
+    timber(deck, (0, DECK_Y / 2, k.floor - 0.02), "deck", bevel=0.002, tile=2.25, grain=1)
+    timber((k.w + 0.08, 0.035, 0.15), (0, DECK_Y + 0.0175, k.floor - 0.115), grain=0)
+    for sx in (-1, 1):
+        centre = (sx * (k.w / 2 + 0.055), DECK_Y / 2, k.floor - 0.115)
+        timber((0.035, -DECK_Y, 0.15), centre, grain=1)
+    for x in PORCH_POSTS:
+        size, centre = (POST, POST, HEADER[0] - k.floor), (x, POST_Y, (k.floor + HEADER[0]) / 2)
+        timber(size, centre, bevel=0.012, segments=2, grain=2)
+    hz, hh = (HEADER[0] + HEADER[1]) / 2, HEADER[1] - HEADER[0]
+    timber((k.w + 0.26, 0.22, hh), (0, POST_Y, hz), bevel=0.01, segments=2)
+    for sx in (-1, 1):
+        centre = (sx * PORCH_POSTS[2], POST_Y / 2 + 0.05, hz)
+        timber((0.22, -POST_Y - 0.1, hh), centre, bevel=0.01, segments=2, grain=1)
+    # King-post truss on the header and exposed rafters under the porch roof.
+    under = partial(porch_under, k)
+    apex = under(0)
+    size, centre = (0.2, 0.2, apex - HEADER[1] - 0.02), (0, POST_Y, (apex + HEADER[1]) / 2 - 0.01)
+    timber(size, centre, bevel=0.01, segments=2, grain=2)
+    for sx in (-1, 1):
+        for y, width, depth in ((POST_Y, 0.2, 0.2), (-0.72, 0.07, 0.17), (-0.12, 0.07, 0.17)):
+            x0, x1 = sx * 0.001, sx * (k.w / 2 + 0.28)
+            under_beam(parts, under, PORCH_PITCH, x0, x1, y, width, depth, rng, segments=2)
+        x0, x1, yb = sx * 0.001, sx * (k.w / 2 + 0.30), POST_Y - POST / 2 - 0.30 + 0.04
+        under_beam(parts, under, PORCH_PITCH, x0, x1, yb, 0.08, 0.22, rng, segments=2)
+
+    # Railings: 0.91 m guard height, balusters at under 0.1 m clear spacing.
+    inner, f = POST / 2, k.floor
+    railing(parts, rng, (PORCH_POSTS[0] + inner, POST_Y, f), (NEWEL_X - 0.075, POST_Y, f))
+    railing(parts, rng, (PORCH_POSTS[1] + inner, POST_Y, f), (PORCH_POSTS[2] - inner, POST_Y, f))
+    for x in (PORCH_POSTS[0], PORCH_POSTS[2]):
+        railing(parts, rng, (x, POST_Y + inner, f), (x, -0.03, f))
+    timber((0.15, 0.15, 1.0), (NEWEL_X, POST_Y, k.floor + 0.5), bevel=0.01, segments=2, grain=2)
+    timber((0.19, 0.19, 0.04), (NEWEL_X, POST_Y, k.floor + 1.02), bevel=0.008, segments=2)
+    # Stairs: three treads and four risers between grade and the deck.
+    x0, x1 = STAIR
+    width, riser = x1 - x0, k.floor / 4
+    for i in range(1, 4):
+        top = k.floor - i * riser
+        ya, yb = DECK_Y - TREAD * i - 0.025, DECK_Y - TREAD * (i - 1)
+        size, centre = (width, yb - ya, 0.04), ((x0 + x1) / 2, (ya + yb) / 2, top - 0.02)
+        timber(size, centre, "deck", bevel=0.004, segments=2, tile=2.25, grain=1)
+        for x in (x0 + 0.02, x1 - 0.02):
+            size, centre = (
+                (0.04, yb - ya - 0.03, top - 0.04),
+                (x, (ya + yb) / 2 + 0.015, top / 2 - 0.02),
+            )
+            timber(size, centre, grain=1)
+    for i in range(2, 5):
+        top = k.floor - (i - 1) * riser - 0.04
+        bottom = k.floor - i * riser if i < 4 else 0
+        y = DECK_Y - TREAD * (i - 1)
+        timber((width - 0.08, 0.025, top - bottom), ((x0 + x1) / 2, y + 0.0125, (top + bottom) / 2))
+
+
+def kit(parts, k, rng, bands):
+    """Stone ring, siding, openings, frame, porch, roof and interior planes of a kit."""
+    if k.stone:
+        stone_plinth(parts, k)
+    siding(parts, k, rng, bands)
+    openings(parts, k, rng)
+    frame_timbers(parts, k, rng)
+    if k.porch:
+        porch(parts, k, rng)
+    if k.hip:
+        hip_roof(parts, k, rng, bands)
+    else:
+        roof(parts, k, rng)
+    for z in (k.floor - 0.01, k.ceiling):
+        placed(parts, "interior", (k.w - 0.3, k.l - 0.3, 0.02), (0, k.l / 2, z), rng, bevel=0)
+
+
+def maps(asset, resolution):
+    """Albedo path and roughness and OpenGL normal images of a Poly Haven scan."""
+    diff, rough, normal = (
+        TEXTURES / asset / f"{asset}_{kind}_{resolution}.jpg"
+        for kind in ("diff", "rough", "nor_gl")
+    )
+    return diff, image(rough), image(normal)
+
+
+def cabin_materials(output, targets, roofs):
+    wood, planks = maps("rough_wood", "4k"), maps("plank_flooring_03", "4k")
+    mats, albedo, derived = {}, {}, {}
+    for key, label, (diff, rough, normal), strength in (
+        ("timber", "Weathered timber", wood, 1.2),
+        ("stone", "Granite plinth", maps("stone_wall", "4k"), 1.0),
+        ("deck", "Porch decking", planks, 1.0),
+        ("siding", "Weathered siding", planks, 1.3),
+    ):
+        albedo[key], derived[key] = matched(diff, targets[key], f"{key}_albedo", output)
+        mats[key] = principled(
+            label, base_image=albedo[key], rough_image=rough, normal_image=normal, strength=strength
+        )
+    mats |= {
+        "paint": principled(
+            "Dark green paint",
+            base=lin((44, 50, 41)),
+            rough=0.55,
+            normal_image=wood[2],
+            strength=0.35,
+        ),
+        "glass": principled("Window glass", base=(0.9, 0.93, 0.92), rough=0.03, transmission=1.0),
+        "interior": principled("Interior", base=lin((38, 32, 27)), rough=0.85),
+        "sheathing": principled("Sheathing", base=lin((30, 26, 22)), rough=0.9),
+        "iron": principled("Black iron", base=lin((40, 40, 40)), rough=0.45, metallic=1.0),
+    }
+    for i, (colour, rough) in enumerate(roofs):
+        mats[f"roof{i}"] = principled(
+            f"Standing-seam roof {i}", base=lin(colour), rough=rough, metallic=0.25
+        )
+    return mats, plank_bands(albedo["siding"]), derived
+
+
+def scan(name, asset, target, output):
+    """Material from a 2K Poly Haven scan whose albedo is matched to `target`."""
+    diff, rough, normal = maps(asset, "2k")
+    albedo, derived = matched(diff, target, f"{name}_albedo", output)
+    return principled(name, base_image=albedo, rough_image=rough, normal_image=normal), derived
+
+
+def collision(render, name, hulls, rng, material):
+    """Join the render meshes as `name` and add the box hulls {key: (size, centre)}."""
+    with bpy.context.temp_override(active_object=render[0], selected_editable_objects=render):
+        assert bpy.ops.object.join() == {"FINISHED"}
+    render = render[0]
+    render.name = render.data.name = name
+    parts = {}
+    for i, (size, centre) in enumerate(hulls.values()):
+        placed(parts, f"UCX_{name}_{i:02d}", size, centre, rng, bevel=0)
+    objects = emit(parts, dict.fromkeys(parts, material))
+    for obj in objects:
+        assert len(obj.data.vertices) == 8, obj.name
+        obj.hide_render = True
+    return [render, *objects], dict(zip((o.name for o in objects), hulls))
+
+
+def bolt(parts, centre, normal):
+    bm = bmesh.new()
+    bmesh.ops.create_uvsphere(bm, u_segments=12, v_segments=6, radius=BOLT[0])
+    bmesh.ops.scale(bm, vec=(1, 1, BOLT[1]), verts=bm.verts)
+    bm.loops.layers.uv.new("UVMap")
+    rotation = Vector(normal).to_track_quat("Z", "Y").to_matrix().to_4x4()
+    bm.transform(Matrix.Translation(centre) @ rotation)
+    add(parts, "iron", bm)
+
+
+def cylinder(parts, material, base, radius, height, segments=24, axis=(0, 0, 1)):
+    bm = bmesh.new()
+    bmesh.ops.create_cone(
+        bm, cap_ends=True, segments=segments, radius1=radius, radius2=radius, depth=height
+    )
+    bm.loops.layers.uv.new("UVMap")
+    rotation = Vector(axis).to_track_quat("Z", "Y").to_matrix().to_4x4()
+    bm.transform(Matrix.Translation(Vector(base) + Vector(axis) * (height / 2)) @ rotation)
+    add(parts, material, bm)
+
+
+def cabin(rng, output):
+    mats, bands, derived = cabin_materials(output, TARGETS, CABIN_ROOF)
+    parts = {}
+    kit(parts, CABIN, rng, bands)
+    render = emit(parts, mats)
+    for obj in render:
+        obj.data.transform(TURN)
+    ridge, porch_ridge = roof_under(CABIN, 0) + 0.06, porch_under(CABIN, 0) + 0.06
+    x0, deck, stair = -CABIN.l - 0.06, -DECK_Y, -DECK_Y + 3 * TREAD
+    hulls = {
+        "cabin": ((-x0, CABIN.w + 0.12, ridge), (x0 / 2, 0, ridge / 2)),
+        "porch": ((deck, CABIN.w + 0.08, porch_ridge), (deck / 2, 0, porch_ridge / 2)),
+        "stairs": (
+            (stair - deck, STAIR[1] - STAIR[0], CABIN.floor),
+            ((deck + stair) / 2, sum(STAIR) / 2, CABIN.floor / 2),
+        ),
+    }
+    objects, hulls = collision(render, "SM_RangerCabin", hulls, rng, mats["sheathing"])
+    return objects, {"derivedAlbedo": derived, "sidingPlanks": len(bands), "collisionHulls": hulls}
+
+
+def hut(rng, output):
+    mats, bands, derived = cabin_materials(output, TARGETS, HUT_ROOF)
+    parts = {}
+    kit(parts, HUT, rng, bands)
+    # Two granite block steps up to the door sill.
+    door_x = HUT.openings["front"][0][1]
+    for i in range(2):
+        top = HUT.floor * (2 - i) / 3
+        centre = (door_x, -0.23 - 0.34 * i, top / 2)
+        placed(parts, "stone", (1.2, 0.34, top), centre, rng, bevel=0.03, segments=2, tile=3.2)
+    render = emit(parts, mats)
+    for obj in render:
+        obj.data.transform(TURN)
+    ridge = roof_under(HUT, 0) + 0.06
+    x0, x1 = -HUT.l - 0.06, 0.74
+    hulls = {"hut": ((x1 - x0, HUT.w + 0.12, ridge), ((x0 + x1) / 2, 0, ridge / 2))}
+    objects, hulls = collision(render, "SM_SnowSurveyHut", hulls, rng, mats["sheathing"])
+    return objects, {"derivedAlbedo": derived, "sidingPlanks": len(bands), "collisionHulls": hulls}
+
+
+# Footbridge build frame: z = 0 at grade, y along the span, x across the deck.
+# T3 terrain at the footbridge: creek bank tops 3.35 m either side of the centreline.
+BANK_TOP_M = 3.35
+WIDTH, SPAN, BEARING_Y = 2.4, 8.6, 4.1
+PAD = (0.45, 0.30, 0.30, 0.05)  # concrete bearing pad: across, along the span, height, above grade
+FOOT = (0.02, 0.05)  # base plate and bearing block
+CHANNEL = (0.305, 0.075, 0.010, 0.013)  # C12x20.7: depth, flange, web, flange thickness
+DECK_T, BOARD_W, GAP = 0.076, 0.20, 0.016
+CURB, POST, RAIL = 0.20, 0.20, (0.09, 0.19)
+END_POST = SPAN / 2 - 0.10 - POST / 2  # rail and curb ends stand proud of the end posts
+RAIL_M = 1.07  # AASHTO pedestrian railing height, 42 in
+BOLT = (0.024, 0.45)  # head radius, height over radius
+WASHER = (0.032, 0.005)  # radius, thickness
+HEAD = WASHER[1] + BOLT[0] * BOLT[1]
+BEARING = PAD[3] + sum(FOOT)
+DECK_TOP = BEARING + CHANNEL[0] + DECK_T
+EDGE = WIDTH / 2 - HEAD - POST
+POST_Z = (BEARING + 0.02, DECK_TOP + RAIL_M + 0.10)
+GRAIN = (0.6, 4)  # scan tile across the grain (m) and its stretch along the grain
+END = 0.002  # end-grain plate proud of a timber end
+# Mill scale and light rust albedo sRGB.
+STEEL = ((80, 80, 82), (124, 80, 52))
+# Cabin targets rescaled by the footbridge master's measured rail and deck regions over the
+# first studio render's.
+BRIDGE_TARGETS = {"timber": ((140, 126, 112), 30), "deck": ((170, 159, 146), 30)}
+END_GRAIN = ((92, 80, 68), 26)
+
+
+def fastener(parts, centre, normal):
+    """Domed bolt head on a round washer, on the face at `centre` with outward unit `normal`."""
+    cylinder(parts, "iron", centre, WASHER[0], WASHER[1], 16, normal)
+    bolt(parts, Vector(centre) + Vector(normal) * WASHER[1], normal)
+
+
+def mill_scale(output, rng):
+    """Periodic 2048 px hot-rolled steel albedo and roughness one metre a tile: mottled mill
+    scale with paler flaked patches and sparse light rust."""
+    noise = np.random.default_rng(rng.randrange(2**32))
+
+    def field(sigma):
+        f = blur(noise.standard_normal((2048, 2048)), sigma)
+        return f / f.std()
+
+    mottle, flake = field(60) + 0.5 * field(8), np.clip((field(20) - 1.2) / 0.5, 0, 1)
+    rust = np.clip((field(30) + 0.6 * field(5) - 1.8) / 0.7, 0, 1)[..., None]
+    scale = np.array(STEEL[0]) / 255 * (1 + 0.06 * mottle[..., None]) + 0.10 * flake[..., None]
+    albedo = np.clip(scale * (1 - rust) + np.array(STEEL[1]) / 255 * rust, 0, 1)
+    rough = np.repeat(np.clip(0.45 + 0.04 * mottle[..., None] + 0.35 * rust, 0, 1), 3, axis=2)
+    return principled(
+        "Mill-scale steel",
+        base_image=saved("steel_albedo", albedo, output, colour=True),
+        rough_image=saved("steel_rough", rough, output),
+    ), {"mill scale": list(STEEL[0]), "rust": list(STEEL[1]), "rustFraction": float(rust.mean())}
+
+
+def footbridge(rng, output):
+    buried = load("structures")["timber-footbridge"]["buriedM"]
+    assert math.isclose(buried, PAD[2] - PAD[3]), buried
+    clear = 2 * BEARING_Y - PAD[1]
+    assert clear > 2 * BANK_TOP_M and BEARING_Y + PAD[1] / 2 < SPAN / 2
+    mats, bands, derived = cabin_materials(output, TARGETS | BRIDGE_TARGETS, CABIN_ROOF)
+    mats["nail"] = mats["iron"]
+    mats["iron"] = principled("Galvanised steel", base=lin((150, 150, 146)), rough=0.35, metallic=1)
+    mats["steel"], derived["steel"] = mill_scale(output, rng)
+    mats["concrete"], derived["concrete"] = scan(
+        "Bearing pad", "concrete_wall_008", ((150, 146, 140), 14), output
+    )
+    wood = TEXTURES / "rough_wood" / "rough_wood_diff_4k.jpg"
+    albedo, derived["endgrain"] = matched(wood, END_GRAIN, "endgrain_albedo", output)
+    mats["endgrain"] = principled(
+        "End grain",
+        base_image=albedo,
+        rough_image=bpy.data.images["rough_wood_rough_4k.jpg"],
+        normal_image=bpy.data.images["rough_wood_nor_gl_4k.jpg"],
+        strength=1.5,
+    )
+    parts = {}
+
+    def piece(material, size, centre, grain=0, **kwargs):
+        placed(parts, material, size, centre, rng, grain=grain, **kwargs)
+
+    def timber(size, centre, grain):
+        """Long grain: the scan stretched GRAIN[1] times along `grain`; end-grain plates."""
+        uvs = parts.setdefault("timber", ([], [], []))[2]
+        start = len(uvs)
+        piece("timber", size, centre, grain, bevel=0.012, segments=2, tile=GRAIN[0])
+        uvs[start:] = [(u, v / GRAIN[1]) for u, v in uvs[start:]]
+        face = [s - 0.024 for s in size]
+        face[grain] = END
+        for s in (-1, 1):
+            end = list(centre)
+            end[grain] += s * (size[grain] + END) / 2
+            piece("endgrain", face, end, bevel=0.0005)
+
+    depth, flange, web, flange_t = CHANNEL
+    # Edge channels show their webs; flanges point inward.
+    flanges = [sx * (EDGE - flange / 2) for sx in (-1, 1)]
+    for sx, cx in zip((-1, 1), flanges):
+        centre = (sx * (EDGE - web / 2), 0, BEARING + depth / 2)
+        piece("steel", (web, SPAN, depth), centre, 1, bevel=0.002, tile=1.0)
+        for z in (BEARING + flange_t / 2, BEARING + depth - flange_t / 2):
+            piece("steel", (flange, SPAN, flange_t), (cx, 0, z), 1, bevel=0.002, tile=1.0)
+        for sy in (-1, 1):
+            y = sy * BEARING_Y
+            piece("concrete", (PAD[0], PAD[1], PAD[2]), (cx, y, PAD[3] - PAD[2] / 2), bevel=0.02)
+            piece("steel", (0.26, 0.28, FOOT[0]), (cx, y, PAD[3] + FOOT[0] / 2), bevel=0.003)
+            block = (cx, y, PAD[3] + FOOT[0] + FOOT[1] / 2)
+            piece("steel", (0.14, 0.12, FOOT[1]), block, bevel=0.003)
+            for dy in (-0.10, 0.10):
+                fastener(parts, (cx, y + dy, PAD[3] + FOOT[0]), (0, 0, 1))
+            stiffener = (flange - web, 0.012, depth - 2 * flange_t)
+            piece("steel", stiffener, (cx - sx * web / 2, y, BEARING + depth / 2), bevel=0.002)
+            x, end = sx * (EDGE - 0.1), sy * (SPAN / 2 + 0.006)
+            piece("steel", (0.2, 0.012, depth), (x, end, BEARING + depth / 2), bevel=0.002)
+            for z in (BEARING + 0.08, BEARING + depth - 0.08):
+                fastener(parts, (x + sx * 0.04, end + sy * 0.006, z), (0, sy, 0))
+    boards = round((SPAN + GAP) / (BOARD_W + GAP))
+    width = (SPAN - (boards - 1) * GAP) / boards
+    flat = frame((0, 0, 0), (1, 0, 0), (0, 0, 1))
+    for i in range(boards):
+        y = -SPAN / 2 + width / 2 + i * (width + GAP)
+        centre = (rng.uniform(-0.004, 0.004), y, DECK_TOP - DECK_T / 2 + rng.uniform(-0.002, 0))
+        matrix = Matrix.Translation(centre) @ Matrix.Rotation(rng.uniform(-0.004, 0.004), 4, "Z")
+        size, band = (2 * EDGE - rng.uniform(0.01, 0.02), DECK_T, width), rng.choice(bands)
+        box(parts, "deck", size, matrix @ flat, rng, bevel=0.008, tile=PLANK_TILE, band=band)
+        for cx in flanges:
+            for dy in (-0.05, 0.05):
+                spike = (cx + rng.uniform(-0.01, 0.01), y + dy, DECK_TOP + 0.001)
+                piece("nail", (0.014, 0.014, 0.004), spike, bevel=0.001)
+    rails = (DECK_TOP + RAIL_M - RAIL[1] / 2, DECK_TOP + 0.60)
+    assert math.isclose(rails[0] + RAIL[1] / 2 - DECK_TOP, RAIL_M)
+    assert rails[1] - RAIL[1] / 2 > DECK_TOP + CURB and POST_Z[1] > rails[0] + RAIL[1] / 2 + 0.05
+    for sx in (-1, 1):
+        timber((CURB, SPAN - 2 * END, CURB), (sx * (EDGE - CURB / 2), 0, DECK_TOP + CURB / 2), 1)
+        for y0, y1 in ((-SPAN / 2, -0.003), (0.003, SPAN / 2)):
+            for z in rails:
+                rail = (sx * (EDGE - RAIL[0] / 2), (y0 + y1) / 2, z)
+                timber((RAIL[0], y1 - y0 - 2 * END, RAIL[1]), rail, 1)
+        for y in (-END_POST, 0, END_POST):
+            post = (sx * (EDGE + POST / 2), y, sum(POST_Z) / 2)
+            timber((POST, POST, POST_Z[1] - POST_Z[0] - 2 * END), post, 2)
+            heights = [z + dz for z in rails for dz in (-0.045, 0.045)]
+            for z in (*heights, DECK_TOP + CURB / 2, BEARING + 0.09, BEARING + depth - 0.09):
+                fastener(parts, (sx * (EDGE + POST), y, z), (sx, 0, 0))
+            for z in heights:
+                fastener(parts, (sx * (EDGE - RAIL[0]), y, z), (-sx, 0, 0))
+            fastener(parts, (sx * (EDGE - CURB), y, DECK_TOP + CURB / 2), (-sx, 0, 0))
+    rail_x = (EDGE - CURB, EDGE + POST)
+    hulls = {
+        "deck": ((2 * EDGE, SPAN, DECK_TOP - BEARING), (0, 0, (DECK_TOP + BEARING) / 2)),
+        **{
+            f"rail{sx:+d}": (
+                (rail_x[1] - rail_x[0], SPAN, POST_Z[1] - DECK_TOP),
+                (sx * sum(rail_x) / 2, 0, (POST_Z[1] + DECK_TOP) / 2),
+            )
+            for sx in (-1, 1)
+        },
+        **{
+            f"bearing{sy:+d}": ((WIDTH, PAD[1], BEARING), (0, sy * BEARING_Y, BEARING / 2))
+            for sy in (-1, 1)
+        },
+    }
+    objects, hulls = collision(
+        emit(parts, mats), "SM_TimberFootbridge", hulls, rng, mats["sheathing"]
+    )
+    return objects, {
+        "derivedAlbedo": derived,
+        "stringerLengthM": SPAN,
+        "bearingSpanM": 2 * BEARING_Y,
+        "clearSpanM": clear,
+        "widthM": WIDTH,
+        "clearWidthM": 2 * (EDGE - CURB),
+        "deckTopM": DECK_TOP,
+        "railHeightM": rails[0] + RAIL[1] / 2 - DECK_TOP,
+        "postTopM": POST_Z[1],
+        "deckBoards": boards,
+        "boardWidthM": width,
+        "boardGapM": GAP,
+        "collisionHulls": hulls,
+    }
+
+
+# Fire lookout build frame: the tower centre at grade, the cab front and the stairs facing +X.
+# Sizes follow the approved reference at about 110 px/m: 0.36 m legs battered from 2.85 to 2.6 m
+# off the centre, one X brace a face over three girts, an 8 m catwalk at 7 m, and a switchback of
+# 13, 12 and 12 risers tight against the +X face: the first and last flights stacked in the outer
+# band, the middle one in the inner band, the first landing under the head landing.
+PIER = (0.70, 0.55, 0.35, 0.25)  # base and top width, height above grade, depth below
+LEG, SPREAD, CAP = 0.36, (2.85, 2.6), 6.40  # leg section, centre offset at pier top and cap
+GIRTS = (0.9, 4.0, 6.25)
+CATWALK = 4.0
+RISE, GOING, STAIR_W = DECK / 37, 0.25, 0.90
+BANDS = (3.30, 4.33, 4.37, 5.40)  # inner and outer flight bands (x); landings span both
+LANDING_Y = ((0.80, 1.85), (-3.00, -1.95), (0.80, 1.85))  # first, second and head landings
+LOOKOUT_CONCRETE = ((152, 147, 141), 18)
+
+
+def spread(z):
+    return SPREAD[0] + (SPREAD[1] - SPREAD[0]) * (z - PIER[2]) / (CAP - PIER[2])
+
+
+def flight(parts, rng, foot, run, risers):
+    """`risers` risers climbing along the unit `run` from `foot`, the bottom riser's centre at its
+    floor, with treads, stringers and a guard railing on both sides."""
+    foot, run = Vector(foot), Vector(run)
+    side, up = Vector((-run.y, run.x, 0)), Vector((0, 0, 1))
+    top = foot + run * (GOING * (risers - 1)) + up * (RISE * risers)
+    for i in range(1, risers):
+        centre = foot + run * (GOING * (i - 0.5)) + up * (RISE * i - 0.02)
+        size = (GOING + 0.03, STAIR_W, 0.04)
+        box(parts, "deck", size, frame(centre, run, side), rng, bevel=0.004, tile=2.25, grain=1)
+    for s in (-1, 1):
+        edge = side * (s * (STAIR_W / 2 + 0.03))
+        start, end = foot + edge - run * 0.1, top + edge - up * 0.15
+        beam(parts, "timber", start, end, 0.06, 0.28, up, rng, bevel=0.006)
+        railing(parts, rng, foot + edge + up * RISE, top + edge)
+    return top
+
+
+def landing(parts, rng, x, y, z, edges, posts, grounded):
+    """Deck on two rim joists with guard posts at the `posts` corners, those in `grounded` carried
+    down to pads at grade; `edges` are the railed sides as (start, end) corner indices."""
+    # Posts sit 10 mm inside the deck edge, 5 mm clear of the stringer faces: coplanar
+    # overlapping faces render black in Cycles.
+    i = 0.08
+    corners = [
+        (x[0] + i, y[0] + i),
+        (x[1] - i, y[0] + i),
+        (x[1] - i, y[1] - i),
+        (x[0] + i, y[1] - i),
+    ]
+    centre = ((x[0] + x[1]) / 2, (y[0] + y[1]) / 2)
+    size = (x[1] - x[0], y[1] - y[0], 0.05)
+    placed(parts, "deck", size, (*centre, z - 0.025), rng, bevel=0.004, tile=2.25)
+    for yr in (y[0] + 0.03, y[1] - 0.03):
+        rim = (centre[0], yr, z - 0.17)
+        placed(parts, "timber", (x[1] - x[0], 0.06, 0.24), rim, rng, bevel=0.006)
+    for i in posts:
+        px, py = corners[i]
+        # Grounded posts stand on pads 0.05 m above grade: only the tower sets the ground contact.
+        foot = 0.05 if i in grounded else z - 0.29
+        post = (px, py, (z + 1.0 + foot) / 2)
+        placed(parts, "timber", (0.14, 0.14, z + 1.0 - foot), post, rng, bevel=0.01, grain=2)
+        if i in grounded:
+            pad = (px, py, -0.05)
+            placed(parts, "concrete", (0.36, 0.36, 0.20), pad, rng, bevel=0.01, tile=2.71)
+    for a, b in edges:
+        railing(parts, rng, (*corners[a], z), (*corners[b], z))
+
+
+def guard(parts, rng, start, end, posts):
+    """Catwalk guard from `start` to `end`: a flat cap and two rails on posts at `posts`."""
+    start, end = Vector((*start, DECK)), Vector((*end, DECK))
+    d = (end - start).normalized()
+    side, centre = Vector((-d.y, d.x, 0)), (start + end) / 2
+    for p in posts:
+        post = (*p, DECK + (RAIL_M - 0.05) / 2)
+        placed(parts, "timber", (0.10, 0.10, RAIL_M - 0.05), post, rng, bevel=0.008, grain=2)
+    for z, t, h in ((RAIL_M - 0.025, 0.14, 0.05), (0.62, 0.09, 0.045), (0.22, 0.09, 0.045)):
+        rail = frame(centre + Vector((0, 0, z)), d, side)
+        box(parts, "timber", ((end - start).length, t, h), rail, rng, bevel=0.006, segments=2)
+
+
+def tower(parts, rng):
+    z = Vector((0, 0, 1))
+    faces = [(Vector((c, s, 0)), Vector((-s, c, 0))) for c, s in ((1, 0), (0, 1), (-1, 0), (0, -1))]
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            corner = Vector((sx, sy, 0))
+            foot = corner * SPREAD[0]
+            taper = []
+            for u, _ in faces:
+                normal = u + z * ((PIER[0] - PIER[1]) / 2 / PIER[2])
+                taper.append((foot + u * (PIER[0] / 2), normal.normalized()))
+            size = (PIER[0], PIER[0], PIER[2] + PIER[3])
+            pier = foot + z * ((PIER[2] - PIER[3]) / 2)
+            placed(parts, "concrete", size, pier, rng, bevel=0.01, tile=2.71, clip=taper)
+            plate = foot + z * (PIER[2] + 0.006)
+            placed(parts, "galv", (0.40, 0.40, 0.012), plate, rng, bevel=0.002)
+            start, end = foot + z * (PIER[2] + 0.012), corner * SPREAD[1] + z * CAP
+            beam(parts, "timber", start, end, LEG, LEG, (1, 0, 0), rng, bevel=0.012, segments=2)
+            for u in (Vector((sx, 0, 0)), Vector((0, sy, 0))):
+                strap = foot + u * (LEG / 2 + 0.005) + z * (PIER[2] + 0.2)
+                size, matrix = (0.22, 0.01, 0.36), frame(strap, u.cross(z), u)
+                box(parts, "galv", size, matrix, rng, bevel=0.002)
+                for dz in (-0.08, 0.08):
+                    bolt(parts, strap + u * 0.005 + z * dz, u)
+    for i, (u, v) in enumerate(faces):
+        for zg in GIRTS:
+            girt = u * (spread(zg) + LEG / 2 + 0.05) + z * zg
+            size = (2 * (spread(zg) + LEG / 2), 0.10, 0.28)
+            box(parts, "timber", size, frame(girt, v, u), rng, bevel=0.008, segments=2)
+        # Each face carries one X brace from the bottom girt to the top girt, the two
+        # diagonals lapped one over the other.
+        for k, s in enumerate((1, -1)):
+            off = LEG / 2 + 0.14 + 0.08 * k
+            ends = []
+            for zb, sv in ((GIRTS[0], -s), (GIRTS[-1], s)):
+                ends.append(u * (spread(zb) + off) + v * (sv * (spread(zb) - 0.10)) + z * zb)
+            beam(parts, "timber", ends[0], ends[1], 0.24, 0.08, u, rng, bevel=0.008)
+            for end in ends:
+                gusset = end + u * 0.044
+                box(parts, "galv", (0.30, 0.008, 0.30), frame(gusset, v, u), rng, bevel=0.002)
+                for dv in (-0.08, 0.08):
+                    for dz in (-0.08, 0.08):
+                        bolt(parts, gusset + u * 0.004 + v * dv + z * dz, u)
+        # Caps under the catwalk: along x over the legs, along y lapped below them.
+        top = spread(CAP)
+        size = ((0.15, 2 * (top + LEG / 2), 0.25), (2 * CATWALK, 0.15, 0.30))[i % 2]
+        centre = u * top + z * (CAP + (-0.125, 0.15)[i % 2])
+        placed(parts, "timber", size, centre, rng, bevel=0.01, segments=2)
+
+
+def catwalk(parts, rng):
+    joists = 14
+    for i in range(joists):
+        x = -CATWALK + 0.03 + (2 * CATWALK - 0.06) * i / (joists - 1)
+        joist = (x, 0, CAP + 0.42)
+        placed(parts, "timber", (0.06, 2 * CATWALK - 0.12, 0.24), joist, rng, bevel=0.004)
+    for sy in (-1, 1):
+        rim = (0, sy * (CATWALK - 0.03), CAP + 0.42)
+        placed(parts, "timber", (2 * CATWALK, 0.06, 0.24), rim, rng, bevel=0.004)
+    # Decking around the cab, boards running out from the walls.
+    width = CATWALK - CAB.w / 2
+    for sx in (-1, 1):
+        strip = (sx * (CATWALK - width / 2), 0, DECK - 0.025)
+        placed(parts, "deck", (width, 2 * CATWALK, 0.05), strip, rng, bevel=0.004, tile=2.25)
+        strip = (0, sx * (CATWALK - width / 2), DECK - 0.025)
+        placed(parts, "deck", (CAB.w, width, 0.05), strip, rng, bevel=0.004, tile=2.25, grain=1)
+    c = CATWALK - 0.05
+    count = 7
+    line = [-c + 2 * c * i / count for i in range(count + 1)]
+    for sy in (-1, 1):
+        guard(parts, rng, (-c + 0.07, sy * c), (c - 0.07, sy * c), [(x, sy * c) for x in line])
+    inner = line[1:-1]
+    guard(parts, rng, (-c, -c - 0.07), (-c, c + 0.07), [(-c, y) for y in inner])
+    head = LANDING_Y[2]
+    for y0, y1, gap in ((-c - 0.07, head[0], head[0]), (head[1], c + 0.07, head[1])):
+        posts = [(c, y) for y in (*inner, gap) if y0 <= y <= y1]
+        guard(parts, rng, (c, y0), (c, y1), posts)
+
+
+def stairs(parts, rng):
+    inner, outer = (BANDS[0] + BANDS[1]) / 2, (BANDS[2] + BANDS[3]) / 2
+    first, second, head = LANDING_Y
+    one = flight(parts, rng, (outer, first[0] - 12 * GOING, 0), (0, 1, 0), 13)
+    # mathutils vectors are single precision.
+    assert math.isclose(one.y, first[0], abs_tol=1e-5)
+    wide = (BANDS[0], BANDS[3])
+    # The first landing hangs on its inner posts and the head landing's outer posts above it.
+    landing(parts, rng, wide, first, one.z, ((1, 2), (2, 3), (3, 0)), (0, 3), (0, 3))
+    two = flight(parts, rng, (inner, first[0], one.z), (0, -1, 0), 12)
+    assert math.isclose(two.y, second[1], abs_tol=1e-5)
+    landing(parts, rng, wide, second, two.z, ((3, 0), (0, 1), (1, 2)), range(4), (0, 1, 3))
+    # Its corner over the first flight sits on a joist knee-braced to the outer post.
+    x = BANDS[3] - 0.07
+    joist = (x, sum(second) / 2, two.z - 0.17)
+    placed(parts, "timber", (0.06, second[1] - second[0] - 0.12, 0.24), joist, rng, bevel=0.006)
+    start, end = (x, second[0] + 0.14, two.z - 1.0), (x, second[1] - 0.15, two.z - 0.29)
+    beam(parts, "timber", start, end, 0.10, 0.14, (0, 0, 1), rng, bevel=0.006)
+    three = flight(parts, rng, (outer, second[1], two.z), (0, 1, 0), 12)
+    assert math.isclose(three.y, head[0], abs_tol=1e-5)
+    assert math.isclose(three.z, DECK, abs_tol=1e-5)
+    landing(parts, rng, (CATWALK, BANDS[3]), head, DECK, ((1, 2), (2, 3)), (1, 2, 3), (1, 2))
+    pad = (outer, first[0] - 12 * GOING - 0.05, -0.025)
+    placed(parts, "concrete", (1.2, 0.5, 0.15), pad, rng, bevel=0.01, tile=2.71)
+
+
+def lookout(rng, output):
+    mats, bands, derived = cabin_materials(output, TARGETS | LOOKOUT_TARGETS, LOOKOUT_ROOF)
+    mats["paint"] = principled("Window frames", base=lin((96, 82, 70)), rough=0.6)
+    mats["glass"] = principled("Cab glass", base=(0.5, 0.53, 0.53), rough=0.03, transmission=1.0)
+    mats["concrete"], derived["concrete"] = scan(
+        "concrete", "concrete_wall_008", LOOKOUT_CONCRETE, output
+    )
+    mats["galv"] = principled(
+        "Galvanised steel", base=lin((150, 152, 150)), rough=0.4, metallic=0.8
+    )
+    cab = {}
+    kit(cab, CAB, rng, bands)
+    # The Osborne fire finder stand at the centre of the cab.
+    placed(cab, "timber", (0.7, 0.7, 1.05), (0, CAB.l / 2, DECK + 0.525), rng, bevel=0.01)
+    render = emit(cab, mats)
+    for obj in render:
+        obj.data.transform(TURN @ Matrix.Translation((0, -CAB.l / 2, 0)))
+    parts = {}
+    tower(parts, rng)
+    catwalk(parts, rng)
+    stairs(parts, rng)
+    top = CAB.plate + FASCIA + (CAB.w / 2 + CAB.eave) * math.tan(CAB.pitch) + 0.12
+    half = SPREAD[0] + PIER[0] / 2
+    x0, x1, y0, y1 = BANDS[0], BANDS[3], LANDING_Y[1][0], LANDING_Y[2][1]
+    hulls = {
+        "tower": ((2 * half, 2 * half, CAP), (0, 0, CAP / 2)),
+        "cab": ((2 * CATWALK + 0.1, 2 * CATWALK + 0.1, top - CAP), (0, 0, (top + CAP) / 2)),
+        "stair": (
+            (x1 - x0, y1 - y0, DECK + RAIL_M - 0.05),
+            ((x0 + x1) / 2, (y0 + y1) / 2, (DECK + RAIL_M + 0.05) / 2),
+        ),
+    }
+    render += emit(parts, mats)
+    objects, hulls = collision(render, "SM_FireLookout", hulls, rng, mats["sheathing"])
+    return objects, {
+        "derivedAlbedo": derived,
+        "deckM": DECK,
+        "roofTopM": top,
+        "riserM": RISE,
+        "goingM": GOING,
+        "collisionHulls": hulls,
+    }
+
+
+def shakes(parts, rng, material, eave, up, along, length, width, exposure, thickness, bands, tile):
+    """Courses of split shakes `exposure` apart from the eave line centre `eave` to `length` up
+    the slope `up`, `width` wide along `along`; each course laps the one below."""
+    eave, up, along = Vector(eave), Vector(up), Vector(along)
+    normal = along.cross(up)
+    assert normal.z > 0 and abs(up.dot(along)) < 1e-9
+    for course in range(round(length / exposure)):
+        s0 = course * exposure
+        size = min(1.4 * exposure, length - s0)
+        a = -width / 2
+        while a < width / 2 - 0.01:
+            w = min(rng.uniform(0.16, 0.34), width / 2 - a)
+            centre = eave + up * (s0 + size / 2) + along * (a + w / 2) + normal * thickness
+            # Butts stand one shake thickness proud of the course below.
+            angle = rng.uniform(-0.01, 0.01) - math.atan(thickness / size)
+            matrix = Matrix.Translation(centre) @ Matrix.Rotation(angle, 4, along)
+            matrix = matrix @ frame((0, 0, 0), up, normal)
+            size3, band = (size, thickness, w - 0.006), rng.choice(bands)
+            box(parts, material, size3, matrix, rng, bevel=0.002, tile=tile, band=band)
+            a += w
+
+
+# Vault toilet build frame: the CXT Gunnison precast single-vault toilet (drawings G-02 to G-04,
+# 2016) without its privacy alcove: 4 in board-formed walls 6'6" x 7'11.5" outside on a slab 5 in
+# above grade, a shake-cast roof from 7'4" at the eaves to 9'5" with 1 ft rakes, a 3068 steel door
+# in the +X gable wall, and the 12 in vent stack behind the -X wall to 12'3".
+VT_X, VT_Y, VT_T = 1.98, 2.42, 0.10
+VT_SLAB, VT_EAVE, VT_RIDGE = 0.127, 2.234, 2.87
+VT_RAKE, VT_OVERHANG, VT_ROOF_T = 0.3048, 0.08, 0.10
+VT_DOOR = (0.914, 2.032, 0.30)  # width, height and centre y
+VT_VENT = (0.152, 3.734, 0.55)  # radius, top and centre y
+VT_STAIN, WALL_TILE = (138, 120, 100), 1.8  # wall stain sRGB, scan tile width (m)
+
+
+def blur(a, sigma):
+    """Gaussian blur of a 2D array, periodic in both axes, `sigma` in pixels."""
+    fy, fx = np.fft.fftfreq(a.shape[0])[:, None], np.fft.rfftfreq(a.shape[1])[None, :]
+    kernel = np.exp(-2 * (np.pi * sigma) ** 2 * (fx**2 + fy**2))
+    return np.fft.irfft2(np.fft.rfft2(a) * kernel, s=a.shape)
+
+
+def weathered_walls(output, rng, eave, top):
+    """Board-formed concrete maps one scan tile (1.8 m) wide and `top` m tall for `facade` UVs:
+    the scan's relief and fine grain under an even stain with subtle mottling, soft drip stains
+    below the eave line `eave` and splash darkening above the slab."""
+    maps = {}
+    for kind in ("diff", "nor_gl", "rough"):
+        path = TEXTURES / "wood_textured_concrete" / f"wood_textured_concrete_{kind}_2k.jpg"
+        img = image(path, kind == "diff")
+        maps[kind] = pixels(img)
+        bpy.data.images.remove(img)
+    size = maps["diff"].shape[1]
+    # Unreal imports only power-of-two textures: the scan rows resampled to the next one.
+    height = 2 ** math.ceil(math.log2(size * top / WALL_TILE))
+    z = (np.arange(height) + 0.5) * top / height
+    rows = (z / WALL_TILE * size).astype(int) % size
+    noise = np.random.default_rng(rng.randrange(2**32))
+    gray = maps["diff"][rows, :, :3].mean(axis=2)
+    grain = np.clip(gray - blur(gray, 24), -0.06, 0.06)
+    mottle = blur(noise.standard_normal(gray.shape), 90)
+    mottle /= mottle.std()
+    x, drips = np.arange(size), np.zeros(gray.shape)
+    for _ in range(36):
+        centre, width = noise.uniform(0, size), noise.uniform(0.01, 0.05) * size / WALL_TILE
+        start, length = eave - noise.uniform(0, 0.06), noise.uniform(0.3, 1.4)
+        dx = (x - centre + size / 2) % size - size / 2
+        fall = np.where(z < start, np.exp(-(start - z) / length), 0)
+        drips += noise.uniform(0.05, 0.16) * np.outer(fall, np.exp(-((dx / width) ** 2)))
+    splash = np.clip(1 - (z - VT_SLAB) / 0.35, 0, 1)[:, None] ** 1.5 * (0.18 + 0.04 * mottle)
+    shade = 1 + 0.05 * mottle - blur(drips, 3) - splash
+    albedo = np.ones((*gray.shape, 4))
+    albedo[..., :3] = np.clip(np.array(VT_STAIN)[None, None] / 255 * shade[..., None], 0, 1)
+    albedo[..., :3] = np.clip(albedo[..., :3] + 0.8 * grain[..., None], 0, 1)
+    material = principled(
+        "Board-formed concrete",
+        base_image=saved("wall_albedo", albedo, output, colour=True),
+        rough_image=saved("wall_rough", maps["rough"][rows], output),
+        normal_image=saved("wall_normal", maps["nor_gl"][rows], output),
+    )
+    return material, {"source": "wood_textured_concrete 2k", "stainSrgb": list(VT_STAIN)}
+
+
+def facade(parts, material, top):
+    """World-space UVs for `material`: U along each face's wall every WALL_TILE m, V = z / top."""
+    verts, faces, uvs = parts[material]
+    uvs.clear()
+    for face in faces:
+        a, b, c = (verts[i] for i in face[:3])
+        normal = (b - a).cross(c - a)
+        along = 1 if abs(normal.x) >= abs(normal.y) else 0
+        uvs.extend((verts[i][along] / WALL_TILE, verts[i].z / top) for i in face)
+
+
+def toilet(rng, output):
+    mats, derived = {}, {}
+    for name, asset, target in (
+        ("roofing", "wood_textured_concrete", ((96, 84, 72), 12)),
+        ("slab", "concrete_wall_008", ((156, 150, 140), 14)),
+    ):
+        mats[name], derived[name] = scan(name, asset, target, output)
+    mats["door"] = principled("Door paint", base=lin((84, 64, 50)), rough=0.45, metallic=0.3)
+    mats["iron"] = principled("Black steel", base=lin((40, 40, 40)), rough=0.45, metallic=1.0)
+    mats["pipe"] = principled("Vent stack", base=lin((26, 26, 26)), rough=0.6)
+    mats["sign"] = principled("Sign", base=lin((32, 72, 140)), rough=0.4)
+    mats["label"] = principled("Sign symbol", base=lin((228, 228, 222)), rough=0.4)
+    mats["steel"] = principled("Hatch steel", base=lin((112, 112, 108)), rough=0.5, metallic=0.8)
+    parts = {}
+    hx, hy = VT_X / 2, VT_Y / 2
+    pitch = math.atan((VT_RIDGE - VT_EAVE) / (hy + VT_OVERHANG))
+    under = VT_RIDGE - VT_ROOF_T / math.cos(pitch)
+    planes = (
+        (Vector((0, 0, under)), Vector((0, s * math.sin(pitch), math.cos(pitch)))) for s in (-1, 1)
+    )
+    clip = tuple(planes)
+
+    piece = partial(placed, parts, rng=rng)
+
+    def wall(size, centre):
+        piece("wall", size, centre, bevel=0.006, tile=1.8, grain=2, clip=clip)
+
+    door = (VT_DOOR[2] - VT_DOOR[0] / 2 - 0.05, VT_DOOR[2] + VT_DOOR[0] / 2 + 0.05)
+    head, height, middle = VT_SLAB + VT_DOOR[1] + 0.05, under - VT_SLAB, (VT_SLAB + under) / 2
+    for sx, spans in ((1, ((-hy, door[0]), (door[1], hy))), (-1, ((-hy, hy),))):
+        for y0, y1 in spans:
+            wall((VT_T, y1 - y0, height), (sx * (hx - VT_T / 2), (y0 + y1) / 2, middle))
+    wall((VT_T, door[1] - door[0], under - head), (hx - VT_T / 2, VT_DOOR[2], (head + under) / 2))
+    for sy in (-1, 1):
+        wall((VT_X - 2 * VT_T, VT_T, height), (0, sy * (hy - VT_T / 2), middle))
+    piece(
+        "slab",
+        (VT_X + 0.1, VT_Y + 0.1, VT_SLAB + 0.1),
+        (0, 0, (VT_SLAB - 0.1) / 2),
+        bevel=0.01,
+        tile=2.71,
+    )
+    # Steel door in a 2 in frame: louvre at the foot, lever, and the sign beside it.
+    for y in (door[0] + 0.025, door[1] - 0.025):
+        piece(
+            "door", (0.12, 0.05, head - VT_SLAB), (hx - 0.05, y, (VT_SLAB + head) / 2), bevel=0.004
+        )
+    piece(
+        "door", (0.12, door[1] - door[0], 0.05), (hx - 0.05, VT_DOOR[2], head - 0.025), bevel=0.004
+    )
+    piece(
+        "door",
+        (0.045, VT_DOOR[0], VT_DOOR[1]),
+        (hx - 0.06, VT_DOOR[2], VT_SLAB + VT_DOOR[1] / 2),
+        bevel=0.004,
+    )
+    piece("iron", (0.004, 0.46, 0.30), (hx - 0.036, VT_DOOR[2], VT_SLAB + 0.30), bevel=0)
+    for i in range(6):
+        piece(
+            "door",
+            (0.02, 0.44, 0.012),
+            (hx - 0.03, VT_DOOR[2], VT_SLAB + 0.18 + 0.048 * i),
+            bevel=0.002,
+        )
+    lever = (hx - 0.01, VT_DOOR[2] + VT_DOOR[0] / 2 - 0.12, VT_SLAB + 0.97)
+    piece("iron", (0.05, 0.14, 0.022), lever, bevel=0.006, segments=2)
+    piece("sign", (0.012, 0.23, 0.30), (hx + 0.006, door[1] + 0.30, VT_SLAB + 1.52), bevel=0.003)
+    piece("label", (0.004, 0.15, 0.15), (hx + 0.013, door[1] + 0.30, VT_SLAB + 1.56), bevel=0)
+    # Wall vent grille low on the front wall.
+    piece("iron", (0.012, 0.32, 0.32), (hx + 0.006, -hy + 0.40, VT_SLAB + 0.36), bevel=0.003)
+    for i in range(5):
+        piece(
+            "iron",
+            (0.03, 0.30, 0.012),
+            (hx + 0.012, -hy + 0.40, VT_SLAB + 0.24 + 0.06 * i),
+            bevel=0.002,
+        )
+    for sy in (-1, 1):
+        a = Vector((0, 0, VT_RIDGE - VT_ROOF_T / 2 / math.cos(pitch)))
+        b = a + Vector((0, sy * (hy + VT_OVERHANG), -(hy + VT_OVERHANG) * math.tan(pitch)))
+        down, along = (b - a).normalized(), Vector((-sy, 0, 0))
+        normal = down.cross(along)
+        size = ((b - a).length, VT_X + 2 * VT_RAKE, VT_ROOF_T)
+        box(parts, "roofing", size, frame((a + b) / 2, down, along), rng, bevel=0.01, tile=1.8)
+        eave, run, width = b + normal * (VT_ROOF_T / 2), (b - a).length, VT_X + 2 * VT_RAKE
+        shakes(parts, rng, "roofing", eave, -down, along, run, width, 0.25, 0.02, (None,), 1.8)
+    cap = (VT_X + 2 * VT_RAKE + 0.02, 0.24, 0.07)
+    piece("roofing", cap, (0, 0, VT_RIDGE + 0.04), bevel=0.02, segments=2, tile=1.8)
+    # Vent stack against the rear wall through the rake, strapped twice; vault hatch behind.
+    vent = (-(hx + VT_VENT[0] + 0.005), VT_VENT[2])
+    cylinder(parts, "pipe", (*vent, -0.1), VT_VENT[0], VT_VENT[1] + 0.05)
+    cylinder(parts, "pipe", (*vent, VT_VENT[1] - 0.05), VT_VENT[0] + 0.012, 0.05)
+    for zb in (1.1, 2.0):
+        cylinder(parts, "iron", (*vent, zb), VT_VENT[0] + 0.006, 0.04)
+        piece("iron", (0.10, 0.04, 0.04), (-hx - 0.05, vent[1], zb + 0.02), bevel=0.004)
+    pad = (-(hx + 0.45), -0.20)
+    piece("slab", (0.80, 1.10, 0.15), (*pad, -0.025), bevel=0.01, tile=2.71)
+    piece("steel", (0.62, 0.62, 0.012), (*pad, 0.056), bevel=0.003)
+    piece("steel", (0.04, 0.16, 0.025), (pad[0] + 0.24, pad[1], 0.074), bevel=0.005)
+    roof = (VT_EAVE - VT_ROOF_T - 0.05, VT_RIDGE + 0.08)
+    hulls = {
+        "building": ((VT_X + 0.1, VT_Y + 0.1, roof[0]), (0, 0, roof[0] / 2)),
+        "roof": (
+            (VT_X + 2 * VT_RAKE, VT_Y + 2 * VT_OVERHANG, roof[1] - roof[0]),
+            (0, 0, sum(roof) / 2),
+        ),
+        "vent": (
+            (2 * VT_VENT[0], 2 * VT_VENT[0], VT_VENT[1] - roof[1]),
+            (*vent, (VT_VENT[1] + roof[1]) / 2),
+        ),
+    }
+    wall_top = under - hy * math.tan(pitch)
+    mats["wall"], derived["wall"] = weathered_walls(output, rng, wall_top, under)
+    facade(parts, "wall", under)
+    objects, hulls = collision(emit(parts, mats), "SM_VaultToilet", hulls, rng, mats["slab"])
+    return objects, {
+        "derivedAlbedo": derived,
+        "roofPitchDegrees": math.degrees(pitch),
+        "collisionHulls": hulls,
+    }
+
+
+# Antenna mast build frame: the mast axis at the origin, the directional antenna pointing +X. A
+# folding steel tripod with legs and guys at 60, 180 and 300 degrees carries four telescoping
+# aluminium sections (radius, bottom, top) to 5.13 m and a whip to 6 m; a vertically polarised
+# 4-element UHF Yagi sits below the whip, its coax down the +X face to a coil on the ground.
+SECTIONS = ((0.025, 0.24, 1.85), (0.022, 1.80, 3.05), (0.019, 3.00, 4.20), (0.016, 4.15, 5.10))
+HEAD, LOWER = (0.05, 0.98, 1.06), (0.045, 0.30, 0.36)  # tripod collars: radius, bottom, top
+SLEEVE, LEG_R, FOOT_R, PAD_R = 0.032, 0.0125, 0.90, 0.04
+GUY_Z, STAKE_R, STAKE = 4.10, 3.0, (0.009, 0.35, 0.10)  # stake radius, depth, top above grade
+# Webbing guys 25 mm wide with the width horizontal: 2.3 px at the 30 m nadir, and a flat strip
+# that Nanite simplification cannot collapse the way it drops sub-pixel round wires.
+STRAP = (0.025, 0.002)
+BOOM_Z, ELEMENTS = 4.80, ((0.12, 0.34), (0.27, 0.31), (0.42, 0.29), (0.57, 0.28))
+COAX, COIL = 0.005, ((0.74, 0.18), 0.18)  # LMR-400 radius; ground coil centre and radius
+WHIP = (5.17, 5.27, 6.0)  # spring base, whip base, tip
+
+
+def chaikin(points, rounds):
+    """Corner-cutting smoothing that keeps both ends and stays inside the polyline's hull."""
+    for _ in range(rounds):
+        cut = [p for a, b in zip(points, points[1:]) for p in (a.lerp(b, 0.25), a.lerp(b, 0.75))]
+        points = [points[0], *cut, points[-1]]
+    return points
+
+
+def tube(parts, material, points, radius, segments=10):
+    """Capped round tube swept through `points` on parallel-transported frames."""
+    points = [Vector(p) for p in points]
+    n = len(points)
+    tangents = [(points[min(i + 1, n - 1)] - points[max(i - 1, 0)]).normalized() for i in range(n)]
+    bm = bmesh.new()
+    bm.loops.layers.uv.new("UVMap")
+    normal, rings = tangents[0].orthogonal().normalized(), []
+    for p, t in zip(points, tangents):
+        normal = (normal - t * normal.dot(t)).normalized()
+        side = t.cross(normal)
+        angles = [2 * math.pi * j / segments for j in range(segments)]
+        rings.append(
+            [bm.verts.new(p + radius * (math.cos(a) * normal + math.sin(a) * side)) for a in angles]
+        )
+    for a, b in zip(rings, rings[1:]):
+        for j in range(segments):
+            bm.faces.new((a[j], a[(j + 1) % segments], b[(j + 1) % segments], b[j]))
+    bm.faces.new(rings[0][::-1])
+    bm.faces.new(rings[-1])
+    add(parts, material, bm)
+
+
+def rod(parts, material, start, end, radius, segments=12):
+    start, end = Vector(start), Vector(end)
+    axis = end - start
+    cylinder(parts, material, start, radius, axis.length, segments, axis.normalized())
+
+
+def polar(radius, degrees, z):
+    a = math.radians(degrees)
+    return Vector((radius * math.cos(a), radius * math.sin(a), z))
+
+
+def mast(rng, output):
+    mats = {
+        "aluminium": principled(
+            "Satin aluminium", base=lin((182, 184, 186)), rough=0.32, metallic=1
+        ),
+        "black": principled("Black polymer", base=lin((28, 28, 28)), rough=0.5),
+        "steel": principled("Black powder coat", base=lin((40, 40, 38)), rough=0.55),
+        "galv": principled("Galvanised steel", base=lin((150, 150, 146)), rough=0.35, metallic=1),
+        "coax": principled("Coax jacket", base=lin((20, 20, 20)), rough=0.6),
+        "strap": principled("Orange webbing", base=lin((222, 96, 30)), rough=0.8),
+    }
+    parts = {}
+    collars = [(r + 0.009, z1 - 0.055, z1 + 0.012) for r, _, z1 in SECTIONS[:3]]
+    ring = (SECTIONS[2][0] + 0.008, GUY_Z - 0.015, GUY_Z + 0.015)
+    cap = (0.020, SECTIONS[3][2], SECTIONS[3][2] + 0.03)
+    for material, items in (
+        ("aluminium", SECTIONS),
+        ("black", (*collars, cap, (0.018, cap[2], WHIP[0]))),
+        ("galv", (ring, (0.009, WHIP[0], WHIP[1]))),
+        ("steel", ((SLEEVE, SECTIONS[0][1] - 0.02, HEAD[1]), HEAD, LOWER)),
+    ):
+        for r, z0, z1 in items:
+            cylinder(parts, material, (0, 0, z0), r, z1 - z0, 24)
+    rod(parts, "black", (0, 0, WHIP[1]), (0, 0, WHIP[2] - 0.01), 0.0035)
+    cylinder(parts, "black", (0, 0, WHIP[2] - 0.01), 0.005, 0.01)
+    for r, _, z1 in collars:
+        lever = frame(polar(r + 0.012, 270, z1 - 0.03), (0, -1, 0), (0, 0, 1))
+        box(parts, "black", (0.03, 0.012, 0.05), lever, rng)
+    # Tripod: legs hinged at the head, spreaders from the lower collar, a mast clamp knob.
+    for angle in (60, 180, 300):
+        radial = polar(1, angle, 0)
+        lug = frame(polar(HEAD[0] + 0.01, angle, 1.02), radial, (-radial.y, radial.x, 0))
+        box(parts, "steel", (0.04, 0.03, 0.05), lug, rng, bevel=0.003)
+        top, foot = polar(0.06, angle, 1.0), polar(FOOT_R, angle, 0.02)
+        rod(parts, "steel", top, foot, LEG_R)
+        cylinder(parts, "black", polar(FOOT_R, angle, 0), PAD_R, 0.025)
+        rod(parts, "steel", polar(LOWER[0], angle, 0.33), top.lerp(foot, 0.55), 0.008)
+        stake = polar(STAKE_R, angle, -STAKE[1])
+        cylinder(parts, "galv", stake, STAKE[0], STAKE[1] + STAKE[2])
+        cylinder(parts, "galv", stake + Vector((0, 0, sum(STAKE[1:]))), 0.016, 0.012)
+        eye = polar(ring[0] + 0.012, angle, GUY_Z)
+        box(parts, "galv", (0.03, 0.006, 0.025), frame(eye, radial, (0, 0, 1)), rng, bevel=0.002)
+        anchor = polar(STAKE_R - STAKE[0] - STRAP[1], angle, 0.07)
+        beam(parts, "strap", eye + radial * 0.012, anchor, *STRAP, (0, 0, 1), rng, bevel=0.0005)
+        loop = frame(polar(STAKE_R, angle, 0.07), radial, (0, 0, 1))
+        box(parts, "strap", (0.045, STRAP[0], 0.03), loop, rng, bevel=0.003)
+        along = (anchor - eye).normalized()
+        buckle = anchor - along * 0.5 + along.cross(radial.cross(along)) * 0.007
+        box(parts, "galv", (0.08, 0.035, 0.012), frame(buckle, along, radial.cross(along)), rng)
+        tail = buckle + radial * 0.03 - Vector((0, 0, 0.25))
+        beam(parts, "strap", buckle, tail, *STRAP, radial, rng, bevel=0.0005)
+    knob = polar(SLEEVE, 270, 0.9)
+    rod(parts, "galv", knob, polar(0.085, 270, 0.9), 0.006)
+    cylinder(parts, "black", polar(0.085, 270, 0.9), 0.018, 0.016, 16, (0, -1, 0))
+    # Yagi: square boom on a mast clamp, vertical elements, feed box under the driven element.
+    r4 = SECTIONS[3][0]
+    placed(parts, "black", (0.05, 0.06, 0.08), (r4 + 0.025, 0, BOOM_Z), rng, bevel=0.004)
+    beam(parts, "aluminium", (r4 + 0.05, 0, BOOM_Z), (0.66, 0, BOOM_Z), 0.02, 0.02, (0, 0, 1), rng)
+    for x, length in ELEMENTS:
+        rod(parts, "aluminium", (x, 0, BOOM_Z - length / 2), (x, 0, BOOM_Z + length / 2), 0.004)
+        placed(parts, "black", (0.026, 0.026, 0.03), (x, 0, BOOM_Z), rng, bevel=0.003)
+    feed = (ELEMENTS[1][0] - 0.04, 0, BOOM_Z - 0.035)
+    placed(parts, "black", (0.04, 0.03, 0.05), feed, rng, bevel=0.004)
+
+    def hug(z):
+        """Coax centre radius on the +X face, ramping over collars, the guy eye and the head."""
+        surfaces = (*SECTIONS, *collars, ring, cap, HEAD, LOWER)
+        return max(r - 0.5 * max(0, z0 - z, z - z1) for r, z0, z1 in surfaces) + COAX + 0.002
+
+    (cx, cy), loop = COIL
+    # Down below the reflector's foot, across to the mast, then down its +X face.
+    path = [Vector(feed) - Vector((0, 0, 0.025)), Vector((feed[0], 0, BOOM_Z - 0.20))]
+    path += [Vector((hug(z), 0, z)) for z in np.arange(BOOM_Z - 0.25, HEAD[1] - 0.12, -0.03)]
+    path += [Vector(p) for p in ((0.08, 0, 0.55), (0.11, 0, 0.12), (0.22, 0, COAX), (cx, 0, COAX))]
+    # Two flat turns, each 15 mm outside the last.
+    for t in np.linspace(-math.pi / 2, 3.5 * math.pi, 120)[1:]:
+        path.append(Vector((cx, cy, COAX)) + polar(loop + 0.0024 * t, math.degrees(t), 0))
+    smooth = chaikin(path, 2)
+    tube(parts, "coax", smooth, COAX, 12)
+    end = smooth[-1] + (smooth[-1] - smooth[-2]).normalized() * 0.04
+    rod(parts, "galv", smooth[-1], end, 0.011, 16)
+    hulls = {
+        "mast": ((0.08, 0.08, cap[2] - HEAD[2]), (0, 0, (cap[2] + HEAD[2]) / 2)),
+        "tripod": (
+            (1.5 * FOOT_R + 2 * PAD_R, math.sqrt(3) * FOOT_R + 2 * PAD_R, HEAD[2]),
+            (-FOOT_R / 4, 0, HEAD[2] / 2),
+        ),
+    }
+    objects, hulls = collision(emit(parts, mats), "SM_AntennaMast", hulls, rng, mats["black"])
+    return objects, {
+        "heightM": WHIP[2],
+        "guyHeightM": GUY_Z,
+        "strapM": list(STRAP),
+        "collisionHulls": hulls,
+    }
+
+
+def slots(builder):
+    """`builder` that also reports, per material, the Principled inputs import_assets
+    rebuilds in Unreal: values, or images as their build.json name and path; `normal` holds
+    at most one map with its strength."""
+
+    def source(socket):
+        if not socket.is_linked:
+            value = socket.default_value
+            return value if isinstance(value, float) else list(value)[:3]
+        (link,) = socket.links
+        assert link.from_node.type == "TEX_IMAGE", (socket.name, link.from_node.type)
+        img = link.from_node.image
+        return {"name": img.name, "path": str(Path(img.filepath_raw).relative_to(ROOT))}
+
+    def inputs(material):
+        bsdf = material.node_tree.nodes["Principled BSDF"]
+        keys = ("baseColor", "roughness", "metallic", "transmission")
+        sockets = ("Base Color", "Roughness", "Metallic", "Transmission Weight")
+        record = {key: source(bsdf.inputs[socket]) for key, socket in zip(keys, sockets)}
+        assert isinstance(record["metallic"], float) and record["transmission"] in (0, 1), record
+        maps = [link.from_node for link in bsdf.inputs["Normal"].links]
+        assert all(node.type == "NORMAL_MAP" for node in maps), material.name
+        record["normal"] = [
+            source(node.inputs["Color"]) | {"strength": node.inputs["Strength"].default_value}
+            for node in maps
+        ]
+        return record
+
+    def build(rng, output):
+        objects, details = builder(rng, output)
+        # Interchange also makes slots of the UCX_ hulls' materials.
+        materials = {m.name: inputs(m) for o in objects for m in o.data.materials}
+        return objects, details | {"materials": materials}
+
+    return build
+
+
+if __name__ == "__main__":
+    main(
+        Path(__file__).resolve(),
+        {
+            name: slots(builder)
+            for name, builder in {
+                "ranger-cabin": cabin,
+                "timber-footbridge": footbridge,
+                "fire-lookout": lookout,
+                "snow-survey-hut": hut,
+                "vault-toilet": toilet,
+                "antenna-mast": mast,
+            }.items()
+        },
+    )

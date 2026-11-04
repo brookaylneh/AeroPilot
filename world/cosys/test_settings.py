@@ -1,0 +1,143 @@
+"""Reject settings that decouple the four autopilots from their authored spawn frame."""
+
+import copy
+import json
+import unittest
+
+from mission_planner.gcs import geodesy
+from world.cosys import configure_drones as configure
+from world.cosys.evidence import CAMERA_ID, FOV_DEG
+from world.cosys.inspection import MOUNT_NED_M
+
+
+class SettingsTests(unittest.TestCase):
+    def setUp(self):
+        self.world = json.loads((configure.ROOT / "world/cosys/world.json").read_text())
+
+    def test_rgb_lumen_preserves_native_resolution_and_fixed_exposure(self):
+        settings = configure.generate(self.world, 41451, 0)
+        for vehicle in settings["Vehicles"].values():
+            captures = vehicle["Cameras"]["front_center"]["CaptureSettings"]
+            scene = next(capture for capture in captures if capture["ImageType"] == 0)
+            self.assertEqual((scene["Width"], scene["Height"]), (3840, 2160))
+            self.assertIs(scene["ForceUpdate"], False)
+            for capture in [*settings["CameraDefaults"]["CaptureSettings"], *captures]:
+                self.assertIs(capture["LumenGIEnable"], True)
+                self.assertIs(capture["LumenReflectionEnable"], True)
+                self.assertEqual(capture["AutoExposureMethod"], 2)
+                self.assertIs(capture["AutoExposureApplyPhysicalCameraExposure"], False)
+                self.assertEqual(capture["AutoExposureCompensation"], -13)
+                self.assertEqual(capture["WhiteBalanceTemperature"], 6500)
+                self.assertEqual(capture["WhiteBalanceTint"], 0)
+                self.assertEqual(capture["MotionBlurAmount"], 0)
+                self.assertEqual(capture["BloomIntensity"], 0)
+
+    def test_deployment_and_coupling_slots_do_not_share_udp_ports(self):
+        slots = [
+            configure.generate(self.world, 41451, 0),
+            configure.generate(self.world, 41452, 20),
+        ]
+        ports = [
+            vehicle[key]
+            for settings in slots
+            for vehicle in settings["Vehicles"].values()
+            for key in ("UdpPort", "ControlPortLocal")
+        ]
+        self.assertEqual(len(ports), len(set(ports)))
+        for settings in slots:
+            for name, home in geodesy.homes().items():
+                vehicle = settings["Vehicles"][name]
+                self.assertAlmostEqual(
+                    settings["OriginGeopoint"]["Altitude"] - vehicle["Z"],
+                    home["altitude_msl_m"],
+                )
+
+    def test_forward_camera_is_level_stabilized_with_body_heading_and_renders_on_request(self):
+        settings = configure.generate(self.world, 41451, 0)
+        scene = next(
+            c for c in settings["CameraDefaults"]["CaptureSettings"] if c["ImageType"] == 0
+        )
+        self.assertEqual((scene["Width"], scene["Height"]), (3840, 2160))
+        self.assertFalse(scene["ForceUpdate"])
+        for vehicle in settings["Vehicles"].values():
+            forward = vehicle["Cameras"]["fpv"]
+            self.assertEqual([forward[k] for k in "XYZ"], list(MOUNT_NED_M))
+            # No gimbal Yaw: the idle camera keeps the body heading while pitch and roll stay level.
+            self.assertEqual(forward["Gimbal"], {"Stabilization": 1, "Pitch": 0, "Roll": 0})
+            forward_scene = next(c for c in forward["CaptureSettings"] if c["ImageType"] == 0)
+            self.assertEqual((forward_scene["Width"], forward_scene["Height"]), (3840, 2160))
+            self.assertEqual(forward_scene["FOV_Degrees"], 90)
+            self.assertFalse(forward_scene["ForceUpdate"])
+            nadir = vehicle["Cameras"]["front_center"]
+            self.assertEqual(nadir["Pitch"], -90)
+            self.assertEqual(nadir["CaptureSettings"][1]["Width"], 3840)
+
+    def test_four_independent_evidence_cameras_are_stabilized_and_render_only_on_request(self):
+        settings = configure.generate(self.world, 41451, 0)
+        for vehicle in settings["Vehicles"].values():
+            camera = vehicle["Cameras"][CAMERA_ID]
+            self.assertEqual(
+                camera["Gimbal"], {"Stabilization": 1, "Pitch": 0, "Yaw": 0, "Roll": 0}
+            )
+            scene = next(item for item in camera["CaptureSettings"] if item["ImageType"] == 0)
+            self.assertEqual((scene["Width"], scene["Height"]), (3840, 2160))
+            self.assertEqual(scene["FOV_Degrees"], FOV_DEG)
+            self.assertFalse(scene["ForceUpdate"])
+            self.assertEqual(scene["MotionBlurAmount"], 0)
+
+    def test_rejects_wrong_frame_or_player_start(self):
+        changes = [
+            ("coordinateSystem", "NED_METERS"),
+            ("north", "+Y"),
+            ("east", "+X"),
+            ("moveWorldOrigin", True),
+            ("playerStartUeCm", {"x": 1, "y": 0, "z": 4000}),
+            ("playerStartUeCm", {"x": 0, "y": 0, "z": 0}),
+        ]
+        for key, value in changes:
+            with self.subTest(key=key, value=value), self.assertRaises(AssertionError):
+                configure.generate({**self.world, key: value}, 41452, 20)
+
+    def test_rejects_incomplete_or_mismatched_fleet(self):
+        world = copy.deepcopy(self.world)
+        del world["vehicles"]["Drone4"]
+        with self.assertRaises(AssertionError):
+            configure.generate(world, 41452, 20)
+        for axis in "xyz":
+            world = copy.deepcopy(self.world)
+            world["vehicles"]["Drone2"]["spawnUeCm"][axis] += 100
+            with self.subTest(axis=axis), self.assertRaises(AssertionError):
+                configure.generate(world, 41452, 20)
+
+    def test_rejects_reserved_or_overflowing_ports(self):
+        for rpc, instance in ((0, 20), (65536, 20), (41452, -1), (41452, 5651)):
+            with self.subTest(rpc=rpc, instance=instance), self.assertRaises(AssertionError):
+                configure.generate(self.world, rpc, instance)
+
+    def test_relocated_manifest_generates_without_reading_old_settings(self):
+        world = copy.deepcopy(self.world)
+        world["port"]["centerUeCm"]["x"] += 100
+        for vehicle in world["vehicles"].values():
+            vehicle["spawnUeCm"]["x"] += 100
+        settings = configure.generate(world, 41451, 0)
+        for name, vehicle in settings["Vehicles"].items():
+            self.assertEqual(vehicle["X"], world["vehicles"][name]["spawnUeCm"]["x"] / 100)
+
+    def test_launch_columns_clear_the_parking_notch_but_command_post_is_protected(self):
+        from mission_planner.gcs.validation import validate_ground_column
+        from world.cosys.landmarks import load
+
+        landmarks = load()
+        for home in geodesy.homes().values():
+            validate_ground_column(home, landmarks)
+            self.assertAlmostEqual(home["altitude_msl_m"] - geodesy.ORIGIN["altitude_msl_m"], 11.13)
+        for north, east in ((-757.8, -29.5), (-753, -27.5), (-716, 98)):
+            with (
+                self.subTest(north=north, east=east),
+                self.assertRaisesRegex(AssertionError, "raised landmark"),
+            ):
+                validate_ground_column({"north_m": north, "east_m": east}, landmarks)
+
+
+if __name__ == "__main__":
+    unittest.main()

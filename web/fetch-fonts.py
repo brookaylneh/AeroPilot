@@ -1,0 +1,23 @@
+#!/usr/bin/env python3
+"""Fetch the OFL fonts and verify their pinned hashes."""
+
+import hashlib
+import json
+import urllib.request
+from pathlib import Path
+
+root = Path(__file__).resolve().parent / "public" / "fonts"
+sources = json.loads((root / "sources.json").read_text())
+checksums = json.loads((root / "checksums.json").read_text())
+for name, url in sources.items():
+    target = root / name
+    if target.exists() and hashlib.sha256(target.read_bytes()).hexdigest() == checksums[name]:
+        continue
+    data = urllib.request.urlopen(url, timeout=60).read()
+    if hashlib.sha256(data).hexdigest() != checksums[name]:
+        raise SystemExit(
+            f"Checksum mismatch for {name}; upstream content changed. Review before updating the lock."
+        )
+    target.write_bytes(data)
+    print(f"Fetched {name}")
+print("All fonts verified.")

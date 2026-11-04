@@ -1,0 +1,49 @@
+{
+  "FileVersion": 3,
+  "EngineAssociation": "5.8",
+  "Category": "Simulation",
+  "Description": "UE 5.8.2 valley search-and-rescue scenarios with browser placement, save/load and Pixel Streaming.",
+  "Modules": [
+    {
+      "Name": "ScenarioStudio",
+      "Type": "Runtime",
+      "LoadingPhase": "Default"
+    }
+  ],
+  "Plugins": [
+    {
+      "Name": "PCG",
+      "Enabled": true
+    },
+    {
+      "Name": "AirSim",
+      "Enabled": true
+    },
+    {
+      "Name": "ChaosVehiclesPlugin",
+      "Enabled": true
+    },
+    {
+      "Name": "PixelStreaming2",
+      "Enabled": true
+    },
+    {
+      "Name": "PixelCapture",
+      "Enabled": true
+    },
+    {
+      "Name": "AndroidFileServer",
+      "Enabled": false
+    },
+    {
+      "Name": "ModelContextProtocol",
+      "Enabled": true,
+      "TargetAllowList": ["Editor"]
+    },
+    {
+      "Name": "EditorToolset",
+      "Enabled": true,
+      "TargetAllowList": ["Editor"]
+    }
+  ]
+}

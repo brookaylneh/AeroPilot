@@ -1,0 +1,668 @@
+{
+  "task": "Editable inclusion and exclusion flight fences",
+  "status": "Deployed; offline and installed editor checks passed; operator owns flight acceptance",
+  "evidence": ".local/evidence/fence-editor/20261101T212850Z",
+  "requested_parameters": {
+    "OA_TYPE": 2,
+    "OA_OPTIONS": 4,
+    "OA_MARGIN_MAX": 10.0,
+    "WP_RADIUS_M": 1,
+    "FENCE_MARGIN": 2,
+    "FENCE_ACTION": 1,
+    "RTL_ALT_M": 80.0,
+    "BATT_FS_LOW_ACT": 2
+  },
+  "sources": [
+    {
+      "url": "https://ardupilot.org/copter/docs/common-polygon_fence.html",
+      "sha256": "b93a4b6984680184d3e0647f1cb38e0b5b6617e69c6e113c4b7f7551d04b4fb4"
+    },
+    {
+      "url": "https://ardupilot.org/copter/docs/common-oa-dijkstras.html",
+      "sha256": "a2e6acdbb2b3b0816e76d1fd94091352517ab60c6c3a0acff7bcabed89ab3f1a"
+    },
+    {
+      "url": "https://ardupilot.org/dev/docs/mavlink-mission-upload-download.html",
+      "sha256": "19e2014f10c62a225d7fd2c75b846eca1e89c735da949ce963f3db5142eb4836"
+    },
+    {
+      "source": "libraries/AC_Avoidance/AP_OADijkstra.cpp",
+      "revision": "fb773567896014da007bca58358704d4a0d8516f",
+      "sha256": "0105e6afc527e3d6bde204b335e15709cc2f700a847e797c98ae34ba019ca4bc"
+    },
+    {
+      "source": "libraries/AC_Avoidance/AP_OAPathPlanner.cpp",
+      "revision": "fb773567896014da007bca58358704d4a0d8516f",
+      "sha256": "f60320f6ce89256c4bec52a30085c1cdd61199dd1c8d04915630de3635fcafa3"
+    },
+    {
+      "source": "libraries/AC_WPNav/AC_WPNav_OA.cpp",
+      "revision": "fb773567896014da007bca58358704d4a0d8516f",
+      "sha256": "ba2f15a12d4d7be7dc9477059885aac0a335325e1584b2043e729420b7a26f01"
+    },
+    {
+      "source": "ArduCopter/mode_rtl.cpp",
+      "revision": "fb773567896014da007bca58358704d4a0d8516f",
+      "sha256": "bb2656a84c30eb184bb88cd34c06647986b552ac00f73c73b4382f32a9aaad00"
+    },
+    {
+      "source": "libraries/AC_Fence/AC_Fence.cpp",
+      "revision": "fb773567896014da007bca58358704d4a0d8516f",
+      "sha256": "9fa580a04c7f0ef1b4885892100450ac75fef1e88ef924d6486313bb2989ecd1"
+    }
+  ],
+  "paid_calls": 0,
+  "flights": 0,
+  "checks": [
+    {
+      "name": "python",
+      "command": [".venv-cosys/bin/python", "-m", "unittest"],
+      "started_at": "2026-11-01T22:08:05.524642+00:00",
+      "duration_s": 201.65497912897263,
+      "exit_code": 0,
+      "log": ".local/evidence/fence-editor/20261101T212850Z/checks-4/python.log"
+    },
+    {
+      "name": "typecheck",
+      "command": ["npm", "run", "typecheck"],
+      "started_at": "2026-11-01T22:08:05.525971+00:00",
+      "duration_s": 4.400615488993935,
+      "exit_code": 0,
+      "log": ".local/evidence/fence-editor/20261101T212850Z/checks-4/typecheck.log"
+    },
+    {
+      "name": "python-focused",
+      "command": [
+        ".venv-cosys/bin/python",
+        "-m",
+        "unittest",
+        "mission_planner.gcs.test_service",
+        "mission_planner.agents.test_tools",
+        "mission_planner.gcs.test_fences"
+      ],
+      "started_at": "2026-11-01T22:11:57.517246+00:00",
+      "duration_s": 10.372701207001228,
+      "exit_code": 0,
+      "log": ".local/evidence/fence-editor/20261101T212850Z/return-context/checks-final/python-focused.log"
+    },
+    {
+      "name": "ruff",
+      "command": [".venv-cosys/bin/ruff", "check"],
+      "started_at": "2026-11-01T22:12:07.890139+00:00",
+      "duration_s": 0.011119284958112985,
+      "exit_code": 0,
+      "log": ".local/evidence/fence-editor/20261101T212850Z/return-context/checks-final/ruff.log"
+    },
+    {
+      "name": "ruff-format",
+      "command": [".venv-cosys/bin/ruff", "format", "--check"],
+      "started_at": "2026-11-01T22:12:07.901428+00:00",
+      "duration_s": 0.01044349797302857,
+      "exit_code": 0,
+      "log": ".local/evidence/fence-editor/20261101T212850Z/return-context/checks-final/ruff-format.log"
+    },
+    {
+      "name": "npm-test",
+      "command": ["npm", "test"],
+      "started_at": "2026-11-01T22:13:21.156122+00:00",
+      "duration_s": 6.5103190040099435,
+      "exit_code": 0,
+      "log": ".local/evidence/fence-editor/20261101T212850Z/return-context/release-checks/npm-test.log"
+    },
+    {
+      "name": "format",
+      "command": ["npm", "run", "format:check"],
+      "started_at": "2026-11-01T22:13:27.666697+00:00",
+      "duration_s": 1.9045520529616624,
+      "exit_code": 0,
+      "log": ".local/evidence/fence-editor/20261101T212850Z/return-context/release-checks/format.log"
+    },
+    {
+      "name": "build",
+      "command": [
+        "npm",
+        "run",
+        "build",
+        "--",
+        "--outDir",
+        "/srv/snr/.local/staging/fence-editor/release-dist-complete"
+      ],
+      "started_at": "2026-11-01T22:13:29.571443+00:00",
+      "duration_s": 6.56661673495546,
+      "exit_code": 0,
+      "log": ".local/evidence/fence-editor/20261101T212850Z/return-context/release-checks/build.log"
+    }
+  ],
+  "installed": {
+    "origin": "http://203.0.113.10",
+    "health": {
+      "ok": true,
+      "services": {
+        "web": true,
+        "mission": true,
+        "signalling": true,
+        "unreal": true,
+        "turn": true,
+        "caddy": true
+      },
+      "renderer": "occupied"
+    },
+    "verified_at": "2026-11-01T22:21:16.889859+00:00",
+    "index_sha256": "49ea7e52d3bb567def950d1b8a88d4a9d98e571e58fbd523361e9fa8175db784",
+    "restart_evidence": ".local/evidence/fence-editor/20261101T212850Z/runtime-final",
+    "safety_parameters_readback": [
+      {
+        "kind": "safety_parameters_verified",
+        "drone_id": "Drone1",
+        "values": {
+          "ARMING_SKIPCHK": 0.0,
+          "FS_THR_ENABLE": 1.0,
+          "FS_CRASH_CHECK": 1.0,
+          "DISARM_DELAY": 10.0,
+          "RTL_ALT_M": 80.0,
+          "RTL_ALT_FINAL_M": 0.0,
+          "RTL_CLIMB_MIN_M": 0.0,
+          "RTL_CONE_SLOPE": 0.0,
+          "RTL_ALT_TYPE": 0.0,
+          "FENCE_ALT_MAX": 100.0,
+          "FENCE_MARGIN": 2.0,
+          "FENCE_ACTION": 1.0,
+          "OA_TYPE": 2.0,
+          "OA_MARGIN_MAX": 10.0,
+          "OA_OPTIONS": 4.0,
+          "WP_RADIUS_M": 1.0,
+          "BATT_MONITOR": 4.0,
+          "BATT_LOW_VOLT": 10.5,
+          "BATT_LOW_TIMER": 10.0,
+          "BATT_FS_LOW_ACT": 2.0,
+          "SCHED_LOOP_RATE": 184.0,
+          "ATC_ACC_Y_MAX": 20.0,
+          "BATT_CAPACITY": 50000.0,
+          "SIM_BATT_CAP_AH": 50.0,
+          "SIM_BATT_VOLTAGE": 12.600000381469727
+        }
+      },
+      {
+        "kind": "safety_parameters_verified",
+        "drone_id": "Drone4",
+        "values": {
+          "ARMING_SKIPCHK": 0.0,
+          "FS_THR_ENABLE": 1.0,
+          "FS_CRASH_CHECK": 1.0,
+          "DISARM_DELAY": 10.0,
+          "RTL_ALT_M": 80.0,
+          "RTL_ALT_FINAL_M": 0.0,
+          "RTL_CLIMB_MIN_M": 0.0,
+          "RTL_CONE_SLOPE": 0.0,
+          "RTL_ALT_TYPE": 0.0,
+          "FENCE_ALT_MAX": 100.0,
+          "FENCE_MARGIN": 2.0,
+          "FENCE_ACTION": 1.0,
+          "OA_TYPE": 2.0,
+          "OA_MARGIN_MAX": 10.0,
+          "OA_OPTIONS": 4.0,
+          "WP_RADIUS_M": 1.0,
+          "BATT_MONITOR": 4.0,
+          "BATT_LOW_VOLT": 10.5,
+          "BATT_LOW_TIMER": 10.0,
+          "BATT_FS_LOW_ACT": 2.0,
+          "SCHED_LOOP_RATE": 184.0,
+          "ATC_ACC_Y_MAX": 20.0,
+          "BATT_CAPACITY": 50000.0,
+          "SIM_BATT_CAP_AH": 50.0,
+          "SIM_BATT_VOLTAGE": 12.600000381469727
+        }
+      },
+      {
+        "kind": "safety_parameters_verified",
+        "drone_id": "Drone2",
+        "values": {
+          "ARMING_SKIPCHK": 0.0,
+          "FS_THR_ENABLE": 1.0,
+          "FS_CRASH_CHECK": 1.0,
+          "DISARM_DELAY": 10.0,
+          "RTL_ALT_M": 80.0,
+          "RTL_ALT_FINAL_M": 0.0,
+          "RTL_CLIMB_MIN_M": 0.0,
+          "RTL_CONE_SLOPE": 0.0,
+          "RTL_ALT_TYPE": 0.0,
+          "FENCE_ALT_MAX": 100.0,
+          "FENCE_MARGIN": 2.0,
+          "FENCE_ACTION": 1.0,
+          "OA_TYPE": 2.0,
+          "OA_MARGIN_MAX": 10.0,
+          "OA_OPTIONS": 4.0,
+          "WP_RADIUS_M": 1.0,
+          "BATT_MONITOR": 4.0,
+          "BATT_LOW_VOLT": 10.5,
+          "BATT_LOW_TIMER": 10.0,
+          "BATT_FS_LOW_ACT": 2.0,
+          "SCHED_LOOP_RATE": 184.0,
+          "ATC_ACC_Y_MAX": 20.0,
+          "BATT_CAPACITY": 50000.0,
+          "SIM_BATT_CAP_AH": 50.0,
+          "SIM_BATT_VOLTAGE": 12.600000381469727
+        }
+      },
+      {
+        "kind": "safety_parameters_verified",
+        "drone_id": "Drone3",
+        "values": {
+          "ARMING_SKIPCHK": 0.0,
+          "FS_THR_ENABLE": 1.0,
+          "FS_CRASH_CHECK": 1.0,
+          "DISARM_DELAY": 10.0,
+          "RTL_ALT_M": 80.0,
+          "RTL_ALT_FINAL_M": 0.0,
+          "RTL_CLIMB_MIN_M": 0.0,
+          "RTL_CONE_SLOPE": 0.0,
+          "RTL_ALT_TYPE": 0.0,
+          "FENCE_ALT_MAX": 100.0,
+          "FENCE_MARGIN": 2.0,
+          "FENCE_ACTION": 1.0,
+          "OA_TYPE": 2.0,
+          "OA_MARGIN_MAX": 10.0,
+          "OA_OPTIONS": 4.0,
+          "WP_RADIUS_M": 1.0,
+          "BATT_MONITOR": 4.0,
+          "BATT_LOW_VOLT": 10.5,
+          "BATT_LOW_TIMER": 10.0,
+          "BATT_FS_LOW_ACT": 2.0,
+          "SCHED_LOOP_RATE": 184.0,
+          "ATC_ACC_Y_MAX": 20.0,
+          "BATT_CAPACITY": 50000.0,
+          "SIM_BATT_CAP_AH": 50.0,
+          "SIM_BATT_VOLTAGE": 12.600000381469727
+        }
+      }
+    ],
+    "rtl_envelopes": [
+      {
+        "kind": "rtl_envelope_verified",
+        "drone_id": "Drone1",
+        "altitude_above_home_m": 80.0,
+        "terrain_max_m": 61.1484375,
+        "obstacle_max_m": 18,
+        "clearance_m": 12.011562499999854
+      },
+      {
+        "kind": "rtl_envelope_verified",
+        "drone_id": "Drone4",
+        "altitude_above_home_m": 80.0,
+        "terrain_max_m": 61.1484375,
+        "obstacle_max_m": 18,
+        "clearance_m": 12.011562499999854
+      },
+      {
+        "kind": "rtl_envelope_verified",
+        "drone_id": "Drone2",
+        "altitude_above_home_m": 80.0,
+        "terrain_max_m": 61.1484375,
+        "obstacle_max_m": 18,
+        "clearance_m": 12.011562499999854
+      },
+      {
+        "kind": "rtl_envelope_verified",
+        "drone_id": "Drone3",
+        "altitude_above_home_m": 80.0,
+        "terrain_max_m": 61.1484375,
+        "obstacle_max_m": 18,
+        "clearance_m": 12.011562499999854
+      }
+    ],
+    "browser_checks": [
+      {
+        "label": "Boundary restored through the editor without a rounding rejection",
+        "version": 12,
+        "error": null
+      },
+      {
+        "label": "Home exclusion rejected inline while telemetry continues",
+        "version": 12,
+        "error": "Drone1 home/launch position: enters Exclusion 2; add intermediate fly points around this no-fly zone"
+      },
+      {
+        "label": "Reload preserves the operator inclusion and exclusion polygons"
+      }
+    ],
+    "browser_page_errors": [],
+    "state_messages": 32,
+    "fence_version": 12,
+    "operator_geometry_preserved": true,
+    "legend_viewports": [
+      {
+        "width": 1440,
+        "height": 900,
+        "controls": [
+          {
+            "name": "Edit inclusion fence",
+            "box": {
+              "x": 602.578125,
+              "y": 844,
+              "width": 117.65625,
+              "height": 20
+            }
+          },
+          {
+            "name": "Exclusion fences",
+            "box": {
+              "x": 736.234375,
+              "y": 844,
+              "width": 113.421875,
+              "height": 20
+            }
+          }
+        ]
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "controls": [
+          {
+            "name": "Edit inclusion fence",
+            "box": {
+              "x": 1033.578125,
+              "y": 1024,
+              "width": 117.65625,
+              "height": 20
+            }
+          },
+          {
+            "name": "Exclusion fences",
+            "box": {
+              "x": 1167.234375,
+              "y": 1024,
+              "width": 113.421875,
+              "height": 20
+            }
+          }
+        ]
+      }
+    ],
+    "legend_page_errors": []
+  },
+  "test_totals": {
+    "python": 653,
+    "javascript": 249,
+    "final_focused_python": 81
+  },
+  "build": {
+    "name": "build",
+    "command": [
+      "npm",
+      "run",
+      "build",
+      "--",
+      "--outDir",
+      "/srv/snr/.local/staging/fence-editor/release-dist-complete"
+    ],
+    "started_at": "2026-11-01T22:13:29.571443+00:00",
+    "duration_s": 6.56661673495546,
+    "exit_code": 0,
+    "log": ".local/evidence/fence-editor/20261101T212850Z/return-context/release-checks/build.log"
+  },
+  "failures": [
+    {
+      "evidence": ".local/evidence/fence-editor/20261101T212850Z/checks-1/python.log",
+      "reason": "Legacy offline fixtures used the former coordinate-only fence shape; updated and passed."
+    },
+    {
+      "evidence": ".local/evidence/fence-editor/20261101T212850Z/checks-2/format.log",
+      "reason": "Concurrent MissionControl edits needed formatting; final formatting check passed."
+    },
+    {
+      "evidence": ".local/evidence/fence-editor/20261101T212850Z/browser-1/results.json",
+      "reason": "Returning an inclusion corner produced millimetre projection noise although encoded coordinates were unchanged. Containment now checks uploaded coordinates; the regression test and installed editor save both pass."
+    },
+    {
+      "evidence": ".local/evidence/fence-editor/20261101T212850Z/return-context/checks-final/format.log",
+      "reason": "Concurrent stylesheet edits briefly failed formatting; subsequent format checks and the production build passed."
+    },
+    {
+      "evidence": ".local/evidence/fence-editor/20261101T212850Z/browser-final/saved-1440.png",
+      "reason": "Legacy responsive styling hid the now-interactive legend. The selector was removed; installed controls are visible and unobstructed at 1440x900 and 1920x1080."
+    },
+    {
+      "evidence": ".local/evidence/fence-editor/20261101T212850Z/browser-final/results.json",
+      "reason": "The operator submitted a Granite Lake request during the final fence-save check. Saving fences intentionally cancelled that in-progress preview; the operator must resend the request."
+    }
+  ],
+  "limitations": [
+    "No model calls or flight commands were initiated by these acceptance checks. Updated return guidance awaits an operator flight test.",
+    "ArduPilot polygon avoidance and battery RTL were source-checked and all four parameter readbacks verified; live failsafe flight remains untested."
+  ],
+  "completed_at": "2026-11-01T22:21:16.889859+00:00",
+  "return_context_correction": {
+    "evidence": ".local/evidence/fence-editor/20261101T212850Z/return-context",
+    "finding": "Exact exclusion polygons and version 9 were already sent. A direct home leg initially cleared the boundary by 12.352789196264455 m; the moving drone then reached a position whose home leg crossed Exclusion 1 while Wonder reasoned. The direct RTL guard rejected it; the routed return preview and application succeeded.",
+    "change": "Wonder holds and previews an explicit return plan whenever exclusions are saved. Direct RTL without exclusions still requires a clear inclusion path. Each turn retains exact current readback geometry and version.",
+    "offline_replay": {
+      "compiled_plans": [
+        {
+          "tool_sequence": 72,
+          "plan_version": 1,
+          "passed": true,
+          "seconds": 1.1759314829832874,
+          "route_points": {
+            "Drone1": 12
+          }
+        },
+        {
+          "tool_sequence": 124,
+          "plan_version": 2,
+          "passed": true,
+          "seconds": 0.12010575999738649,
+          "route_points": {
+            "Drone1": 13
+          }
+        }
+      ],
+      "movement_analysis": ".local/evidence/fence-editor/20261101T212850Z/return-context/movement.json"
+    },
+    "new_paid_calls": 0,
+    "new_live_flights": 0,
+    "updated_model_behavior_live_tested": false
+  },
+  "deleted_files": [],
+  "name_editing": {
+    "status": "Deployed; repository and staged/installed browser checks passed",
+    "completed_at": "2026-11-01T22:55:34.343876+00:00",
+    "evidence": ".local/evidence/fence-editor/20261101T223232Z",
+    "changes": [
+      "One functional bottom legend labeled Inclusion and Exclusion.",
+      "A native naming popup before saving either area; names persist with fence settings.",
+      "Existing areas can be renamed without moving their corners; undo/deletion retain name associations.",
+      "Removed the duplicate fleet-version/autopilot-readback annotation and its unused CSS.",
+      "Isolated a startup camera test from the live persisted fence file."
+    ],
+    "files_changed": [
+      "mission_planner/gcs/FenceEditor.tsx",
+      "mission_planner/gcs/FenceEditor.test.mjs",
+      "mission_planner/gcs/fences.py",
+      "mission_planner/gcs/test_fences.py",
+      "mission_planner/gcs/MissionMap.tsx",
+      "mission_planner/gcs/MissionMap.test.mjs",
+      "mission_planner/gcs/MissionControl.test.mjs",
+      "mission_planner/gcs/FlightPlan.test.mjs",
+      "mission_planner/gcs/test_fleet.py",
+      "mission_planner/gcs/mission.css",
+      "mission_planner/gcs/README.md",
+      "mission_planner/measurements/fence-editor.json"
+    ],
+    "files_deleted": [],
+    "test_totals": {
+      "python": 654,
+      "javascript": 252
+    },
+    "checks": [
+      {
+        "name": "js",
+        "command": ["npm", "test"],
+        "exit_code": 0,
+        "elapsed_s": 9.724714107986074,
+        "log": ".local/evidence/fence-editor/20261101T223232Z/js.log"
+      },
+      {
+        "name": "types",
+        "command": ["npm", "run", "typecheck"],
+        "exit_code": 0,
+        "elapsed_s": 6.839125826023519,
+        "log": ".local/evidence/fence-editor/20261101T223232Z/types.log"
+      },
+      {
+        "name": "prettier-final",
+        "command": ["npm", "run", "format:check"],
+        "exit_code": 0,
+        "elapsed_s": 1.8603911069803871,
+        "log": ".local/evidence/fence-editor/20261101T223232Z/prettier-final.log"
+      },
+      {
+        "name": "ruff-final",
+        "command": [".venv-cosys/bin/ruff", "check"],
+        "exit_code": 0,
+        "elapsed_s": 0.01085125602548942,
+        "log": ".local/evidence/fence-editor/20261101T223232Z/ruff-final.log"
+      },
+      {
+        "name": "ruff-format-final",
+        "command": [".venv-cosys/bin/ruff", "format", "--check"],
+        "exit_code": 0,
+        "elapsed_s": 0.010897833970375359,
+        "log": ".local/evidence/fence-editor/20261101T223232Z/ruff-format-final.log"
+      },
+      {
+        "name": "python-final",
+        "command": [".venv-cosys/bin/python", "-m", "unittest"],
+        "exit_code": 0,
+        "elapsed_s": 227.99056507699424,
+        "log": ".local/evidence/fence-editor/20261101T223232Z/python-final.log"
+      },
+      {
+        "name": "build",
+        "command": ["npm", "run", "build", "--", "--outDir", "../.local/staging/fence-editor/naming-dist"],
+        "exit_code": 0,
+        "elapsed_s": 9.338948049000464,
+        "log": ".local/evidence/fence-editor/20261101T223232Z/build.log"
+      },
+      {
+        "name": "browser-staged-3",
+        "command": [
+          ".local/toolchains/bin/node",
+          "--env-file=.local/runtime.env",
+          "--import",
+          "tsx",
+          ".local/staging/fence-editor/accept-names.mjs"
+        ],
+        "exit_code": 0,
+        "elapsed_s": 6.8639482369762845,
+        "log": ".local/evidence/fence-editor/20261101T223232Z/browser-staged-3.log"
+      },
+      {
+        "name": "browser-installed",
+        "command": [
+          ".local/toolchains/bin/node",
+          "--env-file=.local/runtime.env",
+          ".local/staging/fence-editor/check-names-live.mjs"
+        ],
+        "exit_code": 0,
+        "elapsed_s": 4.106637445045635,
+        "log": ".local/evidence/fence-editor/20261101T223232Z/browser-installed.log"
+      }
+    ],
+    "browser_checks": [
+      "Installed inclusion popup loads its persisted name; Escape keeps the draft",
+      "Installed exclusion requires a closed polygon, then offers an editable name; cancel sends no save",
+      "Reload preserves the migrated configuration and names",
+      "Only the functional legend appears and remains clickable at both desktop sizes"
+    ],
+    "browser_viewports": [
+      {
+        "width": 1440,
+        "height": 900,
+        "controls": [
+          {
+            "name": "Inclusion",
+            "box": {
+              "x": 659.375,
+              "y": 844,
+              "width": 85.390625,
+              "height": 20
+            }
+          },
+          {
+            "name": "Exclusion",
+            "box": {
+              "x": 760.765625,
+              "y": 844,
+              "width": 88.890625,
+              "height": 20
+            }
+          }
+        ]
+      },
+      {
+        "width": 1920,
+        "height": 1080,
+        "controls": [
+          {
+            "name": "Inclusion",
+            "box": {
+              "x": 1090.375,
+              "y": 1024,
+              "width": 85.390625,
+              "height": 20
+            }
+          },
+          {
+            "name": "Exclusion",
+            "box": {
+              "x": 1191.765625,
+              "y": 1024,
+              "width": 88.890625,
+              "height": 20
+            }
+          }
+        ]
+      }
+    ],
+    "installed_page_errors": [],
+    "migration": {
+      "version": 13,
+      "names": {
+        "inclusion": "Inclusion",
+        "exclusions": []
+      },
+      "geometry_and_version_preserved": true
+    },
+    "source": {
+      "url": "https://html.spec.whatwg.org/multipage/interactive-elements.html#the-dialog-element",
+      "sha256": "9187cfb6d3983fadc5008562df90ec02b96576fcfa0b3f0bc7965719a05eb172"
+    },
+    "versions": ".local/evidence/fence-editor/20261101T223232Z/versions.json",
+    "failures": [
+      {
+        "evidence": ".local/evidence/fence-editor/20261101T223232Z/python-interrupted.json",
+        "reason": "The initial attached unittest process received SIGTERM before reporting a summary; cause was not established."
+      },
+      {
+        "evidence": ".local/evidence/fence-editor/20261101T223232Z/python-complete.log",
+        "reason": "One startup camera test read the live, unmigrated fence file. It now uses a temporary fence path. All 654 tests then passed."
+      },
+      {
+        "evidence": ".local/evidence/fence-editor/20261101T223232Z/browser-staged.log",
+        "reason": "A scratch browser assertion assumed an exact Tab focus cycle. It was replaced with checks for native modality, initial focus and an inert background."
+      },
+      {
+        "evidence": ".local/evidence/fence-editor/20261101T223232Z/browser-staged-2.json",
+        "reason": "The scratch browser driver completed its assertions but retained mock heartbeat timers; it was stopped and its cleanup corrected. Subsequent staged and installed browser runs exited successfully."
+      },
+      {
+        "evidence": ".local/evidence/fence-editor/20261101T223232Z/status-probe-failure.json",
+        "reason": "A scratch status probe used asyncio.timeout, which is unavailable in Python 3.10; the corrected probe uses asyncio.wait_for."
+      }
+    ],
+    "new_paid_calls": 0,
+    "new_flight_commands": 0,
+    "open_issues": []
+  }
+}

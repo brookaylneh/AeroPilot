@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title><!-- TITLE --></title>
+    <style>
+      :root {
+        color-scheme: dark;
+        font:
+          16px/1.5 system-ui,
+          sans-serif;
+        background: #15191d;
+        color: #eef2f4;
+      }
+      body {
+        max-width: 1600px;
+        margin: auto;
+        padding: 24px;
+      }
+      a {
+        color: #9adbd3;
+      }
+      p {
+        max-width: 95ch;
+      }
+      section {
+        margin: 48px 0;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 20px;
+      }
+      figure {
+        margin: 0;
+        background: #22292e;
+        border-radius: 12px;
+        overflow: hidden;
+      }
+      img {
+        width: 100%;
+        aspect-ratio: 1;
+        object-fit: contain;
+        display: block;
+      }
+      .native img {
+        max-width: 640px;
+        margin: auto;
+      }
+      figcaption {
+        padding: 16px;
+      }
+      .notice {
+        padding: 18px;
+        background: #273231;
+        border-left: 4px solid #9adbd3;
+      }
+      @media (max-width: 900px) {
+        .grid {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+      }
+      @media (max-width: 600px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <nav>
+      <a href="/character-rocketbox/index.html">Approved sample</a> ·
+      <a href="/">Mission Control</a>
+    </nav>
+    <h1><!-- TITLE --></h1>
+    <p>
+      <!-- DESCRIPTION -->
+    </p>
+    <p class="notice">
+      <!-- ASSESSMENT -->
+    </p>
+    <p>
+      Portraits use hardware Lumen, ray tracing and virtual shadow maps with fixed exposure and white balance.
+      Sensor views are 3840 × 2160 with 70° horizontal field of view, 30 m above the floor. The oblique camera
+      is also 15 m away horizontally. Crops preserve the original pixels.
+    </p>
+    <p>
+      The neutral studio isolates the characters’ appearance. It does not establish outdoor realism, animation
+      quality, detector performance or live streaming capacity.
+    </p>
+    <nav class="grid" aria-label="Character overview"><!-- OVERVIEW --></nav>
+    <main><!-- CHARACTERS --></main>
+    <footer>
+      <p>
+        Character assets: Copyright © 2020 Microsoft, <a href="LICENSE.txt">MIT license</a>.
+        <a href="https://github.com/microsoft/Microsoft-Rocketbox">Original library</a>. Materials use the
+        supplied color, normal and specular maps with authored roughness; the source does not provide measured
+        PBR roughness maps.
+      </p>
+    </footer>
+  </body>
+</html>
