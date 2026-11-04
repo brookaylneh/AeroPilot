@@ -8,7 +8,7 @@ For a judge reviewing code, start with the [credential-free checks](../README.md
 
 | Requirement                                                                    | Needed for                                 |
 | ------------------------------------------------------------------------------ | ------------------------------------------ |
-| x86-64 Linux, Node 22 and Python 3.10                                          | Application and source checks              |
+| x86-64 Linux, Node 22, Python 3.10 and ripgrep (`rg`)                          | Application and source checks              |
 | NVIDIA GPU, compatible driver, Vulkan, Docker and NVIDIA Container Toolkit     | Unreal rendering and local SAM inference   |
 | Dedicated service account, uid 1002 / gid 1003                                 | Current device image and systemd installer |
 | Unreal Engine 5.8.2 and the authorized world content                           | Building the matching simulation package   |

@@ -13,6 +13,11 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - name: Install test system dependencies
+        run: |
+          sudo apt-get update -o Acquire::Retries=0 -o Acquire::http::Timeout=30
+          sudo apt-get install --yes --no-install-recommends ripgrep
+          rg --version
       - name: Scan Git history for secrets
         shell: bash
         run: |

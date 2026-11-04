@@ -86,9 +86,12 @@ Small or occluded people can still be missed; trees and other scenery can produc
 
 ## Run the code checks
 
-A Linux checkout with **Node 22 (22.12 or newer, below 23)** and **Python 3.10** can run the source checks without credentials, a GPU, Unreal or paid model calls:
+A Linux checkout with **Node 22 (22.12 or newer, below 23)**, **Python 3.10** and **ripgrep (`rg`)** on `PATH` can run the source checks without credentials, a GPU, Unreal or paid model calls:
 
 ```sh
+# Ubuntu prerequisite; install ripgrep with your OS package manager elsewhere.
+sudo apt-get install --yes --no-install-recommends ripgrep
+
 git clone https://github.com/brookaylneh/AeroPilot.git
 cd AeroPilot
 npm ci
