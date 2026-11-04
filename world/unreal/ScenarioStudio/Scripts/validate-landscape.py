@@ -11,8 +11,8 @@ ROOT = Path(unreal.Paths.project_dir()).resolve().parents[2]
 sites = list((ROOT / ".venv-cosys/lib").glob("python*/site-packages"))
 assert len(sites) == 1
 sys.path.extend([str(ROOT), str(sites[0])])
-from mission_planner.environment import load_env
-from world.cosys.terrain import WORLD, terrain_height
+from mission_planner.environment import load_env  # noqa: E402
+from world.cosys.terrain import WORLD, terrain_height  # noqa: E402
 
 load_env()
 report_path = Path(os.environ["SNR_EVIDENCE_DIR"]) / "landscape-orientation.json"

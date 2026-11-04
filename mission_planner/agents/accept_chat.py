@@ -12,6 +12,7 @@ from pathlib import Path
 from mission_planner.agents.map_context import compact_map, ground_height, ground_profile
 from mission_planner.agents.models import Wonder
 from mission_planner.agents.tools import AGENT_INSTRUCTIONS, TOOLS, validate_arguments
+from mission_planner.environment import load_env
 from mission_planner.gcs.fences import default_fences, fence_items, read_fences
 from mission_planner.gcs.geodesy import NAMES, homes
 from mission_planner.gcs.service import (
@@ -475,6 +476,7 @@ async def run(output, recorded_path, only, budget_usd):
 
 
 if __name__ == "__main__":
+    load_env()
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--recorded-state", type=Path, required=True)

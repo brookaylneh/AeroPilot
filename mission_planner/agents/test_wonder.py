@@ -2,6 +2,7 @@
 
 import json
 import unittest
+from unittest.mock import patch
 
 import httpx
 
@@ -30,7 +31,8 @@ class WonderContract(unittest.TestCase):
             self.requests.append(json.loads(request.content))
             return httpx.Response(self.status, json=self.response)
 
-        self.model = Wonder()
+        with patch.dict("os.environ", {"MODEL_API_KEY": "fixture"}):
+            self.model = Wonder()
         self.model.http.close()
         self.model.http = httpx.Client(transport=httpx.MockTransport(respond))
         self.addCleanup(self.model.http.close)

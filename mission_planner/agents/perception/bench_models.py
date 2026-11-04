@@ -13,7 +13,7 @@ from PIL import Image
 
 from mission_planner.agents import review
 from mission_planner.agents.models import Glimmer, Sam, Wonder
-from mission_planner.environment import ROOT
+from mission_planner.environment import ROOT, load_env
 
 OPTIONS = ["yes", "no", "unclear"]
 QUESTION = "Does this image show a person?"
@@ -90,6 +90,7 @@ def save(path, report):
 
 
 def main():
+    load_env()
     parser = argparse.ArgumentParser()
     parser.add_argument("--case", choices=CASES, required=True)
     parser.add_argument("--output", type=Path, required=True)

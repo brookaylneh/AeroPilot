@@ -8,6 +8,7 @@ from pathlib import Path
 
 from mission_planner.agents.models import Wonder
 from mission_planner.agents.tools import AGENT_INSTRUCTIONS, TOOLS, validate_arguments
+from mission_planner.environment import load_env
 
 
 def call(tool_name, **arguments):
@@ -190,6 +191,7 @@ def run(output, first_case):
 
 
 if __name__ == "__main__":
+    load_env()
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--first-case", type=int, default=1)

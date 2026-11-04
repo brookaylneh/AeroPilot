@@ -13,9 +13,6 @@ import httpx
 from jsonschema import validate
 from PIL import Image
 
-from mission_planner.environment import load_env
-
-load_env()
 META_URL = "https://api.meta.ai/v1/responses"
 
 

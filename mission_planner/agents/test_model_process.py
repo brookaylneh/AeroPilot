@@ -6,6 +6,7 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import httpx
 
@@ -43,7 +44,8 @@ def local_request(history):
             },
         )
 
-    model = Wonder()
+    with patch.dict("os.environ", {"MODEL_API_KEY": "fixture"}):
+        model = Wonder()
     model.http.close()
     model.http = httpx.Client(transport=httpx.MockTransport(respond))
     try:

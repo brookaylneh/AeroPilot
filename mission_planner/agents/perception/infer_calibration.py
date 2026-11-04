@@ -17,7 +17,7 @@ from mission_planner.agents.models import Glimmer, Sam
 from mission_planner.agents.perception.calibrate import ALONG, CONDITIONS, OFFSETS
 from mission_planner.agents.perception.geometry import Camera
 from mission_planner.agents.perception.glimmer_calibration import annotate
-from mission_planner.environment import ROOT
+from mission_planner.environment import ROOT, load_env
 
 
 def jpeg(image):
@@ -161,6 +161,7 @@ def main():
         raise SystemExit(f"Signal {signum} in {frame.f_code.co_name}; inference interrupted")
 
     signal.signal(signal.SIGTERM, terminate)
+    load_env()
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--condition", choices=[c[0] for c in CONDITIONS] + ["all"], nargs="+", required=True
