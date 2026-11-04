@@ -18,11 +18,10 @@ from PIL import Image
 from scipy.spatial import cKDTree
 
 from world.cosys.landmarks import LANDMARKS_PATH
-from world.cosys.terrain import BOUNDS, FIELD, ROOT, WORLD
+from world.cosys.terrain import BOUNDS, FIELD, ROOT, TERRAIN_DIR, WORLD
 from world.unreal.valley import catalogue, densify, lookup, points, surface_points
 
 DRESSING_PATH = ROOT / "world/unreal/valley-dressing.json"
-TERRAIN = (ROOT / FIELD["path"]).parent
 # Tread half-widths (m) kept clear around each trail and road centreline; the creek clears its
 # receipt bank tops.
 LINE_HALF_M = {"trail": 1.2, "road": 2.8}
@@ -321,7 +320,7 @@ def indexed(names):
 
 
 def load():
-    receipt = json.loads((TERRAIN / "terrain.json").read_text())
+    receipt = json.loads((TERRAIN_DIR / "terrain.json").read_text())
     assert receipt["heightfieldSha256"] == WORLD["heightfieldSha256"]
     return json.loads(DRESSING_PATH.read_text()), json.loads(LANDMARKS_PATH.read_text()), receipt
 

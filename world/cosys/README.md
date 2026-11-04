@@ -509,7 +509,8 @@ Generate the current numeric valley terrain from the repository root:
 
 The generator reconstructs and verifies the analytic meadow before shaping, carving
 and grading from `world/unreal/landmarks.json`. It refuses existing output and evidence
-destinations, and writes the numeric field and its landscape layer masks under
+destinations, writes the numeric field to the tracked `world/unreal/valley-height.r16` named
+by `world.json`, and writes the receipt and landscape layer masks under
 `.local/world/valley/terrain/`. The browser map `web/public/maps/valley-topographic.png`
 is drawn from that field and its masks with 5 m contours:
 

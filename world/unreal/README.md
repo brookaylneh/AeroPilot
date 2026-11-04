@@ -178,10 +178,10 @@ under every trail tread, fire-road grades of at most 12%
 ([USFS Low-Volume Roads BMP Field Guide, ch. 4](https://www.fs.usda.gov/t-d/programs/forest_mgmt/projects/lowvolroads/ch4.pdf)),
 a descending creek bed and water surface, dry banks, basin water held inside each
 footprint, pad clearance, bridge crossings and an unchanged southern buffer. It
-writes `height.r16`, the receipt and eight uint8 layer masks (`mask-<layer>.png`:
-pond silt, cobble bed, granite, gravel road, trail tread, needle floor, wet meadow,
-dry meadow; 255 per sample in the `height.r16` row/column layout) to
-`.local/world/valley/terrain/`; an existing destination is an error. The original
+writes the tracked heightfield `valley-height.r16` (the path in `world.json`), and the receipt
+and eight uint8 layer masks (`mask-<layer>.png`: pond silt, cobble bed, granite, gravel road,
+trail tread, needle floor, wet meadow, dry meadow; 255 per sample in the heightfield
+row/column layout) to `.local/world/valley/terrain/`; an existing destination is an error. The original
 square's regression checks the uncarved analytic meadow independently.
 
 `horizon.crests` builds four seeded, overlapping granite crest layers 3.5–17 km

@@ -24,7 +24,7 @@ from scipy.ndimage import (
 
 from mission_planner.environment import load_env
 from world.cosys.landmarks import LANDMARKS_PATH, _intersects, _nearest, validate
-from world.cosys.terrain import BOUNDS, COLUMNS, FIELD, ROOT, ROWS, WORLD
+from world.cosys.terrain import BOUNDS, COLUMNS, FIELD, ROOT, ROWS, TERRAIN_DIR, WORLD
 
 NEIGHBORS = tuple((r, c) for r in (-1, 0, 1) for c in (-1, 0, 1) if r or c)
 BASELINE_SHA256 = "ef7cf15ea67088cff77cda0f24cb41bae61f2fbd4c1ebec8a36199e775e6f63f"
@@ -1104,8 +1104,7 @@ def build(document):
 
 def generate(evidence_dir):
     load_env()
-    out = (ROOT / FIELD["path"]).parent
-    assert out == ROOT / ".local/world/valley/terrain"
+    out = TERRAIN_DIR
     assert not out.exists(), f"Terrain destination already exists: {out}"
     assert not evidence_dir.exists(), f"Evidence destination already exists: {evidence_dir}"
     document = json.loads(LANDMARKS_PATH.read_text())
@@ -1121,7 +1120,7 @@ def generate(evidence_dir):
         np.testing.assert_allclose(actual, expected, atol=0.001)
     out.mkdir(parents=True)
     evidence_dir.mkdir(parents=True)
-    raw.tofile(out / "height.r16")
+    raw.tofile(ROOT / FIELD["path"])
     report["masks"]["files"] = {}
     for name, layer in zip(report["masks"]["layers"], masks):
         path = out / f"mask-{name}.png"

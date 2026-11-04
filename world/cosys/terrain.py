@@ -24,6 +24,8 @@ assert (FIELD["rowAxis"], FIELD["columnAxis"], FIELD["encoding"]) == (
     "uint16-little-endian",
 )
 ROWS, COLUMNS = FIELD["rows"], FIELD["columns"]
+# Receipt and layer masks written beside each other by world.unreal.valley; the field itself is tracked.
+TERRAIN_DIR = ROOT / ".local/world/valley/terrain"
 assert all(isinstance(n, int) and n > 1 for n in (ROWS, COLUMNS))
 assert FIELD["zeroSample"] == 32768 and FIELD["samplesPerMetre"] == 128
 for axis, count in (("x", COLUMNS), ("y", ROWS)):

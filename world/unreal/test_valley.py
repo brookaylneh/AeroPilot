@@ -11,7 +11,7 @@ from scipy.ndimage import label
 from scipy.spatial import ConvexHull
 
 from world.cosys.landmarks import LANDMARKS_PATH
-from world.cosys.terrain import COLUMNS, FIELD, ROOT, ROWS, WORLD
+from world.cosys.terrain import COLUMNS, FIELD, ROOT, ROWS, TERRAIN_DIR, WORLD
 from world.unreal.valley import (
     BASINS,
     MASKS,
@@ -230,7 +230,7 @@ class Valley(unittest.TestCase):
         self.assertEqual(max(layers, key=lambda name: layers[name].mean()), "dry-meadow")
 
     def test_parking_notch_preserves_the_installed_terrain_surface(self):
-        receipt = json.loads((ROOT / FIELD["path"]).with_name("terrain.json").read_text())
+        receipt = json.loads((TERRAIN_DIR / "terrain.json").read_text())
         for name, layer in zip([*MASKS, "dry-meadow"], self.masks):
             np.testing.assert_array_equal(
                 layer,

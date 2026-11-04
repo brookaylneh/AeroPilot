@@ -15,6 +15,7 @@ sites = list((ROOT / ".venv-cosys/lib").glob("python*/site-packages"))
 assert len(sites) == 1
 sys.path.extend([str(ROOT), str(sites[0])])
 from mission_planner.environment import load_env  # noqa: E402
+from world.cosys.terrain import TERRAIN_DIR  # noqa: E402
 from world.unreal.horizon import apron, crests  # noqa: E402
 
 FOLDER = "/Game/Valley/Ground"
@@ -131,7 +132,7 @@ assert abs(span_x - (grid["columns"] - 1) * spacing_cm) < 1e-6
 assert abs(span_y - (grid["rows"] - 1) * spacing_cm) < 1e-6
 heightfile = ROOT / grid["path"]
 assert hashlib.sha256(heightfile.read_bytes()).hexdigest() == world["heightfieldSha256"]
-receipt = json.loads((heightfile.parent / "terrain.json").read_text())
+receipt = json.loads((TERRAIN_DIR / "terrain.json").read_text())
 assert receipt["heightfieldSha256"] == world["heightfieldSha256"]
 assert receipt["shapeRowsColumns"] == [grid["rows"], grid["columns"]]
 assert (receipt["rowAxis"], receipt["columnAxis"]) == (grid["rowAxis"], grid["columnAxis"])
@@ -141,7 +142,7 @@ assert sorted(layers) == sorted(GROUND) == sorted(receipt["masks"]["files"])
 for name in layers:
     entry = receipt["masks"]["files"][name]
     assert hashlib.sha256((ROOT / entry["path"]).read_bytes()).hexdigest() == entry["sha256"]
-    assert (ROOT / entry["path"]).parent == heightfile.parent
+    assert (ROOT / entry["path"]).parent == TERRAIN_DIR
 landmarks = {
     item["id"]: item
     for item in json.loads((ROOT / "world/unreal/landmarks.json").read_text())["landmarks"]
@@ -446,6 +447,7 @@ save(ground)
 landscape = unreal.ScenarioLandscapeTools.create_landscape(
     str(world_file),
     str(heightfile),
+    str(TERRAIN_DIR),
     grid["columns"],
     grid["rows"],
     ground,

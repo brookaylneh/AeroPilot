@@ -79,7 +79,7 @@
     }
   },
   "heightfield": {
-    "path": ".local/world/valley/terrain/height.r16",
+    "path": "world/unreal/valley-height.r16",
     "rows": 3025,
     "columns": 2017,
     "sampleSpacingMetres": 0.7982857142857143,

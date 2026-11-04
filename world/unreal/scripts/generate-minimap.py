@@ -9,7 +9,16 @@ import numpy as np
 from PIL import Image
 
 from mission_planner.environment import load_env
-from world.cosys.terrain import BOUNDS, COLUMNS, FIELD, ROOT, ROWS, WORLD, terrain_height
+from world.cosys.terrain import (
+    BOUNDS,
+    COLUMNS,
+    FIELD,
+    ROOT,
+    ROWS,
+    TERRAIN_DIR,
+    WORLD,
+    terrain_height,
+)
 
 OUTPUT = ROOT / "web/public/maps/valley-topographic.png"
 IMAGE_HEIGHT = 2048
@@ -36,7 +45,7 @@ def generate(evidence_dir):
     assert not evidence.exists() and not OUTPUT.exists(), "Map outputs must be new"
     source = ROOT / FIELD["path"]
     assert hashlib.sha256(source.read_bytes()).hexdigest() == WORLD["heightfieldSha256"]
-    terrain = json.loads((source.parent / "terrain.json").read_text())
+    terrain = json.loads((TERRAIN_DIR / "terrain.json").read_text())
     assert terrain["heightfieldSha256"] == WORLD["heightfieldSha256"]
     height = np.fromfile(source, dtype="<u2").reshape(ROWS, COLUMNS).astype("float32")
     height = (height - FIELD["zeroSample"]) / FIELD["samplesPerMetre"]
@@ -55,7 +64,7 @@ def generate(evidence_dir):
     rgb[contour] *= 0.72
     masks = {}
     for name, colour, opacity in LAYERS:
-        path = source.parent / f"mask-{name}.png"
+        path = TERRAIN_DIR / f"mask-{name}.png"
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         assert digest == terrain["masks"]["files"][name]["sha256"], path
         masks[name] = digest

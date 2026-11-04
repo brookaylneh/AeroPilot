@@ -18,7 +18,8 @@
 #endif
 
 AActor *UScenarioLandscapeTools::CreateLandscape(const FString &WorldFile, const FString &HeightFile,
-                                                 int32 ResolutionX, int32 ResolutionY,
+                                                 const FString &MaskFolder, int32 ResolutionX,
+                                                 int32 ResolutionY,
                                                  UMaterialInterface *Material,
                                                  const TArray<FString> &LayerNames,
                                                  const FString &LayerInfoFolder)
@@ -78,10 +79,10 @@ AActor *UScenarioLandscapeTools::CreateLandscape(const FString &WorldFile, const
     HeightLayers.Add(FGuid(), MoveTemp(Heights));
     TMap<FGuid, TArray<FLandscapeImportLayerInfo>> Layers;
     auto &Imports = Layers.Add(FGuid());
-    // Masks are uint8 weights in the height.r16 sample layout, written beside it by valley.py.
+    // Masks are uint8 weights in the heightfield sample layout, written by valley.py with its receipt.
     for (const FString &Name : LayerNames)
     {
-        const FString MaskFile = FPaths::GetPath(HeightFile) / FString::Printf(TEXT("mask-%s.png"), *Name);
+        const FString MaskFile = MaskFolder / FString::Printf(TEXT("mask-%s.png"), *Name);
         FImage Mask;
         checkf(FImageUtils::LoadImage(*MaskFile, Mask) && Mask.Format == ERawImageFormat::G8 &&
                    Mask.SizeX == ResolutionX && Mask.SizeY == ResolutionY,

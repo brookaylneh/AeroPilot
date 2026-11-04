@@ -31,15 +31,15 @@ evidence = Path(os.environ["SNR_EVIDENCE_DIR"])
 report_path = evidence / "dressing.json"
 assert not report_path.exists(), report_path
 placements = json.loads((evidence / "placements.json").read_text())
+world_config = json.loads((ROOT / "world/cosys/world.json").read_text())
 sources = {
     "dressingSha256": "world/unreal/valley-dressing.json",
     "landmarksSha256": "world/unreal/landmarks.json",
-    "heightfieldSha256": ".local/world/valley/terrain/height.r16",
+    "heightfieldSha256": world_config["heightfield"]["path"],
 }
 for key, path in sources.items():
     assert hashlib.sha256((ROOT / path).read_bytes()).hexdigest() == placements[key], key
 document = json.loads((ROOT / sources["landmarksSha256"]).read_text())
-world_config = json.loads((ROOT / "world/cosys/world.json").read_text())
 BOUNDS = world_config["searchBoundsCm"]
 SPACING_CM = world_config["heightfield"]["sampleSpacingMetres"] * 100
 meshes = placements["meshes"]
