@@ -19,7 +19,7 @@ landed drone would launch; a code-proposed search expansion needs operator appro
 | `map_context.py`               | Compact public landmarks and terrain queries                              |
 | `review.py`                    | Frozen Glimmer contract, original 4K evidence and logged review           |
 | `vision.py`, `segmentation.py` | Local SAM video client; standalone SAM mask validation                    |
-| `perception/`                  | Offline camera/model calibration; never imported by live planning         |
+| `perception/`                  | Camera geometry, pinned benchmark image transforms, Glimmer qualification |
 | `services/`                    | Local SAM device package and warm Modal calibration/Glimmer services      |
 
 | Tools                                                                             | Purpose                                                       |

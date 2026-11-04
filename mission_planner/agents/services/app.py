@@ -17,7 +17,10 @@ SAM_COMMIT = "f1647e8d0c1d280991f4d1b7d974c2704537fe66"
 DIRECTORY = Path(__file__).parent
 
 glimmer_image = (
-    modal.Image.from_registry("nvidia/cuda:12.8.1-devel-ubuntu24.04", add_python="3.12")
+    modal.Image.from_registry(
+        "nvidia/cuda:12.8.1-devel-ubuntu24.04@sha256:4b9ed5fa8361736996499f64ecebf25d4ec37ff56e4d11323ccde10aa36e0c43",
+        add_python="3.12",
+    )
     .env({"PIP_RETRIES": "0"})
     .apt_install("build-essential", "cmake", "git", "libssl-dev")
     .run_commands(

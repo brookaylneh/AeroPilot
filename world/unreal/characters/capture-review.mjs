@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { launchBrowser } from '../../../mission_planner/agents/perception/browser.mjs';
+import { launchBrowser } from '../../../scenario_creator/browser.mjs';
 
 const [url, output, countText, sizeText] = process.argv.slice(2);
 const count = Number(countText);

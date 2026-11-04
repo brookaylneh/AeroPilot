@@ -104,7 +104,8 @@ the Unix socket is listening and `/health` passes. No new TCP port is used.
 initial vision readiness but remains available after a vision failure, so flight
 overrides remain usable. Shutdown addresses only the container created by this
 launcher. Images can be transferred with Docker save/load; the checkpoint,
-warmup fixture, `.env` and runtime configuration are separate device assets.
+warmup fixture and runtime configuration are separate device assets; the container
+receives no credentials.
 
 ## Ordered live-frame contract
 

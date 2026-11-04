@@ -6,14 +6,13 @@ import unittest
 from PIL import Image
 
 from mission_planner.agents.perception.configuration import crop, jpeg, prepare_frame
-from mission_planner.agents.perception.infer_calibration import jpeg as calibration_jpeg
 
 
 class Configuration(unittest.TestCase):
     def test_transforms_match_calibration_bytes_including_black_padding(self):
-        payload = calibration_jpeg(Image.linear_gradient("L").resize((3840, 2160)))
+        payload = jpeg(Image.linear_gradient("L").resize((3840, 2160)))
         with Image.open(io.BytesIO(payload)) as original:
-            expected = calibration_jpeg(original.resize((1920, 1080), Image.Resampling.LANCZOS))
+            expected = jpeg(original.resize((1920, 1080), Image.Resampling.LANCZOS))
             self.assertEqual(prepare_frame(payload), expected)
             for box in ([950, 500, 970, 550], [0, 0, 10, 20], [1900, 1060, 1920, 1080]):
                 center = [(box[0] + box[2]), (box[1] + box[3])]
@@ -26,7 +25,7 @@ class Configuration(unittest.TestCase):
                         center[1] + 256,
                     ]
                 ]
-                expected = calibration_jpeg(
+                expected = jpeg(
                     original.crop(tuple(native)).resize((512, 512), Image.Resampling.LANCZOS)
                 )
                 actual, actual_box, padding = crop(payload, box)

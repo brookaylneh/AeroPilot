@@ -8,7 +8,7 @@ General missions and Studio rescue briefings use the same instructions, tools, p
 - [`gcs/`](gcs/README.md): ground control station. Four ArduPilot SITL autopilots over MAVLink, the mission
   service, terrain/timing helpers, forward observation and the Mission Control browser UI.
 - [`agents/`](agents/README.md): the AI. Model clients (`models.py`), Wonder's typed tool catalogue,
-  [perception calibration](agents/perception/README.md) for SAM 3.1 and Muse Glimmer.
+  [perception geometry and model benchmarks](agents/perception/README.md).
 - [`evaluation/`](evaluation/README.md): offline scoring against private scenario truth, never
   imported by the runtime.
 - `measurements/`: logged results with their source versions and limitations. Raw evidence belongs in

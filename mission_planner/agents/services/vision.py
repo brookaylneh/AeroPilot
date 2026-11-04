@@ -214,9 +214,6 @@ def main():
     import torch
     import uvicorn
 
-    from mission_planner.environment import load_env
-
-    load_env()
     assert torch.cuda.device_count() == 1, "SAM requires exactly one visible GPU"
     torch.set_num_threads(1)
     cv2.setNumThreads(1)
@@ -239,7 +236,14 @@ def main():
         "peak_process_gpu_bytes": 0,
         "packages": {
             name: importlib.metadata.version(name)
-            for name in ("torch", "torchvision", "sam3", "fastapi", "uvicorn", "opencv-python")
+            for name in (
+                "torch",
+                "torchvision",
+                "sam3",
+                "fastapi",
+                "uvicorn",
+                "opencv-python-headless",
+            )
         },
     }
     stopped = threading.Event()

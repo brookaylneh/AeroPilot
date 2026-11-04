@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { runInNewContext } from 'node:vm';
 import { observeScenario, assertScenarioProtocol } from './browser.mjs';
-import { navigationProtocolVersion } from '../../../scenario_creator/PixelStreamingTransport.ts';
+import { navigationProtocolVersion } from './PixelStreamingTransport.ts';
 
 test('scenario observer ignores multiplexed controls and fails on malformed Response payloads', async () => {
   class Peer extends EventTarget {

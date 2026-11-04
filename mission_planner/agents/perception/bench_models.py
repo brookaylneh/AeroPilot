@@ -15,25 +15,6 @@ from mission_planner.agents import review
 from mission_planner.agents.models import Glimmer, Sam, Wonder
 from mission_planner.environment import ROOT, load_env
 
-OPTIONS = ["yes", "no", "unclear"]
-QUESTION = "Does this image show a person?"
-BRIEF = (
-    "Review the supplied drone crops for evidence of a missing person in open meadow. "
-    "The aircraft searches at thirty metres above local terrain with a downward camera. "
-    "Separate visible people from grass, shadows, rocks, and equipment. Do not infer identity "
-    "from appearance alone. Use unclear when the evidence is too small or ambiguous. "
-    "Consider all four crops together; they may show the same candidate. Report a verdict "
-    "and confidence based only on visible evidence, followed by a one-to-two-sentence explanation. "
-) * 3
-SCHEMA = {
-    "type": "object",
-    "properties": {
-        "verdict": {"type": "string", "enum": OPTIONS},
-        "explanation": {"type": "string"},
-    },
-    "required": ["verdict", "explanation"],
-    "additionalProperties": False,
-}
 CASES = (
     "jpeg_full",
     "jpeg_half",
@@ -45,9 +26,6 @@ CASES = (
     "sam_frame_half_1",
     "sam_frame_half_3",
     "sam_load",
-    "glimmer_fast_1",
-    "glimmer_fast_4",
-    "glimmer_slow",
     "wonder_low",
     "wonder_medium",
     "wonder_tool_roundtrip",
@@ -96,7 +74,7 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     assert not args.output.exists(), "Use a new output file; accepted measurements are immutable."
-    raw, samples, index = [], [], 0
+    raw, samples = [], []
 
     def record(response):
         response.read()
@@ -176,25 +154,6 @@ def main():
             def operation():
                 found = model.detect(payload, prompts, 0.5)
                 return {"detections": {p: [asdict(d) for d in ds] for p, ds in found.items()}}
-        elif args.case.startswith("glimmer"):
-            model = attach(Glimmer())
-            crops = [
-                (ROOT / f".local/evidence/models/{name}-crop.jpg").read_bytes()
-                for name in ("target", "grass")
-            ]
-
-            def operation():
-                nonlocal index
-                if args.case == "glimmer_slow":
-                    return {"verdict": model.review(crops * 2, BRIEF, SCHEMA)}
-                count = int(args.case[-1])
-                offset = index * count + (32 if count == 4 else 0)
-                index += 1
-                images = [
-                    jpeg(image.crop((2040 + offset + j, 1092, 2552 + offset + j, 1604)))
-                    for j in range(count)
-                ]
-                return model.decide(images, QUESTION)
         else:
 
             def operation():

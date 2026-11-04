@@ -51,13 +51,8 @@
 # Running
 
 - `.venv-cosys` installs `requirements.txt`.
-- Calibration (`P=.venv-cosys/bin/python -m mission_planner.agents.perception`):
-  `$P.calibrate --list`; `$P.calibrate --condition <name> --scenario-id <uuid>` (stream
-  released; existing condition directories fail; archive a failed condition explicitly);
-  `$P.infer_calibration --condition all --output .local/evidence/calibration/<new-run>`
-  (uses the always-warm Servers; existing outputs fail); `$P.analyze_calibration`
-  (deterministic, from `.local/data/calibration/manifest.json`); `$P.plot_calibration`.
-- Benchmarks: `$P.bench_models --case <case> --output .local/evidence/models/<new>.json`.
+- Benchmarks (`P=.venv-cosys/bin/python -m mission_planner.agents.perception`):
+  `$P.bench_models --case <case> --output .local/evidence/models/<new>.json`.
 - Ground control: `mission_planner/gcs/README.md`. The mission service binds
   `127.0.0.1:8765`; the web server proxies `/api/mission`.
 - Set `SAM_URL`, `GLIMMER_URL` and their full `*_AUTHORIZATION` header values in `.env`;

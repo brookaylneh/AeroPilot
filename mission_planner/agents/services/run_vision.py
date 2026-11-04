@@ -16,11 +16,9 @@ from mission_planner.agents.services.sam_video import (
     SAM_VARIANT,
 )
 from mission_planner.agents.vision import vision_http
-from mission_planner.environment import ROOT, load_env
 
 
 def main():
-    load_env()
     image = os.environ["SNR_SAM_IMAGE"]
     assert re.fullmatch(r"(?:[^\s]+@)?sha256:[0-9a-f]{64}", image), (
         "SNR_SAM_IMAGE must be an immutable image ID or repository digest"
@@ -60,8 +58,6 @@ def main():
         "--shm-size=512m",
         "--tmpfs",
         "/tmp:rw,exec,nosuid,size=4g",
-        "--mount",
-        f"type=bind,source={ROOT / '.env'},target=/app/.env,readonly",
         "--mount",
         f"type=bind,source={checkpoint},target=/models/sam3.1_multiplex.pt,readonly",
         "--mount",

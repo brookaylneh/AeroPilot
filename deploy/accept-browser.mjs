@@ -8,7 +8,7 @@ import {
   waitForCreator,
   enterWorld,
   assertScenarioProtocol,
-} from '../mission_planner/agents/perception/browser.mjs';
+} from '../scenario_creator/browser.mjs';
 
 const [origin, output] = process.argv.slice(2);
 assert(origin && output, 'Usage: accept-browser.mjs ORIGIN NEW_EVIDENCE_DIRECTORY');
