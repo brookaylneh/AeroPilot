@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
-engine_root="${UE_ROOT:-$HOME/UnrealEngine/5.8.2}"
+engine_root="${UE_ROOT:?}"
 bash world/cosys/verify-plugin.sh
 python3 - "$engine_root" <<'PY'
 import json, pathlib, sys

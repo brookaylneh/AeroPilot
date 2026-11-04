@@ -234,9 +234,7 @@ class ForwardCapture:
             if target is None:
                 return
             if self.follow_rpc is None:
-                self.follow_rpc = airsim.MultirotorClient(
-                    ip="127.0.0.1", port=sim.PORT, timeout_value=3
-                )
+                self.follow_rpc = sim.connect(timeout_s=3)
             self._aim_world(target, self.follow_rpc)
 
     async def _maintain_aim(self):
@@ -278,9 +276,7 @@ class ForwardCapture:
         started = time.monotonic()
         with self.pose_lock:
             if self.follow_rpc is None:
-                self.follow_rpc = airsim.MultirotorClient(
-                    ip="127.0.0.1", port=sim.PORT, timeout_value=3
-                )
+                self.follow_rpc = sim.connect(timeout_s=3)
             rpc, name = self.follow_rpc, self.drone_id
             body = rpc.simGetVehiclePose(vehicle_name=name)
             info = rpc.simGetCameraInfo("fpv", vehicle_name=name)

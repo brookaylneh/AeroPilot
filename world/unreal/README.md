@@ -95,7 +95,7 @@ Set `UE_ROOT` to a licensed UE 5.8.2 installation, restore the licensed Open Mea
 ```sh
 docker build --build-arg SNR_UID="$(id -u)" --build-arg SNR_GID="$(id -g)" \
   -t snr-unreal:5.8.2-ubuntu24.04 - < world/unreal/docker/editor.Dockerfile
-python3 world/cosys/fetch-cosys.py
+.venv-cosys/bin/python -m world.cosys.fetch_cosys
 bash world/unreal/scripts/unreal-container.sh build
 ```
 
@@ -133,13 +133,11 @@ ponds have zero height. Forest and dome heights are the measured dressing tops (
 overlap nor touch, and the catalogue supplies every class required by the behavior
 prior.
 
-Generate the numeric terrain and its review map with new output paths:
+Generate the numeric terrain with a new evidence path:
 
 ```sh
 .venv-cosys/bin/python -m world.unreal.valley \
   --evidence-dir .local/evidence/world/valley/<new-terrain-run>
-.venv-cosys/bin/python -m world.unreal.plot_landmarks \
-  --output .local/evidence/world/valley/<new-landmark-map>.png
 ```
 
 The generator reconstructs the analytic meadow and verifies its reference hash. It
@@ -336,7 +334,7 @@ SNR_EVIDENCE_DIR=.local/evidence/world/valley/<new-lighting-run> \
 
 It owns and asserts the `world.json` sun rotation and the explicit sun/skylight intensities, sets
 `look.daylight` to manual exposure at `exposureEv100` with no physical camera and so no eye
-adaptation (the drone captures use the same EV through `configure-drones.py`), sets the `sky.haze`
+adaptation (the drone captures use the same EV through `configure_drones.py`), sets the `sky.haze`
 density from the Koschmieder visibility and its half height (density 0.0002, falloff 0.2, 50 m
 half height), and enables volumetric fog over 1600 m with scattering distribution 0.2. It requires
 the existing `sky.clouds` VolumetricCloud and updates it using
@@ -355,7 +353,7 @@ The foliage masters carry no world position offset: the T6 `SimpleGrassWind` swa
 Nanite lodgepole crowns fall back to bare trunks in the packaged build.
 
 Sun calculation uses [pvlib's NREL SPA](https://pvlib-python.readthedocs.io/en/stable/reference/generated/pvlib.solarposition.spa_python.html)
-at the `settings.json` OriginGeopoint, altitude-derived pressure, 12 °C and delta-T 67 s.
+at the generated settings' OriginGeopoint, altitude-derived pressure, 12 °C and delta-T 67 s.
 The UE 5.8.2 component headers define cloud distances in km and volumetric fog distance in cm.
 Shared lighting and material changes alter drone imagery and require recapturing perception
 calibration frames before reusing previous calibration results. Deployment does not run calibration
@@ -369,7 +367,7 @@ the installed RPC port and instance base, then supply both files:
 export SNR_WORLD_CONFIG="$PWD/world/cosys/world.json"
 export SNR_COSYS_SETTINGS="$PWD/.local/cosys-settings.json"
 export SNR_PSO_CACHE=bundled
-.venv-cosys/bin/python -m world.cosys.configure-drones \
+.venv-cosys/bin/python -m world.cosys.configure_drones \
   --rpc-port "$SNR_COSYS_PORT" --instance-base "$SNR_SITL_INSTANCE_BASE" \
   --output "$SNR_COSYS_SETTINGS"
 bash world/unreal/scripts/unreal-container.sh exec \
@@ -420,26 +418,11 @@ P=world/unreal/blender O=.local/evidence/world/valley-art/NEW
 .venv-cosys/bin/python -m world.unreal.blender.fetch_polyhaven
 $B $P/structures.py -- ranger-cabin --output $O/build
 $B $P/structures.py -- ranger-cabin --output $O/build-repeat --repeat-of $O/build
-.venv-cosys/bin/python -m world.unreal.blender.reference_match fit structures ranger-cabin --input $O/build --output $O/cameras
-$B $P/studio.py -- --build $O/build --cameras $O/cameras/cameras.json --output $O/render
-.venv-cosys/bin/python -m world.unreal.blender.reference_match compare structures ranger-cabin --input $O/render --output $O/compare
 ```
 
-The approved references are the 30 designs in `valley-generated-assets.lock.json`: each master and
-turnaround sheet with its fal endpoint, request, hash, review and the provider terms
-(`LicenseRef-fal-provider-output`), which are not CC0 or MIT. `reference_match` reads hash-verified
-copies from `.local/references/index.json`. The images are design targets, not geometry or textures.
-
-`fit` solves the master camera from the correspondences, fits an orthographic camera to each turnaround
-panel's silhouette box, and derives the 30 m nadir (70° HFOV, 3840×2160 drone camera, cropped to the
-asset) and a 1.7 m eye-level view. `studio.py` renders the above-grade part through every view with OptiX
-under one fixed studio light.
-`compare` reports silhouette IoU per referenced view, master colour regions and a 1600 px contact sheet.
-Masks are the textured pixels (luminance deviation in 7 px windows, closed and hole-filled), so smooth
-backdrops and soft floor shadows are background while pale surfaces near the backdrop colour count.
-An asset without an approved reference has `reference` null and no panels, correspondences or colour
-regions; it gets the nadir and eye views over the median reference backdrop. Masters larger than the
-2880 px turnaround (the 4096 px fire lookout) are compared at 2880 px.
+The approved reference images were generated through fal under the provider's terms
+(`LicenseRef-fal-provider-output`), which are not CC0 or MIT. They are design targets, not geometry
+or textures, and their provenance record stays with the deployment rather than in the repository.
 
 ## MCP toolchain
 

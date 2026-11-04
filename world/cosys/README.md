@@ -2,19 +2,18 @@
 
 Cosys-AirSim 3.5.0 (`5.8-v3.5.0`) provides the simulated aircraft and cameras inside the Unreal world.
 
-| File                  | Purpose                                                                                                            |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `settings.json`       | AirSim settings for the four drones. Positions are **metres in NED**, not Unreal centimetres.                      |
-| `world.json`          | Search geometry and drone identities, without target locations.                                                    |
-| `landmarks.py`        | Shared validation and directions for the public landmark catalogue.                                                |
-| `materials.csv`       | Empty segmentation material table that Cosys requires at startup.                                                  |
-| `client.py`           | Python bridge: explicit world/vehicle frames, telemetry, RGB capture with pose metadata.                           |
-| `coordinates.py`      | Checks live Cosys poses against native Unreal instrumentation.                                                     |
-| `configure-drones.py` | Generates ArduCopter settings from `world.json` and mission geodesy with explicit RPC port and SITL instance base. |
-| `fetch-cosys.py`      | Downloads and verifies the pinned plugin into the Unreal project.                                                  |
+| File                  | Purpose                                                                                                                    |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `world.json`          | Search geometry and drone identities, without target locations.                                                            |
+| `landmarks.py`        | Shared validation and directions for the public landmark catalogue.                                                        |
+| `materials.csv`       | Empty segmentation material table that Cosys requires at startup.                                                          |
+| `client.py`           | Python bridge: explicit world/vehicle frames, telemetry, RGB capture with pose metadata.                                   |
+| `coordinates.py`      | Checks live Cosys poses against native Unreal instrumentation.                                                             |
+| `configure_drones.py` | Generates ArduCopter settings (metres, NED) from `world.json` and mission geodesy for one RPC port and SITL instance base. |
+| `fetch_cosys.py`      | Downloads and verifies the pinned plugin into the Unreal project.                                                          |
 
 ```sh
-.venv-cosys/bin/python -m world.cosys.fetch-cosys
+.venv-cosys/bin/python -m world.cosys.fetch_cosys
 .venv-cosys/bin/python -m world.cosys.coordinates
 ```
 
@@ -261,11 +260,11 @@ horizontal field of view at 1×, narrowed to approximately 53° at 2× and 28° 
 The flight plan must choose overlapping passes for its
 height, angle and capture rate.
 
-Generate the tracked deployment settings with explicit port and instance choices:
+`web/slots.ts write` generates every slot's settings; one slot by hand:
 
 ```sh
-.venv-cosys/bin/python -m world.cosys.configure-drones \
-  --rpc-port 41451 --instance-base 0 --output world/cosys/settings.json
+.venv-cosys/bin/python -m world.cosys.configure_drones \
+  --rpc-port 41451 --instance-base 0 --output .local/slots/0/cosys-settings.json
 ```
 
 The four `ArduCopter` vehicles bind their control inputs to `127.0.0.1`; sensor packets

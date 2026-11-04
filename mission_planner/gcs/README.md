@@ -97,7 +97,7 @@ The world depicts authored simulated terrain, not surveyed Yosemite.
 Coordinates are metres north/east of that origin. The WGS84 local tangent plane uses
 fixed meridional and prime-vertical radii at the origin; latitude offset is north/M and
 longitude offset is east/(N cos(latitude)), in radians. Round trips are asserted below
-1 μm before MAVLink's integer-coordinate encoding. `world/cosys/settings.json` spawn
+1 μm before MAVLink's integer-coordinate encoding. `world/cosys/world.json` spawn
 X/Y/Z are **NED metres**; home elevation adds the world's `40−Z` metre spawn height.
 The settings generator asserts spawn/home consistency.
 

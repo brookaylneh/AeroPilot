@@ -12,7 +12,7 @@ release_id="$(date -u +%Y%m%dT%H%M%SZ)"
 release_path="$PWD/.local/unreal/releases/$release_id"
 mkdir -p "$release_path"
 cp -a --reflink=auto "$package_path/." "$release_path/"
-.venv-cosys/bin/python -m world.cosys.configure-drones \
+.venv-cosys/bin/python -m world.cosys.configure_drones \
   --rpc-port "${SNR_COSYS_PORT:?}" --instance-base "${SNR_SITL_INSTANCE_BASE:?}" \
   --output "$release_path/cosys-settings.json"
 ln -s "releases/$release_id" .local/unreal/Live.next

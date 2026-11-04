@@ -62,6 +62,14 @@ test('packaged container needs no editor, accepts bounded host resources and sel
       SNR_STREAMER_ID: 'DefaultStreamer',
       SNR_WEBRTC_MIN_PORT: '49160',
       SNR_WEBRTC_MAX_PORT: '49200',
+      SNR_STREAM_FPS: '60',
+      SNR_STREAM_MAX_BITRATE: '40000000',
+      SNR_STREAM_MIN_BITRATE: '1000000',
+      SNR_STREAM_HEIGHT: '1080',
+      SNR_MEDIA_CAPTURE: '1',
+      SNR_RHI_THREAD: '1',
+      SNR_COSYS_SETTINGS: path.join(directory, 'settings.json'),
+      SNR_SCENARIO_DATA_DIR: path.join(directory, 'scenarios'),
     };
     const run = spawnSync('bash', ['world/unreal/scripts/unreal-container.sh', 'run-packaged'], {
       cwd: project,
@@ -131,6 +139,8 @@ test('runtime selects its map, shader platform and H264 explicitly; invalid mani
       SNR_STREAM_MIN_BITRATE: '1000000',
       SNR_STREAM_HEIGHT: '1080',
       SNR_STREAM_MAX_BITRATE: '40000000',
+      SNR_MEDIA_CAPTURE: '1',
+      SNR_RHI_THREAD: '1',
     };
     const run = () =>
       spawnSync('bash', ['world/unreal/scripts/run-packaged.sh'], { cwd: project, env, encoding: 'utf8' });
@@ -182,7 +192,7 @@ test('runtime selects its map, shader platform and H264 explicitly; invalid mani
     assert(floored.includes('-PixelStreamingWebRTCStartBitrate=25000000'));
     env.SNR_STREAM_MIN_BITRATE = '2000000';
     assert.equal(run().status, 2, 'Unsupported floor must fail explicitly');
-    delete env.SNR_STREAM_MIN_BITRATE;
+    env.SNR_STREAM_MIN_BITRATE = '1000000';
     env.SNR_STREAM_TARGET_BITRATE = '15000000';
     assert.equal(run().status, 0);
     assert(JSON.parse(readFileSync(output, 'utf8')).includes('-PixelStreamingEncoderTargetBitrate=15000000'));

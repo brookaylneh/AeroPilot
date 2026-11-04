@@ -121,7 +121,7 @@ function write() {
       '.venv-cosys/bin/python',
       [
         '-m',
-        'world.cosys.configure-drones',
+        'world.cosys.configure_drones',
         '--rpc-port',
         slot.env.SNR_COSYS_PORT,
         '--instance-base',

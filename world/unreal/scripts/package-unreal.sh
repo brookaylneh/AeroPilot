@@ -24,7 +24,7 @@ assert (v['MajorVersion'],v['MinorVersion'],v['PatchVersion']) == (5,8,2), 'Use 
 PY
 project="$PWD/world/unreal/ScenarioStudio/ScenarioStudio.uproject"
 if [ ! -f world/unreal/ScenarioStudio/Plugins/AirSim/AirSim.uplugin ]; then
-  echo 'Stage the pinned plugin with python3 world/cosys/fetch-cosys.py.' >&2
+  echo 'Stage the pinned plugin with .venv-cosys/bin/python -m world.cosys.fetch_cosys.' >&2
   exit 2
 fi
 for asset in world/unreal/ScenarioStudio/Content/OpenMeadow/Catalog.uasset world/unreal/ScenarioStudio/Content/OpenMeadow/OpenMeadow.umap; do

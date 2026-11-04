@@ -160,7 +160,7 @@ previous_exposure = {
     for key in ("auto_exposure_method", "auto_exposure_bias", "auto_exposure_min_brightness")
 }
 # Manual exposure without the physical camera meters at EV100 0; the bias sets the EV, as in
-# world/cosys/configure-drones.py for the drone captures.
+# world/cosys/configure_drones.py for the drone captures.
 exposure = {
     "auto_exposure_method": unreal.AutoExposureMethod.AEM_MANUAL,
     "auto_exposure_apply_physical_camera_exposure": False,

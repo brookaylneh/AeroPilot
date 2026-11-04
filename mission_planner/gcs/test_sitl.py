@@ -9,6 +9,8 @@ from unittest.mock import patch
 
 from mission_planner.gcs.geodesy import ROOT
 from mission_planner.gcs.sitl import SAFETY_PARAMETERS, check_ports, launches
+from world.cosys.configure_drones import generate
+from world.cosys.terrain import WORLD
 
 
 class SitlLaunch(unittest.TestCase):
@@ -16,16 +18,7 @@ class SitlLaunch(unittest.TestCase):
         self.temporary = tempfile.TemporaryDirectory(dir=ROOT / ".local")
         self.addCleanup(self.temporary.cleanup)
         self.directory = Path(self.temporary.name)
-        self.settings = json.loads((ROOT / "world/cosys/settings.json").read_text())
-        self.settings["ApiServerPort"] = 41452
-        for index, vehicle in enumerate(self.settings["Vehicles"].values()):
-            vehicle.update(
-                VehicleType="ArduCopter",
-                LocalHostIp="127.0.0.1",
-                UdpIp="127.0.0.1",
-                UdpPort=9203 + index * 10,
-                ControlPortLocal=9202 + index * 10,
-            )
+        self.settings = generate(WORLD, 41452, 20)
         self.settings_path = self.directory / "settings.json"
         self.settings_path.write_text(json.dumps(self.settings))
         environment = patch.dict(

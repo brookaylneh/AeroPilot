@@ -244,8 +244,8 @@ async def measure(output, lumen):
     digest = hashlib.sha256(json.dumps(routes, sort_keys=True).encode()).hexdigest()
     assert digest == PLAN_SHA256, f"Fixed routes changed: {digest}"
     settings = json.loads((package / "cosys-settings.json").read_text())
-    assert settings["ApiServerPort"] == sim.PORT
-    world_ports = [sim.PORT] + [v["ControlPortLocal"] for v in settings["Vehicles"].values()]
+    assert settings["ApiServerPort"] == sim.port()
+    world_ports = [sim.port()] + [v["ControlPortLocal"] for v in settings["Vehicles"].values()]
     check_ports(world_ports)
     exclusive(gpu_processes(), None)
     mavlink, rc = (int(os.environ[k]) for k in ("SNR_MAVLINK_BASE_PORT", "SNR_SITL_RC_BASE_PORT"))
@@ -275,8 +275,8 @@ async def measure(output, lumen):
     sampler = None
     try:
         # Cosys blocks the first frame on motor responses: start the autopilots once RPC listens.
-        deadline, native = time.monotonic() + 900, sim.DATA / "runtime.json"
-        listen = ["ss", "-H", "-ltn", f"sport = :{sim.PORT}"]
+        deadline, native = time.monotonic() + 900, sim.data_dir() / "runtime.json"
+        listen = ["ss", "-H", "-ltn", f"sport = :{sim.port()}"]
         while not subprocess.run(listen, check=True, capture_output=True, timeout=5).stdout:
             assert world.poll() is None and time.monotonic() < deadline, "Unreal did not start"
             await asyncio.sleep(1)

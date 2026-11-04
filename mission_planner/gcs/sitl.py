@@ -9,6 +9,8 @@ from pathlib import Path
 from mission_planner.gcs.battery import CAPACITY_AH
 from mission_planner.gcs.fences import BOUNDARY_CLEARANCE_M
 from mission_planner.gcs.geodesy import NAMES, ROOT, RTL_ALTITUDE_M, homes
+from world.cosys.configure_drones import generate
+from world.cosys.terrain import WORLD
 
 SAFETY_PARAMETERS = {
     "ARMING_SKIPCHK": 0,
@@ -79,8 +81,8 @@ def launches(directory):
         stream.write("".join(f"{key} {value}\n" for key, value in parameters.items()))
     defaults.append(safety)
     assert all(path.is_file() for path in defaults), defaults
-    spawn_settings = json.loads((ROOT / "world/cosys/settings.json").read_text())
-    assert settings["OriginGeopoint"] == spawn_settings["OriginGeopoint"], "OriginGeopoint mismatch"
+    expected = generate(WORLD, settings["ApiServerPort"], instance_base)
+    assert settings["OriginGeopoint"] == expected["OriginGeopoint"], "OriginGeopoint mismatch"
     assert settings["LocalHostIp"] == "127.0.0.1"
     result = []
     for index, (name, home) in enumerate(homes().items()):
@@ -90,7 +92,7 @@ def launches(directory):
         ports = [mavlink_port, rc_port]
         vehicle = settings["Vehicles"][name]
         for key in ("X", "Y", "Z", "Yaw"):
-            assert vehicle[key] == spawn_settings["Vehicles"][name][key], (name, key)
+            assert vehicle[key] == expected["Vehicles"][name][key], (name, key)
         if model == "airsim-copter":
             assert vehicle["VehicleType"] == "ArduCopter", name
             assert vehicle["LocalHostIp"] == "127.0.0.1", name

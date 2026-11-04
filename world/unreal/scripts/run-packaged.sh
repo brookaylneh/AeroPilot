@@ -2,7 +2,7 @@
 set -euo pipefail
 umask 077
 cd "$(dirname "$0")/../../.."
-package_root="${SNR_PACKAGE_ROOT:-$PWD/.local/unreal/Packaged/Linux}"
+package_root="${SNR_PACKAGE_ROOT:?}"
 launcher="$package_root/ScenarioStudio.sh"
 runtime_binary="$package_root/ScenarioStudio/Binaries/Linux/ScenarioStudio"
 # A release must identify its cooked map; never substitute an unrelated world.
@@ -16,31 +16,31 @@ case "$shader_platform" in
 esac
 pixel_streaming="${SNR_PIXEL_STREAMING:?}"
 [[ "$pixel_streaming" = 0 || "$pixel_streaming" = 1 ]] || exit 2
-stream_fps="${SNR_STREAM_FPS:-60}"
+stream_fps="${SNR_STREAM_FPS:?}"
 if [[ "$pixel_streaming" = 1 ]]; then
   [[ "$stream_fps" = 30 || "$stream_fps" = 60 ]] || { echo 'SNR_STREAM_FPS must be 30 or 60 for streaming' >&2; exit 2; }
 else
   [[ "$stream_fps" =~ ^[0-9]+$ ]] && ((stream_fps >= 1 && stream_fps <= 60)) || exit 2
 fi
-max_bitrate="${SNR_STREAM_MAX_BITRATE:-10000000}"
+max_bitrate="${SNR_STREAM_MAX_BITRATE:?}"
 case "$max_bitrate" in
   10000000|20000000|25000000|40000000|80000000) ;;
   *) echo 'SNR_STREAM_MAX_BITRATE must be 10000000, 20000000, 25000000, 40000000 or 80000000' >&2; exit 2 ;;
 esac
 # WebRTC's delay-based estimate collapses to ~1-3 Mbps on jittery Wi-Fi; the
 # floor keeps moving grass encodable. It must stay below the viewer's capacity.
-min_bitrate="${SNR_STREAM_MIN_BITRATE:-1000000}"
+min_bitrate="${SNR_STREAM_MIN_BITRATE:?}"
 case "$min_bitrate" in
   1000000|5000000|10000000) ;;
   *) echo 'SNR_STREAM_MIN_BITRATE must be 1000000, 5000000 or 10000000' >&2; exit 2 ;;
 esac
 start_bitrate=$max_bitrate
-stream_codec="${SNR_STREAM_CODEC:-VP8}"
+stream_codec="${SNR_STREAM_CODEC:?}"
 case "$stream_codec" in
   VP8|VP9|H264|AV1) ;;
   *) echo 'SNR_STREAM_CODEC must be VP8, VP9, H264 or AV1' >&2; exit 2 ;;
 esac
-stream_height="${SNR_STREAM_HEIGHT:-720}"
+stream_height="${SNR_STREAM_HEIGHT:?}"
 case "$stream_height" in
   180) [[ "$pixel_streaming" = 0 ]] || exit 2; stream_width=320 ;;
   2160) stream_width=3840 ;;
@@ -86,7 +86,7 @@ if [ -n "$target_bitrate" ]; then
   esac
   extra_flags+=("-PixelStreamingEncoderTargetBitrate=$target_bitrate")
 fi
-cosys_settings="${SNR_COSYS_SETTINGS:-$PWD/world/cosys/settings.json}"
+cosys_settings="${SNR_COSYS_SETTINGS:?}"
 [[ -f "$cosys_settings" ]] || { echo "Missing Cosys settings: $cosys_settings" >&2; exit 2; }
 if [ -n "${SNR_DRONE_DATA_DIR:-}" ]; then
   install -d -m 700 "$SNR_DRONE_DATA_DIR"
@@ -94,7 +94,7 @@ if [ -n "${SNR_DRONE_DATA_DIR:-}" ]; then
   rm -f "$SNR_DRONE_DATA_DIR/capture-request.json" "$SNR_DRONE_DATA_DIR/runtime.json"
   extra_flags+=("-DroneFoundationDir=$SNR_DRONE_DATA_DIR")
 fi
-if [ "${SNR_RHI_THREAD:-1}" = 0 ]; then extra_flags+=(-norhithread); fi
+if [ "${SNR_RHI_THREAD:?}" = 0 ]; then extra_flags+=(-norhithread); fi
 runtime_commands="t.MaxFPS $stream_fps"
 case "${SNR_PROFILE:?}" in
   0) ;;
@@ -105,8 +105,8 @@ if [ "${1:-}" = diagnostics ]; then
   extra_flags+=(-ScenarioDiagnostics)
   runtime_commands+=',PixelStreaming2.LogStats 1'
 fi
-if [ "${SNR_MEDIA_CAPTURE:-1}" = 1 ]; then extra_flags+=(-PixelStreamingUseMediaCapture=true); else extra_flags+=(-PixelStreamingUseMediaCapture=false); fi
-scenario_data_dir="${SNR_SCENARIO_DATA_DIR:-$PWD/.local/data/unreal-scenarios}"
+if [ "${SNR_MEDIA_CAPTURE:?}" = 1 ]; then extra_flags+=(-PixelStreamingUseMediaCapture=true); else extra_flags+=(-PixelStreamingUseMediaCapture=false); fi
+scenario_data_dir="${SNR_SCENARIO_DATA_DIR:?}"
 install -d -m 700 "$scenario_data_dir"
 if [ ! -x "$launcher" ] || [ ! -x "$runtime_binary" ]; then
   echo 'Packaged launcher is missing. Run package-unreal.sh in the Unreal container first.' >&2

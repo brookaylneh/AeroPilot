@@ -11,23 +11,26 @@ from pathlib import Path
 
 import cosysairsim as airsim
 
-from world.cosys.terrain import terrain_height
+from world.cosys.terrain import WORLD, terrain_height
 
-ROOT = Path(__file__).resolve().parents[2]
-WORLD = json.loads(
-    Path(os.environ.get("SNR_WORLD_CONFIG", str(ROOT / "world/cosys/world.json"))).read_text()
-)
 NAMES = tuple(f"Drone{i}" for i in range(1, 5))
 assert set(WORLD["vehicles"]) == set(NAMES), "World must define exactly Drone1–Drone4"
 CAMERA_FORWARD = 0.6
 CAMERA_DOWN = 0.05  # Above the slab when landed, beyond the stock mesh footprint.
-DATA = Path(os.environ.get("SNR_DRONE_DATA_DIR", str(ROOT / ".local/data/four-drones")))
-PORT = int(os.environ.get("SNR_COSYS_PORT", "41452"))
-assert 1 <= PORT <= 65535, "Invalid Cosys RPC port"
 
 
-def connect():
-    return airsim.MultirotorClient(ip="127.0.0.1", port=PORT, timeout_value=120)
+def data_dir():
+    return Path(os.environ["SNR_DRONE_DATA_DIR"])
+
+
+def port():
+    value = int(os.environ["SNR_COSYS_PORT"])
+    assert 1 <= value <= 65535, "Invalid Cosys RPC port"
+    return value
+
+
+def connect(timeout_s=120):
+    return airsim.MultirotorClient(ip="127.0.0.1", port=port(), timeout_value=timeout_s)
 
 
 def xyz(v):
@@ -43,7 +46,7 @@ def pose(p):
 
 
 def native():
-    report = json.loads((DATA / "runtime.json").read_text())
+    report = json.loads((data_dir() / "runtime.json").read_text())
     assert report["schemaVersion"] == 1, "Unsupported native telemetry schema"
     assert sorted(v["id"] for v in report["vehicles"]) == list(NAMES), (
         "Incomplete native aircraft telemetry"
@@ -117,7 +120,7 @@ def concurrent(fn, names=NAMES):
 def configure_capture(height):
     assert height in (1080, 2160, 4320)
     req = {"id": str(uuid.uuid4()), "height": height}
-    p = DATA / "capture-request.json"
+    p = data_dir() / "capture-request.json"
     write_json(p, req)
     end = time.monotonic() + 20
     while time.monotonic() < end:
@@ -143,7 +146,7 @@ def reset_session():
 def set_session_mode(mode):
     assert mode in ("studio", "mission")
     identity = str(uuid.uuid4())
-    write_json(DATA / "mission-request.json", {"mode": mode, "id": identity})
+    write_json(data_dir() / "mission-request.json", {"mode": mode, "id": identity})
     end = time.monotonic() + 20
     while time.monotonic() < end:
         report = native()

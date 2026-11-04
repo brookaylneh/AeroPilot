@@ -14,6 +14,7 @@ from world.cosys import client
 class CoordinateTests(unittest.TestCase):
     def test_studio_reset_requires_its_own_native_acknowledgement(self):
         with (
+            patch.dict("os.environ", {"SNR_DRONE_DATA_DIR": "/drone-data"}),
             patch.object(client.uuid, "uuid4", return_value="reset-id"),
             patch.object(client, "write_json") as write,
             patch.object(client.time, "sleep") as sleep,
@@ -28,12 +29,13 @@ class CoordinateTests(unittest.TestCase):
         ):
             client.reset_session()
         write.assert_called_once_with(
-            client.DATA / "mission-request.json", {"mode": "studio", "id": "reset-id"}
+            Path("/drone-data/mission-request.json"), {"mode": "studio", "id": "reset-id"}
         )
         sleep.assert_called_once_with(0.1)
 
     def test_mode_timeout_does_not_send_another_request(self):
         with (
+            patch.dict("os.environ", {"SNR_DRONE_DATA_DIR": "/drone-data"}),
             patch.object(client, "write_json") as write,
             patch.object(client.time, "monotonic", side_effect=[0, 21]),
             patch.object(client, "native") as native,
@@ -81,7 +83,7 @@ class CoordinateTests(unittest.TestCase):
     def test_native_telemetry_rejects_missing_aircraft_and_stale_frames(self):
         with (
             tempfile.TemporaryDirectory() as directory,
-            patch.object(client, "DATA", Path(directory)),
+            patch.dict("os.environ", {"SNR_DRONE_DATA_DIR": directory}),
         ):
             path = Path(directory) / "runtime.json"
             report = {

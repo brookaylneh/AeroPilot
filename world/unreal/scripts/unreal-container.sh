@@ -1,15 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/../../.."
-engine_root="${UE_ROOT:-$HOME/UnrealEngine/5.8.2}"
 mode="${1:-build}"
 if (( $# )); then shift; fi
 cache_root="${SNR_UNREAL_HOME:?}"
 mkdir -p "$cache_root"
 mkdir -p "$cache_root/.config"
-cpu_limit="${SNR_CPU_LIMIT:-6}"
+cpu_limit="${SNR_CPU_LIMIT:?}"
 [[ "$cpu_limit" =~ ^[1-9][0-9]*$ ]] || { echo 'SNR_CPU_LIMIT must be a positive integer' >&2; exit 2; }
-memory_limit="${SNR_MEMORY_LIMIT:-48g}"
+memory_limit="${SNR_MEMORY_LIMIT:?}"
 [[ "$memory_limit" =~ ^[1-9][0-9]*[mg]$ ]] || { echo 'SNR_MEMORY_LIMIT must use Docker units, for example 24g' >&2; exit 2; }
 network=host
 if [[ "$mode" = build || "$mode" = exec || "$mode" = run-packaged-isolated ]]; then network=none; fi
@@ -32,6 +31,7 @@ if [[ -n "${SNR_EVIDENCE_DIR:-}" ]]; then
 fi
 # Cooked releases contain the engine runtime. Only editor/build modes need the SDK.
 if [[ "$mode" != run-packaged && "$mode" != run-packaged-isolated ]]; then
+  engine_root="${UE_ROOT:?}"
   [[ -f "$engine_root/Engine/Build/Build.version" ]] || { echo "Missing Unreal SDK: $engine_root" >&2; exit 2; }
   engine_root=$(realpath "$engine_root")
   container_flags+=(--mount "type=bind,src=$engine_root,dst=$engine_root,readonly" -e "UE_ROOT=$engine_root")
@@ -82,22 +82,22 @@ case "$mode" in
     exec docker run "${container_flags[@]}" "${gpu_flags[@]}" --pid=host --ulimit memlock=-1 \
       -e "SNR_PIXEL_STREAMING=${SNR_PIXEL_STREAMING:?}" \
       -e SNR_STREAMER_PORT -e SNR_WEBRTC_MIN_PORT -e SNR_WEBRTC_MAX_PORT \
-      -e "SNR_MEDIA_CAPTURE=${SNR_MEDIA_CAPTURE:-1}" \
-      -e "SNR_PROFILE=${SNR_PROFILE:-0}" \
-      -e "SNR_COSYS_SETTINGS=${SNR_COSYS_SETTINGS:-$PWD/world/cosys/settings.json}" \
+      -e "SNR_MEDIA_CAPTURE=${SNR_MEDIA_CAPTURE:?}" \
+      -e "SNR_PROFILE=${SNR_PROFILE:?}" \
+      -e "SNR_COSYS_SETTINGS=${SNR_COSYS_SETTINGS:?}" \
       -e "SNR_DRONE_DATA_DIR=${SNR_DRONE_DATA_DIR:-}" \
-      -e "SNR_STREAM_CODEC=${SNR_STREAM_CODEC:-VP8}" \
-      -e "SNR_STREAM_FPS=${SNR_STREAM_FPS:-60}" \
-      -e "SNR_STREAM_MAX_BITRATE=${SNR_STREAM_MAX_BITRATE:-10000000}" \
-      -e "SNR_STREAM_MIN_BITRATE=${SNR_STREAM_MIN_BITRATE:-1000000}" \
+      -e "SNR_STREAM_CODEC=${SNR_STREAM_CODEC:?}" \
+      -e "SNR_STREAM_FPS=${SNR_STREAM_FPS:?}" \
+      -e "SNR_STREAM_MAX_BITRATE=${SNR_STREAM_MAX_BITRATE:?}" \
+      -e "SNR_STREAM_MIN_BITRATE=${SNR_STREAM_MIN_BITRATE:?}" \
       -e "SNR_STREAM_TARGET_BITRATE=${SNR_STREAM_TARGET_BITRATE:-}" \
-      -e "SNR_STREAM_HEIGHT=${SNR_STREAM_HEIGHT:-720}" \
+      -e "SNR_STREAM_HEIGHT=${SNR_STREAM_HEIGHT:?}" \
       -e "SNR_STREAMER_ID=${SNR_STREAMER_ID:?}" \
       -e "SNR_RENDER_PERCENTAGE=${SNR_RENDER_PERCENTAGE:?}" \
-      -e "SNR_RHI_THREAD=${SNR_RHI_THREAD:-1}" \
+      -e "SNR_RHI_THREAD=${SNR_RHI_THREAD:?}" \
       -e "SNR_PACKAGE_ROOT=$package_root" \
-      -e "SNR_SCENARIO_DATA_DIR=${SNR_SCENARIO_DATA_DIR:-$PWD/.local/data/unreal-scenarios}" \
-      "${SNR_UNREAL_IMAGE:-snr-unreal:5.8.2-ubuntu24.04}" bash world/unreal/scripts/run-packaged.sh "$@"
+      -e "SNR_SCENARIO_DATA_DIR=${SNR_SCENARIO_DATA_DIR:?}" \
+      "${SNR_UNREAL_IMAGE:?}" bash world/unreal/scripts/run-packaged.sh "$@"
     ;;
   exec)
     # Concurrent authoring commandlets must have unique PIDs for UE's shared

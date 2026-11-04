@@ -1,10 +1,9 @@
 """Search-centred WGS84 tangent plane; north/east metres, geodetic degrees."""
 
-import json
 import math
 from pathlib import Path
 
-from world.cosys.terrain import EAST_MAX_M, EAST_MIN_M, NORTH_MAX_M, NORTH_MIN_M
+from world.cosys.terrain import EAST_MAX_M, EAST_MIN_M, NORTH_MAX_M, NORTH_MIN_M, WORLD
 
 ROOT = Path(__file__).resolve().parents[2]
 NAMES = tuple(f"Drone{i}" for i in range(1, 5))
@@ -52,13 +51,14 @@ def to_local(latitude_deg, longitude_deg):
 
 
 def homes():
-    settings = json.loads((ROOT / "world/cosys/settings.json").read_text())
-    assert set(settings["Vehicles"]) == set(NAMES)
+    assert set(WORLD["vehicles"]) == set(NAMES)
+    origin = WORLD["playerStartUeCm"]
     result = {}
     for name in NAMES:
-        vehicle = settings["Vehicles"][name]
-        # AirSim settings X/Y/Z are metres in NED; world PlayerStart is +40 m up.
-        north, east = vehicle["X"], vehicle["Y"]
+        vehicle = WORLD["vehicles"][name]
+        spawn = vehicle["spawnUeCm"]
+        # Unreal centimetres with +Z up; the NED origin is the PlayerStart at ORIGIN's altitude.
+        north, east = (spawn["x"] - origin["x"]) / 100, (spawn["y"] - origin["y"]) / 100
         latitude, longitude = to_geodetic(north, east)
         back = to_local(latitude, longitude)
         assert math.dist((north, east), back) < 1e-6
@@ -67,8 +67,8 @@ def homes():
             "east_m": east,
             "latitude_deg": latitude,
             "longitude_deg": longitude,
-            "altitude_msl_m": ORIGIN["altitude_msl_m"] + 40 - vehicle["Z"],
-            "heading_deg": vehicle["Yaw"],
+            "altitude_msl_m": ORIGIN["altitude_msl_m"] + spawn["z"] / 100,
+            "heading_deg": vehicle["yawDegrees"],
         }
     return result
 
