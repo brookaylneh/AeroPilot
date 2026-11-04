@@ -48,7 +48,7 @@ and no other scene browser open:
 
 ```sh
 node --env-file=.local/runtime.env web/accept_entry.mjs \
-  http://35.81.229.78 .local/evidence/mission-entry/<new-browser-run>
+  "$SNR_ORIGIN" .local/evidence/mission-entry/<new-browser-run>
 ```
 
 It claims a slot through the browser's own session, then exercises the idle map,
@@ -61,7 +61,7 @@ Slot acceptance opens two independent browser contexts and sends only `connect`:
 
 ```sh
 node --env-file=.local/runtime.env web/accept_slots.mjs \
-  http://35.81.229.78 .local/evidence/slots/<new-browser-run>
+  "$SNR_ORIGIN" .local/evidence/slots/<new-browser-run>
 ```
 
 With one slot, the second visitor sees the busy card without opening a socket, then

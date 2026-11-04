@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import html
 import json
+import os
 import shutil
 from pathlib import Path
 
@@ -120,7 +121,7 @@ def main():
     with (destination / "index.html").open("x") as stream:
         stream.write(document)
     result = {
-        "url": "http://35.81.229.78/" + args.page + "/index.html",
+        "url": os.environ["SNR_ORIGIN"] + "/" + args.page + "/index.html",
         "source_commit": manifest["commit"],
         "manifest": str(args.manifest.resolve().relative_to(ROOT)),
         "manifest_sha256": hashlib.sha256(args.manifest.read_bytes()).hexdigest(),

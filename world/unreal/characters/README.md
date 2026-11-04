@@ -97,7 +97,7 @@ Publish the successful render directory to a new gallery:
   .local/evidence/characters/<run>/<render> \
   .local/evidence/characters/<run>/review character-rocketbox
 node world/unreal/characters/capture-review.mjs \
-  http://35.81.229.78/character-rocketbox/index.html \
+  "$SNR_ORIGIN/character-rocketbox/index.html" \
   .local/evidence/characters/<run>/browser 18 4096,640,1280x720,3840x2160
 ```
 

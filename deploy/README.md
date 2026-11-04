@@ -1,7 +1,10 @@
 # AWS host
 
-The project runs as `brook_avionuas` (uid 1002, gid 1003), with Docker and video group membership,
-at `/home/brook_avionuas/snr`. Keep application data and toolchains on the persistent root volume.
+The project runs as a dedicated service user with Docker and video group membership, at the
+checkout path `SNR_ROOT` (`/srv/snr` and user `snr` in the examples below). Its uid and gid must
+match the SAM device image (1002:1003 in the qualified build). `host.sh` reads `SNR_SERVICE_USER`,
+`SNR_SERVICE_UID`, `SNR_SERVICE_GID` and `SNR_ROOT` from the environment. Keep application data
+and toolchains on the persistent root volume.
 The NVMe instance store is not provisioned: stopping the EC2 instance erases it.
 
 ## Provision
@@ -18,25 +21,26 @@ Stage the tracked `deploy/` files and a main-only Git bundle on the target. The 
 run from the staging copy before the repository exists:
 
 ```sh
-sudo bash deploy/host.sh user
-sudo git clone --branch main --single-branch /path/to/main.bundle /home/brook_avionuas/snr
-sudo chown -R brook_avionuas:brook_avionuas /home/brook_avionuas/snr
+export SNR_SERVICE_USER=snr SNR_SERVICE_UID=1002 SNR_SERVICE_GID=1003 SNR_ROOT=/srv/snr
+sudo -E bash deploy/host.sh user
+sudo git clone --branch main --single-branch /path/to/main.bundle "$SNR_ROOT"
+sudo chown -R "$SNR_SERVICE_USER:$SNR_SERVICE_USER" "$SNR_ROOT"
 ```
 
 Place the staged `deploy/` files in the checkout before the remaining stages. Verify the bundle with `git bundle verify` and the cloned history with `git fsck --full --strict`.
 Delete the temporary bundle and remove its local Git remote after verification.
 
 ```sh
-sudo bash /home/brook_avionuas/snr/deploy/host.sh packages
-sudo -u brook_avionuas bash /home/brook_avionuas/snr/deploy/host.sh toolchains
+sudo -E bash "$SNR_ROOT/deploy/host.sh" packages
+sudo -E -u "$SNR_SERVICE_USER" bash "$SNR_ROOT/deploy/host.sh" toolchains
 sudo systemctl reboot
 ```
 
 After reconnecting, run verification with a new output directory:
 
 ```sh
-sudo -u brook_avionuas bash /home/brook_avionuas/snr/deploy/host.sh verify \
-  /home/brook_avionuas/snr/.local/evidence/host/<new-run>
+sudo -E -u "$SNR_SERVICE_USER" bash "$SNR_ROOT/deploy/host.sh" verify \
+  "$SNR_ROOT/.local/evidence/host/<new-run>"
 ```
 
 The package stage holds only the kernel, NVIDIA driver and container-toolkit packages in the lock.
@@ -211,7 +215,7 @@ its startup values are defined in `runtime.env.example`.
 
 | Route or endpoint                                 | Purpose                                                      | Listener / upstream                                             |
 | ------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------------- |
-| `http://35.81.229.78/`                            | Mission Control: map, world exploration and scenario tabs    | Caddy, 80 TCP, then web `127.0.0.1:3001`                        |
+| `$SNR_ORIGIN/`                                    | Mission Control: map, world exploration and scenario tabs    | Caddy, 80 TCP, then web `127.0.0.1:3001`                        |
 | `/home`, `/studio`, `/missionplanner`, `/mission` | Redirect to `/`                                              | web, `127.0.0.1:3001`                                           |
 | `/api/slots`                                      | This session's environment, or how many are in use           | web, slot broker                                                |
 | `/api/mission`                                    | Mission WebSocket                                            | web origin and session check, then the slot's mission port      |
@@ -220,8 +224,8 @@ its startup values are defined in `runtime.env.example`.
 | `/api/stream`                                     | Pixel Streaming player WebSocket                             | web origin and session check, then the slot's player port       |
 | `/healthz`                                        | Shared units, every slot's units, mission, renderer and TURN | web; 503 if any check fails or a slot is faulted                |
 | Internal streamer, Cosys RPC, MAVLink, SITL       | Per slot                                                     | see [environment slots](#environment-slots)                     |
-| TURN                                              | Browser relay control                                        | `172.31.61.189:3478` TCP/UDP, public EIP translation            |
-| TURN relay                                        | Relayed media                                                | `172.31.61.189:49300–49350` UDP                                 |
+| TURN                                              | Browser relay control                                        | `$SNR_PRIVATE_IP:3478` TCP/UDP, public IP translation           |
+| TURN relay                                        | Relayed media                                                | `$SNR_PRIVATE_IP:49300–49350` UDP                               |
 | Unreal WebRTC                                     | Local media endpoint reached by TURN, per slot               | `49160–49250` UDP; no public ingress required with forced relay |
 | Development                                       | One server, reached by SSH tunnel                            | `127.0.0.1:5174`                                                |
 
@@ -258,14 +262,14 @@ Run development with `npm run dev`. Vite middleware and API/WebSocket handlers s
 listener; reload the browser after changes. Tunnel it with:
 
 ```sh
-ssh -i ~/.ssh/snr-oregon -L 5174:127.0.0.1:5174 ubuntu@35.81.229.78
+ssh -L 5174:127.0.0.1:5174 <admin-user>@<public-ip>
 ```
 
 Acceptance uses the installed public origin. Do not allocate temporary listening ports.
 
 ```sh
 node --env-file=.local/runtime.env deploy/accept-browser.mjs \
-  http://35.81.229.78 .local/evidence/services/<new-browser-run>
+  "$SNR_ORIGIN" .local/evidence/services/<new-browser-run>
 ```
 
 The harness creates a scenario, measures one minute of navigation and selected ICE candidates,
@@ -290,30 +294,11 @@ the eleven approved Rocketbox characters and its bundled pipeline cache.
 
 ## Security group
 
-The operator runs these commands with AWS credentials. Do not run an authorize operation again after
-success: AWS rejects duplicate rules. Keep SSH restricted to the existing source address.
-
-```sh
-aws ec2 authorize-security-group-ingress --region us-west-2 --group-id sg-007dd04266b7ed321 \
-  --ip-permissions '[{"IpProtocol":"tcp","FromPort":80,"ToPort":80,"IpRanges":[{"CidrIp":"0.0.0.0/0","Description":"SNR public HTTP origin"}]}]'
-aws ec2 revoke-security-group-ingress --region us-west-2 --group-id sg-007dd04266b7ed321 \
-  --protocol tcp --port 5173 --cidr 0.0.0.0/0
-```
-
-TCP 443 is unused by this HTTP configuration. Remove its existing ingress rule with:
-
-```sh
-aws ec2 revoke-security-group-ingress --region us-west-2 --group-id sg-007dd04266b7ed321 \
-  --protocol tcp --port 443 --cidr 0.0.0.0/0
-```
-
-Keep TURN 3478 TCP/UDP and 49300–49350 UDP open. After a browser measurement verifies a selected relay
-candidate, remove direct WebRTC ingress:
-
-```sh
-aws ec2 revoke-security-group-ingress --region us-west-2 --group-id sg-007dd04266b7ed321 \
-  --protocol udp --port 49160-49200 --cidr 0.0.0.0/0
-```
+Public ingress is HTTP on TCP 80 to Caddy, TURN on 3478 TCP/UDP, and the TURN relay range
+49300–49350 UDP. TCP 443 and the direct WebRTC range 49160–49250 UDP need no public ingress
+once a browser measurement verifies a selected relay candidate. Keep SSH restricted to the
+operator's source address. The cloud console commands with the account's group identifiers
+are an operator runbook kept outside the repository.
 
 ## Sources
 

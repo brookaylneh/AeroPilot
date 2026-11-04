@@ -725,7 +725,7 @@ set -a
 . .local/runtime.env
 set +a
 node --import tsx mission_planner/gcs/accept_browser.mjs planner \
-  http://35.81.229.78/ .local/evidence/gcs/<new-run> 120
+  "$SNR_ORIGIN/" .local/evidence/gcs/<new-run> 120
 ```
 
 The `planner` observer issues no flight commands or approval decisions. It requires the

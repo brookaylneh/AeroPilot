@@ -3,8 +3,11 @@ set -euo pipefail
 trap 'printf "host.sh failed at line %s\n" "$LINENO" >&2' ERR
 
 deploy_dir=$(cd "$(dirname "$0")" && pwd)
-service_user=brook_avionuas
-project=/home/$service_user/snr
+# The uid and gid must match the SAM device image (sam.Dockerfile) for its bind mounts.
+service_user=${SNR_SERVICE_USER:?Set SNR_SERVICE_USER to the service account name}
+service_uid=${SNR_SERVICE_UID:?Set SNR_SERVICE_UID to the service account uid}
+service_gid=${SNR_SERVICE_GID:?Set SNR_SERVICE_GID to the service account gid}
+project=${SNR_ROOT:?Set SNR_ROOT to the absolute checkout path}
 toolchains=$project/.local/toolchains
 kernel=6.8.0-1066-aws
 driver=580.178.04
@@ -43,19 +46,19 @@ case "$mode" in
   user)
     test "$(id -u)" = 0
     ! getent passwd "$service_user"
-    ! getent passwd 1002
+    ! getent passwd "$service_uid"
     ! getent group "$service_user"
-    ! getent group 1003
+    ! getent group "$service_gid"
     test ! -e "/home/$service_user"
-    groupadd --gid 1003 "$service_user"
-    useradd --uid 1002 --gid 1003 --groups video \
+    groupadd --gid "$service_gid" "$service_user"
+    useradd --uid "$service_uid" --gid "$service_gid" --groups video \
       --create-home --shell /bin/bash "$service_user"
     id "$service_user"
     ;;
   packages)
     test "$(id -u)" = 0
-    test "$(id -u "$service_user")" = 1002
-    test "$(id -g "$service_user")" = 1003
+    test "$(id -u "$service_user")" = "$service_uid"
+    test "$(id -g "$service_user")" = "$service_gid"
     install -d -m 0755 /etc/apt/keyrings
     key_file=$project/.local/evidence/host/provisioning/nvidia-container.asc
     install -d -o "$service_user" -g "$service_user" "$project/.local/evidence/host/provisioning"
@@ -151,8 +154,8 @@ UNIT
     exec > >(tee "$evidence/host.txt") 2>&1
     date --utc --iso-8601=seconds
     id
-    test "$(id -u)" = 1002
-    test "$(id -g)" = 1003
+    test "$(id -u)" = "$service_uid"
+    test "$(id -g)" = "$service_gid"
     id -nG | tr ' ' '\n' | grep -x docker
     id -nG | tr ' ' '\n' | grep -x video
     tee "$evidence/boot-id" </proc/sys/kernel/random/boot_id

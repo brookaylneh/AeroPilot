@@ -356,7 +356,7 @@ Capture host/native timing without controlling any aircraft:
 ```sh
 .venv-cosys/bin/python -m world.cosys.runtime_metrics \
   --output .local/evidence/coupling/NEW.jsonl --seconds 30 \
-  --native live=/home/brook_avionuas/snr/.local/data/four-drones/runtime.json
+  --native live="$SNR_DRONE_DATA_DIR/runtime.json"
 ```
 
 The sampler selects SITL by `SNR_SITL_BINARY`, records process identities and CPU
@@ -403,7 +403,7 @@ terminates. Set `SLOT` to the [environment slot](../../deploy/README.md#environm
 being stopped.
 
 ```sh
-cd /home/brook_avionuas/snr
+cd "$SNR_ROOT"
 set -euo pipefail
 export SLOT=0
 set -a

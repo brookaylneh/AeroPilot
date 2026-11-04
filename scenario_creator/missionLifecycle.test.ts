@@ -31,7 +31,7 @@ test.beforeEach(() => {
   Socket.instances = [];
   Object.defineProperty(globalThis, 'WebSocket', { value: Socket, configurable: true });
   Object.defineProperty(globalThis, 'location', {
-    value: { protocol: 'http:', host: '35.81.229.78' },
+    value: { protocol: 'http:', host: '203.0.113.10' },
     configurable: true,
   });
 });
@@ -46,7 +46,7 @@ test('launch waits for the exact saved case acknowledgement', async () => {
     complete = true;
   });
   const socket = Socket.instances[0];
-  assert.equal(socket.url, 'ws://35.81.229.78/api/mission');
+  assert.equal(socket.url, 'ws://203.0.113.10/api/mission');
   socket.onopen!();
   await Promise.resolve();
   assert.equal(complete, false);
