@@ -12,7 +12,15 @@ import {
   Plus,
   Route,
 } from 'lucide-react';
-import { droneColors, droneIds, flightState, linkLost, type DroneId, type Vehicle } from './missionState';
+import {
+  droneColors,
+  droneIds,
+  flightState,
+  linkLost,
+  type DroneId,
+  type ReturnState,
+  type Vehicle,
+} from './missionState';
 import { formatValue } from './display';
 import type { Planner } from './FlightPlan';
 
@@ -27,6 +35,7 @@ export default function FleetStrip({
   prepare,
   exportPlan,
   progress,
+  returns,
 }: {
   vehicles: Vehicle[];
   selected: DroneId | null;
@@ -38,6 +47,7 @@ export default function FleetStrip({
   prepare: (form: 'take_off' | 'fly_route', id: DroneId) => void;
   exportPlan: (id: DroneId) => void;
   progress: Planner['progress'];
+  returns: ReturnState[];
 }) {
   const [expanded, setExpanded] = useState(true);
   return (
@@ -64,6 +74,24 @@ export default function FleetStrip({
             isLost = v ? linkLost(v, age, connected) : true,
             active = !isLost && v!.camera_available;
           const step = progress[id];
+          const returning = returns.find(
+            (row) =>
+              row.drone_id === id &&
+              row.status !== 'stopped' &&
+              (row.status !== 'landed' || v?.landed_state === 1),
+          );
+          const returnLabel =
+            returning &&
+            {
+              queued: 'Preparing return',
+              climbing: 'Return · climbing',
+              transiting: 'Flying home',
+              waiting: returning.waiting_for ? `Waiting for ${returning.waiting_for}` : 'Checking landing',
+              returning: v?.landed_state === 4 ? 'Landing at home' : 'Returning home',
+              landed: 'Returned',
+              failed: 'Return failed',
+              stopped: 'Return stopped',
+            }[returning.status];
           return (
             <article
               key={id}
@@ -118,21 +146,30 @@ export default function FleetStrip({
                   <strong>{formatValue(v?.ground_speed_mps, 'm/s')}</strong>
                 </div>
                 <div>
-                  <span>{step ? `PLAN v${step.version}` : 'MISSION'}</span>
+                  <span>{returning ? 'RETURN' : step ? `PLAN v${step.version}` : 'MISSION'}</span>
                   <strong>
-                    {step
-                      ? step.current_step === null
-                        ? step.time_remaining_s === 0
-                          ? 'Complete'
-                          : 'Inactive'
-                        : `Step ${step.current_step + 1}`
-                      : v
-                        ? `${v.mission_current === null ? '—' : v.mission_current} / ${v.mission_total}`
-                        : '—'}
+                    {returning
+                      ? returning.status === 'transiting'
+                        ? 'En route'
+                        : returning.status[0].toUpperCase() + returning.status.slice(1)
+                      : step
+                        ? step.current_step === null
+                          ? step.time_remaining_s === 0
+                            ? 'Complete'
+                            : 'Inactive'
+                          : `Step ${step.current_step + 1}`
+                        : v
+                          ? `${v.mission_current === null ? '—' : v.mission_current} / ${v.mission_total}`
+                          : '—'}
                   </strong>
                 </div>
               </div>
-              {step && (
+              {returning && (
+                <div className="gcs-vehicle-plan">
+                  <span title={returning.error ?? returnLabel}>{returnLabel}</span>
+                </div>
+              )}
+              {step && !returning && (
                 <div className="gcs-vehicle-plan">
                   <span>{step.completed_steps.length} steps complete</span>
                   <span>

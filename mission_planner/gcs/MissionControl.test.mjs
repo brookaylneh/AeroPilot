@@ -163,12 +163,32 @@ function state(caseId = null, vehicles = []) {
     chat_ready: false,
     effort: 'high',
     inspections: [],
+    returns: [],
     approvals: [],
     map_focus: null,
     landmarks: [],
     planner: { preview: null, active: null, previous: null, progress: {} },
   });
 }
+
+test('drone cards distinguish homeward flight from a queued landing', () => {
+  const value = state(null, [
+    vehicle('Drone1', { mode: 'AUTO', armed: true, landed_state: 2 }),
+    vehicle('Drone3', { mode: 'BRAKE', armed: true, landed_state: 2 }),
+  ]);
+  value.returns = [
+    { drone_id: 'Drone1', status: 'transiting', waiting_for: null, error: null, pending: false },
+    { drone_id: 'Drone3', status: 'waiting', waiting_for: 'Drone1', error: null, pending: false },
+  ];
+  const html = render('', value);
+  assert.match(html, /Flying home/);
+  assert.match(html, /Waiting for Drone1/);
+  assert.doesNotMatch(html, /Returned/);
+  value.returns[1] = { ...value.returns[1], status: 'climbing', waiting_for: null };
+  assert.match(render('', value), /Return · climbing/);
+  value.returns[1].status = 'returning';
+  assert.match(render('', value), /Returning home/);
+});
 
 function vehicle(id, values = {}) {
   const point = { latitude_deg: 37.87, longitude_deg: -119.39, north_m: 0, east_m: 0 };

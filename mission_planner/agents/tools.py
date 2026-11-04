@@ -309,12 +309,16 @@ DEFINITIONS = [
     (
         "return_fleet",
         "flight",
-        "Coordinate direct RTL when no exclusions are configured and straight home paths "
-        "clear inclusion. This tool takes no detour waypoints. With saved exclusions, hold, "
+        "Return the selected fleet on checked parallel home approaches with separate altitude "
+        "levels, then native RTL landing. Straight home paths must clear inclusion and exclusions. "
+        "This tool takes no detour waypoints. With saved exclusions, hold, "
         "preview a routed return with explicit fly points and a final return_home plan step, "
         "then apply_plan_change. Stops their inspections and "
-        "holds waiting drones; starts each checked return once its path clears other returning "
-        "drones. Reports waiting aircraft and blockers. Static conflicts or actual failures stop "
+        "moves the drones home concurrently after checking their full approaches. Only final "
+        "landing waits for a conflicting return corridor to clear. Reports queued, climbing, "
+        "transiting, waiting, returning and landed states. Repeated requests retain active returns. "
+        "Announce actual departure only after the tool result; queued is not travelling. "
+        "Static conflicts or actual failures stop "
         "and report; no command is retried. Use for clear direct returns, including one drone "
         "while others return. Use wait_for landed conditions to follow completion.",
         {
@@ -329,7 +333,7 @@ DEFINITIONS = [
     (
         "return_home",
         "flight",
-        "Immediate direct RTL command with no detour waypoints. Requires healthy airborne drone and a straight home path inside inclusion and clear of exclusions. With saved exclusions, hold, preview explicit fly points followed by a return_home plan step and apply_plan_change.",
+        "Immediate direct RTL command with no detour waypoints. If a coordinated return is already active, reports its progress without cancelling or restarting it. Requires healthy airborne drone and a straight home path inside inclusion and clear of exclusions. With saved exclusions, hold, preview explicit fly points followed by a return_home plan step and apply_plan_change.",
         {"drone_id": DRONE},
     ),
     (
@@ -458,7 +462,7 @@ Fleet: null uses every healthy aircraft in lane order; set count or drone_ids wh
 Rejections are structured: rule, drone, step, message, detail. Change only the named choice (aircraft count, radius, settings, references); never shrink or substitute the task silently, change heights to pass, or repeat an unchanged request. Unhealthy aircraft, unknown references, service failure and unverified fences are state blockers: report the exact reason and stop that attempt. Code assigns plan versions; a new chat or completed flight keeps the active version.
 Launch: when the destination and objective are clear, call plan_task directly; do not ask permission to plan or offer a text proposal first. On success state the short checked plan once (task, aircraft, region or destination, band size and coverage, settings, candidate allowance, aftermath, longest flight time) and call request_launch for its version in the same response; never stop at "shall I proceed?". Say preparing before planning, awaiting approval while pending, departing only after request_launch succeeds. A declined approval ends the request. Ask only when a genuine ambiguity prevents planning; ambiguous names such as "the trail" need a question. Refuse an explicitly impossible request (outside the fence or limits) without a planning call.
 Changes: keep the agreed plan flying while discussing. A change is a complete remaining plan for every airborne participant: plan_task again, then apply_plan_change without approval; request_launch if a landed drone joins. Code rejoins live positions and reruns every check. Confirm in one line with destination and remaining time from the result. A search expansion proposal in your context names the next band and its rationale; apply it with apply_proposal or decline with a reason; the operator approves each expansion.
-Overrides need no approval: hold, stop, return_home, land and return_fleet. Check flight_constraints.fences first: with any saved exclusion, hold the aircraft and plan a checked return instead of RTL. Command or network failure is final for that request: report its exact error, never retry or invent recovery. A queued return is not an acknowledgement; wait_for landing.
+Overrides need no approval: hold, stop, return_home, land, return_fleet. With saved exclusions, hold and plan a checked return. Prefer return_fleet; repeats keep progress. Report each drone's phase after the result; queued is not departure. Use wait_for landing. Command/network failure is final: report it; never retry or invent recovery.
 Fences: every leg stays inside the inclusion fence and outside exclusions with boundary_clearance_m; code does not reroute, so a blocked band or route is rejected and reported. The operator edits fences while landed; a saved change invalidates previews and approvals. Only Drone1-Drone4 exist; reject unknown drones without substitution.
 Waits: use wait_for for arrivals, inspection results, deadlines and landing instead of polling; it wakes on ANY condition, must be the last call in a response and ends the turn. After each wake check completed_steps and drone states, reconcile latest_operator_instruction with tool results, finish its unfinished parts, then wait only on unfinished work. Report blockers directly. Acknowledge a group's landing once. Severe autopilot alerts wake you; report their exact text and drones, distinguish warning from diagnosis, and do not call the flight healthy while they stand.
 Surveys settle 25 m out, then observe on approach. Camera: plan_task.settings.zoom selects 1x, 2x (default) or 4x. set_camera_view aims at a world point; height_m is above terrain. Tracking centres the subject and blocks manual view changes. open_feed only selects video. start_inspection samples a requested visible subject at 5 Hz; ordinary go-to needs no detector. Observed plan steps search automatically: two observations above threshold interrupt only that drone, which centres and follows fresh positions within the perimeter. A separate camera takes one original 4x 4K photograph per new object, without SAM or repeated captures; Glimmer reviews it and may release a clear negative. Other results wake you with that photograph and tracking state. get_candidate returns current detections and the same saved photograph; check its capture age, and never apply main-camera boxes or masks to it. Reject unsupported leads with disregard_and_continue (review_id, reason). Tools in rescue.unavailable_tools are unavailable. A non-null tracking_error means the lock is held: relock_candidate only on an observed track you reviewed; otherwise hold and report. Never use aircraft position as subject position; ground estimates are last-seen. Say following or locked only with fresh tracking. A failure or exhausted allowance ends inspection and holds the drone; never restart sensing automatically; continuation needs a new checked plan. A no-detection deadline means not detected in these views, never area-wide absence.

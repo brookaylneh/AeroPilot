@@ -243,9 +243,12 @@ southern-corridor detour. Moving outward into separate lanes can help separate d
 a proposal requiring a complete preview. Remaining paths and takeoff/landing columns reserve space
 independently of timing. Completed AUTO items are released. RTL retains its accepted return path
 until explicit final-landing telemetry, then reserves only the descent.
-`return_fleet(drone_ids)` queues compatible checked returns and reports aircraft waiting
-for another return's occupied path. It and the `return_home` tool execute direct RTL;
-neither accepts detour waypoints. Every Wonder request includes the exact saved
+`return_fleet(drone_ids)` starts checked AUTO home approaches on separated altitude levels,
+then checks each final native RTL landing. It reports preparing, climbing, travelling and
+waiting for a named landing blocker separately; a queued request is not departure.
+Repeated group and individual returns retain the active return tasks and their progress.
+Outside an active coordinated return, `return_home` executes direct RTL.
+Neither tool accepts detour waypoints. Every Wonder request includes the exact saved
 inclusion/exclusion polygons, their revision and required boundary clearance. Wonder
 uses an immediate hold and a checked return plan whenever exclusions are saved: explicit
 fly points around the restrictions, a final `return_home` step and `apply_plan_change`

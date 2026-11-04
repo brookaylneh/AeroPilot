@@ -7,7 +7,9 @@ from unittest.mock import AsyncMock
 
 from mission_planner.gcs.fleet import remaining_route
 from mission_planner.gcs.geodesy import NAMES, rtl_route
+from mission_planner.gcs.planner import mission_point, mission_readback
 from mission_planner.gcs.rejection import PlanRejected
+from mission_planner.gcs.returning import approach
 from mission_planner.gcs.test_plan_execution import mission
 from mission_planner.gcs.test_planner import states
 from mission_planner.gcs.test_validation import HOME_HEIGHTS
@@ -98,7 +100,27 @@ class CoordinatedReturn(unittest.IsolatedAsyncioTestCase):
         self.owner = mission(self.current)
         for state in self.current:
             state["mode"] = "BRAKE"
+            state["climb_rate_mps"] = 0
             self.owner.fleet.vehicles[state["id"]]["mode"] = "BRAKE"
+        self.uploads = {}
+
+        async def upload(name, items, kind):
+            self.uploads[name] = copy.deepcopy(items)
+
+        async def download(name, kind):
+            items = self.uploads[name]
+            state = next(s for s in self.current if s["id"] == name)
+            state["mission_total"] = len(items)
+            state["mission"] = [
+                {"seq": i, "command": item["command"], **mission_point(item)}
+                for i, item in enumerate(items)
+                if i > 0
+            ]
+            state["mission_current"] = 1
+            return [mission_readback(item, home=i == 0) for i, item in enumerate(items)]
+
+        self.owner.fleet._upload.side_effect = upload
+        self.owner.fleet._download.side_effect = download
 
     async def asyncTearDown(self):
         await self.owner.cancel_returns(NAMES, "Test complete")
@@ -112,27 +134,23 @@ class CoordinatedReturn(unittest.IsolatedAsyncioTestCase):
 
         await asyncio.wait_for(wait(), 2)
 
-    async def queue(self):
+    async def queue(self, names=NAMES):
         result = await self.owner.execute(
-            "return_fleet", {"drone_ids": list(NAMES)}, "agent", "return"
+            "return_fleet", {"drone_ids": list(names)}, "agent", "return"
         )
-        self.assertEqual(len(result["returns"]), 4)
-        # Rear pads sit 5 m behind the front pads in the same columns, so their returns cross
-        # the front drones' approaches at the RTL altitude and wait for those columns to clear.
-        await self.wait_for(lambda: self.owner.return_rows["Drone4"]["waiting_for"] == "Drone2")
-        await self.wait_for(lambda: self.owner.return_rows["Drone3"]["waiting_for"] == "Drone1")
-        self.assertEqual(
-            [self.owner.return_rows[n]["status"] for n in NAMES],
-            ["returning", "returning", "waiting", "waiting"],
+        self.assertEqual(len(result["returns"]), len(names))
+        await self.wait_for(
+            lambda: all(self.owner.return_rows[name]["status"] == "climbing" for name in names)
         )
+        self.assertTrue(all(s["mode"] == "AUTO" for s in self.current if s["id"] in names))
 
-    def clear_crossing(self, index=1):
+    def arrive(self, index):
         state = self.current[index]
         state.update(
-            north_m=state["home"]["north_m"],
-            east_m=state["home"]["east_m"],
-            altitude_above_home_m=70,
-            landed_state=4,
+            **mission_point(self.uploads[state["id"]][-1]),
+            mission_current=2,
+            ground_speed_mps=0,
+            climb_rate_mps=0,
         )
 
     def rtl_calls(self, name):
@@ -167,21 +185,18 @@ class CoordinatedReturn(unittest.IsolatedAsyncioTestCase):
         )
         self.assertFalse(self.owner.return_tasks)
 
-    async def test_rear_pads_wait_for_their_columns_then_start_once_without_another_model_turn(
+    async def test_all_approaches_start_then_land_without_another_model_turn(
         self,
     ):
         await self.queue()
-        self.assertFalse(self.rtl_calls("Drone4"))
-        self.assertFalse(self.rtl_calls("Drone3"))
-        texts = [call.args[1] for call in self.owner.event.call_args_list]
-        self.assertTrue(any("holding until Drone2 clears" in text for text in texts))
-        self.assertTrue(any("holding until Drone1 clears" in text for text in texts))
-        self.clear_crossing(1)
-        await self.wait_for(lambda: self.owner.return_rows["Drone4"]["status"] == "returning")
-        self.assertEqual(self.owner.return_rows["Drone3"]["status"], "waiting")
-        self.clear_crossing(0)
-        await self.wait_for(lambda: self.owner.return_rows["Drone3"]["status"] == "returning")
-        self.assertTrue(self.current[1]["armed"])
+        routes = [(name, self.owner.fleet.planned_routes[name]) for name in NAMES]
+        for name, route in routes:
+            validate_separation(name, route, routes, HOME_HEIGHTS)
+        for index in range(4):
+            self.arrive(index)
+        await self.wait_for(
+            lambda: all(self.owner.return_rows[name]["status"] == "returning" for name in NAMES)
+        )
         for name in NAMES:
             self.assertEqual(len(self.rtl_calls(name)), 1)
         for state in self.current:
@@ -189,21 +204,97 @@ class CoordinatedReturn(unittest.IsolatedAsyncioTestCase):
         await self.wait_for(lambda: not self.owner.return_tasks)
         self.assertTrue(all(row["status"] == "landed" for row in self.owner.return_rows.values()))
 
-    async def test_override_cancels_waiting_return_without_a_late_rtl(self):
+    async def test_recorded_locked_drone_departs_with_the_first_return_request(self):
+        for state in self.current:
+            if state["id"] not in ("Drone1", "Drone3"):
+                state.update(**state["home"], altitude_above_home_m=0, armed=False, landed_state=1)
+        self.current[0].update(north_m=-4.972537, east_m=-101.475711, altitude_above_home_m=26.065)
+        self.current[2].update(north_m=13.863168, east_m=-127.658450, altitude_above_home_m=26.024)
+        await self.queue(("Drone1", "Drone3"))
+        self.owner.inspections.invalidate.assert_any_call("Coordinated fleet return", "Drone3")
+        self.owner.inspections.flight_stopped.assert_any_await("Drone3")
+        self.assertIsNone(self.owner.return_rows["Drone3"]["waiting_for"])
+        self.assertFalse(self.rtl_calls("Drone1"))
+        self.assertFalse(self.rtl_calls("Drone3"))
+
+    async def test_repeat_group_and_individual_return_preserve_tasks_and_mission(self):
+        await self.queue()
+        tasks = dict(self.owner.return_tasks)
+        modes = list(self.owner.fleet._mode.await_args_list)
+        uploads = self.owner.fleet._upload.await_count
+        repeated = await self.owner.return_fleet(list(NAMES), "agent")
+        single = await self.owner.execute("return_home", {"drone_id": "Drone3"}, "agent", "repeat")
+        self.assertEqual(single["return"]["status"], "climbing")
+        self.assertEqual(single["mode"], "AUTO")
+        self.assertTrue(all(r["status"] == "climbing" for r in repeated["returns"]))
+        self.assertEqual(self.owner.return_tasks, tasks)
+        self.assertEqual(self.owner.fleet._mode.await_args_list, modes)
+        self.assertEqual(self.owner.fleet._upload.await_count, uploads)
+
+    async def test_bad_readback_prevents_every_departure_without_retry(self):
+        self.owner.fleet._download.side_effect = None
+        self.owner.fleet._download.return_value = []
+        with self.assertRaisesRegex(AssertionError, "mission readback count mismatch"):
+            await self.owner.return_fleet(list(NAMES), "agent")
+        self.assertEqual(self.owner.fleet._download.await_count, 1)
+        self.assertFalse(self.owner.return_tasks)
+        self.assertFalse(
+            any(call.args[1] == "AUTO" for call in self.owner.fleet._mode.await_args_list)
+        )
+
+    async def test_replaced_approach_cannot_issue_a_late_landing(self):
+        await self.queue()
+        self.owner.fleet.control_versions["Drone3"] += 1
+        self.arrive(2)
+        await self.wait_for(lambda: self.owner.return_rows["Drone3"]["status"] == "failed")
+        self.assertIn("superseded", self.owner.return_rows["Drone3"]["error"])
+        self.assertFalse(self.rtl_calls("Drone3"))
+
+    async def test_arrival_requires_position_altitude_and_settled_velocity(self):
+        await self.queue()
+        self.arrive(2)
+        state = self.current[2]
+        state["ground_speed_mps"] = 4
+        await asyncio.sleep(0.25)
+        self.assertEqual(self.owner.return_rows["Drone3"]["status"], "transiting")
+        self.assertFalse(self.rtl_calls("Drone3"))
+        state["ground_speed_mps"] = 0
+        state["altitude_above_home_m"] -= 3
+        await asyncio.sleep(0.25)
+        self.assertFalse(self.rtl_calls("Drone3"))
+        self.arrive(2)
+        await self.wait_for(lambda: self.owner.return_rows["Drone3"]["status"] == "returning")
+
+    async def test_only_final_descent_waits_for_another_approach_to_clear(self):
+        await self.queue()
+        self.arrive(2)
+        one, three = self.current[0], self.current[2]
+        one.update(
+            north_m=three["home"]["north_m"] - 20,
+            east_m=three["home"]["east_m"],
+            altitude_above_home_m=80,
+            mission_current=2,
+        )
+        await self.wait_for(lambda: self.owner.return_rows["Drone3"]["waiting_for"] == "Drone1")
+        self.assertLess(abs(three["north_m"] - three["home"]["north_m"]), 0.5)
+        self.arrive(0)
+        await self.wait_for(lambda: self.owner.return_rows["Drone3"]["status"] == "returning")
+
+    async def test_override_cancels_approach_without_a_late_rtl(self):
         await self.queue()
         await self.owner.execute("hold", {"drone_id": "Drone4"}, "operator", "hold")
-        self.clear_crossing()
+        self.arrive(3)
         await asyncio.sleep(0.3)
         self.assertEqual(self.owner.return_rows["Drone4"]["status"], "stopped")
         self.assertEqual(self.current[3]["mode"], "BRAKE")
         self.assertFalse(self.rtl_calls("Drone4"))
 
-    async def test_plan_swap_cancels_waiting_return_without_a_late_rtl(self):
+    async def test_plan_swap_cancels_approach_without_a_late_rtl(self):
         await self.queue()
         self.owner.fleet_event(
             {"kind": "plan_swap", "stage": "holding", "version": 2, "drone_ids": ["Drone4"]}
         )
-        self.clear_crossing()
+        self.arrive(3)
         await asyncio.sleep(0.3)
         self.assertEqual(self.owner.return_rows["Drone4"]["status"], "stopped")
         self.assertNotIn("Drone4", self.owner.return_tasks)
@@ -227,7 +318,7 @@ class CoordinatedReturn(unittest.IsolatedAsyncioTestCase):
             await asyncio.sleep(0)
             self.assertNotIn("Drone1", self.owner.return_tasks)
             self.assertFalse(self.owner.return_rows["Drone1"]["pending"])
-            self.assertEqual(self.owner.return_rows["Drone4"]["status"], "waiting")
+            self.assertEqual(self.owner.return_rows["Drone4"]["status"], "climbing")
         finally:
             applying.cancel()
             await asyncio.gather(applying, return_exceptions=True)
@@ -255,15 +346,15 @@ class CoordinatedReturn(unittest.IsolatedAsyncioTestCase):
 
     async def test_static_blocker_fails_instead_of_waiting_forever(self):
         four = self.current[3]
-        route = rtl_route(four)
+        route = approach(four, max(s["home"]["altitude_msl_m"] for s in self.current))["route"]
         self.current[1].update(
             north_m=(route[1]["north_m"] + route[2]["north_m"]) / 2,
             east_m=(route[1]["east_m"] + route[2]["east_m"]) / 2,
-            altitude_above_home_m=80,
+            altitude_above_home_m=route[-1]["altitude_above_home_m"],
         )
-        await self.owner.return_fleet(["Drone4"], "agent")
-        await self.wait_for(lambda: self.owner.return_rows["Drone4"]["status"] == "failed")
-        self.assertIn("conflicts with Drone2", self.owner.return_rows["Drone4"]["error"])
+        with self.assertRaisesRegex(PlanRejected, "conflicts with Drone2"):
+            await self.owner.return_fleet(["Drone4"], "agent")
+        self.owner.fleet._upload.assert_not_awaited()
         self.assertFalse(self.rtl_calls("Drone4"))
 
     async def test_static_blocker_is_not_hidden_by_an_earlier_returning_drone(self):
@@ -288,8 +379,8 @@ class CoordinatedReturn(unittest.IsolatedAsyncioTestCase):
         original = self.owner.fleet._mode.side_effect
 
         async def mode(name, mode):
-            if name == "Drone2" and mode == "RTL":
-                raise TimeoutError("Drone2 RTL acknowledgement timed out")
+            if name == "Drone2" and mode == "AUTO":
+                raise TimeoutError("Drone2 AUTO acknowledgement timed out")
             await original(name, mode)
 
         self.owner.fleet._mode.side_effect = mode
@@ -300,13 +391,18 @@ class CoordinatedReturn(unittest.IsolatedAsyncioTestCase):
                 self.owner.return_rows[n]["status"] == "stopped" for n in ("Drone3", "Drone4")
             )
         )
-        self.assertEqual(len(self.rtl_calls("Drone2")), 1)
+        self.assertEqual(
+            sum(call.args == ("Drone2", "AUTO") for call in self.owner.fleet._mode.await_args_list),
+            1,
+        )
         self.assertFalse(self.rtl_calls("Drone3"))
         self.assertFalse(self.rtl_calls("Drone4"))
 
     async def test_failed_return_wakes_wonder_once_even_if_landing_precedes_review(self):
         self.owner.fleet.return_step = AsyncMock(side_effect=TimeoutError("RTL timed out"))
         await self.owner.return_fleet(["Drone4"], "agent")
+        await self.wait_for(lambda: self.owner.return_rows["Drone4"]["status"] == "climbing")
+        self.arrive(3)
         await self.wait_for(lambda: self.owner.return_rows["Drone4"]["status"] == "failed")
         self.owner.agent = AsyncMock()
         self.owner.agent_busy = True

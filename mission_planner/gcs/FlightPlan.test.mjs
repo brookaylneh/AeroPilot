@@ -284,6 +284,7 @@ test('complete mission states retain telemetry through observed route, circle, m
       },
     ],
     approvals: [],
+    returns: [],
     map_focus: null,
     landmarks: [],
   };
@@ -606,6 +607,7 @@ test('planner missions require a remaining-task instruction after hold; raw miss
     exports: module.exports,
   });
   const props = {
+    returns: [],
     vehicles: [
       {
         id: 'Drone1',
@@ -686,6 +688,7 @@ test('only an active drone card is clickable, anywhere except its command contro
     update_rate_hz: 10,
   });
   const tree = module.exports.default({
+    returns: [],
     vehicles: [
       vehicle('Drone1', false),
       vehicle('Drone2', true, true),

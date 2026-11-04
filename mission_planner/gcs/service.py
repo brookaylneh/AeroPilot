@@ -583,6 +583,8 @@ class Mission:
                     self.inspections.invalidate("Flight plan changed", name)
                     if name in self.return_tasks:
                         self.cancel_return(name, "Flight plan changed")
+                    elif name in self.return_rows:
+                        del self.return_rows[name]
             if item["stage"] == "uploaded":
                 self.cancel_wait("Flight plan changed")
                 for name in item["drone_ids"]:
@@ -718,6 +720,7 @@ class Mission:
             "chat_ready": self.chat_ready(),
             "effort": self.effort,
             "inspections": self.inspections.snapshot(),
+            "returns": [dict(row) for row in self.return_rows.values()],
             "approvals": [item["card"] for item in self.approvals.values()],
             "map_focus": self.map_focus,
             "landmarks": self.landmarks,
@@ -1080,6 +1083,16 @@ class Mission:
         validate_arguments(name, arguments)
         if name == "return_fleet":
             return await self.return_fleet(arguments["drone_ids"], source)
+        if name == "return_home" and arguments["drone_id"] in self.return_tasks:
+            drone = arguments["drone_id"]
+            if source == "operator":
+                await self.interrupt_agent("operator return home")
+            state = next(state for state in self.vehicles() if state["id"] == drone)
+            return {
+                **compact_vehicle(state),
+                "acknowledged_command": name,
+                "return": dict(self.return_rows[drone]),
+            }
         if name in INSPECTION_TOOLS:
             if name == "disregard_and_continue":
                 return self.inspections.disregard_and_continue(
@@ -1334,11 +1347,14 @@ class Mission:
         assert names and len(names) == len(set(names)) and set(names) <= set(NAMES), (
             "drone_ids must contain distinct known drones"
         )
+        new = [name for name in names if name not in self.return_tasks]
+        if not new:
+            return {"returns": [dict(self.return_rows[name]) for name in names]}
         previous = self.plan_task
         self.plan_task = asyncio.current_task()
         try:
             self.cancel_wait("Coordinated fleet return")
-            for name in names:
+            for name in new:
                 self.inspections.invalidate("Coordinated fleet return", name)
             if source == "operator":
                 await self.interrupt_agent("operator fleet return")
@@ -1346,26 +1362,27 @@ class Mission:
             if previous is not None:
                 previous.cancel()
                 await asyncio.wait([previous])
-            await self.cancel_returns(names, "New coordinated return")
-            for name in names:
+            for name in new:
                 await self.inspections.flight_stopped(name)
             self.plan_preview = None
             states = {state["id"]: state for state in self.vehicles()}
-            for name in names:
+            for name in new:
                 state = states[name]
                 assert state["armed"] or state["landed_state"] == 1, name + ": invalid landed state"
                 if state["armed"] and state["mode"] != "RTL":
                     self.fleet.check_return(state)
-            for name in names:
+            for name in new:
                 state = states[name]
                 if state["armed"] and state["mode"] != "RTL":
                     await self.fleet.execute("hold", {"drone_id": name})
-            rows = []
-            for name in names:
+            approaches = await self.fleet.prepare_returns(
+                [name for name in new if states[name]["armed"] and states[name]["mode"] != "RTL"]
+            )
+            for name in new:
                 state = states[name]
                 row = {
                     "drone_id": name,
-                    "status": "waiting" if state["armed"] else "landed",
+                    "status": "queued" if state["armed"] else "landed",
                     "waiting_for": None,
                     "error": None,
                     "pending": False,
@@ -1373,17 +1390,19 @@ class Mission:
                 if state["armed"] and state["mode"] == "RTL":
                     row["status"] = "returning"
                 self.return_rows[name] = row
-                rows.append(row)
+            rows = [self.return_rows[name] for name in names]
             for row in rows:
-                if row["status"] != "landed":
-                    self.return_tasks[row["drone_id"]] = self.launch(self.run_return(row, rows))
+                name = row["drone_id"]
+                if name in new and row["status"] != "landed":
+                    value = approaches[name] if name in approaches else None
+                    self.return_tasks[name] = self.launch(self.run_return(row, rows, value))
                     self.return_event(row, "coordinated return queued")
             return {"returns": [dict(row) for row in rows]}
         finally:
             if self.plan_task is asyncio.current_task():
                 self.plan_task = None
 
-    async def run_return(self, row, batch):
+    async def run_return(self, row, batch, approach):
         name = row["drone_id"]
         try:
             while True:
@@ -1409,8 +1428,29 @@ class Mission:
                             source="agent",
                         )
                     return
+                if row["status"] == "queued":
+                    await self.fleet.start_return_approach(name, approach)
+                    row["status"] = "climbing"
+                    self.return_event(row, "climbing for the checked return approach")
+                if row["status"] in ("climbing", "transiting"):
+                    status = self.fleet.return_approach_status(name, approach)
+                    if status == "arrived":
+                        await self.fleet.execute("hold", {"drone_id": name})
+                        row["status"] = "waiting"
+                        self.return_event(row, "at the home approach; checking the landing column")
+                    elif status != row["status"]:
+                        row["status"] = status
+                        self.return_event(row, "flying home on the checked return approach")
                 if row["status"] == "waiting":
-                    conflict = await self.fleet.return_step(name)
+                    conflict = await self.fleet.return_step(
+                        name,
+                        [
+                            other
+                            for other in self.return_tasks
+                            if self.return_rows[other]["status"]
+                            in ("queued", "climbing", "transiting")
+                        ],
+                    )
                     if conflict is None:
                         row.update(status="returning", waiting_for=None)
                         self.return_event(row, "RTL acknowledged")
@@ -1419,7 +1459,7 @@ class Mission:
                         self.return_event(
                             row, "holding until " + row["waiting_for"] + " clears the return route"
                         )
-                else:
+                elif row["status"] == "returning":
                     assert state["mode"] == "RTL", name + ": coordinated return was superseded"
                 await asyncio.sleep(0.2)
         except asyncio.CancelledError:
@@ -1431,7 +1471,7 @@ class Mission:
             row.update(status="failed", error=str(error), waiting_for=None, pending=True)
             self.return_event(row, "coordinated return failed: " + str(error))
             for other, task in tuple(self.return_tasks.items()):
-                if other != name and self.return_rows[other]["status"] == "waiting":
+                if other != name and self.return_rows[other]["status"] in ("queued", "waiting"):
                     self.cancel_return(other, "Coordinated return stopped after a failure")
             raise RuntimeError(name + ": coordinated return failed: " + str(error)) from error
         finally:
@@ -1626,6 +1666,7 @@ class Mission:
                     and self.proposal is None
                     and not self.approvals
                     and not self.holds
+                    and not self.return_tasks
                     and "tasking" in receipt
                     and due(
                         receipt,

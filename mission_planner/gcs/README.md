@@ -451,16 +451,28 @@ receipt before individual AUTO starts, so a later start failure does not imply r
 Every version, trigger, state and result is recorded in the mission event log.
 
 `return_fleet(drone_ids)` coordinates an explicit return instruction without another
-approval. Selected aircraft hold while incompatible return paths are occupied; compatible
-returns start once. The rear pads sit 5 m behind the front pads in the same columns, so with the
-4 m separation minimum a rear drone's return waits until the front drone of its column has
-cleared, then starts without another model turn. Waiting, returning, landed and failed states are visible in events and
-Wonder context. Separation reserves remaining AUTO items. RTL keeps its accepted climb/transit corridor
-until ArduPilot explicitly reports its final landing phase; then only the actual descent
-to home remains reserved. Position drift near home cannot release a future climb. Waiting is allowed only for a known returning
-aircraft; an obstruction with no clearing return, invalid geometry or command failure raises
-and stops pending returns. A direct override or replacement plan cancels affected queued
-returns. No failed command is resent, and the operation does not invent a different route.
+approval. It stops the selected inspections, settles the aircraft in BRAKE and checks every
+home approach together before uploading any mission. Approaches use common MSL levels 80,
+86, 92 and 98 m above the highest home altitude for Drone1–Drone4, with each encoded altitude
+checked against its own home-relative 100 m limit. Terrain, fences, stationary aircraft and
+the 4 m separation minimum still apply. Each verified AUTO mission completes a one-second
+loiter at its climb point, then flies directly to an indefinite loiter over its home at
+15 m/s maximum. The four approaches start independently without waiting for another landing.
+
+Arrival requires position and altitude within 0.5 m of the encoded home approach, horizontal
+speed at most 0.2 m/s and vertical speed at most 0.2 m/s. The controller then checks the native
+RTL landing corridor. Only this final descent waits for a known returning aircraft to clear;
+the aircraft waits at home, not at its search location. AUTO reservations drop completed
+items using read-back mission progress. RTL retains its accepted corridor until ArduPilot
+reports its landing phase. A static obstruction, changed mission, lost authority or command
+failure raises and stops pending returns. Hold, Land and replacement plans cancel affected
+returns; repeated group or individual return requests preserve the current tasks and report
+their progress. Queued, climbing, transiting, waiting, returning, landed and failed states
+are supplied to Wonder and the drone cards. No failed command is resent.
+
+The approach uses documented [AUTO](https://ardupilot.org/copter/docs/auto-mode.html)
+[timed and unlimited loiter mission commands](https://ardupilot.org/copter/docs/common-mavlink-mission-command-messages-mav_cmd.html),
+then [native RTL](https://ardupilot.org/copter/docs/rtl-mode.html) for landing.
 Wonder receives the exact saved fence geometry on every turn. With saved exclusions it
 holds the requested aircraft, previews explicit fly points around the restrictions followed
 by a `return_home` plan step, and applies that plan without another launch approval. This

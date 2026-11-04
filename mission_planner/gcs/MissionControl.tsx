@@ -813,6 +813,7 @@ export default function MissionControl({
               }}
               exportPlan={(id) => send({ type: 'export_plan', drone_id: id })}
               progress={state ? state.planner.progress : {}}
+              returns={state ? state.returns : []}
             />
             {world && <div className="gcs-world">{world}</div>}
           </section>

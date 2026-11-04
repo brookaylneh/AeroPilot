@@ -30,6 +30,7 @@ from mission_planner.gcs.fences import (  # noqa: E402
 )
 from mission_planner.gcs.geodesy import (  # noqa: E402
     MAX_ALTITUDE_M,
+    MAX_SPEED_MPS,
     MIN_ALTITUDE_M,
     NAMES,
     ORIGIN,
@@ -44,6 +45,8 @@ from mission_planner.gcs.planner import (  # noqa: E402
     validate_missions,
 )
 from mission_planner.gcs.rejection import separation
+from mission_planner.gcs.returning import approach as return_approach
+from mission_planner.gcs.returning import arrived as return_arrived
 from mission_planner.gcs.sitl import check_ports, launches  # noqa: E402
 from mission_planner.gcs.tracking import MAX_TRACKING_AGE_S
 from mission_planner.gcs.validation import (  # noqa: E402
@@ -703,7 +706,7 @@ class Fleet:
         )
         return route
 
-    async def return_step(self, name):
+    async def return_step(self, name, approaching=()):
         async with self.command_lock:
             states = self.snapshot()
             state = next(state for state in states if state["id"] == name)
@@ -715,7 +718,10 @@ class Fleet:
                 conflict = separation_conflict(name, route, [reservation], home_heights)
                 if conflict is not None:
                     other = next(s for s in states if s["id"] == conflict["other_drone_id"])
-                    if other["mode"] != "RTL" or not other["armed"]:
+                    if not other["armed"] or (
+                        other["mode"] != "RTL"
+                        and not (other["id"] in approaching and other["mode"] in ("AUTO", "BRAKE"))
+                    ):
                         raise separation(conflict)
                     if waiting is None:
                         waiting = conflict
@@ -725,6 +731,84 @@ class Fleet:
             self.control_versions[name] += 1
             self.planned_routes[name] = route
             return None
+
+    async def prepare_returns(self, names):
+        async with self.command_lock:
+            for name in names:
+
+                def stopped(name=name):
+                    state = next(state for state in self.snapshot() if state["id"] == name)
+                    return (
+                        state["mode"] == "BRAKE"
+                        and state["ground_speed_mps"] <= STOPPED_SPEED_MPS
+                        and abs(state["climb_rate_mps"]) <= STOPPED_SPEED_MPS
+                    )
+
+                await self._until(
+                    name,
+                    stopped,
+                    10,
+                )
+            states = self.snapshot()
+            reference = max(state["home"]["altitude_msl_m"] for state in states)
+            approaches = {}
+            for state in states:
+                name = state["id"]
+                if name in names:
+                    assert state["mode"] == "BRAKE", name + ": return preparation was superseded"
+                    self.check_return(state)
+                    approaches[name] = return_approach(state, reference)
+            reservations = [
+                (name, route) for name, route in self.reservations(states) if name not in names
+            ] + [(name, value["route"]) for name, value in approaches.items()]
+            home_heights = {state["id"]: state["home"]["altitude_msl_m"] for state in states}
+            for name, value in approaches.items():
+                validate_route(
+                    value["route"],
+                    self.vehicles[name]["fence"],
+                    home_heights[name] - ORIGIN["altitude_msl_m"],
+                    self.landmarks,
+                )
+                validate_separation(name, value["route"], reservations, home_heights)
+            for name, value in approaches.items():
+                await self.upload_mission(name, value["items"])
+                await self._command(name, MAV.MAV_CMD_DO_SET_MISSION_CURRENT, [1, 1, 0, 0, 0, 0, 0])
+                self.control_versions[name] += 1
+                value["control_version"] = self.control_versions[name]
+                self.planned_routes[name] = value["route"]
+            return approaches
+
+    def check_return_approach(self, name, value, mode):
+        state = next(state for state in self.snapshot() if state["id"] == name)
+        assert self.control_versions[name] == value["control_version"], (
+            name + ": return approach control was superseded"
+        )
+        assert state["mode"] == mode and state["armed"] and state["landed_state"] == 2, (
+            name + ": return approach flight was superseded"
+        )
+        mission = self.vehicles[name]["mission"]
+        assert len(mission) == len(value["items"]) and all(
+            actual[key] == expected
+            for index, (sent, actual) in enumerate(zip(value["items"], mission))
+            for key, expected in mission_readback(sent, home=index == 0).items()
+        ), name + ": return approach mission was replaced"
+        return state
+
+    async def start_return_approach(self, name, value):
+        async with self.command_lock:
+            state = self.check_return_approach(name, value, "BRAKE")
+            self._validate_route(name, [state, *value["route"][1:]])
+            await self._mode(name, "AUTO")
+            await self._command(
+                name, MAV.MAV_CMD_DO_CHANGE_SPEED, [1, MAX_SPEED_MPS, -1, 0, 0, 0, 0]
+            )
+            self.vehicles[name]["mission_speed_mps"] = MAX_SPEED_MPS
+
+    def return_approach_status(self, name, value):
+        state = self.check_return_approach(name, value, "AUTO")
+        if state["mission_current"] != len(value["items"]) - 1:
+            return "climbing"
+        return "arrived" if return_arrived(state, value["route"][-1]) else "transiting"
 
     async def upload_mission(self, name, items):
         vehicle = self.vehicles[name]

@@ -173,6 +173,14 @@ const focusSchema = z.discriminatedUnion('target', [
   }),
 ]);
 export type MapFocus = z.infer<typeof focusSchema>;
+const returnSchema = z.object({
+  drone_id: z.enum(droneIds),
+  status: z.enum(['queued', 'climbing', 'transiting', 'waiting', 'returning', 'landed', 'stopped', 'failed']),
+  waiting_for: z.enum(droneIds).nullable(),
+  error: z.string().nullable(),
+  pending: z.boolean(),
+});
+export type ReturnState = z.infer<typeof returnSchema>;
 export const stateSchema = z.object({
   type: z.literal('state'),
   mission: z
@@ -200,6 +208,7 @@ export const stateSchema = z.object({
   chat_ready: z.boolean(),
   effort: z.enum(['low', 'medium', 'high']),
   inspections: z.array(inspectionSchema),
+  returns: z.array(returnSchema),
   approvals: z.array(
     z.object({
       id: z.string(),

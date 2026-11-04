@@ -199,6 +199,7 @@ class WakeLifecycle(unittest.IsolatedAsyncioTestCase):
         m.agent_busy = False
         m.autopilot_alerts = {}
         m.return_rows = {}
+        m.return_tasks = {}
         m.operator_tasks = set()
         m.plan_task = None
         m.tasks = set()
