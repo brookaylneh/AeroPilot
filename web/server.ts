@@ -138,8 +138,11 @@ server.on('upgrade', (req, socket, head) => {
     return;
   }
   const upstreamPort = req.url === '/api/stream' ? slot.playerPort : slot.missionPort;
-  visitors.opened(session!);
-  socket.once('close', () => visitors.closed(session!));
+  // World view is exclusive through Unreal signaling; mission websocket can have multiple connections.
+  if (req.url === '/api/mission') {
+    visitors.opened(session!);
+    socket.once('close', () => visitors.closed(session!));
+  }
   // The session cookie selects the slot here; the slot's services never see it.
   const { cookie: _cookie, ...headers } = req.headers;
   const upstream = request({

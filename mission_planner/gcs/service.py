@@ -2196,8 +2196,6 @@ class Mission:
             self.event("mode", "Reasoning effort set to " + self.effort, source="operator")
         elif kind == "end_mission":
             await self.end_mission()
-        elif kind != "start":
-            raise AssertionError("Mission is already connected")
 
     async def connection(self, websocket, first=None):
         assert not self.clearing, "Mission is ending; no new connections are accepted"

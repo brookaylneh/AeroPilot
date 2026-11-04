@@ -987,14 +987,22 @@ export default function MissionControl({
           >
             {panel === 'agent' ? (
               <>
-                {conversationRows(
-                  shownChat,
-                  events,
-                  state?.approvals[0]?.call_id,
-                  setError,
-                  agents,
-                  openAgent,
-                  now,
+                {shownChat.length === 0 ? (
+                  <div className="gcs-log-empty">
+                    <Compass size={24} />
+                    <h3>Start a mission conversation</h3>
+                    <p>Ask Wonder to plan a rescue, survey an area, or fly a custom route.</p>
+                  </div>
+                ) : (
+                  conversationRows(
+                    shownChat,
+                    events,
+                    state?.approvals[0]?.call_id,
+                    setError,
+                    agents,
+                    openAgent,
+                    now,
+                  )
                 )}
                 {chatView === null && state?.agent_busy && (
                   <div className="gcs-working">
@@ -1114,66 +1122,68 @@ export default function MissionControl({
             </div>
           )}
           <SubagentStrip rows={[...agents.values()]} onOpen={openAgent} />
-          <form
-            className="gcs-composer"
-            onSubmit={(e) => {
-              e.preventDefault();
-              submitChat();
-            }}
-          >
-            <label className="gcs-sr-only" htmlFor="mission-message">
-              Message Wonder
-            </label>
-            <textarea
-              id="mission-message"
-              ref={message}
-              placeholder={enabled ? 'Direct the mission…' : 'Connect a mission to get started'}
-              value={text}
-              disabled={!enabled}
-              onChange={(e) => setText(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  submitChat();
-                }
+          {panel === 'agent' && (
+            <form
+              className="gcs-composer"
+              onSubmit={(e) => {
+                e.preventDefault();
+                submitChat();
               }}
-              rows={1}
-              maxLength={4000}
-            />
-            <div>
-              <span>
-                <i className="gcs-status-dot" />
-                Wonder
-                {state && (
-                  <select
-                    aria-label="Reasoning effort"
-                    value={state.effort}
-                    onChange={(e) => send({ type: 'set_effort', effort: e.target.value })}
-                  >
-                    {EFFORTS.map((effort) => (
-                      <option key={effort} value={effort}>
-                        {effort}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </span>
-              <button
-                type="button"
-                disabled={!enabled || !!state?.agent_busy}
-                aria-pressed={markingPlan}
-                onClick={() => {
-                  setCameraView(null);
-                  setMarkingPlan(!markingPlan);
+            >
+              <label className="gcs-sr-only" htmlFor="mission-message">
+                Message Wonder
+              </label>
+              <textarea
+                id="mission-message"
+                ref={message}
+                placeholder={enabled ? 'Direct the mission…' : 'Connect a mission to get started'}
+                value={text}
+                disabled={!enabled}
+                onChange={(e) => setText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    submitChat();
+                  }
                 }}
-              >
-                {markingPlan ? 'Cancel map point' : 'Choose map point'}
-              </button>
-              <button className="gcs-send" aria-label="Send message" disabled={!enabled || !text.trim()}>
-                <ArrowUp size={15} strokeWidth={2.5} />
-              </button>
-            </div>
-          </form>
+                rows={1}
+                maxLength={4000}
+              />
+              <div>
+                <span>
+                  <i className="gcs-status-dot" />
+                  Wonder
+                  {state && (
+                    <select
+                      aria-label="Reasoning effort"
+                      value={state.effort}
+                      onChange={(e) => send({ type: 'set_effort', effort: e.target.value })}
+                    >
+                      {EFFORTS.map((effort) => (
+                        <option key={effort} value={effort}>
+                          {effort}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </span>
+                <button
+                  type="button"
+                  disabled={!enabled || !!state?.agent_busy}
+                  aria-pressed={markingPlan}
+                  onClick={() => {
+                    setCameraView(null);
+                    setMarkingPlan(!markingPlan);
+                  }}
+                >
+                  {markingPlan ? 'Cancel map point' : 'Choose map point'}
+                </button>
+                <button className="gcs-send" aria-label="Send message" disabled={!enabled || !text.trim()}>
+                  <ArrowUp size={15} strokeWidth={2.5} />
+                </button>
+              </div>
+            </form>
+          )}
         </aside>
       </div>
       {flightForm && (
