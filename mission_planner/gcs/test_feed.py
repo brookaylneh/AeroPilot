@@ -102,7 +102,9 @@ class FeedTests(unittest.IsolatedAsyncioTestCase):
             if message["type"] == "history":
                 self.assertEqual(message["landmarks"], self.mission.landmarks)
                 self.assertTrue(message["landmarks"])
-        self.assertEqual({message["type"] for message in socket.sent}, {"history", "state"})
+        self.assertEqual(
+            {message["type"] for message in socket.sent}, {"history", "plans", "state"}
+        )
         self.mission.fleet.execute.assert_not_awaited()
 
     async def test_uploaded_camera_opens_without_flight_command(self):

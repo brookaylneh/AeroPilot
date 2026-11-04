@@ -305,7 +305,9 @@ test('complete mission states retain telemetry through observed route, circle, m
   ]) {
     const packet = { ...state, planner: { preview, active, previous, progress: {} } };
     const parsed = stateSchema.parse(packet);
-    assert.deepEqual(parsed, packet);
+    assert.deepEqual(parsed, { ...packet, planner: { progress: {} } });
+    for (const receipt of [preview, active, previous])
+      if (receipt) assert.deepEqual(planReceiptSchema.parse(receipt), receipt);
     assert.equal(parsed.vehicles.filter((v) => v.camera_available && !linkLost(v, 0, true)).length, 4);
   }
 });

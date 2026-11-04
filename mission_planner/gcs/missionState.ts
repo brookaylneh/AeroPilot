@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { briefingSchema } from '../../scenario_creator/briefing';
 import { landmarkSchema, type Landmark } from './landmarks';
 import { missionPlanSchema } from './missionPlan';
-import { plannerSchema } from './FlightPlan';
+import { planReceiptSchema, plannerSchema, type Planner } from './FlightPlan';
 import { fenceGeometrySchema, fenceResultSchema, fenceStateSchema, type FenceResult } from './FenceEditor';
 import {
   agentWaitSchema,
@@ -219,11 +219,19 @@ export const stateSchema = z.object({
     }),
   ),
   map_focus: focusSchema.nullable(),
-  planner: plannerSchema,
+  planner: plannerSchema.pick({ progress: true }),
 });
-export type MissionState = z.infer<typeof stateSchema>;
+// Plan receipts arrive in their own message when one changes; the hook merges them back in.
+const plansSchema = z.object({
+  type: z.literal('plans'),
+  preview: planReceiptSchema.nullable(),
+  active: planReceiptSchema.nullable(),
+  previous: planReceiptSchema.nullable(),
+});
+export type MissionState = Omit<z.infer<typeof stateSchema>, 'planner'> & { planner: Planner };
 const messageSchema = z.discriminatedUnion('type', [
   stateSchema,
+  plansSchema,
   feedFocusMessageSchema,
   fenceResultSchema,
   z.object({ type: z.literal('event'), event: eventSchema }),
@@ -249,6 +257,7 @@ export function useMission() {
   const [now, setNow] = useState(Date.now());
   const socket = useRef<WebSocket | null>(null);
   const arrived = useRef(0);
+  const plans = useRef<Omit<Planner, 'progress'>>({ preview: null, active: null, previous: null });
   useEffect(() => {
     const clock = window.setInterval(() => setNow(Date.now()), 250);
     return () => window.clearInterval(clock);
@@ -272,7 +281,11 @@ export function useMission() {
       const data = parsed.data;
       if (data.type === 'state') {
         arrived.current = Date.now();
-        setState(data);
+        setState({ ...data, planner: { ...plans.current, progress: data.planner.progress } });
+      } else if (data.type === 'plans') {
+        const { type: _type, ...receipts } = data;
+        plans.current = receipts;
+        setState((current) => current && { ...current, planner: { ...current.planner, ...receipts } });
       } else if (data.type === 'feed_focus') setFeedFocus(data);
       else if (data.type === 'fence_result') setFenceResult(data);
       else if (data.type === 'event') setEvents((items) => [...items, data.event]);

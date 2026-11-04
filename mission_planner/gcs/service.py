@@ -723,7 +723,16 @@ class Mission:
             "returns": [dict(row) for row in self.return_rows.values()],
             "approvals": [item["card"] for item in self.approvals.values()],
             "map_focus": self.map_focus,
-            "planner": self.planner_state(vehicles),
+            "planner": {"progress": self.planner_state(vehicles)["progress"]},
+        }
+
+    def plans(self):
+        """Plan receipts, sent to a browser only when one of them changes."""
+        return {
+            "type": "plans",
+            "preview": self.plan_preview,
+            "active": self.plan_active,
+            "previous": self.plan_previous,
         }
 
     def fences_editable(self, vehicles):
@@ -2177,7 +2186,7 @@ class Mission:
             )
 
         async def publish():
-            run = focus_id = None
+            run = focus_id = plans = None
             while True:
                 # Starting or ending a mission replaces the run and its event history.
                 if run != self.id:
@@ -2188,6 +2197,10 @@ class Mission:
                 while sent < len(events):
                     await websocket.send(encode({"type": "event", "event": events[sent]}))
                     sent += 1
+                current = (id(self.plan_preview), id(self.plan_active), id(self.plan_previous))
+                if current != plans:
+                    plans = current
+                    await websocket.send(encode(self.plans()))
                 await websocket.send(encode(self.state()))
                 if self.feed_focus is not None and self.feed_focus["id"] != focus_id:
                     await websocket.send(encode(self.feed_focus))
