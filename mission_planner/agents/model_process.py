@@ -8,7 +8,6 @@ import httpx
 
 from mission_planner.agents.models import Glimmer, Wonder
 from mission_planner.agents.review import review_candidate
-from mission_planner.environment import load_env
 
 
 class WonderRequestError(RuntimeError):
@@ -19,9 +18,7 @@ class WonderRequestError(RuntimeError):
 
 def model_pool(workers):
     assert workers in (1, 4)
-    return ProcessPoolExecutor(
-        max_workers=workers, mp_context=get_context("spawn"), initializer=load_env
-    )
+    return ProcessPoolExecutor(max_workers=workers, mp_context=get_context("spawn"))
 
 
 def wonder_response(args, kwargs):

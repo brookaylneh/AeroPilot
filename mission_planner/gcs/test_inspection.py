@@ -804,9 +804,8 @@ class InspectionTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(records), 3)
             phase = (int(row["drone_id"][-1]) - 1) / 4
             for record in records:
-                self.assertAlmostEqual(
-                    (record["cycle"]["scheduled_monotonic_s"] * 5 - phase) % 1, 0, places=6
-                )
+                offset = (record["cycle"]["scheduled_monotonic_s"] * 5 - phase) % 1
+                self.assertAlmostEqual(min(offset, 1 - offset), 0, places=6)
             first, second = (record["cycle"] for record in records[:2])
             self.assertGreater(
                 second["started_monotonic_s"], first["started_monotonic_s"] + first["observation_s"]
