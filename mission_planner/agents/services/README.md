@@ -22,20 +22,21 @@ The source is `facebookresearch/sam3` at
 `sam3.1_multiplex.pt`, SHA-256
 `0567debeec80ba4ac6369540c6c248025283cb3ff2b92827509e57e2b3541cb6`.
 Live inference uses `AeroPilot-v1`, the drone detector fine-tune published as
-[AeroPilot/AeroPilot-v1](https://huggingface.co/AeroPilot/AeroPilot-v1) (`aeropilot_v1.pt`,
+[AeroPilot/AeroPilot-v1](https://huggingface.co/AeroPilot/AeroPilot-v1): `aeropilot_v1.pt`,
 revision `259ecc64a35dece97f443fe650d3580dd8efaf5c`, SHA-256
-`9c0813310a2e82c9cbf8347216b51cc27ac0898d360693e70c4b4cdbc12b72b9`, 3,502,749,201 bytes).
-The device checkpoint the runtime verifies is the local assembly of that fine-tune's
-training artifact (SHA-256 `ba8dccda24588a67e10cb565ded02b1a70d32dbbc8e7755052012706d4c3f6b9`)
-with the official video weights: SHA-256
-`6f97e110579b94e9ad5d5537bcb6f8b2a54111181f0fcd97ed021a2b575ca666`, 3,502,740,416 bytes.
-The published file is a different serialization; it has not been compared tensor by tensor
-or qualified on this host. Adopting it changes `SAM_SHA256` and requires the package
-qualification below. Health and session creation identify the variant explicitly.
-The packaged four-session replay measured 17.79 aggregate FPS and 7.97 GB peak
-process GPU memory. The exact protocol, masks, runtime versions and limitations
-are recorded in [the fine-tuned measurement](../../measurements/sam31-drone-ft-v2.json),
-which names the variant by its training run, `drone-ft-v2-epoch2`.
+`9c0813310a2e82c9cbf8347216b51cc27ac0898d360693e70c4b4cdbc12b72b9`, 3,502,749,201 bytes.
+The runtime verifies that hash. The published file is tensor-identical to the local
+assembly of the fine-tune's training artifact (SHA-256
+`ba8dccda24588a67e10cb565ded02b1a70d32dbbc8e7755052012706d4c3f6b9`) with the official
+video weights (SHA-256 `6f97e110579b94e9ad5d5537bcb6f8b2a54111181f0fcd97ed021a2b575ca666`,
+3,502,740,416 bytes); only the serialization differs. Its 521 tracker, mask-head and
+interactive/propagation tensors equal the official base. Health and session creation
+identify the variant explicitly. The packaged four-session replay measured 17.60 median
+aggregate FPS and 7.96 GB peak process GPU memory. The exact protocol, masks, runtime
+versions and limitations are recorded in
+[the AeroPilot-v1 measurement](../../measurements/aeropilot-v1.json); the earlier
+[fine-tuned measurement](../../measurements/sam31-drone-ft-v2.json) names the same
+weights by their training run, `drone-ft-v2-epoch2`.
 
 `assemble_sam.py` runs on CPU in the pinned SAM image. It checks both source
 hashes, loads 1,102 detector tensors, preserves all 521 original mask-head,

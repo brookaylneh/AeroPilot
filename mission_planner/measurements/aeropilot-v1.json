@@ -1,0 +1,207 @@
+{
+  "variant": "AeroPilot-v1",
+  "recorded_utc": "2026-11-04T13:08:54Z",
+  "status": "Published AeroPilot-v1 checkpoint qualified in the packaged device image on this host; not yet installed as snr-vision@0, which still runs the drone-ft-v2 build.",
+  "source_commit": "7ef2186bba21253e4cf176d1e541198359dbe04f",
+  "image_digest": "sha256:175fda51db1d3c5e97346f5bdf2ea7520855e20672aaf2d3236ebb629c8566ba",
+  "image_tag": "snr-sam31:aeropilot-v1-20261104",
+  "image_bytes": 4607779730,
+  "image_source_sha256": {
+    "mission_planner/agents/services/sam_video.py": "58735f2a78e6c5c01ce6b847f5590cbdda3da41ee0b78755bda22876116d4314",
+    "mission_planner/agents/services/vision.py": "d921e3ac90c2fb21ed1db9b9cf5d3d9b27f64e4b8900726c31c63247ec0311a2",
+    "mission_planner/agents/services/assemble_sam.py": "efd55e0200cb4c20ba4e78b8c6d5c7a8a709ca615263d2f1adadc345fb4c0529",
+    "mission_planner/environment.py": "3e444267dc699a4c025d420ee7ad4c74bc7b89637a32f2bd1667c0fba8bb72ca"
+  },
+  "image_code_matches_workspace": true,
+  "checkpoint": {
+    "source": "https://huggingface.co/AeroPilot/AeroPilot-v1",
+    "revision": "259ecc64a35dece97f443fe650d3580dd8efaf5c",
+    "file": "aeropilot_v1.pt",
+    "bytes": 3502749201,
+    "sha256": "9c0813310a2e82c9cbf8347216b51cc27ac0898d360693e70c4b4cdbc12b72b9",
+    "lfs_metadata_matched": true,
+    "downloaded_utc": [
+      "2026-11-04T12:18:38Z",
+      "2026-11-04T12:20:38Z"
+    ],
+    "comparison_with_local_assembly": {
+      "local_assembly_sha256": "6f97e110579b94e9ad5d5537bcb6f8b2a54111181f0fcd97ed021a2b575ca666",
+      "official_base_sha256": "0567debeec80ba4ac6369540c6c248025283cb3ff2b92827509e57e2b3541cb6",
+      "tensors": 1623,
+      "same_keys_shapes_dtypes": true,
+      "tensors_differing_from_local_assembly": 0,
+      "tensors_differing_from_official_base": 753,
+      "preserved_tensors_equal_to_base": true,
+      "preserved_tensor_count": 521,
+      "all_finite": true,
+      "torch_version": "2.10.0+cu128",
+      "conclusion": "Identical weights to the drone-ft-v2-epoch2 assembly; different serialization only."
+    },
+    "model_card": "2 epochs over the SAR, thermal, open-water, wildlife and COCO replay sets with a frozen text encoder; evaluation numbers on the card were not reproduced here."
+  },
+  "sam_source_commit": "f1647e8d0c1d280991f4d1b7d974c2704537fe66",
+  "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition",
+  "gpu_budget_bytes": 16000000000,
+  "allocator_budget_bytes": 15000000000,
+  "precision": "FP32 weights, BF16 autocast, TF32",
+  "compiled": true,
+  "compile_cache": "copied from the drone-ft-v2-20261103T132130Z cache; identical Python, PyTorch and CUDA layers",
+  "compilation": {
+    "calls_captured": 9637,
+    "unique_graphs": 29
+  },
+  "startup_seconds": 126.07988620293327,
+  "warmup": {
+    "protocol_sha256": "f3c8830203ca2c3eed7d0ab578ec8689f096dbccc212135fa983a7684b50a35c",
+    "shape_passes": [
+      {
+        "pass": 0,
+        "max_objects": 16,
+        "seconds": 3.7737100310623646,
+        "compilation": {
+          "calls_captured": 255,
+          "unique_graphs": 16
+        }
+      },
+      {
+        "pass": 1,
+        "max_objects": 16,
+        "seconds": 0.003917742054909468,
+        "compilation": {
+          "calls_captured": 255,
+          "unique_graphs": 16
+        }
+      }
+    ],
+    "passes": [
+      {
+        "pass": 0,
+        "frames": 86,
+        "seconds": 90.68060497601982,
+        "compilation": {
+          "calls_captured": 9637,
+          "unique_graphs": 29
+        }
+      },
+      {
+        "pass": 1,
+        "frames": 86,
+        "seconds": 5.5551416360540316,
+        "compilation": {
+          "calls_captured": 9637,
+          "unique_graphs": 29
+        }
+      },
+      {
+        "pass": 2,
+        "frames": 86,
+        "seconds": 5.41137772903312,
+        "compilation": {
+          "calls_captured": 9637,
+          "unique_graphs": 29
+        }
+      }
+    ]
+  },
+  "packages": {
+    "torch": "2.10.0+cu128",
+    "torchvision": "0.25.0+cu128",
+    "sam3": "0.1.0",
+    "fastapi": "0.136.3",
+    "uvicorn": "0.54.0",
+    "opencv-python-headless": "4.10.0.84"
+  },
+  "throughput": {
+    "scope": "Synthetic camera translation, rotation and zoom of recorded native 4K nadir images; not live forward tracking or moving-person acceptance.",
+    "protocol_sha256": "f3c8830203ca2c3eed7d0ab578ec8689f096dbccc212135fa983a7684b50a35c",
+    "prompt": "person",
+    "threshold": 0.3,
+    "drone_sessions": 4,
+    "model_instances": 1,
+    "frames_per_drone_per_pass": 80,
+    "passes": 3,
+    "aggregate_fps": [
+      17.294451610223277,
+      17.60050950006828,
+      17.650544349509474
+    ],
+    "median_aggregate_fps": 17.60050950006828,
+    "reference_aggregate_fps": {
+      "official_sam31": 20.16,
+      "drone_ft_v2_assembly": 17.79
+    },
+    "measured_frames": 960,
+    "frames_with_detections": 717,
+    "validated_detection_masks": 717,
+    "request_latency_seconds": {
+      "median": 0.2238448960124515,
+      "p95": 0.24096920702140778,
+      "max": 0.4833000070648268
+    },
+    "sam_stage_seconds": {
+      "median": 0.0571903059608303,
+      "p95": 0.06078859406989068,
+      "max": 0.1111680050380528
+    },
+    "health": {
+      "samples": 12,
+      "peak_process_gpu_bytes": 7956594688,
+      "max_retained_tracking_frames": 17,
+      "max_active_objects": 1
+    },
+    "final_compilation": {
+      "calls_captured": 9637,
+      "unique_graphs": 29
+    },
+    "sessions_after": {},
+    "status": "complete",
+    "source": ".local/evidence/sam31-aeropilot-v1-qualification-20261104T122831Z/throughput/result.json"
+  },
+  "soak": {
+    "scope": "Four persistent sessions replaying recorded frames at a 0.2 s interval per drone for 9001 frames each; service stability, not recognition accuracy.",
+    "frames_per_drone": 9001,
+    "interval_s": 0.2,
+    "elapsed_s": 2026.7425374729792,
+    "aggregate_fps": 17.76693703067391,
+    "measured_frames": 36004,
+    "frames_with_detections": 27002,
+    "validated_detection_masks": 27002,
+    "request_latency_seconds": {
+      "median": 0.2239332834724337,
+      "p95": 0.23851613805163652,
+      "max": 0.6258677709847689
+    },
+    "sam_stage_seconds": {
+      "median": 0.05728133948286995,
+      "p95": 0.0606559079606086,
+      "max": 0.4494940440636128
+    },
+    "health": {
+      "samples": 406,
+      "peak_process_gpu_bytes": 7956594688,
+      "max_retained_tracking_frames": 17,
+      "max_active_objects": 1
+    },
+    "final_compilation": {
+      "calls_captured": 9637,
+      "unique_graphs": 29
+    },
+    "sessions_after": {},
+    "status": "complete",
+    "source": ".local/evidence/sam31-aeropilot-v1-qualification-20261104T122831Z/soak/result.json"
+  },
+  "conditions": [
+    "Installed snr-vision@0 (drone-ft-v2 image) stayed resident and idle on the same GPU; Unreal, TURN, signalling, mission and web services kept running.",
+    "The qualification container ran from the working tree on its own Unix socket and container name; no installed unit, port or runtime.env value changed."
+  ],
+  "limitations": [
+    "20.16 aggregate FPS remains a reference; no lower throughput target has been accepted.",
+    "Software memory budget on RTX PRO 6000 hardware; not qualification on a physical 16 GB GPU.",
+    "Recorded-frame replay; no ground-truth mask, live search recall or moving-person tracking accuracy was measured.",
+    "Adoption into snr-vision@0 requires the coordinated release: new release checkout, the three SNR_SAM_* values in .local/runtime.env, and a vision restart."
+  ],
+  "evidence": [
+    ".local/evidence/sam31-aeropilot-v1-qualification-20261104T122831Z",
+    ".local/evidence/aeropilot-v1-import-20261104T121837Z"
+  ]
+}
