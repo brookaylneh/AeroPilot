@@ -83,7 +83,7 @@ The service sends SIGTERM to its four child autopilots on shutdown. In coupled m
 end the Unreal world first while the autopilots still supply motor responses; stop
 the autopilots immediately after world `EndPlay`, before renderer cache flushing
 finishes. The coupling gate records this ordered shutdown. Each start creates a
-new `.local/data/missions/<mission-id>/` containing JSONL events, model request/response
+new `$SNR_MISSION_DATA_DIR/<mission-id>/` containing JSONL events, model request/response
 traces and separate autopilot logs. Existing run directories fail; requests never retry
 and the browser does not reconnect automatically. Reload after restoring a connection.
 
@@ -98,9 +98,9 @@ The world depicts authored simulated terrain, not surveyed Yosemite.
 Coordinates are metres north/east of that origin. The WGS84 local tangent plane uses
 fixed meridional and prime-vertical radii at the origin; latitude offset is north/M and
 longitude offset is east/(N cos(latitude)), in radians. Round trips are asserted below
-1 μm before MAVLink's integer-coordinate encoding. `world/cosys/world.json` spawn
-X/Y/Z are **NED metres**; home elevation adds the world's `40−Z` metre spawn height.
-The settings generator asserts spawn/home consistency.
+1 μm before MAVLink's integer-coordinate encoding. `world/cosys/world.json` records each spawn
+in Unreal centimetres; `geodesy.homes()` converts it to north/east metres and MSL altitude, and
+SITL launch checks a slot's generated Cosys settings against the same generator.
 
 The main rectangle in `world/cosys/world.json` contains the relocated command-post homes.
 The initial fence also retains a southern extension, east ±25 m and 40 m beyond the main bound.
@@ -206,14 +206,12 @@ failsafe imposes a separate loaded-voltage limit: interpolation of the pinned ba
 table at 50 A gives 45.546% remaining charge. The higher of those two limits governs
 preview and candidate control; errors show both instead of treating charge percentage
 as usable flight time. This is conservative electrical-model arithmetic, not measured
-flight endurance. Primary implementations are pinned
+flight endurance. The compiled model's discharge timing is recorded in
+[`gcs-sitl.json`](../measurements/gcs-sitl.json). Primary implementations are pinned
 [AirSim](https://github.com/ArduPilot/ardupilot/blob/fb773567896014da007bca58358704d4a0d8516f/libraries/SITL/SIM_AirSim.cpp),
 [battery](https://github.com/ArduPilot/ardupilot/blob/fb773567896014da007bca58358704d4a0d8516f/libraries/SITL/SIM_Battery.cpp)
 and [analog model](https://github.com/ArduPilot/ardupilot/blob/fb773567896014da007bca58358704d4a0d8516f/libraries/AP_HAL_SITL/SITL_State_common.cpp).
-Offline model evidence and installation readback belong to the fleet measurements;
-live discharge and low-battery RTL still require operator testing.
-The compiled model check measured 10.610703 V after 1,800 simulated seconds at 50 A;
-it crossed 10.5 V at 1,973.45 simulated seconds using 0.01 s integration steps.
+Live discharge and low-battery RTL still require operator testing.
 
 Arming and failsafe
 checks remain enabled. Startup verifies firmware identity, GPS/EKF,
@@ -273,10 +271,9 @@ Every safety parameter is read back at startup. The installed values and their v
 Low-battery activation still requires operator flight acceptance.
 
 RTL climbs to the higher of its current altitude and 80 m above home, returns directly,
-and lands. The logged terrain-envelope audit found **11.9816 m** clearance at 80 m above
-the recorded 11.13 m command-post home, using a 61.1484375 m terrain maximum and 18 m
-maximum landmark height. That bound applies to those recorded references; runtime checks
-use each aircraft's measured home. A direct return must remain inside the read-back fence;
+and lands. Startup audits the whole-world terrain-plus-obstacle envelope against every
+measured home at that return altitude; the recorded clearance is in
+[`world-bear-port.json`](../measurements/world-bear-port.json). A direct return must remain inside the read-back fence;
 planned returns need explicit intermediate waypoints wherever the direct segment is invalid.
 Code rejects unsafe operator RTL geometry; the autopilot battery failsafe does not use
 the mission planner. Simultaneous RTL paths are not collision avoidance. The source audit and
@@ -333,9 +330,8 @@ model's density averaged over witness points every 20 m along the initial planni
 trail or outline is every point on it), cells are ranked by density and searched nearest-first,
 and connected bands grow to the fleet's budget. The first band must touch the first 100 m of the
 initial planning point and centre within the 75 % dispersion angle of the stated direction, else
-the plan is the `band_direction` rejection; the rationale states where each band centres. The
-2026-11-02 Granite Lake Trail mission planned its first band 150° off a southbound direction
-because ring-and-wedge slivers outranked the core; this grid replaced it. `allocation.py` cuts
+the plan is the `band_direction` rejection; the rationale states where each band centres.
+`allocation.py` cuts
 each band into equal-flight-time strips parallel to the
 sweep with departure lanes and 8 m altitude layers that belong to each aircraft by its place in
 the fixed order Drone1, Drone3, Drone2, Drone4 (not by its place in the plan), and `compile_plan`
@@ -345,10 +341,9 @@ the `participants` rejection rather than a silent drop. The sizing loop uses the
 waypoint carries its own speed ramps). Code assigns the plan version as the active version plus
 one. The receipt adds `tasking`, `region` (bands with status previous, planned, provisional or
 outside endurance), `sectors`, `fit` (usable, planned and headroom seconds per drone) and
-`rationale`; coverage is measured against the planned band. Sizing cost grows with the band's
-vertex count and row count: in the 2026-11-02 evaluation run a half-sortie band planned in 2–9 s,
-while a whole-sortie band around the 1.15 km fire road took 127–140 s
-(`measurements/tasking-planner.json`); the strip partition is the dominant cost.
+`rationale`; coverage is measured against the planned band. Sizing time grows with the band's
+vertex and row counts, the strip partition being the dominant cost; measured planning times are
+in [`tasking-planner.json`](../measurements/tasking-planner.json).
 
 Every rejection is structured: `rule`, `drone_id`, zero-based `step_index`, `step_kind`, prose
 with one-based steps, `detail` and, for separation, the `conflict`. Rules are schema, version,
@@ -420,9 +415,8 @@ errors identify the field and limit without echoing the whole request.
 Generated plans depart by lane: each drone climbs at its pad to its own layer, flies north to
 its own row (20 m plus 12 m per lane) and straight to its strip entry; returns reverse the lane.
 Rows and layers are fixed per aircraft, so a drone launched alone later flies the same lane it
-would in a four-drone plan and never shares a layer with one already airborne (on 2026-11-03 a
-Drone3 launch beside a flying Drone2 crossed its return lane at the same 38 m layer and was
-rejected). Front pads take the low layers so rear pads cross their columns above them. Separation
+would in a four-drone plan and never shares a layer with one already airborne. Front pads take
+the low layers so rear pads cross their columns above them. Separation
 is a 4 m three-dimensional minimum between every planned leg and every reserved route; the
 pads stand 5 m apart, which bounds it.
 
@@ -861,9 +855,8 @@ The service supports its qualified 1080p preparation profile. Recorded affine
 motion tests transport and tracker continuity; live forward recognition and
 aircraft control require separate acceptance. The extended HTTP/soak runner is
 documented in [services](../agents/services/README.md#qualification), with results
-in [sam31.json](../measurements/sam31.json). Camera acquisition previously measured
-430–464 ms median per frame, so service throughput does not establish a live 5 Hz
-capture rate for each drone.
+in [sam31.json](../measurements/sam31.json), including camera acquisition time per frame;
+service throughput does not establish a live 5 Hz capture rate for each drone.
 
 ## Automatic observation and candidate lock
 
