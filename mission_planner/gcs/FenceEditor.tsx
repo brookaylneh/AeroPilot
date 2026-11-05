@@ -99,14 +99,9 @@ export default function FenceEditor({
   const [menu, setMenu] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
-  const [name, setName] = useState<string | null>(null);
-  const dialog = useRef<HTMLDialogElement>(null);
   const dragging = useRef<number | null>(null);
   const draft = history.at(-1);
   useEffect(() => onEditing(draft !== undefined), [draft !== undefined]);
-  useEffect(() => {
-    if (name !== null) dialog.current!.showModal();
-  }, [name !== null]);
   const editable = connected && fences !== null && fences.editable && !saving && !marking;
   const polygons = draft ? [draft.fences.inclusion, ...draft.fences.exclusions] : [];
   const points = draft && draft.polygon >= 0 ? polygons[draft.polygon] : [];
@@ -148,7 +143,9 @@ export default function FenceEditor({
     };
     if (drawing) {
       configuration.exclusions.push([]);
-      configuration.names.exclusions.push(`Exclusion ${polygon}`);
+      let number = 1;
+      while (configuration.names.exclusions.includes(`Exclusion ${number}`)) number++;
+      configuration.names.exclusions.push(`Exclusion ${number}`);
     }
     setHistory([{ fences: configuration, polygon, closed: !drawing, selected: null }]);
     setMenu(false);
@@ -172,14 +169,13 @@ export default function FenceEditor({
   function cancel() {
     setHistory([]);
     setMenu(false);
-    setName(null);
     setError('');
   }
 
   function submit(configuration: FenceConfig) {
+    if (!canSave || !changed) return;
     setError('');
     if (save(configuration)) {
-      setName(null);
       setSaving(true);
     }
   }
@@ -192,8 +188,7 @@ export default function FenceEditor({
       onKeyDown={(event) => {
         if (event.key === 'Escape' && !saving) {
           event.stopPropagation();
-          if (name !== null) setName(null);
-          else cancel();
+          cancel();
         }
       }}
     >
@@ -434,72 +429,11 @@ export default function FenceEditor({
             <button disabled={saving} onClick={cancel}>
               Cancel
             </button>
-            <button
-              className="primary"
-              disabled={!canSave || (draft.polygon < 0 && !changed)}
-              onClick={() => {
-                setError('');
-                if (draft.polygon < 0) submit(draft.fences);
-                else setName(selectedName);
-              }}
-            >
+            <button className="primary" disabled={!canSave || !changed} onClick={() => submit(draft.fences)}>
               {saving ? 'Verifying…' : 'Save fences'}
             </button>
           </div>
         </section>
-      )}
-      {name !== null && draft && (
-        <dialog
-          ref={dialog}
-          className="gcs-fence-name-dialog"
-          aria-labelledby="fence-name-title"
-          onCancel={() => setName(null)}
-        >
-          <form
-            onSubmit={(event) => {
-              event.preventDefault();
-              const trimmed = name.trim();
-              if (!canSave || !nameSchema.safeParse(trimmed).success) return;
-              submit({
-                ...draft.fences,
-                names: {
-                  inclusion: draft.polygon === 0 ? trimmed : draft.fences.names.inclusion,
-                  exclusions: draft.fences.names.exclusions.map((value, index) =>
-                    index === draft.polygon - 1 ? trimmed : value,
-                  ),
-                },
-              });
-            }}
-          >
-            <h3 id="fence-name-title">Save {draft.polygon === 0 ? 'inclusion' : 'exclusion'}</h3>
-            <label htmlFor="fence-name">Name</label>
-            <input
-              id="fence-name"
-              autoFocus
-              required
-              maxLength={60}
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              onFocus={(event) => event.currentTarget.select()}
-            />
-            <div className="gcs-fence-edit-actions">
-              <button type="button" onClick={() => setName(null)}>
-                Back to editing
-              </button>
-              <button
-                type="submit"
-                className="primary"
-                disabled={
-                  !canSave ||
-                  !nameSchema.safeParse(name.trim()).success ||
-                  (!changed && name.trim() === selectedName)
-                }
-              >
-                Save area
-              </button>
-            </div>
-          </form>
-        </dialog>
       )}
     </div>
   );
