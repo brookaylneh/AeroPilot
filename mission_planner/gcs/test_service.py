@@ -1085,6 +1085,38 @@ class AgentConversation(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.requests), 1)
         self.assertFalse(any(c.args[0] == "error" for c in self.mission.event.call_args_list))
 
+    async def test_prearm_alert_does_not_cancel_reported_area_lookup(self):
+        self.mission.vehicles.return_value = [
+            {"id": "Drone1", "mode": "AUTO", "armed": False, "landed_state": 1}
+        ]
+        call = {
+            "type": "function_call",
+            "name": "get_reported_search_area",
+            "call_id": "reported-area",
+            "arguments": "{}",
+        }
+
+        def respond(request):
+            self.requests.append(json.loads(request.content))
+            self.mission.autopilot_alerts[("Drone1", 2, "PreArm: Mode requires mission")] = {
+                "drone_id": "Drone1",
+                "severity": 2,
+                "text": "PreArm: Mode requires mission",
+                "pending": True,
+            }
+            return self.reply([call] if len(self.requests) == 1 else [])
+
+        self.mission.model.http = httpx.Client(transport=httpx.MockTransport(respond))
+        self.addCleanup(self.mission.model.http.close)
+        await self.mission.agent("Search the reported area")
+        self.mission.invoke.assert_awaited_once_with(
+            "get_reported_search_area", {}, "agent", "reported-area"
+        )
+        self.assertEqual(len(self.requests), 2)
+        self.assertFalse(
+            any("no command was sent" in call.args[1] for call in self.mission.event.call_args_list)
+        )
+
     def test_tracking_diagnostic_text_does_not_change_flight_authority(self):
         row = {
             "id": "inspection",

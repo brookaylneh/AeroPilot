@@ -2019,6 +2019,7 @@ class Mission:
                 "get_drone",
                 "get_mission",
                 "find_place",
+                "get_reported_search_area",
                 "describe_location",
                 "ground_height",
                 "ground_profile",
