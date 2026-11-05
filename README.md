@@ -1,6 +1,6 @@
 # AeroPilot
 
-**Demo: [alotel.app](https://alotel.app)**
+**[live demo here](https://alotel.app)**
 
 **An AI mission commander for drone search and rescue.**
 
