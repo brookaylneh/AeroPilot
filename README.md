@@ -1,18 +1,20 @@
 # AeroPilot
 
+**Demo: [alotel.app](https://alotel.app)**
+
 **An AI mission commander for drone search and rescue.**
 
 AeroPilot turns a missing-person report into an operator-approved search by up to four simulated drones. Meta Muse Wonder coordinates the mission, a local SAM 3.1 fine-tune detects and tracks candidates, and Muse Glimmer reviews close-up evidence before a sighting reaches the operator.
 
 Built for **Push the Frontier** at the Meta Global AI Developer Hackathon, October 27–November 4, 2026. The goal is to reduce the work of coordinating aircraft, searching video and checking sightings during a rescue. This release demonstrates that workflow in simulation; it is not a field-qualified rescue system.
 
-[Live demo](http://35.81.229.78/) · [Step-by-step setup](deploy/README.md#step-by-step-setup) · [AeroPilot-v1 model](https://huggingface.co/AeroPilot/AeroPilot-v1) · [Checks](https://github.com/brookaylneh/AeroPilot/actions)
+[Step-by-step setup](deploy/README.md#step-by-step-setup) · [AeroPilot-v1 model](https://huggingface.co/AeroPilot/AeroPilot-v1) · [Checks](https://github.com/brookaylneh/AeroPilot/actions)
 
 ![AeroPilot Mission Control: shared map, four simulated aircraft and mission conversation](web/mission-control.webp)
 
 ## Try the demo
 
-1. Open the [live demo](http://35.81.229.78/) in a desktop browser. **Map**, **Explore world** and **Search & rescue scenario** share one workspace.
+1. Open the [live demo](https://alotel.app) in a desktop browser. **Map**, **Explore world** and **Search & rescue scenario** share one workspace.
 2. In **Search & rescue scenario**, choose a character, place them in the world, and generate an **Easy** missing-person report. Easy uses one aircraft and a small search area described relative to a landmark. Medium uses two aircraft; Hard needs broader planning.
 3. Select **Launch mission brief**, review the prompt placed in the conversation, then send it. Launching the brief alone does not issue a flight command.
 4. Wonder proposes a checked flight plan. Expand the approval card to inspect the aircraft, steps and battery use, then approve it.
