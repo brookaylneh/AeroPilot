@@ -139,7 +139,9 @@ The mission and perception stack below was built during the October 27–Novembe
 - **Detection, visual tracking and evidence review working together.** CSRT follows the detected subject for the video overlay and camera guidance. A separate on-demand 4× optical camera captures one original 4K photograph per detected object, without digitally enlarging the search image. Unsupported candidates are released so the checked search can continue.
 - **A shared mission-control workspace.** Natural-language tasking, map and fence tools, plan approval, live video, evidence cards and flight logs let operators inspect the complete mission. World exploration and a saved scenario creator provide a repeatable environment for demonstrations.
 
-Meta's models, Unreal Engine, ArduPilot, Cosys-AirSim, OpenCV and third-party artwork are upstream dependencies. We claim the application, model adaptation and integrations described above, not authorship of those dependencies. This public repository starts with a fresh source snapshot; private development history is not included.
+Meta's models, Unreal Engine, ArduPilot, Cosys-AirSim, OpenCV and third-party artwork are upstream dependencies. We claim the application, model adaptation and integrations described above, not authorship of those dependencies.
+
+The [audited development history](https://github.com/brookaylneh/AeroPilot/tree/hackathon-development) preserves original dates. [Compare the baseline and submission](https://github.com/brookaylneh/AeroPilot/compare/hackathon-baseline...hackathon-submission) to review the work built during the hackathon.
 
 ## Measured results and limits
 
