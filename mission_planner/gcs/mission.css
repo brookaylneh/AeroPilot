@@ -1614,6 +1614,9 @@
 .gcs-conversation > .gcs-working {
   margin-inline: 10px;
 }
+.gcs-conversation .gcs-message.error {
+  display: none;
+}
 .gcs-message.error {
   color: #ffb3a8;
   padding: 12px;
