@@ -1,5 +1,7 @@
 # AeroPilot
 
+> **Audited development history:** 379 original commits, with dates and merges preserved. AI-assisted attribution is consolidated under the project owner; private artifacts are excluded. [hackathon-baseline](https://github.com/brookaylneh/AeroPilot/tree/hackathon-baseline) marks the existing Studio source; [hackathon-submission](https://github.com/brookaylneh/AeroPilot/tree/hackathon-submission) marks the November 4, 2026, 9 PM EST cutoff. Use [main](https://github.com/brookaylneh/AeroPilot) for current source and setup.
+
 **[live demo here](https://alotel.app)**
 
 **AI native mission control for autonomous drone fleets.**
@@ -139,7 +141,7 @@ The submission focuses on the mission and perception stack built around the init
 - **Detection, visual tracking and evidence review working together.** CSRT follows the detected subject for the video overlay and camera guidance. A separate on-demand 4× optical camera captures one original 4K photograph per detected object, without digitally enlarging the search image. Unsupported candidates are released so the checked search can continue.
 - **A shared mission-control workspace.** Natural-language tasking, map and fence tools, plan approval, live video, evidence cards and flight logs let operators inspect the complete mission. World exploration and a saved scenario creator provide a repeatable environment for demonstrations.
 
-Meta's models, Unreal Engine, ArduPilot, Cosys-AirSim, OpenCV and third-party artwork are upstream dependencies. We claim the application, model adaptation and integrations described above, not authorship of those dependencies. This public repository starts with a fresh source snapshot; private development history is not included.
+Meta's models, Unreal Engine, ArduPilot, Cosys-AirSim, OpenCV and third-party artwork are upstream dependencies. We claim the application, model adaptation and integrations described above, not authorship of those dependencies. Compare [the baseline and submission](https://github.com/brookaylneh/AeroPilot/compare/hackathon-baseline...hackathon-submission) to review the hackathon work.
 
 ## Measured results and limits
 
