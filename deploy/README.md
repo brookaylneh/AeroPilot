@@ -305,7 +305,7 @@ sudo bash deploy/install-services.sh
 sudo systemctl start snr-turn snr-vision@0 snr-signalling@0 snr-unreal@0
 timeout 120 bash -c 'until ss -H -ltn sport = :41451 | rg -q "127.0.0.1:41451"; do sleep 1; done'
 sudo systemctl start snr-mission@0 snr-web
-# Start Caddy after the security group permits HTTP on TCP 80.
+# Start Caddy after DNS resolves here and the security group permits TCP 80 and 443.
 sudo systemctl start snr-caddy
 ```
 
@@ -408,7 +408,7 @@ its startup values are defined in `runtime.env.example`.
 
 | Route or endpoint                                 | Purpose                                                      | Listener / upstream                                              |
 | ------------------------------------------------- | ------------------------------------------------------------ | ---------------------------------------------------------------- |
-| `$SNR_ORIGIN/`                                    | Mission Control: map, world exploration and scenario tabs    | Caddy, 80 TCP, then web `127.0.0.1:3001`                         |
+| `$SNR_ORIGIN/`                                    | Mission Control: map, world exploration and scenario tabs    | Caddy, 443 TCP (80 redirects), then web `127.0.0.1:3001`         |
 | `/home`, `/studio`, `/missionplanner`, `/mission` | Redirect to `/`                                              | web, `127.0.0.1:3001`                                            |
 | `/api/slots`                                      | This session's environment, or how many are in use           | web, slot broker                                                 |
 | `/api/mission`                                    | Mission WebSocket                                            | web origin and session check, then the slot's mission port       |
@@ -424,8 +424,16 @@ its startup values are defined in `runtime.env.example`.
 
 Caddy proxies to the web server so production and development share the same-origin WebSocket
 checks. The root redirects explicitly; unknown paths return 404. TURN and its media endpoints are the network-facing exception to the loopback service rule.
-Caddy serves the public IP over HTTP on TCP 80. Automatic HTTPS and the admin endpoint are disabled.
-WebSockets use `ws://` on the same origin; no DNS name or certificate is required.
+Caddy serves `SNR_ORIGIN` over HTTPS and automatically obtains and renews its certificate.
+Set it to the public domain, for example `https://example.com`. Set `SNR_REDIRECT_ORIGINS`
+to alternative domain addresses, for example `https://www.example.com` (space-separated for multiple aliases);
+they redirect to the primary origin with the request path preserved. Point every configured
+domain at the host and allow inbound TCP 80 and 443 before starting Caddy. Its certificate
+storage under `.local/data/caddy` must remain persistent across release checkouts. The admin
+endpoint remains disabled, so apply configuration changes by restarting `snr-caddy`.
+The browser selects `wss://` automatically on HTTPS; internal mission and signalling
+connections remain on loopback. A domain change does not require restarting the simulation.
+The host's public IP continues to serve HTTP for operational access.
 Signalling supplies `iceTransportPolicy: relay` to browsers. Unreal advertises its local candidates;
 Epic's frontend `ForceTURN` flag is unused because it also rejects those remote candidates.
 
@@ -487,9 +495,9 @@ the eleven approved Rocketbox characters and its bundled pipeline cache.
 
 ## Security group
 
-Public ingress is HTTP on TCP 80 to Caddy, TURN on 3478 TCP/UDP, and the TURN relay range
-49300–49350 UDP. TCP 443 and the direct WebRTC range 49160–49250 UDP need no public ingress
-once a browser measurement verifies a selected relay candidate. Keep SSH restricted to the
+Public ingress is HTTP on TCP 80 and HTTPS on TCP 443 to Caddy, TURN on 3478 TCP/UDP, and
+the TURN relay range 49300–49350 UDP. The direct WebRTC range 49160–49250 UDP needs no
+public ingress once a browser measurement verifies a selected relay candidate. Keep SSH restricted to the
 operator's source address. The cloud console commands with the account's group identifiers
 are an operator runbook kept outside the repository.
 

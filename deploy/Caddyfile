@@ -1,12 +1,15 @@
 {
 	admin off
-	auto_https off
 	servers {
 		protocols h1 h2
 	}
 }
 
-{$SNR_ORIGIN} {
+{$SNR_REDIRECT_ORIGINS} {
+	redir {$SNR_ORIGIN}{uri} 308
+}
+
+{$SNR_ORIGIN}, http://{$SNR_PUBLIC_IP} {
 	reverse_proxy {$SNR_HOST}:{$SNR_WEB_PORT} {
 		transport http {
 			dial_timeout 2s
