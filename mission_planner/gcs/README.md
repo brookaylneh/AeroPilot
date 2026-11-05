@@ -114,7 +114,9 @@ The existing map legend contains **Inclusion fence** (yellow, Edit) and **Exclus
 shape. Drag corners, click an edge to insert a corner, or select a corner to remove it.
 Undo and Cancel affect only the draft. Save remains disabled for an open line, repeated
 corners, a crossing, zero area or a redundant corner on a straight edge. Delete zone is
-also a draft change until Save. Terrain remains visible beneath the fills; both fence
+also a draft change until Save. Save applies the draft directly without a naming dialog;
+new zones receive an unused name such as `Exclusion 1`, and existing names are preserved.
+Terrain remains visible beneath the fills; both fence
 types remain visible without selecting an aircraft and in the video map inset.
 The legend's editing controls remain visible at both tested desktop widths, 1440 and 1920 pixels.
 

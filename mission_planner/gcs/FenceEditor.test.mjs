@@ -95,9 +95,6 @@ function editor() {
       dirty = false;
       si = ri = ei = 0;
       tree = module.exports.default(props);
-      for (const node of nodes(tree)) {
-        if (node.type === 'dialog') node.props.ref.current = { showModal() {} };
-      }
       for (const effect of pending.splice(0)) effect();
     } while (dirty);
   }
@@ -122,6 +119,7 @@ function editor() {
     render,
     button,
     find,
+    has: (predicate) => nodes(tree).some(predicate),
     pointer,
     click(name) {
       button(name).props.onClick();
@@ -133,15 +131,6 @@ function editor() {
     },
     close() {
       find((n) => n.props['data-fence-corner'] === 0).props.onPointerDown(pointer(0, 0));
-      render();
-    },
-    name(value) {
-      find((node) => node.type === 'input').props.onChange({ target: { value } });
-      render();
-    },
-    submit() {
-      assert.equal(button('Save area').props.disabled, false);
-      find((node) => node.type === 'form').props.onSubmit({ preventDefault() {} });
       render();
     },
     text: () => label(tree),
@@ -174,7 +163,7 @@ test('lines, repeated corners and crossings cannot become fence areas', () => {
     assert.notEqual(polygonError(shape), null);
 });
 
-test('draw requires an explicit close before save and sends one canonical fence configuration', () => {
+test('closing and saving sends one canonical fence configuration with a default name and no dialog', () => {
   const e = editor();
   e.click('Exclusion');
   e.draw(0, 0);
@@ -186,17 +175,17 @@ test('draw requires an explicit close before save and sends one canonical fence 
   e.close();
   assert.equal(e.button('Save fences').props.disabled, false);
   e.click('Save fences');
-  assert.equal(e.sent.length, 0);
-  assert.equal(e.find((node) => node.type === 'input').props.value, 'Exclusion 1');
-  e.name('Bear habitat');
-  e.submit();
+  assert(!e.has((node) => node.type === 'dialog' || node.type === 'input'));
   assert.equal(e.sent.length, 1);
   assert.deepEqual(JSON.parse(JSON.stringify(e.sent[0])), {
     version: 0,
-    names: { inclusion: 'Inclusion', exclusions: ['Bear habitat'] },
+    names: { inclusion: 'Inclusion', exclusions: ['Exclusion 1'] },
     inclusion,
     exclusions: [[point(0, 0), point(0, 20), point(20, 20), point(20, 0)]],
   });
+  assert(e.button('Verifying…').props.disabled);
+  e.click('Verifying…');
+  assert.equal(e.sent.length, 1);
   e.render({ result: { type: 'fence_result', version: 1, error: null }, fences: { ...initial, version: 1 } });
   assert(!e.text().includes('Save fences'));
 });
@@ -231,12 +220,10 @@ test('dragging an inclusion corner is one undoable change', () => {
   corner().props.onPointerUp(e.pointer(-130, -100));
   e.render();
   assert.equal(e.button('Save fences').props.disabled, false);
-  e.click('Save fences');
-  assert.equal(e.button('Save area').props.disabled, false);
-  e.click('Back to editing');
   e.click('Undo fence edit');
+  assert(e.button('Save fences').props.disabled);
   e.click('Save fences');
-  assert(e.button('Save area').props.disabled);
+  assert.equal(e.sent.length, 0);
 });
 
 test('deleting and undoing an exclusion keep the other polygon names associated', () => {
@@ -256,10 +243,8 @@ test('deleting and undoing an exclusion keep the other polygon names associated'
   assert.equal(e.sent.length, 0);
   assert.equal(e.button('Save fences').props.disabled, false);
   e.click('Undo fence edit');
-  e.click('Save fences');
-  assert.equal(e.find((node) => node.type === 'input').props.value, 'Bear habitat');
-  assert(e.button('Save area').props.disabled);
-  e.click('Back to editing');
+  assert.match(e.text(), /Bear habitat/);
+  assert(e.button('Save fences').props.disabled);
   e.click('Delete zone');
   e.click('Save fences');
   assert.deepEqual(JSON.parse(JSON.stringify(e.sent[0])), {
@@ -279,53 +264,61 @@ test('airborne and stale edits cannot save; exact server errors stay in the edit
   e.close();
   e.render({ fences: { ...initial, editable: false } });
   assert(e.button('Save fences').props.disabled);
+  e.click('Save fences');
+  assert.equal(e.sent.length, 0);
   e.render({ fences: { ...initial, version: 1 } });
   assert(e.button('Save fences').props.disabled);
+  e.click('Save fences');
+  assert.equal(e.sent.length, 0);
   e.render({ fences: initial });
   e.click('Save fences');
-  e.submit();
   e.render({ result: { type: 'fence_result', version: 0, error: 'Drone2 home is inside Exclusion 1' } });
   assert.match(e.text(), /Drone2 home is inside Exclusion 1/);
   assert.equal(e.sent.length, 1);
 });
 
-test('name dialog can cancel and rename inclusion without moving its corners', () => {
+test('saving an edited inclusion preserves its existing name without a dialog', () => {
   const e = editor();
+  e.render({ fences: { ...initial, names: { inclusion: 'Park boundary', exclusions: [] } } });
   e.click('Inclusion');
+  const corner = () => e.find((node) => node.props['data-fence-corner'] === 0);
+  corner().props.onPointerDown(e.pointer(-100, -100));
+  e.render();
+  corner().props.onPointerMove(e.pointer(-120, -100));
+  e.render();
+  corner().props.onPointerUp(e.pointer(-120, -100));
+  e.render();
   e.click('Save fences');
-  assert(e.button('Save area').props.disabled);
-  e.name('Park boundary');
-  e.click('Back to editing');
-  assert.equal(e.sent.length, 0);
-  e.click('Save fences');
-  assert.equal(e.find((node) => node.type === 'input').props.value, 'Inclusion');
-  e.name('   ');
-  assert(e.button('Save area').props.disabled);
-  e.name('x'.repeat(61));
-  assert(e.button('Save area').props.disabled);
-  e.name('  Park boundary  ');
-  e.submit();
+  assert(!e.has((node) => node.type === 'dialog' || node.type === 'input'));
   assert.deepEqual(JSON.parse(JSON.stringify(e.sent[0])), {
     version: 0,
     names: { inclusion: 'Park boundary', exclusions: [] },
-    inclusion,
+    inclusion: [point(-120, -100), ...inclusion.slice(1)],
     exclusions: [],
   });
 });
 
-test('a stale or airborne state during naming blocks submission', () => {
+test('new zones receive unused default names after another zone was removed', () => {
   const e = editor();
-  e.click('Inclusion');
+  const existing = [point(30, 30), point(30, 40), point(40, 30)];
+  e.render({
+    fences: {
+      ...initial,
+      names: { inclusion: 'Inclusion', exclusions: ['Exclusion 2'] },
+      exclusions: [existing],
+    },
+  });
+  e.click('Exclusion');
+  e.click('Draw exclusion');
+  e.draw(0, 0);
+  e.draw(0, 20);
+  e.draw(20, 0);
+  e.close();
   e.click('Save fences');
-  e.name('Park boundary');
-  for (const fences of [
-    { ...initial, version: 1 },
-    { ...initial, editable: false },
-  ]) {
-    e.render({ fences });
-    assert(e.button('Save area').props.disabled);
-    e.find((node) => node.type === 'form').props.onSubmit({ preventDefault() {} });
-    e.render();
-    assert.equal(e.sent.length, 0);
-  }
+  assert.deepEqual(JSON.parse(JSON.stringify(e.sent[0])), {
+    version: 0,
+    names: { inclusion: 'Inclusion', exclusions: ['Exclusion 2', 'Exclusion 1'] },
+    inclusion,
+    exclusions: [existing, [point(0, 0), point(0, 20), point(20, 0)]],
+  });
 });
