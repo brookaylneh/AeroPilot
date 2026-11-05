@@ -131,7 +131,7 @@ Our goal is to make fleet operations accessible through conversation, with opera
 
 ## Engineering and hackathon contributions
 
-The mission and perception stack below was built during the October 27–November 4, 2026 hackathon, on top of an existing Scenario Studio source baseline:
+The mission and perception stack below was built during the October 27–November 4, 2026 hackathon, on top of an existing scenraio studio terrain in Unreal. AeroPilot’s original development began on October 21, 2026 with terrain preparation and initial Unreal simulation setup; AI mission control, fleet coordination, perception and the interactive scenario workflow were developed from October 27 to November 4, 2026.
 
 - **A mission planner with explicit execution checks.** Wonder selects tasks; code generates versioned routes and checks terrain, obstacles, fences, aircraft separation and battery limits before operator approval. Changes to a plan require a new checked version.
 - **Four real autopilot processes in a simulated world.** ArduPilot SITL communicates over MAVLink and exchanges sensor and motor data with Cosys-AirSim. Aircraft motion is produced by that control loop.
