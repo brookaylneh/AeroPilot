@@ -1,6 +1,10 @@
 # AeroPilot
 
-**[live demo here](https://alotel.app)**
+[![try it live: alotel.app](https://img.shields.io/badge/try%20it%20live-alotel.app-brightgreen)](https://alotel.app)
+[![model: AeroPilot-v1](https://img.shields.io/badge/model-AeroPilot--v1-yellow?logo=huggingface&logoColor=white)](https://huggingface.co/AeroPilot/AeroPilot-v1)
+[![setup: step-by-step](https://img.shields.io/badge/setup-step--by--step-blue)](deploy/README.md#step-by-step-setup)
+[![history: what we built](https://img.shields.io/badge/history-what%20we%20built-blue)](#engineering-and-hackathon-contributions)
+[![license: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
 **AI native mission control for autonomous drone fleets.**
 
@@ -9,8 +13,6 @@ AeroPilot lets operators plan, coordinate and monitor drone missions using natur
 The platform brings mission planning, fleet telemetry, live video, target tracking and evidence review into one workspace. Meta Muse Wonder acts as the mission commander, our local SAM 3.1 fine-tune detects potential targets, and Muse Glimmer evaluates the evidence. The current release operates one to four simulated aircraft and includes search and rescue as its most complete demonstration of this workflow.
 
 Built for **Push the Frontier** at the Meta Global AI Developer Hackathon, October 27–November 4, 2026.
-
-[Step-by-step setup](deploy/README.md#step-by-step-setup) · [AeroPilot-v1 model](https://huggingface.co/AeroPilot/AeroPilot-v1) · [Checks](https://github.com/brookaylneh/AeroPilot/actions)
 
 ![AeroPilot Mission Control: shared map, four simulated aircraft and mission conversation](web/mission-control.webp)
 
@@ -131,7 +133,7 @@ Our goal is to make fleet operations accessible through conversation, with opera
 
 ## Engineering and hackathon contributions
 
-The mission and perception stack below was built during the October 27–November 4, 2026 hackathon, on top of an existing scenraio studio terrain in Unreal. AeroPilot’s original development began on October 21, 2026 with terrain preparation and initial Unreal simulation setup; AI mission control, fleet coordination, perception and the interactive scenario workflow were developed from October 27 to November 4, 2026.
+AeroPilot’s original development began on October 21, 2026 with terrain preparation and initial Unreal simulation setup; AI mission control, fleet coordination, perception and the interactive scenario workflow were developed from October 27 to November 4, 2026.
 
 - **A mission planner with explicit execution checks.** Wonder selects tasks; code generates versioned routes and checks terrain, obstacles, fences, aircraft separation and battery limits before operator approval. Changes to a plan require a new checked version.
 - **Four real autopilot processes in a simulated world.** ArduPilot SITL communicates over MAVLink and exchanges sensor and motor data with Cosys-AirSim. Aircraft motion is produced by that control loop.
@@ -141,7 +143,7 @@ The mission and perception stack below was built during the October 27–Novembe
 
 Meta's models, Unreal Engine, ArduPilot, Cosys-AirSim, OpenCV and third-party artwork are upstream dependencies. We claim the application, model adaptation and integrations described above, not authorship of those dependencies.
 
-The [audited development history](https://github.com/brookaylneh/AeroPilot/tree/hackathon-development) preserves original dates. [Compare the baseline and submission](https://github.com/brookaylneh/AeroPilot/compare/hackathon-baseline...hackathon-submission) to review the work built during the hackathon.
+The [audited development history](https://github.com/brookaylneh/AeroPilot/tree/hackathon-development) preserves original commit dates. Its baseline is the first recorded source snapshot on October 27, 2026. [Compare that snapshot with the submission](https://github.com/brookaylneh/AeroPilot/compare/hackathon-baseline...hackathon-submission) to review subsequent changes.
 
 ## Measured results and limits
 
@@ -207,4 +209,4 @@ For the **full running simulation**, follow the [numbered setup guide](deploy/RE
 
 Original AeroPilot application code is licensed under [Apache-2.0](LICENSE). Third-party notices and the exceptions for upstream patches are in [NOTICE](NOTICE); asset terms are in [the asset inventory](world/unreal/assets.md). AeroPilot-v1 weights use the separate [SAM License](https://huggingface.co/AeroPilot/AeroPilot-v1/blob/main/LICENSE). The repository does not redistribute Unreal Engine, model weights, training datasets or licensed world assets.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for development rules and [SECURITY.md](SECURITY.md) for private vulnerability reporting.
+See [SECURITY.md](SECURITY.md) for private vulnerability reporting.
