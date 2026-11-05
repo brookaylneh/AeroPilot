@@ -424,16 +424,6 @@ its startup values are defined in `runtime.env.example`.
 
 Caddy proxies to the web server so production and development share the same-origin WebSocket
 checks. The root redirects explicitly; unknown paths return 404. TURN and its media endpoints are the network-facing exception to the loopback service rule.
-Caddy serves `SNR_ORIGIN` over HTTPS and automatically obtains and renews its certificate.
-Set it to the public domain, for example `https://example.com`. Set `SNR_REDIRECT_ORIGINS`
-to alternative domain addresses, for example `https://www.example.com` (space-separated for multiple aliases);
-they redirect to the primary origin with the request path preserved. Point every configured
-domain at the host and allow inbound TCP 80 and 443 before starting Caddy. Its certificate
-storage under `.local/data/caddy` must remain persistent across release checkouts. The admin
-endpoint remains disabled, so apply configuration changes by restarting `snr-caddy`.
-The browser selects `wss://` automatically on HTTPS; internal mission and signalling
-connections remain on loopback. A domain change does not require restarting the simulation.
-The host's public IP continues to serve HTTP for operational access.
 Signalling supplies `iceTransportPolicy: relay` to browsers. Unreal advertises its local candidates;
 Epic's frontend `ForceTURN` flag is unused because it also rejects those remote candidates.
 
