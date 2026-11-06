@@ -1,4 +1,5 @@
 # AeroPilot
+**AI native mission control for autonomous drone fleets.**
 
 [![try it live: alotel.app](https://img.shields.io/badge/try%20it%20live-alotel.app-brightgreen)](https://alotel.app)
 [![model: AeroPilot-v1](https://img.shields.io/badge/model-AeroPilot--v1-yellow?logo=huggingface&logoColor=white)](https://huggingface.co/AeroPilot/AeroPilot-v1)
@@ -6,7 +7,7 @@
 [![history: what we built](https://img.shields.io/badge/history-what%20we%20built-blue)](#engineering-and-hackathon-contributions)
 [![license: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue)](LICENSE)
 
-**AI native mission control for autonomous drone fleets.**
+
 
 [**Watch the demo — 2:10**](web/aeropilot-demo.mp4).
 
