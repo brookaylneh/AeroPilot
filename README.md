@@ -52,7 +52,7 @@ AeroPilot connects these responsibilities in a mission workflow: understand the 
 5. **Assess the evidence.** Glimmer reviews the image against the requested description. Clear negatives can release the candidate so the drone resumes its route; other assessments, imagery and location information reach Wonder for further review.
 6. **Adapt and complete.** Wonder reconciles observations with mission progress and can propose further investigation or search expansion. Changed routes pass through the planner's checks; new launches and search expansions require approval. Operators retain the controls to hold or return the fleet.
 
-![AeroPilot Mission Control: shared map, four simulated aircraft and mission conversation](web/mission-control.webp)
+[![AeroPilot Mission Control: shared map, four simulated aircraft and mission conversation](web/mission-control.webp)](#end-to-end-demo)
 
 ## What the models do
 
