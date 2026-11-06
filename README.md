@@ -8,13 +8,15 @@
 
 **AI native mission control for autonomous drone fleets.**
 
+[**Watch the demo — 2:10**](web/aeropilot-demo.mp4) · Edited simulation; flight sections shortened.
+
 AeroPilot lets operators plan, coordinate and monitor drone missions using natural language. It combines Meta's reasoning and perception models with deterministic mission planning, real autopilot software and a simulated physical world. An operator describes an objective; AeroPilot turns it into checked flight plans, coordinates the aircraft and interprets the visual evidence they collect.
 
 The platform brings mission planning, fleet telemetry, live video, target tracking and evidence review into one workspace. Meta Muse Wonder acts as the mission commander, our local SAM 3.1 fine-tune detects potential targets, and Muse Glimmer evaluates the evidence. The current release operates one to four simulated aircraft and includes search and rescue as its most complete demonstration of this workflow.
 
 Built for **Push the Frontier** at the Meta Global AI Developer Hackathon, October 27–November 4, 2026.
 
-![AeroPilot Mission Control: shared map, four simulated aircraft and mission conversation](web/mission-control.webp)
+[![Watch the AeroPilot four-drone mission demo](web/mission-control.webp)](web/aeropilot-demo.mp4)
 
 ## The problem
 
