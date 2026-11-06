@@ -17,7 +17,13 @@ The platform brings mission planning, fleet telemetry, live video, target tracki
 
 Built for **Push the Frontier** at the Meta Global AI Developer Hackathon, October 27–November 4, 2026.
 
-![AeroPilot Mission Control: shared map, four simulated aircraft and mission conversation](web/mission-control.webp)
+## End-to-end demo
+
+Watch a complete four-drone mission, from natural-language planning and approval through detection, evidence review and return home. Flight sections are shortened.
+
+![AeroPilot end-to-end demo: four-drone planning, detection, evidence review and return home](web/aeropilot-demo.webp)
+
+[**Download the full-quality video — 2:10**](https://raw.githubusercontent.com/brookaylneh/AeroPilot/main/web/aeropilot-demo.mp4) · MP4, 9.14 MB.
 
 ## The problem
 
@@ -46,13 +52,7 @@ AeroPilot connects these responsibilities in a mission workflow: understand the 
 5. **Assess the evidence.** Glimmer reviews the image against the requested description. Clear negatives can release the candidate so the drone resumes its route; other assessments, imagery and location information reach Wonder for further review.
 6. **Adapt and complete.** Wonder reconciles observations with mission progress and can propose further investigation or search expansion. Changed routes pass through the planner's checks; new launches and search expansions require approval. Operators retain the controls to hold or return the fleet.
 
-## End-to-end demo
-
-Watch a complete four-drone mission, from natural-language planning and approval through detection, evidence review and return home. Flight sections are shortened.
-
-![AeroPilot end-to-end demo: four-drone planning, detection, evidence review and return home](web/aeropilot-demo.webp)
-
-[**Download the full-quality video — 2:10**](https://raw.githubusercontent.com/brookaylneh/AeroPilot/main/web/aeropilot-demo.mp4) · MP4, 9.14 MB.
+![AeroPilot Mission Control: shared map, four simulated aircraft and mission conversation](web/mission-control.webp)
 
 ## What the models do
 
