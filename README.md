@@ -1,5 +1,5 @@
 # AeroPilot
-**AI native mission control for autonomous drone fleets.**
+##AI native mission control for autonomous drone fleets.**
 
 [![try it live: alotel.app](https://img.shields.io/badge/try%20it%20live-alotel.app-brightgreen)](https://alotel.app)
 [![model: AeroPilot-v1](https://img.shields.io/badge/model-AeroPilot--v1-yellow?logo=huggingface&logoColor=white)](https://huggingface.co/AeroPilot/AeroPilot-v1)
