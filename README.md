@@ -8,7 +8,7 @@
 
 **AI native mission control for autonomous drone fleets.**
 
-[**Watch the demo — 2:10**](web/aeropilot-demo.mp4) · Edited simulation; flight sections shortened.
+[**Watch the demo — 2:10**](web/aeropilot-demo.mp4).
 
 AeroPilot lets operators plan, coordinate and monitor drone missions using natural language. It combines Meta's reasoning and perception models with deterministic mission planning, real autopilot software and a simulated physical world. An operator describes an objective; AeroPilot turns it into checked flight plans, coordinates the aircraft and interprets the visual evidence they collect.
 
