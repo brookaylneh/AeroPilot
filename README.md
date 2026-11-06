@@ -9,7 +9,7 @@
 
 
 
-[**Watch the demo — 2:10**](web/aeropilot-demo.mp4).
+[**Watch the end-to-end demo — 2:10**](#end-to-end-demo)
 
 AeroPilot lets operators plan, coordinate and monitor drone missions using natural language. It combines Meta's reasoning and perception models with deterministic mission planning, real autopilot software and a simulated physical world. An operator describes an objective; AeroPilot turns it into checked flight plans, coordinates the aircraft and interprets the visual evidence they collect.
 
@@ -17,7 +17,7 @@ The platform brings mission planning, fleet telemetry, live video, target tracki
 
 Built for **Push the Frontier** at the Meta Global AI Developer Hackathon, October 27–November 4, 2026.
 
-[![Watch the AeroPilot four-drone mission demo](web/mission-control.webp)](web/aeropilot-demo.mp4)
+![AeroPilot Mission Control: shared map, four simulated aircraft and mission conversation](web/mission-control.webp)
 
 ## The problem
 
@@ -45,6 +45,14 @@ AeroPilot connects these responsibilities in a mission workflow: understand the 
 4. **Observe and investigate.** During observed steps, SAM processes aerial footage. A candidate can trigger a lock, visual tracking and a separate evidence capture while other aircraft continue their assignments.
 5. **Assess the evidence.** Glimmer reviews the image against the requested description. Clear negatives can release the candidate so the drone resumes its route; other assessments, imagery and location information reach Wonder for further review.
 6. **Adapt and complete.** Wonder reconciles observations with mission progress and can propose further investigation or search expansion. Changed routes pass through the planner's checks; new launches and search expansions require approval. Operators retain the controls to hold or return the fleet.
+
+## End-to-end demo
+
+Watch a complete four-drone mission, from natural-language planning and approval through detection, evidence review and return home. Flight sections are shortened.
+
+![AeroPilot end-to-end demo: four-drone planning, detection, evidence review and return home](web/aeropilot-demo.webp)
+
+[**Download the full-quality video — 2:10**](https://raw.githubusercontent.com/brookaylneh/AeroPilot/main/web/aeropilot-demo.mp4) · MP4, 9.14 MB.
 
 ## What the models do
 
